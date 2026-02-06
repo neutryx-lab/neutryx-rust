@@ -6,14 +6,17 @@
 //! - Swaptions
 //! - Cap/Floor
 
-use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
-use crate::error::FpmlError;
 use infra_domain::{
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, Payoff, SettlementType,
         Trade, TradeMetadata, TradeType,
     },
     Currency, Date, RateIndex,
+};
+
+use crate::{
+    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    error::FpmlError,
 };
 
 /// Parse an interest rate swap from FpML.
@@ -68,8 +71,9 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
     let is_fixed = nav.extract_section("fixedRateSchedule").is_some();
 
     // Get direction from payer/receiver party refs
-    // Note: In a full implementation, we'd resolve the party refs to determine direction
-    // For now, we'll use a heuristic: fixed leg is receiver, floating is payer
+    // Note: In a full implementation, we'd resolve the party refs to determine
+    // direction For now, we'll use a heuristic: fixed leg is receiver, floating
+    // is payer
     let direction = if is_fixed {
         Direction::Receiver
     } else {
@@ -103,7 +107,9 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
         .unwrap_or(0.0);
 
     // Parse currency
-    let currency_str = nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+    let currency_str = nav
+        .find_text("currency")
+        .unwrap_or_else(|| "USD".to_string());
     let currency = parse_currency(&currency_str);
 
     // Parse fixed rate or floating index
@@ -172,7 +178,7 @@ fn parse_floating_rate_index(nav: &XmlNavigator) -> Result<RateIndex, FpmlError>
             }
         }
         s if s.contains("TIBOR") => RateIndex::Tonar, // Map TIBOR to TONAR (JPY)
-        _ => RateIndex::Sofr, // Default fallback
+        _ => RateIndex::Sofr,                         // Default fallback
     };
 
     Ok(index)
@@ -315,7 +321,9 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
         .unwrap_or(0.0);
 
     // Parse currency
-    let currency_str = cf_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+    let currency_str = cf_nav
+        .find_text("currency")
+        .unwrap_or_else(|| "USD".to_string());
     let currency = parse_currency(&currency_str);
 
     // Parse strike (cap or floor rate)

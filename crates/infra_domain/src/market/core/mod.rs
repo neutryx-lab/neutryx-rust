@@ -1,11 +1,13 @@
 //! Core market data types.
 //!
-//! This module provides fundamental types used throughout the market data infrastructure:
+//! This module provides fundamental types used throughout the market data
+//! infrastructure:
 //!
 //! - [`Currency`]: ISO 4217 currency codes with decimal precision
 //! - [`CurrencyPair`]: FX currency pair representation
 //! - [`CompoundingMethod`]: Interest rate compounding conventions
-//! - [`RateType`]: Classification of market rate types (Deposit, Swap, FX, etc.)
+//! - [`RateType`]: Classification of market rate types (Deposit, Swap, FX,
+//!   etc.)
 //!
 //! # Examples
 //!

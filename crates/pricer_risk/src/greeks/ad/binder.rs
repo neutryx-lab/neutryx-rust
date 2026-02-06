@@ -866,8 +866,9 @@ mod tests {
 
 #[cfg(feature = "global-bootstrap")]
 mod global_bootstrap_integration {
-    use super::*;
     use pricer_models::builder::{GlobalBootstrapResult, IftError};
+
+    use super::*;
 
     // =========================================================================
     // Error Types
@@ -978,11 +979,13 @@ mod global_bootstrap_integration {
         ///
         /// * `bootstrap_result` - Calibration result with cached J⁻¹
         /// * `trade` - Trade implementing IftTrade
-        /// * `dF_dquote` - Sensitivity of residuals to market quotes (n_instruments × n_quotes)
+        /// * `dF_dquote` - Sensitivity of residuals to market quotes
+        ///   (n_instruments × n_quotes)
         ///
         /// # Returns
         ///
-        /// IftRiskResult with PV and sensitivities to both DFs and market quotes.
+        /// IftRiskResult with PV and sensitivities to both DFs and market
+        /// quotes.
         ///
         /// # Requirements Coverage
         ///
@@ -1031,25 +1034,29 @@ mod global_bootstrap_integration {
             })
         }
 
-        /// Calculate batched IFT risk for multiple trades sharing the same curve.
+        /// Calculate batched IFT risk for multiple trades sharing the same
+        /// curve.
         ///
-        /// This is more efficient than calling `calculate_ift_risk` for each trade
-        /// because the IFT computation (J⁻¹ · ∂F/∂quote) is performed once and
-        /// reused across all trades.
+        /// This is more efficient than calling `calculate_ift_risk` for each
+        /// trade because the IFT computation (J⁻¹ · ∂F/∂quote) is
+        /// performed once and reused across all trades.
         ///
         /// # Arguments
         ///
         /// * `bootstrap_result` - Calibration result with cached J⁻¹
         /// * `trades` - Vector of trades implementing IftTrade
-        /// * `dF_dquote` - Sensitivity of residuals to market quotes (n_instruments × n_quotes)
+        /// * `dF_dquote` - Sensitivity of residuals to market quotes
+        ///   (n_instruments × n_quotes)
         ///
         /// # Returns
         ///
-        /// BatchIftRiskResult with individual trade results and aggregated sensitivities.
+        /// BatchIftRiskResult with individual trade results and aggregated
+        /// sensitivities.
         ///
         /// # Requirements Coverage
         ///
-        /// - AC7.4: Batch curve sensitivities across trades sharing the same curve
+        /// - AC7.4: Batch curve sensitivities across trades sharing the same
+        ///   curve
         pub fn calculate_batch_ift_risk<T: IftTrade>(
             &self,
             bootstrap_result: &GlobalBootstrapResult<f64>,
@@ -1131,9 +1138,10 @@ mod global_bootstrap_integration {
 
     #[cfg(test)]
     mod tests {
-        use super::*;
         use pricer_core::math::linalg::DMatrix;
         use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
+        use super::*;
 
         // Mock trade for testing
         struct MockIrsTrade {
@@ -1182,10 +1190,7 @@ mod global_bootstrap_integration {
             with_jacobian: bool,
         ) -> GlobalBootstrapResult<f64> {
             let pillars: Vec<f64> = (1..=n_pillars).map(|i| i as f64).collect();
-            let discount_factors: Vec<f64> = pillars
-                .iter()
-                .map(|&t| (-0.03 * t).exp())
-                .collect();
+            let discount_factors: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
 
             let jacobian_inverse = if with_jacobian {
                 Some(DMatrix::identity(n_pillars, n_pillars))
@@ -1333,7 +1338,9 @@ mod global_bootstrap_integration {
 
             let dF_dquote = vec![vec![1.0, 0.0, 0.0]];
 
-            let batch_result = calc.calculate_batch_ift_risk(&result, &trades, &dF_dquote).unwrap();
+            let batch_result = calc
+                .calculate_batch_ift_risk(&result, &trades, &dF_dquote)
+                .unwrap();
 
             // Total market sensitivity should be 2x individual
             let individual_sens = batch_result.trade_results[0].market_sensitivities[0];
@@ -1362,7 +1369,9 @@ mod global_bootstrap_integration {
             // With identity Jacobian, ∂DF/∂quote should equal -dF_dquote
             let dF_dquote = vec![vec![0.01, 0.0, 0.0]]; // 1bp shift in first quote
 
-            let risk = calc.calculate_ift_risk(&result, &trade, &dF_dquote).unwrap();
+            let risk = calc
+                .calculate_ift_risk(&result, &trade, &dF_dquote)
+                .unwrap();
 
             // ∂PV/∂quote[0] should equal -∂PV/∂DF[0] * 0.01 (with identity J⁻¹)
             let expected = -risk.df_sensitivities[0] * 0.01;

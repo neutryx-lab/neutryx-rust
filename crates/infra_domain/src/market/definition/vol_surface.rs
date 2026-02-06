@@ -180,9 +180,7 @@ pub struct VolSurfaceDefinition {
 }
 
 #[cfg(feature = "serde")]
-fn default_true() -> bool {
-    true
-}
+fn default_true() -> bool { true }
 
 /// Time axis interpolation method for volatility surfaces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -329,9 +327,7 @@ impl VolSurfaceDefinition {
 
     /// Returns the number of instruments in the definition.
     #[must_use]
-    pub fn instrument_count(&self) -> usize {
-        self.instruments.len()
-    }
+    pub fn instrument_count(&self) -> usize { self.instruments.len() }
 
     /// Validates the vol surface definition (basic validation only).
     ///
@@ -495,10 +491,8 @@ mod tests {
 
     #[test]
     fn test_vol_surface_validate_success() {
-        let surface = VolSurfaceDefinition::new(
-            "USD-SOFR-Vol",
-            vec!["USD-SOFR-1Y1Y-ATM".to_string()],
-        );
+        let surface =
+            VolSurfaceDefinition::new("USD-SOFR-Vol", vec!["USD-SOFR-1Y1Y-ATM".to_string()]);
         assert!(surface.validate().is_ok());
     }
 
@@ -522,10 +516,8 @@ mod tests {
 
     #[test]
     fn test_vol_surface_validate_duplicate_instrument() {
-        let surface = VolSurfaceDefinition::new(
-            "USD-Vol",
-            vec!["inst1".to_string(), "inst1".to_string()],
-        );
+        let surface =
+            VolSurfaceDefinition::new("USD-Vol", vec!["inst1".to_string(), "inst1".to_string()]);
         assert!(matches!(
             surface.validate(),
             Err(VolSurfaceDefError::DuplicateInstrument(_))
@@ -559,12 +551,10 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_vol_surface_serde_roundtrip() {
-        let surface = VolSurfaceDefinition::new(
-            "USD-SOFR-Vol",
-            vec!["USD-SOFR-1Y1Y-ATM".to_string()],
-        )
-        .with_model(CalibrationModel::Sabr)
-        .with_strike_axis(StrikeAxisType::Delta);
+        let surface =
+            VolSurfaceDefinition::new("USD-SOFR-Vol", vec!["USD-SOFR-1Y1Y-ATM".to_string()])
+                .with_model(CalibrationModel::Sabr)
+                .with_strike_axis(StrikeAxisType::Delta);
 
         let json = serde_json::to_string(&surface).unwrap();
         let parsed: VolSurfaceDefinition = serde_json::from_str(&json).unwrap();

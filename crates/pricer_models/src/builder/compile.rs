@@ -12,8 +12,10 @@
 use num_traits::Float;
 use thiserror::Error;
 
-use crate::builder::CalibrationInstrument;
-use crate::market::{curves::YieldCurve, MarketDataError};
+use crate::{
+    builder::CalibrationInstrument,
+    market::{curves::YieldCurve, MarketDataError},
+};
 
 // =============================================================================
 // InstrumentType Enumeration (Requirement 1.4)
@@ -23,8 +25,8 @@ use crate::market::{curves::YieldCurve, MarketDataError};
 ///
 /// # Requirement 1.4
 ///
-/// The Compiler shall support Deposit, Swap, OIS, FRA, Futures instrument types.
-/// XCcyBasis, FxForward, FxSwap are explicitly unsupported.
+/// The Compiler shall support Deposit, Swap, OIS, FRA, Futures instrument
+/// types. XCcyBasis, FxForward, FxSwap are explicitly unsupported.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InstrumentType {
     /// Simple deposit/money market instrument.
@@ -297,7 +299,8 @@ impl<T: Float> CompiledInstrument<T> {
             }
         }
 
-        // Generate df_indices (0-indexed for now, will be mapped by InterpolationMatrix)
+        // Generate df_indices (0-indexed for now, will be mapped by
+        // InterpolationMatrix)
         let df_indices = (0..n).collect();
 
         Ok(Self {
@@ -360,39 +363,25 @@ impl<T: Float> CompiledInstrument<T> {
     }
 
     /// Returns the instrument type.
-    pub fn get_instrument_type(&self) -> InstrumentType {
-        self.instrument_type
-    }
+    pub fn get_instrument_type(&self) -> InstrumentType { self.instrument_type }
 
     /// Returns the cashflow times.
-    pub fn cashflow_times(&self) -> &[T] {
-        &self.cashflow_times
-    }
+    pub fn cashflow_times(&self) -> &[T] { &self.cashflow_times }
 
     /// Returns the year fractions.
-    pub fn year_fractions(&self) -> &[T] {
-        &self.year_fractions
-    }
+    pub fn year_fractions(&self) -> &[T] { &self.year_fractions }
 
     /// Returns the notional amounts.
-    pub fn notionals(&self) -> &[T] {
-        &self.notionals
-    }
+    pub fn notionals(&self) -> &[T] { &self.notionals }
 
     /// Returns the discount factor indices.
-    pub fn df_indices(&self) -> &[usize] {
-        &self.df_indices
-    }
+    pub fn df_indices(&self) -> &[usize] { &self.df_indices }
 
     /// Returns the fixed rate if set.
-    pub fn fixed_rate(&self) -> Option<T> {
-        self.fixed_rate
-    }
+    pub fn fixed_rate(&self) -> Option<T> { self.fixed_rate }
 
     /// Returns the number of cashflows.
-    pub fn num_cashflows(&self) -> usize {
-        self.cashflow_times.len()
-    }
+    pub fn num_cashflows(&self) -> usize { self.cashflow_times.len() }
 }
 
 // =============================================================================
@@ -405,9 +394,7 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
     /// # Requirement 3.1
     ///
     /// market_rate() returns the stored value directly.
-    fn market_rate(&self) -> T {
-        self.market_rate
-    }
+    fn market_rate(&self) -> T { self.market_rate }
 
     /// Computes the theoretical rate from the yield curve.
     ///
@@ -418,7 +405,8 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
     ///
     /// # Requirement 3.2
     ///
-    /// The computation maintains O(n) time complexity where n = number of cashflows.
+    /// The computation maintains O(n) time complexity where n = number of
+    /// cashflows.
     fn theoretical_rate<C: YieldCurve<T>>(&self, curve: &C) -> Result<T, MarketDataError> {
         match self.instrument_type {
             InstrumentType::Deposit => {
@@ -513,14 +501,10 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
     }
 
     /// Returns the instrument maturity.
-    fn maturity(&self) -> T {
-        self.maturity
-    }
+    fn maturity(&self) -> T { self.maturity }
 
     /// Returns the instrument type as a string.
-    fn instrument_type(&self) -> &'static str {
-        self.instrument_type.as_str()
-    }
+    fn instrument_type(&self) -> &'static str { self.instrument_type.as_str() }
 }
 
 // =============================================================================
@@ -529,9 +513,10 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
 
 use std::marker::PhantomData;
 
-use infra_domain::market::convention::MarketConvention;
-use infra_domain::market::MarketInstrument as InfraMasterInstrument;
-use infra_domain::time::Date;
+use infra_domain::{
+    market::{convention::MarketConvention, MarketInstrument as InfraMasterInstrument},
+    time::Date,
+};
 use pricer_core::math::numeric::from_f64;
 
 /// Compiler for converting `infra_domain::market::MarketInstrument` to
@@ -567,17 +552,15 @@ impl<T: Float> InstrumentCompiler<T> {
     }
 
     /// Returns the valuation date.
-    pub fn valuation_date(&self) -> Date {
-        self.valuation_date
-    }
+    pub fn valuation_date(&self) -> Date { self.valuation_date }
 
     /// Compiles a single MarketInstrument to a CompiledInstrument.
     ///
     /// # Requirement 1.1
     ///
-    /// When `compile()` is called, the Compiler shall convert `MarketInstrument`
-    /// to `CompiledInstrument`, pre-computing all cashflow dates, year fractions,
-    /// and notionals.
+    /// When `compile()` is called, the Compiler shall convert
+    /// `MarketInstrument` to `CompiledInstrument`, pre-computing all
+    /// cashflow dates, year fractions, and notionals.
     ///
     /// # Arguments
     ///
@@ -997,17 +980,16 @@ mod tests {
 
     #[test]
     fn test_compiled_instrument_accessors() {
-        let inst: CompiledInstrument<f64> =
-            CompiledInstrument::new(
-                InstrumentType::Swap,
-                0.035,
-                5.0,
-                vec![1.0, 2.0, 3.0, 4.0, 5.0],
-                vec![1.0, 1.0, 1.0, 1.0, 1.0],
-                vec![1.0, 1.0, 1.0, 1.0, 1.0],
-                Some(0.035),
-            )
-            .unwrap();
+        let inst: CompiledInstrument<f64> = CompiledInstrument::new(
+            InstrumentType::Swap,
+            0.035,
+            5.0,
+            vec![1.0, 2.0, 3.0, 4.0, 5.0],
+            vec![1.0, 1.0, 1.0, 1.0, 1.0],
+            vec![1.0, 1.0, 1.0, 1.0, 1.0],
+            Some(0.035),
+        )
+        .unwrap();
 
         assert_eq!(inst.cashflow_times().len(), 5);
         assert_eq!(inst.year_fractions().len(), 5);
@@ -1093,9 +1075,12 @@ mod tests {
     // CalibrationInstrument Implementation Tests (Requirements 3.1-3.4)
     // =========================================================================
 
-    use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve, FlatCurve};
-    use crate::builder::CalibrationInstrument as CalibInstrument;
     use approx::assert_relative_eq;
+
+    use crate::{
+        builder::CalibrationInstrument as CalibInstrument,
+        market::curves::{BootstrapInterpolation, BootstrappedCurve, FlatCurve},
+    };
 
     fn create_test_curve() -> BootstrappedCurve<f64> {
         let pillars = vec![0.25, 0.5, 1.0, 2.0, 5.0, 10.0];
@@ -1198,13 +1183,15 @@ mod tests {
     // InstrumentCompiler Tests (Requirements 3.1-3.5)
     // =========================================================================
 
-    use infra_domain::market::convention::{DepositConvention, FraConvention, SwapConvention};
-    use infra_domain::market::{Currency, RateId, RateType};
-    use infra_domain::time::Tenor;
+    use infra_domain::{
+        market::{
+            convention::{DepositConvention, FraConvention, SwapConvention},
+            Currency, RateId, RateType,
+        },
+        time::Tenor,
+    };
 
-    fn create_test_valuation_date() -> Date {
-        Date::from_ymd(2024, 1, 15).unwrap()
-    }
+    fn create_test_valuation_date() -> Date { Date::from_ymd(2024, 1, 15).unwrap() }
 
     #[test]
     fn test_instrument_compiler_new() {
@@ -1220,14 +1207,9 @@ mod tests {
 
         let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let convention = MarketConvention::Deposit(DepositConvention::usd());
-        let instrument = InfraMasterInstrument::new(
-            rate_id,
-            0.05,
-            convention,
-            valuation_date,
-            1_000_000.0,
-        )
-        .unwrap();
+        let instrument =
+            InfraMasterInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0)
+                .unwrap();
 
         let compiled = compiler.compile(&instrument, 0).unwrap();
         assert_eq!(compiled.get_instrument_type(), InstrumentType::Deposit);
@@ -1242,14 +1224,9 @@ mod tests {
 
         let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
         let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
-        let instrument = InfraMasterInstrument::new(
-            rate_id,
-            0.045,
-            convention,
-            valuation_date,
-            10_000_000.0,
-        )
-        .unwrap();
+        let instrument =
+            InfraMasterInstrument::new(rate_id, 0.045, convention, valuation_date, 10_000_000.0)
+                .unwrap();
 
         let compiled = compiler.compile(&instrument, 0).unwrap();
         assert_eq!(compiled.get_instrument_type(), InstrumentType::Swap);
@@ -1264,14 +1241,9 @@ mod tests {
 
         let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
         let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
-        let instrument = InfraMasterInstrument::new(
-            rate_id,
-            0.052,
-            convention,
-            valuation_date,
-            5_000_000.0,
-        )
-        .unwrap();
+        let instrument =
+            InfraMasterInstrument::new(rate_id, 0.052, convention, valuation_date, 5_000_000.0)
+                .unwrap();
 
         let compiled = compiler.compile(&instrument, 0).unwrap();
         assert_eq!(compiled.get_instrument_type(), InstrumentType::Ois);
@@ -1284,14 +1256,9 @@ mod tests {
 
         let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
         let convention = MarketConvention::Fra(FraConvention::usd_sofr());
-        let instrument = InfraMasterInstrument::new(
-            rate_id,
-            0.051,
-            convention,
-            valuation_date,
-            2_000_000.0,
-        )
-        .unwrap();
+        let instrument =
+            InfraMasterInstrument::new(rate_id, 0.051, convention, valuation_date, 2_000_000.0)
+                .unwrap();
 
         let compiled = compiler.compile(&instrument, 0).unwrap();
         assert_eq!(compiled.get_instrument_type(), InstrumentType::Fra);
@@ -1306,19 +1273,16 @@ mod tests {
 
         let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
         let convention = MarketConvention::XCcyBasis(XCcyBasisConvention::usd_jpy());
-        let instrument = InfraMasterInstrument::new(
-            rate_id,
-            0.0025,
-            convention,
-            valuation_date,
-            100_000_000.0,
-        )
-        .unwrap();
+        let instrument =
+            InfraMasterInstrument::new(rate_id, 0.0025, convention, valuation_date, 100_000_000.0)
+                .unwrap();
 
         let result = compiler.compile(&instrument, 0);
         assert!(result.is_err());
         match result.unwrap_err() {
-            CompileError::UnsupportedInstrument { instrument_type, .. } => {
+            CompileError::UnsupportedInstrument {
+                instrument_type, ..
+            } => {
                 assert_eq!(instrument_type, "XCcyBasis");
             }
             _ => panic!("Expected UnsupportedInstrument error"),
@@ -1366,18 +1330,17 @@ mod tests {
         let convention = MarketConvention::Deposit(DepositConvention::usd());
         let instrument_date = Date::from_ymd(2024, 1, 15).unwrap();
 
-        let instrument = InfraMasterInstrument::new(
-            rate_id,
-            0.05,
-            convention,
-            instrument_date,
-            1_000_000.0,
-        )
-        .unwrap();
+        let instrument =
+            InfraMasterInstrument::new(rate_id, 0.05, convention, instrument_date, 1_000_000.0)
+                .unwrap();
 
-        // The instrument's maturity (around 2024-04) is before the compiler's valuation date (2025-06)
+        // The instrument's maturity (around 2024-04) is before the compiler's valuation
+        // date (2025-06)
         let result = compiler.compile(&instrument, 0);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), CompileError::InvalidMaturity { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            CompileError::InvalidMaturity { .. }
+        ));
     }
 }

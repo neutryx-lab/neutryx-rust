@@ -1,9 +1,11 @@
 //! Market object definitions for curve and surface construction.
 //!
-//! This module provides definition types that specify how to build market objects:
+//! This module provides definition types that specify how to build market
+//! objects:
 //!
 //! - [`CurveDefinition`]: Recipe for building yield curves
-//! - [`VolSurfaceDefinition`]: Specification for volatility surfaces (calibration model, strike type)
+//! - [`VolSurfaceDefinition`]: Specification for volatility surfaces
+//!   (calibration model, strike type)
 //! - [`InstrumentDefinition`]: Calibration instrument definitions
 //! - [`RateIndexDefinition`]: Benchmark rate index definitions
 //! - [`JumpPillar`]: Rate jump definitions for central bank meetings
@@ -12,7 +14,8 @@
 //!
 //! Definition types serve as master data that specify:
 //! - **What** instruments to use for calibration
-//! - **How** to construct the resulting curve/surface (interpolation, model, etc.)
+//! - **How** to construct the resulting curve/surface (interpolation, model,
+//!   etc.)
 //!
 //! They reference [`InstrumentDefinition`]s and [`RateIndexDefinition`]s by ID,
 //! enabling a clean separation between definition and runtime data.
@@ -61,17 +64,14 @@ pub use curve::{
     CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod, JumpPillar,
     JumpPillarBuilder,
 };
-
+// Index definitions (rate, FX, etc.)
+pub use index::{IndexConventions, RateIndexDefError, RateIndexDefinition};
+// Instrument definitions
+pub use instrument::{
+    InstrumentConventions, InstrumentDefError, InstrumentDefinition, InstrumentTemplate,
+};
 // Vol surface definitions
 pub use vol_surface::{
     CalibrationModel, StrikeAxisType, StrikeInterpolation, TimeInterpolation, VolSurfaceDefError,
     VolSurfaceDefinition,
 };
-
-// Instrument definitions
-pub use instrument::{
-    InstrumentConventions, InstrumentDefError, InstrumentDefinition, InstrumentTemplate,
-};
-
-// Index definitions (rate, FX, etc.)
-pub use index::{IndexConventions, RateIndexDefError, RateIndexDefinition};

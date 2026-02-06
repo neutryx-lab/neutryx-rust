@@ -140,7 +140,10 @@ pub fn sparsity_ratio<T: RealField + Copy + Float>(matrix: &DMatrix<T>, threshol
         return 0.0;
     }
 
-    let non_zero_count = matrix.iter().filter(|&&x| Float::abs(x) > threshold).count();
+    let non_zero_count = matrix
+        .iter()
+        .filter(|&&x| Float::abs(x) > threshold)
+        .count();
 
     let zero_count = total - non_zero_count;
     (zero_count as f64) / (total as f64)
@@ -154,7 +157,8 @@ pub fn sparsity_ratio<T: RealField + Copy + Float>(matrix: &DMatrix<T>, threshol
 ///
 /// * `matrix` - The matrix to analyse
 /// * `threshold` - Absolute value threshold for zero detection
-/// * `sparsity_threshold` - Minimum sparsity ratio for sparse algorithms (default: 0.7)
+/// * `sparsity_threshold` - Minimum sparsity ratio for sparse algorithms
+///   (default: 0.7)
 ///
 /// # Returns
 ///
@@ -178,7 +182,10 @@ pub fn is_sparse_beneficial<T: RealField + Copy + Float>(
 ///
 /// Number of elements with absolute value above threshold.
 pub fn count_nonzeros<T: RealField + Copy + Float>(matrix: &DMatrix<T>, threshold: T) -> usize {
-    matrix.iter().filter(|&&x| Float::abs(x) > threshold).count()
+    matrix
+        .iter()
+        .filter(|&&x| Float::abs(x) > threshold)
+        .count()
 }
 
 // =============================================================================

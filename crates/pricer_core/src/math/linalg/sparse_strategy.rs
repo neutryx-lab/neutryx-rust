@@ -1,8 +1,9 @@
 //! Sparse matrix solve strategies for calibration problems.
 //!
-//! This module provides `SparseLUStrategy` which implements `LinearSolveStrategy`
-//! for sparse matrices. It stores matrices in CSR format for memory efficiency
-//! and automatically determines when sparse representation is beneficial.
+//! This module provides `SparseLUStrategy` which implements
+//! `LinearSolveStrategy` for sparse matrices. It stores matrices in CSR format
+//! for memory efficiency and automatically determines when sparse
+//! representation is beneficial.
 //!
 //! ## Sparsity Detection
 //!
@@ -95,8 +96,10 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
     ///
     /// # Arguments
     ///
-    /// * `zero_threshold` - Absolute value below which elements are considered zero
-    /// * `sparsity_threshold` - Minimum sparsity ratio to use sparse storage (0.0-1.0)
+    /// * `zero_threshold` - Absolute value below which elements are considered
+    ///   zero
+    /// * `sparsity_threshold` - Minimum sparsity ratio to use sparse storage
+    ///   (0.0-1.0)
     pub fn with_thresholds(zero_threshold: T, sparsity_threshold: f64) -> Self {
         Self {
             dense_matrix: None,
@@ -272,8 +275,7 @@ mod tests {
 
     #[test]
     fn test_sparse_lu_strategy_with_thresholds() {
-        let strategy: SparseLUStrategy<f64> =
-            SparseLUStrategy::with_thresholds(1e-10, 0.5);
+        let strategy: SparseLUStrategy<f64> = SparseLUStrategy::with_thresholds(1e-10, 0.5);
 
         assert_relative_eq!(strategy.zero_threshold(), 1e-10, epsilon = 1e-15);
         assert_relative_eq!(strategy.sparsity_threshold(), 0.5, epsilon = 1e-10);
@@ -281,8 +283,7 @@ mod tests {
 
     #[test]
     fn test_decompose_sparse_matrix() {
-        let mut strategy: SparseLUStrategy<f64> =
-            SparseLUStrategy::with_sparsity_threshold(0.5);
+        let mut strategy: SparseLUStrategy<f64> = SparseLUStrategy::with_sparsity_threshold(0.5);
 
         // 5x5 diagonal matrix: 20/25 = 80% sparsity
         let mut matrix = DMatrix::zeros(5, 5);
@@ -413,8 +414,7 @@ mod tests {
 
     #[test]
     fn test_inverse_sparse() {
-        let mut strategy: SparseLUStrategy<f64> =
-            SparseLUStrategy::with_sparsity_threshold(0.5);
+        let mut strategy: SparseLUStrategy<f64> = SparseLUStrategy::with_sparsity_threshold(0.5);
 
         // 5x5 diagonal matrix
         let mut matrix = DMatrix::zeros(5, 5);
@@ -448,7 +448,10 @@ mod tests {
         let result = strategy.inverse();
 
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LinearAlgebraError::SingularMatrix));
+        assert!(matches!(
+            result.unwrap_err(),
+            LinearAlgebraError::SingularMatrix
+        ));
     }
 
     #[test]
@@ -466,8 +469,7 @@ mod tests {
 
     #[test]
     fn test_name_sparse() {
-        let mut strategy: SparseLUStrategy<f64> =
-            SparseLUStrategy::with_sparsity_threshold(0.5);
+        let mut strategy: SparseLUStrategy<f64> = SparseLUStrategy::with_sparsity_threshold(0.5);
 
         // Sparse matrix
         let mut matrix = DMatrix::zeros(5, 5);
@@ -526,11 +528,7 @@ mod tests {
 
         assert!(strategy.is_using_sparse());
         // 3x3 with 3 non-zeros = 6/9 = 66.7% sparsity
-        assert_relative_eq!(
-            strategy.sparsity().unwrap(),
-            6.0 / 9.0,
-            epsilon = 1e-10
-        );
+        assert_relative_eq!(strategy.sparsity().unwrap(), 6.0 / 9.0, epsilon = 1e-10);
 
         // Solve diagonal system
         let x = strategy.solve(&[1.0, 4.0, 9.0]).unwrap();

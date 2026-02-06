@@ -1,7 +1,8 @@
 //! Integration tests for FpML parser using actual demo files.
 
-use adapter_fpml::FpmlParser;
 use std::fs;
+
+use adapter_fpml::FpmlParser;
 
 /// Path to the demo FpML files.
 const FPML_BASE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../demo/data/trades/fpml");

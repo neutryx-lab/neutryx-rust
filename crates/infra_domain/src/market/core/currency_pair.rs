@@ -33,9 +33,7 @@ pub struct CurrencyPair {
 impl CurrencyPair {
     /// Creates a new currency pair.
     #[must_use]
-    pub fn new(base: Currency, quote: Currency) -> Self {
-        Self { base, quote }
-    }
+    pub fn new(base: Currency, quote: Currency) -> Self { Self { base, quote } }
 
     /// Returns the inverse currency pair.
     #[must_use]
@@ -48,9 +46,7 @@ impl CurrencyPair {
 
     /// Returns the pair as a string (e.g., "EUR/USD").
     #[must_use]
-    pub fn to_string_pair(&self) -> String {
-        format!("{}/{}", self.base.code(), self.quote.code())
-    }
+    pub fn to_string_pair(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
 }
 
 impl std::fmt::Display for CurrencyPair {
@@ -63,9 +59,7 @@ impl std::fmt::Display for CurrencyPair {
 mod tests {
     use super::*;
 
-    fn make_test_currency_pair() -> CurrencyPair {
-        CurrencyPair::new(Currency::EUR, Currency::USD)
-    }
+    fn make_test_currency_pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
 
     #[test]
     fn test_currency_pair_new() {

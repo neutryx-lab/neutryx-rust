@@ -79,7 +79,11 @@ impl std::fmt::Display for RegistryError {
                 write!(f, "Duplicate {} ID: {}", entity, id)
             }
             Self::ReferenceNotFound { from, to, entity } => {
-                write!(f, "{} '{}' references unknown {}: '{}'", entity, from, entity, to)
+                write!(
+                    f,
+                    "{} '{}' references unknown {}: '{}'",
+                    entity, from, entity, to
+                )
             }
         }
     }
@@ -88,21 +92,15 @@ impl std::fmt::Display for RegistryError {
 impl std::error::Error for RegistryError {}
 
 impl From<InstrumentDefError> for RegistryError {
-    fn from(e: InstrumentDefError) -> Self {
-        Self::Instrument(e)
-    }
+    fn from(e: InstrumentDefError) -> Self { Self::Instrument(e) }
 }
 
 impl From<RateIndexDefError> for RegistryError {
-    fn from(e: RateIndexDefError) -> Self {
-        Self::RateIndex(e)
-    }
+    fn from(e: RateIndexDefError) -> Self { Self::RateIndex(e) }
 }
 
 impl From<CurveDefError> for RegistryError {
-    fn from(e: CurveDefError) -> Self {
-        Self::Curve(e)
-    }
+    fn from(e: CurveDefError) -> Self { Self::Curve(e) }
 }
 
 /// Registry for curve construction definitions.
@@ -193,9 +191,7 @@ impl DefinitionBundle {
 impl DefinitionRegistry {
     /// Creates a new empty registry.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Registers an instrument definition.
     ///
@@ -204,10 +200,7 @@ impl DefinitionRegistry {
     /// # Errors
     ///
     /// Returns error if validation fails or ID already exists.
-    pub fn register_instrument(
-        &mut self,
-        def: InstrumentDefinition,
-    ) -> Result<(), RegistryError> {
+    pub fn register_instrument(&mut self, def: InstrumentDefinition) -> Result<(), RegistryError> {
         def.validate()?;
 
         if self.instruments.contains_key(&def.id) {
@@ -228,10 +221,7 @@ impl DefinitionRegistry {
     /// # Errors
     ///
     /// Returns error if validation fails or ID already exists.
-    pub fn register_rate_index(
-        &mut self,
-        def: RateIndexDefinition,
-    ) -> Result<(), RegistryError> {
+    pub fn register_rate_index(&mut self, def: RateIndexDefinition) -> Result<(), RegistryError> {
         def.validate()?;
 
         if self.rate_indices.contains_key(&def.id) {
@@ -303,27 +293,19 @@ impl DefinitionRegistry {
 
     /// Gets a curve definition by name.
     #[must_use]
-    pub fn get_curve(&self, name: &str) -> Option<&CurveDefinition> {
-        self.curves.get(name)
-    }
+    pub fn get_curve(&self, name: &str) -> Option<&CurveDefinition> { self.curves.get(name) }
 
     /// Returns the number of registered instruments.
     #[must_use]
-    pub fn instrument_count(&self) -> usize {
-        self.instruments.len()
-    }
+    pub fn instrument_count(&self) -> usize { self.instruments.len() }
 
     /// Returns the number of registered rate indices.
     #[must_use]
-    pub fn rate_index_count(&self) -> usize {
-        self.rate_indices.len()
-    }
+    pub fn rate_index_count(&self) -> usize { self.rate_indices.len() }
 
     /// Returns the number of registered curves.
     #[must_use]
-    pub fn curve_count(&self) -> usize {
-        self.curves.len()
-    }
+    pub fn curve_count(&self) -> usize { self.curves.len() }
 
     /// Returns an iterator over all instrument definitions.
     pub fn instruments(&self) -> impl Iterator<Item = &InstrumentDefinition> {
@@ -336,9 +318,7 @@ impl DefinitionRegistry {
     }
 
     /// Returns an iterator over all curve definitions.
-    pub fn curves(&self) -> impl Iterator<Item = &CurveDefinition> {
-        self.curves.values()
-    }
+    pub fn curves(&self) -> impl Iterator<Item = &CurveDefinition> { self.curves.values() }
 
     /// Gets the instrument definitions for a curve.
     ///
@@ -347,7 +327,8 @@ impl DefinitionRegistry {
     /// # Panics
     ///
     /// Panics if the curve references an instrument that doesn't exist.
-    /// This should not happen if the curve was registered via [`register_curve`].
+    /// This should not happen if the curve was registered via
+    /// [`register_curve`].
     #[must_use]
     pub fn curve_instruments(&self, curve_name: &str) -> Option<Vec<&InstrumentDefinition>> {
         let curve = self.curves.get(curve_name)?;
@@ -369,7 +350,8 @@ impl DefinitionRegistry {
     /// # Panics
     ///
     /// Panics if the curve references a rate index that doesn't exist.
-    /// This should not happen if the curve was registered via [`register_curve`].
+    /// This should not happen if the curve was registered via
+    /// [`register_curve`].
     #[must_use]
     pub fn curve_rate_index(&self, curve_name: &str) -> Option<&RateIndexDefinition> {
         let curve = self.curves.get(curve_name)?;
@@ -521,7 +503,10 @@ mod tests {
 
         assert!(matches!(
             registry.register_curve(curve),
-            Err(RegistryError::ReferenceNotFound { entity: "rate_index", .. })
+            Err(RegistryError::ReferenceNotFound {
+                entity: "rate_index",
+                ..
+            })
         ));
     }
 
@@ -540,7 +525,10 @@ mod tests {
 
         assert!(matches!(
             registry.register_curve(curve),
-            Err(RegistryError::ReferenceNotFound { entity: "instrument", .. })
+            Err(RegistryError::ReferenceNotFound {
+                entity: "instrument",
+                ..
+            })
         ));
     }
 
@@ -741,22 +729,18 @@ mod tests {
         use super::InstrumentTemplate;
 
         let bundle = DefinitionBundle {
-            templates: vec![
-                InstrumentTemplate::new(
-                    "{currency}-OIS-{tenor}",
-                    Currency::USD,
-                    "USD-SOFR-OIS",
-                    vec!["1M".into(), "3M".into(), "6M".into()],
-                ),
-            ],
-            instruments: vec![
-                InstrumentDefinition::from_convention(
-                    "USD-Custom",
-                    Currency::USD,
-                    "USD-DEPO",
-                    "O/N",
-                ),
-            ],
+            templates: vec![InstrumentTemplate::new(
+                "{currency}-OIS-{tenor}",
+                Currency::USD,
+                "USD-SOFR-OIS",
+                vec!["1M".into(), "3M".into(), "6M".into()],
+            )],
+            instruments: vec![InstrumentDefinition::from_convention(
+                "USD-Custom",
+                Currency::USD,
+                "USD-DEPO",
+                "O/N",
+            )],
             rate_indices: vec![],
             curves: vec![],
         };

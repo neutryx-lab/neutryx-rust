@@ -23,6 +23,8 @@ pub enum EventType {
     News,
     /// Options/Futures expiry.
     Expiry,
+    /// Turn date for curve construction (expected rate move date).
+    Turn,
     /// Other market event.
     Other,
 }
@@ -44,6 +46,7 @@ impl EventType {
             Self::Holiday => "Holiday",
             Self::News => "News",
             Self::Expiry => "Expiry",
+            Self::Turn => "Turn",
             Self::Other => "Other",
         }
     }
@@ -58,6 +61,7 @@ impl EventType {
             Self::Holiday => "fa-calendar-times",
             Self::News => "fa-newspaper",
             Self::Expiry => "fa-hourglass-end",
+            Self::Turn => "fa-chart-line",
             Self::Other => "fa-info-circle",
         }
     }
@@ -70,6 +74,7 @@ impl EventType {
             EventType::Holiday,
             EventType::News,
             EventType::Expiry,
+            EventType::Turn,
             EventType::Other,
         ]
     }
@@ -107,7 +112,7 @@ mod tests {
     #[test]
     fn test_all_variants() {
         let all = EventType::all();
-        assert_eq!(all.len(), 6);
+        assert_eq!(all.len(), 7);
     }
 
     #[test]

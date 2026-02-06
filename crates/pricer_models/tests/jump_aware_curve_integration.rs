@@ -3,20 +3,24 @@
 //! This module tests the complete flow from JumpPillar definitions through
 //! curve bootstrapping to jump-aware discount factor calculations.
 
-use infra_domain::market::definition::JumpPillar;
-use infra_domain::time::{Date, DayCounter};
+use infra_domain::{
+    market::definition::JumpPillar,
+    time::{Date, DayCounter},
+};
 use pricer_core::types::Limit;
-use pricer_models::builder::CurveBootstrapper;
-use pricer_models::market::curves::{BootstrappedCurve, MarketInstrument, YieldCurve};
-use pricer_models::market::jumps::convert_jump_pillars;
+use pricer_models::{
+    builder::CurveBootstrapper,
+    market::{
+        curves::{BootstrappedCurve, MarketInstrument, YieldCurve},
+        jumps::convert_jump_pillars,
+    },
+};
 
 // =============================================================================
 // Integration Test Fixtures
 // =============================================================================
 
-fn test_valuation_date() -> Date {
-    Date::from_ymd(2024, 1, 1).unwrap()
-}
+fn test_valuation_date() -> Date { Date::from_ymd(2024, 1, 1).unwrap() }
 
 fn sample_instruments() -> Vec<MarketInstrument<f64>> {
     vec![
@@ -33,8 +37,8 @@ fn sample_jump_pillars() -> Vec<JumpPillar> {
         // FOMC meeting in March
         JumpPillar::new(
             Date::from_ymd(2024, 3, 20).unwrap(),
-            25.0,  // 25 bps expected hike
-            0.8,   // 80% confidence
+            25.0, // 25 bps expected hike
+            0.8,  // 80% confidence
         ),
         // FOMC meeting in June
         JumpPillar::new(
@@ -70,7 +74,9 @@ fn test_backward_compat_no_jumps_bootstrap_matches() {
         assert!(
             (df_reg - df_jump).abs() < 1e-12,
             "DF mismatch at t={}: regular={}, with_jumps={}",
-            t, df_reg, df_jump
+            t,
+            df_reg,
+            df_jump
         );
     }
 }
@@ -135,9 +141,15 @@ fn test_left_right_limit_at_jump() {
     let jump_time = DayCounter::Actual365Fixed.year_fraction(valuation, jump.jump_date());
 
     // At jump point
-    let df_left = curve.discount_factor_with_limit(jump_time, Limit::Left).unwrap();
-    let df_right = curve.discount_factor_with_limit(jump_time, Limit::Right).unwrap();
-    let df_cont = curve.discount_factor_with_limit(jump_time, Limit::Continuous).unwrap();
+    let df_left = curve
+        .discount_factor_with_limit(jump_time, Limit::Left)
+        .unwrap();
+    let df_right = curve
+        .discount_factor_with_limit(jump_time, Limit::Right)
+        .unwrap();
+    let df_cont = curve
+        .discount_factor_with_limit(jump_time, Limit::Continuous)
+        .unwrap();
 
     // Right and Continuous should be equal
     assert!(
@@ -158,7 +170,8 @@ fn test_left_right_limit_at_jump() {
     assert!(
         (actual_ratio - expected_ratio).abs() < 1e-8,
         "Jump ratio mismatch: expected {}, got {}",
-        expected_ratio, actual_ratio
+        expected_ratio,
+        actual_ratio
     );
 }
 
@@ -181,8 +194,12 @@ fn test_limits_between_jumps() {
     // Time between jumps (May 2024 - between March and June jumps)
     let t_between = 0.4;
 
-    let df_left = curve.discount_factor_with_limit(t_between, Limit::Left).unwrap();
-    let df_right = curve.discount_factor_with_limit(t_between, Limit::Right).unwrap();
+    let df_left = curve
+        .discount_factor_with_limit(t_between, Limit::Left)
+        .unwrap();
+    let df_right = curve
+        .discount_factor_with_limit(t_between, Limit::Right)
+        .unwrap();
 
     // Between jumps, left and right should be equal (no jump at this point)
     assert!(
@@ -201,11 +218,7 @@ fn test_forward_rate_decomposition_spanning_jump() {
     let instruments = sample_instruments();
 
     // Single jump for simpler testing
-    let jump = JumpPillar::new(
-        Date::from_ymd(2024, 3, 20).unwrap(),
-        25.0,
-        1.0,
-    );
+    let jump = JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 1.0);
 
     let bootstrapper = CurveBootstrapper::new();
     let curve = bootstrapper
@@ -239,11 +252,7 @@ fn test_forward_rate_decomposition_no_jump_in_range() {
     let instruments = sample_instruments();
 
     // Jump at March 2024
-    let jump = JumpPillar::new(
-        Date::from_ymd(2024, 3, 20).unwrap(),
-        25.0,
-        1.0,
-    );
+    let jump = JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 1.0);
 
     let bootstrapper = CurveBootstrapper::new();
     let curve = bootstrapper
@@ -444,7 +453,8 @@ fn test_jump_entry_conversion() {
 
     // Cumulative offsets should accumulate (negative for rate hikes)
     // First (March, 25 bps hike): -25 * 0.8 / 10000 = -0.002
-    // Second (June, -25 bps cut): -0.002 + -(-25) * 0.6 / 10000 = -0.002 + 0.0015 = -0.0005
+    // Second (June, -25 bps cut): -0.002 + -(-25) * 0.6 / 10000 = -0.002 + 0.0015 =
+    // -0.0005
     assert!((entries[0].cumulative_offset() - (-0.002)).abs() < 1e-10);
     assert!((entries[1].cumulative_offset() - (-0.0005)).abs() < 1e-10);
 }

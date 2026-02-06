@@ -13,10 +13,7 @@
 //! assert_eq!(ecb_eurusd.quote_currency(), Currency::USD);
 //! ```
 
-use crate::{
-    market::core::Currency,
-    time::CalendarId,
-};
+use crate::{market::core::Currency, time::CalendarId};
 
 /// FX fixing source.
 ///

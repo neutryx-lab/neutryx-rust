@@ -454,6 +454,9 @@ pub struct MarketEvent {
     pub forecast: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub actual: Option<String>,
+    /// Expected rate spike in basis points (for turn events)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_spike_bp: Option<f64>,
 }
 
 /// Event type
@@ -465,6 +468,14 @@ pub enum EventType {
     Holiday,
     News,
     Expiry,
+    /// Turn of Year (TOY) - year-end rate spike
+    TurnOfYear,
+    /// Turn of Quarter (TOQ) - quarter-end rate spike
+    TurnOfQuarter,
+    /// Turn of Month (TOM) - month-end rate spike
+    TurnOfMonth,
+    /// Generic turn event
+    Turn,
     Other,
 }
 

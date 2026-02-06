@@ -7,6 +7,7 @@ use infra_domain::market::{
     CurveDefinition, DefinitionRegistry, InstrumentDefinition, MarketQuoteSet, QuoteType,
 };
 
+use super::{converter::definition_to_instrument, error::ConstructionError};
 use crate::{
     builder::{
         curve::{BootstrapConfig, InterpolationMethod},
@@ -14,8 +15,6 @@ use crate::{
     },
     market::curves::BootstrappedCurve,
 };
-
-use super::{converter::definition_to_instrument, error::ConstructionError};
 
 /// Configuration for the curve construction engine.
 #[derive(Debug, Clone)]
@@ -105,7 +104,8 @@ pub struct ConstructionResult {
     pub curve: BootstrappedCurve<f64>,
     /// Number of instruments used in calibration.
     pub instruments_used: usize,
-    /// IDs of instruments with missing rates (only populated in non-strict mode).
+    /// IDs of instruments with missing rates (only populated in non-strict
+    /// mode).
     pub missing_rates: Vec<String>,
     /// Final calibration residual.
     pub residual: f64,
@@ -114,7 +114,8 @@ pub struct ConstructionResult {
 /// Curve construction engine.
 ///
 /// Orchestrates curve building from:
-/// - `DefinitionRegistry` - Contains instrument, rate index, and curve definitions
+/// - `DefinitionRegistry` - Contains instrument, rate index, and curve
+///   definitions
 /// - `MarketQuoteSet` - Contains market rate quotes
 ///
 /// # Example
@@ -141,27 +142,22 @@ pub struct CurveConstructionEngine {
 impl CurveConstructionEngine {
     /// Creates a new construction engine with the given configuration.
     #[must_use]
-    pub fn new(config: ConstructionConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: ConstructionConfig) -> Self { Self { config } }
 
     /// Creates a new construction engine with default configuration.
     #[must_use]
-    pub fn with_defaults() -> Self {
-        Self::new(ConstructionConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(ConstructionConfig::default()) }
 
     /// Returns the configuration.
     #[must_use]
-    pub fn config(&self) -> &ConstructionConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &ConstructionConfig { &self.config }
 
     /// Builds a curve from the registry using the specified curve name.
     ///
     /// # Arguments
     ///
-    /// * `registry` - The definition registry containing curve and instrument definitions
+    /// * `registry` - The definition registry containing curve and instrument
+    ///   definitions
     /// * `market_rates` - The market rates for calibration
     /// * `curve_name` - Name of the curve to build
     ///
@@ -220,7 +216,9 @@ impl CurveConstructionEngine {
 
         for def in instrument_defs {
             // Convert instrument definition to QuoteId for lookup
-            let rate_id = def.to_quote_id().map_err(ConstructionError::InstrumentDef)?;
+            let rate_id = def
+                .to_quote_id()
+                .map_err(ConstructionError::InstrumentDef)?;
 
             // Look up the rate in market data
             let rate_value = if self.config.quote_type == QuoteType::Mid {
@@ -234,7 +232,8 @@ impl CurveConstructionEngine {
             match rate_value {
                 Some(value) => {
                     // Convert to MarketInstrument<f64>
-                    let instrument = definition_to_instrument(def, value, self.config.reference_date)?;
+                    let instrument =
+                        definition_to_instrument(def, value, self.config.reference_date)?;
                     instruments.push(instrument);
                 }
                 None => {
@@ -260,9 +259,10 @@ impl CurveConstructionEngine {
         };
 
         // Configure bootstrapper
-        let bootstrap_config = BootstrapConfig::new(self.config.tolerance, self.config.max_iterations)
-            .with_interpolation(interpolation)
-            .with_fd_epsilon(self.config.fd_epsilon);
+        let bootstrap_config =
+            BootstrapConfig::new(self.config.tolerance, self.config.max_iterations)
+                .with_interpolation(interpolation)
+                .with_fd_epsilon(self.config.fd_epsilon);
 
         let bootstrapper = CurveBootstrapper::with_config(bootstrap_config);
 
@@ -312,9 +312,7 @@ impl CurveConstructionEngine {
 }
 
 impl Default for CurveConstructionEngine {
-    fn default() -> Self {
-        Self::with_defaults()
-    }
+    fn default() -> Self { Self::with_defaults() }
 }
 
 /// Maps BootstrapError to ConstructionError.
@@ -342,11 +340,14 @@ fn map_bootstrap_error(err: BootstrapError) -> ConstructionError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use infra_domain::market::{
-        Currency, DataSource, MarketRate, RateId, RateIndexDefinition, RateIndex, RateType,
+    use infra_domain::{
+        market::{
+            Currency, DataSource, MarketRate, RateId, RateIndex, RateIndexDefinition, RateType,
+        },
+        time::Tenor,
     };
-    use infra_domain::time::Tenor;
+
+    use super::*;
 
     fn create_test_registry() -> DefinitionRegistry {
         let mut registry = DefinitionRegistry::new();
@@ -402,8 +403,8 @@ mod tests {
 
         for (tenor, rate_type, value) in data {
             let rate_id = RateId::new(Currency::USD, tenor, rate_type);
-            let rate = MarketRate::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg)
-                .unwrap();
+            let rate =
+                MarketRate::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
             rates.insert(rate);
         }
 
@@ -446,7 +447,11 @@ mod tests {
         let result = result.unwrap();
         assert_eq!(result.instruments_used, 6);
         assert!(result.missing_rates.is_empty());
-        assert!(result.residual < 1e-6, "Residual too large: {}", result.residual);
+        assert!(
+            result.residual < 1e-6,
+            "Residual too large: {}",
+            result.residual
+        );
     }
 
     #[test]
@@ -481,18 +486,14 @@ mod tests {
         let sofr = RateIndexDefinition::new("USD-SOFR", Currency::USD, RateIndex::Sofr);
         registry.register_rate_index(sofr).unwrap();
 
-        let curve = CurveDefinition::new(
-            "USD-SOFR-30Y",
-            "USD-SOFR",
-            vec!["USD-OIS-30Y".to_string()],
-        );
+        let curve =
+            CurveDefinition::new("USD-SOFR-30Y", "USD-SOFR", vec!["USD-OIS-30Y".to_string()]);
         registry.register_curve(curve).unwrap();
 
         let market_rates = MarketQuoteSet::new(); // Empty
 
-        let engine = CurveConstructionEngine::new(
-            ConstructionConfig::default().with_strict_mode(true),
-        );
+        let engine =
+            CurveConstructionEngine::new(ConstructionConfig::default().with_strict_mode(true));
         let result = engine.build(&registry, &market_rates, "USD-SOFR-30Y");
 
         assert!(result.is_err());
@@ -523,14 +524,13 @@ mod tests {
 
         for (tenor, rate_type, value) in data {
             let rate_id = RateId::new(Currency::USD, tenor, rate_type);
-            let rate = MarketRate::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg)
-                .unwrap();
+            let rate =
+                MarketRate::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
             market_rates.insert(rate);
         }
 
-        let engine = CurveConstructionEngine::new(
-            ConstructionConfig::default().with_strict_mode(false),
-        );
+        let engine =
+            CurveConstructionEngine::new(ConstructionConfig::default().with_strict_mode(false));
         let result = engine.build(&registry, &market_rates, "USD-SOFR-Discount");
 
         assert!(result.is_ok(), "Build failed: {:?}", result.err());
@@ -597,8 +597,16 @@ mod tests {
         );
 
         assert_eq!(results.len(), 2);
-        assert!(results[0].is_ok(), "USD build failed: {:?}", results[0].as_ref().err());
-        assert!(results[1].is_ok(), "EUR build failed: {:?}", results[1].as_ref().err());
+        assert!(
+            results[0].is_ok(),
+            "USD build failed: {:?}",
+            results[0].as_ref().err()
+        );
+        assert!(
+            results[1].is_ok(),
+            "EUR build failed: {:?}",
+            results[1].as_ref().err()
+        );
     }
 
     #[test]

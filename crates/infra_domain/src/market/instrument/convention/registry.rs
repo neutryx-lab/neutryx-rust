@@ -226,14 +226,10 @@ impl ConventionRegistry {
     ///     println!("{}", key);
     /// }
     /// ```
-    pub fn keys(&self) -> impl Iterator<Item = &ConventionKey> {
-        self.conventions.keys()
-    }
+    pub fn keys(&self) -> impl Iterator<Item = &ConventionKey> { self.conventions.keys() }
 
     /// Returns an iterator over all registered conventions.
-    pub fn values(&self) -> impl Iterator<Item = &MarketConvention> {
-        self.conventions.values()
-    }
+    pub fn values(&self) -> impl Iterator<Item = &MarketConvention> { self.conventions.values() }
 
     /// Returns an iterator over all (key, convention) pairs.
     pub fn iter(&self) -> impl Iterator<Item = (&ConventionKey, &MarketConvention)> {
@@ -242,15 +238,11 @@ impl ConventionRegistry {
 
     /// Returns the number of registered conventions.
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.conventions.len()
-    }
+    pub fn len(&self) -> usize { self.conventions.len() }
 
     /// Returns true if the registry is empty.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.conventions.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.conventions.is_empty() }
 
     /// Removes a convention from the registry.
     ///
@@ -261,18 +253,12 @@ impl ConventionRegistry {
     }
 
     /// Clears all conventions from the registry.
-    pub fn clear(&mut self) {
-        self.conventions.clear();
-    }
+    pub fn clear(&mut self) { self.conventions.clear(); }
 
     /// Returns all currencies that have at least one registered convention.
     #[must_use]
     pub fn currencies(&self) -> Vec<Currency> {
-        let mut currencies: Vec<Currency> = self
-            .conventions
-            .keys()
-            .map(|k| k.currency)
-            .collect();
+        let mut currencies: Vec<Currency> = self.conventions.keys().map(|k| k.currency).collect();
         currencies.sort_by_key(|c| c.code());
         currencies.dedup();
         currencies
@@ -281,11 +267,7 @@ impl ConventionRegistry {
     /// Returns all rate types that have at least one registered convention.
     #[must_use]
     pub fn rate_types(&self) -> Vec<RateType> {
-        let mut rate_types: Vec<RateType> = self
-            .conventions
-            .keys()
-            .map(|k| k.rate_type)
-            .collect();
+        let mut rate_types: Vec<RateType> = self.conventions.keys().map(|k| k.rate_type).collect();
         rate_types.sort_by_key(|rt| rt.code());
         rate_types.dedup();
         rate_types
@@ -485,8 +467,9 @@ mod tests {
     #[test]
     fn test_registry_conventions_for_rate_type() {
         let registry = ConventionRegistry::with_defaults();
-        let deposit_conventions: Vec<_> =
-            registry.conventions_for_rate_type(RateType::Deposit).collect();
+        let deposit_conventions: Vec<_> = registry
+            .conventions_for_rate_type(RateType::Deposit)
+            .collect();
 
         assert!(!deposit_conventions.is_empty());
         // Should have deposits for multiple currencies

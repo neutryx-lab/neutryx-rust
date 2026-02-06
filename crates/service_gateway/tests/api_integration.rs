@@ -301,13 +301,17 @@ mod simulated_http_tests {
 
 #[cfg(test)]
 mod market_instrument_integration_tests {
-    use infra_domain::market::convention::{
-        ConventionRegistry, DepositConvention, FraConvention, MarketConvention, SwapConvention,
+    use infra_domain::{
+        market::{
+            convention::{
+                ConventionRegistry, DepositConvention, FraConvention, MarketConvention,
+                SwapConvention,
+            },
+            Currency, MarketInstrument, QuoteId, RateType,
+        },
+        time::{Date, Tenor},
+        trade::{LegType, TradeType},
     };
-    use infra_domain::market::MarketInstrument;
-    use infra_domain::market::{Currency, QuoteId, RateType};
-    use infra_domain::time::{Date, Tenor};
-    use infra_domain::trade::{LegType, TradeType};
 
     /// Test full pipeline: Rate → Convention lookup → Instrument → Trade
     #[test]
@@ -317,9 +321,14 @@ mod market_instrument_integration_tests {
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
         // Step 1: Create instrument from convention
-        let instrument =
-            MarketInstrument::new(rate_id.clone(), 0.05, convention, valuation_date, 1_000_000.0)
-                .expect("Failed to create instrument");
+        let instrument = MarketInstrument::new(
+            rate_id.clone(),
+            0.05,
+            convention,
+            valuation_date,
+            1_000_000.0,
+        )
+        .expect("Failed to create instrument");
 
         // Verify instrument properties
         assert_eq!(instrument.instrument_type_name(), "Deposit");
@@ -346,9 +355,14 @@ mod market_instrument_integration_tests {
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
         // Step 1: Create instrument
-        let instrument =
-            MarketInstrument::new(rate_id.clone(), 0.04, convention, valuation_date, 10_000_000.0)
-                .expect("Failed to create instrument");
+        let instrument = MarketInstrument::new(
+            rate_id.clone(),
+            0.04,
+            convention,
+            valuation_date,
+            10_000_000.0,
+        )
+        .expect("Failed to create instrument");
 
         assert_eq!(instrument.instrument_type_name(), "Swap");
         assert!(instrument.is_swap());
@@ -369,7 +383,10 @@ mod market_instrument_integration_tests {
 
         // Verify cashflows exist
         for leg in &legs {
-            assert!(leg.cashflows().count() > 0, "Each leg should have cashflows");
+            assert!(
+                leg.cashflows().count() > 0,
+                "Each leg should have cashflows"
+            );
         }
     }
 
@@ -435,10 +452,9 @@ mod market_instrument_integration_tests {
 
             assert_eq!(instrument.currency(), currency);
 
-            let trade = instrument.to_trade().expect(&format!(
-                "Failed to expand {} trade",
-                currency
-            ));
+            let trade = instrument
+                .to_trade()
+                .expect(&format!("Failed to expand {} trade", currency));
             assert_eq!(trade.legs().count(), 1);
         }
     }
@@ -451,13 +467,23 @@ mod market_instrument_integration_tests {
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
         // NaN should fail
-        let result_nan =
-            MarketInstrument::new(rate_id.clone(), f64::NAN, convention.clone(), valuation_date, 1_000_000.0);
+        let result_nan = MarketInstrument::new(
+            rate_id.clone(),
+            f64::NAN,
+            convention.clone(),
+            valuation_date,
+            1_000_000.0,
+        );
         assert!(result_nan.is_err());
 
         // Infinity should fail
-        let result_inf =
-            MarketInstrument::new(rate_id, f64::INFINITY, convention, valuation_date, 1_000_000.0);
+        let result_inf = MarketInstrument::new(
+            rate_id,
+            f64::INFINITY,
+            convention,
+            valuation_date,
+            1_000_000.0,
+        );
         assert!(result_inf.is_err());
     }
 

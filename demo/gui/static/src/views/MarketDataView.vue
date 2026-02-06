@@ -49,14 +49,15 @@ interface IrVolQuote {
   instruments: IrVolInstrument[];
 }
 
-// Individual FX Vol instrument
+// Individual FX Vol instrument (market-quoted instruments)
 interface FxVolInstrument {
   id: string;
   pair: string;
   expiry: number;
   expiryLabel: string;
-  strike: string; // 'ATM', '25D Call', '25D Put', '10D Call', '10D Put'
-  vol: number;
+  instrumentType: string; // 'ATM', '25D RR', '25D BF', '10D RR', '10D BF'
+  value: number; // vol for ATM, spread for RR/BF
+  unit: string; // '%' for vol, 'bps' for RR/BF
 }
 
 // FX Vol quote with all smile instruments
@@ -87,6 +88,8 @@ interface MarketEvent {
   previous?: string;
   forecast?: string;
   actual?: string;
+  /** Expected rate spike in basis points (for turn events) */
+  expectedSpikeBp?: number;
 }
 
 // State
@@ -102,7 +105,7 @@ const selectedFxVolId = ref<string | null>(null);
 const selectedEventId = ref<string | null>(null);
 const selectedHolidayId = ref<string | null>(null);
 const currencyFilter = ref('');
-const sortColumn = ref('id');
+const sortColumn = ref('tenor');
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const isLoading = ref(false);
 const lastUpdated = ref<Date | null>(null);
@@ -124,14 +127,11 @@ const filteredRates = computed(() => {
   if (types.length > 0) {
     result = result.filter(r => types.includes(r.rateType?.toLowerCase() || ''));
   }
-  // Sort
+  // Sort by currency then tenor (shortest first)
   result = [...result].sort((a, b) => {
-    const dir = sortDirection.value === 'asc' ? 1 : -1;
-    const aVal = a[sortColumn.value as keyof MarketRate];
-    const bVal = b[sortColumn.value as keyof MarketRate];
-    if (sortColumn.value === 'value') return (Number(aVal) - Number(bVal)) * dir;
-    if (sortColumn.value === 'tenor') return (tenorToOrder(String(aVal)) - tenorToOrder(String(bVal))) * dir;
-    return String(aVal || '').localeCompare(String(bVal || '')) * dir;
+    const currDiff = a.currency.localeCompare(b.currency);
+    if (currDiff !== 0) return currDiff;
+    return tenorToOrder(a.tenor) - tenorToOrder(b.tenor);
   });
   return result;
 });
@@ -176,23 +176,61 @@ const holidayCurrencies = computed(() => {
 
 // Filtered data for each tab
 const filteredIrVolQuotes = computed(() => {
-  if (!currencyFilter.value) return irVolQuotes.value;
-  return irVolQuotes.value.filter(q => q.currency.toLowerCase() === currencyFilter.value.toLowerCase());
+  let result = irVolQuotes.value;
+  if (currencyFilter.value) {
+    result = result.filter(q => q.currency.toLowerCase() === currencyFilter.value.toLowerCase());
+  }
+  // Sort by currency then expiry then tenor (shortest first)
+  return [...result].sort((a, b) => {
+    const currDiff = a.currency.localeCompare(b.currency);
+    if (currDiff !== 0) return currDiff;
+    const expiryDiff = tenorToOrder(a.expiry) - tenorToOrder(b.expiry);
+    if (expiryDiff !== 0) return expiryDiff;
+    return tenorToOrder(a.tenor) - tenorToOrder(b.tenor);
+  });
 });
 
 const filteredFxVolQuotes = computed(() => {
-  if (!currencyFilter.value) return fxVolQuotes.value;
-  return fxVolQuotes.value.filter(q => q.pair.toLowerCase() === currencyFilter.value.toLowerCase());
+  let result = fxVolQuotes.value;
+  if (currencyFilter.value) {
+    result = result.filter(q => q.pair.toLowerCase() === currencyFilter.value.toLowerCase());
+  }
+  // Sort by pair then expiry (shortest first)
+  return [...result].sort((a, b) => {
+    const pairDiff = a.pair.localeCompare(b.pair);
+    if (pairDiff !== 0) return pairDiff;
+    return a.expiry - b.expiry;
+  });
 });
 
 const filteredEvents = computed(() => {
-  if (!currencyFilter.value) return events.value;
-  return events.value.filter(e => e.currency?.toLowerCase() === currencyFilter.value.toLowerCase());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let result = events.value.filter(e => new Date(e.date) >= today);
+  if (currencyFilter.value) {
+    result = result.filter(e => e.currency?.toLowerCase() === currencyFilter.value.toLowerCase());
+  }
+  // Sort by currency then date (earliest first)
+  return [...result].sort((a, b) => {
+    const currDiff = (a.currency || '').localeCompare(b.currency || '');
+    if (currDiff !== 0) return currDiff;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
 });
 
 const filteredHolidays = computed(() => {
-  if (!currencyFilter.value) return holidays.value;
-  return holidays.value.filter(h => h.currency?.toLowerCase() === currencyFilter.value.toLowerCase());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let result = holidays.value.filter(h => new Date(h.date) >= today);
+  if (currencyFilter.value) {
+    result = result.filter(h => h.currency?.toLowerCase() === currencyFilter.value.toLowerCase());
+  }
+  // Sort by currency then date (earliest first)
+  return [...result].sort((a, b) => {
+    const currDiff = (a.currency || '').localeCompare(b.currency || '');
+    if (currDiff !== 0) return currDiff;
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
 });
 
 const summaryStats = computed(() => {
@@ -214,17 +252,17 @@ const summaryStats = computed(() => {
   }
   if (assetClass.value === 'Events') {
     return [
-      { label: 'Total Events', value: events.value.length, icon: 'fa-calendar', color: '#3b82f6' },
-      { label: 'Upcoming', value: events.value.filter(e => new Date(e.date) >= new Date()).length, icon: 'fa-hourglass-half', color: '#f59e0b' },
-      { label: 'Regions', value: new Set(events.value.map(e => e.region).filter(Boolean)).size, icon: 'fa-globe', color: '#8b5cf6' },
+      { label: 'Upcoming', value: filteredEvents.value.length, icon: 'fa-calendar', color: '#3b82f6' },
+      { label: 'Currencies', value: new Set(filteredEvents.value.map(e => e.currency).filter(Boolean)).size, icon: 'fa-money-bill', color: '#10b981' },
+      { label: 'Turn Events', value: filteredEvents.value.filter(e => isTurnEvent(e.eventType)).length, icon: 'fa-chart-line', color: '#f59e0b' },
       { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
     ];
   }
   if (assetClass.value === 'Holidays') {
     return [
-      { label: 'Total Holidays', value: holidays.value.length, icon: 'fa-calendar-day', color: '#3b82f6' },
-      { label: 'Upcoming', value: holidays.value.filter(h => new Date(h.date) >= new Date()).length, icon: 'fa-hourglass-half', color: '#f59e0b' },
-      { label: 'Countries', value: new Set(holidays.value.map(h => h.country)).size, icon: 'fa-flag', color: '#8b5cf6' },
+      { label: 'Upcoming', value: filteredHolidays.value.length, icon: 'fa-calendar-day', color: '#3b82f6' },
+      { label: 'Currencies', value: new Set(filteredHolidays.value.map(h => h.currency).filter(Boolean)).size, icon: 'fa-money-bill', color: '#10b981' },
+      { label: 'Countries', value: new Set(filteredHolidays.value.map(h => h.country)).size, icon: 'fa-flag', color: '#8b5cf6' },
       { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
     ];
   }
@@ -273,6 +311,40 @@ function formatVol(vol: number): string {
 function formatVolBps(vol?: number): string {
   if (vol === undefined) return '-';
   return `${(vol * 10000).toFixed(1)} bps`;
+}
+
+// Format event type to short label
+function formatEventType(eventType: string): string {
+  const typeMap: Record<string, string> = {
+    'turn_of_year': 'TOY',
+    'turn_of_quarter': 'TOQ',
+    'turn_of_month': 'TOM',
+    'turn': 'Turn',
+    'central_bank_meeting': 'CB',
+    'economic_release': 'Econ',
+    'holiday': 'Hol',
+    'news': 'News',
+    'expiry': 'Exp',
+    'other': 'Other',
+  };
+  return typeMap[eventType] || eventType;
+}
+
+// Check if event type is a turn event
+function isTurnEvent(eventType: string): boolean {
+  return ['turn_of_year', 'turn_of_quarter', 'turn_of_month', 'turn'].includes(eventType);
+}
+
+// Format expected spike in bp
+function formatSpikeBp(spike?: number): string {
+  if (spike === undefined || spike === null) return '-';
+  return `${spike.toFixed(1)} bp`;
+}
+
+// Convert strike string to ID-safe format (e.g., '-50bp' -> 'm50bp', '+50bp' -> 'p50bp')
+function strikeToIdSuffix(strike: string): string {
+  if (strike === 'ATM') return 'ATM';
+  return strike.replace(/^\+/, 'p').replace(/^-/, 'm');
 }
 
 // API calls
@@ -326,7 +398,7 @@ async function loadIrVolData() {
           if (q.smile && Array.isArray(q.smile)) {
             for (const smilePoint of q.smile) {
               instruments.push({
-                id: `${baseId}-${smilePoint.strike}`,
+                id: `${baseId}-${strikeToIdSuffix(smilePoint.strike)}`,
                 currency: curr.currency,
                 expiry: q.expiry,
                 tenor: q.tenor,
@@ -345,7 +417,7 @@ async function loadIrVolData() {
               const skewAdjust = offsetBp * 0.00002; // Small skew adjustment
               const smileVol = q.atmVol + Math.abs(offsetBp) * 0.00001 + (offsetBp < 0 ? skewAdjust : -skewAdjust);
               instruments.push({
-                id: `${baseId}-${offset}`,
+                id: `${baseId}-${strikeToIdSuffix(offset)}`,
                 currency: curr.currency,
                 expiry: q.expiry,
                 tenor: q.tenor,
@@ -391,11 +463,11 @@ async function loadFxVolData() {
       if (quotesRes.ok) {
         const quotesData = await quotesRes.json();
         for (const q of quotesData.quotes || []) {
-          const baseId = `${pairInfo.pair}-${q.expiry}`;
           // Use API-provided expiry_label (strict conversion from infra_domain)
           const expLabel = q.expiryLabel;
+          const baseId = `${pairInfo.pair}-${expLabel}`;
 
-          // Create individual instruments from RR/BF conventions
+          // Create individual market-quoted instruments
           const instruments: FxVolInstrument[] = [];
 
           // ATM instrument
@@ -404,53 +476,55 @@ async function loadFxVolData() {
             pair: pairInfo.pair,
             expiry: q.expiry,
             expiryLabel: expLabel,
-            strike: 'ATM',
-            vol: q.atmVol,
+            instrumentType: 'ATM',
+            value: q.atmVol,
+            unit: '%',
           });
 
-          // 25D instruments (Call = ATM + RR/2 + BF, Put = ATM - RR/2 + BF)
-          const vol25dCall = q.atmVol + (q.rr25d / 2) + q.bf25d;
-          const vol25dPut = q.atmVol - (q.rr25d / 2) + q.bf25d;
-
+          // 25D Risk Reversal
           instruments.push({
-            id: `${baseId}-25D-Call`,
+            id: `${baseId}-RR25`,
             pair: pairInfo.pair,
             expiry: q.expiry,
             expiryLabel: expLabel,
-            strike: '25D Call',
-            vol: vol25dCall,
+            instrumentType: 'RR25',
+            value: q.rr25d,
+            unit: 'bps',
           });
 
+          // 25D Butterfly
           instruments.push({
-            id: `${baseId}-25D-Put`,
+            id: `${baseId}-BF25`,
             pair: pairInfo.pair,
             expiry: q.expiry,
             expiryLabel: expLabel,
-            strike: '25D Put',
-            vol: vol25dPut,
+            instrumentType: 'BF25',
+            value: q.bf25d,
+            unit: 'bps',
           });
 
           // 10D instruments (if available)
           if (q.rr10d !== undefined && q.bf10d !== undefined) {
-            const vol10dCall = q.atmVol + (q.rr10d / 2) + q.bf10d;
-            const vol10dPut = q.atmVol - (q.rr10d / 2) + q.bf10d;
-
+            // 10D Risk Reversal
             instruments.push({
-              id: `${baseId}-10D-Call`,
+              id: `${baseId}-RR10`,
               pair: pairInfo.pair,
               expiry: q.expiry,
               expiryLabel: expLabel,
-              strike: '10D Call',
-              vol: vol10dCall,
+              instrumentType: 'RR10',
+              value: q.rr10d,
+              unit: 'bps',
             });
 
+            // 10D Butterfly
             instruments.push({
-              id: `${baseId}-10D-Put`,
+              id: `${baseId}-BF10`,
               pair: pairInfo.pair,
               expiry: q.expiry,
               expiryLabel: expLabel,
-              strike: '10D Put',
-              vol: vol10dPut,
+              instrumentType: 'BF10',
+              value: q.bf10d,
+              unit: 'bps',
             });
           }
 
@@ -858,7 +932,7 @@ onMounted(() => {
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Title</th>
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Region</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Jump</th>
                     <th class="text-center py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Importance</th>
                   </tr>
                 </thead>
@@ -870,10 +944,17 @@ onMounted(() => {
                     @click="selectEvent(event.id)"
                   >
                     <td class="py-3 px-3 text-[var(--text-primary)] font-mono">{{ event.date }}</td>
-                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] text-xs">{{ event.eventType }}</span></td>
+                    <td class="py-3 px-3">
+                      <span :class="[
+                        'px-2 py-0.5 rounded text-xs',
+                        isTurnEvent(event.eventType) ? 'bg-orange-500/10 text-orange-400' : 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                      ]">{{ formatEventType(event.eventType) }}</span>
+                    </td>
                     <td class="py-3 px-3 text-[var(--text-primary)]">{{ event.title }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ event.currency || '-' }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ event.region || '-' }}</td>
+                    <td class="py-3 px-3 text-right font-mono" :class="event.expectedSpikeBp !== undefined ? (isTurnEvent(event.eventType) ? 'text-orange-400' : 'text-blue-400') : 'text-[var(--text-muted)]'">
+                      {{ formatSpikeBp(event.expectedSpikeBp) }}
+                    </td>
                     <td class="py-3 px-3 text-center">
                       <span :class="['px-2 py-0.5 rounded text-xs', event.importance === 'High' || event.importance === 'critical' ? 'bg-red-500/10 text-red-400' : event.importance === 'Medium' || event.importance === 'medium' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400']">
                         {{ event.importance }}
@@ -1105,10 +1186,10 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- All Instruments List -->
+              <!-- Market Instruments List -->
               <div class="border-t border-[var(--glass-border)] pt-4">
                 <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                  Smile Instruments ({{ selectedFxVol.instruments.length }})
+                  Market Instruments ({{ selectedFxVol.instruments.length }})
                 </h4>
                 <div class="space-y-2 max-h-60 overflow-y-auto">
                   <div
@@ -1120,13 +1201,13 @@ onMounted(() => {
                       <span class="text-xs font-mono text-[var(--text-muted)]">{{ inst.id }}</span>
                       <span :class="[
                         'px-2 py-0.5 rounded text-xs',
-                        inst.strike === 'ATM' ? 'bg-blue-500/10 text-blue-400' :
-                        inst.strike.includes('Call') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                      ]">{{ inst.strike }}</span>
+                        inst.instrumentType === 'ATM' ? 'bg-blue-500/10 text-blue-400' :
+                        inst.instrumentType.includes('RR') ? 'bg-purple-500/10 text-purple-400' : 'bg-orange-500/10 text-orange-400'
+                      ]">{{ inst.instrumentType }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                      <span class="text-[var(--text-muted)]">Volatility</span>
-                      <span class="text-[var(--text-primary)] font-mono">{{ formatVol(inst.vol) }}</span>
+                      <span class="text-[var(--text-muted)]">{{ inst.instrumentType === 'ATM' ? 'Volatility' : 'Spread' }}</span>
+                      <span class="text-[var(--text-primary)] font-mono">{{ inst.unit === '%' ? formatVol(inst.value) : formatVolBps(inst.value) }}</span>
                     </div>
                   </div>
                 </div>
@@ -1178,7 +1259,10 @@ onMounted(() => {
                 </div>
                 <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Type</span>
-                  <span class="px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] text-xs">{{ selectedEvent.eventType }}</span>
+                  <span :class="[
+                    'px-2 py-0.5 rounded text-xs',
+                    isTurnEvent(selectedEvent.eventType) ? 'bg-orange-500/10 text-orange-400' : 'bg-[var(--primary)]/10 text-[var(--primary)]'
+                  ]">{{ formatEventType(selectedEvent.eventType) }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Title</span>
@@ -1187,6 +1271,10 @@ onMounted(() => {
                 <div v-if="selectedEvent.currency" class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Currency</span>
                   <span class="text-[var(--text-primary)]">{{ selectedEvent.currency }}</span>
+                </div>
+                <div v-if="isTurnEvent(selectedEvent.eventType) && selectedEvent.expectedSpikeBp !== undefined" class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Expected Jump</span>
+                  <span class="text-orange-400 font-mono">{{ formatSpikeBp(selectedEvent.expectedSpikeBp) }}</span>
                 </div>
                 <div v-if="selectedEvent.region" class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Region</span>

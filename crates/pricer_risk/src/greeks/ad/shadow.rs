@@ -375,19 +375,23 @@ impl Shadow for SimpleMarketData {
 
 #[cfg(feature = "global-bootstrap")]
 mod global_bootstrap_shadow {
-    use super::Shadow;
     use pricer_models::builder::GlobalBootstrapResult;
+
+    use super::Shadow;
 
     /// Shadow implementation for GlobalBootstrapResult<f64>.
     ///
     /// This enables IFT-based curve sensitivity computation within the AAD
     /// framework. The implementation distinguishes between:
     ///
-    /// - **Active inputs** (zeroed): discount_factors, residual_norm, pricing_errors
-    /// - **Const inputs** (preserved): curve, jacobian_inverse, pillars, iterations, etc.
+    /// - **Active inputs** (zeroed): discount_factors, residual_norm,
+    ///   pricing_errors
+    /// - **Const inputs** (preserved): curve, jacobian_inverse, pillars,
+    ///   iterations, etc.
     ///
     /// The `jacobian_inverse` is treated as const because it represents the
-    /// fixed system response at calibration time and is used for IFT computation.
+    /// fixed system response at calibration time and is used for IFT
+    /// computation.
     ///
     /// # Requirement: 7.3
     impl Shadow for GlobalBootstrapResult<f64> {
@@ -831,10 +835,13 @@ mod tests {
 
     #[cfg(feature = "global-bootstrap")]
     mod global_bootstrap_tests {
-        use super::*;
         use nalgebra::DMatrix;
-        use pricer_models::builder::GlobalBootstrapResult;
-        use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+        use pricer_models::{
+            builder::GlobalBootstrapResult,
+            market::curves::{BootstrapInterpolation, BootstrappedCurve},
+        };
+
+        use super::*;
 
         fn create_test_result() -> GlobalBootstrapResult<f64> {
             let pillars = vec![1.0, 2.0, 5.0];

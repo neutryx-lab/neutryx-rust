@@ -33,32 +33,48 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "serde")]
 use serde_json::Value;
 
-/// Default values for a currency, used to reduce repetition in convention definitions.
+/// Default values for a currency, used to reduce repetition in convention
+/// definitions.
 ///
-/// These defaults are merged with type-specific defaults and individual overrides
-/// to produce the final convention.
+/// These defaults are merged with type-specific defaults and individual
+/// overrides to produce the final convention.
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CurrencyDefaults {
     /// Default day count convention (e.g., "ACT/360", "ACT/365F")
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub day_count: Option<String>,
 
     /// Default settlement days
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub settlement_days: Option<u8>,
 
     /// Default calendar (e.g., "New York", "London", "TARGET")
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub calendar: Option<String>,
 
     /// Default overnight index (e.g., "SOFR", "SONIA", "ESTR")
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub index: Option<String>,
 
     /// Default business day convention
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub business_day_convention: Option<String>,
 }
 
@@ -85,11 +101,17 @@ pub struct ConventionTemplate {
     pub is_default: bool,
 
     /// Additional fields to include in all generated conventions
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub fields: Option<HashMap<String, Value>>,
 
     /// Per-currency overrides for fields
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub overrides: Option<HashMap<String, HashMap<String, Value>>>,
 }
 
@@ -134,9 +156,7 @@ impl ConventionTemplate {
 
     /// Returns the number of conventions this template will generate.
     #[must_use]
-    pub fn count(&self) -> usize {
-        self.currencies.len()
-    }
+    pub fn count(&self) -> usize { self.currencies.len() }
 
     /// Expands the template into convention JSON objects.
     ///
@@ -194,7 +214,10 @@ impl ConventionTemplate {
                 fields.insert("index".to_string(), Value::String(idx.clone()));
             }
             if let Some(ref bdc) = defaults.business_day_convention {
-                fields.insert("business_day_convention".to_string(), Value::String(bdc.clone()));
+                fields.insert(
+                    "business_day_convention".to_string(),
+                    Value::String(bdc.clone()),
+                );
             }
         }
 
@@ -223,7 +246,10 @@ impl ConventionTemplate {
 
         // Build the convention object
         let mut convention = serde_json::Map::new();
-        convention.insert("type".to_string(), Value::String(self.convention_type.clone()));
+        convention.insert(
+            "type".to_string(),
+            Value::String(self.convention_type.clone()),
+        );
         convention.insert("currency".to_string(), Value::String(currency.to_string()));
         convention.insert("is_default".to_string(), Value::Bool(self.is_default));
         convention.insert("fields".to_string(), Value::Object(fields));
@@ -244,7 +270,10 @@ impl ConventionTemplate {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct ConventionBundle {
     /// Metadata about the bundle
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub metadata: Option<HashMap<String, Value>>,
 
     /// Default values per currency
@@ -267,9 +296,7 @@ pub struct ConventionBundle {
 impl ConventionBundle {
     /// Creates a new empty bundle.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Expands all templates and merges with individual conventions.
     ///
@@ -373,7 +400,10 @@ mod tests {
 
         let mut type_defaults = HashMap::new();
         let mut ois_defaults = HashMap::new();
-        ois_defaults.insert("payment_frequency".to_string(), Value::String("Annual".to_string()));
+        ois_defaults.insert(
+            "payment_frequency".to_string(),
+            Value::String("Annual".to_string()),
+        );
         ois_defaults.insert(
             "business_day_convention".to_string(),
             Value::String("Modified Following".to_string()),
@@ -426,8 +456,12 @@ mod tests {
         gbp_override.insert("settlement_days".to_string(), Value::Number(0.into()));
         overrides.insert("GBP".to_string(), gbp_override);
 
-        let template = ConventionTemplate::new("DepositConvention", "{currency}-DEPO", vec!["USD".to_string(), "GBP".to_string()])
-            .with_overrides(overrides);
+        let template = ConventionTemplate::new(
+            "DepositConvention",
+            "{currency}-DEPO",
+            vec!["USD".to_string(), "GBP".to_string()],
+        )
+        .with_overrides(overrides);
 
         let expanded = template.expand(&currency_defaults, &HashMap::new());
 

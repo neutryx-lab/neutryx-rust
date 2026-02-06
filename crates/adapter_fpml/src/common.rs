@@ -3,14 +3,13 @@
 //! Provides helpers for parsing common FpML elements like dates, parties,
 //! and schedule definitions.
 
-use crate::error::FpmlError;
 use infra_domain::Date;
+
+use crate::error::FpmlError;
 
 /// Reads XML content into a string for easier processing.
 #[allow(dead_code)]
-pub fn xml_to_string(xml: &str) -> String {
-    xml.to_string()
-}
+pub fn xml_to_string(xml: &str) -> String { xml.to_string() }
 
 /// Parse a date from FpML format (YYYY-MM-DD).
 pub fn parse_date(date_str: &str) -> Result<Date, FpmlError> {
@@ -22,19 +21,18 @@ pub fn parse_date(date_str: &str) -> Result<Date, FpmlError> {
         )));
     }
 
-    let year: i32 = parts[0].parse().map_err(|_| {
-        FpmlError::DateError(format!("Invalid year in date: {}", date_str))
-    })?;
-    let month: u32 = parts[1].parse().map_err(|_| {
-        FpmlError::DateError(format!("Invalid month in date: {}", date_str))
-    })?;
-    let day: u32 = parts[2].parse().map_err(|_| {
-        FpmlError::DateError(format!("Invalid day in date: {}", date_str))
-    })?;
+    let year: i32 = parts[0]
+        .parse()
+        .map_err(|_| FpmlError::DateError(format!("Invalid year in date: {}", date_str)))?;
+    let month: u32 = parts[1]
+        .parse()
+        .map_err(|_| FpmlError::DateError(format!("Invalid month in date: {}", date_str)))?;
+    let day: u32 = parts[2]
+        .parse()
+        .map_err(|_| FpmlError::DateError(format!("Invalid day in date: {}", date_str)))?;
 
-    Date::from_ymd(year, month, day).map_err(|_| {
-        FpmlError::DateError(format!("Invalid date: {}", date_str))
-    })
+    Date::from_ymd(year, month, day)
+        .map_err(|_| FpmlError::DateError(format!("Invalid date: {}", date_str)))
 }
 
 /// Parse a decimal value from string.
@@ -52,9 +50,7 @@ pub struct XmlNavigator<'a> {
 
 impl<'a> XmlNavigator<'a> {
     /// Creates a new navigator from XML content.
-    pub fn new(content: &'a str) -> Self {
-        Self { content }
-    }
+    pub fn new(content: &'a str) -> Self { Self { content } }
 
     /// Finds the first occurrence of an element and returns its text content.
     ///
@@ -88,8 +84,8 @@ impl<'a> XmlNavigator<'a> {
 
     /// Finds a leaf element (one with no nested elements) and returns its text.
     pub fn find_leaf_text(&self, element_name: &str) -> Option<String> {
-        // Pattern: <elementName>text</elementName> or <elementName ...>text</elementName>
-        // where text contains no < characters
+        // Pattern: <elementName>text</elementName> or <elementName
+        // ...>text</elementName> where text contains no < characters
         let start_tag = format!("<{}", element_name);
         let end_tag = format!("</{}>", element_name);
 
@@ -225,9 +221,7 @@ pub fn parse_parties(xml: &str) -> Vec<Party> {
     for section in nav.extract_all_sections("party") {
         let section_nav = XmlNavigator::new(&section);
 
-        let id = section_nav
-            .get_attribute("party", "id")
-            .unwrap_or_default();
+        let id = section_nav.get_attribute("party", "id").unwrap_or_default();
         let party_id = section_nav.find_text("partyId");
         let name = section_nav.find_text("partyName");
 
@@ -286,7 +280,8 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
     // Parse all party definitions to resolve counterparty
     let all_parties = parse_parties(xml);
 
-    // Find counterparty (party that is not "our" bank - FB_NA, FrictionalBank, etc.)
+    // Find counterparty (party that is not "our" bank - FB_NA, FrictionalBank,
+    // etc.)
     let counterparty = find_counterparty(&parties, &all_parties);
 
     // Extract book from tradeIdentifierExtension if present
@@ -303,8 +298,9 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
 
 /// Find the counterparty from the list of party references.
 ///
-/// Returns the party ID (partyReference href value) directly, e.g., "GOLDMAN", "BARCLAYS".
-/// Assumes our bank ID starts with "FB" or contains "FrictionalBank".
+/// Returns the party ID (partyReference href value) directly, e.g., "GOLDMAN",
+/// "BARCLAYS". Assumes our bank ID starts with "FB" or contains
+/// "FrictionalBank".
 fn find_counterparty(party_refs: &[String], _all_parties: &[Party]) -> Option<String> {
     for party_ref in party_refs {
         // Skip our own bank
@@ -364,9 +360,6 @@ mod tests {
         let xml = r#"<root><party id="FB_NA">Test</party></root>"#;
         let nav = XmlNavigator::new(xml);
 
-        assert_eq!(
-            nav.get_attribute("party", "id"),
-            Some("FB_NA".to_string())
-        );
+        assert_eq!(nav.get_attribute("party", "id"), Some("FB_NA".to_string()));
     }
 }

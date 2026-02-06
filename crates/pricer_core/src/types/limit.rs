@@ -26,13 +26,15 @@ use serde::{Deserialize, Serialize};
 ///
 /// When a yield curve has discontinuities (jumps) at certain dates—such as
 /// central bank meeting dates—the interpolator needs to know whether to
-/// return the value just before the jump (left limit) or just after (right limit).
+/// return the value just before the jump (left limit) or just after (right
+/// limit).
 ///
 /// # Variants
 ///
 /// - [`Limit::Left`] - Returns the value immediately before the jump
 /// - [`Limit::Right`] - Returns the value immediately after the jump
-/// - [`Limit::Continuous`] - For continuous interpolation or defaults to right limit
+/// - [`Limit::Continuous`] - For continuous interpolation or defaults to right
+///   limit
 ///
 /// # Examples
 ///
@@ -72,21 +74,15 @@ pub enum Limit {
 impl Limit {
     /// Returns `true` if this is the left limit.
     #[must_use]
-    pub const fn is_left(&self) -> bool {
-        matches!(self, Self::Left)
-    }
+    pub const fn is_left(&self) -> bool { matches!(self, Self::Left) }
 
     /// Returns `true` if this is the right limit.
     #[must_use]
-    pub const fn is_right(&self) -> bool {
-        matches!(self, Self::Right)
-    }
+    pub const fn is_right(&self) -> bool { matches!(self, Self::Right) }
 
     /// Returns `true` if this is continuous (no jump handling).
     #[must_use]
-    pub const fn is_continuous(&self) -> bool {
-        matches!(self, Self::Continuous)
-    }
+    pub const fn is_continuous(&self) -> bool { matches!(self, Self::Continuous) }
 
     /// Returns the display name of this limit type.
     #[must_use]

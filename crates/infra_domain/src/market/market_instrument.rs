@@ -1,15 +1,16 @@
 //! Market instrument type for CF-expandable instruments.
 //!
-//! This module provides the [`MarketInstrument`] type that combines a market rate
-//! with its convention to create a fully specified instrument that can be expanded
-//! into cashflows.
+//! This module provides the [`MarketInstrument`] type that combines a market
+//! rate with its convention to create a fully specified instrument that can be
+//! expanded into cashflows.
 
 use thiserror::Error;
 
-use super::convention::MarketConvention;
-use super::{Currency, QuoteId, RateType};
-use crate::time::{Date, Tenor};
-use crate::trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType};
+use super::{convention::MarketConvention, Currency, QuoteId, RateType};
+use crate::{
+    time::{Date, Tenor},
+    trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
+};
 
 /// Errors that can occur when creating or expanding market instruments.
 #[derive(Error, Debug, Clone, PartialEq)]
@@ -270,7 +271,7 @@ impl MarketInstrument {
         match convention {
             MarketConvention::Deposit(c) => c.spot_lag,
             MarketConvention::Swap(c) | MarketConvention::Ois(c) => c.spot_lag,
-            MarketConvention::Fra(_) => 2, // Standard FRA spot lag
+            MarketConvention::Fra(_) => 2,     // Standard FRA spot lag
             MarketConvention::Futures(_) => 0, // Futures start immediately
             MarketConvention::XCcyBasis(c) => c.spot_lag,
             MarketConvention::FxForward(c) => c.spot_days,
@@ -280,27 +281,19 @@ impl MarketInstrument {
 
     /// Returns the currency of this instrument.
     #[must_use]
-    pub fn currency(&self) -> Currency {
-        self.quote_id.currency
-    }
+    pub fn currency(&self) -> Currency { self.quote_id.currency }
 
     /// Returns the tenor of this instrument.
     #[must_use]
-    pub fn tenor(&self) -> Tenor {
-        self.quote_id.tenor
-    }
+    pub fn tenor(&self) -> Tenor { self.quote_id.tenor }
 
     /// Returns the rate type of this instrument.
     #[must_use]
-    pub fn rate_type(&self) -> RateType {
-        self.quote_id.rate_type
-    }
+    pub fn rate_type(&self) -> RateType { self.quote_id.rate_type }
 
     /// Returns the instrument type name.
     #[must_use]
-    pub fn instrument_type_name(&self) -> &'static str {
-        self.convention.instrument_type_name()
-    }
+    pub fn instrument_type_name(&self) -> &'static str { self.convention.instrument_type_name() }
 
     /// Returns the year fraction for the instrument period.
     ///
@@ -316,21 +309,15 @@ impl MarketInstrument {
 
     /// Returns whether this is a deposit instrument.
     #[must_use]
-    pub fn is_deposit(&self) -> bool {
-        self.convention.is_deposit()
-    }
+    pub fn is_deposit(&self) -> bool { self.convention.is_deposit() }
 
     /// Returns whether this is a swap instrument.
     #[must_use]
-    pub fn is_swap(&self) -> bool {
-        self.convention.is_swap()
-    }
+    pub fn is_swap(&self) -> bool { self.convention.is_swap() }
 
     /// Returns whether this is an OIS instrument.
     #[must_use]
-    pub fn is_ois(&self) -> bool {
-        self.convention.is_ois()
-    }
+    pub fn is_ois(&self) -> bool { self.convention.is_ois() }
 
     /// Converts this market instrument to a CF-expanded Trade.
     ///
@@ -494,7 +481,11 @@ impl MarketInstrument {
         // OIS is a type of swap
         let trade_type = TradeType::Swap;
 
-        Ok(Trade::new(trade_id, vec![fixed_leg, floating_leg], trade_type))
+        Ok(Trade::new(
+            trade_id,
+            vec![fixed_leg, floating_leg],
+            trade_type,
+        ))
     }
 
     /// Expands a FRA instrument to a trade.
@@ -577,8 +568,10 @@ impl MarketInstrument {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::convention::{DepositConvention, FraConvention, SwapConvention};
-    use crate::trade::{LegType, Payoff, TradeType};
+    use crate::{
+        market::convention::{DepositConvention, FraConvention, SwapConvention},
+        trade::{LegType, Payoff, TradeType},
+    };
 
     #[test]
     fn test_market_instrument_new_deposit() {
@@ -586,9 +579,14 @@ mod tests {
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
-        let instrument =
-            MarketInstrument::new(quote_id.clone(), 0.05, convention, valuation_date, 1_000_000.0)
-                .unwrap();
+        let instrument = MarketInstrument::new(
+            quote_id.clone(),
+            0.05,
+            convention,
+            valuation_date,
+            1_000_000.0,
+        )
+        .unwrap();
 
         assert_eq!(instrument.quote_id, quote_id);
         assert_eq!(instrument.rate_value, 0.05);
@@ -603,9 +601,14 @@ mod tests {
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
 
-        let instrument =
-            MarketInstrument::new(quote_id.clone(), 0.045, convention, valuation_date, 10_000_000.0)
-                .unwrap();
+        let instrument = MarketInstrument::new(
+            quote_id.clone(),
+            0.045,
+            convention,
+            valuation_date,
+            10_000_000.0,
+        )
+        .unwrap();
 
         assert_eq!(instrument.quote_id, quote_id);
         assert_eq!(instrument.rate_value, 0.045);
@@ -619,9 +622,14 @@ mod tests {
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
 
-        let instrument =
-            MarketInstrument::new(quote_id.clone(), 0.052, convention, valuation_date, 5_000_000.0)
-                .unwrap();
+        let instrument = MarketInstrument::new(
+            quote_id.clone(),
+            0.052,
+            convention,
+            valuation_date,
+            5_000_000.0,
+        )
+        .unwrap();
 
         assert!(instrument.is_ois());
         assert!(!instrument.is_swap());
@@ -634,7 +642,8 @@ mod tests {
         let convention = MarketConvention::Fra(FraConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(quote_id, 0.051, convention, valuation_date, 2_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.051, convention, valuation_date, 2_000_000.0)
+                .unwrap();
 
         assert_eq!(instrument.instrument_type_name(), "FRA");
     }
@@ -737,7 +746,8 @@ mod tests {
         let convention = MarketConvention::Swap(SwapConvention::gbp_sonia());
 
         let instrument =
-            MarketInstrument::new(quote_id, 0.04, convention, valuation_date, 10_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.04, convention, valuation_date, 10_000_000.0)
+                .unwrap();
 
         assert_eq!(instrument.currency(), Currency::GBP);
     }
@@ -762,7 +772,8 @@ mod tests {
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(quote_id, 0.053, convention, valuation_date, 1_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.053, convention, valuation_date, 1_000_000.0)
+                .unwrap();
 
         assert_eq!(instrument.rate_type(), RateType::Deposit);
     }
@@ -778,7 +789,11 @@ mod tests {
 
         // Year fraction should be approximately 1.0 for a 1Y tenor
         let yf = instrument.year_fraction();
-        assert!(yf > 0.9 && yf < 1.1, "Year fraction should be ~1.0, got {}", yf);
+        assert!(
+            yf > 0.9 && yf < 1.1,
+            "Year fraction should be ~1.0, got {}",
+            yf
+        );
     }
 
     #[test]
@@ -874,7 +889,8 @@ mod tests {
         let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(quote_id, 0.052, convention, valuation_date, 5_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.052, convention, valuation_date, 5_000_000.0)
+                .unwrap();
 
         let trade = instrument.to_trade().unwrap();
 
@@ -889,7 +905,8 @@ mod tests {
         let convention = MarketConvention::Fra(FraConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(quote_id, 0.051, convention, valuation_date, 2_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.051, convention, valuation_date, 2_000_000.0)
+                .unwrap();
 
         let trade = instrument.to_trade().unwrap();
 

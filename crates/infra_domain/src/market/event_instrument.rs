@@ -1,7 +1,7 @@
 //! Event instrument for curve impact analysis.
 //!
-//! This module provides the [`EventInstrument`] type for representing market events
-//! that may impact yield curves, such as central bank meetings.
+//! This module provides the [`EventInstrument`] type for representing market
+//! events that may impact yield curves, such as central bank meetings.
 //!
 //! # Examples
 //!
@@ -24,8 +24,10 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::events::{EventType, MarketEvent};
-use super::RateIndex;
+use super::{
+    events::{EventType, MarketEvent},
+    RateIndex,
+};
 use crate::time::Date;
 
 /// An event instrument representing a market event's impact on curves.
@@ -181,33 +183,23 @@ impl EventInstrument {
 
     /// Returns the event date.
     #[must_use]
-    pub fn event_date(&self) -> Date {
-        self.event_date
-    }
+    pub fn event_date(&self) -> Date { self.event_date }
 
     /// Returns the event type.
     #[must_use]
-    pub fn event_type(&self) -> EventType {
-        self.event_type
-    }
+    pub fn event_type(&self) -> EventType { self.event_type }
 
     /// Returns the expected spread in basis points.
     #[must_use]
-    pub fn expected_spread(&self) -> f64 {
-        self.expected_spread
-    }
+    pub fn expected_spread(&self) -> f64 { self.expected_spread }
 
     /// Returns the confidence level.
     #[must_use]
-    pub fn confidence(&self) -> f64 {
-        self.confidence
-    }
+    pub fn confidence(&self) -> f64 { self.confidence }
 
     /// Returns the rate index affected by this event.
     #[must_use]
-    pub fn rate_index(&self) -> RateIndex {
-        self.rate_index
-    }
+    pub fn rate_index(&self) -> RateIndex { self.rate_index }
 
     /// Calculates the impact on the curve at the event date.
     ///
@@ -274,9 +266,7 @@ impl EventInstrument {
     /// assert!((event.weighted_impact() - 30.0).abs() < 1e-10);
     /// ```
     #[must_use]
-    pub fn weighted_impact(&self) -> f64 {
-        self.expected_spread * self.confidence
-    }
+    pub fn weighted_impact(&self) -> f64 { self.expected_spread * self.confidence }
 
     /// Returns true if this is a central bank meeting event.
     #[must_use]
@@ -286,24 +276,16 @@ impl EventInstrument {
 
     /// Returns true if the expected spread is positive (rate hike).
     #[must_use]
-    pub fn is_rate_hike(&self) -> bool {
-        self.expected_spread > 0.0
-    }
+    pub fn is_rate_hike(&self) -> bool { self.expected_spread > 0.0 }
 
     /// Returns true if the expected spread is negative (rate cut).
     #[must_use]
-    pub fn is_rate_cut(&self) -> bool {
-        self.expected_spread < 0.0
-    }
+    pub fn is_rate_cut(&self) -> bool { self.expected_spread < 0.0 }
 }
 
 impl std::fmt::Display for EventInstrument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let direction = if self.expected_spread > 0.0 {
-            "+"
-        } else {
-            ""
-        };
+        let direction = if self.expected_spread > 0.0 { "+" } else { "" };
         write!(
             f,
             "{} {} {}{}bp @ {:.0}% confidence ({})",
@@ -514,13 +496,8 @@ mod tests {
         );
         assert!(cb_event.is_central_bank_meeting());
 
-        let other_event = EventInstrument::new(
-            date,
-            EventType::EconomicRelease,
-            5.0,
-            0.50,
-            RateIndex::Sofr,
-        );
+        let other_event =
+            EventInstrument::new(date, EventType::EconomicRelease, 5.0, 0.50, RateIndex::Sofr);
         assert!(!other_event.is_central_bank_meeting());
     }
 

@@ -1,27 +1,30 @@
 //! Criterion benchmarks for instrument pre-compilation.
 //!
 //! This benchmark compares the performance of:
-//! - Direct MarketInstrument pricing (with calendar/convention lookups each time)
+//! - Direct MarketInstrument pricing (with calendar/convention lookups each
+//!   time)
 //! - CompiledInstrument pricing (pre-computed cashflows)
 //!
-//! Target: 30% or more improvement in iteration-level pricing_error computation.
+//! Target: 30% or more improvement in iteration-level pricing_error
+//! computation.
 //!
-//! Run with: `cargo bench --bench instrument_compile --features global-bootstrap`
+//! Run with: `cargo bench --bench instrument_compile --features
+//! global-bootstrap`
 
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-
-use pricer_models::builder::{
-    CalibrationInstrument, CalibrationProblem, CompiledInstrument,
+use pricer_models::{
+    builder::{CalibrationInstrument, CalibrationProblem, CompiledInstrument},
+    market::curves::{BootstrapInterpolation, BootstrappedCurve, MarketInstrument},
 };
-use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve, MarketInstrument};
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-/// Create OIS instruments for benchmarking using pricer_models MarketInstrument.
+/// Create OIS instruments for benchmarking using pricer_models
+/// MarketInstrument.
 fn create_pricer_models_instruments(n: usize) -> Vec<MarketInstrument<f64>> {
     let maturities = [
         0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 50.0,
@@ -86,7 +89,9 @@ fn bench_single_pricing_error(c: &mut Criterion) {
 
     group.bench_function("market_instrument", |b| {
         b.iter(|| {
-            let error = black_box(&market_inst).pricing_error(black_box(&curve)).unwrap();
+            let error = black_box(&market_inst)
+                .pricing_error(black_box(&curve))
+                .unwrap();
             black_box(error)
         });
     });
@@ -111,11 +116,13 @@ fn bench_batch_pricing_error(c: &mut Criterion) {
     let mut group = c.benchmark_group("batch_pricing_error");
 
     for n_instruments in [3, 6, 10, 12] {
-        let pillars: Vec<f64> = [0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 50.0]
-            .iter()
-            .take(n_instruments)
-            .copied()
-            .collect();
+        let pillars: Vec<f64> = [
+            0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 50.0,
+        ]
+        .iter()
+        .take(n_instruments)
+        .copied()
+        .collect();
         let curve = create_test_curve(&pillars);
 
         // Original MarketInstrument

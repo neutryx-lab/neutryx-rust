@@ -23,9 +23,8 @@
 //! assert_eq!(quote.value, 0.05);
 //! ```
 
+use super::{error::MarketQuoteError, quote_id::QuoteId, quote_type::QuoteType};
 use crate::market::source::DataSource;
-
-use super::{error::MarketQuoteError, quote_type::QuoteType, quote_id::QuoteId};
 
 /// A single market quote with metadata.
 ///
@@ -458,7 +457,8 @@ mod tests {
             DataSource::Internal,
             DataSource::Manual,
         ] {
-            let quote = MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.05, 1700000000000, source);
+            let quote =
+                MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.05, 1700000000000, source);
             assert!(quote.is_ok());
             assert_eq!(quote.unwrap().source, source);
         }

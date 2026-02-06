@@ -379,6 +379,8 @@ export interface MarketEvent {
   previous?: string;
   forecast?: string;
   actual?: string;
+  /** Expected rate spike in basis points (for turn events) */
+  expectedSpikeBp?: number;
 }
 
 export type EventType =
@@ -387,6 +389,10 @@ export type EventType =
   | 'holiday'
   | 'news'
   | 'expiry'
+  | 'turn_of_year'
+  | 'turn_of_quarter'
+  | 'turn_of_month'
+  | 'turn'
   | 'other';
 
 export type Importance = 'critical' | 'high' | 'medium' | 'low';

@@ -7,10 +7,9 @@ use super::{
     common::{BarrierDirection, BarrierType, ExerciseStyle},
     error::InstrumentError,
 };
-use crate::{trade::OptionType, Currency, Date};
-
 // Re-export CurrencyPair from market module
 pub use crate::market::CurrencyPair;
+use crate::{trade::OptionType, Currency, Date};
 
 /// FX spot transaction.
 ///
@@ -492,9 +491,7 @@ pub enum FxSwapError {
 mod tests {
     use super::*;
 
-    fn make_test_currency_pair() -> CurrencyPair {
-        CurrencyPair::new(Currency::EUR, Currency::USD)
-    }
+    fn make_test_currency_pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
 
     // CurrencyPair tests are now in market/currency_pair.rs
 

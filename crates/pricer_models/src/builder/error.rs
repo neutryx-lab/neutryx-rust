@@ -7,8 +7,10 @@
 //!
 //! ## Numerical Stability (Requirement 5)
 //!
-//! - [`JacobianQuality`]: Classification of Jacobian matrix quality (Good/Warning/Poor)
-//! - [`NumericalDiagnostics`]: Comprehensive diagnostic information for calibration
+//! - [`JacobianQuality`]: Classification of Jacobian matrix quality
+//!   (Good/Warning/Poor)
+//! - [`NumericalDiagnostics`]: Comprehensive diagnostic information for
+//!   calibration
 //! - [`RegularisationType`]: Type of regularisation applied (None/Tikhonov/LM)
 
 use num_traits::Float;
@@ -19,7 +21,8 @@ use thiserror::Error;
 // IFT Sensitivity Error
 // =============================================================================
 
-/// Errors that can occur during IFT (Implicit Function Theorem) sensitivity computation.
+/// Errors that can occur during IFT (Implicit Function Theorem) sensitivity
+/// computation.
 ///
 /// IFT-based sensitivities require a cached Jacobian inverse from calibration.
 /// These errors indicate when IFT computation cannot proceed.
@@ -185,7 +188,9 @@ impl<T: Float> RegularisationType<T> {
     pub fn tikhonov(damping: T) -> Self { RegularisationType::Tikhonov { damping } }
 
     /// Create Levenberg-Marquardt regularisation with the given lambda.
-    pub fn levenberg_marquardt(lambda: T) -> Self { RegularisationType::LevenbergMarquardt { lambda } }
+    pub fn levenberg_marquardt(lambda: T) -> Self {
+        RegularisationType::LevenbergMarquardt { lambda }
+    }
 
     /// Check if any regularisation is applied.
     pub fn is_regularised(&self) -> bool { !matches!(self, RegularisationType::None) }
@@ -392,10 +397,12 @@ impl<T: Float> NumericalDiagnostics<T> {
 ///
 /// # Arguments
 ///
-/// * `jacobian` - The Jacobian matrix to validate (as row-major flattened vector)
+/// * `jacobian` - The Jacobian matrix to validate (as row-major flattened
+///   vector)
 /// * `nrows` - Number of rows
 /// * `ncols` - Number of columns
-/// * `zero_threshold` - Threshold below which diagonal elements are considered near-zero
+/// * `zero_threshold` - Threshold below which diagonal elements are considered
+///   near-zero
 ///
 /// # Returns
 ///
@@ -556,7 +563,8 @@ pub fn apply_tikhonov_regularisation<T>(
     }
 }
 
-/// Check if Tikhonov regularisation should be applied based on condition number.
+/// Check if Tikhonov regularisation should be applied based on condition
+/// number.
 ///
 /// # Requirement: 5.2
 ///
@@ -1516,8 +1524,7 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_ad_unstable() {
-        let diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_ad_variance(1e7);
+        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new().with_ad_variance(1e7);
         assert!(diag.is_ad_unstable(1e6));
         assert!(!diag.is_ad_unstable(1e8));
     }

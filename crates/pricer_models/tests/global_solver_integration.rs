@@ -424,7 +424,10 @@ fn test_ift_sensitivity_available() {
     let result = bootstrapper.calibrate(&instruments).unwrap();
 
     assert!(result.converged);
-    assert!(result.can_compute_ift(), "IFT should be available after calibration");
+    assert!(
+        result.can_compute_ift(),
+        "IFT should be available after calibration"
+    );
     assert!(
         result.jacobian_inverse.is_some(),
         "J⁻¹ should be cached by default"
@@ -449,7 +452,11 @@ fn test_ift_sensitivity_computation() {
     let dF_dm = vec![1.0, 0.0, 0.0]; // Unit perturbation in first instrument
     let sensitivity = result.ift_sensitivity(&dF_dm).unwrap();
 
-    assert_eq!(sensitivity.len(), 3, "Sensitivity should have same dimension as pillars");
+    assert_eq!(
+        sensitivity.len(),
+        3,
+        "Sensitivity should have same dimension as pillars"
+    );
 
     // Sensitivities should be finite
     for s in &sensitivity {
@@ -486,19 +493,16 @@ fn test_ift_batch_sensitivity_computation() {
         let individual = result.ift_sensitivity(&dF_dm).unwrap();
 
         for i in 0..3 {
-            assert_relative_eq!(
-                batch_sensitivity[(i, j)],
-                individual[i],
-                epsilon = 1e-12,
-            );
+            assert_relative_eq!(batch_sensitivity[(i, j)], individual[i], epsilon = 1e-12,);
         }
     }
 }
 
 /// Test IFT sensitivity vs bump-and-recalibrate (golden test).
 ///
-/// This test verifies that IFT-based sensitivities agree with bump-and-recalibrate
-/// sensitivities within the required tolerance (1e-8 relative error).
+/// This test verifies that IFT-based sensitivities agree with
+/// bump-and-recalibrate sensitivities within the required tolerance (1e-8
+/// relative error).
 #[test]
 fn test_ift_vs_bump_and_recalibrate() {
     let base_rate = 0.03;
@@ -545,8 +549,10 @@ fn test_ift_vs_bump_and_recalibrate() {
 
         // Compare sensitivities (note: IFT gives ∂log(DF)/∂quote, we need ∂DF/∂quote)
         // ∂DF/∂quote = DF * ∂log(DF)/∂quote
-        for (i, (&ift_sens, &bump_sens)) in
-            ift_sensitivities.iter().zip(bump_sensitivities.iter()).enumerate()
+        for (i, (&ift_sens, &bump_sens)) in ift_sensitivities
+            .iter()
+            .zip(bump_sensitivities.iter())
+            .enumerate()
         {
             // Convert IFT sensitivity from log space to DF space
             let ift_df_sens = base_df[i] * ift_sens;
@@ -555,7 +561,8 @@ fn test_ift_vs_bump_and_recalibrate() {
             if bump_sens.abs() > 1e-10 {
                 let rel_error = ((ift_df_sens - bump_sens) / bump_sens).abs();
                 assert!(
-                    rel_error < 1e-4, // Allow 0.01% relative error due to finite diff approximation
+                    rel_error < 1e-4, /* Allow 0.01% relative error due to finite diff
+                                       * approximation */
                     "IFT vs bump-recal mismatch at pillar {} for instrument {}: \
                      IFT={}, bump={}, rel_error={}",
                     i,
@@ -624,8 +631,10 @@ fn test_ift_dimension_mismatch() {
 /// within 1e-12 relative tolerance compared to the BootstrappedCurve.
 #[test]
 fn test_enzyme_kernel_interpolation_accuracy() {
-    use pricer_models::builder::enzyme_jacobian::kernels;
-    use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve, YieldCurve};
+    use pricer_models::{
+        builder::enzyme_jacobian::kernels,
+        market::curves::{BootstrapInterpolation, BootstrappedCurve, YieldCurve},
+    };
 
     let pillar_times = vec![1.0, 2.0, 5.0, 10.0];
     let discount_factors: Vec<f64> = pillar_times.iter().map(|&t| (-0.03 * t).exp()).collect();
@@ -641,7 +650,8 @@ fn test_enzyme_kernel_interpolation_accuracy() {
     .unwrap();
 
     // Test at various query points (within interpolation range only)
-    // Note: Extrapolation behavior differs between kernel (flat) and BootstrappedCurve (linear)
+    // Note: Extrapolation behavior differs between kernel (flat) and
+    // BootstrappedCurve (linear)
     let test_times = vec![1.0, 1.5, 2.0, 3.0, 5.0, 7.5, 10.0];
 
     for t in test_times {
@@ -781,11 +791,7 @@ fn test_enzyme_jacobian_stub_behavior() {
     let log_df: Vec<f64> = pillar_times.iter().map(|&t| -0.03 * t).collect();
 
     let instrument_types = vec![0u32, 0, 0]; // All deposits
-    let instrument_params = vec![
-        vec![1.0, 0.03],
-        vec![2.0, 0.035],
-        vec![5.0, 0.04],
-    ];
+    let instrument_params = vec![vec![1.0, 0.03], vec![2.0, 0.035], vec![5.0, 0.04]];
 
     let jacobian = kernels::compute_jacobian_enzyme(
         &instrument_types,
@@ -832,14 +838,14 @@ fn test_jacobian_method_consistency() {
     ];
 
     // Test finite difference method
-    let config_fd = GlobalBootstrapConfig::default()
-        .with_jacobian_method(JacobianMethod::FiniteDifference);
+    let config_fd =
+        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::FiniteDifference);
     let bootstrapper_fd = GlobalBootstrapper::new(config_fd);
     let result_fd = bootstrapper_fd.calibrate(&instruments).unwrap();
 
     // Test central difference method
-    let config_cd = GlobalBootstrapConfig::default()
-        .with_jacobian_method(JacobianMethod::CentralDifference);
+    let config_cd =
+        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::CentralDifference);
     let bootstrapper_cd = GlobalBootstrapper::new(config_cd);
     let result_cd = bootstrapper_cd.calibrate(&instruments).unwrap();
 
@@ -891,9 +897,9 @@ fn test_condition_number_in_calibration_result() {
         MarketInstrument::ois(5.0, 0.04),
     ];
 
-    // Configure to store Jacobian inverse (which enables condition number computation)
-    let config = GlobalBootstrapConfig::default()
-        .with_jacobian_inverse(true);
+    // Configure to store Jacobian inverse (which enables condition number
+    // computation)
+    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
     let bootstrapper = GlobalBootstrapper::new(config);
     let result = bootstrapper.calibrate(&instruments).unwrap();
 
@@ -904,7 +910,10 @@ fn test_condition_number_in_calibration_result() {
     if let Some(cond) = result.condition_number {
         assert!(cond > 0.0, "Condition number should be positive");
         // For a well-conditioned 3x3 OIS problem, condition number should be reasonable
-        assert!(cond < 1e14, "Condition number should not be extremely large");
+        assert!(
+            cond < 1e14,
+            "Condition number should not be extremely large"
+        );
     }
 }
 
@@ -920,8 +929,7 @@ fn test_max_condition_number_config_integration() {
     ];
 
     // Configure with specific max condition number
-    let config = GlobalBootstrapConfig::default()
-        .with_max_condition_number(1e15);
+    let config = GlobalBootstrapConfig::default().with_max_condition_number(1e15);
 
     let bootstrapper = GlobalBootstrapper::new(config);
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -951,7 +959,10 @@ fn test_tikhonov_regularisation_integration() {
 
     let low_cond: f64 = 1e6;
     let no_damping = should_apply_regularisation(low_cond, max_cond);
-    assert!(no_damping.is_none(), "Should not apply regularisation for low condition number");
+    assert!(
+        no_damping.is_none(),
+        "Should not apply regularisation for low condition number"
+    );
 }
 
 /// Test NumericalDiagnostics summary generation.
@@ -982,8 +993,8 @@ fn test_numerical_diagnostics_summary_integration() {
 /// # Requirement: 5.4, 6.1
 #[test]
 fn test_jacobian_method_consistency_for_ad_variance() {
-    // This test verifies that different Jacobian methods produce consistent results,
-    // which is the basis for AD variance detection.
+    // This test verifies that different Jacobian methods produce consistent
+    // results, which is the basis for AD variance detection.
 
     let instruments: Vec<MarketInstrument<f64>> = vec![
         MarketInstrument::ois(1.0, 0.03),
@@ -992,14 +1003,14 @@ fn test_jacobian_method_consistency_for_ad_variance() {
     ];
 
     // Test with finite difference
-    let config_fd = GlobalBootstrapConfig::default()
-        .with_jacobian_method(JacobianMethod::FiniteDifference);
+    let config_fd =
+        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::FiniteDifference);
     let bootstrapper_fd = GlobalBootstrapper::new(config_fd);
     let result_fd = bootstrapper_fd.calibrate(&instruments).unwrap();
 
     // Test with central difference
-    let config_cd = GlobalBootstrapConfig::default()
-        .with_jacobian_method(JacobianMethod::CentralDifference);
+    let config_cd =
+        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::CentralDifference);
     let bootstrapper_cd = GlobalBootstrapper::new(config_cd);
     let result_cd = bootstrapper_cd.calibrate(&instruments).unwrap();
 
@@ -1038,7 +1049,11 @@ fn test_calibration_problem_variance_calculation() {
     let variance = problem.compute_jacobian_variance(&jacobian_fd, &jacobian_cd);
 
     // Variance should be small for a well-behaved problem
-    assert!(variance < 1e-6, "FD and CD Jacobians should have low variance, got {}", variance);
+    assert!(
+        variance < 1e-6,
+        "FD and CD Jacobians should have low variance, got {}",
+        variance
+    );
 }
 
 /// Test should_fallback_from_ad integration.
@@ -1060,9 +1075,13 @@ fn test_ad_fallback_decision_integration() {
     let jacobian2 = problem.compute_jacobian_central_diff(&x).unwrap();
 
     let threshold = 1e6;
-    let (should_fallback, variance) = problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
+    let (should_fallback, variance) =
+        problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
 
     // For similar Jacobians, should not trigger fallback
-    assert!(!should_fallback, "Should not fallback for similar Jacobians");
+    assert!(
+        !should_fallback,
+        "Should not fallback for similar Jacobians"
+    );
     assert!(variance < threshold);
 }

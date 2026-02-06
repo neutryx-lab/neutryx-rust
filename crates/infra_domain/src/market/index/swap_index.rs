@@ -14,12 +14,11 @@
 //! assert_eq!(cms10y.underlying_index(), RateIndex::Sofr);
 //! ```
 
+use super::RateIndex;
 use crate::{
     market::core::Currency,
     time::{CalendarId, DayCounter, Tenor},
 };
-
-use super::RateIndex;
 
 /// Metadata for a swap index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

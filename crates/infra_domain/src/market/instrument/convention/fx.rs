@@ -3,11 +3,15 @@
 //! This module provides types for all FX-related conventions:
 //!
 //! - [`FxConvention`]: Spot FX conventions
-//! - [`FxOptionConvention`], [`PremiumCurrency`], [`DeltaConvention`], [`CutOffTime`]: FX option conventions
-//! - [`FxSwapConvention`], [`FxSettlementType`], [`NearLegType`]: FX swap conventions
+//! - [`FxOptionConvention`], [`PremiumCurrency`], [`DeltaConvention`],
+//!   [`CutOffTime`]: FX option conventions
+//! - [`FxSwapConvention`], [`FxSettlementType`], [`NearLegType`]: FX swap
+//!   conventions
 
-use crate::market::Currency;
-use crate::time::{BusinessDayConvention, CalendarId};
+use crate::{
+    market::Currency,
+    time::{BusinessDayConvention, CalendarId},
+};
 
 // ============================================================================
 // FX Spot Conventions
@@ -82,21 +86,15 @@ impl FxConvention {
 
     /// Returns the default EUR FX convention.
     #[must_use]
-    pub fn eur_default() -> Self {
-        Self::eur_usd()
-    }
+    pub fn eur_default() -> Self { Self::eur_usd() }
 
     /// Returns the default GBP FX convention.
     #[must_use]
-    pub fn gbp_default() -> Self {
-        Self::gbp_usd()
-    }
+    pub fn gbp_default() -> Self { Self::gbp_usd() }
 
     /// Returns the default JPY FX convention.
     #[must_use]
-    pub fn jpy_default() -> Self {
-        Self::usd_jpy()
-    }
+    pub fn jpy_default() -> Self { Self::usd_jpy() }
 }
 
 // ============================================================================
@@ -150,21 +148,15 @@ impl CutOffTime {
 
     /// Returns the standard New York cut-off time (10:00 NY).
     #[must_use]
-    pub fn ny_cut() -> Self {
-        Self::new(10, 0, "NY")
-    }
+    pub fn ny_cut() -> Self { Self::new(10, 0, "NY") }
 
     /// Returns the standard Tokyo cut-off time (15:00 TOK).
     #[must_use]
-    pub fn tokyo_cut() -> Self {
-        Self::new(15, 0, "TOK")
-    }
+    pub fn tokyo_cut() -> Self { Self::new(15, 0, "TOK") }
 
     /// Returns the standard London cut-off time (10:00 LON).
     #[must_use]
-    pub fn london_cut() -> Self {
-        Self::new(10, 0, "LON")
-    }
+    pub fn london_cut() -> Self { Self::new(10, 0, "LON") }
 }
 
 impl std::fmt::Display for CutOffTime {
@@ -474,7 +466,8 @@ impl FxSwapConvention {
 
     /// Creates a tom/next FX swap convention based on an existing convention.
     ///
-    /// Tom/next swaps have near leg on T+1 (tomorrow) and far leg on T+2 (spot).
+    /// Tom/next swaps have near leg on T+1 (tomorrow) and far leg on T+2
+    /// (spot).
     #[must_use]
     pub fn as_tom_next(&self) -> Self {
         Self {
@@ -485,7 +478,8 @@ impl FxSwapConvention {
 
     /// Creates an overnight FX swap convention based on an existing convention.
     ///
-    /// Overnight swaps have near leg on T+0 (today) and far leg on T+1 (tomorrow).
+    /// Overnight swaps have near leg on T+0 (today) and far leg on T+1
+    /// (tomorrow).
     #[must_use]
     pub fn as_overnight(&self) -> Self {
         Self {
@@ -496,9 +490,7 @@ impl FxSwapConvention {
 
     /// Returns whether this is a deliverable FX swap.
     #[must_use]
-    pub fn is_deliverable(&self) -> bool {
-        self.settlement_type == FxSettlementType::Deliverable
-    }
+    pub fn is_deliverable(&self) -> bool { self.settlement_type == FxSettlementType::Deliverable }
 }
 
 // ============================================================================

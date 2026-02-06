@@ -4,8 +4,6 @@
 
 use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 
-use infra_domain::time::format_years_as_tenor;
-
 use crate::{
     error::ServerError,
     rest::dto::demo::{
@@ -49,7 +47,9 @@ impl DemoService {
         let rate_indices_content = std::fs::read_to_string(rate_indices_path)
             .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
         let rate_indices_data: serde_json::Value = serde_json::from_str(&rate_indices_content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
+            .map_err(|e| {
+                ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
+            })?;
 
         // Build enums
         let mut enums: HashMap<String, Vec<EnumValue>> = HashMap::new();
@@ -485,11 +485,11 @@ impl DemoService {
                                 .get("type")
                                 .and_then(|t| t.as_str())
                                 .unwrap_or("unknown");
-                            let tenor =
-                                instr.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                            let tenor = instr.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
                             let rate = instr.get("rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
 
-                            let id = format!("{}-{}-{}-{}", currency, index_name, instr_type, tenor);
+                            let id =
+                                format!("{}-{}-{}-{}", currency, index_name, instr_type, tenor);
 
                             // Skip if we already have this rate (from market_quotes.json)
                             if rates.iter().any(|r| {
@@ -554,8 +554,7 @@ impl DemoService {
                         let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
                         if let Some(tenors_arr) = tenors.as_array() {
                             for fwd in tenors_arr {
-                                let tenor =
-                                    fwd.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                                let tenor = fwd.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
                                 let points =
                                     fwd.get("points").and_then(|p| p.as_f64()).unwrap_or(0.0);
 
@@ -760,7 +759,8 @@ impl DemoService {
                 })
             }
             "xccybasis" => {
-                let pair = rate.id
+                let pair = rate
+                    .id
                     .strip_prefix("XCCY-")
                     .and_then(|s| s.rsplit_once('-'))
                     .map(|(p, _)| p)
@@ -814,7 +814,8 @@ impl DemoService {
             "fxforward" => Some("FX-SPOT".to_string()),
             "xccybasis" => {
                 // Extract pair from rate_index (e.g., "ESTR/SOFR" -> XCCY-EURUSD)
-                let pair = rate.id
+                let pair = rate
+                    .id
                     .strip_prefix("XCCY-")
                     .and_then(|s| s.rsplit_once('-'))
                     .map(|(p, _)| p)
@@ -826,24 +827,17 @@ impl DemoService {
 
         if let Some(id) = convention_id {
             // Try exact match
-            if let Some(conv) = conventions_result
-                .conventions
-                .iter()
-                .find(|c| c.id == id)
-            {
+            if let Some(conv) = conventions_result.conventions.iter().find(|c| c.id == id) {
                 return Some(conv.clone());
             }
         }
 
         // Try currency match with default
-        conventions_result
-            .conventions
-            .into_iter()
-            .find(|c| {
-                c.currency == rate.currency
-                    && c.convention_type.to_lowercase().contains(&rate.rate_type)
-                    && c.is_default == Some(true)
-            })
+        conventions_result.conventions.into_iter().find(|c| {
+            c.currency == rate.currency
+                && c.convention_type.to_lowercase().contains(&rate.rate_type)
+                && c.is_default == Some(true)
+        })
     }
 
     /// Refresh market rates (mock - just returns success)
@@ -951,10 +945,12 @@ impl DemoService {
         // Read from vol_surfaces.json
         let vol_path = Path::new("demo/data/config/vol_surfaces.json");
         if vol_path.exists() {
-            let content = std::fs::read_to_string(vol_path)
-                .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
-            let vol_data: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}")))?;
+            let content = std::fs::read_to_string(vol_path).map_err(|e| {
+                ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}"))
+            })?;
+            let vol_data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+                ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}"))
+            })?;
 
             if let Some(irvol_items) = vol_data.get("irVol").and_then(|i| i.as_array()) {
                 let currencies: Vec<IrVolCurrency> = irvol_items
@@ -1081,10 +1077,12 @@ impl DemoService {
         // Read from vol_surfaces.json
         let vol_path = Path::new("demo/data/config/vol_surfaces.json");
         if vol_path.exists() {
-            let content = std::fs::read_to_string(vol_path)
-                .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
-            let vol_data: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}")))?;
+            let content = std::fs::read_to_string(vol_path).map_err(|e| {
+                ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}"))
+            })?;
+            let vol_data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+                ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}"))
+            })?;
 
             if let Some(fxvol_items) = vol_data.get("fxVol").and_then(|i| i.as_array()) {
                 let pairs: Vec<FxVolPair> = fxvol_items
@@ -1133,9 +1131,15 @@ impl DemoService {
             if let Some(quotes_arr) = data.get("quotes").and_then(|q| q.as_array()) {
                 for quote in quotes_arr {
                     let expiry = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.0);
+                    // Require explicit tenor field in input data
+                    let expiry_label = quote
+                        .get("tenor")
+                        .and_then(|t| t.as_str())
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "?".to_string());
                     quotes.push(FxVolQuote {
                         expiry,
-                        expiry_label: format_years_as_tenor(expiry),
+                        expiry_label,
                         atm_vol: quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
                         rr25d: quote.get("rr25d").and_then(|v| v.as_f64()).unwrap_or(0.0),
                         bf25d: quote.get("bf25d").and_then(|v| v.as_f64()).unwrap_or(0.0),
@@ -1172,6 +1176,7 @@ impl DemoService {
                 "holiday" => EventType::Holiday,
                 "news" => EventType::News,
                 "expiry" => EventType::Expiry,
+                "turn" => EventType::Turn,
                 _ => EventType::Other,
             }
         }
@@ -1253,6 +1258,8 @@ impl DemoService {
                     .get("actual")
                     .and_then(|a| a.as_str())
                     .map(String::from),
+                // Map expectedRateBp (for central bank meetings) to expected_spike_bp
+                expected_spike_bp: event.get("expectedRateBp").and_then(|v| v.as_f64()),
             })
         }
 
@@ -1284,6 +1291,93 @@ impl DemoService {
             }
         }
 
+        // Load turns (year-end, quarter-end, month-end rate spikes)
+        let turns_path = Path::new("demo/data/input/events/turns.json");
+        if let Ok(content) = std::fs::read_to_string(turns_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(turn_arr) = data.get("turnEvents").and_then(|e| e.as_array()) {
+                    for turn in turn_arr {
+                        if let Some(parsed) = parse_turn_event(turn) {
+                            events.push(parsed);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Helper to parse turn event from JSON value
+        fn parse_turn_event(turn: &serde_json::Value) -> Option<MarketEvent> {
+            let id = turn.get("id")?.as_str()?.to_string();
+            let date = turn.get("date")?.as_str()?.to_string();
+            let currency = turn.get("currency")?.as_str()?.to_string();
+            let turn_type = turn.get("eventType")?.as_str()?;
+            let expected_spike = turn.get("expectedSpikeBp")?.as_f64()?;
+            let notes = turn
+                .get("notes")
+                .and_then(|n| n.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            // Generate title based on turn type
+            let title = match turn_type {
+                "turn_of_year" => format!("{} Year-End Turn", currency),
+                "turn_of_quarter" => format!("{} Quarter-End Turn", currency),
+                "turn_of_month" => format!("{} Month-End Turn", currency),
+                _ => format!("{} Turn", currency),
+            };
+
+            // Set event type based on turn type
+            let event_type = match turn_type {
+                "turn_of_year" => EventType::TurnOfYear,
+                "turn_of_quarter" => EventType::TurnOfQuarter,
+                "turn_of_month" => EventType::TurnOfMonth,
+                _ => EventType::Turn,
+            };
+
+            // Set importance based on turn type
+            let importance = match turn_type {
+                "turn_of_year" => Importance::Critical,
+                "turn_of_quarter" => Importance::High,
+                _ => Importance::Medium,
+            };
+
+            // Build description with spike information
+            let bid_spike = turn.get("bidSpikeBp").and_then(|b| b.as_f64());
+            let ask_spike = turn.get("askSpikeBp").and_then(|a| a.as_f64());
+            let historical_avg = turn.get("historicalAvgBp").and_then(|h| h.as_f64());
+
+            let mut description = format!("Expected spike: {:.1}bp", expected_spike);
+            if let (Some(bid), Some(ask)) = (bid_spike, ask_spike) {
+                description.push_str(&format!(" (Bid: {:.1}bp, Ask: {:.1}bp)", bid, ask));
+            }
+            if let Some(hist) = historical_avg {
+                description.push_str(&format!(". Historical avg: {:.1}bp", hist));
+            }
+            if !notes.is_empty() {
+                description.push_str(&format!(". {}", notes));
+            }
+
+            Some(MarketEvent {
+                id,
+                date,
+                event_type,
+                title,
+                description: Some(description),
+                currency: Some(currency),
+                region: None,
+                importance,
+                time: None,
+                timezone: None,
+                source: "Internal".to_string(),
+                tags: Some(vec!["turn".to_string(), "curve".to_string()]),
+                central_bank: None,
+                previous: historical_avg.map(|h| format!("{:.1}bp", h)),
+                forecast: Some(format!("{:.1}bp", expected_spike)),
+                actual: None,
+                expected_spike_bp: Some(expected_spike),
+            })
+        }
+
         // Sort events by date
         events.sort_by(|a, b| a.date.cmp(&b.date));
 
@@ -1299,6 +1393,10 @@ impl DemoService {
                 "holiday".to_string(),
                 "news".to_string(),
                 "expiry".to_string(),
+                "turn_of_year".to_string(),
+                "turn_of_quarter".to_string(),
+                "turn_of_month".to_string(),
+                "turn".to_string(),
                 "other".to_string(),
             ],
         })
@@ -1328,13 +1426,19 @@ impl DemoService {
                 .and_then(|r| r.as_str())
                 .unwrap_or("Unknown")
                 .to_string();
-            let currency = event.get("currency").and_then(|c| c.as_str()).map(String::from);
+            let currency = event
+                .get("currency")
+                .and_then(|c| c.as_str())
+                .map(String::from);
             let importance = event
                 .get("importance")
                 .and_then(|i| i.as_str())
                 .map(parse_importance)
                 .unwrap_or(Importance::Medium);
-            let source = event.get("source").and_then(|s| s.as_str()).map(String::from);
+            let source = event
+                .get("source")
+                .and_then(|s| s.as_str())
+                .map(String::from);
 
             // Determine holiday type from tags or default to "bank"
             let holiday_type = event
@@ -1408,8 +1512,9 @@ impl DemoService {
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
         let content = std::fs::read_to_string(rate_indices_path)
             .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+            ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
+        })?;
 
         let indices: Vec<String> = data
             .get("rateIndices")
@@ -1495,8 +1600,9 @@ impl DemoService {
         let vol_path = Path::new("demo/data/config/vol_surfaces.json");
         let content = std::fs::read_to_string(vol_path)
             .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+            ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}"))
+        })?;
 
         let indices: Vec<String> = data
             .get("irVol")
@@ -1640,8 +1746,8 @@ impl DemoService {
         let start = std::time::Instant::now();
 
         // Load FX vol data
-        let vol_path =
-            Path::new("demo/data/input/fxvol").join(format!("{}.json", request.pair.to_lowercase()));
+        let vol_path = Path::new("demo/data/input/fxvol")
+            .join(format!("{}.json", request.pair.to_lowercase()));
 
         let content = std::fs::read_to_string(&vol_path).map_err(|_| {
             ServerError::NotFound(format!("FX vol data not found for: {}", request.pair))
@@ -1730,11 +1836,8 @@ impl DemoService {
 
         // Calculate dates from tenor
         let valuation_date = chrono::Utc::now().date_naive();
-        let (effective_date, maturity_date) = Self::calculate_dates_from_tenor(
-            &rate.tenor,
-            &rate.currency,
-            valuation_date,
-        );
+        let (effective_date, maturity_date) =
+            Self::calculate_dates_from_tenor(&rate.tenor, &rate.currency, valuation_date);
 
         // Build convention detail from the rate's convention
         let convention = rate_detail.convention.map(|conv| {
@@ -1819,11 +1922,8 @@ impl DemoService {
 
         // Calculate dates from tenor
         let valuation_date = chrono::Utc::now().date_naive();
-        let (effective_date, maturity_date) = Self::calculate_dates_from_tenor(
-            &rate.tenor,
-            &rate.currency,
-            valuation_date,
-        );
+        let (effective_date, maturity_date) =
+            Self::calculate_dates_from_tenor(&rate.tenor, &rate.currency, valuation_date);
 
         // Generate cashflows based on rate type
         let legs = match rate.rate_type.as_str() {
@@ -1852,11 +1952,8 @@ impl DemoService {
             }
             "ois" | "swap" => {
                 // Fixed and floating legs
-                let year_fraction = Self::calculate_year_fraction(
-                    effective_date,
-                    maturity_date,
-                    &rate.currency,
-                );
+                let year_fraction =
+                    Self::calculate_year_fraction(effective_date, maturity_date, &rate.currency);
                 vec![
                     LegCashflows {
                         leg_type: "Fixed".to_string(),
@@ -1996,11 +2093,17 @@ impl DemoService {
                 // Try to parse numeric tenor
                 if let Some(years) = tenor.strip_suffix('Y').and_then(|s| s.parse::<i32>().ok()) {
                     Self::add_months(effective_date, years * 12)
-                } else if let Some(months) = tenor.strip_suffix('M').and_then(|s| s.parse::<i32>().ok()) {
+                } else if let Some(months) =
+                    tenor.strip_suffix('M').and_then(|s| s.parse::<i32>().ok())
+                {
                     Self::add_months(effective_date, months)
-                } else if let Some(weeks) = tenor.strip_suffix('W').and_then(|s| s.parse::<i64>().ok()) {
+                } else if let Some(weeks) =
+                    tenor.strip_suffix('W').and_then(|s| s.parse::<i64>().ok())
+                {
                     effective_date + chrono::Duration::weeks(weeks)
-                } else if let Some(days) = tenor.strip_suffix('D').and_then(|s| s.parse::<i64>().ok()) {
+                } else if let Some(days) =
+                    tenor.strip_suffix('D').and_then(|s| s.parse::<i64>().ok())
+                {
                     effective_date + chrono::Duration::days(days)
                 } else {
                     // Default to 1 year
@@ -2035,8 +2138,7 @@ impl DemoService {
         };
         let new_day = std::cmp::min(date.day(), max_day);
 
-        chrono::NaiveDate::from_ymd_opt(new_year, new_month, new_day)
-            .unwrap_or(date)
+        chrono::NaiveDate::from_ymd_opt(new_year, new_month, new_day).unwrap_or(date)
     }
 
     /// Calculate year fraction
@@ -2065,8 +2167,9 @@ impl DemoService {
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
         let content = std::fs::read_to_string(rate_indices_path)
             .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+            ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
+        })?;
 
         let mut indices = Vec::new();
 
@@ -2150,8 +2253,9 @@ impl DemoService {
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
         let content = std::fs::read_to_string(rate_indices_path)
             .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+            ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
+        })?;
 
         // Find the index
         let rate_items = data
@@ -2184,8 +2288,14 @@ impl DemoService {
         // Build metadata from conventions field
         let conventions = item.get("conventions");
         let metadata = Some(RateIndexMetadata {
-            fixing_lag: conventions.and_then(|c| c.get("fixingLag")).and_then(|f| f.as_u64()).map(|f| f as u32),
-            settlement_lag: conventions.and_then(|c| c.get("settlementLag")).and_then(|s| s.as_u64()).map(|s| s as u32),
+            fixing_lag: conventions
+                .and_then(|c| c.get("fixingLag"))
+                .and_then(|f| f.as_u64())
+                .map(|f| f as u32),
+            settlement_lag: conventions
+                .and_then(|c| c.get("settlementLag"))
+                .and_then(|s| s.as_u64())
+                .map(|s| s as u32),
             compounding_method: conventions
                 .and_then(|c| c.get("compoundingMethod"))
                 .and_then(|c| c.as_str())
@@ -2201,9 +2311,7 @@ impl DemoService {
         let associated_rates: Vec<String> = rates_response
             .rates
             .iter()
-            .filter(|rate| {
-                rate.rate_index.as_deref() == Some(code) || rate.currency == currency
-            })
+            .filter(|rate| rate.rate_index.as_deref() == Some(code) || rate.currency == currency)
             .map(|r| r.id.clone())
             .collect();
 
@@ -2275,9 +2383,7 @@ mod tests {
     fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
 
     /// Check if demo data files are available
-    fn demo_data_available() -> bool {
-        Path::new("demo/data/config/rate_indices.json").exists()
-    }
+    fn demo_data_available() -> bool { Path::new("demo/data/config/rate_indices.json").exists() }
 
     #[test]
     fn test_get_instruments() {

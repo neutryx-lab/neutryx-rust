@@ -38,8 +38,10 @@
 //! assert!(jump_times[0].time < jump_times[1].time);
 //! ```
 
-use infra_domain::market::definition::JumpPillar;
-use infra_domain::time::{Date, DayCounter};
+use infra_domain::{
+    market::definition::JumpPillar,
+    time::{Date, DayCounter},
+};
 use num_traits::Float;
 
 /// A jump event converted to time coordinates.
@@ -70,9 +72,10 @@ impl<T: Float> JumpTime<T> {
 
 /// Converts a slice of JumpPillars to time-based jump representations.
 ///
-/// This function transforms date-based JumpPillar definitions into time coordinates
-/// (year fractions) suitable for curve interpolation. The cumulative offsets are
-/// calculated in log-space to be applied to discount factors.
+/// This function transforms date-based JumpPillar definitions into time
+/// coordinates (year fractions) suitable for curve interpolation. The
+/// cumulative offsets are calculated in log-space to be applied to discount
+/// factors.
 ///
 /// # Arguments
 ///
@@ -89,8 +92,8 @@ impl<T: Float> JumpTime<T> {
 /// - Pillars with jump dates before or on the valuation date are excluded
 /// - Results are sorted by time (ascending)
 /// - Cumulative offsets use weighted jump (expected_jump_bps * confidence)
-/// - The offset is converted from basis points to log-space:
-///   `offset = -weighted_jump_bps / 10000`
+/// - The offset is converted from basis points to log-space: `offset =
+///   -weighted_jump_bps / 10000`
 ///
 /// # Examples
 ///
@@ -209,7 +212,8 @@ pub fn effective_jump_offset_at<T: Float>(jumps: &[JumpTime<T>], t: T) -> T {
     }
 }
 
-/// Returns the jump offset specifically at time `t` (right limit minus left limit).
+/// Returns the jump offset specifically at time `t` (right limit minus left
+/// limit).
 ///
 /// This is useful for determining the discontinuity magnitude at a jump date.
 ///
@@ -259,8 +263,9 @@ pub fn from_tuples<T: Float>(data: Vec<(T, T)>) -> Vec<JumpTime<T>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn make_date(year: i32, month: u32, day: u32) -> Date {
         Date::from_ymd(year, month, day).unwrap()
@@ -313,7 +318,8 @@ mod tests {
         // First jump: 25bp * 100% = -0.0025
         assert_relative_eq!(result[0].cumulative_offset, -0.0025, epsilon = 1e-10);
 
-        // Second jump: cumulative = -0.0025 + (-25bp * 80%) = -0.0025 + (-0.002) = -0.0045
+        // Second jump: cumulative = -0.0025 + (-25bp * 80%) = -0.0025 + (-0.002) =
+        // -0.0045
         assert_relative_eq!(result[1].cumulative_offset, -0.0045, epsilon = 1e-10);
     }
 
@@ -356,10 +362,7 @@ mod tests {
 
     #[test]
     fn test_effective_jump_offset_before_first() {
-        let jumps = vec![
-            JumpTime::new(0.25, -0.0025),
-            JumpTime::new(0.50, -0.005),
-        ];
+        let jumps = vec![JumpTime::new(0.25, -0.0025), JumpTime::new(0.50, -0.005)];
 
         let offset = effective_jump_offset_at(&jumps, 0.1);
         assert_relative_eq!(offset, 0.0, epsilon = 1e-10);
@@ -367,10 +370,7 @@ mod tests {
 
     #[test]
     fn test_effective_jump_offset_after_first() {
-        let jumps = vec![
-            JumpTime::new(0.25, -0.0025),
-            JumpTime::new(0.50, -0.005),
-        ];
+        let jumps = vec![JumpTime::new(0.25, -0.0025), JumpTime::new(0.50, -0.005)];
 
         let offset = effective_jump_offset_at(&jumps, 0.3);
         assert_relative_eq!(offset, -0.0025, epsilon = 1e-10);
@@ -378,10 +378,7 @@ mod tests {
 
     #[test]
     fn test_effective_jump_offset_after_all() {
-        let jumps = vec![
-            JumpTime::new(0.25, -0.0025),
-            JumpTime::new(0.50, -0.005),
-        ];
+        let jumps = vec![JumpTime::new(0.25, -0.0025), JumpTime::new(0.50, -0.005)];
 
         let offset = effective_jump_offset_at(&jumps, 1.0);
         assert_relative_eq!(offset, -0.005, epsilon = 1e-10);
@@ -389,10 +386,7 @@ mod tests {
 
     #[test]
     fn test_effective_jump_offset_at_boundary() {
-        let jumps = vec![
-            JumpTime::new(0.25, -0.0025),
-            JumpTime::new(0.50, -0.005),
-        ];
+        let jumps = vec![JumpTime::new(0.25, -0.0025), JumpTime::new(0.50, -0.005)];
 
         // Exactly at jump time should include that jump
         let offset = effective_jump_offset_at(&jumps, 0.25);
@@ -404,10 +398,7 @@ mod tests {
 
     #[test]
     fn test_jump_offset_at() {
-        let jumps = vec![
-            JumpTime::new(0.25, -0.0025),
-            JumpTime::new(0.50, -0.005),
-        ];
+        let jumps = vec![JumpTime::new(0.25, -0.0025), JumpTime::new(0.50, -0.005)];
 
         // At first jump: offset = -0.0025 - 0 = -0.0025
         let offset = jump_offset_at(&jumps, 0.25, 1e-10);
@@ -424,10 +415,7 @@ mod tests {
 
     #[test]
     fn test_has_jump_at() {
-        let jumps = vec![
-            JumpTime::new(0.25, -0.0025),
-            JumpTime::new(0.50, -0.005),
-        ];
+        let jumps = vec![JumpTime::new(0.25, -0.0025), JumpTime::new(0.50, -0.005)];
 
         assert!(has_jump_at(&jumps, 0.25, 1e-10));
         assert!(has_jump_at(&jumps, 0.50, 1e-10));

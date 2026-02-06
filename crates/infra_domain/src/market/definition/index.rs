@@ -21,8 +21,10 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::market::{CompoundingMethod, Currency, RateIndex};
-use crate::time::{CalendarId, DayCounter, Tenor};
+use crate::{
+    market::{CompoundingMethod, Currency, RateIndex},
+    time::{CalendarId, DayCounter, Tenor},
+};
 
 /// Rate index definition for curve construction.
 ///
@@ -36,7 +38,10 @@ pub struct RateIndexDefinition {
     pub id: String,
 
     /// Display name (optional)
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub name: Option<String>,
 
     /// Currency of the index
@@ -49,7 +54,10 @@ pub struct RateIndexDefinition {
     pub tenor: Tenor,
 
     /// Convention overrides (optional, defaults derived from index_type)
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub conventions: Option<IndexConventions>,
 }
 
@@ -61,23 +69,38 @@ pub struct RateIndexDefinition {
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct IndexConventions {
     /// Day count convention
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub day_count: Option<DayCounter>,
 
     /// Compounding method
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub compounding: Option<CompoundingMethod>,
 
     /// Fixing lag in business days
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub fixing_lag: Option<u8>,
 
     /// Settlement lag in business days
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub settlement_lag: Option<u8>,
 
     /// Holiday calendar
-    #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
     pub calendar: Option<CalendarId>,
 }
 
@@ -157,9 +180,7 @@ impl RateIndexDefinition {
 
     /// Returns true if this is an overnight index.
     #[must_use]
-    pub fn is_overnight(&self) -> bool {
-        self.tenor == Tenor::Overnight
-    }
+    pub fn is_overnight(&self) -> bool { self.tenor == Tenor::Overnight }
 
     /// Validates the rate index definition.
     ///
@@ -188,7 +209,8 @@ impl RateIndexDefinition {
 
     /// Returns the effective day count convention.
     ///
-    /// Uses the convention override if set, otherwise falls back to index metadata.
+    /// Uses the convention override if set, otherwise falls back to index
+    /// metadata.
     #[must_use]
     pub fn day_count(&self) -> DayCounter {
         self.conventions
@@ -199,7 +221,8 @@ impl RateIndexDefinition {
 
     /// Returns the effective compounding method.
     ///
-    /// Uses the convention override if set, otherwise falls back to index metadata.
+    /// Uses the convention override if set, otherwise falls back to index
+    /// metadata.
     #[must_use]
     pub fn compounding(&self) -> CompoundingMethod {
         self.conventions
@@ -210,7 +233,8 @@ impl RateIndexDefinition {
 
     /// Returns the effective fixing lag.
     ///
-    /// Uses the convention override if set, otherwise falls back to index metadata.
+    /// Uses the convention override if set, otherwise falls back to index
+    /// metadata.
     #[must_use]
     pub fn fixing_lag(&self) -> u8 {
         self.conventions
@@ -221,7 +245,8 @@ impl RateIndexDefinition {
 
     /// Returns the effective settlement lag.
     ///
-    /// Uses the convention override if set, otherwise falls back to index metadata.
+    /// Uses the convention override if set, otherwise falls back to index
+    /// metadata.
     #[must_use]
     pub fn settlement_lag(&self) -> u8 {
         self.conventions
@@ -232,7 +257,8 @@ impl RateIndexDefinition {
 
     /// Returns the effective calendar.
     ///
-    /// Uses the convention override if set, otherwise falls back to index metadata.
+    /// Uses the convention override if set, otherwise falls back to index
+    /// metadata.
     #[must_use]
     pub fn calendar(&self) -> CalendarId {
         self.conventions
@@ -245,9 +271,7 @@ impl RateIndexDefinition {
 impl IndexConventions {
     /// Creates a new conventions builder.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the day count convention.
     #[must_use]

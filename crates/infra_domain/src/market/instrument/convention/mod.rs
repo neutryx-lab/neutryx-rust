@@ -7,7 +7,8 @@
 //!
 //! Conventions are organised by asset class:
 //!
-//! - [`rates`]: Interest rate conventions (deposits, FRAs, futures, swaps, bonds, caps/floors, swaptions, inflation, cross-currency)
+//! - [`rates`]: Interest rate conventions (deposits, FRAs, futures, swaps,
+//!   bonds, caps/floors, swaptions, inflation, cross-currency)
 //! - [`fx`]: Foreign exchange conventions (spot, options, swaps)
 //! - [`credit`]: Credit conventions (CDS)
 //! - [`equity`]: Equity conventions
@@ -40,51 +41,56 @@ mod market_convention;
 mod registry;
 
 // Re-export rates types
+// Re-export commodity types
+pub use commodity::{CommodityConvention, DeliveryConvention, PriceQuotation};
+// Re-export infrastructure types
+pub use convention_set::ConventionSet;
+// Template support for bulk convention generation
+#[cfg(feature = "serde")]
+pub use convention_template::{ConventionBundle, ConventionTemplate, CurrencyDefaults};
+// Re-export credit types
+pub use credit::CdsConvention;
+// Re-export equity types
+pub use equity::{DividendConvention, EquityConvention, EquitySettlementType};
+// Re-export FX types
+pub use fx::{
+    // Option
+    CutOffTime,
+    DeltaConvention,
+    // Spot
+    FxConvention,
+    FxOptionConvention,
+    // Swap
+    FxSettlementType,
+    FxSwapConvention,
+    NearLegType,
+    PremiumCurrency,
+};
+pub use market_convention::MarketConvention;
 pub use rates::{
+    // Cross-currency
+    BasisSpreadLeg,
+    // Bond
+    BondConvention,
+    // Cap/Floor
+    CapFloorConvention,
     // Deposit
     DepositConvention,
     // FRA
     FraConvention,
     // Futures
     FuturesConvention,
-    // Swap
-    SwapConvention, SwapLegConvention,
-    // Bond
-    BondConvention,
-    // Cap/Floor
-    CapFloorConvention,
-    // Swaption
-    SettlementConvention, SwaptionConvention,
     // Inflation
-    InflationIndex, InflationInterpolation, InflationSwapConvention,
-    // Cross-currency
-    BasisSpreadLeg, XCcyBasisConvention, XCcyLegConvention,
-};
-
-// Re-export FX types
-pub use fx::{
-    // Spot
-    FxConvention,
-    // Option
-    CutOffTime, DeltaConvention, FxOptionConvention, PremiumCurrency,
+    InflationIndex,
+    InflationInterpolation,
+    InflationSwapConvention,
+    // Swaption
+    SettlementConvention,
     // Swap
-    FxSettlementType, FxSwapConvention, NearLegType,
+    SwapConvention,
+    SwapLegConvention,
+    SwaptionConvention,
+    XCcyBasisConvention,
+    XCcyLegConvention,
 };
-
-// Re-export credit types
-pub use credit::CdsConvention;
-
-// Re-export equity types
-pub use equity::{DividendConvention, EquityConvention, EquitySettlementType};
-
-// Re-export commodity types
-pub use commodity::{CommodityConvention, DeliveryConvention, PriceQuotation};
-
-// Re-export infrastructure types
-pub use convention_set::ConventionSet;
-pub use market_convention::MarketConvention;
 pub use registry::{ConventionKey, ConventionRegistry, RegistryError};
-
-// Template support for bulk convention generation
-#[cfg(feature = "serde")]
-pub use convention_template::{ConventionBundle, ConventionTemplate, CurrencyDefaults};

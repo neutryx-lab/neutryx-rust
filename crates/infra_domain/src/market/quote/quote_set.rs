@@ -28,6 +28,9 @@
 
 use std::{collections::HashMap, time::Duration};
 
+use super::{
+    error::MarketQuoteError, market_quote::MarketQuote, quote_id::QuoteId, quote_type::QuoteType,
+};
 use crate::{
     market::{
         convention::MarketConvention,
@@ -37,10 +40,6 @@ use crate::{
     },
     time::Date,
     trade::Instrument,
-};
-
-use super::{
-    error::MarketQuoteError, market_quote::MarketQuote, quote_id::QuoteId, quote_type::QuoteType,
 };
 
 /// A collection of market quotes with O(1) lookup.
@@ -343,9 +342,7 @@ impl MarketQuoteSet {
     /// assert_eq!(quote_set.len(), 0);
     /// ```
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.quotes.len()
-    }
+    pub fn len(&self) -> usize { self.quotes.len() }
 
     /// Returns `true` if the set contains no quotes.
     ///
@@ -358,9 +355,7 @@ impl MarketQuoteSet {
     /// assert!(quote_set.is_empty());
     /// ```
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.quotes.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.quotes.is_empty() }
 
     /// Returns a new `MarketQuoteSet` containing only quotes for the specified
     /// currency.
@@ -513,9 +508,7 @@ impl MarketQuoteSet {
     }
 
     /// Returns an iterator over all quotes in the set.
-    pub fn iter(&self) -> impl Iterator<Item = &MarketQuote> {
-        self.quotes.values()
-    }
+    pub fn iter(&self) -> impl Iterator<Item = &MarketQuote> { self.quotes.values() }
 
     /// Converts market quotes to instruments using the provided mapper.
     ///
@@ -663,7 +656,8 @@ impl MarketQuoteSet {
     /// # Returns
     ///
     /// A tuple of `(instruments, skipped_ids)` where:
-    /// - `instruments` are successfully created `MarketInstrument`s, sorted by maturity
+    /// - `instruments` are successfully created `MarketInstrument`s, sorted by
+    ///   maturity
     /// - `skipped_ids` are quote IDs that had no matching convention
     ///
     /// # Examples
@@ -745,11 +739,12 @@ impl MarketQuoteSet {
         (instruments, skipped_ids)
     }
 
-    /// Converts market quotes to `MarketInstrument`, returning only successful conversions.
+    /// Converts market quotes to `MarketInstrument`, returning only successful
+    /// conversions.
     ///
     /// This is a convenience method that ignores conversion errors.
-    /// Use [`to_market_instruments`](Self::to_market_instruments) if you need to handle
-    /// skipped quotes.
+    /// Use [`to_market_instruments`](Self::to_market_instruments) if you need
+    /// to handle skipped quotes.
     ///
     /// # Arguments
     ///
@@ -791,10 +786,7 @@ pub type MarketRateSet = MarketQuoteSet;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        market::DataSource,
-        time::Tenor,
-    };
+    use crate::{market::DataSource, time::Tenor};
 
     fn create_quote(
         currency: Currency,

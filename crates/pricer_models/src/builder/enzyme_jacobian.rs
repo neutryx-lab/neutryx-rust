@@ -113,7 +113,8 @@ impl JacobianResult {
 /// Enzyme AD Jacobian computation kernels.
 ///
 /// This module contains the core differentiable kernels for curve calibration.
-/// The kernels are pure functions operating on `f64` slices for Enzyme compatibility.
+/// The kernels are pure functions operating on `f64` slices for Enzyme
+/// compatibility.
 ///
 /// # Requirement 1.1
 ///
@@ -206,7 +207,15 @@ pub mod kernels {
     /// * `maturity` - Instrument maturity
     /// * `market_rate` - Market-quoted rate
     /// * `output` - Output residual (mutable for reverse mode)
-    #[autodiff(d_deposit_residual, Reverse, Duplicated, Const, Const, Const, Duplicated)]
+    #[autodiff(
+        d_deposit_residual,
+        Reverse,
+        Duplicated,
+        Const,
+        Const,
+        Const,
+        Duplicated
+    )]
     pub fn deposit_residual(
         log_df: &[f64],
         pillar_times: &[f64],
@@ -331,7 +340,8 @@ pub mod kernels {
     /// * `params` - Instrument parameters:
     ///   - Deposit: [maturity, market_rate]
     ///   - FRA: [start_time, end_time, tau, market_rate]
-    ///   - Swap: [maturity, market_rate, n_cf, cf_time_1, yf_1, ..., cf_time_n, yf_n]
+    ///   - Swap: [maturity, market_rate, n_cf, cf_time_1, yf_1, ..., cf_time_n,
+    ///     yf_n]
     ///
     /// # Returns
     ///
@@ -460,7 +470,8 @@ pub mod kernels {
 
 /// Stub module for when enzyme-ad feature is disabled.
 ///
-/// This provides the same function signatures but falls back to finite differences.
+/// This provides the same function signatures but falls back to finite
+/// differences.
 #[cfg(not(feature = "enzyme-ad"))]
 pub mod kernels {
     use pricer_core::math::linalg::DMatrix;
@@ -541,8 +552,9 @@ pub mod kernels {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_jacobian_result_from_finite_diff() {

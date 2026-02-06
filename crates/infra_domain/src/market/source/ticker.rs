@@ -21,7 +21,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    market::{core::{Currency, RateType}, quote::QuoteId},
+    market::{
+        core::{Currency, RateType},
+        quote::QuoteId,
+    },
     time::Tenor,
 };
 

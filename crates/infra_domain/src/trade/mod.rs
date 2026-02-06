@@ -67,8 +67,6 @@ pub use error::TradeError;
 pub use index::{IndexObservation, IndexType};
 pub use index_requirement::IndexRequirement;
 pub use instrument::Instrument;
-// Re-export common types from market::instrument
-pub use crate::market::instrument::AssetClass;
 pub use leg::{Direction, Leg, LegType};
 pub use payoff::{OptionType, Payoff};
 pub use pricing_instrument::{
@@ -81,3 +79,5 @@ pub use trade::{
 };
 
 pub use crate::ids::TradeId;
+// Re-export common types from market::instrument
+pub use crate::market::instrument::AssetClass;

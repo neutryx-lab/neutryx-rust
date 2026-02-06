@@ -198,7 +198,11 @@ fn compute_event_jump<T: Float, C: YieldCurve<T>>(
     let dt = from_f64::<T>(1e-5);
 
     // Ensure we don't go negative for very short maturities
-    let t_before = if maturity > dt { maturity - dt } else { T::zero() };
+    let t_before = if maturity > dt {
+        maturity - dt
+    } else {
+        T::zero()
+    };
     let t_after = maturity + dt;
 
     // Compute forward rates just before and after the event

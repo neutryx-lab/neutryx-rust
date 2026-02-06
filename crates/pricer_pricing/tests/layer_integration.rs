@@ -103,10 +103,10 @@ fn test_instrument_enum_import() {
 /// Requirement: 4.1, 4.2
 #[test]
 fn test_l1_l2_combined_usage() {
-    use pricer_core::math::smoothing::smooth_max;
     use infra_domain::trade::{
         ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument as Instrument, VanillaOption,
     };
+    use pricer_core::math::smoothing::smooth_max;
 
     // Create option using L2
     let params = InstrumentParams::new(100.0_f64, 1.0, 1.0).unwrap();

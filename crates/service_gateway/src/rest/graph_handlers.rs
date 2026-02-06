@@ -117,7 +117,8 @@ pub struct TradeSummaryDto {
     pub instrument_type: String,
     pub currency: String,
     pub notional: f64,
-    /// Maturity date (last cashflow date) as ISO 8601 string, e.g., "2025-07-15"
+    /// Maturity date (last cashflow date) as ISO 8601 string, e.g.,
+    /// "2025-07-15"
     pub maturity: String,
     /// Counterparty name
     pub counterparty: String,
@@ -241,11 +242,13 @@ impl GraphAppState {
     ///
     /// Returns `ServerError::Internal` if loading `FpML` files fails.
     pub fn new_with_sample(_trade_count: usize, cache_ttl_secs: u64) -> Result<Self, ServerError> {
-        let trades = load_fpml_trades().map_err(|e| {
-            ServerError::Internal(format!("Failed to load FpML trades: {e}"))
-        })?;
+        let trades = load_fpml_trades()
+            .map_err(|e| ServerError::Internal(format!("Failed to load FpML trades: {e}")))?;
 
-        tracing::info!("Loaded {} FpML trades from demo/data/trades/fpml/", trades.len());
+        tracing::info!(
+            "Loaded {} FpML trades from demo/data/trades/fpml/",
+            trades.len()
+        );
 
         Ok(Self {
             trades,
@@ -314,8 +317,7 @@ fn load_fpml_file(path: &Path) -> Result<FpmlTrade, String> {
     let xml = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
 
-    FpmlParser::parse(&xml)
-        .map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
+    FpmlParser::parse(&xml).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
 }
 
 // ============================================================================
@@ -526,32 +528,43 @@ fn get_instrument_type_name(trade_type: &TradeType) -> String {
     }
 }
 
-/// Extract currency, notional, maturity date, counterparty, and book from an `FpML` trade.
+/// Extract currency, notional, maturity date, counterparty, and book from an
+/// `FpML` trade.
 fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String) {
     // Get currency and notional from first leg
-    let (currency, notional) = trade.first_leg()
+    let (currency, notional) = trade
+        .first_leg()
         .map(|leg| {
             let curr = format!("{:?}", leg.currency);
-            let notl = leg.cashflows().next().map(|cf| cf.notional.abs()).unwrap_or(0.0);
+            let notl = leg
+                .cashflows()
+                .next()
+                .map(|cf| cf.notional.abs())
+                .unwrap_or(0.0);
             (curr, notl)
         })
         .unwrap_or_else(|| ("USD".to_string(), 0.0));
 
     // Get maturity as the last cashflow payment date (formatted as ISO 8601)
-    let maturity = trade.all_cashflows()
+    let maturity = trade
+        .all_cashflows()
         .map(|cf| cf.payment_date)
         .max()
         .map(|last_date| last_date.to_string())
         .unwrap_or_else(|| "N/A".to_string());
 
     // Get counterparty from metadata
-    let counterparty = trade.metadata.counterparty
+    let counterparty = trade
+        .metadata
+        .counterparty
         .as_ref()
         .map(|cp| cp.as_str().to_string())
         .unwrap_or_else(|| "Unknown".to_string());
 
     // Get book from metadata
-    let book = trade.metadata.book
+    let book = trade
+        .metadata
+        .book
         .as_ref()
         .map(|b| b.as_str().to_string())
         .unwrap_or_else(|| "Unassigned".to_string());
@@ -563,7 +576,8 @@ fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String)
 // Helper Functions
 // ============================================================================
 
-/// Extract portfolio graph from `FpML` trades, optionally filtered to specific trades
+/// Extract portfolio graph from `FpML` trades, optionally filtered to specific
+/// trades
 fn extract_fpml_portfolio_graph(
     trades: &[FpmlTrade],
     trade_ids: Option<&[String]>,
@@ -576,10 +590,7 @@ fn extract_fpml_portfolio_graph(
     let mut trade_graphs: HashMap<String, ComputationGraph> = HashMap::new();
 
     // Get all trade IDs
-    let all_trade_ids: Vec<String> = trades
-        .iter()
-        .map(|t| t.id.to_string())
-        .collect();
+    let all_trade_ids: Vec<String> = trades.iter().map(|t| t.id.to_string()).collect();
 
     // For each trade, create a graph based on its type
     for trade in trades {
@@ -775,7 +786,10 @@ mod tests {
     fn test_instrument_type_name() {
         assert_eq!(get_instrument_type_name(&TradeType::Swap), "IRS");
         assert_eq!(get_instrument_type_name(&TradeType::Ois), "OIS");
-        assert_eq!(get_instrument_type_name(&TradeType::FxForward), "FX Forward");
+        assert_eq!(
+            get_instrument_type_name(&TradeType::FxForward),
+            "FX Forward"
+        );
         assert_eq!(get_instrument_type_name(&TradeType::CapFloor), "Cap/Floor");
     }
 }

@@ -1,7 +1,8 @@
 //! Quote validation traits and implementations.
 //!
 //! This module provides the [`QuoteValidator`] trait and
-//! [`StandardQuoteValidator`] implementation for validating market quote values.
+//! [`StandardQuoteValidator`] implementation for validating market quote
+//! values.
 //!
 //! # Examples
 //!
@@ -25,9 +26,8 @@
 //! assert!(validator.validate(&quote).is_ok());
 //! ```
 
-use crate::market::core::RateType;
-
 use super::{error::MarketQuoteError, market_quote::MarketQuote};
+use crate::market::core::RateType;
 
 /// Trait for validating market quotes.
 ///
@@ -131,9 +131,7 @@ impl StandardQuoteValidator {
 
     /// Creates a new `StandardQuoteValidator`.
     #[must_use]
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// Validates the basic properties of a quote value.
     ///

@@ -12,10 +12,7 @@ fn main() {
 
 #[cfg(feature = "demo")]
 fn build_demo_gui() {
-    use std::fs;
-    use std::path::Path;
-    use std::process::Command;
-    use std::time::SystemTime;
+    use std::{fs, path::Path, process::Command, time::SystemTime};
 
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let workspace_root = Path::new(&manifest_dir).parent().unwrap().parent().unwrap();
@@ -89,7 +86,8 @@ fn build_demo_gui() {
         }
     }
 
-    /// Check if GUI rebuild is needed by comparing source and dist modification times.
+    /// Check if GUI rebuild is needed by comparing source and dist modification
+    /// times.
     fn needs_gui_rebuild(dist_dir: &Path, src_dir: &Path) -> bool {
         // Rebuild if dist doesn't exist
         let dist_index = dist_dir.join("index.html");
@@ -115,7 +113,8 @@ fn build_demo_gui() {
         false
     }
 
-    /// Recursively check if path (file or directory) has any file newer than reference time.
+    /// Recursively check if path (file or directory) has any file newer than
+    /// reference time.
     fn is_newer_than(path: &Path, reference: SystemTime) -> bool {
         if path.is_file() {
             if let Ok(meta) = fs::metadata(path) {

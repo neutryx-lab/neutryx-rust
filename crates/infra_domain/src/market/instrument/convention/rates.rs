@@ -9,11 +9,15 @@
 //! - [`BondConvention`]: Government and corporate bond conventions
 //! - [`CapFloorConvention`]: Interest rate cap/floor conventions
 //! - [`SwaptionConvention`], [`SettlementConvention`]: Swaption conventions
-//! - [`InflationSwapConvention`], [`InflationIndex`], [`InflationInterpolation`]: Inflation swap conventions
-//! - [`XCcyBasisConvention`], [`XCcyLegConvention`], [`BasisSpreadLeg`]: Cross-currency basis swap conventions
+//! - [`InflationSwapConvention`], [`InflationIndex`],
+//!   [`InflationInterpolation`]: Inflation swap conventions
+//! - [`XCcyBasisConvention`], [`XCcyLegConvention`], [`BasisSpreadLeg`]:
+//!   Cross-currency basis swap conventions
 
-use crate::market::{Currency, RateIndex};
-use crate::time::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
+use crate::{
+    market::{Currency, RateIndex},
+    time::{BusinessDayConvention, CalendarId, DayCounter, Frequency},
+};
 
 // ============================================================================
 // Deposit Conventions
@@ -21,7 +25,8 @@ use crate::time::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 
 /// Convention for a deposit (money market) instrument.
 ///
-/// Represents the market conventions for pricing and settling deposit instruments.
+/// Represents the market conventions for pricing and settling deposit
+/// instruments.
 ///
 /// # Example
 ///
@@ -375,7 +380,8 @@ impl SwapConvention {
     /// Returns the USD SOFR swap convention.
     ///
     /// - Fixed leg: Annual, ACT/360, NY calendar, Modified Following
-    /// - Float leg: Annual, ACT/360, NY calendar, Modified Following (SOFR compounded)
+    /// - Float leg: Annual, ACT/360, NY calendar, Modified Following (SOFR
+    ///   compounded)
     /// - Spot lag: 2 days
     #[must_use]
     pub fn usd_sofr() -> Self {
@@ -483,7 +489,8 @@ impl SwapConvention {
     /// Returns the EUR ESTR swap convention.
     ///
     /// - Fixed leg: Annual, ACT/360, TARGET calendar, Modified Following
-    /// - Float leg: Annual, ACT/360, TARGET calendar, Modified Following (ESTR compounded)
+    /// - Float leg: Annual, ACT/360, TARGET calendar, Modified Following (ESTR
+    ///   compounded)
     /// - Spot lag: 2 days
     #[must_use]
     pub fn eur_estr() -> Self {
@@ -1127,7 +1134,8 @@ pub enum BasisSpreadLeg {
 /// Convention for a cross-currency basis swap.
 ///
 /// Represents the market conventions for pricing and settling cross-currency
-/// basis swaps where two floating rate legs in different currencies are exchanged.
+/// basis swaps where two floating rate legs in different currencies are
+/// exchanged.
 ///
 /// # Example
 ///
@@ -1309,15 +1317,11 @@ impl XCcyBasisConvention {
 
     /// Returns the base currency of this swap.
     #[must_use]
-    pub fn base_currency(&self) -> Currency {
-        self.base_leg.currency
-    }
+    pub fn base_currency(&self) -> Currency { self.base_leg.currency }
 
     /// Returns the quote currency of this swap.
     #[must_use]
-    pub fn quote_currency(&self) -> Currency {
-        self.quote_leg.currency
-    }
+    pub fn quote_currency(&self) -> Currency { self.quote_leg.currency }
 }
 
 // ============================================================================

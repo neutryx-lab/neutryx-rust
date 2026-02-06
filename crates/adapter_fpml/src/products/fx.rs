@@ -5,14 +5,17 @@
 //! - FX Swap (fxSwap)
 //! - FX Option (fxOption)
 
-use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
-use crate::error::FpmlError;
 use infra_domain::{
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, OptionType, Payoff,
         SettlementType, Trade, TradeMetadata, TradeType,
     },
     Currency, Date,
+};
+
+use crate::{
+    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    error::FpmlError,
 };
 
 /// Parse an FX forward (fxSingleLeg) from FpML.
@@ -47,8 +50,12 @@ pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
     let ccy1_nav = XmlNavigator::new(&ccy1_section);
     let ccy2_nav = XmlNavigator::new(&ccy2_section);
 
-    let ccy1_str = ccy1_nav.find_text("currency").unwrap_or_else(|| "EUR".to_string());
-    let ccy2_str = ccy2_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+    let ccy1_str = ccy1_nav
+        .find_text("currency")
+        .unwrap_or_else(|| "EUR".to_string());
+    let ccy2_str = ccy2_nav
+        .find_text("currency")
+        .unwrap_or_else(|| "USD".to_string());
 
     let amount1 = ccy1_nav
         .find_text("amount")
@@ -158,7 +165,9 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
     // Parse all exchangedCurrency sections
     for ccy_section in fx_nav.extract_all_sections("exchangedCurrency1") {
         let ccy_nav = XmlNavigator::new(&ccy_section);
-        let currency_str = ccy_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+        let currency_str = ccy_nav
+            .find_text("currency")
+            .unwrap_or_else(|| "USD".to_string());
         let amount = ccy_nav
             .find_text("amount")
             .map(|a| parse_decimal(&a))
@@ -194,7 +203,9 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     for ccy_section in fx_nav.extract_all_sections("exchangedCurrency2") {
         let ccy_nav = XmlNavigator::new(&ccy_section);
-        let currency_str = ccy_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+        let currency_str = ccy_nav
+            .find_text("currency")
+            .unwrap_or_else(|| "USD".to_string());
         let amount = ccy_nav
             .find_text("amount")
             .map(|a| parse_decimal(&a))
@@ -262,7 +273,11 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
     // Parse option type (Call/Put)
     let option_type_str = opt_nav
         .find_text("optionType")
-        .or_else(|| opt_nav.find_text("callCurrencyAmount").map(|_| "Call".to_string()))
+        .or_else(|| {
+            opt_nav
+                .find_text("callCurrencyAmount")
+                .map(|_| "Call".to_string())
+        })
         .unwrap_or_else(|| "Call".to_string());
 
     let option_type = if option_type_str.to_lowercase().contains("put") {
@@ -316,7 +331,8 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
         .transpose()?
         .unwrap_or(0.0);
 
-    // Parse currency (look inside callCurrencyAmount/putCurrencyAmount for currency)
+    // Parse currency (look inside callCurrencyAmount/putCurrencyAmount for
+    // currency)
     let currency_str = opt_nav
         .extract_section("callCurrencyAmount")
         .and_then(|section| XmlNavigator::new(&section).find_text("currency"))

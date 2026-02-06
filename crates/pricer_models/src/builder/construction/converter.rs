@@ -1,27 +1,29 @@
 //! Definition to MarketInstrument converter.
 //!
 //! This module converts `InstrumentDefinition` and `EventInstrument` from
-//! infra_domain to `MarketInstrument<f64>` used by the pricer_models calibration engine.
+//! infra_domain to `MarketInstrument<f64>` used by the pricer_models
+//! calibration engine.
 //!
 //! Note: Currently uses `f64` as the bootstrapper only supports `f64`.
 
 use infra_domain::market::{InstrumentDefinition, RateType};
 
-use crate::market::curves::{Frequency, MarketInstrument};
-
 use super::error::ConstructionError;
+use crate::market::curves::{Frequency, MarketInstrument};
 
 /// Reference date for converting event dates to maturities.
 /// Represented as (year, month, day).
 pub type ReferenceDate = (i32, u32, u32);
 
-/// Converts an `InstrumentDefinition` and rate value to a `MarketInstrument<f64>`.
+/// Converts an `InstrumentDefinition` and rate value to a
+/// `MarketInstrument<f64>`.
 ///
 /// # Arguments
 ///
 /// * `def` - The instrument definition from infra_domain
 /// * `rate` - The market rate value
-/// * `reference_date` - Optional reference date for event instruments (year, month, day)
+/// * `reference_date` - Optional reference date for event instruments (year,
+///   month, day)
 ///
 /// # Returns
 ///
@@ -87,12 +89,12 @@ pub fn definition_to_instrument(
         }
 
         RateType::Fra => {
-            let (start_years, end_years) = def.fra_tenors().ok_or_else(|| {
-                ConstructionError::TenorParseError {
-                    tenor: def.tenor.clone(),
-                    message: "FRA requires start x end tenor format (e.g., '3x6')".to_string(),
-                }
-            })?;
+            let (start_years, end_years) =
+                def.fra_tenors()
+                    .ok_or_else(|| ConstructionError::TenorParseError {
+                        tenor: def.tenor.clone(),
+                        message: "FRA requires start x end tenor format (e.g., '3x6')".to_string(),
+                    })?;
 
             Ok(MarketInstrument::Fra {
                 start: start_years,
@@ -115,22 +117,18 @@ pub fn definition_to_instrument(
         }
 
         RateType::Event => {
-            let event_date_str = def.event_date.as_ref().ok_or_else(|| {
-                ConstructionError::InvalidConfig {
-                    message: format!(
-                        "Event instrument '{}' requires eventDate field",
-                        def.id
-                    ),
-                }
-            })?;
+            let event_date_str =
+                def.event_date
+                    .as_ref()
+                    .ok_or_else(|| ConstructionError::InvalidConfig {
+                        message: format!("Event instrument '{}' requires eventDate field", def.id),
+                    })?;
 
-            let ref_date = reference_date.ok_or_else(|| {
-                ConstructionError::InvalidConfig {
-                    message: format!(
-                        "Event instrument '{}' requires reference_date for maturity calculation",
-                        def.id
-                    ),
-                }
+            let ref_date = reference_date.ok_or_else(|| ConstructionError::InvalidConfig {
+                message: format!(
+                    "Event instrument '{}' requires reference_date for maturity calculation",
+                    def.id
+                ),
             })?;
 
             let maturity = parse_date_to_years(event_date_str, ref_date).map_err(|e| {
@@ -154,7 +152,8 @@ pub fn definition_to_instrument(
     }
 }
 
-/// Parses a date string (YYYY-MM-DD) and converts it to years from reference date.
+/// Parses a date string (YYYY-MM-DD) and converts it to years from reference
+/// date.
 ///
 /// Uses a simple 365-day year approximation for maturity calculation.
 fn parse_date_to_years(date_str: &str, reference_date: ReferenceDate) -> Result<f64, String> {
@@ -205,8 +204,9 @@ fn infra_freq_to_pricer_freq(freq: infra_domain::time::Frequency) -> Frequency {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use infra_domain::market::Currency;
+
+    use super::*;
 
     #[test]
     fn test_convert_deposit() {
@@ -246,7 +246,9 @@ mod tests {
 
         match inst {
             MarketInstrument::Irs {
-                maturity, rate, fixed_frequency,
+                maturity,
+                rate,
+                fixed_frequency,
             } => {
                 assert!((maturity - 10.0).abs() < 1e-6);
                 assert!((rate - 0.035).abs() < 1e-10);

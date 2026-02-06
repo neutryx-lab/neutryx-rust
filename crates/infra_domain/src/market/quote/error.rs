@@ -27,7 +27,8 @@ use crate::market::core::RateType;
 ///
 /// # Variants
 ///
-/// - `InvalidQuote`: The quote value is invalid (NaN, Infinite, or out of bounds)
+/// - `InvalidQuote`: The quote value is invalid (NaN, Infinite, or out of
+///   bounds)
 /// - `StaleData`: The quote data is older than the acceptable threshold
 /// - `MissingQuote`: A required quote was not found
 /// - `MappingFailed`: Failed to map a quote to an instrument

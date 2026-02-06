@@ -2,10 +2,9 @@
 //!
 //! Main entry point for parsing FpML documents into Trade objects.
 
-use crate::common::XmlNavigator;
-use crate::error::FpmlError;
-use crate::products;
 use infra_domain::trade::Trade;
+
+use crate::{common::XmlNavigator, error::FpmlError, products};
 
 /// FpML parser for trade definitions.
 ///

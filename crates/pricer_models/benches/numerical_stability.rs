@@ -6,7 +6,8 @@
 //! - AD variance calculation performance
 //! - Tikhonov regularisation overhead
 //!
-//! Run with: `cargo bench --bench numerical_stability --features global-bootstrap`
+//! Run with: `cargo bench --bench numerical_stability --features
+//! global-bootstrap`
 
 #![cfg(feature = "global-bootstrap")]
 #![allow(missing_docs)]
@@ -68,9 +69,7 @@ fn bench_jacobian_validation(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("validate_dmatrix", size),
             &jacobian,
-            |b, j| {
-                b.iter(|| validate_jacobian_dmatrix(black_box(j), 1e-14))
-            },
+            |b, j| b.iter(|| validate_jacobian_dmatrix(black_box(j), 1e-14)),
         );
     }
 
@@ -88,13 +87,9 @@ fn bench_condition_number(c: &mut Criterion) {
         let jacobian = create_test_jacobian(*size);
 
         group.throughput(Throughput::Elements(*size as u64));
-        group.bench_with_input(
-            BenchmarkId::new("estimate", size),
-            &jacobian,
-            |b, j| {
-                b.iter(|| estimate_condition_number(black_box(j)))
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("estimate", size), &jacobian, |b, j| {
+            b.iter(|| estimate_condition_number(black_box(j)))
+        });
     }
 
     group.finish();
@@ -145,8 +140,7 @@ fn bench_jacobian_variance(c: &mut Criterion) {
 
     for size in [3, 5, 10].iter() {
         let instruments = create_ois_instruments(*size);
-        let problem: CalibrationProblem<f64, _> =
-            CalibrationProblem::new(instruments).unwrap();
+        let problem: CalibrationProblem<f64, _> = CalibrationProblem::new(instruments).unwrap();
         let x = problem.initial_guess();
 
         // Pre-compute Jacobians
@@ -166,9 +160,7 @@ fn bench_jacobian_variance(c: &mut Criterion) {
             BenchmarkId::new("should_fallback", size),
             &(&problem, &jacobian1, &jacobian2),
             |b, (prob, j1, j2)| {
-                b.iter(|| {
-                    prob.should_fallback_from_ad(black_box(j1), black_box(j2), 1e6)
-                })
+                b.iter(|| prob.should_fallback_from_ad(black_box(j1), black_box(j2), 1e6))
             },
         );
     }
@@ -185,8 +177,7 @@ fn bench_jacobian_methods(c: &mut Criterion) {
 
     for size in [3, 5, 10].iter() {
         let instruments = create_ois_instruments(*size);
-        let problem: CalibrationProblem<f64, _> =
-            CalibrationProblem::new(instruments).unwrap();
+        let problem: CalibrationProblem<f64, _> = CalibrationProblem::new(instruments).unwrap();
         let x = problem.initial_guess();
 
         group.throughput(Throughput::Elements(*size as u64));
@@ -195,18 +186,14 @@ fn bench_jacobian_methods(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::new("finite_diff", size),
             &(&problem, &x),
-            |b, (prob, x_val)| {
-                b.iter(|| prob.compute_jacobian_finite_diff(black_box(x_val)))
-            },
+            |b, (prob, x_val)| b.iter(|| prob.compute_jacobian_finite_diff(black_box(x_val))),
         );
 
         // Central difference method
         group.bench_with_input(
             BenchmarkId::new("central_diff", size),
             &(&problem, &x),
-            |b, (prob, x_val)| {
-                b.iter(|| prob.compute_jacobian_central_diff(black_box(x_val)))
-            },
+            |b, (prob, x_val)| b.iter(|| prob.compute_jacobian_central_diff(black_box(x_val))),
         );
     }
 
@@ -241,8 +228,7 @@ fn bench_calibration_with_stability(c: &mut Criterion) {
             BenchmarkId::new("with_jacobian_inverse", size),
             &instruments,
             |b, instr| {
-                let config = GlobalBootstrapConfig::default()
-                    .with_jacobian_inverse(true);
+                let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
                 let bootstrapper = GlobalBootstrapper::new(config);
                 b.iter(|| bootstrapper.calibrate(black_box(instr)))
             },

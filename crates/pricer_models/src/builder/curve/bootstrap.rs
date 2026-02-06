@@ -793,8 +793,8 @@ mod tests {
 
         // Two jumps: 25 bps at t=0.25, another 25 bps at t=0.75
         let jumps: Vec<(f64, f64)> = vec![
-            (0.25, -0.0025),   // First jump cumulative
-            (0.75, -0.005),    // Second jump cumulative (including first)
+            (0.25, -0.0025), // First jump cumulative
+            (0.75, -0.005),  // Second jump cumulative (including first)
         ];
 
         let bootstrapper = CurveBootstrapper::new();
@@ -874,16 +874,18 @@ mod tests {
 
     #[test]
     fn test_bootstrap_to_curve_with_jumps_from_definition() {
-        use infra_domain::market::definition::JumpPillar;
-        use infra_domain::time::{Date, DayCounter};
+        use infra_domain::{
+            market::definition::JumpPillar,
+            time::{Date, DayCounter},
+        };
 
         let valuation = Date::from_ymd(2024, 1, 1).unwrap();
 
         // Create a simple curve definition with a jump
         let jump = JumpPillar::new(
-            Date::from_ymd(2024, 6, 12).unwrap(),  // ~0.45 years
-            25.0,   // 25 bps
-            0.8,    // 80% confidence
+            Date::from_ymd(2024, 6, 12).unwrap(), // ~0.45 years
+            25.0,                                 // 25 bps
+            0.8,                                  // 80% confidence
         );
 
         let instruments = vec![

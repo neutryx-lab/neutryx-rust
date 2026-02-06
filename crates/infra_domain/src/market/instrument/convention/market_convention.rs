@@ -333,7 +333,11 @@ mod tests {
         ] {
             let quote_id = QuoteId::new(currency, Tenor::ThreeMonths, RateType::Deposit);
             let conv = MarketConvention::for_quote_id(&quote_id);
-            assert!(conv.is_some(), "Deposit convention should exist for {:?}", currency);
+            assert!(
+                conv.is_some(),
+                "Deposit convention should exist for {:?}",
+                currency
+            );
             assert!(conv.unwrap().is_deposit());
         }
     }
@@ -343,7 +347,11 @@ mod tests {
         for currency in [Currency::USD, Currency::EUR, Currency::GBP, Currency::JPY] {
             let quote_id = QuoteId::new(currency, Tenor::FiveYears, RateType::Swap);
             let conv = MarketConvention::for_quote_id(&quote_id);
-            assert!(conv.is_some(), "Swap convention should exist for {:?}", currency);
+            assert!(
+                conv.is_some(),
+                "Swap convention should exist for {:?}",
+                currency
+            );
             assert!(conv.unwrap().is_swap());
         }
 
@@ -357,7 +365,11 @@ mod tests {
         for currency in [Currency::USD, Currency::EUR, Currency::GBP, Currency::JPY] {
             let quote_id = QuoteId::new(currency, Tenor::OneYear, RateType::Ois);
             let conv = MarketConvention::for_quote_id(&quote_id);
-            assert!(conv.is_some(), "OIS convention should exist for {:?}", currency);
+            assert!(
+                conv.is_some(),
+                "OIS convention should exist for {:?}",
+                currency
+            );
             assert!(conv.unwrap().is_ois());
         }
     }

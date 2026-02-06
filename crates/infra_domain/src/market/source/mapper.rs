@@ -29,7 +29,10 @@
 //! ```
 
 use crate::{
-    market::{core::RateType, quote::{MarketQuote, MarketQuoteError}},
+    market::{
+        core::RateType,
+        quote::{MarketQuote, MarketQuoteError},
+    },
     time::{Date, EndOfMonthRule},
     trade::Instrument,
 };
@@ -306,7 +309,7 @@ impl InstrumentMapper for StandardInstrumentMapper {
 mod tests {
     use super::*;
     use crate::{
-        market::{Currency, DataSource, QuoteType, QuoteId},
+        market::{Currency, DataSource, QuoteId, QuoteType},
         time::Tenor,
     };
 

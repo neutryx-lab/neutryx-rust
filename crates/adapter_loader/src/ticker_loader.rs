@@ -50,13 +50,13 @@
 
 use std::{fs::File, io::BufReader, path::Path};
 
-use serde::Deserialize;
-
-use crate::{error::LoaderError, JsonLoader};
 use infra_domain::{
     market::{core::RateType, quote::QuoteId, Currency, TickerMapping},
     time::Tenor,
 };
+use serde::Deserialize;
+
+use crate::{error::LoaderError, JsonLoader};
 
 /// A single ticker mapping entry for deserialisation.
 ///
@@ -76,9 +76,7 @@ pub struct TickerMappingEntry {
 impl TickerMappingEntry {
     /// Converts this entry to a [`QuoteId`].
     #[must_use]
-    pub fn to_quote_id(&self) -> QuoteId {
-        QuoteId::new(self.currency, self.tenor, self.rate_type)
-    }
+    pub fn to_quote_id(&self) -> QuoteId { QuoteId::new(self.currency, self.tenor, self.rate_type) }
 }
 
 /// Loader for ticker mapping files.
@@ -155,7 +153,8 @@ impl TickerMappingLoader {
 
     /// Loads ticker mappings from a CSV file.
     ///
-    /// The CSV file should have columns: `ticker`, `currency`, `tenor`, `rate_type`.
+    /// The CSV file should have columns: `ticker`, `currency`, `tenor`,
+    /// `rate_type`.
     ///
     /// # Arguments
     ///

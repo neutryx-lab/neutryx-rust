@@ -39,12 +39,12 @@ mod strategy;
 mod wrappers;
 
 pub use error::LinearAlgebraError;
+#[cfg(feature = "sparse")]
+pub use sparse_strategy::SparseLUStrategy;
 pub use strategy::{
     forward_substitution, lower_triangular_inverse, LUStrategy, LinearSolveStrategy,
     LowerTriangularStrategy,
 };
-#[cfg(feature = "sparse")]
-pub use sparse_strategy::SparseLUStrategy;
 pub use wrappers::{
     cholesky, cholesky_solve, determinant, frobenius_norm, inverse, lu_decompose, lu_solve,
     mat_mat_mul, mat_vec_mul, qr_decompose, qr_solve, svd_solve, trace,

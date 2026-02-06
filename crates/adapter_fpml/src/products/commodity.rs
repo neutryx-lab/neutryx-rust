@@ -5,13 +5,16 @@
 //! - Commodity Option (commodityOption)
 //! - Commodity Forward (commodityForward)
 
-use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
-use crate::error::FpmlError;
 use infra_domain::{
     trade::{
         Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeMetadata, TradeType,
     },
     Currency, Date,
+};
+
+use crate::{
+    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    error::FpmlError,
 };
 
 /// Parse a commodity swap from FpML.

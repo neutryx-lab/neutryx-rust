@@ -490,7 +490,8 @@ impl<T: Float> GlobalBootstrapResult<T> {
     /// Check if IFT sensitivity computation is possible.
     ///
     /// Returns `true` if the Jacobian inverse is cached and the calibration
-    /// converged, which are prerequisites for IFT-based sensitivity calculation.
+    /// converged, which are prerequisites for IFT-based sensitivity
+    /// calculation.
     ///
     /// # Requirement: 3.2
     pub fn can_compute_ift(&self) -> bool { self.jacobian_inverse.is_some() && self.converged }
@@ -512,8 +513,8 @@ impl<T: Float> GlobalBootstrapResult<T> {
     ///
     /// # Arguments
     ///
-    /// * `dF_dm` - Sensitivity of residual function to market parameter,
-    ///             length must equal number of pillars/instruments.
+    /// * `dF_dm` - Sensitivity of residual function to market parameter, length
+    ///   must equal number of pillars/instruments.
     ///
     /// # Returns
     ///
@@ -586,14 +587,16 @@ impl<T: Float> GlobalBootstrapResult<T> {
     ///
     /// # Arguments
     ///
-    /// * `dF_dm_batch` - Matrix of sensitivities, shape (n_instruments, n_params).
-    ///                   Each column is ∂F/∂m_i for market parameter i.
+    /// * `dF_dm_batch` - Matrix of sensitivities, shape (n_instruments,
+    ///   n_params). Each column is ∂F/∂m_i for market parameter i.
     ///
     /// # Returns
     ///
-    /// * `Ok(DMatrix<T>)` - Sensitivity matrix ∂x*/∂M, shape (n_pillars, n_params)
+    /// * `Ok(DMatrix<T>)` - Sensitivity matrix ∂x*/∂M, shape (n_pillars,
+    ///   n_params)
     /// * `Err(IftError::NoJacobianInverse)` - If J⁻¹ is not cached
-    /// * `Err(IftError::BatchDimensionMismatch)` - If rows don't match n_instruments
+    /// * `Err(IftError::BatchDimensionMismatch)` - If rows don't match
+    ///   n_instruments
     ///
     /// # Requirement: 3.3
     ///
@@ -1756,7 +1759,10 @@ mod tests {
         let dF_dm = vec![0.0001; result.pillars.len()];
         let err = result.ift_sensitivity(&dF_dm).unwrap_err();
 
-        assert!(matches!(err, super::super::super::IftError::NoJacobianInverse));
+        assert!(matches!(
+            err,
+            super::super::super::IftError::NoJacobianInverse
+        ));
     }
 
     #[test]
@@ -1816,7 +1822,10 @@ mod tests {
         let dF_dm_batch = DMatrix::from_element(result.pillars.len(), 2, 0.0001);
         let err = result.ift_sensitivity_batch(&dF_dm_batch).unwrap_err();
 
-        assert!(matches!(err, super::super::super::IftError::NoJacobianInverse));
+        assert!(matches!(
+            err,
+            super::super::super::IftError::NoJacobianInverse
+        ));
     }
 
     #[test]

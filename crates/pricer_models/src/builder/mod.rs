@@ -74,6 +74,16 @@ pub mod vol;
 // =============================================================================
 // Public Re-exports: Curve Calibration
 // =============================================================================
+// =============================================================================
+// Public Re-exports: Instrument Compilation (Requirement 1, 8)
+// =============================================================================
+pub use compile::{CompileError, CompiledInstrument, InstrumentCompiler, InstrumentType};
+// =============================================================================
+// Public Re-exports: Curve Construction
+// =============================================================================
+pub use construction::{
+    ConstructionConfig, ConstructionError, ConstructionResult, CurveConstructionEngine,
+};
 pub use curve::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
 #[cfg(feature = "global-bootstrap")]
 pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
@@ -82,14 +92,16 @@ pub use engine::{
     CalibrationEngine, CalibrationEngineConfig, CalibrationResult, GlobalCalibrationEngine,
     SequentialCalibrationEngine,
 };
-pub use error::{
-    CalibrationError, IftError, JacobianQuality, NumericalDiagnostics, RegularisationType,
-    validate_jacobian_matrix,
-};
+#[cfg(feature = "global-bootstrap")]
+pub use enzyme_jacobian::JacobianResult;
 #[cfg(feature = "global-bootstrap")]
 pub use error::{
     apply_tikhonov_regularisation, estimate_condition_number, should_apply_regularisation,
     validate_jacobian_dmatrix,
+};
+pub use error::{
+    validate_jacobian_matrix, CalibrationError, IftError, JacobianQuality, NumericalDiagnostics,
+    RegularisationType,
 };
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
@@ -99,15 +111,6 @@ pub use jump::{JumpConfig, JumpPillar};
 pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
 #[cfg(feature = "global-bootstrap")]
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
-#[cfg(feature = "global-bootstrap")]
-pub use enzyme_jacobian::JacobianResult;
-// =============================================================================
-// Public Re-exports: Curve Construction
-// =============================================================================
-pub use construction::{
-    ConstructionConfig, ConstructionError, ConstructionResult, CurveConstructionEngine,
-};
-
 // =============================================================================
 // Public Re-exports: Vol Calibration
 // =============================================================================
@@ -116,11 +119,6 @@ pub use vol::{
     SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrationDiagnostics,
     SliceCalibrationResult, SliceCalibrator, VolCubeBuilder, VolCubeResult, VolQuote,
 };
-
-// =============================================================================
-// Public Re-exports: Instrument Compilation (Requirement 1, 8)
-// =============================================================================
-pub use compile::{CompileError, CompiledInstrument, InstrumentCompiler, InstrumentType};
 
 // =============================================================================
 // Bootstrap Error and Result Types

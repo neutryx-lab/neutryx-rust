@@ -9,10 +9,7 @@ use super::{
     common::{NotionalSchedule, PayerReceiver},
     error::InstrumentError,
 };
-use crate::{
-    time::EndOfMonthRule,
-    Currency, Date, Frequency, RateIndex, Tenor,
-};
+use crate::{time::EndOfMonthRule, Currency, Date, Frequency, RateIndex, Tenor};
 
 // ============================================================================
 // Floating Rate Note (FRN)

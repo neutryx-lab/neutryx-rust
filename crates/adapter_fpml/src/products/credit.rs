@@ -4,14 +4,17 @@
 //! - Credit Default Swap (creditDefaultSwap)
 //! - Credit Default Swap Index (CDX, iTraxx)
 
-use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
-use crate::error::FpmlError;
 use infra_domain::{
     trade::{
         Cashflow, CashflowType, Direction, Leg, LegType, Payoff, ProtectionSide, Trade,
         TradeMetadata, TradeType,
     },
     Currency, Date,
+};
+
+use crate::{
+    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    error::FpmlError,
 };
 
 /// Parse a credit default swap from FpML.
@@ -71,7 +74,9 @@ pub fn parse_credit_default_swap(xml: &str) -> Result<Trade, FpmlError> {
         .unwrap_or(0.0);
 
     // Parse currency
-    let currency_str = cds_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+    let currency_str = cds_nav
+        .find_text("currency")
+        .unwrap_or_else(|| "USD".to_string());
     let currency = parse_currency(&currency_str);
 
     // Parse fixed rate (premium)
@@ -212,7 +217,9 @@ pub fn parse_credit_default_swap_index(xml: &str) -> Result<Trade, FpmlError> {
         .transpose()?
         .unwrap_or(0.0);
 
-    let currency_str = cds_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+    let currency_str = cds_nav
+        .find_text("currency")
+        .unwrap_or_else(|| "USD".to_string());
     let currency = parse_currency(&currency_str);
 
     // Parse fixed rate

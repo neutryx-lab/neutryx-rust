@@ -427,7 +427,10 @@ where
     pub fn validate_jacobian_with_diagnostics(
         &self,
         jacobian: &DMatrix<T>,
-    ) -> (super::error::JacobianQuality, super::error::NumericalDiagnostics<T>) {
+    ) -> (
+        super::error::JacobianQuality,
+        super::error::NumericalDiagnostics<T>,
+    ) {
         super::error::validate_jacobian_dmatrix(jacobian, from_f64(1e-14))
     }
 
@@ -685,7 +688,8 @@ where
     /// Compute variance between two Jacobian matrices.
     ///
     /// Calculates the mean squared difference between corresponding elements.
-    /// Used to detect AD instability by comparing AD Jacobian with finite difference.
+    /// Used to detect AD instability by comparing AD Jacobian with finite
+    /// difference.
     pub fn compute_jacobian_variance(&self, j1: &DMatrix<T>, j2: &DMatrix<T>) -> T {
         let n = j1.nrows();
         let m = j1.ncols();
@@ -774,7 +778,8 @@ where
         Self::from_compiled_with_config(instruments, CalibrationProblemConfig::default())
     }
 
-    /// Create a new calibration problem from compiled instruments with custom config.
+    /// Create a new calibration problem from compiled instruments with custom
+    /// config.
     ///
     /// # Arguments
     ///
@@ -1212,7 +1217,6 @@ where
             }
         }
     }
-
 }
 
 // =============================================================================
@@ -1591,8 +1595,7 @@ mod tests {
             allow_extrapolation: true,
         };
 
-        let problem =
-            CalibrationProblem::from_compiled_with_config(instruments, config).unwrap();
+        let problem = CalibrationProblem::from_compiled_with_config(instruments, config).unwrap();
 
         assert_eq!(
             problem.config().jacobian_method,
@@ -1686,12 +1689,13 @@ mod tests {
     // from_market_instruments Tests (Requirement 2)
     // =========================================================================
 
-    use infra_domain::market::convention::{DepositConvention, FraConvention, SwapConvention};
-    use infra_domain::market::{
-        convention::MarketConvention, Currency, MarketInstrument as InfraMasterInstrument, RateId,
-        RateType,
+    use infra_domain::{
+        market::{
+            convention::{DepositConvention, FraConvention, MarketConvention, SwapConvention},
+            Currency, MarketInstrument as InfraMasterInstrument, RateId, RateType,
+        },
+        time::{Date, Tenor},
     };
-    use infra_domain::time::{Date, Tenor};
 
     fn create_infra_market_instruments() -> (Vec<InfraMasterInstrument>, Date) {
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
@@ -1834,7 +1838,8 @@ mod tests {
         let jacobian2 = jacobian1.clone();
 
         let threshold = 1e6;
-        let (should_fallback, variance) = problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
+        let (should_fallback, variance) =
+            problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
 
         assert!(!should_fallback);
         assert!(variance < threshold);
@@ -1852,12 +1857,14 @@ mod tests {
         let mut jacobian2 = jacobian1.clone();
         for i in 0..jacobian2.nrows() {
             for j in 0..jacobian2.ncols() {
-                jacobian2[(i, j)] += 2000.0; // Add large perturbation (2000^2 = 4e6 > 1e6)
+                jacobian2[(i, j)] += 2000.0; // Add large perturbation (2000^2 =
+                                             // 4e6 > 1e6)
             }
         }
 
         let threshold = 1e6;
-        let (should_fallback, variance) = problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
+        let (should_fallback, variance) =
+            problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
 
         // Variance = mean((2000)^2) = 4e6 > 1e6 threshold
         assert!(should_fallback);

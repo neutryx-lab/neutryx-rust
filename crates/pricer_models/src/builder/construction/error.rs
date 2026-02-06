@@ -2,9 +2,10 @@
 //!
 //! This module provides error types for the curve construction engine.
 
+use infra_domain::market::{
+    CurveDefError, InstrumentDefError, RateIndexDefError, RateType, RegistryError,
+};
 use thiserror::Error;
-
-use infra_domain::market::{CurveDefError, InstrumentDefError, RateIndexDefError, RegistryError, RateType};
 
 /// Errors that can occur during curve construction.
 #[derive(Debug, Clone, Error)]

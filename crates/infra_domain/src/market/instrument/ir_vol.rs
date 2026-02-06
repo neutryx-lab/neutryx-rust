@@ -499,7 +499,8 @@ impl std::fmt::Display for CapFloor {
 ///
 /// These instruments are used for calibrating IR volatility surfaces.
 /// The standard market convention quotes swaption volatilities in a cube
-/// (expiry x underlying tenor x strike) and cap/floor volatilities in a surface.
+/// (expiry x underlying tenor x strike) and cap/floor volatilities in a
+/// surface.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum IrVolInstrument {
@@ -665,12 +666,12 @@ impl SwaptionBuilder {
     /// - Notional is not specified
     /// - Validation fails
     pub fn build(self) -> Result<Swaption, InstrumentError> {
-        let strike = self.strike.ok_or_else(|| {
-            InstrumentError::invalid_parameter("Strike must be specified")
-        })?;
-        let notional = self.notional.ok_or_else(|| {
-            InstrumentError::invalid_parameter("Notional must be specified")
-        })?;
+        let strike = self
+            .strike
+            .ok_or_else(|| InstrumentError::invalid_parameter("Strike must be specified"))?;
+        let notional = self
+            .notional
+            .ok_or_else(|| InstrumentError::invalid_parameter("Notional must be specified"))?;
 
         let swaption = Swaption {
             underlying_swap_tenor: self.underlying_swap_tenor,
@@ -800,9 +801,9 @@ impl CapFloorBuilder {
                 "Cap/floor type must be specified. Call cap(), floor(), or collar() before build()",
             )
         })?;
-        let notional = self.notional.ok_or_else(|| {
-            InstrumentError::invalid_parameter("Notional must be specified")
-        })?;
+        let notional = self
+            .notional
+            .ok_or_else(|| InstrumentError::invalid_parameter("Notional must be specified"))?;
 
         let cap_floor = CapFloor {
             cap_floor_type,
@@ -1114,16 +1115,13 @@ mod tests {
 
     #[test]
     fn test_swaption_builder() {
-        let swaption = SwaptionBuilder::new(
-            Date::from_ymd(2026, 1, 15).unwrap(),
-            Tenor::TenYears,
-        )
-        .strike(0.03)
-        .notional(10_000_000.0)
-        .currency(Currency::USD)
-        .payer()
-        .build()
-        .unwrap();
+        let swaption = SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
+            .strike(0.03)
+            .notional(10_000_000.0)
+            .currency(Currency::USD)
+            .payer()
+            .build()
+            .unwrap();
 
         assert_eq!(swaption.strike, 0.03);
         assert_eq!(swaption.notional, 10_000_000.0);
@@ -1132,54 +1130,42 @@ mod tests {
 
     #[test]
     fn test_swaption_builder_receiver() {
-        let swaption = SwaptionBuilder::new(
-            Date::from_ymd(2026, 1, 15).unwrap(),
-            Tenor::TenYears,
-        )
-        .strike(0.03)
-        .notional(10_000_000.0)
-        .receiver()
-        .build()
-        .unwrap();
+        let swaption = SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
+            .strike(0.03)
+            .notional(10_000_000.0)
+            .receiver()
+            .build()
+            .unwrap();
 
         assert!(!swaption.is_payer());
     }
 
     #[test]
     fn test_swaption_builder_missing_strike() {
-        let result = SwaptionBuilder::new(
-            Date::from_ymd(2026, 1, 15).unwrap(),
-            Tenor::TenYears,
-        )
-        .notional(10_000_000.0)
-        .build();
+        let result = SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
+            .notional(10_000_000.0)
+            .build();
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_swaption_builder_missing_notional() {
-        let result = SwaptionBuilder::new(
-            Date::from_ymd(2026, 1, 15).unwrap(),
-            Tenor::TenYears,
-        )
-        .strike(0.03)
-        .build();
+        let result = SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
+            .strike(0.03)
+            .build();
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_capfloor_builder_cap() {
-        let cap = CapFloorBuilder::new(
-            Date::from_ymd(2025, 1, 1).unwrap(),
-            Tenor::FiveYears,
-        )
-        .cap(0.03)
-        .index(RateIndex::Sofr)
-        .notional(10_000_000.0)
-        .build()
-        .unwrap();
+        let cap = CapFloorBuilder::new(Date::from_ymd(2025, 1, 1).unwrap(), Tenor::FiveYears)
+            .cap(0.03)
+            .index(RateIndex::Sofr)
+            .notional(10_000_000.0)
+            .build()
+            .unwrap();
 
         assert_eq!(cap.cap_floor_type, CapFloorType::Cap);
         assert_eq!(cap.strikes, vec![0.03]);
@@ -1187,15 +1173,12 @@ mod tests {
 
     #[test]
     fn test_capfloor_builder_floor() {
-        let floor = CapFloorBuilder::new(
-            Date::from_ymd(2025, 1, 1).unwrap(),
-            Tenor::FiveYears,
-        )
-        .floor(0.01)
-        .index(RateIndex::Sofr)
-        .notional(10_000_000.0)
-        .build()
-        .unwrap();
+        let floor = CapFloorBuilder::new(Date::from_ymd(2025, 1, 1).unwrap(), Tenor::FiveYears)
+            .floor(0.01)
+            .index(RateIndex::Sofr)
+            .notional(10_000_000.0)
+            .build()
+            .unwrap();
 
         assert_eq!(floor.cap_floor_type, CapFloorType::Floor);
         assert_eq!(floor.strikes, vec![0.01]);
@@ -1203,15 +1186,12 @@ mod tests {
 
     #[test]
     fn test_capfloor_builder_collar() {
-        let collar = CapFloorBuilder::new(
-            Date::from_ymd(2025, 1, 1).unwrap(),
-            Tenor::FiveYears,
-        )
-        .collar(0.01, 0.05)
-        .index(RateIndex::Sofr)
-        .notional(10_000_000.0)
-        .build()
-        .unwrap();
+        let collar = CapFloorBuilder::new(Date::from_ymd(2025, 1, 1).unwrap(), Tenor::FiveYears)
+            .collar(0.01, 0.05)
+            .index(RateIndex::Sofr)
+            .notional(10_000_000.0)
+            .build()
+            .unwrap();
 
         assert_eq!(collar.cap_floor_type, CapFloorType::Collar);
         assert_eq!(collar.strikes, vec![0.01, 0.05]);
@@ -1219,39 +1199,30 @@ mod tests {
 
     #[test]
     fn test_capfloor_builder_missing_type() {
-        let result = CapFloorBuilder::new(
-            Date::from_ymd(2025, 1, 1).unwrap(),
-            Tenor::FiveYears,
-        )
-        .notional(10_000_000.0)
-        .build();
+        let result = CapFloorBuilder::new(Date::from_ymd(2025, 1, 1).unwrap(), Tenor::FiveYears)
+            .notional(10_000_000.0)
+            .build();
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_capfloor_builder_missing_notional() {
-        let result = CapFloorBuilder::new(
-            Date::from_ymd(2025, 1, 1).unwrap(),
-            Tenor::FiveYears,
-        )
-        .cap(0.03)
-        .build();
+        let result = CapFloorBuilder::new(Date::from_ymd(2025, 1, 1).unwrap(), Tenor::FiveYears)
+            .cap(0.03)
+            .build();
 
         assert!(result.is_err());
     }
 
     #[test]
     fn test_capfloor_builder_with_frequency() {
-        let cap = CapFloorBuilder::new(
-            Date::from_ymd(2025, 1, 1).unwrap(),
-            Tenor::FiveYears,
-        )
-        .cap(0.03)
-        .notional(10_000_000.0)
-        .frequency(Frequency::Monthly)
-        .build()
-        .unwrap();
+        let cap = CapFloorBuilder::new(Date::from_ymd(2025, 1, 1).unwrap(), Tenor::FiveYears)
+            .cap(0.03)
+            .notional(10_000_000.0)
+            .frequency(Frequency::Monthly)
+            .build()
+            .unwrap();
 
         assert_eq!(cap.payment_frequency, Frequency::Monthly);
     }

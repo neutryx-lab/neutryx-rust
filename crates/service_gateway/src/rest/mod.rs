@@ -54,9 +54,8 @@ pub fn create_demo_router(state: Arc<AppState>) -> Router {
     use tower_http::services::{ServeDir, ServeFile};
 
     // Create graph state for portfolio graph endpoints
-    let graph_state = Arc::new(
-        GraphAppState::default_sample().expect("Failed to create graph state"),
-    );
+    let graph_state =
+        Arc::new(GraphAppState::default_sample().expect("Failed to create graph state"));
 
     let router = Router::new()
         .route("/health", get(handlers::health))

@@ -40,22 +40,21 @@ mod vol_quote_type;
 
 // New types (preferred)
 pub use error::MarketQuoteError;
-pub use market_quote::MarketQuote;
-pub use quote_id::QuoteId;
-pub use quote_set::MarketQuoteSet;
-pub use quote_type::QuoteType;
-pub use strike_type::StrikeType;
-pub use validation::{QuoteValidator, StandardQuoteValidator};
-pub use vol_quote_type::VolQuoteType;
-
 // Deprecated aliases (for backward compatibility)
 #[allow(deprecated)]
 pub use error::MarketRateError;
-#[allow(deprecated)]
-pub use quote_id::RateId;
+pub use market_quote::MarketQuote;
 #[allow(deprecated)]
 pub use market_quote::MarketRate;
+pub use quote_id::QuoteId;
+#[allow(deprecated)]
+pub use quote_id::RateId;
+pub use quote_set::MarketQuoteSet;
 #[allow(deprecated)]
 pub use quote_set::MarketRateSet;
+pub use quote_type::QuoteType;
+pub use strike_type::StrikeType;
+pub use validation::{QuoteValidator, StandardQuoteValidator};
 #[allow(deprecated)]
 pub use validation::{RateValidator, StandardRateValidator};
+pub use vol_quote_type::VolQuoteType;

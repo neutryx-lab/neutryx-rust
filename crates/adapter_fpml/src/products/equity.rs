@@ -5,14 +5,17 @@
 //! - Equity Forward (equityForward)
 //! - Equity Swap (returnSwap)
 
-use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
-use crate::error::FpmlError;
 use infra_domain::{
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, OptionType, Payoff,
         SettlementType, Trade, TradeMetadata, TradeType,
     },
     Currency, Date,
+};
+
+use crate::{
+    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    error::FpmlError,
 };
 
 /// Parse an equity option from FpML.
@@ -69,7 +72,9 @@ pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
         .unwrap_or(1.0);
 
     // Parse currency
-    let currency_str = opt_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+    let currency_str = opt_nav
+        .find_text("currency")
+        .unwrap_or_else(|| "USD".to_string());
     let currency = parse_currency(&currency_str);
 
     // Parse exercise type
@@ -189,7 +194,9 @@ pub fn parse_equity_forward(xml: &str) -> Result<Trade, FpmlError> {
         .transpose()?
         .unwrap_or(0.0);
 
-    let currency_str = fwd_nav.find_text("currency").unwrap_or_else(|| "USD".to_string());
+    let currency_str = fwd_nav
+        .find_text("currency")
+        .unwrap_or_else(|| "USD".to_string());
     let currency = parse_currency(&currency_str);
 
     let cf = Cashflow::new(
