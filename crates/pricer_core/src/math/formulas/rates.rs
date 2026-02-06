@@ -82,7 +82,7 @@ pub fn zero_rate_from_df<T: Float>(df: T, time: T) -> T {
 ///
 /// // DF(0.5) = 0.975, DF(1.0) = 0.95, tau = 0.5
 /// // F = (0.975 / 0.95 - 1) / 0.5 ≈ 0.0526
-/// let rate = simple_forward_rate(0.975, 0.95, 0.5);
+/// let rate = simple_forward_rate(0.975_f64, 0.95, 0.5);
 /// assert!((rate - 0.05263).abs() < 0.001);
 /// ```
 #[inline]

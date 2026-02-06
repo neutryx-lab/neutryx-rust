@@ -58,7 +58,7 @@ impl<T: Float> ForwardParams<T> {
     /// ```
     /// use pricer_core::math::formulas::forward::ForwardParams;
     ///
-    /// let params = ForwardParams::new(100.0, 102.0, 0.05, 0.02, 1.0).unwrap();
+    /// let params = ForwardParams::new(100.0_f64, 102.0, 0.05, 0.02, 1.0).unwrap();
     /// assert!((params.spot - 100.0).abs() < 1e-10);
     /// ```
     pub fn new(
@@ -115,9 +115,9 @@ impl<T: Float> ForwardParams<T> {
 /// let forward_price = model.forward_price();
 /// assert!((forward_price - 105.127).abs() < 0.01);
 ///
-/// // PV when strike = 100: (F - K) * e^(-r*T) ≈ 5.0
+/// // PV when strike = 100: (F - K) * e^(-r*T) ≈ 4.88
 /// let pv = model.present_value();
-/// assert!((pv - 5.0).abs() < 0.1);
+/// assert!((pv - 4.88).abs() < 0.1);
 /// ```
 #[derive(Debug, Clone)]
 pub struct Forward<T: Float> {
