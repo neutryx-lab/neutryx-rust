@@ -46,6 +46,8 @@ mod instrument;
 #[cfg(feature = "global-bootstrap")]
 mod engine;
 #[cfg(feature = "global-bootstrap")]
+pub mod enzyme_jacobian;
+#[cfg(feature = "global-bootstrap")]
 mod jump;
 #[cfg(feature = "global-bootstrap")]
 mod matrix;
@@ -89,6 +91,8 @@ pub use jump::{JumpConfig, JumpPillar};
 pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
 #[cfg(feature = "global-bootstrap")]
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
+#[cfg(feature = "global-bootstrap")]
+pub use enzyme_jacobian::JacobianResult;
 // =============================================================================
 // Public Re-exports: Curve Construction
 // =============================================================================

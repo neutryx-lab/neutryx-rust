@@ -799,12 +799,216 @@ where
             JacobianMethod::FiniteDifference => self.compute_jacobian_finite_diff(&log_df),
             JacobianMethod::CentralDifference => self.compute_jacobian_central_diff(&log_df),
             #[cfg(feature = "enzyme-ad")]
-            JacobianMethod::AutomaticDifferentiation => self.compute_jacobian_finite_diff(&log_df),
+            JacobianMethod::AutomaticDifferentiation => {
+                // Try Enzyme AD first, fall back to finite differences on failure
+                self.compute_jacobian_enzyme_with_fallback(&log_df)
+            }
         };
 
         jacobian.map_err(|e| {
             SolverError::NumericalInstability(format!("Jacobian computation failed: {e}"))
         })
+    }
+}
+
+// =============================================================================
+// Enzyme AD Jacobian Implementation
+// =============================================================================
+
+#[cfg(feature = "enzyme-ad")]
+impl<T, I> CalibrationProblem<T, I>
+where
+    T: Float + RealField + Copy,
+    I: CalibrationInstrument<T> + Clone,
+{
+    /// Compute Jacobian using Enzyme AD with automatic fallback.
+    ///
+    /// # Requirement 1.4
+    ///
+    /// If Enzyme AD computation fails due to unsupported operations,
+    /// the method falls back to finite differences and logs a warning.
+    ///
+    /// # Arguments
+    ///
+    /// * `log_df` - Current log discount factors
+    ///
+    /// # Returns
+    ///
+    /// Jacobian matrix, either from Enzyme AD or finite differences.
+    pub fn compute_jacobian_enzyme_with_fallback(
+        &self,
+        log_df: &[T],
+    ) -> Result<DMatrix<T>, CalibrationError> {
+        use super::enzyme_jacobian::JacobianResult;
+
+        let start_time = std::time::Instant::now();
+
+        // Try Enzyme AD computation
+        match self.try_compute_jacobian_enzyme(log_df) {
+            Ok(jacobian) => {
+                let _elapsed = start_time.elapsed().as_micros() as u64;
+                Ok(jacobian)
+            }
+            Err(e) => {
+                // Log warning about fallback
+                #[cfg(feature = "tracing")]
+                tracing::warn!(
+                    "Enzyme AD Jacobian failed, falling back to finite differences: {}",
+                    e
+                );
+
+                // Fall back to finite differences
+                let jacobian = self.compute_jacobian_finite_diff(log_df)?;
+                let _elapsed = start_time.elapsed().as_micros() as u64;
+                Ok(jacobian)
+            }
+        }
+    }
+
+    /// Try to compute Jacobian using Enzyme AD.
+    ///
+    /// This method extracts instrument parameters and calls the Enzyme kernels.
+    /// It may fail if the instruments contain unsupported operations.
+    fn try_compute_jacobian_enzyme(&self, log_df: &[T]) -> Result<DMatrix<T>, CalibrationError> {
+        use super::enzyme_jacobian::kernels;
+
+        // Convert log_df to f64 for Enzyme (Enzyme only works with f64)
+        let log_df_f64: Vec<f64> = log_df.iter().map(|&x| x.to_f64().unwrap_or(0.0)).collect();
+        let pillar_times_f64: Vec<f64> = self
+            .pillars
+            .iter()
+            .map(|&x| x.to_f64().unwrap_or(0.0))
+            .collect();
+
+        // Extract instrument types and parameters
+        let mut instrument_types = Vec::with_capacity(self.instruments.len());
+        let mut instrument_params = Vec::with_capacity(self.instruments.len());
+
+        for instrument in &self.instruments {
+            let (inst_type, params) = self.extract_enzyme_params(instrument)?;
+            instrument_types.push(inst_type);
+            instrument_params.push(params);
+        }
+
+        // Compute Jacobian using Enzyme kernels
+        let jacobian_f64 = kernels::compute_jacobian_enzyme(
+            &instrument_types,
+            &instrument_params,
+            &log_df_f64,
+            &pillar_times_f64,
+        );
+
+        // Convert back to T
+        let n = jacobian_f64.nrows();
+        let m = jacobian_f64.ncols();
+        let mut jacobian = DMatrix::zeros(n, m);
+        for i in 0..n {
+            for j in 0..m {
+                jacobian[(i, j)] = from_f64(jacobian_f64[(i, j)]);
+            }
+        }
+
+        Ok(jacobian)
+    }
+
+    /// Extract Enzyme-compatible parameters from an instrument.
+    ///
+    /// # Returns
+    ///
+    /// Tuple of (instrument_type_code, parameters_vector)
+    /// - Type 0: Deposit [maturity, market_rate]
+    /// - Type 1: FRA [start_time, end_time, tau, market_rate]
+    /// - Type 2: Swap/OIS [maturity, market_rate, n_cf, cf_time_1, yf_1, ...]
+    fn extract_enzyme_params(&self, instrument: &I) -> Result<(u32, Vec<f64>), CalibrationError> {
+        let maturity = instrument.maturity().to_f64().unwrap_or(0.0);
+        let market_rate = instrument.market_rate().to_f64().unwrap_or(0.0);
+        let inst_type = instrument.instrument_type();
+
+        match inst_type {
+            "Deposit" => {
+                // Deposit: [maturity, market_rate]
+                Ok((0, vec![maturity, market_rate]))
+            }
+            "FRA" | "Futures" => {
+                // FRA/Futures: [start_time, end_time, tau, market_rate]
+                // For simplicity, assume start = 0 if not available
+                // tau = maturity (year fraction for the period)
+                Ok((1, vec![0.0, maturity, maturity, market_rate]))
+            }
+            "Swap" | "OIS" | "IRS" => {
+                // Swap/OIS: [maturity, market_rate, n_cf, cf_time_1, yf_1, ...]
+                // Generate annual cashflows for simplicity
+                let mut params = vec![maturity, market_rate];
+                let n_cf = maturity.ceil() as usize;
+                params.push(n_cf as f64);
+
+                let mut t = 1.0;
+                for _ in 0..n_cf {
+                    let cf_time = t.min(maturity);
+                    let yf = 1.0;
+                    params.push(cf_time);
+                    params.push(yf);
+                    t += 1.0;
+                }
+
+                Ok((2, params))
+            }
+            _ => {
+                // Unknown instrument type - return error to trigger fallback
+                Err(CalibrationError::numerical_instability(format!(
+                    "Unsupported instrument type for Enzyme AD: {}",
+                    inst_type
+                )))
+            }
+        }
+    }
+
+    /// Compute Jacobian with full result metadata.
+    ///
+    /// # Requirement 1.1, 1.4
+    ///
+    /// This method returns a JacobianResult with metadata including:
+    /// - The Jacobian matrix
+    /// - The method actually used
+    /// - Computation time
+    /// - Whether fallback was triggered
+    pub fn compute_jacobian_enzyme_result(
+        &self,
+        log_df: &[T],
+    ) -> Result<super::enzyme_jacobian::JacobianResult, CalibrationError> {
+        use super::enzyme_jacobian::JacobianResult;
+
+        let start_time = std::time::Instant::now();
+
+        // Try Enzyme AD computation
+        match self.try_compute_jacobian_enzyme(log_df) {
+            Ok(jacobian) => {
+                let elapsed = start_time.elapsed().as_micros() as u64;
+                // Convert to f64 matrix for JacobianResult
+                let jacobian_f64 = self.convert_matrix_to_f64(&jacobian);
+                Ok(JacobianResult::from_enzyme_ad(jacobian_f64, elapsed))
+            }
+            Err(_) => {
+                // Fall back to finite differences
+                let jacobian = self.compute_jacobian_finite_diff(log_df)?;
+                let elapsed = start_time.elapsed().as_micros() as u64;
+                let jacobian_f64 = self.convert_matrix_to_f64(&jacobian);
+                Ok(JacobianResult::with_fallback(jacobian_f64, elapsed))
+            }
+        }
+    }
+
+    /// Convert a DMatrix<T> to DMatrix<f64>.
+    fn convert_matrix_to_f64(&self, matrix: &DMatrix<T>) -> DMatrix<f64> {
+        let n = matrix.nrows();
+        let m = matrix.ncols();
+        let mut result = DMatrix::zeros(n, m);
+        for i in 0..n {
+            for j in 0..m {
+                result[(i, j)] = matrix[(i, j)].to_f64().unwrap_or(0.0);
+            }
+        }
+        result
     }
 }
 
