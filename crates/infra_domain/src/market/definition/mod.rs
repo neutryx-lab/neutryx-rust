@@ -4,8 +4,8 @@
 //! objects:
 //!
 //! - `CurveDefinition`: Recipe for building yield curves
-//! - `VolSurfaceDefinition`: Specification for volatility surfaces
-//!   (calibration model, strike type)
+//! - `VolSurfaceDefinition`: Specification for volatility surfaces (calibration
+//!   model, strike type)
 //! - `InstrumentDefinition`: Calibration instrument definitions
 //! - `RateIndexDefinition`: Benchmark rate index definitions
 //! - `JumpPillar`: Rate jump definitions for central bank meetings

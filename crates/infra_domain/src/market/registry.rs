@@ -37,12 +37,12 @@ use std::collections::HashMap;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::definition::{
-    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition,
-    RateIndexDefError, RateIndexDefinition,
-};
 #[cfg(feature = "serde")]
 use super::definition::InstrumentTemplate;
+use super::definition::{
+    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition, RateIndexDefError,
+    RateIndexDefinition,
+};
 
 /// Error type for registry operations.
 #[derive(Debug, Clone)]

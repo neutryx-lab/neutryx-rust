@@ -218,10 +218,10 @@ impl CompileError {
 /// # Requirement 1.2
 ///
 /// The CompiledInstrument shall hold pre-computed fields:
-/// - cashflow_dates (Vec<T> as times)
-/// - year_fractions (Vec<T>)
-/// - notionals (Vec<T>)
-/// - discount_factor_indices (Vec<usize>)
+/// - cashflow_dates (`Vec<T>` as times)
+/// - year_fractions (`Vec<T>`)
+/// - notionals (`Vec<T>`)
+/// - discount_factor_indices (`Vec<usize>`)
 ///
 /// # Requirement 2.5
 ///

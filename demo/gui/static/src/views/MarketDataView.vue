@@ -239,7 +239,7 @@ const summaryStats = computed(() => {
       { label: 'Total Quotes', value: irVolQuotes.value.length, icon: 'fa-chart-area', color: '#3b82f6' },
       { label: 'Currencies', value: new Set(irVolQuotes.value.map(q => q.currency)).size, icon: 'fa-money-bill', color: '#10b981' },
       { label: 'Expiries', value: new Set(irVolQuotes.value.map(q => q.expiry)).size, icon: 'fa-clock', color: '#8b5cf6' },
-      { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
+      { label: 'Status', value: 'Live', icon: 'fa-signal', color: '#10b981' },
     ];
   }
   if (assetClass.value === 'FXVol') {
@@ -247,7 +247,7 @@ const summaryStats = computed(() => {
       { label: 'Total Quotes', value: fxVolQuotes.value.length, icon: 'fa-chart-area', color: '#3b82f6' },
       { label: 'Pairs', value: new Set(fxVolQuotes.value.map(q => q.pair)).size, icon: 'fa-exchange-alt', color: '#10b981' },
       { label: 'Expiries', value: new Set(fxVolQuotes.value.map(q => q.expiryLabel)).size, icon: 'fa-clock', color: '#8b5cf6' },
-      { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
+      { label: 'Status', value: 'Live', icon: 'fa-signal', color: '#10b981' },
     ];
   }
   if (assetClass.value === 'Events') {
@@ -255,7 +255,7 @@ const summaryStats = computed(() => {
       { label: 'Upcoming', value: filteredEvents.value.length, icon: 'fa-calendar', color: '#3b82f6' },
       { label: 'Currencies', value: new Set(filteredEvents.value.map(e => e.currency).filter(Boolean)).size, icon: 'fa-money-bill', color: '#10b981' },
       { label: 'Turn Events', value: filteredEvents.value.filter(e => isTurnEvent(e.eventType)).length, icon: 'fa-chart-line', color: '#f59e0b' },
-      { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
+      { label: 'Status', value: 'Live', icon: 'fa-signal', color: '#10b981' },
     ];
   }
   if (assetClass.value === 'Holidays') {
@@ -263,7 +263,7 @@ const summaryStats = computed(() => {
       { label: 'Upcoming', value: filteredHolidays.value.length, icon: 'fa-calendar-day', color: '#3b82f6' },
       { label: 'Currencies', value: new Set(filteredHolidays.value.map(h => h.currency).filter(Boolean)).size, icon: 'fa-money-bill', color: '#10b981' },
       { label: 'Countries', value: new Set(filteredHolidays.value.map(h => h.country)).size, icon: 'fa-flag', color: '#8b5cf6' },
-      { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
+      { label: 'Status', value: 'Live', icon: 'fa-signal', color: '#10b981' },
     ];
   }
   return [
@@ -830,7 +830,7 @@ onMounted(() => {
                     </td>
                     <td class="py-3 px-3 text-center">
                       <span :class="['px-2 py-0.5 rounded text-xs', rate.isStale ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400']">
-                        <i :class="['fas mr-1', rate.isStale ? 'fa-clock' : 'fa-check']"></i>
+                        <i v-if="rate.isStale" class="fas fa-clock mr-1"></i>
                         {{ rate.isStale ? 'Stale' : 'Live' }}
                       </span>
                     </td>
