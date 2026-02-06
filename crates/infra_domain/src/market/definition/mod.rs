@@ -3,12 +3,12 @@
 //! This module provides definition types that specify how to build market
 //! objects:
 //!
-//! - [`CurveDefinition`]: Recipe for building yield curves
-//! - [`VolSurfaceDefinition`]: Specification for volatility surfaces
+//! - `CurveDefinition`: Recipe for building yield curves
+//! - `VolSurfaceDefinition`: Specification for volatility surfaces
 //!   (calibration model, strike type)
-//! - [`InstrumentDefinition`]: Calibration instrument definitions
-//! - [`RateIndexDefinition`]: Benchmark rate index definitions
-//! - [`JumpPillar`]: Rate jump definitions for central bank meetings
+//! - `InstrumentDefinition`: Calibration instrument definitions
+//! - `RateIndexDefinition`: Benchmark rate index definitions
+//! - `JumpPillar`: Rate jump definitions for central bank meetings
 //!
 //! # Architecture
 //!
@@ -17,7 +17,7 @@
 //! - **How** to construct the resulting curve/surface (interpolation, model,
 //!   etc.)
 //!
-//! They reference [`InstrumentDefinition`]s and [`RateIndexDefinition`]s by ID,
+//! They reference `InstrumentDefinition`s and `RateIndexDefinition`s by ID,
 //! enabling a clean separation between definition and runtime data.
 //!
 //! # Examples

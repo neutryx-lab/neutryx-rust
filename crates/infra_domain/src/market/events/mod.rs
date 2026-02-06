@@ -2,10 +2,10 @@
 //!
 //! This module provides types for economic calendar and market event tracking:
 //!
-//! - [`EventType`]: Classification of market events
-//! - [`EventImportance`]: Importance/impact level of events
-//! - [`CentralBank`]: Central bank identifier
-//! - [`MarketEvent`]: Complete market event structure
+//! - `EventType`: Classification of market events
+//! - `EventImportance`: Importance/impact level of events
+//! - `CentralBank`: Central bank identifier
+//! - `MarketEvent`: Complete market event structure
 //!
 //! # Examples
 //!

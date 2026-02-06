@@ -38,9 +38,11 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::definition::{
-    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition, InstrumentTemplate,
+    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition,
     RateIndexDefError, RateIndexDefinition,
 };
+#[cfg(feature = "serde")]
+use super::definition::InstrumentTemplate;
 
 /// Error type for registry operations.
 #[derive(Debug, Clone)]
@@ -328,7 +330,7 @@ impl DefinitionRegistry {
     ///
     /// Panics if the curve references an instrument that doesn't exist.
     /// This should not happen if the curve was registered via
-    /// [`register_curve`].
+    /// `register_curve`.
     #[must_use]
     pub fn curve_instruments(&self, curve_name: &str) -> Option<Vec<&InstrumentDefinition>> {
         let curve = self.curves.get(curve_name)?;
@@ -351,7 +353,7 @@ impl DefinitionRegistry {
     ///
     /// Panics if the curve references a rate index that doesn't exist.
     /// This should not happen if the curve was registered via
-    /// [`register_curve`].
+    /// `register_curve`.
     #[must_use]
     pub fn curve_rate_index(&self, curve_name: &str) -> Option<&RateIndexDefinition> {
         let curve = self.curves.get(curve_name)?;

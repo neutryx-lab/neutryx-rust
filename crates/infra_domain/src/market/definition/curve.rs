@@ -1,7 +1,7 @@
 //! Curve definition for yield curve construction.
 //!
 //! This module provides [`CurveDefinition`] which defines the recipe for
-//! building a yield curve. It references [`InstrumentDefinition`]s by ID
+//! building a yield curve. It references `InstrumentDefinition`s by ID
 //! to specify which instruments to use for calibration.
 //!
 //! # Examples
@@ -560,7 +560,7 @@ impl JumpPillarBuilder {
 
 /// Curve definition - the recipe for building a yield curve.
 ///
-/// References [`InstrumentDefinition`]s and [`RateIndexDefinition`] by their
+/// References `InstrumentDefinition`s and `RateIndexDefinition` by their
 /// IDs to specify which instruments and index to use for curve construction.
 ///
 /// # Jump Pillars
@@ -808,7 +808,7 @@ impl CurveDefinition {
     /// Validates the curve definition (basic validation only).
     ///
     /// For full validation including reference checking, use
-    /// [`DefinitionRegistry::register_curve`].
+    /// `DefinitionRegistry::register_curve`.
     ///
     /// # Errors
     ///

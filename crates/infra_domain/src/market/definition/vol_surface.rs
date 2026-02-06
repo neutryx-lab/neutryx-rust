@@ -124,7 +124,7 @@ impl std::fmt::Display for CalibrationModel {
 /// Volatility surface/cube definition - the recipe for building a vol surface.
 ///
 /// References calibration instrument IDs to specify which instruments to use
-/// for surface construction. Similar to [`CurveDefinition`] for yield curves.
+/// for surface construction. Similar to `CurveDefinition` for yield curves.
 ///
 /// # Asset Class Support
 ///

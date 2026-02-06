@@ -529,7 +529,7 @@ impl DemoService {
                         let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
 
                         rates.push(MarketRate {
-                            id: format!("FX-{}", pair),
+                            id: pair.to_string(),
                             currency: base_ccy.to_string(),
                             tenor: "SPOT".to_string(),
                             rate_type: "fxspot".to_string(),
@@ -559,7 +559,7 @@ impl DemoService {
                                     fwd.get("points").and_then(|p| p.as_f64()).unwrap_or(0.0);
 
                                 rates.push(MarketRate {
-                                    id: format!("FX-{}-FWD-{}", pair, tenor),
+                                    id: format!("{}-{}", pair, tenor),
                                     currency: base_ccy.to_string(),
                                     tenor: tenor.to_string(),
                                     rate_type: "fxforward".to_string(),
@@ -726,7 +726,7 @@ impl DemoService {
                 "index": rate.rate_index.clone()
             }),
             "fxspot" => {
-                let pair = rate.id.strip_prefix("FX-").unwrap_or(&rate.id);
+                let pair = &rate.id;
                 let base = if pair.len() >= 3 { &pair[..3] } else { "" };
                 let quote = if pair.len() >= 6 { &pair[3..6] } else { "" };
                 serde_json::json!({

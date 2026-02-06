@@ -7,12 +7,12 @@
 //!
 //! Conventions are organised by asset class:
 //!
-//! - [`rates`]: Interest rate conventions (deposits, FRAs, futures, swaps,
+//! - **rates**: Interest rate conventions (deposits, FRAs, futures, swaps,
 //!   bonds, caps/floors, swaptions, inflation, cross-currency)
-//! - [`fx`]: Foreign exchange conventions (spot, options, swaps)
-//! - [`credit`]: Credit conventions (CDS)
-//! - [`equity`]: Equity conventions
-//! - [`commodity`]: Commodity conventions
+//! - **fx**: Foreign exchange conventions (spot, options, swaps)
+//! - **credit**: Credit conventions (CDS)
+//! - **equity**: Equity conventions
+//! - **commodity**: Commodity conventions
 //!
 //! # Example
 //!

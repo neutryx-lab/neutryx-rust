@@ -2,7 +2,7 @@
 //!
 //! This module provides [`InstrumentDefinition`] which defines calibration
 //! instruments as master data. These definitions are used by
-//! [`CurveDefinition`] to specify which instruments make up a curve.
+//! `CurveDefinition` to specify which instruments make up a curve.
 //!
 //! # Examples
 //!
@@ -505,7 +505,7 @@ impl InstrumentDefinition {
     #[must_use]
     pub fn is_fra_tenor(&self) -> bool { parse_fra_tenor(&self.tenor).is_some() }
 
-    /// Converts to a [`QuoteId`] for lookup in [`MarketQuoteSet`].
+    /// Converts to a [`QuoteId`] for lookup in `MarketQuoteSet`.
     ///
     /// # Errors
     ///

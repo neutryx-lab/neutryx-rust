@@ -268,7 +268,7 @@ const summaryStats = computed(() => {
   }
   return [
     { label: 'Total Rates', value: rates.value.length, icon: 'fa-database', color: '#3b82f6' },
-    { label: 'Live', value: rates.value.filter(r => !r.isStale).length, icon: 'fa-check-circle', color: '#10b981' },
+    { label: 'Live', value: rates.value.filter(r => !r.isStale).length, icon: 'fa-signal', color: '#10b981' },
     { label: 'Displayed', value: filteredRates.value.length, icon: 'fa-eye', color: '#8b5cf6' },
     { label: 'Stale', value: filteredRates.value.filter(r => r.isStale).length, icon: 'fa-clock', color: '#f59e0b' },
   ];
@@ -1156,33 +1156,6 @@ onMounted(() => {
                 <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Expiry</span>
                   <span class="text-[var(--text-primary)]">{{ selectedFxVol.expiryLabel }}</span>
-                </div>
-              </div>
-
-              <!-- Market Rate Section -->
-              <div class="border-t border-[var(--glass-border)] pt-4 mb-4">
-                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Market Rate</h4>
-                <div class="space-y-2">
-                  <div class="flex justify-between text-sm">
-                    <span class="text-[var(--text-muted)]">ATM Vol</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ formatVol(selectedFxVol.atmVol) }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-[var(--text-muted)]">25D RR</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.rr25d) }}</span>
-                  </div>
-                  <div class="flex justify-between text-sm">
-                    <span class="text-[var(--text-muted)]">25D BF</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf25d) }}</span>
-                  </div>
-                  <div v-if="selectedFxVol.rr10d !== undefined" class="flex justify-between text-sm">
-                    <span class="text-[var(--text-muted)]">10D RR</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.rr10d) }}</span>
-                  </div>
-                  <div v-if="selectedFxVol.bf10d !== undefined" class="flex justify-between text-sm">
-                    <span class="text-[var(--text-muted)]">10D BF</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf10d) }}</span>
-                  </div>
                 </div>
               </div>
 
