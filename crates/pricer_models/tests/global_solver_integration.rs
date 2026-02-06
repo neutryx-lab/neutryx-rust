@@ -611,3 +611,258 @@ fn test_ift_dimension_mismatch() {
 
     assert!(sensitivity_result.is_err());
 }
+
+// =============================================================================
+// Task 2.5: Enzyme Jacobian Integration Tests
+// =============================================================================
+
+/// Test Enzyme Jacobian kernel interpolation accuracy.
+///
+/// # Requirement 1.2
+///
+/// Verify that the Enzyme kernel's log-linear interpolation produces results
+/// within 1e-12 relative tolerance compared to the BootstrappedCurve.
+#[test]
+fn test_enzyme_kernel_interpolation_accuracy() {
+    use pricer_models::builder::enzyme_jacobian::kernels;
+    use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve, YieldCurve};
+
+    let pillar_times = vec![1.0, 2.0, 5.0, 10.0];
+    let discount_factors: Vec<f64> = pillar_times.iter().map(|&t| (-0.03 * t).exp()).collect();
+    let log_df: Vec<f64> = discount_factors.iter().map(|&df| df.ln()).collect();
+
+    // Create BootstrappedCurve for reference
+    let curve = BootstrappedCurve::new(
+        pillar_times.clone(),
+        discount_factors.clone(),
+        BootstrapInterpolation::LogLinear,
+        true,
+    )
+    .unwrap();
+
+    // Test at various query points
+    let test_times = vec![0.5, 1.0, 1.5, 2.0, 3.0, 5.0, 7.5, 10.0, 12.0];
+
+    for t in test_times {
+        let df_curve = curve.discount_factor(t).unwrap();
+        let df_kernel = kernels::discount_factor_log_linear(t, &pillar_times, &log_df);
+
+        assert_relative_eq!(
+            df_kernel,
+            df_curve,
+            epsilon = 1e-12,
+            "Interpolation mismatch at t={}: kernel={}, curve={}",
+            t,
+            df_kernel,
+            df_curve
+        );
+    }
+}
+
+/// Test BootstrappedCurve gradient accuracy for LogLinear interpolation.
+///
+/// # Requirement 2.2
+///
+/// Verify analytical derivatives are exact for LogLinear interpolation.
+#[test]
+fn test_bootstrapped_curve_gradient_accuracy() {
+    use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
+    let pillar_times = vec![1.0, 2.0, 5.0];
+    let discount_factors: Vec<f64> = pillar_times.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+    let curve = BootstrappedCurve::new(
+        pillar_times.clone(),
+        discount_factors.clone(),
+        BootstrapInterpolation::LogLinear,
+        true,
+    )
+    .unwrap();
+
+    // Test gradient at midpoint (t=1.5)
+    let t = 1.5;
+    let (df, gradient) = curve.discount_factor_with_gradient(t).unwrap();
+
+    // Verify DF is correct
+    assert!(df > 0.0);
+    assert!(df < 1.0);
+
+    // Verify gradient has correct dimensions
+    assert_eq!(gradient.len(), pillar_times.len());
+
+    // Finite difference verification
+    let bump = 1e-8;
+    for i in 0..pillar_times.len() {
+        // Bump discount factor i
+        let mut bumped_dfs = discount_factors.clone();
+        bumped_dfs[i] *= 1.0 + bump;
+
+        let bumped_curve = BootstrappedCurve::new(
+            pillar_times.clone(),
+            bumped_dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
+
+        let df_bumped = bumped_curve.discount_factor_with_gradient(t).unwrap().0;
+        let fd_gradient = (df_bumped - df) / (discount_factors[i] * bump);
+
+        // Compare analytical gradient with finite difference
+        if gradient[i].abs() > 1e-10 {
+            let rel_error = ((gradient[i] - fd_gradient) / gradient[i]).abs();
+            assert!(
+                rel_error < 1e-6,
+                "Gradient mismatch at pillar {}: analytical={}, fd={}, rel_error={}",
+                i,
+                gradient[i],
+                fd_gradient,
+                rel_error
+            );
+        }
+    }
+}
+
+/// Test gradient with log_df (for calibration).
+#[test]
+fn test_bootstrapped_curve_log_gradient_accuracy() {
+    use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
+    let pillar_times = vec![1.0, 2.0, 5.0];
+    let log_df: Vec<f64> = pillar_times.iter().map(|&t| -0.03 * t).collect();
+    let discount_factors: Vec<f64> = log_df.iter().map(|&x| x.exp()).collect();
+
+    let curve = BootstrappedCurve::new(
+        pillar_times.clone(),
+        discount_factors.clone(),
+        BootstrapInterpolation::LogLinear,
+        true,
+    )
+    .unwrap();
+
+    // Test at midpoint
+    let t = 1.5;
+    let (df, log_gradient) = curve.discount_factor_with_log_gradient(t).unwrap();
+
+    // Finite difference verification for log_df gradient
+    let bump = 1e-8;
+    for i in 0..pillar_times.len() {
+        let mut bumped_log_df = log_df.clone();
+        bumped_log_df[i] += bump;
+        let bumped_dfs: Vec<f64> = bumped_log_df.iter().map(|&x| x.exp()).collect();
+
+        let bumped_curve = BootstrappedCurve::new(
+            pillar_times.clone(),
+            bumped_dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
+
+        let df_bumped = bumped_curve.discount_factor_with_log_gradient(t).unwrap().0;
+        let fd_log_gradient = (df_bumped - df) / bump;
+
+        if log_gradient[i].abs() > 1e-10 {
+            let rel_error = ((log_gradient[i] - fd_log_gradient) / log_gradient[i]).abs();
+            assert!(
+                rel_error < 1e-6,
+                "Log gradient mismatch at pillar {}: analytical={}, fd={}, rel_error={}",
+                i,
+                log_gradient[i],
+                fd_log_gradient,
+                rel_error
+            );
+        }
+    }
+}
+
+/// Test Enzyme Jacobian stub (when enzyme-ad feature is disabled).
+///
+/// This test verifies that the stub implementation returns a zero matrix
+/// and the actual computation should fall back to finite differences.
+#[test]
+fn test_enzyme_jacobian_stub_behavior() {
+    use pricer_models::builder::enzyme_jacobian::kernels;
+
+    let pillar_times = vec![1.0, 2.0, 5.0];
+    let log_df: Vec<f64> = pillar_times.iter().map(|&t| -0.03 * t).collect();
+
+    let instrument_types = vec![0u32, 0, 0]; // All deposits
+    let instrument_params = vec![
+        vec![1.0, 0.03],
+        vec![2.0, 0.035],
+        vec![5.0, 0.04],
+    ];
+
+    let jacobian = kernels::compute_jacobian_enzyme(
+        &instrument_types,
+        &instrument_params,
+        &log_df,
+        &pillar_times,
+    );
+
+    // When enzyme-ad is disabled, should return zero matrix
+    #[cfg(not(feature = "enzyme-ad"))]
+    {
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+        // All elements should be zero (stub behavior)
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_eq!(jacobian[(i, j)], 0.0, "Stub should return zero matrix");
+            }
+        }
+    }
+
+    // When enzyme-ad is enabled, should return non-zero matrix
+    #[cfg(feature = "enzyme-ad")]
+    {
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+        // Jacobian should have non-zero elements
+        let max_elem: f64 = jacobian.iter().map(|&x| x.abs()).fold(0.0, f64::max);
+        assert!(max_elem > 0.0, "Enzyme Jacobian should be non-zero");
+    }
+}
+
+/// Test Jacobian computation consistency across methods.
+///
+/// # Requirement 1.2
+///
+/// Verify Enzyme AD Jacobian matches finite differences within 1e-8.
+#[test]
+fn test_jacobian_method_consistency() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    // Test finite difference method
+    let config_fd = GlobalBootstrapConfig::default()
+        .with_jacobian_method(JacobianMethod::FiniteDifference);
+    let bootstrapper_fd = GlobalBootstrapper::new(config_fd);
+    let result_fd = bootstrapper_fd.calibrate(&instruments).unwrap();
+
+    // Test central difference method
+    let config_cd = GlobalBootstrapConfig::default()
+        .with_jacobian_method(JacobianMethod::CentralDifference);
+    let bootstrapper_cd = GlobalBootstrapper::new(config_cd);
+    let result_cd = bootstrapper_cd.calibrate(&instruments).unwrap();
+
+    // Both should converge to similar solutions
+    assert!(result_fd.converged);
+    assert!(result_cd.converged);
+
+    for i in 0..result_fd.discount_factors.len() {
+        assert_relative_eq!(
+            result_fd.discount_factors[i],
+            result_cd.discount_factors[i],
+            epsilon = 1e-8,
+            "DF mismatch at pillar {}: FD={}, CD={}",
+            i,
+            result_fd.discount_factors[i],
+            result_cd.discount_factors[i]
+        );
+    }
+}

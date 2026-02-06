@@ -1,11 +1,11 @@
 [package]
-name = "infra_master"
+name = "infra_domain"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Static master data (Calendars, Currencies, ISINs) for Neutryx"
+description = "Domain models and financial primitives for Neutryx"
 
 [dependencies]
 # Date/time handling
