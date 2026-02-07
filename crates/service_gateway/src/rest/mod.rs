@@ -61,7 +61,8 @@ pub fn create_demo_router(state: Arc<AppState>) -> Router {
         .route("/health", get(handlers::health))
         .nest("/api", demo_api_routes(state.clone()))
         .nest("/api/v1", api_v1_routes(state))
-        .nest("/api/portfolio", demo_portfolio_routes(graph_state));
+        .nest("/api/portfolio", demo_portfolio_routes(graph_state.clone()))
+        .nest("/api", graph_alias_routes(graph_state));
 
     // Serve built assets from demo/gui/dist/ directory
     let serve_dir = ServeDir::new("demo/gui/dist")
@@ -86,6 +87,7 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/config", get(handlers::demo::get_config))
         // Instruments
         .route("/instruments", get(handlers::demo::get_instruments))
+        .route("/pricer/instruments", get(handlers::demo::get_instruments))
         // Trade expansion
         .route("/trade/expand", post(handlers::demo::expand_trade))
         // Pricing
@@ -229,5 +231,14 @@ fn demo_portfolio_routes(state: Arc<GraphAppState>) -> Router {
     Router::new()
         .route("/graph", get(graph_handlers::get_portfolio_graph))
         .route("/trades", get(graph_handlers::get_portfolio_trades))
+        .with_state(state)
+}
+
+/// Alias routes for frontend compatibility (feature = "demo")
+/// Maps /api/graph -> same handler as /api/portfolio/graph
+#[cfg(feature = "demo")]
+fn graph_alias_routes(state: Arc<GraphAppState>) -> Router {
+    Router::new()
+        .route("/graph", get(graph_handlers::get_portfolio_graph))
         .with_state(state)
 }
