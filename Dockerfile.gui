@@ -38,6 +38,8 @@ COPY --from=builder /app/target/release/neutryx-server ./neutryx-server
 COPY --from=builder /app/demo/gui/dist ./demo/gui/dist
 # Copy data files for nest_service("/data/input", ServeDir::new("demo/data/input"))
 COPY --from=builder /app/demo/data/input ./demo/data/input
+# Copy config files for nest_service("/data/config", ServeDir::new("demo/data/config"))
+COPY --from=builder /app/demo/data/config ./demo/data/config
 # Copy FpML trades for GraphAppState::new_with_sample()
 COPY --from=builder /app/demo/data/trades ./demo/data/trades
 
@@ -48,6 +50,9 @@ RUN set -e && \
     test -f ./demo/gui/dist/index.html && \
     test -d ./demo/gui/dist/assets && \
     ls -la ./demo/gui/dist/ && \
+    echo "=== Verifying config files ===" && \
+    test -f ./demo/data/config/curves.json && \
+    test -f ./demo/data/config/instruments.json && \
     echo "=== Verifying data files ===" && \
     test -f ./demo/data/input/market_data_config.json && \
     test -f ./demo/data/input/holidays.json && \
