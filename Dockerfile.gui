@@ -41,29 +41,20 @@ COPY --from=builder /app/demo/data/input ./demo/data/input
 
 # Verify critical files exist (build will fail if missing)
 # This helps catch file path issues before deployment
-RUN echo "=== Verifying Vite build output ===" && \
+RUN set -e && \
+    echo "=== Verifying Vite build output ===" && \
+    test -f ./demo/gui/dist/index.html && \
+    test -d ./demo/gui/dist/assets && \
     ls -la ./demo/gui/dist/ && \
-    test -f ./demo/gui/dist/index.html || (echo "ERROR: index.html missing" && exit 1) && \
-    echo "=== Verifying assets directory ===" && \
-    test -d ./demo/gui/dist/assets || (echo "ERROR: assets directory missing" && exit 1) && \
-    ls -la ./demo/gui/dist/assets/ && \
     echo "=== Verifying data files ===" && \
+    test -f ./demo/data/input/market_data_config.json && \
+    test -f ./demo/data/input/holidays.json && \
+    test -d ./demo/data/input/rates && \
+    test -f ./demo/data/input/rates/usd-sofr.json && \
+    test -d ./demo/data/input/irvol && \
+    test -d ./demo/data/input/fxvol && \
+    test -d ./demo/data/input/events && \
     ls -la ./demo/data/input/ && \
-    test -f ./demo/data/input/demo_portfolio.json || (echo "ERROR: demo_portfolio.json missing" && exit 1) && \
-    echo "=== Verifying rates data directory ===" && \
-    test -d ./demo/data/input/rates || (echo "ERROR: rates directory missing" && exit 1) && \
-    ls -la ./demo/data/input/rates/ && \
-    test -f ./demo/data/input/rates/usd-sofr.json || (echo "ERROR: usd-sofr.json missing" && exit 1) && \
-    echo "=== Verifying irvol data directory ===" && \
-    test -d ./demo/data/input/irvol || (echo "ERROR: irvol directory missing" && exit 1) && \
-    ls -la ./demo/data/input/irvol/ && \
-    test -f ./demo/data/input/irvol/usd-sofr-swaption.json || (echo "ERROR: usd-sofr-swaption.json missing" && exit 1) && \
-    echo "=== Verifying fxvol data directory ===" && \
-    test -d ./demo/data/input/fxvol || (echo "ERROR: fxvol directory missing" && exit 1) && \
-    ls -la ./demo/data/input/fxvol/ && \
-    echo "=== Verifying events data directory ===" && \
-    test -d ./demo/data/input/events || (echo "ERROR: events directory missing" && exit 1) && \
-    ls -la ./demo/data/input/events/ && \
     echo "=== All critical files verified ==="
 
 ENV RUST_LOG=info
