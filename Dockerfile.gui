@@ -38,6 +38,8 @@ COPY --from=builder /app/target/release/neutryx-server ./neutryx-server
 COPY --from=builder /app/demo/gui/dist ./demo/gui/dist
 # Copy data files for nest_service("/data/input", ServeDir::new("demo/data/input"))
 COPY --from=builder /app/demo/data/input ./demo/data/input
+# Copy FpML trades for GraphAppState::new_with_sample()
+COPY --from=builder /app/demo/data/trades ./demo/data/trades
 
 # Verify critical files exist (build will fail if missing)
 # This helps catch file path issues before deployment
