@@ -23,6 +23,21 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -57,6 +72,19 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
@@ -98,6 +126,19 @@ jobs:
     needs: build
     steps:
       - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
@@ -134,6 +175,19 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
         uses: actions/checkout@v4
 
       - name: Download changelog artifact

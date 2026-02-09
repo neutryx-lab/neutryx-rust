@@ -31,6 +31,22 @@ jobs:
 
     steps:
       - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
