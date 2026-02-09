@@ -1,14 +1,10 @@
-//! PostgreSQL database backend for infra_store.
+//! PostgreSQL database backend.
 //!
 //! This module provides PostgreSQL-based persistence using sqlx.
 
-use async_trait::async_trait;
 use sqlx::postgres::PgPool;
 
-use crate::{
-    error::StoreError,
-    traits::{Load, Save},
-};
+use super::error::StoreError;
 
 /// PostgreSQL-backed store implementation.
 pub struct PostgresStore {
@@ -24,11 +20,11 @@ impl PostgresStore {
     ///
     /// # Returns
     ///
-    /// A new PostgresStore instance connected to the database.
+    /// A new `PostgresStore` instance connected to the database.
     pub async fn connect(url: &str) -> Result<Self, StoreError> {
         let pool = PgPool::connect(url)
             .await
-            .map_err(|e| StoreError::ConnectionFailed(e.to_string()))?;
+            .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
 
         Ok(Self { pool })
     }

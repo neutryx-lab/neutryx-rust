@@ -30,6 +30,9 @@ mod pricing_config;
 mod risk_config;
 mod settings;
 
+/// Persistence and state management (SQLx, Redis, TimeScale).
+pub mod store;
+
 pub use app_config::{AppConfig, CurrencyRateIndexMap, DefaultsRegistry, EnumRegistry};
 pub use error::ConfigError;
 pub use pricing_config::{MonteCarloParams, PricingConfig, PricingMethod, TreeParams, TreeType};

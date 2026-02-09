@@ -13,7 +13,6 @@ infra_domain = { path = "crates/infra_domain" }
 
 # --- Infra Layer (optional) ---
 infra_config = { path = "crates/infra_config", optional = true }
-infra_store = { path = "crates/infra_store", optional = true }
 
 # --- Pricer Layer (optional) ---
 pricer_core = { path = "crates/pricer_core", optional = true }
@@ -47,8 +46,8 @@ full = [
 ]
 
 # Storage backends (optional)
-storage = ["dep:infra_store"]
-postgres = ["storage", "infra_store/postgres"]
+storage = ["dep:infra_config"]
+postgres = ["storage", "infra_config/postgres"]
 
 # Serialisation support
 serde = [
@@ -95,14 +94,12 @@ workspace = true
 [workspace]
 members = [
     # --- A: Adapter Layer (Input) ---
-    "crates/adapter_feeds",
     "crates/adapter_fpml",
     "crates/adapter_loader",
 
     # --- I: Infra Layer (Foundation) ---
     "crates/infra_config",
     "crates/infra_domain",
-    "crates/infra_store",
 
     # --- P: Pricer Layer (The Kernel) ---
     "crates/pricer_core",

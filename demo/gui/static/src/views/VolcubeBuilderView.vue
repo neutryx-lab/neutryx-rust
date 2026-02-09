@@ -20,6 +20,7 @@ interface SwaptionInstrument {
 
 interface FxQuote {
   expiry: number;
+  expiryLabel: string;
   atmVol: number;
   rr25d: number;
   bf25d: number;
@@ -434,6 +435,10 @@ async function loadFxPairs() {
     if (!response.ok) throw new Error('Failed to load FX pairs');
     const data = await response.json();
     fxPairs.value = (data.pairs || []).map((p: { pair: string }) => p.pair);
+    const eurUsd = fxPairs.value.find(p => p === 'EURUSD');
+    if (eurUsd && !selectedFxPair.value) {
+      selectedFxPair.value = eurUsd;
+    }
   } catch (error) {
     console.error('Failed to load FX pairs:', error);
   }
@@ -869,37 +874,6 @@ loadFxPairs();
                 </table>
               </div>
             </div>
-
-            <!-- Detail Card: Smile + PDF -->
-            <div v-if="popoverInstrument" class="detail-card mt-4 p-5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)]">
-              <div class="flex items-center justify-between mb-4">
-                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                  <i class="fas fa-chart-area text-[var(--primary)]"></i>
-                  {{ popoverInstrument.expiry }} x {{ popoverInstrument.tenor }}
-                  <span class="text-[var(--text-muted)] font-normal ml-1">ATM {{ formatVol(popoverInstrument.atmVol) }}</span>
-                </h4>
-                <button
-                  class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs p-1"
-                  @click="closePopover"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
-                  <div class="chart-wrapper">
-                    <canvas ref="smileChartCanvas"></canvas>
-                  </div>
-                </div>
-                <div>
-                  <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
-                  <div class="chart-wrapper">
-                    <canvas ref="pdfChartCanvas"></canvas>
-                  </div>
-                </div>
-              </div>
-            </div>
           </template>
 
           <!-- FX Table -->
@@ -912,10 +886,12 @@ loadFxPairs();
               <table class="w-full">
                 <thead>
                   <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Expiry</th>
-                    <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">ATM Vol</th>
-                    <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">25D RR</th>
-                    <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">25D BF</th>
+                    <th class="text-left py-3 px-3 text-sm font-medium text-[var(--text-muted)]">Tenor</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">ATM Vol</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">25D RR</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">25D BF</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">10D RR</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">10D BF</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -924,15 +900,50 @@ loadFxPairs();
                     :key="idx"
                     class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
                   >
-                    <td class="py-3 px-4 text-sm text-[var(--text-primary)]">{{ expiryToLabel(quote.expiry) }}</td>
-                    <td class="py-3 px-4 text-sm text-right text-[var(--text-primary)] font-mono">{{ formatVol(quote.atmVol) }}</td>
-                    <td class="py-3 px-4 text-sm text-right text-[var(--text-secondary)] font-mono">{{ (quote.rr25d * 10000).toFixed(1) }} bps</td>
-                    <td class="py-3 px-4 text-sm text-right text-[var(--text-secondary)] font-mono">{{ (quote.bf25d * 10000).toFixed(1) }} bps</td>
+                    <td class="py-3 px-3 text-sm text-[var(--text-primary)]">{{ quote.expiryLabel || expiryToLabel(quote.expiry) }}</td>
+                    <td class="py-3 px-3 text-sm text-right text-[var(--text-primary)] font-mono">{{ (quote.atmVol * 100).toFixed(2) }}%</td>
+                    <td class="py-3 px-3 text-sm text-right font-mono" :class="quote.rr25d < 0 ? 'text-red-400' : 'text-green-400'">{{ (quote.rr25d * 100).toFixed(2) }}%</td>
+                    <td class="py-3 px-3 text-sm text-right text-[var(--text-secondary)] font-mono">{{ (quote.bf25d * 100).toFixed(2) }}%</td>
+                    <td class="py-3 px-3 text-sm text-right font-mono" :class="(quote.rr10d ?? 0) < 0 ? 'text-red-400' : 'text-green-400'">{{ quote.rr10d != null ? (quote.rr10d * 100).toFixed(2) + '%' : '--' }}</td>
+                    <td class="py-3 px-3 text-sm text-right text-[var(--text-secondary)] font-mono">{{ quote.bf10d != null ? (quote.bf10d * 100).toFixed(2) + '%' : '--' }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail Card: Smile + PDF (separate from Swaption Instruments) -->
+    <div v-if="popoverInstrument" class="glass-card p-6 mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+          <i class="fas fa-chart-area text-[var(--primary)]"></i>
+          Smile &amp; Density
+          <span class="text-sm text-[var(--text-muted)] font-normal ml-2">
+            {{ popoverInstrument.expiry }} x {{ popoverInstrument.tenor }} — ATM {{ formatVol(popoverInstrument.atmVol) }}
+          </span>
+        </h3>
+        <button
+          class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
+          @click="closePopover"
+        >
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
+          <div class="chart-wrapper">
+            <canvas ref="smileChartCanvas"></canvas>
+          </div>
+        </div>
+        <div>
+          <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
+          <div class="chart-wrapper">
+            <canvas ref="pdfChartCanvas"></canvas>
+          </div>
         </div>
       </div>
     </div>

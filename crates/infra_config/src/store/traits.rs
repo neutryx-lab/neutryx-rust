@@ -1,6 +1,6 @@
 //! Storage traits.
 
-use crate::error::StoreError;
+use super::error::StoreError;
 
 /// Trait for saving entities to storage.
 pub trait Save<T> {

@@ -3,19 +3,6 @@
 version = 4
 
 [[package]]
-name = "adapter_feeds"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "approx",
- "infra_domain",
- "pricer_core",
- "serde",
- "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
 name = "adapter_fpml"
 version = "0.1.0"
 dependencies = [
@@ -1814,13 +1801,16 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "approx",
+ "async-trait",
  "chrono",
  "config",
  "num_cpus",
  "serde",
  "serde_json",
+ "sqlx",
  "strum",
  "thiserror 2.0.18",
+ "tokio",
  "toml",
 ]
 
@@ -1836,19 +1826,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
-]
-
-[[package]]
-name = "infra_store"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "approx",
- "async-trait",
- "serde",
- "sqlx",
- "thiserror 2.0.18",
- "tokio",
 ]
 
 [[package]]
@@ -2265,7 +2242,6 @@ dependencies = [
  "approx",
  "infra_config",
  "infra_domain",
- "infra_store",
  "pricer_core",
  "pricer_models",
  "pricer_pricing",
@@ -3419,7 +3395,6 @@ dependencies = [
  "futures-util",
  "infra_config",
  "infra_domain",
- "infra_store",
  "lru",
  "parking_lot",
  "pricer_core",
