@@ -638,12 +638,19 @@ export interface CellDiagnostics {
   rmse: number;
 }
 
+export interface CellJacobian {
+  rowLabels: string[];
+  colLabels: string[];
+  matrix: number[][];
+}
+
 export interface VolcubeCalibrateResponse {
   model: string;
   metadata: CalibrationMetadata;
   parameters: CalibrationParameters;
   cellParameters: Record<string, CalibrationParameters>;
   cellDiagnostics?: Record<string, CellDiagnostics>;
+  cellJacobians?: Record<string, CellJacobian>;
 }
 
 export interface FxVolCalibrateRequest {

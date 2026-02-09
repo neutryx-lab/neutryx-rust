@@ -156,6 +156,38 @@ const selectedCellParams = computed(() => {
   return calibrationResult.value.cellParameters[key] ?? null;
 });
 
+const selectedCellJacobian = computed(() => {
+  if (!selectedCell.value || !calibrationResult.value?.cellJacobians) return null;
+  const key = `${selectedCell.value.expiry}|${selectedCell.value.tenor}`;
+  return calibrationResult.value.cellJacobians[key] ?? null;
+});
+
+const selectedFxJacobian = computed(() => {
+  if (!selectedFxTenor.value || !calibrationResult.value?.cellJacobians) return null;
+  return calibrationResult.value.cellJacobians[selectedFxTenor.value] ?? null;
+});
+
+// Jacobian heatmap helpers (shared by swaption and FX cell detail)
+function cellJacAbsMax(jac: { matrix: number[][] } | null): number {
+  if (!jac) return 1;
+  const vals = jac.matrix.flat().filter(v => v !== 0);
+  return vals.length > 0 ? Math.max(...vals.map(Math.abs)) : 1;
+}
+
+function cellJacBg(value: number, absMax: number): string {
+  if (absMax === 0 || value === 0) return 'transparent';
+  const t = Math.min(Math.abs(value) / absMax, 1);
+  if (value < 0) return `rgba(239, 68, 68, ${0.08 + t * 0.35})`;
+  return `rgba(59, 130, 246, ${0.08 + t * 0.35})`;
+}
+
+function cellJacText(value: number, absMax: number): string {
+  if (absMax === 0 || value === 0) return 'var(--text-muted)';
+  const t = Math.min(Math.abs(value) / absMax, 1);
+  if (t > 0.4) return value < 0 ? '#f87171' : '#60a5fa';
+  return 'var(--text-secondary)';
+}
+
 // ── FX delta-vol computed ───────────────────────────────────────────────────
 const fxDeltaVols = computed(() =>
   fxQuotes.value.map(q => ({
@@ -880,12 +912,22 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 // ── Watch for selection changes ──────────────────────────────────────────────
-watch(activeTab, () => {
+watch(activeTab, (tab) => {
   calibrationResult.value = null;
   selectedCell.value = null;
   popoverCell.value = null;
   selectedFxTenor.value = null;
   destroyFxCharts();
+
+  // Reset SABR β default per asset class:
+  //   Swaption → β=0 (Normal / Bachelier)
+  //   FX       → β=1 (Lognormal / Black-Scholes)
+  if (tab === 'fx') {
+    sabrInitial.value.beta = 1;
+  } else {
+    sabrInitial.value.beta = 0;
+  }
+  sabrFixed.value.beta = true;
 });
 
 watch(selectedSwaptionIndex, (index) => {
@@ -1058,6 +1100,9 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                   <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
                     β=0 fixed → Normal SABR (Bachelier)
                   </p>
+                  <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                    β=1 fixed → Lognormal SABR (Black-Scholes)
+                  </p>
                 </div>
               </div>
             </div>
@@ -1115,6 +1160,9 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                   </div>
                   <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
                     β=0 fixed → Normal SABR (Bachelier)
+                  </p>
+                  <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                    β=1 fixed → Lognormal SABR (Black-Scholes)
                   </p>
                 </div>
               </div>
@@ -1566,6 +1614,51 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                       </div>
                     </div>
                   </div>
+
+                  <!-- Cell Jacobian ∂σ/∂θ -->
+                  <div v-if="selectedCellJacobian" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                    <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">
+                      <i class="fas fa-th text-[10px] mr-1"></i>
+                      Jacobian &part;&sigma; / &part;&theta;
+                    </h5>
+                    <div class="overflow-x-auto">
+                      <table class="w-full border-collapse">
+                        <thead>
+                          <tr>
+                            <th class="py-1.5 px-2 text-left text-xs font-medium text-[var(--text-muted)] border-b border-[var(--glass-border)]">Strike</th>
+                            <th
+                              v-for="col in selectedCellJacobian.colLabels"
+                              :key="col"
+                              class="py-1.5 px-3 text-center text-xs font-medium text-[var(--text-muted)] border-b border-[var(--glass-border)]"
+                            >{{ col }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="(row, i) in selectedCellJacobian.matrix"
+                            :key="i"
+                            class="hover:bg-[var(--surface-hover)] transition-colors"
+                          >
+                            <td class="py-1 px-2 text-xs font-medium text-[var(--text-muted)] border-b border-[var(--glass-border)]">
+                              {{ selectedCellJacobian.rowLabels[i] }}
+                            </td>
+                            <td
+                              v-for="(val, j) in row"
+                              :key="j"
+                              class="py-1 px-3 text-center text-xs font-mono border-b border-[var(--glass-border)]"
+                              :style="{ backgroundColor: cellJacBg(val, cellJacAbsMax(selectedCellJacobian)), color: cellJacText(val, cellJacAbsMax(selectedCellJacobian)) }"
+                            >
+                              {{ val === 0 ? '--' : val.toPrecision(3) }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p class="mt-2 text-[10px] text-[var(--text-muted)]">
+                      <i class="fas fa-info-circle mr-1"></i>
+                      Sensitivity of model vol (% units) to each SABR parameter.
+                    </p>
+                  </div>
                 </div>
               </template>
               <template v-else>
@@ -1665,6 +1758,51 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                         <canvas ref="fxPdfChartCanvas"></canvas>
                       </div>
                     </div>
+                  </div>
+
+                  <!-- FX Cell Jacobian ∂σ/∂θ -->
+                  <div v-if="selectedFxJacobian" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                    <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">
+                      <i class="fas fa-th text-[10px] mr-1"></i>
+                      Jacobian &part;&sigma; / &part;&theta;
+                    </h5>
+                    <div class="overflow-x-auto">
+                      <table class="w-full border-collapse">
+                        <thead>
+                          <tr>
+                            <th class="py-1.5 px-2 text-left text-xs font-medium text-[var(--text-muted)] border-b border-[var(--glass-border)]">Strike</th>
+                            <th
+                              v-for="col in selectedFxJacobian.colLabels"
+                              :key="col"
+                              class="py-1.5 px-3 text-center text-xs font-medium text-[var(--text-muted)] border-b border-[var(--glass-border)]"
+                            >{{ col }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="(row, i) in selectedFxJacobian.matrix"
+                            :key="i"
+                            class="hover:bg-[var(--surface-hover)] transition-colors"
+                          >
+                            <td class="py-1 px-2 text-xs font-medium text-[var(--text-muted)] border-b border-[var(--glass-border)]">
+                              {{ selectedFxJacobian.rowLabels[i] }}
+                            </td>
+                            <td
+                              v-for="(val, j) in row"
+                              :key="j"
+                              class="py-1 px-3 text-center text-xs font-mono border-b border-[var(--glass-border)]"
+                              :style="{ backgroundColor: cellJacBg(val, cellJacAbsMax(selectedFxJacobian)), color: cellJacText(val, cellJacAbsMax(selectedFxJacobian)) }"
+                            >
+                              {{ val === 0 ? '--' : val.toPrecision(3) }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p class="mt-2 text-[10px] text-[var(--text-muted)]">
+                      <i class="fas fa-info-circle mr-1"></i>
+                      Sensitivity of model vol (% units) to each SABR parameter.
+                    </p>
                   </div>
                 </div>
               </template>

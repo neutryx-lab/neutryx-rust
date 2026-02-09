@@ -19,9 +19,8 @@ use crate::{
     error::ServerError,
     rest::dto::demo::{
         CalibrationMetadata, CalibrationParameters, CellDiagnostics, CellJacobian,
-        FxVolCalibrateRequest,
-        FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, ImpliedPdfRequest,
-        ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
+        FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
+        ImpliedPdfRequest, ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
         IrVolQuotesResponse, SabrSmileRequest, SabrSmileResponse, SmilePoint, SwaptionInstrument,
         VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
         VolcubeInstrumentsResponse, VolcubeModelsResponse,
@@ -477,7 +476,8 @@ impl VolcubeService {
 
         // Track string keys for result lookup
         let mut cell_keys: Vec<(String, String, f64, f64)> = Vec::new();
-        // Per-cell quote strikes for post-calibration Jacobian: (forward, expiry_years, strikes)
+        // Per-cell quote strikes for post-calibration Jacobian: (forward, expiry_years,
+        // strikes)
         let mut cell_quote_strikes: HashMap<String, (f64, f64, Vec<(f64, String)>)> =
             HashMap::new();
 
@@ -602,8 +602,7 @@ impl VolcubeService {
         }
 
         // 6b. Compute per-cell Jacobian ∂σ_model / ∂θ_k
-        let cell_jacobians =
-            compute_cell_jacobians(&cell_parameters, &cell_quote_strikes, beta);
+        let cell_jacobians = compute_cell_jacobians(&cell_parameters, &cell_quote_strikes, beta);
 
         // 7. Global (average) parameters
         let global_params = if count > 0 {
