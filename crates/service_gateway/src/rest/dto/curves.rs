@@ -129,8 +129,8 @@ pub struct ChartGridPoint {
 
 /// Jacobian matrix data for curve sensitivity analysis.
 ///
-/// Contains the normalised Jacobian `[d(log DF_i) / T_i] / dr_j  ≈  −dz_i / dr_j`
-/// where:
+/// Contains the normalised Jacobian `[d(log DF_i) / T_i] / dr_j  ≈  −dz_i /
+/// dr_j` where:
 /// - Row i corresponds to pillar i (zero-rate sensitivity)
 /// - Column j corresponds to instrument j (market rate `r_j`)
 /// - `T_i` is the year-fraction to pillar i

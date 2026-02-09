@@ -2,13 +2,14 @@
  * Composable orchestrating the full pricing flow:
  * validation → trade expansion → pricing + Greeks → metrics.
  *
- * Depends on useCashflowEditor for building pricing legs.
- * History integration is added in Phase 3 (task 6.3).
+ * Depends on useCashflowEditor for building pricing legs
+ * and usePricerHistory for recording results.
  */
 
 import { usePricerStore } from '@/stores/pricer';
 import { useToast } from '@/composables/useToast';
 import { useCashflowEditor } from '@/composables/useCashflowEditor';
+import { usePricerHistory } from '@/composables/usePricerHistory';
 import { expandTrade, priceTrade, calculateGreeks } from '@/services/api';
 import type { PricingRequest, GreeksRequest, TradeExpandRequest } from '@/types/api';
 import type { ValidationError } from '@/constants/pricer';
@@ -17,6 +18,7 @@ export function usePricer() {
   const store = usePricerStore();
   const toast = useToast();
   const { buildPricingLegs } = useCashflowEditor();
+  const { addToHistory } = usePricerHistory();
 
   /**
    * Validate required instrument parameters.
@@ -153,6 +155,7 @@ export function usePricer() {
       };
 
       if (store.pricingResult) {
+        addToHistory();
         toast.success('Pricing complete');
       }
     } catch (error) {

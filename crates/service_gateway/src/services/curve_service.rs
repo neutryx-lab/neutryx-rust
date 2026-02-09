@@ -15,7 +15,6 @@ use pricer_models::{
     builder::{
         BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
         InterpolationMethod as BuilderInterpolation, JacobianMatrix,
-        JumpPillar as PricerJumpPillar,
     },
     market::{build_forward_rate_shift_grid, BootstrapInterpolation, YieldCurve},
 };
@@ -323,57 +322,30 @@ impl CurveService {
 
                 let n = market_instruments.len();
 
-                if jump_pillars.is_empty() {
-                    // No jumps: J⁻¹ is n x n. By IFT d(log DF)/dr = J_sys⁻¹
-                    // because ∂F/∂r = -I (pricing_error = theoretical - market).
-                    let result = global.calibrate(&market_instruments).map_err(|e| {
-                        ServerError::Pricing(format!("Global bootstrap failed: {e}"))
-                    })?;
-                    let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
-                        let size = n.min(j_inv.nrows());
-                        let mut data = vec![vec![0.0; size]; size];
-                        for i in 0..size {
-                            for j in 0..size {
-                                data[i][j] = j_inv[(i, j)];
-                            }
+                // Use the same forward-rate-shift grid as the sequential
+                // bootstrapper so that both methods calibrate base DFs
+                // against the (base + shifts) curve consistently.
+                let result = global
+                    .calibrate_with_shift_grid(&market_instruments, &jump_data)
+                    .map_err(|e| ServerError::Pricing(format!("Global bootstrap failed: {e}")))?;
+                let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                    let size = n.min(j_inv.nrows());
+                    let mut data = vec![vec![0.0; size]; size];
+                    for i in 0..size {
+                        for j in 0..size {
+                            data[i][j] = j_inv[(i, j)];
                         }
-                        JacobianMatrix { data, size }
-                    });
-                    (result.curve, jacobian, "global")
+                    }
+                    JacobianMatrix { data, size }
+                });
+                // Attach the forward-rate-shift grid so the output curve
+                // renders forward rate discontinuities at jump dates.
+                let curve = if jump_data.is_empty() {
+                    result.curve
                 } else {
-                    let pricer_jumps: Vec<PricerJumpPillar<f64>> = jump_pillars
-                        .iter()
-                        .map(|jp| {
-                            let time =
-                                MODEL_DAY_COUNTER.year_fraction(valuation_date, jp.jump_date());
-                            PricerJumpPillar::new(time, jp.expected_jump_bps())
-                        })
-                        .collect();
-                    let result = global
-                        .calibrate_with_jumps(&market_instruments, pricer_jumps)
-                        .map_err(|e| {
-                            ServerError::Pricing(format!("Global bootstrap with jumps failed: {e}"))
-                        })?;
-                    let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
-                        let size = n.min(j_inv.nrows());
-                        let mut data = vec![vec![0.0; size]; size];
-                        for i in 0..size {
-                            for j in 0..size {
-                                data[i][j] = j_inv[(i, j)];
-                            }
-                        }
-                        JacobianMatrix { data, size }
-                    });
-                    // Attach the same forward-rate-shift grid used by
-                    // bootstrapping so the output curve renders
-                    // forward rate discontinuities at jump dates.
-                    let curve = if jump_data.is_empty() {
-                        result.curve
-                    } else {
-                        result.curve.with_jumps(jump_data.clone())
-                    };
-                    (curve, jacobian, "global")
-                }
+                    result.curve.with_jumps(jump_data.clone())
+                };
+                (curve, jacobian, "global")
             }
         };
 
@@ -387,7 +359,9 @@ impl CurveService {
             let mut sorted_specs: Vec<(f64, String)> = regular_specs
                 .iter()
                 .map(|spec| {
-                    let t = parse_tenor_to_years(&spec.tenor).unwrap_or(0.0);
+                    // Use InstrumentSpec::tenor_years() to get the correct
+                    // maturity for FRA instruments (NxM format → end tenor).
+                    let t = spec.tenor_years().unwrap_or(0.0);
                     let lower = spec.instrument_type.to_lowercase();
                     let type_label = match lower.as_str() {
                         "deposit" | "depo" => "Depo",
@@ -404,8 +378,7 @@ impl CurveService {
             // Deduplicate by maturity (keep first label per unique pillar)
             sorted_specs.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-10);
 
-            let pillar_times: Vec<f64> =
-                sorted_specs.iter().map(|(t, _)| *t).collect();
+            let pillar_times: Vec<f64> = sorted_specs.iter().map(|(t, _)| *t).collect();
             let jacobian_labels: Vec<String> =
                 sorted_specs.into_iter().map(|(_, label)| label).collect();
 

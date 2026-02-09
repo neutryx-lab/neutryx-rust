@@ -836,8 +836,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
             // Check convergence
             if residual_norm < self.config.tolerance {
-                let j_vecs =
-                    self.compute_jacobian_impl(&x, &pillars, instruments, shift_grid)?;
+                let j_vecs = self.compute_jacobian_impl(&x, &pillars, instruments, shift_grid)?;
                 let j_matrix =
                     DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j_vecs));
 
@@ -1021,18 +1020,20 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     }
 
     /// Compute the Jacobian matrix via finite differences.
-    fn compute_jacobian<I: CalibrationInstrument<T>>(
+    /// Compute the Jacobian matrix with optional forward-rate-shift data.
+    fn compute_jacobian_impl<I: CalibrationInstrument<T>>(
         &self,
         x: &[T],
         pillars: &[T],
         instruments: &[I],
+        shift_grid: &[(T, T)],
     ) -> Result<Vec<Vec<T>>, SolverError> {
         let n = instruments.len();
         let m = pillars.len();
         let eps = self.config.jacobian_epsilon;
 
         let discount_factors: Vec<T> = x.iter().map(|&xi| Float::exp(xi)).collect();
-        let curve = self.build_curve(pillars, &discount_factors)?;
+        let curve = self.build_curve_with_shifts(pillars, &discount_factors, shift_grid)?;
         let f0 = self.compute_residuals(instruments, &curve)?;
 
         let mut jacobian = vec![vec![T::zero(); m]; n];
@@ -1042,7 +1043,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             x_pert[j] = x_pert[j] + eps;
 
             let df_pert: Vec<T> = x_pert.iter().map(|&xi| Float::exp(xi)).collect();
-            let curve_pert = self.build_curve(pillars, &df_pert)?;
+            let curve_pert = self.build_curve_with_shifts(pillars, &df_pert, shift_grid)?;
             let f_pert = self.compute_residuals(instruments, &curve_pert)?;
 
             for i in 0..n {
