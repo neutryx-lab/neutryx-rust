@@ -15,10 +15,10 @@ mod model_service;
 mod portfolio_service;
 #[cfg(feature = "risk")]
 mod risk_service;
-#[cfg(feature = "demo")]
-mod volcube_service;
 #[cfg(feature = "volatility")]
 mod volatility_service;
+#[cfg(feature = "demo")]
+mod volcube_service;
 
 pub use curve_service::CurveService;
 // Feature-gated re-exports
@@ -31,7 +31,7 @@ pub use portfolio_service::PortfolioService;
 pub use pricing_service::PricingService;
 #[cfg(feature = "risk")]
 pub use risk_service::RiskService;
-#[cfg(feature = "demo")]
-pub use volcube_service::VolcubeService;
 #[cfg(feature = "volatility")]
 pub use volatility_service::VolatilityService;
+#[cfg(feature = "demo")]
+pub use volcube_service::VolcubeService;

@@ -409,7 +409,8 @@ pub struct FxVolQuote {
     pub rr10d: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bf10d: Option<f64>,
-    /// FX forward rate at this tenor: F(T) = Spot × DF_foreign(T) / DF_domestic(T)
+    /// FX forward rate at this tenor: F(T) = Spot × DF_foreign(T) /
+    /// DF_domestic(T)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub forward: Option<f64>,
 }
@@ -707,12 +708,8 @@ pub struct SabrSmileRequest {
     pub range_bp: f64,
 }
 
-fn default_sabr_n_points() -> usize {
-    101
-}
-fn default_sabr_range_bp() -> f64 {
-    200.0
-}
+fn default_sabr_n_points() -> usize { 101 }
+fn default_sabr_range_bp() -> f64 { 200.0 }
 
 /// Response with SABR smile and implied density
 #[derive(Debug, Clone, Serialize)]
@@ -939,7 +936,8 @@ pub struct ImpliedPdfSmilePoint {
     pub vol: f64,
 }
 
-/// Request to compute implied probability density function via Breeden-Litzenberger
+/// Request to compute implied probability density function via
+/// Breeden-Litzenberger
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImpliedPdfRequest {
     /// Time to expiry in years

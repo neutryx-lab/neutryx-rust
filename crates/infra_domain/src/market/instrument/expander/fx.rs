@@ -3,7 +3,7 @@
 //! Covers: FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap,
 //! CrossCurrencyBasisSwap.
 
-use super::InstrumentExpander;
+use super::{rates::generate_payment_dates, InstrumentExpander};
 use crate::{
     ids::TradeId,
     market::{
@@ -16,8 +16,6 @@ use crate::{
     time::Date,
     trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
 };
-
-use super::rates::generate_payment_dates;
 
 impl InstrumentExpander for FxSpot {
     fn expand_to_trade(

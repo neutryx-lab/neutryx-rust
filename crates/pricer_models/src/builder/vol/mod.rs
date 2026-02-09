@@ -446,7 +446,8 @@ impl<T: Float> SliceCalibrationConfig<T> {
     /// Creates a configuration for Normal SABR (β = 0).
     ///
     /// Suitable for swaption normal (Bachelier) volatilities.
-    /// Alpha and vol quotes should be in decimal normal vol (e.g. 0.005 = 50bp).
+    /// Alpha and vol quotes should be in decimal normal vol (e.g. 0.005 =
+    /// 50bp).
     pub fn normal() -> Self {
         Self {
             fixed_beta: Some(from_f64(0.0)),

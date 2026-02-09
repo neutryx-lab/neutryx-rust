@@ -8,9 +8,11 @@ use std::{collections::HashMap, path::Path, sync::Arc};
 use adapter_loader::{parse_instruments, InstrumentSpec};
 use infra_domain::time::parse_tenor_to_years;
 use pricer_models::{
-    builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation},
+    builder::{
+        vol::{SliceCalibrationConfig, VolCubeBuilder},
+        BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation,
+    },
     market::YieldCurve,
-    builder::vol::{SliceCalibrationConfig, VolCubeBuilder},
 };
 
 use crate::{
@@ -19,9 +21,9 @@ use crate::{
         CalibrationMetadata, CalibrationParameters, CellDiagnostics, FxVolCalibrateRequest,
         FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, ImpliedPdfRequest,
         ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
-        IrVolQuotesResponse, SabrSmileRequest, SabrSmileResponse, SmilePoint,
-        SwaptionInstrument, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
-        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        IrVolQuotesResponse, SabrSmileRequest, SabrSmileResponse, SmilePoint, SwaptionInstrument,
+        VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
+        VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     state::AppState,
 };
@@ -235,13 +237,7 @@ impl VolcubeService {
 
         // Build discount curves for both currencies and compute FX forwards
         let forwards = if let Some(spot_val) = spot {
-            Self::compute_fx_forwards(
-                &base_ccy,
-                &quote_ccy,
-                spot_val,
-                &data,
-            )
-            .ok()
+            Self::compute_fx_forwards(&base_ccy, &quote_ccy, spot_val, &data).ok()
         } else {
             None
         };
@@ -316,10 +312,7 @@ impl VolcubeService {
         _state: &Arc<AppState>,
     ) -> Result<VolcubeModelsResponse, ServerError> {
         Ok(VolcubeModelsResponse {
-            models: vec![
-                "SABR".to_string(),
-                "Normal SABR".to_string(),
-            ],
+            models: vec!["SABR".to_string(), "Normal SABR".to_string()],
         })
     }
 
@@ -419,10 +412,7 @@ impl VolcubeService {
         let instrument_count = quotes.len();
 
         // 2. Resolve forward rates from request or use fallback
-        let forward_rates = request
-            .forward_rates
-            .clone()
-            .unwrap_or_default();
+        let forward_rates = request.forward_rates.clone().unwrap_or_default();
         let default_forward: f64 = 0.04;
 
         // 3. Determine vol type and select config based on model selection
@@ -462,9 +452,8 @@ impl VolcubeService {
             let expiry_years = parse_tenor_to_years(expiry_str).map_err(|e| {
                 ServerError::Internal(format!("Invalid expiry '{expiry_str}': {e}"))
             })?;
-            let tenor_years = parse_tenor_to_years(tenor_str).map_err(|e| {
-                ServerError::Internal(format!("Invalid tenor '{tenor_str}': {e}"))
-            })?;
+            let tenor_years = parse_tenor_to_years(tenor_str)
+                .map_err(|e| ServerError::Internal(format!("Invalid tenor '{tenor_str}': {e}")))?;
 
             let key = format!("{expiry_str}|{tenor_str}");
             let forward = forward_rates.get(&key).copied().unwrap_or(default_forward);
@@ -494,7 +483,11 @@ impl VolcubeService {
                 let vol_raw = pt.get("vol").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
                 let strike = forward + offset_bp / 10_000.0;
-                let vol = if is_normal_vol { vol_raw / 100.0 } else { vol_raw };
+                let vol = if is_normal_vol {
+                    vol_raw / 100.0
+                } else {
+                    vol_raw
+                };
 
                 builder.add_quote(expiry_years, tenor_years, strike, vol, forward);
             }
@@ -508,9 +501,9 @@ impl VolcubeService {
         }
 
         // 5. Calibrate
-        let cube_result = builder.calibrate().map_err(|e| {
-            ServerError::Internal(format!("SABR calibration failed: {e}"))
-        })?;
+        let cube_result = builder
+            .calibrate()
+            .map_err(|e| ServerError::Internal(format!("SABR calibration failed: {e}")))?;
 
         // 6. Convert results to response DTOs
         let mut cell_parameters = HashMap::new();
@@ -568,7 +561,10 @@ impl VolcubeService {
             }
         };
 
-        let converged_count = cell_diagnostics_map.values().filter(|d| d.converged).count();
+        let converged_count = cell_diagnostics_map
+            .values()
+            .filter(|d| d.converged)
+            .count();
         let elapsed = start.elapsed();
         let model = request.model.clone().unwrap_or_else(|| "SABR".to_string());
 
@@ -691,7 +687,8 @@ impl VolcubeService {
     // SABR Smile + Density (from calibrated parameters)
     // =========================================================================
 
-    /// Compute a smooth SABR smile and implied density from calibrated parameters.
+    /// Compute a smooth SABR smile and implied density from calibrated
+    /// parameters.
     ///
     /// Returns `n_points` evenly spaced points in `[-range_bp, +range_bp]`.
     /// Vols are returned in the same percentage scale as market data
@@ -721,7 +718,8 @@ impl VolcubeService {
             request.nu,
             request.rho,
             expiry,
-        );
+        )
+        .map_err(|e| ServerError::InvalidRequest(format!("Invalid SABR parameters: {e}")))?;
 
         let n = request.n_points.max(3);
         let range = request.range_bp;
@@ -736,8 +734,7 @@ impl VolcubeService {
             // Clamp strike to positive (SABR requires K > 0 for β > 0)
             let strike = strike.max(1e-8);
 
-            let black_vol = sabr_implied_vol(&sabr_params, strike)
-                .unwrap_or(request.alpha);
+            let black_vol = sabr_implied_vol(&sabr_params, strike).unwrap_or(request.alpha);
 
             // Convert Black vol → normal vol (percentage scale matching market data)
             // σ_Normal ≈ σ_Black × F^β
@@ -825,7 +822,11 @@ impl VolcubeService {
             let code = ccy.get("code").and_then(|c| c.as_str())?;
             if code.eq_ignore_ascii_case(currency) {
                 let index = ccy.get("index").and_then(|i| i.as_str())?;
-                return Some(format!("{}-{}", currency.to_lowercase(), index.to_lowercase()));
+                return Some(format!(
+                    "{}-{}",
+                    currency.to_lowercase(),
+                    index.to_lowercase()
+                ));
             }
         }
         None
@@ -886,8 +887,8 @@ impl VolcubeService {
         let market_instruments = parse_instruments(&specs)
             .map_err(|e| ServerError::Internal(format!("Instrument parsing failed: {e}")))?;
 
-        let config = BootstrapConfig::new(1e-10, 100)
-            .with_interpolation(BuilderInterpolation::LogLinear);
+        let config =
+            BootstrapConfig::new(1e-10, 100).with_interpolation(BuilderInterpolation::LogLinear);
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, _) = bootstrapper
@@ -924,10 +925,7 @@ impl VolcubeService {
 
         if let Some(quotes) = vol_data.get("quotes").and_then(|q| q.as_array()) {
             for quote in quotes {
-                let tenor_label = quote
-                    .get("tenor")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("");
+                let tenor_label = quote.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
                 let expiry_years = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.0);
 
                 if tenor_label.is_empty() || expiry_years <= 0.0 {
@@ -1006,6 +1004,4 @@ fn bachelier_call(strike: f64, vol: f64, expiry: f64) -> Result<f64, ServerError
 }
 
 /// Round to 4 decimal places.
-fn round4(x: f64) -> f64 {
-    (x * 10_000.0).round() / 10_000.0
-}
+fn round4(x: f64) -> f64 { (x * 10_000.0).round() / 10_000.0 }

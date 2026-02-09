@@ -175,12 +175,14 @@ pub mod curves {
         /// Log-linear interpolation (linear on log of discount factors).
         #[default]
         LogLinear,
-        /// Flat forward interpolation (constant simple forward rate between pillars).
+        /// Flat forward interpolation (constant simple forward rate between
+        /// pillars).
         ///
-        /// DF interpolation is identical to LogLinear: `DF(t) = DF_i^(1-w) * DF_{i+1}^w`.
-        /// The distinction is in forward rate computation: FlatForward guarantees that the
-        /// simple forward rate `F(t, t+δ)` is constant within each pillar interval when
-        /// δ matches the index's accrual period (e.g. 1/360 for ACT/360 indices).
+        /// DF interpolation is identical to LogLinear: `DF(t) = DF_i^(1-w) *
+        /// DF_{i+1}^w`. The distinction is in forward rate computation:
+        /// FlatForward guarantees that the simple forward rate `F(t,
+        /// t+δ)` is constant within each pillar interval when δ matches
+        /// the index's accrual period (e.g. 1/360 for ACT/360 indices).
         FlatForward,
     }
 
@@ -335,7 +337,8 @@ pub mod curves {
             }
         }
 
-        /// Creates a copy of this instrument with the market rate bumped by `delta`.
+        /// Creates a copy of this instrument with the market rate bumped by
+        /// `delta`.
         ///
         /// Used for finite-difference Jacobian computation in the sequential
         /// bootstrapper.
@@ -595,9 +598,7 @@ pub mod curves {
 
             match self.interpolation {
                 BootstrapInterpolation::Linear => Ok(df1 * (T::one() - w) + df2 * w),
-                BootstrapInterpolation::LogLinear
-
-                | BootstrapInterpolation::FlatForward => {
+                BootstrapInterpolation::LogLinear | BootstrapInterpolation::FlatForward => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     Ok(log_df.exp())
                 }
@@ -774,9 +775,7 @@ pub mod curves {
                     gradient[i + 1] = w;
                     df
                 }
-                BootstrapInterpolation::LogLinear
-
-                | BootstrapInterpolation::FlatForward => {
+                BootstrapInterpolation::LogLinear | BootstrapInterpolation::FlatForward => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     let df = log_df.exp();
                     // For LogLinear:
@@ -873,9 +872,7 @@ pub mod curves {
                     gradient[i + 1] = df2 * w;
                     df
                 }
-                BootstrapInterpolation::LogLinear
-
-                | BootstrapInterpolation::FlatForward => {
+                BootstrapInterpolation::LogLinear | BootstrapInterpolation::FlatForward => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     let df = log_df.exp();
                     // For LogLinear: ∂DF(t)/∂log_df_i = DF(t) * (1-w)
@@ -1526,7 +1523,7 @@ pub mod jumps {
     /// # Returns
     ///
     /// Dense daily grid of `(time, cumulative_offset)` pairs, compatible
-    /// with [`CurveBootstrapper::bootstrap_to_curve_with_jumps`].
+    /// with [`CurveBootstrapper::bootstrap_to_curve_with_jumps`](crate::builder::CurveBootstrapper::bootstrap_to_curve_with_jumps).
     #[must_use]
     pub fn build_forward_rate_shift_grid(
         pillars: &[JumpPillar],
@@ -1571,8 +1568,7 @@ pub mod jumps {
         // query path in cumulative_offset_at. Using i * (1/N) would introduce
         // IEEE 754 rounding mismatches that shift forward rates by ±jump_bps
         // on affected days.
-        let grid_count =
-            (max_time / day_counter.year_fraction_from_days(1)).ceil() as usize + 2;
+        let grid_count = (max_time / day_counter.year_fraction_from_days(1)).ceil() as usize + 2;
 
         (0..grid_count)
             .map(|i| {

@@ -10,11 +10,11 @@ use crate::{
     ids::TradeId,
     market::{
         convention::ConventionSet,
-        Currency, RateIndex,
         instrument::{
             BasisSwap, CapFloor, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
             InstrumentError, InterestRateSwap, Ois, Swaption,
         },
+        Currency, RateIndex,
     },
     time::{Date, EndOfMonthRule, Frequency, Tenor},
     trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
@@ -257,13 +257,12 @@ impl InstrumentExpander for BasisSwap {
         }
 
         // Determine directions: Payer pays leg1, receives leg2
-        let (leg1_direction, leg2_direction) = if self.payer_receiver
-            == crate::market::instrument::PayerReceiver::Payer
-        {
-            (Direction::Payer, Direction::Receiver)
-        } else {
-            (Direction::Receiver, Direction::Payer)
-        };
+        let (leg1_direction, leg2_direction) =
+            if self.payer_receiver == crate::market::instrument::PayerReceiver::Payer {
+                (Direction::Payer, Direction::Receiver)
+            } else {
+                (Direction::Receiver, Direction::Payer)
+            };
 
         let leg1 = Leg::new(
             leg1_cashflows,

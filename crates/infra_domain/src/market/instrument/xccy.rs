@@ -5,7 +5,10 @@
 
 use derive_more::{Add, Sub};
 
-use crate::{market::{Currency, RateIndex}, time::{Date, Frequency}};
+use crate::{
+    market::{Currency, RateIndex},
+    time::{Date, Frequency},
+};
 
 // ============================================================================
 // BasisSpread Newtype

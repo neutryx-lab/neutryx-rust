@@ -49,7 +49,6 @@ mod vol_surface_loader;
 pub use csa::{CsaTerms, NettingSet};
 pub use csv_loader::CsvLoader;
 pub use error::LoaderError;
-pub use quote::{MarketQuote, QuoteType};
 // Curve builder support (requires curve-builder feature)
 #[cfg(feature = "curve-builder")]
 pub use instrument_parser::{
@@ -59,6 +58,7 @@ pub use json_loader::{
     CsaLoader, CurveData, CurvePoint, FxSpotData, JsonLoader, MarketData, MarketLoader,
     TradeLoader, VolPoint, VolSurfaceData,
 };
+pub use quote::{MarketQuote, QuoteType};
 pub use ticker_loader::{TickerMappingEntry, TickerMappingLoader};
 pub use vol_surface_loader::{
     parse_expiry_string, parse_fra_tenor, parse_tenor_string, CapFloorVolCsvRow, QuoteTypeJson,

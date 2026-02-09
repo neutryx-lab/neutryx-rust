@@ -88,7 +88,8 @@ pub enum InterpolationMethod {
     /// Log-linear interpolation (linear on log of discount factors).
     #[default]
     LogLinear,
-    /// Flat forward interpolation (constant simple forward rate between pillars).
+    /// Flat forward interpolation (constant simple forward rate between
+    /// pillars).
     FlatForward,
 }
 

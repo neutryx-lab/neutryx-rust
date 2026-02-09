@@ -10,8 +10,7 @@ use crate::{
     error::ServerError,
     rest::dto::{
         CurveBuildRequest, CurveBuildResponse, DiscountFactorRequest, DiscountFactorResponse,
-        ForwardRateRequest, ForwardRateResponse, ForwardSwapRateRequest,
-        ForwardSwapRateResponse,
+        ForwardRateRequest, ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse,
     },
     services::CurveService,
     state::AppState,

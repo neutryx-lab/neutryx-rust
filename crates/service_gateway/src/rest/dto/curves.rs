@@ -13,7 +13,8 @@ pub enum InterpolationMethod {
     #[default]
     #[serde(alias = "log_linear")]
     LogLinearDf,
-    /// Flat forward interpolation (constant simple forward rate between pillars)
+    /// Flat forward interpolation (constant simple forward rate between
+    /// pillars)
     FlatForward,
 }
 
@@ -160,7 +161,8 @@ pub struct CurveBuildResponse {
     pub forward_curve: Vec<ForwardRatePoint>,
     /// Short-term chart grid (0-1Y): daily up to 3M, weekly 3M-1Y
     pub short_term_grid: Vec<ChartGridPoint>,
-    /// Long-term chart grid (0-30Y): quarterly 3M-10Y, semi-annual 10.5Y-20Y, annual 21Y-30Y
+    /// Long-term chart grid (0-30Y): quarterly 3M-10Y, semi-annual 10.5Y-20Y,
+    /// annual 21Y-30Y
     pub long_term_grid: Vec<ChartGridPoint>,
     /// Number of instruments used
     pub instrument_count: usize,
