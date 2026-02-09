@@ -58,7 +58,7 @@ fn format_long_term_label(date: NaiveDate) -> String {
 /// Internal model time axis: ACT/365 Fixed.
 ///
 /// All time conversions in this module use this day counter,
-/// ensuring consistency with the pricer_models internal basis.
+/// ensuring consistency with the `pricer_models` internal basis.
 const MODEL_DAY_COUNTER: DayCounter = DayCounter::Actual365Fixed;
 
 /// Generate short-term grid dates: daily up to 3M, weekly 3M→1Y.
@@ -592,7 +592,7 @@ impl CurveService {
         })
     }
 
-    /// Compute a single forward swap rate: (df_start - df_end) / annuity
+    /// Compute a single forward swap rate: (`df_start` - `df_end`) / annuity
     pub(crate) fn forward_swap_rate(
         curve: &dyn YieldCurve<f64>,
         expiry_years: f64,
