@@ -347,10 +347,7 @@ impl CurveService {
                                 "Global bootstrap failed ({e}), falling back to sequential"
                             );
                             let (curve, jac) = bootstrapper
-                                .bootstrap_to_curve_with_jacobian(
-                                    &market_instruments,
-                                    &jump_data,
-                                )
+                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
                                 .map_err(|e2| {
                                     ServerError::Pricing(format!("Bootstrap failed: {e2}"))
                                 })?;
@@ -376,10 +373,7 @@ impl CurveService {
                                  falling back to sequential"
                             );
                             let (curve, jac) = bootstrapper
-                                .bootstrap_to_curve_with_jacobian(
-                                    &market_instruments,
-                                    &jump_data,
-                                )
+                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
                                 .map_err(|e2| {
                                     ServerError::Pricing(format!("Bootstrap failed: {e2}"))
                                 })?;
