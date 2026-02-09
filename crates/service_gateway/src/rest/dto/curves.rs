@@ -128,8 +128,8 @@ pub struct ChartGridPoint {
 
 /// Jacobian matrix data for curve sensitivity analysis.
 ///
-/// Contains the finite-difference Jacobian dDF_i / dr_j where:
-/// - Row i corresponds to pillar i (discount factor DF_i)
+/// Contains the finite-difference Jacobian d(log DF_i) / dr_j where:
+/// - Row i corresponds to pillar i (log discount factor)
 /// - Column j corresponds to instrument j (market rate r_j)
 ///
 /// For sequential bootstrap, this matrix is lower-triangular.
@@ -170,7 +170,7 @@ pub struct CurveBuildResponse {
     pub converged: bool,
     /// Calculation time in milliseconds
     pub calculation_time_ms: f64,
-    /// Jacobian matrix dDF/dr (finite-difference, sequential bootstrap)
+    /// Jacobian matrix d(log DF)/dr (finite-difference, sequential bootstrap)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jacobian: Option<JacobianData>,
 }

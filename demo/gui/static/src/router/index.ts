@@ -118,8 +118,8 @@ const routes: RouteRecordRaw[] = [
     name: 'volcube-builder',
     component: VolcubeBuilderView,
     meta: {
-      title: 'Vol Cube',
-      breadcrumb: 'Vol Cube',
+      title: 'Vol Surface',
+      breadcrumb: 'Vol Surface',
       icon: 'fa-cube',
       navGroup: 'tools',
     } as ViewMeta,

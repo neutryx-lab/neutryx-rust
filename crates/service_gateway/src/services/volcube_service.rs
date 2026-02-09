@@ -3,13 +3,16 @@
 //! Extracted from `demo_service` to provide a focused service for
 //! volatility surface calibration and related computations.
 
-use std::{path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
+
+use infra_domain::time::parse_tenor_to_years;
+use pricer_models::builder::vol::{SliceCalibrationConfig, VolCubeBuilder};
 
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        CalibrationMetadata, CalibrationParameters, FxVolCalibrateRequest, FxVolPair,
-        FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, ImpliedPdfRequest,
+        CalibrationMetadata, CalibrationParameters, CellDiagnostics, FxVolCalibrateRequest,
+        FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, ImpliedPdfRequest,
         ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
         IrVolQuotesResponse, SmilePoint, SwaptionInstrument, VolcubeCalibrateRequest,
         VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
@@ -359,13 +362,15 @@ impl VolcubeService {
         })
     }
 
-    /// Calibrate volcube (swaption vol surface)
+    /// Calibrate volcube (swaption vol surface) using real SABR calibration
+    /// via `pricer_models::builder::vol::VolCubeBuilder` (Levenberg-Marquardt).
     pub fn calibrate_volcube(
         request: &VolcubeCalibrateRequest,
         _state: &Arc<AppState>,
     ) -> Result<VolcubeCalibrateResponse, ServerError> {
         let start = std::time::Instant::now();
 
+        // 1. Load vol data from file
         let vol_path = Path::new("demo/data/input/irvol")
             .join(format!("{}.json", request.index.to_lowercase()));
 
@@ -375,31 +380,157 @@ impl VolcubeService {
         let data: serde_json::Value = serde_json::from_str(&content)
             .map_err(|e| ServerError::Internal(format!("Failed to parse vol data: {e}")))?;
 
-        let instrument_count = data
+        let quotes = data
             .get("quotes")
             .and_then(|q| q.as_array())
-            .map(|arr| arr.len())
-            .unwrap_or(0);
+            .cloned()
+            .unwrap_or_default();
+        let instrument_count = quotes.len();
 
-        // Get SABR parameters from the file or use defaults
-        let params = data.get("smileParameters");
-        let alpha = params
-            .and_then(|p| p.get("defaultAlpha"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.02);
-        let beta = params
-            .and_then(|p| p.get("defaultBeta"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.5);
-        let rho = params
-            .and_then(|p| p.get("defaultRho"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(-0.15);
-        let nu = params
-            .and_then(|p| p.get("defaultNu"))
-            .and_then(|v| v.as_f64())
-            .unwrap_or(0.4);
+        // 2. Resolve forward rates from request or use fallback
+        let forward_rates = request
+            .forward_rates
+            .clone()
+            .unwrap_or_default();
+        let default_forward: f64 = 0.04;
 
+        // 3. Determine vol type
+        let is_normal_vol = data
+            .get("metadata")
+            .and_then(|m| m.get("volType"))
+            .and_then(|v| v.as_str())
+            .map_or(false, |v| v == "normal");
+
+        // 4. Build VolCubeBuilder with real quotes
+        let config = SliceCalibrationConfig::rates(); // beta=0.5
+        let beta = config.fixed_beta.unwrap_or(0.5);
+        let mut builder = VolCubeBuilder::with_config(config);
+
+        // Track string keys for result lookup
+        let mut cell_keys: Vec<(String, String, f64, f64)> = Vec::new();
+
+        for quote in &quotes {
+            let expiry_str = quote.get("expiry").and_then(|v| v.as_str()).unwrap_or("");
+            let tenor_str = quote.get("tenor").and_then(|v| v.as_str()).unwrap_or("");
+            let atm_vol_raw = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+            if expiry_str.is_empty() || tenor_str.is_empty() || atm_vol_raw == 0.0 {
+                continue;
+            }
+
+            let expiry_years = parse_tenor_to_years(expiry_str).map_err(|e| {
+                ServerError::Internal(format!("Invalid expiry '{expiry_str}': {e}"))
+            })?;
+            let tenor_years = parse_tenor_to_years(tenor_str).map_err(|e| {
+                ServerError::Internal(format!("Invalid tenor '{tenor_str}': {e}"))
+            })?;
+
+            let key = format!("{expiry_str}|{tenor_str}");
+            let forward = forward_rates.get(&key).copied().unwrap_or(default_forward);
+
+            // Convert normal vol to approximate Black vol if needed
+            let atm_vol_black = if is_normal_vol {
+                normal_to_black_approx(atm_vol_raw / 100.0, forward, beta)
+            } else {
+                atm_vol_raw
+            };
+
+            // ATM quote
+            builder.add_quote(expiry_years, tenor_years, forward, atm_vol_black, forward);
+
+            // Smile quotes
+            let smile = quote
+                .get("smile")
+                .and_then(|s| s.as_array())
+                .cloned()
+                .unwrap_or_default();
+            for pt in &smile {
+                let offset_bp = pt
+                    .get("strikeOffsetBp")
+                    .and_then(|o| o.as_f64())
+                    .unwrap_or(0.0);
+                let vol_raw = pt.get("vol").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                let strike = forward + offset_bp / 10_000.0;
+                let vol_black = if is_normal_vol {
+                    normal_to_black_approx(vol_raw / 100.0, forward, beta)
+                } else {
+                    vol_raw
+                };
+
+                builder.add_quote(expiry_years, tenor_years, strike, vol_black, forward);
+            }
+
+            cell_keys.push((
+                expiry_str.to_string(),
+                tenor_str.to_string(),
+                expiry_years,
+                tenor_years,
+            ));
+        }
+
+        // 5. Calibrate
+        let cube_result = builder.calibrate().map_err(|e| {
+            ServerError::Internal(format!("SABR calibration failed: {e}"))
+        })?;
+
+        // 6. Convert results to response DTOs
+        let mut cell_parameters = HashMap::new();
+        let mut cell_diagnostics_map = HashMap::new();
+        let mut alpha_sum = 0.0_f64;
+        let mut rho_sum = 0.0_f64;
+        let mut nu_sum = 0.0_f64;
+        let mut count = 0_usize;
+
+        for (expiry_str, tenor_str, expiry_years, tenor_years) in &cell_keys {
+            let key = format!("{expiry_str}|{tenor_str}");
+
+            if let Some(params) = cube_result.get(*expiry_years, *tenor_years) {
+                cell_parameters.insert(
+                    key.clone(),
+                    CalibrationParameters {
+                        alpha: round4(params.alpha),
+                        beta: round4(params.beta),
+                        rho: round4(params.rho),
+                        nu: round4(params.nu),
+                    },
+                );
+                alpha_sum += params.alpha;
+                rho_sum += params.rho;
+                nu_sum += params.nu;
+                count += 1;
+            }
+
+            if let Some(diag) = cube_result.get_diagnostics(*expiry_years, *tenor_years) {
+                cell_diagnostics_map.insert(
+                    key,
+                    CellDiagnostics {
+                        converged: diag.converged,
+                        iterations: diag.iterations,
+                        rmse: diag.rmse,
+                    },
+                );
+            }
+        }
+
+        // 7. Global (average) parameters
+        let global_params = if count > 0 {
+            CalibrationParameters {
+                alpha: round4(alpha_sum / count as f64),
+                beta: round4(beta),
+                rho: round4(rho_sum / count as f64),
+                nu: round4(nu_sum / count as f64),
+            }
+        } else {
+            CalibrationParameters {
+                alpha: 0.02,
+                beta: 0.5,
+                rho: -0.15,
+                nu: 0.4,
+            }
+        };
+
+        let converged_count = cell_diagnostics_map.values().filter(|d| d.converged).count();
         let elapsed = start.elapsed();
         let model = request.model.clone().unwrap_or_else(|| "SABR".to_string());
 
@@ -408,13 +539,12 @@ impl VolcubeService {
             metadata: CalibrationMetadata {
                 instrument_count,
                 processing_time_ms: elapsed.as_secs_f64() * 1000.0,
+                converged_count: Some(converged_count),
+                max_rmse: Some(cube_result.max_rmse()),
             },
-            parameters: CalibrationParameters {
-                alpha,
-                beta,
-                rho,
-                nu,
-            },
+            parameters: global_params,
+            cell_parameters,
+            cell_diagnostics: Some(cell_diagnostics_map),
         })
     }
 
@@ -448,6 +578,8 @@ impl VolcubeService {
             metadata: CalibrationMetadata {
                 instrument_count,
                 processing_time_ms: elapsed.as_secs_f64() * 1000.0,
+                converged_count: None,
+                max_rmse: None,
             },
             parameters: CalibrationParameters {
                 alpha: 0.15,
@@ -455,6 +587,8 @@ impl VolcubeService {
                 rho: -0.20,
                 nu: 0.35,
             },
+            cell_parameters: std::collections::HashMap::new(),
+            cell_diagnostics: None,
         })
     }
 
@@ -547,4 +681,18 @@ fn bachelier_call(strike: f64, vol: f64, expiry: f64) -> Result<f64, ServerError
     let model = Bachelier::new(0.0_f64, vol)
         .map_err(|e| ServerError::Pricing(format!("Bachelier model error: {e}")))?;
     Ok(model.price_call(strike, expiry))
+}
+
+/// Approximate conversion from normal (Bachelier) vol to Black (lognormal) vol.
+/// `σ_Black ≈ σ_Normal / F^β`
+fn normal_to_black_approx(normal_vol_decimal: f64, forward: f64, beta: f64) -> f64 {
+    if forward <= 0.0 {
+        return normal_vol_decimal;
+    }
+    normal_vol_decimal / forward.powf(beta)
+}
+
+/// Round to 4 decimal places.
+fn round4(x: f64) -> f64 {
+    (x * 10_000.0).round() / 10_000.0
 }

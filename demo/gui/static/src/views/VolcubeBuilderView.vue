@@ -28,10 +28,18 @@ interface FxQuote {
   bf10d?: number;
 }
 
+interface CellParameters {
+  alpha: number;
+  beta: number;
+  rho: number;
+  nu: number;
+}
+
 interface CalibrationResult {
   surfaceId: string;
   model: string;
   parameters: Record<string, number>;
+  cellParameters: Record<string, CellParameters>;
   errors: Array<{ expiry: string; tenor?: string; error: number }>;
   metadata: {
     instrumentCount: number;
@@ -58,6 +66,8 @@ const referenceDate = ref('');
 const fwdSwapRates = ref<Map<string, number>>(new Map());
 const isBuildingCurve = ref(false);
 const matrixTab = ref<'vol' | 'fwd'>('vol');
+type SabrParam = 'alpha' | 'beta' | 'rho' | 'nu';
+const paramTab = ref<SabrParam>('alpha');
 
 const fxPairs = ref<string[]>([]);
 const selectedFxPair = ref('');
@@ -129,6 +139,12 @@ const selectedInstrument = computed(() => {
   return getCell(selectedCell.value.expiry, selectedCell.value.tenor) ?? null;
 });
 
+const selectedCellParams = computed(() => {
+  if (!selectedCell.value || !calibrationResult.value?.cellParameters) return null;
+  const key = `${selectedCell.value.expiry}|${selectedCell.value.tenor}`;
+  return calibrationResult.value.cellParameters[key] ?? null;
+});
+
 // Heatmap colour functions
 function heatmapColour(vol: number): string {
   const { min, max } = volRange.value;
@@ -144,6 +160,36 @@ function heatmapTextColour(vol: number): string {
   const { min, max } = volRange.value;
   if (max === min) return 'var(--text-primary)';
   const t = Math.max(0, Math.min(1, (vol - min) / (max - min)));
+  if (t > 0.75) return '#f97316';
+  if (t > 0.5) return '#22c55e';
+  if (t > 0.25) return '#3b82f6';
+  return 'var(--text-secondary)';
+}
+
+// Calibration param heatmap
+const paramRange = computed(() => {
+  const cp = calibrationResult.value?.cellParameters;
+  if (!cp) return { min: 0, max: 1 };
+  const key = paramTab.value;
+  const vals = Object.values(cp).map(p => p[key]);
+  if (vals.length === 0) return { min: 0, max: 1 };
+  return { min: Math.min(...vals), max: Math.max(...vals) };
+});
+
+function paramHeatmapColour(val: number): string {
+  const { min, max } = paramRange.value;
+  if (max === min) return 'rgba(99, 102, 241, 0.15)';
+  const t = Math.max(0, Math.min(1, (val - min) / (max - min)));
+  const hue = 220 - t * 205;
+  const saturation = 60 + t * 20;
+  const lightness = 45 + (1 - Math.abs(t - 0.5) * 2) * 10;
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, 0.25)`;
+}
+
+function paramTextColour(val: number): string {
+  const { min, max } = paramRange.value;
+  if (max === min) return 'var(--text-primary)';
+  const t = Math.max(0, Math.min(1, (val - min) / (max - min)));
   if (t > 0.75) return '#f97316';
   if (t > 0.5) return '#22c55e';
   if (t > 0.25) return '#3b82f6';
@@ -441,6 +487,10 @@ function closeDetailCard() {
   selectedCell.value = null;
 }
 
+function selectCalibrationCell(expiry: string, tenor: string) {
+  selectedCell.value = { expiry, tenor };
+}
+
 function onDocumentClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
   if (!target.closest('.popover-trigger') && !target.closest('.smile-popover')) {
@@ -540,6 +590,7 @@ async function calibrate() {
           index: selectedSwaptionIndex.value.split('-')[0],
           referenceDate: referenceDate.value,
           model: selectedModel.value,
+          forwardRates: Object.fromEntries(fwdSwapRates.value),
         }
       : {
           pair: selectedFxPair.value,
@@ -1008,30 +1059,47 @@ loadFxPairs();
           </template>
         </div>
 
-        <!-- Calibration Result + Smile/PDF (only shown after calibration, same column as instruments) -->
+        <!-- Calibration Result (only shown after calibration, same column as instruments) -->
         <div v-if="calibrationResult" class="glass-card p-6 mt-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
               <i class="fas fa-check-circle text-[var(--success)]"></i>
               Calibration Result
             </h3>
-            <div class="flex items-center gap-2">
-              <button
-                class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
-                @click="exportCsv"
-              >
-                <i class="fas fa-file-csv mr-1"></i>CSV
-              </button>
-              <button
-                class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
-                @click="exportJson"
-              >
-                <i class="fas fa-file-code mr-1"></i>JSON
-              </button>
+            <div class="flex items-center gap-4">
+              <!-- SABR param tabs -->
+              <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+                <button
+                  v-for="p in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])"
+                  :key="p"
+                  :class="[
+                    'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                    paramTab === p
+                      ? 'bg-[var(--primary)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  ]"
+                  @click="paramTab = p"
+                >{{ p === 'alpha' ? '\u03B1' : p === 'beta' ? '\u03B2' : p === 'rho' ? '\u03C1' : '\u03BD' }}</button>
+              </div>
+              <!-- Export buttons -->
+              <div class="flex items-center gap-2">
+                <button
+                  class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+                  @click="exportCsv"
+                >
+                  <i class="fas fa-file-csv mr-1"></i>CSV
+                </button>
+                <button
+                  class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+                  @click="exportJson"
+                >
+                  <i class="fas fa-file-code mr-1"></i>JSON
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- Calibration summary -->
+          <!-- Calibration summary badges -->
           <div class="flex flex-wrap items-center gap-3 mb-4">
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-primary)]">
               <i class="fas fa-cogs text-[var(--primary)]"></i>
@@ -1054,15 +1122,65 @@ loadFxPairs();
             </span>
           </div>
 
-          <!-- Smile & PDF charts (only when a cell is selected) -->
-          <template v-if="selectedInstrument">
+          <!-- Parameter Matrix -->
+          <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="overflow-x-auto mb-4">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
+                    Expiry \ Tenor
+                  </th>
+                  <th
+                    v-for="tenor in matrixTenors"
+                    :key="tenor"
+                    class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
+                  >
+                    {{ tenor }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="expiry in matrixExpiries" :key="expiry">
+                  <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
+                    {{ expiry }}
+                  </td>
+                  <td
+                    v-for="tenor in matrixTenors"
+                    :key="tenor"
+                    class="py-2 px-2 text-center border-b border-[var(--glass-border)] transition-all duration-150"
+                    :class="[
+                      calibrationResult.cellParameters[`${expiry}|${tenor}`] ? 'cursor-pointer hover-cell' : '',
+                      selectedCell?.expiry === expiry && selectedCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
+                    ]"
+                    :style="calibrationResult.cellParameters[`${expiry}|${tenor}`]
+                      ? { backgroundColor: paramHeatmapColour(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab]) }
+                      : {}"
+                    @click="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
+                  >
+                    <span
+                      v-if="calibrationResult.cellParameters[`${expiry}|${tenor}`]"
+                      class="text-xs font-mono font-medium"
+                      :style="{ color: paramTextColour(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab]) }"
+                    >
+                      {{ calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab].toFixed(4) }}
+                    </span>
+                    <span v-else class="text-xs text-[var(--text-muted)]">--</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Cell detail (only when a cell is selected in the parameter matrix) -->
+          <template v-if="selectedCell">
             <div class="border-t border-[var(--glass-border)] pt-4">
               <div class="flex items-center justify-between mb-3">
                 <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                   <i class="fas fa-chart-area text-[var(--primary)]"></i>
-                  Smile &amp; Density
+                  Cell Detail
                   <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
-                    {{ selectedInstrument.expiry }} x {{ selectedInstrument.tenor }} — ATM {{ formatVol(selectedInstrument.atmVol) }}
+                    {{ selectedCell.expiry }} x {{ selectedCell.tenor }}
+                    <template v-if="selectedInstrument"> — ATM {{ formatVol(selectedInstrument.atmVol) }}</template>
                   </span>
                 </h4>
                 <button
@@ -1072,7 +1190,25 @@ loadFxPairs();
                   <i class="fas fa-times"></i>
                 </button>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              <!-- Calibrated SABR parameters -->
+              <div v-if="selectedCellParams" class="flex flex-wrap gap-2 mb-4">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&alpha;</span> {{ selectedCellParams.alpha.toFixed(4) }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&beta;</span> {{ selectedCellParams.beta.toFixed(4) }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&rho;</span> {{ selectedCellParams.rho.toFixed(4) }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&nu;</span> {{ selectedCellParams.nu.toFixed(4) }}
+                </span>
+              </div>
+
+              <!-- Smile & PDF charts -->
+              <div v-if="selectedInstrument" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
                   <div class="chart-wrapper">
@@ -1092,7 +1228,7 @@ loadFxPairs();
             <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
               <p class="text-sm text-[var(--text-muted)]">
                 <i class="fas fa-mouse-pointer mr-1"></i>
-                Select a cell in the matrix to view Smile &amp; Density charts
+                Select a cell in the parameter matrix to view calibrated parameters &amp; charts
               </p>
             </div>
           </template>

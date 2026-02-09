@@ -312,13 +312,14 @@ impl CurveService {
         let jacobian_labels: Vec<String> = sorted_specs
             .iter()
             .map(|spec| {
-                let type_label = match spec.instrument_type.to_lowercase().as_str() {
+                let lower = spec.instrument_type.to_lowercase();
+                let type_label = match lower.as_str() {
                     "deposit" | "depo" => "Depo",
                     "ois" => "OIS",
                     "fra" => "FRA",
                     "swap" | "irs" => "IRS",
                     "future" | "futures" => "Fut",
-                    other => other,
+                    _ => &lower,
                 };
                 format!("{}-{}", type_label, spec.tenor)
             })
@@ -498,7 +499,7 @@ impl CurveService {
     }
 
     /// Compute a single forward swap rate: (df_start - df_end) / annuity
-    fn forward_swap_rate(
+    pub(crate) fn forward_swap_rate(
         curve: &dyn YieldCurve<f64>,
         expiry_years: f64,
         tenor_years: f64,

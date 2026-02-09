@@ -609,6 +609,9 @@ pub struct VolcubeCalibrateRequest {
     pub index: String,
     pub reference_date: Option<String>,
     pub model: Option<String>,
+    /// Forward swap rates keyed by "expiry|tenor" (e.g. "1Y|5Y" → 0.045)
+    #[serde(default)]
+    pub forward_rates: Option<std::collections::HashMap<String, f64>>,
 }
 
 /// Volcube calibration response
@@ -618,6 +621,20 @@ pub struct VolcubeCalibrateResponse {
     pub model: String,
     pub metadata: CalibrationMetadata,
     pub parameters: CalibrationParameters,
+    /// Per-cell SABR parameters keyed by "expiry|tenor"
+    pub cell_parameters: std::collections::HashMap<String, CalibrationParameters>,
+    /// Per-cell calibration diagnostics
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cell_diagnostics: Option<std::collections::HashMap<String, CellDiagnostics>>,
+}
+
+/// Per-cell calibration diagnostics
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CellDiagnostics {
+    pub converged: bool,
+    pub iterations: usize,
+    pub rmse: f64,
 }
 
 /// FX vol calibration request
@@ -636,6 +653,10 @@ pub struct FxVolCalibrateRequest {
 pub struct CalibrationMetadata {
     pub instrument_count: usize,
     pub processing_time_ms: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub converged_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_rmse: Option<f64>,
 }
 
 /// Calibration parameters (SABR model)

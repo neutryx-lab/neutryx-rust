@@ -19,7 +19,7 @@
 //! |--------|------------|--------|
 //! | Complexity | O(n) solves | O(n²) per iteration |
 //! | Robustness | May fail if instruments overlap | Handles overlapping |
-//! | Jacobian | Not computed | Full J⁻¹ available |
+//! | Jacobian | FD Jacobian dDF/dr (lower-triangular) | Full J⁻¹ available |
 //! | AAD | Per-pillar | Implicit function theorem |
 
 use pricer_core::math::solvers::{NewtonRaphsonSolver, SolverConfig};
@@ -174,6 +174,23 @@ impl CurveBootstrapper {
     where
         I: CalibrationInstrument<f64> + Clone,
     {
+        self.bootstrap_instruments_inner(instruments, &[])
+    }
+
+    /// Jump-aware bootstrap: solves for base DFs such that the combined
+    /// (base + jumps) curve reprices all instruments.
+    ///
+    /// When `jumps` is non-empty, each Newton-Raphson evaluation constructs
+    /// a temporary curve **with** jump offsets attached, so the pricing
+    /// error reflects the full adjusted discount factors.
+    fn bootstrap_instruments_inner<I>(
+        &self,
+        instruments: &[I],
+        jumps: &[(f64, f64)],
+    ) -> Result<BootstrapResult, BootstrapError>
+    where
+        I: CalibrationInstrument<f64> + Clone,
+    {
         if instruments.is_empty() {
             return Err(BootstrapError::InsufficientData {
                 required: 1,
@@ -229,6 +246,14 @@ impl CurveBootstrapper {
                 ) {
                     Ok(c) => c,
                     Err(_) => return f64::MAX, // Invalid curve
+                };
+
+                // Attach jump data so pricing evaluates the full adjusted
+                // curve (base + forward-rate shifts).
+                let curve = if jumps.is_empty() {
+                    curve
+                } else {
+                    curve.with_jumps(jumps.to_vec())
                 };
 
                 // Compute pricing error
@@ -410,33 +435,37 @@ impl Default for CurveBootstrapper {
 
 /// Result of a finite-difference Jacobian computation.
 ///
-/// Contains the matrix dDF_i / dr_j where:
-/// - Row i corresponds to pillar i (discount factor DF_i)
+/// Contains the matrix d(log DF_i) / dr_j where:
+/// - Row i corresponds to pillar i (log discount factor log DF_i)
 /// - Column j corresponds to instrument j (market rate r_j)
+///
+/// Using log(DF) rather than DF directly because:
+/// - The global solver parametrises unknowns as x = log(DF)
+/// - Log-linear interpolation operates in log(DF) space
+/// - log(DF) = −r·t gives uniform scale across maturities
 ///
 /// For the sequential bootstrapper this matrix is lower-triangular
 /// because DF_i depends only on rates r_1 .. r_i.
 #[derive(Debug, Clone)]
 pub struct JacobianMatrix {
-    /// Row-major n x n matrix of dDF_i / dr_j values.
+    /// Row-major n x n matrix of d(log DF_i) / dr_j values.
     pub data: Vec<Vec<f64>>,
     /// Number of instruments / pillars (n).
     pub size: usize,
 }
 
 impl CurveBootstrapper {
-    /// Compute the finite-difference Jacobian dDF_i / dr_j for sequential
-    /// bootstrap.
+    /// Compute the finite-difference Jacobian d(log DF_i) / dr_j for
+    /// sequential bootstrap.
     ///
     /// For each instrument j, bumps its market rate by +/- epsilon,
     /// re-bootstraps the full curve, and computes the central-difference
-    /// derivative of each discount factor with respect to the bumped rate.
+    /// derivative of log(DF) at each pillar with respect to the bumped rate.
     ///
     /// # Arguments
     ///
     /// * `instruments` - Sorted slice of market instruments (same order as
     ///   `bootstrap_instruments` output)
-    /// * `base_result` - Base bootstrap result from the un-bumped curve
     ///
     /// # Returns
     ///
@@ -444,11 +473,22 @@ impl CurveBootstrapper {
     pub fn compute_fd_jacobian(
         &self,
         instruments: &[MarketInstrument<f64>],
-        base_result: &BootstrapResult,
+    ) -> Result<JacobianMatrix, BootstrapError> {
+        self.compute_fd_jacobian_inner(instruments, &[])
+    }
+
+    /// Compute the FD Jacobian with jump-aware bootstrap.
+    ///
+    /// Each bumped re-bootstrap uses `bootstrap_instruments_inner` with
+    /// the same jump data, so the sensitivities reflect the combined
+    /// (base + jumps) curve.
+    fn compute_fd_jacobian_inner(
+        &self,
+        instruments: &[MarketInstrument<f64>],
+        jumps: &[(f64, f64)],
     ) -> Result<JacobianMatrix, BootstrapError> {
         let n = instruments.len();
         let epsilon = self.config.fd_epsilon;
-        let base_dfs = &base_result.discount_factors;
 
         let mut data = vec![vec![0.0; n]; n];
 
@@ -461,14 +501,15 @@ impl CurveBootstrapper {
             let mut bumped_down = instruments.to_vec();
             bumped_down[j] = bumped_down[j].with_bumped_rate(-epsilon);
 
-            // Re-bootstrap with bumped instruments
-            let result_up = self.bootstrap_instruments(&bumped_up)?;
-            let result_down = self.bootstrap_instruments(&bumped_down)?;
+            // Re-bootstrap with bumped instruments (jump-aware)
+            let result_up = self.bootstrap_instruments_inner(&bumped_up, jumps)?;
+            let result_down = self.bootstrap_instruments_inner(&bumped_down, jumps)?;
 
-            // Central difference: dDF_i / dr_j
+            // Central difference: d(log DF_i) / dr_j
             for i in 0..n {
-                data[i][j] = (result_up.discount_factors[i] - result_down.discount_factors[i])
-                    / (2.0 * epsilon);
+                let log_df_up = result_up.discount_factors[i].ln();
+                let log_df_down = result_down.discount_factors[i].ln();
+                data[i][j] = (log_df_up - log_df_down) / (2.0 * epsilon);
             }
         }
 
@@ -507,8 +548,10 @@ impl CurveBootstrapper {
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
 
-        let base_result = self.bootstrap_instruments(&sorted)?;
-        let jacobian = self.compute_fd_jacobian(&sorted, &base_result)?;
+        // Jump-aware calibration: base DFs are solved so that
+        // (base + jumps) reprices all instruments.
+        let base_result = self.bootstrap_instruments_inner(&sorted, jumps)?;
+        let jacobian = self.compute_fd_jacobian_inner(&sorted, jumps)?;
 
         let curve = BootstrappedCurve::new(
             base_result.pillars,
@@ -555,10 +598,18 @@ impl CurveBootstrapper {
     where
         I: CalibrationInstrument<f64> + Clone,
     {
-        // First, perform regular bootstrap
-        let curve = self.bootstrap_to_curve(instruments)?;
+        // Jump-aware calibration: base DFs are solved so that
+        // (base + jumps) reprices all instruments.
+        let result = self.bootstrap_instruments_inner(instruments, jumps)?;
 
-        // Attach jumps to the curve
+        let curve = BootstrappedCurve::new(
+            result.pillars,
+            result.discount_factors,
+            self.config.interpolation.to_bootstrap_interpolation(),
+            true,
+        )
+        .map_err(BootstrapError::InvalidInput)?;
+
         if jumps.is_empty() {
             Ok(curve)
         } else {
@@ -1046,5 +1097,113 @@ mod tests {
             BootstrapError::InsufficientData { .. } => {}
             other => panic!("Expected InsufficientData error, got {:?}", other),
         }
+    }
+
+    // =========================================================================
+    // Finite-Difference Jacobian Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fd_jacobian_dimensions() {
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+            MarketInstrument::ois(5.0, 0.04),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let jacobian = bootstrapper.compute_fd_jacobian(&instruments).unwrap();
+
+        assert_eq!(jacobian.size, 3);
+        assert_eq!(jacobian.data.len(), 3);
+        for row in &jacobian.data {
+            assert_eq!(row.len(), 3);
+        }
+    }
+
+    #[test]
+    fn test_fd_jacobian_lower_triangular() {
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+            MarketInstrument::ois(5.0, 0.04),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let jacobian = bootstrapper.compute_fd_jacobian(&instruments).unwrap();
+
+        // Upper triangle should be exactly zero
+        for i in 0..jacobian.size {
+            for j in (i + 1)..jacobian.size {
+                assert_eq!(
+                    jacobian.data[i][j], 0.0,
+                    "Upper triangle [{i}][{j}] should be zero, got {}",
+                    jacobian.data[i][j]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_fd_jacobian_diagonal_nonzero() {
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+            MarketInstrument::ois(5.0, 0.04),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let jacobian = bootstrapper.compute_fd_jacobian(&instruments).unwrap();
+
+        // Diagonal entries should be nonzero (log DF_i depends on r_i)
+        for i in 0..jacobian.size {
+            assert!(
+                jacobian.data[i][i].abs() > 1e-10,
+                "Diagonal [{i}][{i}] should be nonzero, got {}",
+                jacobian.data[i][i]
+            );
+        }
+    }
+
+    #[test]
+    fn test_fd_jacobian_diagonal_negative() {
+        // When rates go up, log(DF) goes down: d(log DF)/dr < 0
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+            MarketInstrument::ois(5.0, 0.04),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let jacobian = bootstrapper.compute_fd_jacobian(&instruments).unwrap();
+
+        for i in 0..jacobian.size {
+            assert!(
+                jacobian.data[i][i] < 0.0,
+                "Diagonal [{i}][{i}] should be negative (d(log DF)/dr < 0), got {}",
+                jacobian.data[i][i]
+            );
+        }
+    }
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jacobian() {
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+            MarketInstrument::ois(5.0, 0.04),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let (curve, jacobian) = bootstrapper
+            .bootstrap_to_curve_with_jacobian(&instruments, &[])
+            .unwrap();
+
+        // Curve should be valid
+        let df_1y = curve.discount_factor(1.0).unwrap();
+        assert!(df_1y > 0.0 && df_1y < 1.0);
+
+        // Jacobian should match instrument count
+        assert_eq!(jacobian.size, 3);
     }
 }
