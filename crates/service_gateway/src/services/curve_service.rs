@@ -43,10 +43,12 @@ impl CurveService {
         };
 
         // Separate regular instruments from events.
-        // Jump entries are (time, individual_offset) pairs — turns expand to TWO entries
-        // (spike up at event_date, spike down at end_date).
+        // rate_shifts: individual forward-rate shifts at event times.
+        //   - FOMC -25bp cut → delta_rate = -0.0025 (forward rate decreases)
+        //   - TOY  +10bp     → delta_rate = +0.001  (forward rate increases)
+        //   - TOY revert     → delta_rate = -0.001  (forward rate returns to base)
         let mut regular_specs: Vec<InstrumentSpec> = Vec::new();
-        let mut jump_entries: Vec<(f64, f64)> = Vec::new();
+        let mut rate_shifts: Vec<(f64, f64)> = Vec::new();
 
         for i in &request.instruments {
             if i.instrument_type.to_lowercase() == "event" {
@@ -57,16 +59,15 @@ impl CurveService {
                             ServerError::InvalidRequest(format!("Invalid event_date: {e}"))
                         })?;
 
-                    // Calculate time to event in years
                     let days = (event_date - reference_date).num_days();
                     if days > 0 {
                         let time_years = days as f64 / 365.0;
                         let expected_spike = i.expected_rate_spike.unwrap_or(i.rate);
 
-                        // Spike entry: rate hike (positive) → negative offset (decreases DF)
-                        jump_entries.push((time_years, -expected_spike));
+                        // Forward rate shifts by expected_spike at the event date
+                        rate_shifts.push((time_years, expected_spike));
 
-                        // Turn events: emit a reverting entry at end_date
+                        // Turn events: forward rate reverts at end_date
                         if let Some(ref end_date_str) = i.end_date {
                             if let Ok(end_date) =
                                 chrono::NaiveDate::parse_from_str(end_date_str, "%Y-%m-%d")
@@ -74,8 +75,7 @@ impl CurveService {
                                 let end_days = (end_date - reference_date).num_days();
                                 if end_days > 0 {
                                     let end_time = end_days as f64 / 365.0;
-                                    // Revert: opposite sign cancels the spike
-                                    jump_entries.push((end_time, expected_spike));
+                                    rate_shifts.push((end_time, -expected_spike));
                                 }
                             }
                         }
@@ -94,6 +94,8 @@ impl CurveService {
             }
         }
 
+        rate_shifts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
         // Validate rates for regular instruments only
         validate_rates(&regular_specs, -0.10, 0.50)
             .map_err(|e| ServerError::InvalidRequest(format!("Rate validation failed: {e}")))?;
@@ -108,18 +110,6 @@ impl CurveService {
                 ServerError::InvalidRequest(format!("Instrument parsing failed: {e}"))
             })?
         };
-
-        // Sort entries by time and calculate cumulative offsets
-        jump_entries
-            .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        let mut cumulative = 0.0;
-        let jump_data: Vec<(f64, f64)> = jump_entries
-            .into_iter()
-            .map(|(time, offset)| {
-                cumulative += offset;
-                (time, cumulative)
-            })
-            .collect();
 
         // Convert interpolation method
         let interpolation = match request.interpolation {
@@ -139,8 +129,6 @@ impl CurveService {
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?
             }
             BootstrapMethod::Global => {
-                // Global bootstrap uses the same sequential method for now
-                // (GlobalBootstrapper requires additional feature flag)
                 let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
                     .with_interpolation(interpolation);
 
@@ -150,37 +138,66 @@ impl CurveService {
             }
         };
 
-        // Apply jump data to the curve if there are events
+        // Generate time-dependent jump data for forward-rate shift model.
+        //
+        // The old model applied constant offsets to log(df), which created
+        // delta-function spikes in daily forward rates (e.g., -25bp cut → 91% spike!).
+        //
+        // The correct model: a forward-rate shift s at time t_j changes the DF as:
+        //   df(t) = base_df(t) * exp(-s * (t - t_j))   for t > t_j
+        //
+        // This gives: f(t) = f_base(t) + s  (smooth shift, no spike).
+        //
+        // We generate a dense daily grid of log-df offsets:
+        //   offset(t) = -sum(s_i * (t - t_i))  for all shifts s_i at t_i <= t
+        let jump_data: Vec<(f64, f64)> = if rate_shifts.is_empty() {
+            Vec::new()
+        } else {
+            let max_time = base_curve.pillars().last().copied().unwrap_or(1.0);
+            let dt = 1.0 / 365.0;
+            let grid_count = (max_time / dt).ceil() as usize + 2;
+            (0..grid_count)
+                .map(|i| {
+                    let t = i as f64 * dt;
+                    let offset: f64 = rate_shifts
+                        .iter()
+                        .take_while(|(t_j, _)| *t_j <= t)
+                        .map(|(t_j, shift)| -shift * (t - t_j))
+                        .sum();
+                    (t, offset)
+                })
+                .collect()
+        };
+
+        // Apply jump data to the curve
         let curve = if jump_data.is_empty() {
             base_curve
         } else {
             base_curve.with_jumps(jump_data)
         };
 
-        // Extract pillar data (bootstrap nodes)
+        // Extract pillar data with jump-adjusted discount factors
         let pillars: Vec<CurvePillar> = curve
             .pillars()
             .iter()
-            .zip(curve.discount_factors().iter())
-            .map(|(time, df)| CurvePillar {
-                time: *time,
-                discount_factor: *df,
-                zero_rate: zero_rate_from_df(*df, *time),
+            .filter_map(|time| {
+                let df = curve.discount_factor(*time).ok()?;
+                Some(CurvePillar {
+                    time: *time,
+                    discount_factor: df,
+                    zero_rate: zero_rate_from_df(df, *time),
+                })
             })
             .collect();
 
-        // Generate forward curve on daily grid using DF ratios
+        // Generate forward curve on daily grid
         let max_time = curve.pillars().last().copied().unwrap_or(1.0);
-        let dt = 1.0 / 365.0; // Daily grid
-
-        // Generate grid from t=0 to max_time, stepping by dt
-        // Use YieldCurve::forward_rate which handles t=0 correctly
+        let dt = 1.0 / 365.0;
         let num_points = (max_time / dt).floor() as usize;
         let forward_curve: Vec<ForwardRatePoint> = (0..num_points)
             .filter_map(|i| {
                 let t = i as f64 * dt;
                 let t_next = t + dt;
-                // Use YieldCurve::forward_rate method directly
                 let fwd = curve.forward_rate(t, t_next).ok()?;
                 Some(ForwardRatePoint {
                     time: t,
@@ -440,39 +457,128 @@ mod tests {
         };
 
         let response = CurveService::build_curve(&request, &state).unwrap();
-
         assert!(response.converged);
 
-        // Find forward rates around the turn date (Dec 31 ≈ 0.921 years from Jan 29)
+        // Verify no extreme spikes in the forward curve.
+        // With the forward-rate-shift model, the 10bp turn should produce a smooth
+        // ~10bp bump at year-end, not a delta-function spike of 10bp*365 = 36.5%.
+        let max_fwd = response
+            .forward_curve
+            .iter()
+            .map(|p| p.forward_rate)
+            .fold(0.0_f64, f64::max);
+        assert!(
+            max_fwd < 0.10,
+            "Forward rate should stay below 10%, got {:.4}%",
+            max_fwd * 100.0
+        );
+
+        // Verify the turn creates a visible bump during the turn period
         let turn_time = 336.0 / 365.0; // ~Dec 31
         let revert_time = 340.0 / 365.0; // ~Jan 4
 
-        // Verify the forward curve has the spike pattern
-        if let Some(fwd_curve) = &Some(&response.forward_curve) {
-            // Find nearest points to the turn date
-            let pre_turn: Vec<_> = fwd_curve
-                .iter()
-                .filter(|p| p.time > turn_time - 0.01 && p.time < turn_time)
-                .collect();
-            let post_revert: Vec<_> = fwd_curve
-                .iter()
-                .filter(|p| p.time > revert_time && p.time < revert_time + 0.05)
-                .collect();
+        let fwd_during_turn: Vec<_> = response
+            .forward_curve
+            .iter()
+            .filter(|p| p.time > turn_time && p.time < revert_time)
+            .collect();
+        let fwd_after_revert: Vec<_> = response
+            .forward_curve
+            .iter()
+            .filter(|p| p.time > revert_time + 0.01 && p.time < revert_time + 0.05)
+            .collect();
 
-            // Both pre-turn and post-revert should have similar forward rates
-            // (the spike should revert, not persist)
-            if let (Some(pre), Some(post)) = (pre_turn.first(), post_revert.first()) {
-                let diff = (pre.forward_rate - post.forward_rate).abs();
-                // After revert, forward rate should be close to pre-turn level
-                // (within 50bp tolerance for interpolation effects)
-                assert!(
-                    diff < 0.005,
-                    "Turn should revert: pre={:.6}, post={:.6}, diff={:.6}",
-                    pre.forward_rate,
-                    post.forward_rate,
-                    diff
-                );
-            }
+        if let (Some(during), Some(after)) = (fwd_during_turn.first(), fwd_after_revert.first()) {
+            // During turn should be higher than after revert by ~10bp
+            let diff = during.forward_rate - after.forward_rate;
+            assert!(
+                diff > 0.0005 && diff < 0.002,
+                "Turn should raise fwd by ~10bp: during={:.6}, after={:.6}, diff={:.4}bp",
+                during.forward_rate,
+                after.forward_rate,
+                diff * 10_000.0
+            );
+        }
+    }
+
+    #[test]
+    fn test_forward_rate_shift_no_spike() {
+        // Verify that a -25bp CB cut produces a smooth ~25bp downward shift,
+        // not a delta-function spike of 25bp * 365 = 91%.
+        let state = create_test_state();
+
+        let request = CurveBuildRequest {
+            index: "USD-SOFR".to_string(),
+            currency: "USD".to_string(),
+            reference_date: Some("2026-01-29".to_string()),
+            instruments: vec![
+                CurveInstrumentInput {
+                    instrument_type: "deposit".to_string(),
+                    tenor: "1M".to_string(),
+                    rate: 0.05,
+                    event_date: None,
+                    expected_rate_spike: None,
+                    end_date: None,
+                },
+                CurveInstrumentInput {
+                    instrument_type: "event".to_string(),
+                    tenor: String::new(),
+                    rate: 0.0,
+                    event_date: Some("2026-06-01".to_string()),
+                    expected_rate_spike: Some(-0.0025), // -25bp cut
+                    end_date: None,
+                },
+                CurveInstrumentInput {
+                    instrument_type: "swap".to_string(),
+                    tenor: "1Y".to_string(),
+                    rate: 0.05,
+                    event_date: None,
+                    expected_rate_spike: None,
+                    end_date: None,
+                },
+            ],
+            interpolation: InterpolationMethod::Linear,
+            bootstrap_method: BootstrapMethod::Sequential,
+            tolerance: 1e-10,
+            max_iterations: 100,
+        };
+
+        let response = CurveService::build_curve(&request, &state).unwrap();
+        assert!(response.converged);
+
+        // All forward rates should be within a reasonable range (no 91% spikes).
+        // The short end (t < 0.01) may be noisy due to interpolation, so skip it.
+        for point in response.forward_curve.iter().filter(|p| p.time > 0.01) {
+            assert!(
+                point.forward_rate > -0.05 && point.forward_rate < 0.15,
+                "Forward rate out of range at t={:.4}: {:.4}% (old model would spike to ~91%)",
+                point.time,
+                point.forward_rate * 100.0
+            );
+        }
+
+        // Forward rate after the cut should be ~25bp lower than before
+        let event_time = 123.0 / 365.0; // ~Jun 1
+        let fwd_before: Vec<_> = response
+            .forward_curve
+            .iter()
+            .filter(|p| p.time > event_time - 0.05 && p.time < event_time - 0.01)
+            .collect();
+        let fwd_after: Vec<_> = response
+            .forward_curve
+            .iter()
+            .filter(|p| p.time > event_time + 0.01 && p.time < event_time + 0.05)
+            .collect();
+
+        if let (Some(before), Some(after)) = (fwd_before.first(), fwd_after.first()) {
+            let diff = before.forward_rate - after.forward_rate;
+            assert!(
+                diff > 0.001 && diff < 0.005,
+                "Cut should shift fwd down ~25bp: before={:.6}, after={:.6}, diff={:.4}bp",
+                before.forward_rate,
+                after.forward_rate,
+                diff * 10_000.0
+            );
         }
     }
 }

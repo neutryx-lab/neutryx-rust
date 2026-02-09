@@ -244,7 +244,7 @@ loadFxPairs();
 <template>
   <div class="volcube-builder-view">
     <!-- Summary Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <div
         v-for="stat in summaryStats"
         :key="stat.label"
@@ -253,13 +253,13 @@ loadFxPairs();
         <div class="flex items-start justify-between">
           <div>
             <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
-            <p class="text-2xl font-semibold text-[var(--text-primary)] truncate">{{ stat.value }}</p>
+            <p class="text-xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
           </div>
           <div
-            class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+            class="w-9 h-9 rounded-lg flex items-center justify-center"
             :style="{ backgroundColor: `${stat.color}1a` }"
           >
-            <i :class="['fas', stat.icon]" :style="{ color: stat.color }"></i>
+            <i :class="['fas', stat.icon, 'text-sm']" :style="{ color: stat.color }"></i>
           </div>
         </div>
       </div>
@@ -295,28 +295,28 @@ loadFxPairs();
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Left Panel: Settings -->
-      <div class="space-y-6">
+      <div class="space-y-4">
         <!-- Swaption Settings -->
         <template v-if="activeTab === 'swaption'">
-          <div class="glass-card p-6">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Index Selection</h3>
+          <div class="glass-card p-5">
+            <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Index Selection</h3>
             <select
               v-model="selectedSwaptionIndex"
-              class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             >
               <option value="">Select index...</option>
               <option v-for="idx in swaptionIndices" :key="idx" :value="idx">{{ idx }}</option>
             </select>
           </div>
 
-          <div class="glass-card p-6">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Calibration Settings</h3>
-            <div class="space-y-4">
+          <div class="glass-card p-5">
+            <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Calibration Settings</h3>
+            <div class="space-y-3">
               <div>
-                <label class="block text-sm text-[var(--text-muted)] mb-2">Model</label>
+                <label class="block text-xs text-[var(--text-muted)] mb-1">Model</label>
                 <select
                   v-model="selectedModel"
-                  class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
                 >
                   <option v-for="model in swaptionModels" :key="model" :value="model">{{ model }}</option>
                 </select>
@@ -327,45 +327,45 @@ loadFxPairs();
 
         <!-- FX Settings -->
         <template v-else>
-          <div class="glass-card p-6">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Currency Pair</h3>
+          <div class="glass-card p-5">
+            <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Currency Pair</h3>
             <select
               v-model="selectedFxPair"
-              class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+              class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
             >
               <option value="">Select pair...</option>
               <option v-for="pair in fxPairs" :key="pair" :value="pair">{{ pair }}</option>
             </select>
           </div>
 
-          <div class="glass-card p-6">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Market Data</h3>
-            <div class="space-y-4">
+          <div class="glass-card p-5">
+            <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Market Data</h3>
+            <div class="space-y-3">
               <div>
-                <label class="block text-sm text-[var(--text-muted)] mb-2">Spot Rate</label>
+                <label class="block text-xs text-[var(--text-muted)] mb-1">Spot Rate</label>
                 <input
                   v-model="fxSpot"
                   type="number"
                   step="0.0001"
-                  class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
                 >
               </div>
               <div>
-                <label class="block text-sm text-[var(--text-muted)] mb-2">Domestic Rate (%)</label>
+                <label class="block text-xs text-[var(--text-muted)] mb-1">Domestic Rate (%)</label>
                 <input
                   v-model="fxDomesticRate"
                   type="number"
                   step="0.01"
-                  class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
                 >
               </div>
               <div>
-                <label class="block text-sm text-[var(--text-muted)] mb-2">Foreign Rate (%)</label>
+                <label class="block text-xs text-[var(--text-muted)] mb-1">Foreign Rate (%)</label>
                 <input
                   v-model="fxForeignRate"
                   type="number"
                   step="0.01"
-                  class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
                 >
               </div>
             </div>
@@ -373,39 +373,36 @@ loadFxPairs();
         </template>
 
         <!-- Actions -->
-        <div class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Actions</h3>
-          <div class="space-y-3">
+        <div class="glass-card p-5">
+          <button
+            :disabled="(activeTab === 'swaption' && !selectedSwaptionIndex) || (activeTab === 'fx' && !selectedFxPair) || isCalibrating"
+            class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            @click="calibrate"
+          >
+            <i :class="['fas', isCalibrating ? 'fa-spinner fa-spin' : 'fa-cogs']"></i>
+            {{ isCalibrating ? 'Calibrating...' : 'Calibrate' }}
+          </button>
+          <div class="grid grid-cols-2 gap-2 mt-2">
             <button
-              :disabled="(activeTab === 'swaption' && !selectedSwaptionIndex) || (activeTab === 'fx' && !selectedFxPair) || isCalibrating"
-              class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              @click="calibrate"
+              :disabled="!calibrationResult"
+              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
+              @click="exportCsv"
             >
-              <i :class="['fas', isCalibrating ? 'fa-spinner fa-spin' : 'fa-cogs']"></i>
-              {{ isCalibrating ? 'Calibrating...' : 'Calibrate' }}
+              <i class="fas fa-file-csv mr-1"></i>CSV
             </button>
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                :disabled="!calibrationResult"
-                class="px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] font-medium transition-all duration-200 hover:bg-[var(--surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                @click="exportCsv"
-              >
-                <i class="fas fa-file-csv mr-2"></i>CSV
-              </button>
-              <button
-                :disabled="!calibrationResult"
-                class="px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] font-medium transition-all duration-200 hover:bg-[var(--surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                @click="exportJson"
-              >
-                <i class="fas fa-file-code mr-2"></i>JSON
-              </button>
-            </div>
+            <button
+              :disabled="!calibrationResult"
+              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
+              @click="exportJson"
+            >
+              <i class="fas fa-file-code mr-1"></i>JSON
+            </button>
           </div>
         </div>
 
         <!-- Calibration Result -->
-        <div v-if="calibrationResult" class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+        <div v-if="calibrationResult" class="glass-card p-5">
+          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
             <i class="fas fa-check-circle text-[var(--success)]"></i>
             Calibration Result
           </h3>

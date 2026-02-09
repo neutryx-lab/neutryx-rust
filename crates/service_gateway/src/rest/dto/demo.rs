@@ -580,6 +580,14 @@ pub struct VolcubeModelsResponse {
     pub models: Vec<String>,
 }
 
+/// Smile data point for a swaption instrument
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SmilePoint {
+    pub strike_offset_bp: f64,
+    pub vol: f64,
+}
+
 /// Swaption instrument for volcube
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -588,6 +596,11 @@ pub struct SwaptionInstrument {
     pub tenor: String,
     pub strike: String,
     pub atm_vol: f64,
+    pub vol_type: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub smile: Vec<SmilePoint>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub forward: Option<f64>,
     pub enabled: bool,
 }
 
