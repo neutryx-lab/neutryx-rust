@@ -96,6 +96,13 @@ interface ChartGridPoint {
   label: string;
 }
 
+interface JacobianData {
+  row_labels: string[];
+  col_labels: string[];
+  matrix: number[][];
+  size: number;
+}
+
 interface BuildResult {
   curve_id?: string;
   instrument_count?: number;
@@ -106,6 +113,7 @@ interface BuildResult {
   short_term_grid?: ChartGridPoint[];
   long_term_grid?: ChartGridPoint[];
   converged?: boolean;
+  jacobian?: JacobianData;
 }
 
 // State
@@ -125,6 +133,13 @@ const buildError = ref<string | null>(null);
 const calibrationMethod = ref<string>('sequential');
 const interpolation = ref<string>('log_linear_df');
 const allowExtrapolation = ref<boolean>(true);
+
+// Last-built settings — used to detect "rebuild required"
+const lastBuiltSettings = ref<{
+  calibrationMethod: string;
+  interpolation: string;
+  allowExtrapolation: boolean;
+} | null>(null);
 
 // Chart
 const shortTermChartCanvas = ref<HTMLCanvasElement | null>(null);
@@ -168,16 +183,18 @@ const enabledInstruments = computed(() =>
 );
 
 const hasChanges = computed(() => {
-  if (!selectedCurve.value) return false;
+  if (!buildResult.value) return false; // never built yet — nothing to rebuild
 
-  // Check if any rate changed
+  // Check if any rate changed since last build
   const rateChanged = instruments.value.some(inst => inst.rate !== inst.originalRate);
 
-  // Check if build settings changed
-  const settingsChanged =
-    calibrationMethod.value !== selectedCurve.value.calibrationMethod ||
-    interpolation.value !== normaliseInterpolation(selectedCurve.value.interpolation) ||
-    allowExtrapolation.value !== selectedCurve.value.allowExtrapolation;
+  // Check if build settings changed since last build
+  const ref = lastBuiltSettings.value;
+  const settingsChanged = ref != null && (
+    calibrationMethod.value !== ref.calibrationMethod ||
+    interpolation.value !== ref.interpolation ||
+    allowExtrapolation.value !== ref.allowExtrapolation
+  );
 
   return rateChanged || settingsChanged;
 });
@@ -210,6 +227,32 @@ const curveTableRows = computed(() => {
   rows.sort((a, b) => a.time - b.time);
   return rows;
 });
+
+// Jacobian heatmap helpers
+const jacobianAbsMax = computed(() => {
+  if (!buildResult.value?.jacobian) return 1;
+  const vals = buildResult.value.jacobian.matrix.flat().filter(v => v !== 0);
+  if (vals.length === 0) return 1;
+  return Math.max(...vals.map(Math.abs));
+});
+
+function jacobianHeatmapColour(value: number): string {
+  const max = jacobianAbsMax.value;
+  if (max === 0 || value === 0) return 'transparent';
+  const t = Math.min(Math.abs(value) / max, 1);
+  if (value < 0) {
+    return `rgba(239, 68, 68, ${0.08 + t * 0.35})`;
+  }
+  return `rgba(59, 130, 246, ${0.08 + t * 0.35})`;
+}
+
+function jacobianTextColour(value: number): string {
+  const max = jacobianAbsMax.value;
+  if (max === 0 || value === 0) return 'var(--text-muted)';
+  const t = Math.min(Math.abs(value) / max, 1);
+  if (t > 0.4) return value < 0 ? '#f87171' : '#60a5fa';
+  return 'var(--text-secondary)';
+}
 
 // Chart options
 function createChartOptions(yAxisLabel: string) {
@@ -553,10 +596,15 @@ async function buildCurve() {
 
     buildResult.value = await response.json();
 
-    // Update original rates after successful build
+    // Snapshot current state as "last built"
     instruments.value.forEach(inst => {
       inst.originalRate = inst.rate;
     });
+    lastBuiltSettings.value = {
+      calibrationMethod: calibrationMethod.value,
+      interpolation: interpolation.value,
+      allowExtrapolation: allowExtrapolation.value,
+    };
 
     // Update charts
     await nextTick();

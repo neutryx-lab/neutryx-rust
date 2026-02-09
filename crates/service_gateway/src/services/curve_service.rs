@@ -24,7 +24,7 @@ use crate::{
         BootstrapMethod, ChartGridPoint, CurveBuildRequest, CurveBuildResponse, CurvePillar,
         DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
         ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse,
-        InterpolationMethod,
+        InterpolationMethod, JacobianData,
     },
     state::{AppState, InstrumentInput},
 };
@@ -288,16 +288,48 @@ impl CurveService {
         // bootstrapper evaluates instrument pricing errors on the
         // jump-adjusted curve, so the resulting base DFs ensure the
         // combined (base + jumps) curve correctly reprices all inputs.
-        let curve = match request.bootstrap_method {
-            BootstrapMethod::Sequential | BootstrapMethod::Global => {
-                let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
-                    .with_interpolation(interpolation);
+        let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
+            .with_interpolation(interpolation);
+        let bootstrapper = CurveBootstrapper::with_config(config);
 
-                CurveBootstrapper::with_config(config)
-                    .bootstrap_to_curve_with_jumps(&market_instruments, &jump_data)
+        let (curve, jacobian_matrix) = match request.bootstrap_method {
+            BootstrapMethod::Sequential | BootstrapMethod::Global => {
+                bootstrapper
+                    .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?
             }
         };
+
+        // Build Jacobian labels from regular instrument specs, sorted by
+        // maturity to match the bootstrap order.
+        let mut sorted_specs = regular_specs.clone();
+        sorted_specs.sort_by(|a, b| {
+            let ta = parse_tenor_to_years(&a.tenor).unwrap_or(0.0);
+            let tb = parse_tenor_to_years(&b.tenor).unwrap_or(0.0);
+            ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        let jacobian_labels: Vec<String> = sorted_specs
+            .iter()
+            .map(|spec| {
+                let type_label = match spec.instrument_type.to_lowercase().as_str() {
+                    "deposit" | "depo" => "Depo",
+                    "ois" => "OIS",
+                    "fra" => "FRA",
+                    "swap" | "irs" => "IRS",
+                    "future" | "futures" => "Fut",
+                    other => other,
+                };
+                format!("{}-{}", type_label, spec.tenor)
+            })
+            .collect();
+
+        let jacobian_data = Some(JacobianData {
+            row_labels: jacobian_labels.clone(),
+            col_labels: jacobian_labels,
+            matrix: jacobian_matrix.data,
+            size: jacobian_matrix.size,
+        });
 
         // Resolve day count convention from the canonical RateIndex definition.
         // Used for all forward rate annualisation (date-based δ).
@@ -390,6 +422,7 @@ impl CurveService {
             interpolation: interpolation_str,
             converged: true,
             calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            jacobian: jacobian_data,
         })
     }
 

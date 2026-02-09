@@ -355,27 +355,6 @@ impl RateIndex {
         }
     }
 
-    /// Returns the accrual period δ (year fraction for one day) for this index.
-    ///
-    /// Derived from the index's day count convention. For example:
-    /// - SOFR (ACT/360): δ = 1/360
-    /// - SONIA (ACT/365): δ = 1/365
-    ///
-    /// Used in Flat Forward interpolation to compute `F(t, t+δ)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// assert!((RateIndex::Sofr.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-    /// assert!((RateIndex::Sonia.accrual_delta() - 1.0 / 365.0).abs() < 1e-15);
-    /// ```
-    #[must_use]
-    pub fn accrual_delta(&self) -> f64 {
-        self.day_counter().accrual_delta()
-    }
-
     /// Parses a rate index from a compound index name (e.g., "USD-SOFR", "EUR-EURIBOR-6M").
     ///
     /// Falls back to standard `FromStr` parsing first, then tries substring matching
@@ -658,21 +637,6 @@ mod tests {
         assert!(!RateIndex::Saron.is_term_index());
         assert!(RateIndex::Euribor3M.is_term_index());
         assert!(RateIndex::Euribor6M.is_term_index());
-    }
-
-    // ========================================
-    // accrual_delta Tests
-    // ========================================
-
-    #[test]
-    fn test_accrual_delta() {
-        assert!((RateIndex::Sofr.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-        assert!((RateIndex::Estr.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-        assert!((RateIndex::Saron.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-        assert!((RateIndex::Euribor3M.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-        assert!((RateIndex::Euribor6M.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-        assert!((RateIndex::Sonia.accrual_delta() - 1.0 / 365.0).abs() < 1e-15);
-        assert!((RateIndex::Tonar.accrual_delta() - 1.0 / 365.0).abs() < 1e-15);
     }
 
     // ========================================

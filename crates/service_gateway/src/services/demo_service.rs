@@ -1976,7 +1976,7 @@ mod tests {
     #[test]
     fn test_get_fx_vol_pairs() {
         let state = create_test_state();
-        let result = DemoService::get_fx_vol_pairs(&state);
+        let result = crate::services::VolcubeService::get_fx_vol_pairs(&state);
         assert!(result.is_ok());
         let pairs = result.unwrap();
         assert!(!pairs.pairs.is_empty());
@@ -1985,7 +1985,7 @@ mod tests {
     #[test]
     fn test_get_ir_vol_currencies() {
         let state = create_test_state();
-        let result = DemoService::get_ir_vol_currencies(&state);
+        let result = crate::services::VolcubeService::get_ir_vol_currencies(&state);
         assert!(result.is_ok());
         let currencies = result.unwrap();
         assert!(!currencies.currencies.is_empty());

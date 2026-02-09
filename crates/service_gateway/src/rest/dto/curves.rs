@@ -126,6 +126,25 @@ pub struct ChartGridPoint {
     pub label: String,
 }
 
+/// Jacobian matrix data for curve sensitivity analysis.
+///
+/// Contains the finite-difference Jacobian dDF_i / dr_j where:
+/// - Row i corresponds to pillar i (discount factor DF_i)
+/// - Column j corresponds to instrument j (market rate r_j)
+///
+/// For sequential bootstrap, this matrix is lower-triangular.
+#[derive(Debug, Clone, Serialize)]
+pub struct JacobianData {
+    /// Row labels (pillar descriptions, e.g., "Depo-1M", "IRS-5Y").
+    pub row_labels: Vec<String>,
+    /// Column labels (instrument descriptions).
+    pub col_labels: Vec<String>,
+    /// Row-major n x n matrix values.
+    pub matrix: Vec<Vec<f64>>,
+    /// Size of the matrix (n).
+    pub size: usize,
+}
+
 /// Response for curve building
 #[derive(Debug, Clone, Serialize)]
 pub struct CurveBuildResponse {
@@ -151,6 +170,9 @@ pub struct CurveBuildResponse {
     pub converged: bool,
     /// Calculation time in milliseconds
     pub calculation_time_ms: f64,
+    /// Jacobian matrix dDF/dr (finite-difference, sequential bootstrap)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jacobian: Option<JacobianData>,
 }
 
 /// Request to get discount factor from a cached curve

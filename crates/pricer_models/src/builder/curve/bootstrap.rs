@@ -26,7 +26,7 @@ use pricer_core::math::solvers::{NewtonRaphsonSolver, SolverConfig};
 
 use crate::{
     builder::{BootstrapError, BootstrapResult, CalibrationInstrument},
-    market::curves::{BootstrapInterpolation, BootstrappedCurve},
+    market::curves::{BootstrapInterpolation, BootstrappedCurve, MarketInstrument},
 };
 
 // =============================================================================
@@ -402,6 +402,130 @@ impl CurveBootstrapper {
 
 impl Default for CurveBootstrapper {
     fn default() -> Self { Self::new() }
+}
+
+// =============================================================================
+// Finite-Difference Jacobian for Sequential Bootstrap
+// =============================================================================
+
+/// Result of a finite-difference Jacobian computation.
+///
+/// Contains the matrix dDF_i / dr_j where:
+/// - Row i corresponds to pillar i (discount factor DF_i)
+/// - Column j corresponds to instrument j (market rate r_j)
+///
+/// For the sequential bootstrapper this matrix is lower-triangular
+/// because DF_i depends only on rates r_1 .. r_i.
+#[derive(Debug, Clone)]
+pub struct JacobianMatrix {
+    /// Row-major n x n matrix of dDF_i / dr_j values.
+    pub data: Vec<Vec<f64>>,
+    /// Number of instruments / pillars (n).
+    pub size: usize,
+}
+
+impl CurveBootstrapper {
+    /// Compute the finite-difference Jacobian dDF_i / dr_j for sequential
+    /// bootstrap.
+    ///
+    /// For each instrument j, bumps its market rate by +/- epsilon,
+    /// re-bootstraps the full curve, and computes the central-difference
+    /// derivative of each discount factor with respect to the bumped rate.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Sorted slice of market instruments (same order as
+    ///   `bootstrap_instruments` output)
+    /// * `base_result` - Base bootstrap result from the un-bumped curve
+    ///
+    /// # Returns
+    ///
+    /// A `JacobianMatrix` of size n x n.
+    pub fn compute_fd_jacobian(
+        &self,
+        instruments: &[MarketInstrument<f64>],
+        base_result: &BootstrapResult,
+    ) -> Result<JacobianMatrix, BootstrapError> {
+        let n = instruments.len();
+        let epsilon = self.config.fd_epsilon;
+        let base_dfs = &base_result.discount_factors;
+
+        let mut data = vec![vec![0.0; n]; n];
+
+        for j in 0..n {
+            // Bump instrument j up
+            let mut bumped_up = instruments.to_vec();
+            bumped_up[j] = bumped_up[j].with_bumped_rate(epsilon);
+
+            // Bump instrument j down
+            let mut bumped_down = instruments.to_vec();
+            bumped_down[j] = bumped_down[j].with_bumped_rate(-epsilon);
+
+            // Re-bootstrap with bumped instruments
+            let result_up = self.bootstrap_instruments(&bumped_up)?;
+            let result_down = self.bootstrap_instruments(&bumped_down)?;
+
+            // Central difference: dDF_i / dr_j
+            for i in 0..n {
+                data[i][j] = (result_up.discount_factors[i] - result_down.discount_factors[i])
+                    / (2.0 * epsilon);
+            }
+        }
+
+        // Zero out upper triangle to enforce lower-triangular structure
+        // (numerical noise may produce tiny values above the diagonal)
+        for i in 0..n {
+            for j in (i + 1)..n {
+                data[i][j] = 0.0;
+            }
+        }
+
+        Ok(JacobianMatrix { data, size: n })
+    }
+
+    /// Bootstrap a curve with jump data and compute the finite-difference
+    /// Jacobian.
+    ///
+    /// This is a convenience method that:
+    /// 1. Sorts instruments and bootstraps discount factors
+    /// 2. Computes the FD Jacobian dDF/dr
+    /// 3. Constructs the curve with optional jump data
+    ///
+    /// # Returns
+    ///
+    /// A tuple of `(BootstrappedCurve, JacobianMatrix)`.
+    pub fn bootstrap_to_curve_with_jacobian(
+        &self,
+        instruments: &[MarketInstrument<f64>],
+        jumps: &[(f64, f64)],
+    ) -> Result<(BootstrappedCurve<f64>, JacobianMatrix), BootstrapError> {
+        // Sort instruments by maturity (same ordering as bootstrap_instruments)
+        let mut sorted: Vec<MarketInstrument<f64>> = instruments.to_vec();
+        sorted.sort_by(|a, b| {
+            CalibrationInstrument::<f64>::maturity(a)
+                .partial_cmp(&CalibrationInstrument::<f64>::maturity(b))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        let base_result = self.bootstrap_instruments(&sorted)?;
+        let jacobian = self.compute_fd_jacobian(&sorted, &base_result)?;
+
+        let curve = BootstrappedCurve::new(
+            base_result.pillars,
+            base_result.discount_factors,
+            self.config.interpolation.to_bootstrap_interpolation(),
+            true,
+        )
+        .map_err(BootstrapError::InvalidInput)?;
+
+        let curve = if jumps.is_empty() {
+            curve
+        } else {
+            curve.with_jumps(jumps.to_vec())
+        };
+
+        Ok((curve, jacobian))
+    }
 }
 
 // =============================================================================

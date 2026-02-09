@@ -57,6 +57,7 @@ const referenceDate = ref('');
 // Forward swap rate matrix state
 const fwdSwapRates = ref<Map<string, number>>(new Map());
 const isBuildingCurve = ref(false);
+const matrixTab = ref<'vol' | 'fwd'>('vol');
 
 const fxPairs = ref<string[]>([]);
 const selectedFxPair = ref('');
@@ -383,6 +384,7 @@ const summaryStats = computed(() => {
     ];
   }
   return [
+    { label: 'Valuation Date', value: referenceDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
     { label: 'Quotes', value: fxQuotes.value.length, icon: 'fa-list', color: '#3b82f6' },
     { label: 'Selected Pair', value: selectedFxPair.value || '-', icon: 'fa-exchange-alt', color: '#10b981' },
     { label: 'Spot Rate', value: fxSpot.value || '-', icon: 'fa-dollar-sign', color: '#8b5cf6' },
@@ -777,9 +779,36 @@ loadFxPairs();
       <!-- Right Panel: Data Table -->
       <div class="lg:col-span-2">
         <div class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
-            {{ activeTab === 'swaption' ? 'Swaption Instruments' : 'FX Quotes' }}
-          </h3>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+              {{ activeTab === 'swaption' ? 'Swaption Instruments' : 'FX Quotes' }}
+            </h3>
+            <div v-if="activeTab === 'swaption' && swaptionInstruments.length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+              <button
+                :class="[
+                  'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                  matrixTab === 'vol'
+                    ? 'bg-[var(--primary)] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ]"
+                @click="matrixTab = 'vol'"
+              >Vol</button>
+              <button
+                :class="[
+                  'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                  matrixTab === 'fwd'
+                    ? 'bg-[var(--primary)] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ]"
+                :disabled="fwdSwapRates.size === 0"
+                :title="fwdSwapRates.size === 0 ? 'Build curve to view forward rates' : ''"
+                @click="matrixTab = 'fwd'"
+              >
+                Fwd
+                <i v-if="isBuildingCurve" class="fas fa-spinner fa-spin ml-1"></i>
+              </button>
+            </div>
+          </div>
 
           <!-- Swaption Matrix -->
           <template v-if="activeTab === 'swaption'">
@@ -789,8 +818,8 @@ loadFxPairs();
               <p class="text-[var(--text-muted)]">Select an index to load instruments</p>
             </div>
 
-            <!-- Matrix / Heatmap -->
-            <div v-else class="matrix-container relative overflow-x-auto">
+            <!-- Vol Matrix / Heatmap -->
+            <div v-else-if="matrixTab === 'vol'" class="matrix-container relative overflow-x-auto">
               <table class="w-full border-collapse">
                 <thead>
                   <tr>
@@ -892,6 +921,54 @@ loadFxPairs();
                 </table>
               </div>
             </div>
+
+            <!-- Forward Swap Rate Matrix -->
+            <div v-else class="overflow-x-auto">
+              <div v-if="fwdSwapRates.size === 0" class="text-center py-12">
+                <i class="fas fa-chart-line text-4xl text-[var(--text-muted)] mb-4"></i>
+                <p class="text-[var(--text-muted)]">Build curve to view forward swap rates</p>
+              </div>
+              <table v-else class="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
+                      Expiry \ Tenor
+                    </th>
+                    <th
+                      v-for="tenor in matrixTenors"
+                      :key="tenor"
+                      class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
+                    >
+                      {{ tenor }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="expiry in matrixExpiries" :key="expiry">
+                    <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
+                      {{ expiry }}
+                    </td>
+                    <td
+                      v-for="tenor in matrixTenors"
+                      :key="tenor"
+                      class="py-2 px-2 text-center border-b border-[var(--glass-border)]"
+                      :style="fwdSwapRates.get(`${expiry}|${tenor}`) != null
+                        ? { backgroundColor: fwdRateHeatmapColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }
+                        : {}"
+                    >
+                      <span
+                        v-if="fwdSwapRates.get(`${expiry}|${tenor}`) != null"
+                        class="text-xs font-mono font-medium"
+                        :style="{ color: fwdRateTextColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }"
+                      >
+                        {{ (fwdSwapRates.get(`${expiry}|${tenor}`)! * 100).toFixed(2) }}%
+                      </span>
+                      <span v-else class="text-xs text-[var(--text-muted)]">--</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </template>
 
           <!-- FX Table -->
@@ -930,152 +1007,97 @@ loadFxPairs();
             </div>
           </template>
         </div>
-      </div>
-    </div>
 
-    <!-- Forward Swap Rate Matrix (shown when curve is built for swaption tab) -->
-    <div v-if="activeTab === 'swaption' && fwdSwapRates.size > 0" class="glass-card p-6 mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          <i class="fas fa-table text-[var(--primary)]"></i>
-          Forward Swap Rates
-        </h3>
-        <span v-if="isBuildingCurve" class="text-xs text-[var(--text-muted)]">
-          <i class="fas fa-spinner fa-spin mr-1"></i>Building curve...
-        </span>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse">
-          <thead>
-            <tr>
-              <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
-                Expiry \ Tenor
-              </th>
-              <th
-                v-for="tenor in matrixTenors"
-                :key="tenor"
-                class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
+        <!-- Calibration Result + Smile/PDF (only shown after calibration, same column as instruments) -->
+        <div v-if="calibrationResult" class="glass-card p-6 mt-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <i class="fas fa-check-circle text-[var(--success)]"></i>
+              Calibration Result
+            </h3>
+            <div class="flex items-center gap-2">
+              <button
+                class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+                @click="exportCsv"
               >
-                {{ tenor }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="expiry in matrixExpiries" :key="expiry">
-              <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
-                {{ expiry }}
-              </td>
-              <td
-                v-for="tenor in matrixTenors"
-                :key="tenor"
-                class="py-2 px-2 text-center border-b border-[var(--glass-border)]"
-                :style="fwdSwapRates.get(`${expiry}|${tenor}`) != null
-                  ? { backgroundColor: fwdRateHeatmapColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }
-                  : {}"
+                <i class="fas fa-file-csv mr-1"></i>CSV
+              </button>
+              <button
+                class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+                @click="exportJson"
               >
-                <span
-                  v-if="fwdSwapRates.get(`${expiry}|${tenor}`) != null"
-                  class="text-xs font-mono font-medium"
-                  :style="{ color: fwdRateTextColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }"
-                >
-                  {{ (fwdSwapRates.get(`${expiry}|${tenor}`)! * 100).toFixed(2) }}%
-                </span>
-                <span v-else class="text-xs text-[var(--text-muted)]">--</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+                <i class="fas fa-file-code mr-1"></i>JSON
+              </button>
+            </div>
+          </div>
 
-    <!-- Detail Card: Calibration Result + Smile/PDF (only shown after calibration) -->
-    <div v-if="calibrationResult" class="glass-card p-6 mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          <i class="fas fa-check-circle text-[var(--success)]"></i>
-          Calibration Result
-        </h3>
-        <div class="flex items-center gap-2">
-          <button
-            class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
-            @click="exportCsv"
-          >
-            <i class="fas fa-file-csv mr-1"></i>CSV
-          </button>
-          <button
-            class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
-            @click="exportJson"
-          >
-            <i class="fas fa-file-code mr-1"></i>JSON
-          </button>
-        </div>
-      </div>
-
-      <!-- Calibration summary -->
-      <div class="flex flex-wrap items-center gap-3 mb-4">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-primary)]">
-          <i class="fas fa-cogs text-[var(--primary)]"></i>
-          {{ calibrationResult.model }}
-        </span>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
-          <i class="fas fa-th"></i>
-          {{ calibrationResult.metadata.instrumentCount }} instruments
-        </span>
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
-          <i class="fas fa-clock"></i>
-          {{ calibrationResult.metadata.processingTimeMs.toFixed(2) }} ms
-        </span>
-        <span
-          v-for="(value, key) in calibrationResult.parameters"
-          :key="key"
-          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-secondary)]"
-        >
-          {{ key }}: {{ Number(value).toFixed(4) }}
-        </span>
-      </div>
-
-      <!-- Smile & PDF charts (only when a cell is selected) -->
-      <template v-if="selectedInstrument">
-        <div class="border-t border-[var(--glass-border)] pt-4">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-              <i class="fas fa-chart-area text-[var(--primary)]"></i>
-              Smile &amp; Density
-              <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
-                {{ selectedInstrument.expiry }} x {{ selectedInstrument.tenor }} — ATM {{ formatVol(selectedInstrument.atmVol) }}
-              </span>
-            </h4>
-            <button
-              class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
-              @click="closeDetailCard"
+          <!-- Calibration summary -->
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-primary)]">
+              <i class="fas fa-cogs text-[var(--primary)]"></i>
+              {{ calibrationResult.model }}
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
+              <i class="fas fa-th"></i>
+              {{ calibrationResult.metadata.instrumentCount }} instruments
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
+              <i class="fas fa-clock"></i>
+              {{ calibrationResult.metadata.processingTimeMs.toFixed(2) }} ms
+            </span>
+            <span
+              v-for="(value, key) in calibrationResult.parameters"
+              :key="key"
+              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-secondary)]"
             >
-              <i class="fas fa-times"></i>
-            </button>
+              {{ key }}: {{ Number(value).toFixed(4) }}
+            </span>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
-              <div class="chart-wrapper">
-                <canvas ref="smileChartCanvas"></canvas>
+
+          <!-- Smile & PDF charts (only when a cell is selected) -->
+          <template v-if="selectedInstrument">
+            <div class="border-t border-[var(--glass-border)] pt-4">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <i class="fas fa-chart-area text-[var(--primary)]"></i>
+                  Smile &amp; Density
+                  <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
+                    {{ selectedInstrument.expiry }} x {{ selectedInstrument.tenor }} — ATM {{ formatVol(selectedInstrument.atmVol) }}
+                  </span>
+                </h4>
+                <button
+                  class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
+                  @click="closeDetailCard"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
+                  <div class="chart-wrapper">
+                    <canvas ref="smileChartCanvas"></canvas>
+                  </div>
+                </div>
+                <div>
+                  <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
+                  <div class="chart-wrapper">
+                    <canvas ref="pdfChartCanvas"></canvas>
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
-              <div class="chart-wrapper">
-                <canvas ref="pdfChartCanvas"></canvas>
-              </div>
+          </template>
+          <template v-else>
+            <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
+              <p class="text-sm text-[var(--text-muted)]">
+                <i class="fas fa-mouse-pointer mr-1"></i>
+                Select a cell in the matrix to view Smile &amp; Density charts
+              </p>
             </div>
-          </div>
+          </template>
         </div>
-      </template>
-      <template v-else>
-        <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
-          <p class="text-sm text-[var(--text-muted)]">
-            <i class="fas fa-mouse-pointer mr-1"></i>
-            Select a cell in the matrix to view Smile &amp; Density charts
-          </p>
-        </div>
-      </template>
+      </div>
     </div>
   </div>
 </template>

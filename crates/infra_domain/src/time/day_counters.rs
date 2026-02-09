@@ -109,35 +109,6 @@ impl DayCounter {
         }
     }
 
-    /// Returns the year fraction for a single calendar day.
-    ///
-    /// This is the inverse of the convention's denominator:
-    /// - ACT/360: 1/360
-    /// - ACT/365: 1/365
-    /// - 30/360 variants: 1/360
-    ///
-    /// Useful for computing the accrual period δ that a rate index
-    /// requires for flat forward rate calculations.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::DayCounter;
-    ///
-    /// assert!((DayCounter::Actual360.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-    /// assert!((DayCounter::Actual365Fixed.accrual_delta() - 1.0 / 365.0).abs() < 1e-15);
-    /// ```
-    #[must_use]
-    pub fn accrual_delta(self) -> f64 {
-        match self {
-            Self::Actual360 => 1.0 / 360.0,
-            Self::Actual365Fixed => 1.0 / 365.0,
-            Self::Actual36525 => 1.0 / 365.25,
-            Self::ActualActualIsda => 1.0 / 365.25,
-            Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => 1.0 / 360.0,
-        }
-    }
-
     /// Returns the year fraction for a given number of calendar days.
     ///
     /// Equivalent to `year_fraction(start, end)` where `end - start = days`,
@@ -416,13 +387,6 @@ mod tests {
 
         assert_eq!(DayCounter::Actual365Fixed.day_count(start, end), 10);
         assert_eq!(DayCounter::Actual365Fixed.day_count(end, start), -10);
-    }
-
-    #[test]
-    fn test_accrual_delta() {
-        assert!((DayCounter::Actual360.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
-        assert!((DayCounter::Actual365Fixed.accrual_delta() - 1.0 / 365.0).abs() < 1e-15);
-        assert!((DayCounter::Thirty360Bond.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
     }
 
     #[test]

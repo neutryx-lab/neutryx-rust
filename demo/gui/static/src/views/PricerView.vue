@@ -110,8 +110,8 @@ const groupedInstruments = computed(() => {
 const hasEdits = computed(() => Object.keys(editedCashflows.value).length > 0);
 
 const summaryStats = computed(() => [
-  { label: 'Instrument', value: selectedInstrument.value?.displayName || selectedInstrument.value?.name || '-', icon: 'fa-file-contract', color: '#3b82f6' },
   { label: 'Valuation Date', value: valuationDate.value, icon: 'fa-calendar', color: '#10b981' },
+  { label: 'Instrument', value: selectedInstrument.value?.displayName || selectedInstrument.value?.name || '-', icon: 'fa-file-contract', color: '#3b82f6' },
   { label: 'PV', value: pricingResult.value ? formatCurrency(pricingResult.value.totalPv ?? pricingResult.value.pv ?? 0) : '-', icon: 'fa-dollar-sign', color: '#8b5cf6' },
   { label: 'DV01', value: greeksResult.value ? formatCurrency(greeksResult.value.delta) : '-', icon: 'fa-chart-line', color: '#f59e0b' },
 ]);
@@ -148,10 +148,23 @@ async function loadInstruments() {
     const data = await response.json();
     instruments.value = data.instruments || [];
 
-    // Auto-select OIS if available
-    const ois = instruments.value.find(inst => (inst.instrumentType || inst.id || inst.type) === 'ois');
-    if (ois) {
-      selectedInstrumentId.value = 'ois';
+    // Auto-select IRS and set USD OIS 5Y defaults
+    const irs = instruments.value.find(inst =>
+      ['IRS', 'irs'].includes(inst.instrumentType || inst.id || inst.type || '')
+    );
+    if (irs) {
+      selectedInstrumentId.value = irs.instrumentType || irs.id || irs.type || 'IRS';
+      // Set 5Y OIS defaults
+      const today = new Date();
+      const fiveYears = new Date(today);
+      fiveYears.setFullYear(fiveYears.getFullYear() + 5);
+      instrumentParams.value = {
+        notional: 1_000_000,
+        currency: 'USD',
+        startDate: today.toISOString().split('T')[0],
+        endDate: fiveYears.toISOString().split('T')[0],
+        fixedRate: 0.04,
+      };
       setTimeout(() => expandCashflows(), 100);
     }
   } catch (error) {

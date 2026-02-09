@@ -334,6 +334,54 @@ pub mod curves {
                 _ => None,
             }
         }
+
+        /// Creates a copy of this instrument with the market rate bumped by `delta`.
+        ///
+        /// Used for finite-difference Jacobian computation in the sequential
+        /// bootstrapper.
+        pub fn with_bumped_rate(&self, delta: T) -> Self {
+            match self {
+                Self::Ois {
+                    maturity,
+                    rate,
+                    payment_frequency,
+                } => Self::Ois {
+                    maturity: *maturity,
+                    rate: *rate + delta,
+                    payment_frequency: *payment_frequency,
+                },
+                Self::Irs {
+                    maturity,
+                    rate,
+                    fixed_frequency,
+                } => Self::Irs {
+                    maturity: *maturity,
+                    rate: *rate + delta,
+                    fixed_frequency: *fixed_frequency,
+                },
+                Self::Fra { start, end, rate } => Self::Fra {
+                    start: *start,
+                    end: *end,
+                    rate: *rate + delta,
+                },
+                Self::Future {
+                    maturity,
+                    rate,
+                    convexity_adjustment,
+                } => Self::Future {
+                    maturity: *maturity,
+                    rate: *rate + delta,
+                    convexity_adjustment: *convexity_adjustment,
+                },
+                Self::Event {
+                    maturity,
+                    expected_jump,
+                } => Self::Event {
+                    maturity: *maturity,
+                    expected_jump: *expected_jump + delta,
+                },
+            }
+        }
     }
 
     /// A bootstrapped yield curve with pillar discount factors.
@@ -1518,12 +1566,17 @@ pub mod jumps {
 
         // Phase 2: Build daily grid with ramp offsets.
         // offset(t) = -sum(s_i * (t - t_i)) for all t_i <= t
-        let dt = day_counter.accrual_delta(); // one calendar day
-        let grid_count = (max_time / dt).ceil() as usize + 2;
+        //
+        // Grid times MUST use year_fraction_from_days (d / N) to match the
+        // query path in cumulative_offset_at. Using i * (1/N) would introduce
+        // IEEE 754 rounding mismatches that shift forward rates by ±jump_bps
+        // on affected days.
+        let grid_count =
+            (max_time / day_counter.year_fraction_from_days(1)).ceil() as usize + 2;
 
         (0..grid_count)
             .map(|i| {
-                let t = i as f64 * dt;
+                let t = day_counter.year_fraction_from_days(i as i64);
                 let offset: f64 = rate_shifts
                     .iter()
                     .take_while(|(t_j, _)| *t_j <= t)
