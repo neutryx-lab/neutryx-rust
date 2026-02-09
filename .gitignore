@@ -36,3 +36,15 @@ demo/gui/dist/
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Rust toolchain installer binary
+rustup-init.exe
+
+# Log files
+*.log
+
+# Vite cache / temp files
+**/.vite/
+
+# Claude Code local settings
+.claude/settings.local.json

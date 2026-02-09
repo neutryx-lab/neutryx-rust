@@ -715,11 +715,13 @@ demo/data/
 - `install_enzyme.sh` - Enzyme installation helper
 - `verify_enzyme.sh` - Enzyme verification
 - `check_iai_regression.sh` - Instruction-count regression checking
+- `ai_fixer/` - Self-healing CI module (parses errors, generates patches via Gemini API)
 
 **CI/CD**: `.github/workflows/`
 
 - `ci.yml` - Separate jobs for stable and nightly builds
 - `release.yml` - Release automation and changelog generation
+- `ai-fixer.yml` - Self-healing CI (auto-remediate failures via AI-generated patches)
 
 ## Naming Conventions (British English)
 
@@ -759,5 +761,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-04_ — Vue 3 frontend migration, CurveDefinition/ConventionTemplate/MarketInstrument modules, CurveRegistry
+_Updated: 2026-02-09_ — service_gateway re-enabled, AI Fixer CI infrastructure, scripts/ai_fixer module
 _Document patterns, not file trees. New files following patterns should not require updates_
