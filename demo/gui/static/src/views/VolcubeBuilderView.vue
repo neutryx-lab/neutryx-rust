@@ -38,7 +38,7 @@ const selectedSwaptionIndex = ref('');
 const swaptionInstruments = ref<SwaptionInstrument[]>([]);
 const swaptionModels = ref<string[]>([]);
 const selectedModel = ref('');
-const referenceDate = ref(new Date().toISOString().split('T')[0]);
+const referenceDate = ref('');
 
 const fxPairs = ref<string[]>([]);
 const selectedFxPair = ref('');
@@ -54,8 +54,8 @@ const isCalibrating = ref(false);
 const summaryStats = computed(() => {
   if (activeTab.value === 'swaption') {
     return [
+      { label: 'Valuation Date', value: referenceDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
       { label: 'Instruments', value: swaptionInstruments.value.length, icon: 'fa-list', color: '#3b82f6' },
-      { label: 'Selected Index', value: selectedSwaptionIndex.value || '-', icon: 'fa-percentage', color: '#10b981' },
       { label: 'Model', value: selectedModel.value || '-', icon: 'fa-cogs', color: '#8b5cf6' },
       { label: 'Status', value: calibrationResult.value ? 'Calibrated' : 'Pending', icon: 'fa-info-circle', color: calibrationResult.value ? '#10b981' : '#f59e0b' },
     ];
@@ -90,6 +90,11 @@ async function loadSwaptionIndices() {
     if (!response.ok) throw new Error('Failed to load indices');
     const data = await response.json();
     swaptionIndices.value = data.indices || [];
+    // Default to first USD index
+    const usdIndex = swaptionIndices.value.find(idx => idx.startsWith('USD'));
+    if (usdIndex && !selectedSwaptionIndex.value) {
+      selectedSwaptionIndex.value = usdIndex;
+    }
   } catch (error) {
     console.error('Failed to load swaption indices:', error);
   }
@@ -115,6 +120,8 @@ async function loadSwaptionInstruments(index: string) {
     if (!response.ok) throw new Error('Failed to load instruments');
     const data = await response.json();
     swaptionInstruments.value = data.instruments || [];
+    // Extract reference date from API response
+    referenceDate.value = data.referenceDate || data.reference_date || data.metadata?.lastUpdated?.split('T')[0] || '';
     calibrationResult.value = null;
   } catch (error) {
     console.error('Failed to load instruments:', error);
@@ -305,14 +312,6 @@ loadFxPairs();
           <div class="glass-card p-6">
             <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Calibration Settings</h3>
             <div class="space-y-4">
-              <div>
-                <label class="block text-sm text-[var(--text-muted)] mb-2">Reference Date</label>
-                <input
-                  v-model="referenceDate"
-                  type="date"
-                  class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-                >
-              </div>
               <div>
                 <label class="block text-sm text-[var(--text-muted)] mb-2">Model</label>
                 <select

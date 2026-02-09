@@ -116,7 +116,7 @@ const shortTermChartCanvas = ref<HTMLCanvasElement | null>(null);
 const longTermChartCanvas = ref<HTMLCanvasElement | null>(null);
 let shortTermChartInstance: Chart | null = null;
 let longTermChartInstance: Chart | null = null;
-const chartType = ref<'zero_rate' | 'discount_factor' | 'forward_rate'>('zero_rate');
+const chartType = ref<'zero_rate' | 'discount_factor' | 'forward_rate'>('forward_rate');
 
 // Options for build settings
 const calibrationMethods = ['sequential', 'global', 'bootstrap'];
@@ -154,8 +154,8 @@ const summaryStats = computed(() => {
   const eventCount = enabledInstruments.value.filter(i => i.type === 'event').length;
 
   return [
-    { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}${eventCount > 0 ? ` (${eventCount} events)` : ''}`, icon: 'fa-list-alt', color: '#3b82f6' },
     { label: 'Valuation Date', value: rateData.value?.reference_date || '-', icon: 'fa-calendar', color: '#8b5cf6' },
+    { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}${eventCount > 0 ? ` (${eventCount} events)` : ''}`, icon: 'fa-list-alt', color: '#3b82f6' },
     { label: 'Interpolation', value: interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
     { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
   ];
@@ -684,9 +684,9 @@ watch(chartType, () => {
 // Lifecycle
 onMounted(async () => {
   await Promise.all([loadCurvesConfig(), loadInstrumentsConfig()]);
-  // Set default selection to USD-SOFR-Discount
-  if (curvesConfig.value?.curves.some(c => c.name === 'USD-SOFR-Discount')) {
-    selectedCurveName.value = 'USD-SOFR-Discount';
+  // Set default selection to USD-SOFR
+  if (curvesConfig.value?.curves.some(c => c.name === 'USD-SOFR')) {
+    selectedCurveName.value = 'USD-SOFR';
   }
 });
 

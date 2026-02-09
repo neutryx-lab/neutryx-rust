@@ -86,6 +86,17 @@ pub struct JumpPillar {
 
     /// Confidence level that the jump will occur (0.0 to 1.0).
     confidence: f64,
+
+    /// End date for turn events (when the temporary spike reverts).
+    ///
+    /// For permanent jumps (e.g., central bank meetings), this is `None`.
+    /// For turn events, the spike applies from `jump_date` to `end_date`,
+    /// after which the forward rate reverts to its pre-spike level.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    end_date: Option<Date>,
 }
 
 impl JumpPillar {
@@ -117,6 +128,7 @@ impl JumpPillar {
             expected_jump_bps,
             event_reference: None,
             confidence: confidence.clamp(0.0, 1.0),
+            end_date: None,
         }
     }
 
@@ -183,6 +195,7 @@ impl JumpPillar {
             expected_jump_bps: event.expected_spread(),
             event_reference: None,
             confidence: event.confidence(),
+            end_date: event.end_date(),
         }
     }
 
@@ -310,6 +323,21 @@ impl JumpPillar {
     /// Returns true if this has high confidence (>= 0.8).
     #[must_use]
     pub fn is_high_confidence(&self) -> bool { self.confidence >= 0.8 }
+
+    /// Returns the end date for turn events, or `None` for permanent jumps.
+    #[must_use]
+    pub fn end_date(&self) -> Option<Date> { self.end_date }
+
+    /// Sets the end date for turn events.
+    #[must_use]
+    pub fn with_end_date(mut self, end_date: Date) -> Self {
+        self.end_date = Some(end_date);
+        self
+    }
+
+    /// Returns true if this is a turn (temporary spike with an end date).
+    #[must_use]
+    pub fn is_turn(&self) -> bool { self.end_date.is_some() }
 }
 
 impl std::fmt::Display for JumpPillar {
@@ -659,6 +687,13 @@ pub enum CurveDefError {
         /// The jump size in basis points
         jump_bps: f64,
     },
+    /// Invalid end date for turn pillar (end_date must be after jump_date)
+    InvalidEndDate {
+        /// The jump date
+        jump_date: Date,
+        /// The invalid end date
+        end_date: Date,
+    },
 }
 
 impl std::fmt::Display for CurveDefError {
@@ -682,6 +717,16 @@ impl std::fmt::Display for CurveDefError {
                     f,
                     "Jump of {}bp at {} would cause negative discount factor",
                     jump_bps, date
+                )
+            }
+            Self::InvalidEndDate {
+                jump_date,
+                end_date,
+            } => {
+                write!(
+                    f,
+                    "Turn pillar end_date {} must be after jump_date {}",
+                    end_date, jump_date
                 )
             }
         }
@@ -878,6 +923,16 @@ impl CurveDefinition {
                     jump_bps,
                 });
             }
+
+            // Validate end_date for turn pillars
+            if let Some(end_date) = pillar.end_date() {
+                if end_date <= pillar.jump_date() {
+                    return Err(CurveDefError::InvalidEndDate {
+                        jump_date: pillar.jump_date(),
+                        end_date,
+                    });
+                }
+            }
         }
 
         Ok(())
@@ -1068,6 +1123,58 @@ mod tests {
 
         assert!(debug.contains("JumpPillar"));
         assert!(debug.contains("25"));
+    }
+
+    #[test]
+    fn test_jump_pillar_with_end_date() {
+        let start = Date::from_ymd(2024, 12, 31).unwrap();
+        let end = Date::from_ymd(2025, 1, 2).unwrap();
+        let jump = JumpPillar::new(start, 12.5, 1.0).with_end_date(end);
+
+        assert_eq!(jump.end_date(), Some(end));
+        assert!(jump.is_turn());
+    }
+
+    #[test]
+    fn test_jump_pillar_permanent_has_no_end_date() {
+        let jump = JumpPillar::new(test_date(), 25.0, 0.85);
+        assert!(jump.end_date().is_none());
+        assert!(!jump.is_turn());
+    }
+
+    #[test]
+    fn test_from_event_instrument_with_turn() {
+        let event_date = Date::from_ymd(2024, 12, 31).unwrap();
+        let end_date = Date::from_ymd(2025, 1, 2).unwrap();
+        let event = EventInstrument::new_turn(
+            event_date,
+            end_date,
+            EventType::TurnOfYear,
+            12.5,
+            1.0,
+            RateIndex::Sofr,
+        );
+
+        let jump = JumpPillar::from_event_instrument(&event);
+        assert_eq!(jump.jump_date(), event_date);
+        assert_eq!(jump.end_date(), Some(end_date));
+        assert!(jump.is_turn());
+        assert_eq!(jump.expected_jump_bps(), 12.5);
+    }
+
+    #[test]
+    fn test_from_event_instrument_permanent_jump() {
+        let event = EventInstrument::new(
+            test_date(),
+            EventType::CentralBankMeeting,
+            25.0,
+            0.85,
+            RateIndex::Sofr,
+        );
+
+        let jump = JumpPillar::from_event_instrument(&event);
+        assert!(jump.end_date().is_none());
+        assert!(!jump.is_turn());
     }
 
     #[cfg(feature = "serde")]
@@ -1631,6 +1738,29 @@ mod tests {
             curve.validate(),
             Err(CurveDefError::DuplicateJumpDate(_))
         ));
+    }
+
+    #[test]
+    fn test_validate_invalid_end_date() {
+        let jump_date = Date::from_ymd(2024, 12, 31).unwrap();
+        let end_date = Date::from_ymd(2024, 12, 30).unwrap(); // Before jump_date
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillar(JumpPillar::new(jump_date, 12.5, 1.0).with_end_date(end_date));
+
+        assert!(matches!(
+            curve.validate(),
+            Err(CurveDefError::InvalidEndDate { .. })
+        ));
+    }
+
+    #[test]
+    fn test_validate_valid_turn_pillar() {
+        let jump_date = Date::from_ymd(2024, 12, 31).unwrap();
+        let end_date = Date::from_ymd(2025, 1, 2).unwrap();
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillar(JumpPillar::new(jump_date, 12.5, 1.0).with_end_date(end_date));
+
+        assert!(curve.validate().is_ok());
     }
 
     #[test]

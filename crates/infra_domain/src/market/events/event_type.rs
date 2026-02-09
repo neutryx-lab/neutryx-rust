@@ -23,8 +23,14 @@ pub enum EventType {
     News,
     /// Options/Futures expiry.
     Expiry,
-    /// Turn date for curve construction (expected rate move date).
+    /// Turn date for curve construction (generic turn).
     Turn,
+    /// Turn of Year (TOY) — year-end rate spike.
+    TurnOfYear,
+    /// Turn of Quarter (TOQ) — quarter-end rate spike.
+    TurnOfQuarter,
+    /// Turn of Month (TOM) — month-end rate spike.
+    TurnOfMonth,
     /// Other market event.
     Other,
 }
@@ -47,6 +53,9 @@ impl EventType {
             Self::News => "News",
             Self::Expiry => "Expiry",
             Self::Turn => "Turn",
+            Self::TurnOfYear => "Turn of Year",
+            Self::TurnOfQuarter => "Turn of Quarter",
+            Self::TurnOfMonth => "Turn of Month",
             Self::Other => "Other",
         }
     }
@@ -61,9 +70,19 @@ impl EventType {
             Self::Holiday => "fa-calendar-times",
             Self::News => "fa-newspaper",
             Self::Expiry => "fa-hourglass-end",
-            Self::Turn => "fa-chart-line",
+            Self::Turn | Self::TurnOfYear | Self::TurnOfQuarter | Self::TurnOfMonth => {
+                "fa-chart-line"
+            }
             Self::Other => "fa-info-circle",
         }
+    }
+
+    /// Returns true if this is any kind of turn event.
+    pub fn is_turn(&self) -> bool {
+        matches!(
+            self,
+            Self::Turn | Self::TurnOfYear | Self::TurnOfQuarter | Self::TurnOfMonth
+        )
     }
 
     /// Returns all event type variants.
@@ -75,6 +94,9 @@ impl EventType {
             EventType::News,
             EventType::Expiry,
             EventType::Turn,
+            EventType::TurnOfYear,
+            EventType::TurnOfQuarter,
+            EventType::TurnOfMonth,
             EventType::Other,
         ]
     }
@@ -112,11 +134,29 @@ mod tests {
     #[test]
     fn test_all_variants() {
         let all = EventType::all();
-        assert_eq!(all.len(), 7);
+        assert_eq!(all.len(), 10);
     }
 
     #[test]
     fn test_display_trait() {
         assert_eq!(format!("{}", EventType::Holiday), "Holiday");
+    }
+
+    #[test]
+    fn test_is_turn() {
+        assert!(EventType::Turn.is_turn());
+        assert!(EventType::TurnOfYear.is_turn());
+        assert!(EventType::TurnOfQuarter.is_turn());
+        assert!(EventType::TurnOfMonth.is_turn());
+        assert!(!EventType::CentralBankMeeting.is_turn());
+        assert!(!EventType::EconomicRelease.is_turn());
+        assert!(!EventType::Other.is_turn());
+    }
+
+    #[test]
+    fn test_turn_display_names() {
+        assert_eq!(EventType::TurnOfYear.display_name(), "Turn of Year");
+        assert_eq!(EventType::TurnOfQuarter.display_name(), "Turn of Quarter");
+        assert_eq!(EventType::TurnOfMonth.display_name(), "Turn of Month");
     }
 }

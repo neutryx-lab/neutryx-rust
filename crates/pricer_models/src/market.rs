@@ -1294,27 +1294,36 @@ pub mod jumps {
             return Vec::new();
         }
 
-        // Convert to (time, weighted_jump_rate) and sort by time
-        let mut entries: Vec<(f64, f64)> = pillars
-            .iter()
-            .filter_map(|p| {
-                let time = day_counter.year_fraction(valuation_date, p.jump_date());
-                // Only include future jumps (time > 0)
-                if time > 0.0 {
-                    // Convert weighted bps to log-space offset: -bps / 10000
-                    // Negative because rate hike (positive bps) decreases discount factor
-                    let jump_offset = -p.weighted_jump_bps() / 10_000.0;
-                    Some((time, jump_offset))
-                } else {
-                    None
-                }
-            })
-            .collect();
+        // Phase 1: Expand pillars into (time, individual_offset) entries.
+        // For permanent jumps: one entry at jump_date.
+        // For turn events (has end_date): two entries — spike up at jump_date,
+        // spike down (revert) at end_date.
+        let mut entries: Vec<(f64, f64)> = Vec::new();
 
-        // Sort by time
+        for p in pillars {
+            let time = day_counter.year_fraction(valuation_date, p.jump_date());
+            if time <= 0.0 {
+                continue; // Skip past events
+            }
+
+            // Convert weighted bps to log-space offset: -bps / 10000
+            // Negative because rate hike (positive bps) decreases discount factor
+            let jump_offset = -p.weighted_jump_bps() / 10_000.0;
+            entries.push((time, jump_offset));
+
+            // Turn events: emit a reverting entry at end_date
+            if let Some(end_date) = p.end_date() {
+                let end_time = day_counter.year_fraction(valuation_date, end_date);
+                if end_time > 0.0 {
+                    entries.push((end_time, -jump_offset));
+                }
+            }
+        }
+
+        // Phase 2: Sort by time
         entries.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-        // Calculate cumulative offsets
+        // Phase 3: Calculate cumulative offsets
         let mut cumulative = 0.0;
         entries
             .into_iter()
@@ -1574,6 +1583,107 @@ pub mod jumps {
             assert_eq!(tuples.len(), 1);
             // 25 * 0.8 = 20 bps → -0.002 (negative for rate hike)
             assert!((tuples[0].1 - (-0.002)).abs() < 1e-10);
+        }
+
+        // =================================================================
+        // Turn event tests
+        // =================================================================
+
+        #[test]
+        fn test_convert_single_turn_pillar() {
+            let valuation = test_valuation_date();
+            let turn_start = Date::from_ymd(2024, 12, 31).unwrap();
+            let turn_end = Date::from_ymd(2025, 1, 2).unwrap();
+
+            let pillars =
+                vec![JumpPillar::new(turn_start, 12.5, 1.0).with_end_date(turn_end)];
+
+            let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+
+            // Should produce 2 entries: spike up + spike down
+            assert_eq!(entries.len(), 2);
+
+            let t_start = DayCounter::Actual365Fixed.year_fraction(valuation, turn_start);
+            let t_end = DayCounter::Actual365Fixed.year_fraction(valuation, turn_end);
+
+            // First entry: spike at turn_start
+            assert!((entries[0].time - t_start).abs() < 1e-10);
+            // 12.5bp * 1.0 = 12.5bp → -0.00125
+            assert!((entries[0].cumulative_offset - (-0.00125)).abs() < 1e-10);
+
+            // Second entry: revert at turn_end — cumulative returns to 0
+            assert!((entries[1].time - t_end).abs() < 1e-10);
+            assert!(entries[1].cumulative_offset.abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_convert_mixed_jump_and_turn() {
+            let valuation = test_valuation_date();
+
+            // Permanent jump: FOMC rate hike on March 20
+            let jump = JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 1.0);
+
+            // Turn: year-end spike from Dec 31 to Jan 2
+            let turn = JumpPillar::new(Date::from_ymd(2024, 12, 31).unwrap(), 12.5, 1.0)
+                .with_end_date(Date::from_ymd(2025, 1, 2).unwrap());
+
+            let pillars = vec![jump, turn];
+            let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+
+            // 3 entries: permanent jump + turn spike up + turn spike down
+            assert_eq!(entries.len(), 3);
+
+            // Entry 0: permanent jump at March 20
+            // 25bp → -0.0025
+            assert!((entries[0].cumulative_offset - (-0.0025)).abs() < 1e-10);
+
+            // Entry 1: turn spike at Dec 31 (cumulative = -0.0025 + -0.00125 = -0.00375)
+            assert!((entries[1].cumulative_offset - (-0.00375)).abs() < 1e-10);
+
+            // Entry 2: turn revert at Jan 2 (cumulative = -0.00375 + 0.00125 = -0.0025)
+            // Reverts to the permanent jump level
+            assert!((entries[2].cumulative_offset - (-0.0025)).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_convert_turn_offset_reverts() {
+            let valuation = test_valuation_date();
+            let turn_start = Date::from_ymd(2024, 6, 30).unwrap();
+            let turn_end = Date::from_ymd(2024, 7, 1).unwrap();
+
+            let pillars =
+                vec![JumpPillar::new(turn_start, 5.0, 1.0).with_end_date(turn_end)];
+
+            let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+            assert_eq!(entries.len(), 2);
+
+            // Before turn: offset should be 0 (no entries before t_start)
+            let t_start = entries[0].time;
+            assert_eq!(cumulative_offset_at(&entries, t_start - 0.001), 0.0);
+
+            // During turn: offset should be -0.0005
+            assert!((cumulative_offset_at(&entries, t_start) - (-0.0005)).abs() < 1e-10);
+
+            // After turn: offset should revert to 0
+            let t_end = entries[1].time;
+            assert!(cumulative_offset_at(&entries, t_end).abs() < 1e-10);
+            assert!(cumulative_offset_at(&entries, t_end + 0.1).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_permanent_jump_no_revert_entry() {
+            let valuation = test_valuation_date();
+            let pillars = vec![JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(),
+                25.0,
+                1.0,
+            )];
+
+            let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+
+            // Permanent jump: exactly 1 entry, no revert
+            assert_eq!(entries.len(), 1);
+            assert!((entries[0].cumulative_offset - (-0.0025)).abs() < 1e-10);
         }
     }
 }

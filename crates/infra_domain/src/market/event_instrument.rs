@@ -73,6 +73,16 @@ pub struct EventInstrument {
     confidence: f64,
     /// Rate index affected by this event.
     rate_index: RateIndex,
+    /// End date for turn events (when the spike reverts).
+    ///
+    /// For permanent jumps (e.g., central bank meetings), this is `None`.
+    /// For turn events (e.g., year-end, quarter-end), this is the date when
+    /// the temporary spike reverts to normal.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    end_date: Option<Date>,
 }
 
 impl EventInstrument {
@@ -115,6 +125,7 @@ impl EventInstrument {
             expected_spread,
             confidence: confidence.clamp(0.0, 1.0),
             rate_index,
+            end_date: None,
         }
     }
 
@@ -181,6 +192,53 @@ impl EventInstrument {
         ))
     }
 
+    /// Creates a new turn event instrument with an end date.
+    ///
+    /// Turn events represent temporary rate spikes that revert after
+    /// a short period (e.g., year-end, quarter-end funding pressure).
+    ///
+    /// # Arguments
+    ///
+    /// * `event_date` - Date when the spike begins
+    /// * `end_date` - Date when the spike reverts
+    /// * `event_type` - Type of turn event
+    /// * `expected_spread` - Expected spike magnitude in basis points
+    /// * `confidence` - Probability of the expected outcome (0.0 to 1.0)
+    /// * `rate_index` - The rate index affected
+    ///
+    /// # Panics
+    ///
+    /// Panics if `end_date` is not after `event_date`.
+    #[must_use]
+    pub fn new_turn(
+        event_date: Date,
+        end_date: Date,
+        event_type: EventType,
+        expected_spread: f64,
+        confidence: f64,
+        rate_index: RateIndex,
+    ) -> Self {
+        assert!(
+            end_date > event_date,
+            "Turn end_date must be after event_date"
+        );
+        Self {
+            event_date,
+            event_type,
+            expected_spread,
+            confidence: confidence.clamp(0.0, 1.0),
+            rate_index,
+            end_date: Some(end_date),
+        }
+    }
+
+    /// Sets the end date for turn events.
+    #[must_use]
+    pub fn with_end_date(mut self, end_date: Date) -> Self {
+        self.end_date = Some(end_date);
+        self
+    }
+
     /// Returns the event date.
     #[must_use]
     pub fn event_date(&self) -> Date { self.event_date }
@@ -200,6 +258,18 @@ impl EventInstrument {
     /// Returns the rate index affected by this event.
     #[must_use]
     pub fn rate_index(&self) -> RateIndex { self.rate_index }
+
+    /// Returns the end date for turn events, or `None` for permanent jumps.
+    #[must_use]
+    pub fn end_date(&self) -> Option<Date> { self.end_date }
+
+    /// Returns true if this is a turn event (temporary spike).
+    #[must_use]
+    pub fn is_turn(&self) -> bool { self.event_type.is_turn() }
+
+    /// Returns true if this is a permanent jump (no end date).
+    #[must_use]
+    pub fn is_permanent_jump(&self) -> bool { self.end_date.is_none() }
 
     /// Calculates the impact on the curve at the event date.
     ///
@@ -295,7 +365,11 @@ impl std::fmt::Display for EventInstrument {
             self.expected_spread,
             self.confidence * 100.0,
             self.rate_index.code()
-        )
+        )?;
+        if let Some(end_date) = self.end_date {
+            write!(f, " [reverts {}]", end_date)?;
+        }
+        Ok(())
     }
 }
 
@@ -481,6 +555,94 @@ mod tests {
         );
         assert!(!hold.is_rate_hike());
         assert!(!hold.is_rate_cut());
+    }
+
+    #[test]
+    fn test_new_turn_event() {
+        let event_date = Date::from_ymd(2024, 12, 31).unwrap();
+        let end_date = Date::from_ymd(2025, 1, 2).unwrap();
+        let event = EventInstrument::new_turn(
+            event_date,
+            end_date,
+            EventType::TurnOfYear,
+            12.5,
+            1.0,
+            RateIndex::Sofr,
+        );
+
+        assert_eq!(event.event_date(), event_date);
+        assert_eq!(event.end_date(), Some(end_date));
+        assert_eq!(event.event_type(), EventType::TurnOfYear);
+        assert_eq!(event.expected_spread(), 12.5);
+        assert!(event.is_turn());
+        assert!(!event.is_permanent_jump());
+    }
+
+    #[test]
+    fn test_backward_compat_no_end_date() {
+        let date = Date::from_ymd(2024, 3, 20).unwrap();
+        let event = EventInstrument::new(
+            date,
+            EventType::CentralBankMeeting,
+            25.0,
+            0.85,
+            RateIndex::Sofr,
+        );
+        assert!(event.end_date().is_none());
+        assert!(event.is_permanent_jump());
+        assert!(!event.is_turn());
+    }
+
+    #[test]
+    fn test_with_end_date() {
+        let date = Date::from_ymd(2024, 12, 31).unwrap();
+        let end = Date::from_ymd(2025, 1, 2).unwrap();
+        let event = EventInstrument::new(date, EventType::Turn, 5.0, 1.0, RateIndex::Sofr)
+            .with_end_date(end);
+        assert_eq!(event.end_date(), Some(end));
+    }
+
+    #[test]
+    fn test_is_turn_variants() {
+        let date = Date::from_ymd(2024, 12, 31).unwrap();
+
+        let toy = EventInstrument::new(date, EventType::TurnOfYear, 12.5, 1.0, RateIndex::Sofr);
+        assert!(toy.is_turn());
+
+        let toq =
+            EventInstrument::new(date, EventType::TurnOfQuarter, 5.0, 1.0, RateIndex::Sofr);
+        assert!(toq.is_turn());
+
+        let tom = EventInstrument::new(date, EventType::TurnOfMonth, 2.0, 1.0, RateIndex::Sofr);
+        assert!(tom.is_turn());
+
+        let cb = EventInstrument::new(
+            date,
+            EventType::CentralBankMeeting,
+            25.0,
+            0.85,
+            RateIndex::Sofr,
+        );
+        assert!(!cb.is_turn());
+    }
+
+    #[test]
+    fn test_display_turn_event() {
+        let event_date = Date::from_ymd(2024, 12, 31).unwrap();
+        let end_date = Date::from_ymd(2025, 1, 2).unwrap();
+        let event = EventInstrument::new_turn(
+            event_date,
+            end_date,
+            EventType::TurnOfYear,
+            12.5,
+            1.0,
+            RateIndex::Sofr,
+        );
+
+        let display = format!("{}", event);
+        assert!(display.contains("Turn of Year"));
+        assert!(display.contains("+12.5bp"));
+        assert!(display.contains("[reverts"));
     }
 
     #[test]
