@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 // Types
 interface SmilePoint {
@@ -64,6 +67,12 @@ const isCalibrating = ref(false);
 const popoverCell = ref<{ expiry: string; tenor: string } | null>(null);
 const popoverPosition = ref<{ top: number; left: number }>({ top: 0, left: 0 });
 
+// Detail card chart state
+const smileChartCanvas = ref<HTMLCanvasElement | null>(null);
+const pdfChartCanvas = ref<HTMLCanvasElement | null>(null);
+let smileChartInstance: Chart | null = null;
+let pdfChartInstance: Chart | null = null;
+
 // Matrix computed properties
 const instrumentMap = computed(() => {
   const map = new Map<string, SwaptionInstrument>();
@@ -127,6 +136,184 @@ function heatmapTextColour(vol: number): string {
   return 'var(--text-secondary)';
 }
 
+// Detail card: chart helpers
+function expiryToYears(expiry: string): number {
+  const m = expiry.match(/^(\d+)(M|Y)$/);
+  if (!m) return 1;
+  const n = parseInt(m[1]);
+  return m[2] === 'M' ? n / 12 : n;
+}
+
+function normCdf(x: number): number {
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
+  const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  const ax = Math.abs(x) / Math.SQRT2;
+  const t = 1.0 / (1.0 + p * ax);
+  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-ax * ax);
+  return 0.5 * (1.0 + sign * y);
+}
+
+function normPdf(x: number): number {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+}
+
+function interpolateSmileVol(inst: SwaptionInstrument, kBp: number): number {
+  const pts = [
+    ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol })),
+    { k: 0, v: inst.atmVol },
+  ].sort((a, b) => a.k - b.k);
+  if (kBp <= pts[0].k) return pts[0].v;
+  if (kBp >= pts[pts.length - 1].k) return pts[pts.length - 1].v;
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (kBp >= pts[i].k && kBp <= pts[i + 1].k) {
+      const frac = (kBp - pts[i].k) / (pts[i + 1].k - pts[i].k);
+      return pts[i].v * (1 - frac) + pts[i + 1].v * frac;
+    }
+  }
+  return inst.atmVol;
+}
+
+function bachelierCallPrice(kBp: number, volPct: number, T: number): number {
+  const k = kBp / 10000;
+  const sigma = volPct / 100;
+  const sigmaRootT = sigma * Math.sqrt(T);
+  if (sigmaRootT < 1e-12) return Math.max(-k, 0);
+  const d = -k / sigmaRootT;
+  return -k * normCdf(d) + sigmaRootT * normPdf(d);
+}
+
+function computeImpliedPdf(inst: SwaptionInstrument): { offsets: number[]; density: number[] } {
+  const T = expiryToYears(inst.expiry);
+  const dk = 2;
+  const dkDec = dk / 10000;
+  const offsets: number[] = [];
+  const density: number[] = [];
+  for (let kBp = -150; kBp <= 150; kBp += dk) {
+    const vMinus = interpolateSmileVol(inst, kBp - dk);
+    const vCenter = interpolateSmileVol(inst, kBp);
+    const vPlus = interpolateSmileVol(inst, kBp + dk);
+    const cMinus = bachelierCallPrice(kBp - dk, vMinus, T);
+    const cCenter = bachelierCallPrice(kBp, vCenter, T);
+    const cPlus = bachelierCallPrice(kBp + dk, vPlus, T);
+    const d2c = (cMinus - 2 * cCenter + cPlus) / (dkDec * dkDec);
+    offsets.push(kBp);
+    density.push(Math.max(0, d2c));
+  }
+  return { offsets, density };
+}
+
+function renderDetailCharts() {
+  const inst = popoverInstrument.value;
+  if (!inst || !inst.smile || inst.smile.length === 0) return;
+
+  const smileData = [
+    ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol })),
+    { k: 0, v: inst.atmVol },
+  ].sort((a, b) => a.k - b.k);
+
+  const smileLabels = smileData.map(p => (p.k > 0 ? '+' : '') + p.k);
+  const smileVols = smileData.map(p => p.v * 100);
+
+  const axisStyle = {
+    ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } },
+    grid: { color: 'rgba(255,255,255,0.08)' },
+  };
+
+  if (smileChartCanvas.value) {
+    const ctx = smileChartCanvas.value.getContext('2d');
+    if (ctx) {
+      smileChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: smileLabels,
+          datasets: [{
+            data: smileVols,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: smileData.map(p => p.k === 0 ? '#f59e0b' : '#6366f1'),
+            pointBorderColor: smileData.map(p => p.k === 0 ? '#f59e0b' : '#6366f1'),
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
+                label: (item: { raw: unknown }) => `Vol: ${(item.raw as number).toFixed(1)} bp`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              ...axisStyle,
+              title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+            },
+            y: {
+              ...axisStyle,
+              title: { display: true, text: 'Normal Vol (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+            },
+          },
+        },
+      });
+    }
+  }
+
+  if (pdfChartCanvas.value) {
+    const { offsets, density } = computeImpliedPdf(inst);
+    const pdfLabels = offsets.map(o => (o > 0 ? '+' : '') + o);
+    const ctx = pdfChartCanvas.value.getContext('2d');
+    if (ctx) {
+      pdfChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: pdfLabels,
+          datasets: [{
+            data: density,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 0,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: (items: { label: string }[]) => `Offset: ${items[0].label} bp`,
+                label: (item: { raw: unknown }) => `Density: ${(item.raw as number).toExponential(2)}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              ...axisStyle,
+              title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+              ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
+            },
+            y: {
+              ...axisStyle,
+              title: { display: true, text: 'Density', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+            },
+          },
+        },
+      });
+    }
+  }
+}
+
 // Summary stats
 const summaryStats = computed(() => {
   if (activeTab.value === 'swaption') {
@@ -148,7 +335,7 @@ const summaryStats = computed(() => {
 
 // Utility functions
 function formatVol(vol: number): string {
-  return `${(vol * 100).toFixed(2)}%`;
+  return `${(vol * 100).toFixed(1)} bp`;
 }
 
 function expiryToLabel(expiry: number): string {
@@ -348,6 +535,12 @@ watch(selectedFxPair, (pair) => {
   if (pair) loadFxQuotes(pair);
 });
 
+watch(popoverCell, () => {
+  if (smileChartInstance) { smileChartInstance.destroy(); smileChartInstance = null; }
+  if (pdfChartInstance) { pdfChartInstance.destroy(); pdfChartInstance = null; }
+  nextTick(() => renderDetailCharts());
+});
+
 // Lifecycle
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
@@ -355,6 +548,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick);
+  if (smileChartInstance) smileChartInstance.destroy();
+  if (pdfChartInstance) pdfChartInstance.destroy();
 });
 
 // Initialize
@@ -674,6 +869,37 @@ loadFxPairs();
                 </table>
               </div>
             </div>
+
+            <!-- Detail Card: Smile + PDF -->
+            <div v-if="popoverInstrument" class="detail-card mt-4 p-5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)]">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                  <i class="fas fa-chart-area text-[var(--primary)]"></i>
+                  {{ popoverInstrument.expiry }} x {{ popoverInstrument.tenor }}
+                  <span class="text-[var(--text-muted)] font-normal ml-1">ATM {{ formatVol(popoverInstrument.atmVol) }}</span>
+                </h4>
+                <button
+                  class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs p-1"
+                  @click="closePopover"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
+                  <div class="chart-wrapper">
+                    <canvas ref="smileChartCanvas"></canvas>
+                  </div>
+                </div>
+                <div>
+                  <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
+                  <div class="chart-wrapper">
+                    <canvas ref="pdfChartCanvas"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
           </template>
 
           <!-- FX Table -->
@@ -739,5 +965,10 @@ loadFxPairs();
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
   border-bottom: 6px solid var(--glass-border);
+}
+
+.chart-wrapper {
+  height: 200px;
+  position: relative;
 }
 </style>
