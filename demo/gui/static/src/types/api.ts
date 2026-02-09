@@ -346,16 +346,20 @@ export interface FxVolPairsResponse {
 
 export interface FxVolQuote {
   expiry: number; // Year fraction
+  expiryLabel: string;
   atmVol: number;
   rr25d: number;
   bf25d: number;
   rr10d?: number;
   bf10d?: number;
+  forward?: number;
 }
 
 export interface FxVolQuotesResponse {
   quotes: FxVolQuote[];
   spot?: number;
+  domesticRate?: number;
+  foreignRate?: number;
 }
 
 // =============================================================================
@@ -548,4 +552,108 @@ export interface TradeStatistics {
 export interface TradeListResponse {
   trades: TradeSummary[];
   statistics: TradeStatistics;
+}
+
+// =============================================================================
+// Volcube Types
+// =============================================================================
+
+export interface VolcubeIndicesResponse {
+  indices: string[];
+}
+
+export interface VolcubeModelsResponse {
+  models: string[];
+}
+
+export interface SwaptionInstrument {
+  expiry: string;
+  tenor: string;
+  strike: string;
+  atmVol: number;
+  smile: SmilePoint[];
+  enabled: boolean;
+}
+
+export interface VolcubeInstrumentsResponse {
+  instruments: SwaptionInstrument[];
+  referenceDate?: string;
+}
+
+export interface VolcubeCalibrateRequest {
+  index: string;
+  referenceDate?: string;
+  model?: string;
+  forwardRates?: Record<string, number>;
+}
+
+export interface CalibrationParameters {
+  alpha: number;
+  beta: number;
+  rho: number;
+  nu: number;
+}
+
+export interface CalibrationMetadata {
+  instrumentCount: number;
+  processingTimeMs: number;
+  convergedCount?: number;
+  maxRmse?: number;
+}
+
+export interface CellDiagnostics {
+  converged: boolean;
+  iterations: number;
+  rmse: number;
+}
+
+export interface VolcubeCalibrateResponse {
+  model: string;
+  metadata: CalibrationMetadata;
+  parameters: CalibrationParameters;
+  cellParameters: Record<string, CalibrationParameters>;
+  cellDiagnostics?: Record<string, CellDiagnostics>;
+}
+
+export interface FxVolCalibrateRequest {
+  pair: string;
+  spot: number;
+  domesticRate: number;
+  foreignRate: number;
+  forwardRates?: Record<string, number>;
+}
+
+export interface SabrSmileRequest {
+  alpha: number;
+  beta: number;
+  rho: number;
+  nu: number;
+  forward: number;
+  expiry_years: number;
+  n_points?: number;
+  range_bp?: number;
+}
+
+export interface SabrSmileResponse {
+  offsets: number[];
+  vols: number[];
+  density: number[];
+}
+
+export interface ImpliedPdfSmilePoint {
+  strike_offset_bp: number;
+  vol: number;
+}
+
+export interface ImpliedPdfRequest {
+  expiry_years: number;
+  atm_vol: number;
+  smile: ImpliedPdfSmilePoint[];
+  range_bp?: number;
+  step_bp?: number;
+}
+
+export interface ImpliedPdfResponse {
+  offsets: number[];
+  density: number[];
 }

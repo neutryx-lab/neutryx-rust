@@ -366,7 +366,19 @@ impl CurveService {
                         })
                         .collect();
                     match global.calibrate_with_jumps(&market_instruments, pricer_jumps) {
-                        Ok(result) => (result.curve, None, "global"),
+                        Ok(result) => {
+                            let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                                let size = n.min(j_inv.nrows());
+                                let mut data = vec![vec![0.0; size]; size];
+                                for i in 0..size {
+                                    for j in 0..size {
+                                        data[i][j] = j_inv[(i, j)];
+                                    }
+                                }
+                                JacobianMatrix { data, size }
+                            });
+                            (result.curve, jacobian, "global")
+                        }
                         Err(e) => {
                             tracing::warn!(
                                 "Global bootstrap with jumps failed ({e}), \

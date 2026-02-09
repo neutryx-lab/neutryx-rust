@@ -33,6 +33,16 @@ import type {
   RateIndexDetailResponse,
   IndexRatesResponse,
   IndexConventionsResponse,
+  VolcubeIndicesResponse,
+  VolcubeModelsResponse,
+  VolcubeInstrumentsResponse,
+  VolcubeCalibrateRequest,
+  VolcubeCalibrateResponse,
+  FxVolCalibrateRequest,
+  SabrSmileRequest,
+  SabrSmileResponse,
+  ImpliedPdfRequest,
+  ImpliedPdfResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -195,6 +205,38 @@ export async function fetchFxVolPairs(): Promise<FxVolPairsResponse> {
 
 export async function fetchFxVolQuotes(pair: string): Promise<FxVolQuotesResponse> {
   return fetchJson<FxVolQuotesResponse>(`${API_BASE}/fxvol/quotes/${pair}`);
+}
+
+// =============================================================================
+// Volcube API
+// =============================================================================
+
+export async function fetchVolcubeIndices(): Promise<VolcubeIndicesResponse> {
+  return fetchJson<VolcubeIndicesResponse>(`${API_BASE}/volcube/indices`);
+}
+
+export async function fetchVolcubeModels(): Promise<VolcubeModelsResponse> {
+  return fetchJson<VolcubeModelsResponse>(`${API_BASE}/volcube/models`);
+}
+
+export async function fetchVolcubeInstruments(currency: string): Promise<VolcubeInstrumentsResponse> {
+  return fetchJson<VolcubeInstrumentsResponse>(`${API_BASE}/volcube/instruments/${encodeURIComponent(currency)}`);
+}
+
+export async function calibrateVolcube(request: VolcubeCalibrateRequest): Promise<VolcubeCalibrateResponse> {
+  return postJson<VolcubeCalibrateRequest, VolcubeCalibrateResponse>(`${API_BASE}/volcube/calibrate`, request);
+}
+
+export async function computeSabrSmile(request: SabrSmileRequest): Promise<SabrSmileResponse> {
+  return postJson<SabrSmileRequest, SabrSmileResponse>(`${API_BASE}/volcube/sabr-smile`, request);
+}
+
+export async function computeImpliedPdf(request: ImpliedPdfRequest): Promise<ImpliedPdfResponse> {
+  return postJson<ImpliedPdfRequest, ImpliedPdfResponse>(`${API_BASE}/volcube/implied-pdf`, request);
+}
+
+export async function calibrateFxVol(request: FxVolCalibrateRequest): Promise<VolcubeCalibrateResponse> {
+  return postJson<FxVolCalibrateRequest, VolcubeCalibrateResponse>(`${API_BASE}/fxvol/calibrate`, request);
 }
 
 // =============================================================================

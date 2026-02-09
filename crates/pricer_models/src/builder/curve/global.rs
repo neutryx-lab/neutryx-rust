@@ -1087,10 +1087,8 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
         // Initial guess including jump parameters
         let mut x = problem.initial_guess_with_jumps();
-        let n_instruments = instruments.len();
         let n_pillars = problem.pillars().len();
         let n_jumps = problem.num_jumps();
-        let total_params = n_pillars + n_jumps;
 
         // Residual history for debugging
         let mut residual_history = if self.config.debug_logging {
@@ -1145,15 +1143,14 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             // Solve J * delta = -F
             let neg_residuals: Vec<T> = residuals.iter().map(|&r| -r).collect();
 
-            // The Jacobian is n_instruments × total_params, but we need to solve
-            // for the total_params variables. For overdetermined systems (n_instruments >
-            // total_params), we would use least squares. For square systems, we
-            // use LU. Currently, we assume square system (n_instruments ==
-            // n_pillars).
-            let delta = if n_instruments == total_params {
+            // The Jacobian is (n+k) × (n+k) after jump regularisation makes
+            // the system square.  For any remaining non-square cases, fall
+            // back to least squares via normal equations.
+            let n_rows = jacobian.nrows();
+            let n_cols = jacobian.ncols();
+            let delta = if n_rows == n_cols {
                 self.solve_linear_system(&jacobian, &neg_residuals)?
             } else {
-                // For non-square systems, use normal equations: J^T J x = J^T b
                 self.solve_least_squares(&jacobian, &neg_residuals)?
             };
 
@@ -1212,22 +1209,89 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     where
         I: CalibrationInstrument<T> + Clone,
     {
+        use crate::market::curves::YieldCurve;
+
         let log_df = problem.extract_log_df(params);
         let jumps = problem.extract_jumps(params);
 
         let pillars = problem.pillars().to_vec();
+        let n = pillars.len();
         let discount_factors: Vec<T> = log_df.iter().map(|&x| Float::exp(x)).collect();
 
-        // Build curve with jump adjustments
-        let curve = problem.build_curve_with_jumps(log_df, jumps).map_err(|e| {
-            SolverError::NumericalInstability(format!("Failed to build jump curve: {e}"))
-        })?;
+        // Build a base curve (without jumps) at pillar nodes for interpolation
+        let base_curve = BootstrappedCurve::new(
+            pillars.clone(),
+            discount_factors.clone(),
+            self.config.interpolation,
+            true,
+        )
+        .map_err(SolverError::NumericalInstability)?;
+
+        // Merge pillar times with jump times to produce an output curve
+        // that correctly represents forward rate discontinuities at jump
+        // dates (matching the sequential bootstrap behaviour).
+        let tol: T = from_f64(1e-10);
+        let mut merged_times = pillars.clone();
+        for jp in problem.jump_pillars() {
+            if !merged_times.iter().any(|&t| Float::abs(t - jp.time) < tol) {
+                merged_times.push(jp.time);
+            }
+        }
+        merged_times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        let merged_dfs: Vec<T> = merged_times
+            .iter()
+            .map(|&t| {
+                let base_df = base_curve
+                    .discount_factor(t)
+                    .unwrap_or_else(|_| Float::exp(-(from_f64::<T>(0.03) * t)));
+                let jump_factor = problem
+                    .jump_pillars()
+                    .iter()
+                    .zip(jumps.iter())
+                    .fold(T::one(), |acc, (jp, &jv)| {
+                        if jp.time <= t { acc * (T::one() + jv) } else { acc }
+                    });
+                base_df * jump_factor
+            })
+            .collect();
+
+        let curve = BootstrappedCurve::new(
+            merged_times,
+            merged_dfs,
+            self.config.interpolation,
+            true,
+        )
+        .map_err(SolverError::NumericalInstability)?;
 
         // Get realised jumps
         let realised_jumps = Some(problem.get_realised_jumps(params));
 
         // Compute pricing errors on final curve
         let pricing_errors = problem.compute_residuals(&curve).ok();
+
+        // Compute Jacobian inverse for the n×n instrument-pillar sub-block.
+        // The full (n+k)×(n+k) Jacobian has structure:
+        //   [ J_inst_df   J_inst_jump ]
+        //   [ 0           I_reg       ]
+        // The top-left n×n block J_inst_df is the instrument sensitivity to
+        // base curve parameters — its inverse is the curve risk matrix.
+        let jacobian_inverse = if self.config.store_jacobian_inverse {
+            let full_jac = problem.compute_jacobian_with_jumps(params).map_err(|e| {
+                SolverError::NumericalInstability(format!("Jacobian computation failed: {e}"))
+            })?;
+            let inst_jac = full_jac.view((0, 0), (n, n)).into_owned();
+            self.compute_inverse(&inst_jac).ok()
+        } else {
+            None
+        };
+
+        let condition_number =
+            jacobian_inverse.as_ref().and_then(|_| {
+                let full_jac = problem.compute_jacobian_with_jumps(params).ok()?;
+                let inst_jac = full_jac.view((0, 0), (n, n)).into_owned();
+                self.estimate_condition_number(&inst_jac)
+            });
 
         Ok(GlobalBootstrapResult {
             curve,
@@ -1236,9 +1300,9 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             residual_norm,
             iterations,
             converged: true,
-            jacobian_inverse: None, // TODO: Compute extended Jacobian inverse if needed
+            jacobian_inverse,
             residual_history,
-            condition_number: None,
+            condition_number,
             pricing_errors,
             realised_jumps,
         })
