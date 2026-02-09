@@ -18,7 +18,8 @@ use pricer_models::{
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        CalibrationMetadata, CalibrationParameters, CellDiagnostics, FxVolCalibrateRequest,
+        CalibrationMetadata, CalibrationParameters, CellDiagnostics, CellJacobian,
+        FxVolCalibrateRequest,
         FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, ImpliedPdfRequest,
         ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
         IrVolQuotesResponse, SabrSmileRequest, SabrSmileResponse, SmilePoint, SwaptionInstrument,
@@ -476,6 +477,9 @@ impl VolcubeService {
 
         // Track string keys for result lookup
         let mut cell_keys: Vec<(String, String, f64, f64)> = Vec::new();
+        // Per-cell quote strikes for post-calibration Jacobian: (forward, expiry_years, strikes)
+        let mut cell_quote_strikes: HashMap<String, (f64, f64, Vec<(f64, String)>)> =
+            HashMap::new();
 
         for quote in &quotes {
             let expiry_str = quote.get("expiry").and_then(|v| v.as_str()).unwrap_or("");
@@ -527,6 +531,22 @@ impl VolcubeService {
                 };
 
                 builder.add_quote(expiry_years, tenor_years, strike, vol, forward);
+            }
+
+            // Collect per-cell strikes for Jacobian computation
+            {
+                let mut strikes = vec![(forward, "ATM".to_string())];
+                for pt in &smile {
+                    let offset_bp = pt
+                        .get("strikeOffsetBp")
+                        .and_then(|o| o.as_f64())
+                        .unwrap_or(0.0);
+                    strikes.push((
+                        forward + offset_bp / 10_000.0,
+                        format!("{:+.0}bp", offset_bp),
+                    ));
+                }
+                cell_quote_strikes.insert(key, (forward, expiry_years, strikes));
             }
 
             cell_keys.push((
@@ -581,6 +601,10 @@ impl VolcubeService {
             }
         }
 
+        // 6b. Compute per-cell Jacobian ∂σ_model / ∂θ_k
+        let cell_jacobians =
+            compute_cell_jacobians(&cell_parameters, &cell_quote_strikes, beta);
+
         // 7. Global (average) parameters
         let global_params = if count > 0 {
             CalibrationParameters {
@@ -622,6 +646,7 @@ impl VolcubeService {
             parameters: global_params,
             cell_parameters,
             cell_diagnostics: Some(cell_diagnostics_map),
+            cell_jacobians: Some(cell_jacobians),
         })
     }
 
@@ -734,6 +759,7 @@ impl VolcubeService {
             parameters: global_params,
             cell_parameters,
             cell_diagnostics: Some(cell_diagnostics_map),
+            cell_jacobians: None,
         })
     }
 
@@ -1120,6 +1146,85 @@ fn bachelier_call(strike: f64, vol: f64, expiry: f64) -> Result<f64, ServerError
     let model = Bachelier::new(0.0_f64, vol)
         .map_err(|e| ServerError::Pricing(format!("Bachelier model error: {e}")))?;
     Ok(model.price_call(strike, expiry))
+}
+
+/// Compute per-cell SABR Jacobian `∂σ_model / ∂θ` via central finite
+/// differences.
+///
+/// Returns `∂σ/∂α`, `∂σ/∂ρ`, `∂σ/∂ν` for each strike in the cell.
+/// Vols are in percentage units (×100) to match the market data scale.
+fn compute_cell_jacobians(
+    cell_parameters: &HashMap<String, CalibrationParameters>,
+    cell_quotes: &HashMap<String, (f64, f64, Vec<(f64, String)>)>,
+    beta: f64,
+) -> HashMap<String, CellJacobian> {
+    use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
+
+    let eps = 1e-5;
+    let col_labels = vec!["α".to_string(), "ρ".to_string(), "ν".to_string()];
+    let mut result = HashMap::new();
+
+    for (key, params) in cell_parameters {
+        let (forward, expiry, strikes) = match cell_quotes.get(key) {
+            Some(data) => data,
+            None => continue,
+        };
+
+        let alpha = params.alpha;
+        let rho = params.rho;
+        let nu = params.nu;
+        let n = strikes.len();
+
+        let row_labels: Vec<String> = strikes.iter().map(|(_, label)| label.clone()).collect();
+        let mut matrix = vec![vec![0.0; 3]; n];
+
+        // Evaluate normal vol at all strikes for given (α, ρ, ν)
+        let eval_vols = |a: f64, r: f64, v: f64| -> Vec<f64> {
+            strikes
+                .iter()
+                .map(|(strike, _)| {
+                    let s = strike.max(1e-8);
+                    SabrImpliedVolParams::new(*forward, a, beta, v, r, *expiry)
+                        .ok()
+                        .and_then(|p| sabr_implied_vol(&p, s).ok())
+                        .map(|vol| vol * forward.powf(beta))
+                        .unwrap_or(0.0)
+                })
+                .collect()
+        };
+
+        // ∂σ/∂α
+        let up = eval_vols(alpha + eps, rho, nu);
+        let dn = eval_vols(alpha - eps, rho, nu);
+        for i in 0..n {
+            matrix[i][0] = round4((up[i] - dn[i]) / (2.0 * eps) * 100.0);
+        }
+
+        // ∂σ/∂ρ
+        let up = eval_vols(alpha, rho + eps, nu);
+        let dn = eval_vols(alpha, rho - eps, nu);
+        for i in 0..n {
+            matrix[i][1] = round4((up[i] - dn[i]) / (2.0 * eps) * 100.0);
+        }
+
+        // ∂σ/∂ν
+        let up = eval_vols(alpha, rho, nu + eps);
+        let dn = eval_vols(alpha, rho, nu - eps);
+        for i in 0..n {
+            matrix[i][2] = round4((up[i] - dn[i]) / (2.0 * eps) * 100.0);
+        }
+
+        result.insert(
+            key.clone(),
+            CellJacobian {
+                row_labels,
+                col_labels: col_labels.clone(),
+                matrix,
+            },
+        );
+    }
+
+    result
 }
 
 /// Round to 4 decimal places.

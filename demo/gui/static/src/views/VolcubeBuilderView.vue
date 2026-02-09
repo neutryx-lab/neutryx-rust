@@ -1388,6 +1388,14 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
             </template>
           </div>
 
+          <!-- Pre-calibration placeholder for FX tab -->
+          <div v-if="!calibrationResult && activeTab === 'fx' && fxQuotes.length > 0" class="glass-card p-6 mt-6 text-center py-8">
+            <i class="fas fa-chart-line text-3xl text-[var(--text-muted)] mb-3"></i>
+            <p class="text-sm text-[var(--text-muted)]">
+              Click <strong>Calibrate</strong> to view delta-strike volatilities &amp; SABR smile charts
+            </p>
+          </div>
+
           <!-- Calibration Result (only shown after calibration, same column as instruments) -->
           <div v-if="calibrationResult" class="glass-card p-6 mt-6">
             <div class="flex items-center justify-between mb-4">
@@ -1591,7 +1599,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                       v-for="row in fxDeltaVols"
                       :key="row.tenor"
                       class="border-b border-[var(--glass-border)] transition-colors cursor-pointer"
-                      :class="selectedFxTenor === row.tenor ? 'bg-[var(--primary)]/10 ring-1 ring-[var(--primary)] ring-inset' : 'hover:bg-[var(--surface-hover)]'"
+                      :class="selectedFxTenor === row.tenor ? 'fx-row-selected ring-1 ring-[var(--primary)] ring-inset' : 'hover:bg-[var(--surface-hover)]'"
                       @click="selectedFxTenor = row.tenor"
                     >
                       <td class="py-2.5 px-3 text-sm font-medium text-[var(--text-primary)]">{{ row.tenor }}</td>
@@ -1709,5 +1717,10 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
 .chart-wrapper {
   height: clamp(160px, 20vw, 280px);
   position: relative;
+}
+
+/* FX row selected highlight — Tailwind opacity modifier doesn't work with CSS vars */
+.fx-row-selected {
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 </style>
