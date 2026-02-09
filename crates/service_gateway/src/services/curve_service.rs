@@ -352,9 +352,7 @@ impl CurveService {
                     let result = global
                         .calibrate_with_jumps(&market_instruments, pricer_jumps)
                         .map_err(|e| {
-                            ServerError::Pricing(format!(
-                                "Global bootstrap with jumps failed: {e}"
-                            ))
+                            ServerError::Pricing(format!("Global bootstrap with jumps failed: {e}"))
                         })?;
                     let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
                         let size = n.min(j_inv.nrows());

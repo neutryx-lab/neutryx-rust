@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { fetchPortfolioGraph, fetchPortfolioTrades } from '@/services/api';
 import type {
   GraphNode,

@@ -639,7 +639,8 @@ pub struct SabrInitialParams {
     pub nu: Option<f64>,
 }
 
-/// Flags indicating which SABR parameters should be held fixed during calibration
+/// Flags indicating which SABR parameters should be held fixed during
+/// calibration
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SabrFixedParams {
