@@ -1469,8 +1469,8 @@ mod tests {
 
         let jacobian = problem.compute_jacobian_with_jumps(&params).unwrap();
 
-        // Should be 3 instruments × 5 parameters
-        assert_eq!(jacobian.nrows(), 3);
+        // Should be (3 instruments + 2 jump regularisation) × 5 parameters
+        assert_eq!(jacobian.nrows(), 5);
         assert_eq!(jacobian.ncols(), 5);
     }
 

@@ -899,22 +899,45 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
             </div>
 
             <div class="glass-card p-5">
-              <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Market Data</h3>
-              <div class="space-y-2.5">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs text-[var(--text-muted)]">Spot Rate</span>
-                  <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxSpot || '--' }}</span>
+              <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Calibration Settings</h3>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs text-[var(--text-muted)] mb-1">Model</label>
+                  <select
+                    v-model="selectedModel"
+                    class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
+                  >
+                    <option v-for="model in swaptionModels" :key="model" :value="model">{{ model }}</option>
+                  </select>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-xs text-[var(--text-muted)]">Domestic Rate</span>
-                  <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxDomesticRate && fxDomesticRate !== '0' ? fxDomesticRate + '%' : '--' }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-xs text-[var(--text-muted)]">Foreign Rate</span>
-                  <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxForeignRate && fxForeignRate !== '0' ? fxForeignRate + '%' : '--' }}</span>
-                </div>
-                <div v-if="fxQuotes.length > 0 && fxQuotes.some(q => q.forward != null)" class="border-t border-[var(--glass-border)] pt-2 mt-2">
-                  <span class="text-[10px] text-[var(--text-muted)] italic">Forwards computed from bootstrapped discount curves</span>
+
+                <!-- SABR Parameter Initial Values + Fix Checkboxes -->
+                <div class="border-t border-[var(--glass-border)] pt-3 mt-2">
+                  <label class="block text-xs text-[var(--text-muted)] mb-2">SABR Parameters</label>
+                  <div class="space-y-2">
+                    <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
+                      <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'fx-sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
+                      <input
+                        :id="'fx-sabr-' + param"
+                        v-model.number="sabrInitial[param]"
+                        type="number"
+                        step="0.01"
+                        class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
+                        :class="{ 'opacity-70': sabrFixed[param] }"
+                      />
+                      <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
+                        <input
+                          v-model="sabrFixed[param]"
+                          type="checkbox"
+                          class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
+                        />
+                        <span class="text-[10px] text-[var(--text-muted)]">fix</span>
+                      </label>
+                    </div>
+                  </div>
+                  <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                    β=0 fixed → Normal SABR (Bachelier)
+                  </p>
                 </div>
               </div>
             </div>
