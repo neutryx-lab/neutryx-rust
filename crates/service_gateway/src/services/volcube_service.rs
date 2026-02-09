@@ -422,10 +422,10 @@ impl VolcubeService {
             .and_then(|v| v.as_str())
             .map_or(false, |v| v == "normal");
 
-        let use_normal_sabr = request
-            .model
-            .as_deref()
-            .map_or(is_normal_vol, |m| m == "Normal SABR");
+        // When data is normal vol, Normal SABR (β=0) is the correct model.
+        // The Hagan SABR formula with β>0 outputs Black vol, not normal vol,
+        // causing a units mismatch that makes calibration fail for OTM strikes.
+        let use_normal_sabr = is_normal_vol || request.model.as_deref() == Some("Normal SABR");
 
         let config = if use_normal_sabr {
             SliceCalibrationConfig::normal()

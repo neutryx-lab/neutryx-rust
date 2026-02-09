@@ -552,17 +552,24 @@ impl<T: Float> SliceCalibrator<T> for SabrSliceCalibrator<T> {
             })
             .unwrap();
 
-        // Initial alpha: σ_ATM * F^(1-β)
-        let forward_f64 = atm_quote.forward.to_f64().unwrap_or(0.03);
-        let atm_vol_f64 = atm_quote.volatility.to_f64().unwrap_or(0.2);
-        let initial_alpha = (atm_vol_f64 * forward_f64.powf(1.0 - beta)).clamp(0.001, 1.0);
-
-        let initial_rho = config.initial_rho.to_f64().unwrap_or(-0.3);
-        let initial_nu = config.initial_nu.to_f64().unwrap_or(0.4);
-
         // Extract bounds
         let alpha_lo = config.bounds.alpha_bounds.0.to_f64().unwrap_or(0.001);
         let alpha_hi = config.bounds.alpha_bounds.1.to_f64().unwrap_or(1.0);
+
+        // Initial alpha estimation:
+        // - Normal SABR (β ≈ 0): σ_N(ATM) ≈ α, so α ≈ ATM normal vol
+        // - General SABR (β > 0): σ_B(ATM) ≈ α / F^(1-β), so α ≈ σ_ATM × F^(1-β)
+        let forward_f64 = atm_quote.forward.to_f64().unwrap_or(0.03);
+        let atm_vol_f64 = atm_quote.volatility.to_f64().unwrap_or(0.2);
+        let initial_alpha = if beta < 1e-6 {
+            atm_vol_f64
+        } else {
+            atm_vol_f64 * forward_f64.powf(1.0 - beta)
+        }
+        .clamp(alpha_lo, alpha_hi);
+
+        let initial_rho = config.initial_rho.to_f64().unwrap_or(-0.3);
+        let initial_nu = config.initial_nu.to_f64().unwrap_or(0.4);
         let rho_lo = config.bounds.rho_bounds.0.to_f64().unwrap_or(-0.95);
         let rho_hi = config.bounds.rho_bounds.1.to_f64().unwrap_or(0.95);
         let nu_lo = config.bounds.nu_bounds.0.to_f64().unwrap_or(0.05);
