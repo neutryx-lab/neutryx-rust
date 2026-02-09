@@ -64,9 +64,12 @@ const fxForeignRate = ref('0');
 const calibrationResult = ref<CalibrationResult | null>(null);
 const isCalibrating = ref(false);
 
-// Popover state
+// Popover state (transient — cleared on outside click)
 const popoverCell = ref<{ expiry: string; tenor: string } | null>(null);
 const popoverPosition = ref<{ top: number; left: number }>({ top: 0, left: 0 });
+
+// Selected cell state (persistent — survives outside click, cleared on next selection or close)
+const selectedCell = ref<{ expiry: string; tenor: string } | null>(null);
 
 // Detail card chart state
 const smileChartCanvas = ref<HTMLCanvasElement | null>(null);
@@ -114,6 +117,11 @@ function getCell(expiry: string, tenor: string): SwaptionInstrument | undefined 
 const popoverInstrument = computed(() => {
   if (!popoverCell.value) return null;
   return getCell(popoverCell.value.expiry, popoverCell.value.tenor) ?? null;
+});
+
+const selectedInstrument = computed(() => {
+  if (!selectedCell.value) return null;
+  return getCell(selectedCell.value.expiry, selectedCell.value.tenor) ?? null;
 });
 
 // Heatmap colour functions
@@ -205,7 +213,7 @@ function computeImpliedPdf(inst: SwaptionInstrument): { offsets: number[]; densi
 }
 
 function renderDetailCharts() {
-  const inst = popoverInstrument.value;
+  const inst = selectedInstrument.value;
   if (!inst || !inst.smile || inst.smile.length === 0) return;
 
   const smileData = [
@@ -372,16 +380,22 @@ function togglePopover(event: MouseEvent, expiry: string, tenor: string) {
   };
 
   popoverCell.value = { expiry, tenor };
+  selectedCell.value = { expiry, tenor };
 }
 
 function closePopover() {
   popoverCell.value = null;
 }
 
+function closeDetailCard() {
+  selectedCell.value = null;
+}
+
 function onDocumentClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
   if (!target.closest('.popover-trigger') && !target.closest('.smile-popover')) {
     popoverCell.value = null;
+    // selectedCell intentionally NOT cleared — detail card persists
   }
 }
 
@@ -424,6 +438,7 @@ async function loadSwaptionInstruments(index: string) {
     referenceDate.value = data.referenceDate || data.reference_date || data.metadata?.lastUpdated?.split('T')[0] || '';
     calibrationResult.value = null;
     popoverCell.value = null;
+    selectedCell.value = null;
   } catch (error) {
     console.error('Failed to load instruments:', error);
   }
@@ -540,7 +555,7 @@ watch(selectedFxPair, (pair) => {
   if (pair) loadFxQuotes(pair);
 });
 
-watch(popoverCell, () => {
+watch(selectedCell, () => {
   if (smileChartInstance) { smileChartInstance.destroy(); smileChartInstance = null; }
   if (pdfChartInstance) { pdfChartInstance.destroy(); pdfChartInstance = null; }
   nextTick(() => renderDetailCharts());
@@ -704,56 +719,8 @@ loadFxPairs();
             <i :class="['fas', isCalibrating ? 'fa-spinner fa-spin' : 'fa-cogs']"></i>
             {{ isCalibrating ? 'Calibrating...' : 'Calibrate' }}
           </button>
-          <div class="grid grid-cols-2 gap-2 mt-2">
-            <button
-              :disabled="!calibrationResult"
-              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
-              @click="exportCsv"
-            >
-              <i class="fas fa-file-csv mr-1"></i>CSV
-            </button>
-            <button
-              :disabled="!calibrationResult"
-              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
-              @click="exportJson"
-            >
-              <i class="fas fa-file-code mr-1"></i>JSON
-            </button>
-          </div>
         </div>
 
-        <!-- Calibration Result -->
-        <div v-if="calibrationResult" class="glass-card p-5">
-          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-            <i class="fas fa-check-circle text-[var(--success)]"></i>
-            Calibration Result
-          </h3>
-          <div class="space-y-2 mb-4">
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Model:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ calibrationResult.model }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Instruments:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ calibrationResult.metadata.instrumentCount }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Processing Time:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ calibrationResult.metadata.processingTimeMs.toFixed(2) }} ms</span>
-            </div>
-          </div>
-          <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2">Parameters</h4>
-          <div class="space-y-1">
-            <div
-              v-for="(value, key) in calibrationResult.parameters"
-              :key="key"
-              class="flex justify-between text-sm"
-            >
-              <span class="text-[var(--text-muted)]">{{ key }}:</span>
-              <span class="text-[var(--text-primary)] font-mono">{{ Number(value).toFixed(6) }}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Right Panel: Data Table -->
@@ -799,7 +766,7 @@ loadFxPairs();
                       class="py-2 px-2 text-center border-b border-[var(--glass-border)] transition-all duration-150 popover-trigger"
                       :class="[
                         getCell(expiry, tenor) ? 'cursor-pointer hover-cell' : '',
-                        popoverCell?.expiry === expiry && popoverCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
+                        selectedCell?.expiry === expiry && selectedCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
                       ]"
                       :style="getCell(expiry, tenor)
                         ? { backgroundColor: heatmapColour(getCell(expiry, tenor)!.atmVol) }
@@ -915,37 +882,94 @@ loadFxPairs();
       </div>
     </div>
 
-    <!-- Detail Card: Smile + PDF (separate from Swaption Instruments) -->
-    <div v-if="popoverInstrument" class="glass-card p-6 mt-6">
+    <!-- Detail Card: Calibration Result + Smile/PDF (only shown after calibration) -->
+    <div v-if="calibrationResult" class="glass-card p-6 mt-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
-          <i class="fas fa-chart-area text-[var(--primary)]"></i>
-          Smile &amp; Density
-          <span class="text-sm text-[var(--text-muted)] font-normal ml-2">
-            {{ popoverInstrument.expiry }} x {{ popoverInstrument.tenor }} — ATM {{ formatVol(popoverInstrument.atmVol) }}
-          </span>
+          <i class="fas fa-check-circle text-[var(--success)]"></i>
+          Calibration Result
         </h3>
-        <button
-          class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
-          @click="closePopover"
+        <div class="flex items-center gap-2">
+          <button
+            class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+            @click="exportCsv"
+          >
+            <i class="fas fa-file-csv mr-1"></i>CSV
+          </button>
+          <button
+            class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+            @click="exportJson"
+          >
+            <i class="fas fa-file-code mr-1"></i>JSON
+          </button>
+        </div>
+      </div>
+
+      <!-- Calibration summary -->
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-primary)]">
+          <i class="fas fa-cogs text-[var(--primary)]"></i>
+          {{ calibrationResult.model }}
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
+          <i class="fas fa-th"></i>
+          {{ calibrationResult.metadata.instrumentCount }} instruments
+        </span>
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
+          <i class="fas fa-clock"></i>
+          {{ calibrationResult.metadata.processingTimeMs.toFixed(2) }} ms
+        </span>
+        <span
+          v-for="(value, key) in calibrationResult.parameters"
+          :key="key"
+          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-secondary)]"
         >
-          <i class="fas fa-times"></i>
-        </button>
+          {{ key }}: {{ Number(value).toFixed(4) }}
+        </span>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
-          <div class="chart-wrapper">
-            <canvas ref="smileChartCanvas"></canvas>
+
+      <!-- Smile & PDF charts (only when a cell is selected) -->
+      <template v-if="selectedInstrument">
+        <div class="border-t border-[var(--glass-border)] pt-4">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <i class="fas fa-chart-area text-[var(--primary)]"></i>
+              Smile &amp; Density
+              <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
+                {{ selectedInstrument.expiry }} x {{ selectedInstrument.tenor }} — ATM {{ formatVol(selectedInstrument.atmVol) }}
+              </span>
+            </h4>
+            <button
+              class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
+              @click="closeDetailCard"
+            >
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
+              <div class="chart-wrapper">
+                <canvas ref="smileChartCanvas"></canvas>
+              </div>
+            </div>
+            <div>
+              <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
+              <div class="chart-wrapper">
+                <canvas ref="pdfChartCanvas"></canvas>
+              </div>
+            </div>
           </div>
         </div>
-        <div>
-          <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
-          <div class="chart-wrapper">
-            <canvas ref="pdfChartCanvas"></canvas>
-          </div>
+      </template>
+      <template v-else>
+        <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
+          <p class="text-sm text-[var(--text-muted)]">
+            <i class="fas fa-mouse-pointer mr-1"></i>
+            Select a cell in the matrix to view Smile &amp; Density charts
+          </p>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>

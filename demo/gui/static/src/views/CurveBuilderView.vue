@@ -118,7 +118,7 @@ const shortTermChartCanvas = ref<HTMLCanvasElement | null>(null);
 const longTermChartCanvas = ref<HTMLCanvasElement | null>(null);
 let shortTermChartInstance: Chart | null = null;
 let longTermChartInstance: Chart | null = null;
-const chartType = ref<'zero_rate' | 'discount_factor' | 'forward_rate'>('forward_rate');
+const chartType = ref<'discount_factor' | 'forward_rate'>('forward_rate');
 
 // Options for build settings
 const calibrationMethods = ['sequential', 'global', 'bootstrap'];
@@ -161,6 +161,39 @@ const summaryStats = computed(() => {
     { label: 'Interpolation', value: interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
     { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
   ];
+});
+
+// Curve data table (all interpolated grid points from charts)
+const curveTableRows = computed(() => {
+  if (!buildResult.value?.pillars) return [];
+  const pillars = buildResult.value.pillars;
+  const fwdCurve = buildResult.value.forward_curve || [];
+  const refDate = rateData.value?.reference_date ? new Date(rateData.value.reference_date) : null;
+
+  // Merge short-term + long-term grids, deduplicate
+  const shortGrid = generateShortTermGrid();
+  const longGrid = generateLongTermGrid();
+  const seen = new Set<number>();
+  const allTimes: number[] = [];
+  for (const t of [...shortGrid, ...longGrid]) {
+    const rounded = Math.round(t * 100000) / 100000;
+    if (!seen.has(rounded)) {
+      seen.add(rounded);
+      allTimes.push(t);
+    }
+  }
+  allTimes.sort((a, b) => a - b);
+
+  return allTimes.map(t => {
+    let dateStr = '';
+    if (refDate) {
+      const d = new Date(refDate.getTime() + t * 365.25 * 24 * 60 * 60 * 1000);
+      dateStr = d.toISOString().slice(0, 10);
+    }
+    const fwd = interpolateForwardRate(t, fwdCurve);
+    const df = interpolateValue(t, pillars, 'discount_factor');
+    return { time: t, date: dateStr, df, fwd };
+  });
 });
 
 // Chart helper functions
@@ -226,19 +259,23 @@ function generateShortTermGrid(): number[] {
   return grid;
 }
 
-// Generate grid points for long-term chart (Monthly up to 20Y, Yearly from 20Y to 30Y)
+// Generate grid points for long-term chart using clean interval boundaries
 function generateLongTermGrid(): number[] {
   const grid: number[] = [];
-  const monthFraction = 1 / 12;
 
-  // Monthly grid up to 20Y
-  for (let t = monthFraction; t <= 20; t += monthFraction) {
-    grid.push(t);
+  // Quarterly from 0.25Y to 10Y  (0.25, 0.5, 0.75, 1, 1.25, ... 10)
+  for (let q = 1; q <= 40; q++) {
+    grid.push(q * 0.25);
   }
 
-  // Yearly grid from 20Y to 30Y
-  for (let t = 21; t <= 30; t += 1) {
-    grid.push(t);
+  // Semi-annual from 10.5Y to 20Y  (10.5, 11, 11.5, ... 20)
+  for (let h = 21; h <= 40; h++) {
+    grid.push(h * 0.5);
+  }
+
+  // Annual from 21Y to 30Y
+  for (let y = 21; y <= 30; y++) {
+    grid.push(y);
   }
 
   return grid;
@@ -251,8 +288,19 @@ function formatTimeLabel(time: number, isShortTerm: boolean): string {
     if (days < 30) return `${Math.round(days / 7)}W`;
     return `${Math.round(days / 30)}M`;
   } else {
-    if (time < 1) return `${Math.round(time * 12)}M`;
-    return `${time.toFixed(1)}Y`;
+    // Use decimal year format: 0.25Y, 0.5Y, 1Y, 1.5Y, 2Y, ...
+    if (time < 1) {
+      // Sub-year: show as decimal with trailing zeros stripped
+      const label = parseFloat(time.toFixed(2));
+      return `${label}Y`;
+    }
+    // Check if it's a whole year
+    if (Math.abs(time - Math.round(time)) < 0.001) {
+      return `${Math.round(time)}Y`;
+    }
+    // Fractional year: 1.25Y, 1.5Y, 2.75Y etc.
+    const label = parseFloat(time.toFixed(2));
+    return `${label}Y`;
   }
 }
 
@@ -270,9 +318,7 @@ function createChartOptions(yAxisLabel: string, xAxisLabel: string) {
           title: (items: { label: string }[]) => `Time: ${items[0].label}`,
           label: (item: { raw: unknown }) => {
             const value = item.raw as number;
-            if (chartType.value === 'zero_rate') {
-              return `Zero Rate: ${value.toFixed(4)}%`;
-            } else if (chartType.value === 'discount_factor') {
+            if (chartType.value === 'discount_factor') {
               return `DF: ${value.toFixed(6)}`;
             } else {
               return `Forward Rate: ${value.toFixed(4)}%`;
@@ -304,13 +350,11 @@ function updateCharts() {
   const forwardCurve = buildResult.value.forward_curve || [];
 
   const chartLabels: Record<string, string> = {
-    zero_rate: 'Zero Rate (%)',
     discount_factor: 'Discount Factor',
     forward_rate: 'Forward Rate (%)',
   };
 
   const chartColors: Record<string, string> = {
-    zero_rate: '#6366f1',
     discount_factor: '#6366f1',
     forward_rate: '#10b981',
   };
@@ -326,8 +370,6 @@ function updateCharts() {
   let shortTermData: number[];
   if (chartType.value === 'forward_rate') {
     shortTermData = shortTermGrid.map(t => interpolateForwardRate(t, forwardCurve) * 100);
-  } else if (chartType.value === 'zero_rate') {
-    shortTermData = shortTermGrid.map(t => interpolateValue(t, pillars, 'zero_rate') * 100);
   } else {
     shortTermData = shortTermGrid.map(t => interpolateValue(t, pillars, 'discount_factor'));
   }
@@ -337,8 +379,6 @@ function updateCharts() {
   let longTermData: number[];
   if (chartType.value === 'forward_rate') {
     longTermData = longTermGrid.map(t => interpolateForwardRate(t, forwardCurve) * 100);
-  } else if (chartType.value === 'zero_rate') {
-    longTermData = longTermGrid.map(t => interpolateValue(t, pillars, 'zero_rate') * 100);
   } else {
     longTermData = longTermGrid.map(t => interpolateValue(t, pillars, 'discount_factor'));
   }
@@ -351,6 +391,13 @@ function updateCharts() {
     }
     const ctx = shortTermChartCanvas.value.getContext('2d');
     if (ctx) {
+      const shortTermOptions = createChartOptions(currentLabel, 'Short Term (0-1Y: Daily→Weekly)');
+      // Suppress duplicate adjacent labels on the x-axis
+      (shortTermOptions.scales.x.ticks as Record<string, unknown>).callback = function(_value: unknown, index: number) {
+        const label = shortTermLabels[index];
+        if (index > 0 && label === shortTermLabels[index - 1]) return '';
+        return label;
+      };
       shortTermChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
@@ -367,7 +414,7 @@ function updateCharts() {
             pointBackgroundColor: currentColor,
           }],
         },
-        options: createChartOptions(currentLabel, 'Short Term (0-1Y: Daily→Weekly)'),
+        options: shortTermOptions,
       });
     }
   }
@@ -917,15 +964,6 @@ onUnmounted(() => {
               <button
                 :class="[
                   'px-3 py-1.5 text-xs rounded-lg transition-colors',
-                  chartType === 'zero_rate' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
-                ]"
-                @click="chartType = 'zero_rate'"
-              >
-                Zero Rate
-              </button>
-              <button
-                :class="[
-                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
                   chartType === 'forward_rate' ? 'bg-emerald-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
                 ]"
                 @click="chartType = 'forward_rate'"
@@ -1000,6 +1038,38 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- Pillar Data Table -->
+          <div v-if="curveTableRows.length > 0" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+            <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+              <i class="fas fa-table text-xs mr-1"></i>
+              Curve Data ({{ curveTableRows.length }} points)
+            </h4>
+            <div class="max-h-64 overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 z-10">
+                  <tr class="border-b border-[var(--glass-border)] curve-table-header">
+                    <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Date</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Time (Y)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Fwd Rate (%)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">DF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(row, idx) in curveTableRows"
+                    :key="idx"
+                    class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+                  >
+                    <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ row.date }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right text-[var(--text-secondary)] font-mono">{{ row.time.toFixed(4) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ (row.fwd * 100).toFixed(4) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-[var(--text-primary)]">{{ row.df.toFixed(8) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1013,5 +1083,14 @@ onUnmounted(() => {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
+}
+
+.curve-table-header {
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--glass-border);
+}
+
+.curve-table-header th {
+  background: inherit;
 }
 </style>

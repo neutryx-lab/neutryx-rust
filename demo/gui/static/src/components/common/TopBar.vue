@@ -279,11 +279,18 @@ onUnmounted(() => {
                     <span class="text-sm text-[var(--text-primary)]">Data Source</span>
                   </div>
                 </li>
-                <li class="setting-item px-4 py-3 hover:bg-[var(--surface-hover)] transition-colors cursor-pointer" @click="handleSettingClick('about')">
+                <li class="setting-item px-4 py-3 border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer" @click="handleSettingClick('about')">
                   <div class="flex items-center gap-3">
                     <i class="fas fa-info-circle text-[var(--text-muted)]"></i>
                     <span class="text-sm text-[var(--text-primary)]">About</span>
                   </div>
+                </li>
+                <li class="setting-item px-4 py-3 hover:bg-[var(--surface-hover)] transition-colors cursor-pointer">
+                  <a href="https://github.com/neutryx-lab/neutryx-rust" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 no-underline">
+                    <i class="fab fa-github text-[var(--text-muted)]"></i>
+                    <span class="text-sm text-[var(--text-primary)]">GitHub</span>
+                    <i class="fas fa-external-link-alt text-[10px] text-[var(--text-muted)] ml-auto"></i>
+                  </a>
                 </li>
               </ul>
             </div>
