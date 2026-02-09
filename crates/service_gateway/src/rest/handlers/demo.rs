@@ -476,3 +476,13 @@ pub async fn compute_implied_pdf(
     let response = VolcubeService::compute_implied_pdf(&request)?;
     Ok(Json(response))
 }
+
+/// Compute SABR smile and density from calibrated parameters
+///
+/// POST /api/volcube/sabr-smile
+pub async fn compute_sabr_smile(
+    Json(request): Json<crate::rest::dto::demo::SabrSmileRequest>,
+) -> Result<Json<crate::rest::dto::demo::SabrSmileResponse>, ServerError> {
+    let response = VolcubeService::compute_sabr_smile(&request)?;
+    Ok(Json(response))
+}

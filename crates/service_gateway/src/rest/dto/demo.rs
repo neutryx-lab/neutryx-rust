@@ -409,6 +409,9 @@ pub struct FxVolQuote {
     pub rr10d: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bf10d: Option<f64>,
+    /// FX forward rate at this tenor: F(T) = Spot × DF_foreign(T) / DF_domestic(T)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub forward: Option<f64>,
 }
 
 /// FX vol quotes response
@@ -418,6 +421,12 @@ pub struct FxVolQuotesResponse {
     pub quotes: Vec<FxVolQuote>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spot: Option<f64>,
+    /// Domestic rate (quote currency) used for forward computation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domestic_rate: Option<f64>,
+    /// Foreign rate (base currency) used for forward computation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub foreign_rate: Option<f64>,
 }
 
 // =============================================================================
@@ -645,6 +654,9 @@ pub struct FxVolCalibrateRequest {
     pub spot: f64,
     pub domestic_rate: f64,
     pub foreign_rate: f64,
+    /// FX forward rates keyed by tenor label (e.g. "1M" → 1.0842)
+    #[serde(default)]
+    pub forward_rates: Option<std::collections::HashMap<String, f64>>,
 }
 
 /// Calibration metadata
@@ -666,6 +678,51 @@ pub struct CalibrationParameters {
     pub beta: f64,
     pub rho: f64,
     pub nu: f64,
+}
+
+// =============================================================================
+// SABR Smile / Density (from calibrated parameters)
+// =============================================================================
+
+/// Request to compute SABR smile and implied density from calibrated parameters
+#[derive(Debug, Clone, Deserialize)]
+pub struct SabrSmileRequest {
+    /// SABR alpha (vol-of-vol backbone)
+    pub alpha: f64,
+    /// SABR beta (CEV exponent)
+    pub beta: f64,
+    /// SABR rho (correlation)
+    pub rho: f64,
+    /// SABR nu (vol-of-vol)
+    pub nu: f64,
+    /// Forward rate
+    pub forward: f64,
+    /// Time to expiry in years
+    pub expiry_years: f64,
+    /// Number of output points (default: 101)
+    #[serde(default = "default_sabr_n_points")]
+    pub n_points: usize,
+    /// Strike range in basis points (default: 200, i.e., -200 to +200)
+    #[serde(default = "default_sabr_range_bp")]
+    pub range_bp: f64,
+}
+
+fn default_sabr_n_points() -> usize {
+    101
+}
+fn default_sabr_range_bp() -> f64 {
+    200.0
+}
+
+/// Response with SABR smile and implied density
+#[derive(Debug, Clone, Serialize)]
+pub struct SabrSmileResponse {
+    /// Strike offsets in basis points
+    pub offsets: Vec<f64>,
+    /// Normal volatilities (percentage, same scale as market data)
+    pub vols: Vec<f64>,
+    /// Implied probability density (Breeden-Litzenberger)
+    pub density: Vec<f64>,
 }
 
 // =============================================================================

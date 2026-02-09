@@ -12,8 +12,12 @@ use infra_domain::{
 };
 use pricer_core::math::formulas::{simple_forward_rate, zero_rate_from_df};
 use pricer_models::{
-    builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation},
-    market::{build_forward_rate_shift_grid, YieldCurve},
+    builder::{
+        BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
+        InterpolationMethod as BuilderInterpolation, JacobianMatrix,
+        JumpPillar as PricerJumpPillar,
+    },
+    market::{build_forward_rate_shift_grid, BootstrapInterpolation, YieldCurve},
 };
 
 #[cfg(test)]
@@ -282,7 +286,7 @@ impl CurveService {
             max_time,
         );
 
-        // Build curve using pricer_models CurveBootstrapper.
+        // Build curve using pricer_models.
         //
         // When jump data is present, we use jump-aware calibration: the
         // bootstrapper evaluates instrument pricing errors on the
@@ -292,44 +296,103 @@ impl CurveService {
             .with_interpolation(interpolation);
         let bootstrapper = CurveBootstrapper::with_config(config);
 
-        let (curve, jacobian_matrix) = match request.bootstrap_method {
-            BootstrapMethod::Sequential | BootstrapMethod::Global => {
-                bootstrapper
+        let (curve, maybe_jacobian) = match request.bootstrap_method {
+            BootstrapMethod::Sequential => {
+                let (curve, jac) = bootstrapper
                     .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
-                    .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?
+                    .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
+                (curve, Some(jac))
+            }
+            BootstrapMethod::Global => {
+                let bootstrap_interp = match interpolation {
+                    BuilderInterpolation::Linear => BootstrapInterpolation::Linear,
+                    BuilderInterpolation::LogLinear => BootstrapInterpolation::LogLinear,
+                    BuilderInterpolation::FlatForward => BootstrapInterpolation::FlatForward,
+                };
+                let global_config = GlobalBootstrapConfig::default()
+                    .with_tolerance(request.tolerance)
+                    .with_max_iterations(request.max_iterations)
+                    .with_interpolation(bootstrap_interp)
+                    .with_jacobian_inverse(true);
+                let global = GlobalBootstrapper::new(global_config);
+
+                let n = market_instruments.len();
+
+                if jump_pillars.is_empty() {
+                    // No jumps: J⁻¹ is n x n. By IFT d(log DF)/dr = J_sys⁻¹
+                    // because ∂F/∂r = -I (pricing_error = theoretical - market).
+                    let result = global
+                        .calibrate(&market_instruments)
+                        .map_err(|e| {
+                            ServerError::Pricing(format!("Global bootstrap failed: {e}"))
+                        })?;
+
+                    let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                        let size = n.min(j_inv.nrows());
+                        let mut data = vec![vec![0.0; size]; size];
+                        for i in 0..size {
+                            for j in 0..size {
+                                data[i][j] = j_inv[(i, j)];
+                            }
+                        }
+                        JacobianMatrix { data, size }
+                    });
+
+                    (result.curve, jacobian)
+                } else {
+                    // With jumps: global solver merges regular + jump unknowns,
+                    // so J⁻¹ dimensions don't map cleanly to regular instruments.
+                    let pricer_jumps: Vec<PricerJumpPillar<f64>> = jump_pillars
+                        .iter()
+                        .map(|jp| {
+                            let time =
+                                MODEL_DAY_COUNTER.year_fraction(valuation_date, jp.jump_date());
+                            PricerJumpPillar::new(time, jp.expected_jump_bps())
+                        })
+                        .collect();
+                    let result = global
+                        .calibrate_with_jumps(&market_instruments, pricer_jumps)
+                        .map_err(|e| {
+                            ServerError::Pricing(format!("Global bootstrap failed: {e}"))
+                        })?;
+
+                    (result.curve, None)
+                }
             }
         };
 
         // Build Jacobian labels from regular instrument specs, sorted by
         // maturity to match the bootstrap order.
-        let mut sorted_specs = regular_specs.clone();
-        sorted_specs.sort_by(|a, b| {
-            let ta = parse_tenor_to_years(&a.tenor).unwrap_or(0.0);
-            let tb = parse_tenor_to_years(&b.tenor).unwrap_or(0.0);
-            ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        let jacobian_data = maybe_jacobian.map(|jac| {
+            let mut sorted_specs = regular_specs.clone();
+            sorted_specs.sort_by(|a, b| {
+                let ta = parse_tenor_to_years(&a.tenor).unwrap_or(0.0);
+                let tb = parse_tenor_to_years(&b.tenor).unwrap_or(0.0);
+                ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
+            });
 
-        let jacobian_labels: Vec<String> = sorted_specs
-            .iter()
-            .map(|spec| {
-                let lower = spec.instrument_type.to_lowercase();
-                let type_label = match lower.as_str() {
-                    "deposit" | "depo" => "Depo",
-                    "ois" => "OIS",
-                    "fra" => "FRA",
-                    "swap" | "irs" => "IRS",
-                    "future" | "futures" => "Fut",
-                    _ => &lower,
-                };
-                format!("{}-{}", type_label, spec.tenor)
-            })
-            .collect();
+            let jacobian_labels: Vec<String> = sorted_specs
+                .iter()
+                .map(|spec| {
+                    let lower = spec.instrument_type.to_lowercase();
+                    let type_label = match lower.as_str() {
+                        "deposit" | "depo" => "Depo",
+                        "ois" => "OIS",
+                        "fra" => "FRA",
+                        "swap" | "irs" => "IRS",
+                        "future" | "futures" => "Fut",
+                        _ => &lower,
+                    };
+                    format!("{}-{}", type_label, spec.tenor)
+                })
+                .collect();
 
-        let jacobian_data = Some(JacobianData {
-            row_labels: jacobian_labels.clone(),
-            col_labels: jacobian_labels,
-            matrix: jacobian_matrix.data,
-            size: jacobian_matrix.size,
+            JacobianData {
+                row_labels: jacobian_labels.clone(),
+                col_labels: jacobian_labels,
+                matrix: jac.data,
+                size: jac.size,
+            }
         });
 
         // Resolve day count convention from the canonical RateIndex definition.

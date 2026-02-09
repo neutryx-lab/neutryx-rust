@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { Chart, registerables } from 'chart.js';
+import { Chart, type ChartDataset, registerables } from 'chart.js';
 
 Chart.register(...registerables);
 
@@ -26,6 +26,7 @@ interface FxQuote {
   bf25d: number;
   rr10d?: number;
   bf10d?: number;
+  forward?: number;
 }
 
 interface CellParameters {
@@ -290,86 +291,122 @@ function fwdRateTextColour(rate: number): string {
 }
 
 async function renderDetailCharts() {
+  if (!selectedCell.value) return;
+
+  const cellParams = selectedCellParams.value;
+  if (!cellParams) return; // No calibrated params — nothing to render
+
   const inst = selectedInstrument.value;
-  if (!inst || !inst.smile || inst.smile.length === 0) return;
-
-  const smileData = [
-    ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol })),
-    { k: 0, v: inst.atmVol },
-  ].sort((a, b) => a.k - b.k);
-
-  const smileLabels = smileData.map(p => (p.k > 0 ? '+' : '') + p.k);
-  const smileVols = smileData.map(p => p.v * 100);
+  const cell = selectedCell.value;
 
   const axisStyle = {
     ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } },
     grid: { color: 'rgba(255,255,255,0.08)' },
   };
 
-  if (smileChartCanvas.value) {
-    const ctx = smileChartCanvas.value.getContext('2d');
-    if (ctx) {
-      smileChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: smileLabels,
-          datasets: [{
-            data: smileVols,
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99, 102, 241, 0.15)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 4,
-            pointBackgroundColor: smileData.map(p => p.k === 0 ? '#f59e0b' : '#6366f1'),
-            pointBorderColor: smileData.map(p => p.k === 0 ? '#f59e0b' : '#6366f1'),
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
-                label: (item: { raw: unknown }) => `Vol: ${(item.raw as number).toFixed(1)} bp`,
+  // Determine forward rate for this cell
+  const fwdKey = `${cell.expiry}|${cell.tenor}`;
+  const forward = fwdSwapRates.value.get(fwdKey) || 0.03; // fallback
+
+  try {
+    const resp = await fetch('/api/volcube/sabr-smile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alpha: cellParams.alpha,
+        beta: cellParams.beta,
+        rho: cellParams.rho,
+        nu: cellParams.nu,
+        forward,
+        expiry_years: expiryToYears(cell.expiry),
+        n_points: 101,
+        range_bp: 200,
+      }),
+    });
+    if (!resp.ok) throw new Error('SABR smile computation failed');
+    const result = await resp.json();
+
+    const smileLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
+    const smileVols = result.vols.map((v: number) => v * 100);
+
+    // Smile chart
+    if (smileChartCanvas.value) {
+      const ctx = smileChartCanvas.value.getContext('2d');
+      if (ctx) {
+        const datasets: ChartDataset<'line'>[] = [{
+          label: 'SABR Fitted',
+          data: smileVols,
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99, 102, 241, 0.10)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+        }];
+
+        // Overlay market data points if available
+        if (inst && inst.smile && inst.smile.length > 0) {
+          const marketPts = [
+            ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol * 100 })),
+            { k: 0, v: inst.atmVol * 100 },
+          ].sort((a, b) => a.k - b.k);
+          const marketData = new Array(result.offsets.length).fill(null);
+          for (const pt of marketPts) {
+            let bestIdx = 0;
+            let bestDist = Math.abs(result.offsets[0] - pt.k);
+            for (let j = 1; j < result.offsets.length; j++) {
+              const dist = Math.abs(result.offsets[j] - pt.k);
+              if (dist < bestDist) { bestDist = dist; bestIdx = j; }
+            }
+            marketData[bestIdx] = pt.v;
+          }
+          datasets.push({
+            label: 'Market',
+            data: marketData,
+            borderColor: '#f59e0b',
+            borderWidth: 0,
+            pointRadius: 5,
+            pointBackgroundColor: '#f59e0b',
+            pointBorderColor: '#f59e0b',
+            showLine: false,
+            fill: false,
+          });
+        }
+
+        smileChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: { labels: smileLabels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: datasets.length > 1, labels: { color: 'rgba(255,255,255,0.7)', font: { size: 10 } } },
+              tooltip: {
+                callbacks: {
+                  title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
+                  label: (item: { raw: unknown }) => item.raw != null ? `Vol: ${(item.raw as number).toFixed(1)} bp` : '',
+                },
+              },
+            },
+            scales: {
+              x: {
+                ...axisStyle,
+                title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
+              },
+              y: {
+                ...axisStyle,
+                title: { display: true, text: 'Normal Vol (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
               },
             },
           },
-          scales: {
-            x: {
-              ...axisStyle,
-              title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
-            },
-            y: {
-              ...axisStyle,
-              title: { display: true, text: 'Normal Vol (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
-            },
-          },
-        },
-      });
+        });
+      }
     }
-  }
 
-  if (pdfChartCanvas.value) {
-    try {
-      const pdfResp = await fetch('/api/volcube/implied-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          expiry_years: expiryToYears(inst.expiry),
-          atm_vol: inst.atmVol * 100,
-          smile: inst.smile.map(s => ({
-            strike_offset_bp: s.strikeOffsetBp,
-            vol: s.vol * 100,
-          })),
-        }),
-      });
-      if (!pdfResp.ok) throw new Error('Implied PDF computation failed');
-      const pdfResult = await pdfResp.json();
-
-      const pdfLabels = pdfResult.offsets.map((o: number) => (o > 0 ? '+' : '') + o);
+    // Density chart
+    if (pdfChartCanvas.value) {
+      const pdfLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
       const ctx = pdfChartCanvas.value.getContext('2d');
       if (ctx) {
         pdfChartInstance = new Chart(ctx, {
@@ -377,7 +414,7 @@ async function renderDetailCharts() {
           data: {
             labels: pdfLabels,
             datasets: [{
-              data: pdfResult.density,
+              data: result.density,
               borderColor: '#10b981',
               backgroundColor: 'rgba(16, 185, 129, 0.15)',
               borderWidth: 2,
@@ -412,9 +449,9 @@ async function renderDetailCharts() {
           },
         });
       }
-    } catch (error) {
-      console.error('Failed to compute implied PDF:', error);
     }
+  } catch (error) {
+    console.error('Failed to compute SABR smile:', error);
   }
 }
 
@@ -431,7 +468,6 @@ const summaryStats = computed(() => {
   }
   return [
     { label: 'Valuation Date', value: referenceDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
-    { label: 'Quotes', value: fxQuotes.value.length, icon: 'fa-list', color: '#3b82f6' },
     { label: 'Selected Pair', value: selectedFxPair.value || '-', icon: 'fa-exchange-alt', color: '#10b981' },
     { label: 'Spot Rate', value: fxSpot.value || '-', icon: 'fa-dollar-sign', color: '#8b5cf6' },
     { label: 'Status', value: calibrationResult.value ? 'Calibrated' : 'Pending', icon: 'fa-info-circle', color: calibrationResult.value ? '#10b981' : '#f59e0b' },
@@ -568,8 +604,14 @@ async function loadFxQuotes(pair: string) {
     if (!response.ok) throw new Error('Failed to load FX quotes');
     const data = await response.json();
     fxQuotes.value = data.quotes || [];
-    if (data.spot) {
+    if (data.spot != null) {
       fxSpot.value = data.spot.toFixed(4);
+    }
+    if (data.domesticRate != null) {
+      fxDomesticRate.value = (data.domesticRate * 100).toFixed(2);
+    }
+    if (data.foreignRate != null) {
+      fxForeignRate.value = (data.foreignRate * 100).toFixed(2);
     }
     calibrationResult.value = null;
   } catch (error) {
@@ -597,6 +639,11 @@ async function calibrate() {
           spot: parseFloat(fxSpot.value || '0'),
           domesticRate: parseFloat(fxDomesticRate.value || '0') / 100,
           foreignRate: parseFloat(fxForeignRate.value || '0') / 100,
+          forwardRates: Object.fromEntries(
+            fxQuotes.value
+              .filter(q => q.forward != null)
+              .map(q => [q.expiryLabel, q.forward!])
+          ),
         };
 
     const response = await fetch(endpoint, {
@@ -651,6 +698,12 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 // Watch for selection changes
+watch(activeTab, () => {
+  calibrationResult.value = null;
+  selectedCell.value = null;
+  popoverCell.value = null;
+});
+
 watch(selectedSwaptionIndex, (index) => {
   if (index) loadSwaptionInstruments(index);
 });
@@ -781,33 +834,21 @@ loadFxPairs();
 
           <div class="glass-card p-5">
             <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Market Data</h3>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-xs text-[var(--text-muted)] mb-1">Spot Rate</label>
-                <input
-                  v-model="fxSpot"
-                  type="number"
-                  step="0.0001"
-                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                >
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-[var(--text-muted)]">Spot Rate</span>
+                <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxSpot || '--' }}</span>
               </div>
-              <div>
-                <label class="block text-xs text-[var(--text-muted)] mb-1">Domestic Rate (%)</label>
-                <input
-                  v-model="fxDomesticRate"
-                  type="number"
-                  step="0.01"
-                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                >
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-[var(--text-muted)]">Domestic Rate</span>
+                <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxDomesticRate !== '0' ? fxDomesticRate + '%' : '--' }}</span>
               </div>
-              <div>
-                <label class="block text-xs text-[var(--text-muted)] mb-1">Foreign Rate (%)</label>
-                <input
-                  v-model="fxForeignRate"
-                  type="number"
-                  step="0.01"
-                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                >
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-[var(--text-muted)]">Foreign Rate</span>
+                <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxForeignRate !== '0' ? fxForeignRate + '%' : '--' }}</span>
+              </div>
+              <div v-if="fxQuotes.length > 0 && fxQuotes.some(q => q.forward != null)" class="border-t border-[var(--glass-border)] pt-2 mt-2">
+                <span class="text-[10px] text-[var(--text-muted)] italic">Forwards computed from bootstrapped discount curves</span>
               </div>
             </div>
           </div>
@@ -1033,6 +1074,7 @@ loadFxPairs();
                 <thead>
                   <tr class="border-b border-[var(--glass-border)]">
                     <th class="text-left py-3 px-3 text-sm font-medium text-[var(--text-muted)]">Tenor</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">Forward</th>
                     <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">ATM Vol</th>
                     <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">25D RR</th>
                     <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">25D BF</th>
@@ -1047,6 +1089,7 @@ loadFxPairs();
                     class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
                   >
                     <td class="py-3 px-3 text-sm text-[var(--text-primary)]">{{ quote.expiryLabel || expiryToLabel(quote.expiry) }}</td>
+                    <td class="py-3 px-3 text-sm text-right font-mono text-[var(--text-primary)]">{{ quote.forward != null ? quote.forward.toFixed(4) : '--' }}</td>
                     <td class="py-3 px-3 text-sm text-right text-[var(--text-primary)] font-mono">{{ (quote.atmVol * 100).toFixed(2) }}%</td>
                     <td class="py-3 px-3 text-sm text-right font-mono" :class="quote.rr25d < 0 ? 'text-red-400' : 'text-green-400'">{{ (quote.rr25d * 100).toFixed(2) }}%</td>
                     <td class="py-3 px-3 text-sm text-right text-[var(--text-secondary)] font-mono">{{ (quote.bf25d * 100).toFixed(2) }}%</td>
@@ -1207,8 +1250,8 @@ loadFxPairs();
                 </span>
               </div>
 
-              <!-- Smile & PDF charts -->
-              <div v-if="selectedInstrument" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Smile & PDF charts (only when SABR params are available) -->
+              <div v-if="selectedCellParams" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
                   <div class="chart-wrapper">

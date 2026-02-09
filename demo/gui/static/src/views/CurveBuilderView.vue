@@ -162,7 +162,7 @@ function normaliseInterpolation(value: string): string {
 }
 
 // Options for build settings
-const calibrationMethods = ['sequential', 'global', 'bootstrap'];
+const calibrationMethods = ['sequential', 'global'];
 const interpolationMethods = [
   { value: 'flat_forward', label: 'Flat Forward' },
   { value: 'log_linear_df', label: 'Log-Linear DF' },
@@ -895,9 +895,9 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Right Panel: Curve Chart -->
-      <div class="lg:col-span-2">
-        <div class="glass-card p-6 h-full">
+      <!-- Right Panel: Curve Chart + Jacobian -->
+      <div class="lg:col-span-2 space-y-6">
+        <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-[var(--text-primary)]">Yield Curve</h3>
             <div v-if="buildResult?.short_term_grid" class="flex gap-2">
@@ -1007,65 +1007,65 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Jacobian Card (full-width, below the main grid) -->
-    <div v-if="buildResult?.jacobian" class="glass-card p-6 mt-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-          <i class="fas fa-th text-sm mr-2 text-[var(--primary)]"></i>
-          Jacobian <span class="text-sm font-normal text-[var(--text-muted)]">d(log DF) / dr</span>
-        </h3>
-        <span class="text-xs text-[var(--text-muted)] font-mono">
-          {{ buildResult.jacobian.size }} &times; {{ buildResult.jacobian.size }}
-        </span>
-      </div>
+        <!-- Jacobian Card (below Yield Curve, same width) -->
+        <div v-if="buildResult?.jacobian" class="glass-card p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+              <i class="fas fa-th text-sm mr-2 text-[var(--primary)]"></i>
+              Jacobian <span class="text-sm font-normal text-[var(--text-muted)]">d(log DF) / dr</span>
+            </h3>
+            <span class="text-xs text-[var(--text-muted)] font-mono">
+              {{ buildResult.jacobian.size }} &times; {{ buildResult.jacobian.size }}
+            </span>
+          </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse">
-          <thead>
-            <tr>
-              <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] jacobian-sticky-cell border-b border-r border-[var(--glass-border)] text-left">
-                log DF \ Rate
-              </th>
-              <th
-                v-for="label in buildResult.jacobian.col_labels"
-                :key="'jh-' + label"
-                class="py-2 px-2 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] whitespace-nowrap"
-              >
-                {{ label }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(row, i) in buildResult.jacobian.matrix"
-              :key="'jr-' + i"
-              class="hover:bg-[var(--surface-hover)] transition-colors"
-            >
-              <td class="sticky left-0 z-10 py-1.5 px-3 text-xs font-medium text-[var(--text-muted)] jacobian-sticky-cell border-r border-b border-[var(--glass-border)] whitespace-nowrap">
-                {{ buildResult.jacobian.row_labels[i] }}
-              </td>
-              <td
-                v-for="(val, j) in row"
-                :key="'jc-' + i + '-' + j"
-                class="py-1.5 px-1 text-center text-xs font-mono border-b border-[var(--glass-border)]"
-                :style="{ backgroundColor: jacobianHeatmapColour(val) }"
-              >
-                <span :style="{ color: jacobianTextColour(val) }">
-                  {{ val === 0 ? '--' : val.toExponential(2) }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] jacobian-sticky-cell border-b border-r border-[var(--glass-border)] text-left">
+                    log DF \ Rate
+                  </th>
+                  <th
+                    v-for="label in buildResult.jacobian.col_labels"
+                    :key="'jh-' + label"
+                    class="py-2 px-2 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] whitespace-nowrap"
+                  >
+                    {{ label }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, i) in buildResult.jacobian.matrix"
+                  :key="'jr-' + i"
+                  class="hover:bg-[var(--surface-hover)] transition-colors"
+                >
+                  <td class="sticky left-0 z-10 py-1.5 px-3 text-xs font-medium text-[var(--text-muted)] jacobian-sticky-cell border-r border-b border-[var(--glass-border)] whitespace-nowrap">
+                    {{ buildResult.jacobian.row_labels[i] }}
+                  </td>
+                  <td
+                    v-for="(val, j) in row"
+                    :key="'jc-' + i + '-' + j"
+                    class="py-1.5 px-1 text-center text-xs font-mono border-b border-[var(--glass-border)]"
+                    :style="{ backgroundColor: jacobianHeatmapColour(val) }"
+                  >
+                    <span :style="{ color: jacobianTextColour(val) }">
+                      {{ val === 0 ? '--' : val.toPrecision(2) }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-      <p class="mt-3 text-xs text-[var(--text-muted)]">
-        <i class="fas fa-info-circle mr-1"></i>
-        Lower-triangular: log DF<sub>i</sub> depends only on rates r<sub>1</sub> .. r<sub>i</sub> in sequential bootstrap.
-      </p>
+          <p class="mt-3 text-xs text-[var(--text-muted)]">
+            <i class="fas fa-info-circle mr-1"></i>
+            Lower-triangular: log DF<sub>i</sub> depends only on rates r<sub>1</sub> .. r<sub>i</sub> in sequential bootstrap.
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </template>

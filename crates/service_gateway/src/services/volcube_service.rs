@@ -5,8 +5,13 @@
 
 use std::{collections::HashMap, path::Path, sync::Arc};
 
+use adapter_loader::{parse_instruments, InstrumentSpec};
 use infra_domain::time::parse_tenor_to_years;
-use pricer_models::builder::vol::{SliceCalibrationConfig, VolCubeBuilder};
+use pricer_models::{
+    builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation},
+    market::YieldCurve,
+    builder::vol::{SliceCalibrationConfig, VolCubeBuilder},
+};
 
 use crate::{
     error::ServerError,
@@ -14,9 +19,9 @@ use crate::{
         CalibrationMetadata, CalibrationParameters, CellDiagnostics, FxVolCalibrateRequest,
         FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, ImpliedPdfRequest,
         ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
-        IrVolQuotesResponse, SmilePoint, SwaptionInstrument, VolcubeCalibrateRequest,
-        VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
-        VolcubeModelsResponse,
+        IrVolQuotesResponse, SabrSmileRequest, SabrSmileResponse, SmilePoint,
+        SwaptionInstrument, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
+        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     state::AppState,
 };
@@ -201,7 +206,7 @@ impl VolcubeService {
         })
     }
 
-    /// Get FX vol quotes for a pair
+    /// Get FX vol quotes for a pair, including computed FX forwards
     pub fn get_fx_vol_quotes(
         pair: &str,
         _state: &Arc<AppState>,
@@ -209,43 +214,71 @@ impl VolcubeService {
         let file_path = format!("demo/data/input/fxvol/{}.json", pair.to_lowercase());
         let path = Path::new(&file_path);
 
-        if path.exists() {
-            let content = std::fs::read_to_string(path)
-                .map_err(|e| ServerError::Internal(format!("Failed to read FX vol file: {e}")))?;
-            let data: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| ServerError::Internal(format!("Failed to parse FX vol file: {e}")))?;
-
-            let mut quotes = Vec::new();
-            if let Some(quotes_arr) = data.get("quotes").and_then(|q| q.as_array()) {
-                for quote in quotes_arr {
-                    let expiry = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.0);
-                    // Require explicit tenor field in input data
-                    let expiry_label = quote
-                        .get("tenor")
-                        .and_then(|t| t.as_str())
-                        .map(|s| s.to_string())
-                        .unwrap_or_else(|| "?".to_string());
-                    quotes.push(FxVolQuote {
-                        expiry,
-                        expiry_label,
-                        atm_vol: quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
-                        rr25d: quote.get("rr25d").and_then(|v| v.as_f64()).unwrap_or(0.0),
-                        bf25d: quote.get("bf25d").and_then(|v| v.as_f64()).unwrap_or(0.0),
-                        rr10d: quote.get("rr10d").and_then(|v| v.as_f64()),
-                        bf10d: quote.get("bf10d").and_then(|v| v.as_f64()),
-                    });
-                }
-            }
-
-            let spot = data.get("spot").and_then(|s| s.as_f64());
-
-            return Ok(FxVolQuotesResponse { quotes, spot });
+        if !path.exists() {
+            return Err(ServerError::NotFound(format!(
+                "FX vol data not found for pair: {}",
+                pair
+            )));
         }
 
-        Err(ServerError::NotFound(format!(
-            "FX vol data not found for pair: {}",
-            pair
-        )))
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read FX vol file: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse FX vol file: {e}")))?;
+
+        let spot = data.get("spot").and_then(|s| s.as_f64());
+        let domestic_rate = data.get("domesticRate").and_then(|r| r.as_f64());
+        let foreign_rate = data.get("foreignRate").and_then(|r| r.as_f64());
+
+        // Look up base/quote currencies from fx_pairs.json
+        let (base_ccy, quote_ccy) = Self::lookup_fx_pair_currencies(pair);
+
+        // Build discount curves for both currencies and compute FX forwards
+        let forwards = if let Some(spot_val) = spot {
+            Self::compute_fx_forwards(
+                &base_ccy,
+                &quote_ccy,
+                spot_val,
+                &data,
+            )
+            .ok()
+        } else {
+            None
+        };
+
+        let mut quotes = Vec::new();
+        if let Some(quotes_arr) = data.get("quotes").and_then(|q| q.as_array()) {
+            for quote in quotes_arr {
+                let expiry = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.0);
+                let expiry_label = quote
+                    .get("tenor")
+                    .and_then(|t| t.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "?".to_string());
+
+                let forward = forwards
+                    .as_ref()
+                    .and_then(|fwd_map| fwd_map.get(&expiry_label).copied());
+
+                quotes.push(FxVolQuote {
+                    expiry,
+                    expiry_label,
+                    atm_vol: quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                    rr25d: quote.get("rr25d").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                    bf25d: quote.get("bf25d").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                    rr10d: quote.get("rr10d").and_then(|v| v.as_f64()),
+                    bf10d: quote.get("bf10d").and_then(|v| v.as_f64()),
+                    forward,
+                });
+            }
+        }
+
+        Ok(FxVolQuotesResponse {
+            quotes,
+            spot,
+            domestic_rate,
+            foreign_rate,
+        })
     }
 
     // =========================================================================
@@ -285,9 +318,7 @@ impl VolcubeService {
         Ok(VolcubeModelsResponse {
             models: vec![
                 "SABR".to_string(),
-                "SABR-LMM".to_string(),
-                "Heston".to_string(),
-                "Local Vol".to_string(),
+                "Normal SABR".to_string(),
             ],
         })
     }
@@ -394,16 +425,26 @@ impl VolcubeService {
             .unwrap_or_default();
         let default_forward: f64 = 0.04;
 
-        // 3. Determine vol type
+        // 3. Determine vol type and select config based on model selection
         let is_normal_vol = data
             .get("metadata")
             .and_then(|m| m.get("volType"))
             .and_then(|v| v.as_str())
             .map_or(false, |v| v == "normal");
 
-        // 4. Build VolCubeBuilder with real quotes
-        let config = SliceCalibrationConfig::rates(); // beta=0.5
+        let use_normal_sabr = request
+            .model
+            .as_deref()
+            .map_or(is_normal_vol, |m| m == "Normal SABR");
+
+        let config = if use_normal_sabr {
+            SliceCalibrationConfig::normal()
+        } else {
+            SliceCalibrationConfig::rates()
+        };
         let beta = config.fixed_beta.unwrap_or(0.5);
+
+        // 4. Build VolCubeBuilder with real quotes
         let mut builder = VolCubeBuilder::with_config(config);
 
         // Track string keys for result lookup
@@ -428,15 +469,16 @@ impl VolcubeService {
             let key = format!("{expiry_str}|{tenor_str}");
             let forward = forward_rates.get(&key).copied().unwrap_or(default_forward);
 
-            // Convert normal vol to approximate Black vol if needed
-            let atm_vol_black = if is_normal_vol {
-                normal_to_black_approx(atm_vol_raw / 100.0, forward, beta)
+            // For normal vol: convert from percentage-like units to decimal (0.68 → 0.0068)
+            // For lognormal vol: use as-is
+            let atm_vol = if is_normal_vol {
+                atm_vol_raw / 100.0
             } else {
                 atm_vol_raw
             };
 
             // ATM quote
-            builder.add_quote(expiry_years, tenor_years, forward, atm_vol_black, forward);
+            builder.add_quote(expiry_years, tenor_years, forward, atm_vol, forward);
 
             // Smile quotes
             let smile = quote
@@ -452,13 +494,9 @@ impl VolcubeService {
                 let vol_raw = pt.get("vol").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
                 let strike = forward + offset_bp / 10_000.0;
-                let vol_black = if is_normal_vol {
-                    normal_to_black_approx(vol_raw / 100.0, forward, beta)
-                } else {
-                    vol_raw
-                };
+                let vol = if is_normal_vol { vol_raw / 100.0 } else { vol_raw };
 
-                builder.add_quote(expiry_years, tenor_years, strike, vol_black, forward);
+                builder.add_quote(expiry_years, tenor_years, strike, vol, forward);
             }
 
             cell_keys.push((
@@ -648,6 +686,290 @@ impl VolcubeService {
 
         Ok(ImpliedPdfResponse { offsets, density })
     }
+
+    // =========================================================================
+    // SABR Smile + Density (from calibrated parameters)
+    // =========================================================================
+
+    /// Compute a smooth SABR smile and implied density from calibrated parameters.
+    ///
+    /// Returns `n_points` evenly spaced points in `[-range_bp, +range_bp]`.
+    /// Vols are returned in the same percentage scale as market data
+    /// (i.e. multiply by 100 on the frontend to get bp display).
+    pub fn compute_sabr_smile(
+        request: &SabrSmileRequest,
+    ) -> Result<SabrSmileResponse, ServerError> {
+        use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
+
+        let forward = request.forward;
+        let expiry = request.expiry_years;
+        if forward <= 0.0 {
+            return Err(ServerError::InvalidRequest(
+                "forward must be positive".to_string(),
+            ));
+        }
+        if expiry <= 0.0 {
+            return Err(ServerError::InvalidRequest(
+                "expiry_years must be positive".to_string(),
+            ));
+        }
+
+        let sabr_params = SabrImpliedVolParams::new(
+            forward,
+            request.alpha,
+            request.beta,
+            request.nu,
+            request.rho,
+            expiry,
+        );
+
+        let n = request.n_points.max(3);
+        let range = request.range_bp;
+        let step = 2.0 * range / (n - 1) as f64;
+
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = forward + offset_bp / 10_000.0;
+            // Clamp strike to positive (SABR requires K > 0 for β > 0)
+            let strike = strike.max(1e-8);
+
+            let black_vol = sabr_implied_vol(&sabr_params, strike)
+                .unwrap_or(request.alpha);
+
+            // Convert Black vol → normal vol (percentage scale matching market data)
+            // σ_Normal ≈ σ_Black × F^β
+            let normal_vol_pct = black_vol * forward.powf(request.beta);
+
+            offsets.push(offset_bp);
+            vols.push(normal_vol_pct);
+        }
+
+        // Compute density via Breeden-Litzenberger (d²C/dk²) using Bachelier
+        let dk_bp = step;
+        let dk = dk_bp / 10_000.0;
+        let mut density = Vec::with_capacity(n);
+
+        for i in 0..n {
+            if i == 0 || i == n - 1 {
+                density.push(0.0);
+                continue;
+            }
+
+            let vol_lo = vols[i - 1]; // already in decimal (percentage / 1)
+            let vol_mid = vols[i];
+            let vol_hi = vols[i + 1];
+
+            let k_lo = forward + offsets[i - 1] / 10_000.0;
+            let k_mid = forward + offsets[i] / 10_000.0;
+            let k_hi = forward + offsets[i + 1] / 10_000.0;
+
+            let c_lo = bachelier_call_fwd(forward, k_lo, vol_lo, expiry);
+            let c_mid = bachelier_call_fwd(forward, k_mid, vol_mid, expiry);
+            let c_hi = bachelier_call_fwd(forward, k_hi, vol_hi, expiry);
+
+            let d2c = (c_lo - 2.0 * c_mid + c_hi) / (dk * dk);
+            density.push(d2c.max(0.0));
+        }
+
+        Ok(SabrSmileResponse {
+            offsets,
+            vols,
+            density,
+        })
+    }
+
+    // =========================================================================
+    // FX Forward Computation Helpers
+    // =========================================================================
+
+    /// Look up base/quote currencies for an FX pair from config
+    fn lookup_fx_pair_currencies(pair: &str) -> (String, String) {
+        let config_path = Path::new("demo/data/config/fx_pairs.json");
+        if let Ok(content) = std::fs::read_to_string(config_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(pairs) = data.get("fxPairs").and_then(|p| p.as_array()) {
+                    for p in pairs {
+                        let id = p.get("id").and_then(|i| i.as_str()).unwrap_or("");
+                        if id.eq_ignore_ascii_case(pair) {
+                            let base = p
+                                .get("baseCurrency")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let quote = p
+                                .get("quoteCurrency")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            return (base, quote);
+                        }
+                    }
+                }
+            }
+        }
+        // Fallback: first 3 chars = base, last 3 = quote
+        let pair_upper = pair.to_uppercase();
+        (pair_upper[..3].to_string(), pair_upper[3..].to_string())
+    }
+
+    /// Look up the rate index name for a currency from currencies.json
+    fn lookup_rate_index(currency: &str) -> Option<String> {
+        let config_path = Path::new("demo/data/config/currencies.json");
+        let content = std::fs::read_to_string(config_path).ok()?;
+        let data: serde_json::Value = serde_json::from_str(&content).ok()?;
+        let currencies = data.get("currencies")?.as_array()?;
+        for ccy in currencies {
+            let code = ccy.get("code").and_then(|c| c.as_str())?;
+            if code.eq_ignore_ascii_case(currency) {
+                let index = ccy.get("index").and_then(|i| i.as_str())?;
+                return Some(format!("{}-{}", currency.to_lowercase(), index.to_lowercase()));
+            }
+        }
+        None
+    }
+
+    /// Build a discount curve from a rate data file
+    fn build_discount_curve_for_currency(
+        rate_index: &str,
+    ) -> Result<Box<dyn YieldCurve<f64>>, ServerError> {
+        let file_path = format!("demo/data/input/rates/{}.json", rate_index);
+        let path = Path::new(&file_path);
+        if !path.exists() {
+            return Err(ServerError::NotFound(format!(
+                "Rate data not found for index: {}",
+                rate_index
+            )));
+        }
+
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read rate file: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse rate file: {e}")))?;
+
+        let instruments = data
+            .get("instruments")
+            .and_then(|i| i.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        // Use deposits + OIS only (matching the swaption tab pattern)
+        let allowed_types: std::collections::HashSet<&str> =
+            ["deposit", "ois"].iter().copied().collect();
+
+        let specs: Vec<InstrumentSpec> = instruments
+            .iter()
+            .filter_map(|i| {
+                let itype = i.get("type").and_then(|t| t.as_str())?;
+                if !allowed_types.contains(itype) {
+                    return None;
+                }
+                Some(InstrumentSpec {
+                    instrument_type: itype.to_string(),
+                    tenor: i.get("tenor").and_then(|t| t.as_str())?.to_string(),
+                    rate: i.get("rate").and_then(|r| r.as_f64())?,
+                    event_date: None,
+                    expected_rate_spike: None,
+                })
+            })
+            .collect();
+
+        if specs.is_empty() {
+            return Err(ServerError::Internal(format!(
+                "No instruments found for index: {}",
+                rate_index
+            )));
+        }
+
+        let market_instruments = parse_instruments(&specs)
+            .map_err(|e| ServerError::Internal(format!("Instrument parsing failed: {e}")))?;
+
+        let config = BootstrapConfig::new(1e-10, 100)
+            .with_interpolation(BuilderInterpolation::LogLinear);
+        let bootstrapper = CurveBootstrapper::with_config(config);
+
+        let (curve, _) = bootstrapper
+            .bootstrap_to_curve_with_jacobian(&market_instruments, &[])
+            .map_err(|e| ServerError::Internal(format!("Curve bootstrap failed: {e}")))?;
+
+        Ok(Box::new(curve))
+    }
+
+    /// Compute FX forward rates for each tenor in the vol quotes
+    ///
+    /// F(T) = Spot × DF_base(T) / DF_quote(T)
+    /// where base = foreign currency, quote = domestic currency
+    fn compute_fx_forwards(
+        base_ccy: &str,
+        quote_ccy: &str,
+        spot: f64,
+        vol_data: &serde_json::Value,
+    ) -> Result<HashMap<String, f64>, ServerError> {
+        // Try to build curves from rate data files
+        let base_index = Self::lookup_rate_index(base_ccy);
+        let quote_index = Self::lookup_rate_index(quote_ccy);
+
+        let (base_curve, quote_curve) = match (base_index, quote_index) {
+            (Some(bi), Some(qi)) => {
+                let bc = Self::build_discount_curve_for_currency(&bi)?;
+                let qc = Self::build_discount_curve_for_currency(&qi)?;
+                (Some(bc), Some(qc))
+            }
+            _ => (None, None),
+        };
+
+        let mut forwards = HashMap::new();
+
+        if let Some(quotes) = vol_data.get("quotes").and_then(|q| q.as_array()) {
+            for quote in quotes {
+                let tenor_label = quote
+                    .get("tenor")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("");
+                let expiry_years = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.0);
+
+                if tenor_label.is_empty() || expiry_years <= 0.0 {
+                    continue;
+                }
+
+                let fwd = if let (Some(ref bc), Some(ref qc)) = (&base_curve, &quote_curve) {
+                    // Use bootstrapped discount curves
+                    let df_base = bc.discount_factor(expiry_years).unwrap_or(1.0);
+                    let df_quote = qc.discount_factor(expiry_years).unwrap_or(1.0);
+                    spot * df_base / df_quote
+                } else {
+                    // Fallback to simple continuous compounding from fxvol file rates
+                    let dom_rate = vol_data
+                        .get("domesticRate")
+                        .and_then(|r| r.as_f64())
+                        .unwrap_or(0.0);
+                    let for_rate = vol_data
+                        .get("foreignRate")
+                        .and_then(|r| r.as_f64())
+                        .unwrap_or(0.0);
+                    spot * (-for_rate * expiry_years).exp() / (-dom_rate * expiry_years).exp()
+                };
+
+                forwards.insert(tenor_label.to_string(), fwd);
+            }
+        }
+
+        Ok(forwards)
+    }
+}
+
+/// Bachelier call price with explicit forward
+fn bachelier_call_fwd(forward: f64, strike: f64, vol: f64, expiry: f64) -> f64 {
+    use pricer_core::math::formulas::Bachelier;
+    if vol <= 0.0 {
+        return (forward - strike).max(0.0);
+    }
+    match Bachelier::new(forward, vol) {
+        Ok(model) => model.price_call(strike, expiry),
+        Err(_) => (forward - strike).max(0.0),
+    }
 }
 
 /// Linear interpolation on smile points, flat extrapolation outside range
@@ -681,15 +1003,6 @@ fn bachelier_call(strike: f64, vol: f64, expiry: f64) -> Result<f64, ServerError
     let model = Bachelier::new(0.0_f64, vol)
         .map_err(|e| ServerError::Pricing(format!("Bachelier model error: {e}")))?;
     Ok(model.price_call(strike, expiry))
-}
-
-/// Approximate conversion from normal (Bachelier) vol to Black (lognormal) vol.
-/// `σ_Black ≈ σ_Normal / F^β`
-fn normal_to_black_approx(normal_vol_decimal: f64, forward: f64, beta: f64) -> f64 {
-    if forward <= 0.0 {
-        return normal_vol_decimal;
-    }
-    normal_vol_decimal / forward.powf(beta)
 }
 
 /// Round to 4 decimal places.
