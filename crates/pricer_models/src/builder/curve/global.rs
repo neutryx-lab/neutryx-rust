@@ -1182,22 +1182,17 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             }
         }
 
-        // Did not converge - try fallback if enabled
-        if let Some(ref jc) = self.config.jump_config {
-            if jc.fallback_on_failure {
-                eprintln!(
-                    "[Jump Calibration] Warning: Failed to converge with jumps, using fallback"
-                );
-                return self.fallback_calibrate(instruments);
-            }
-        }
-
         Err(SolverError::MaxIterationsExceeded {
             iterations: self.config.max_iterations,
         })
     }
 
     /// Finalise the calibration result with jump information.
+    ///
+    /// Returns a **base** curve (pillar DFs only, no jump adjustment).
+    /// The caller must attach jump data via `BootstrappedCurve::with_jumps()`
+    /// using the same forward-rate-shift grid as the sequential bootstrap so
+    /// that forward rate discontinuities are rendered correctly.
     fn finalize_jump_result<I>(
         &self,
         problem: &CalibrationProblem<T, I>,
@@ -1209,8 +1204,6 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     where
         I: CalibrationInstrument<T> + Clone,
     {
-        use crate::market::curves::YieldCurve;
-
         let log_df = problem.extract_log_df(params);
         let jumps = problem.extract_jumps(params);
 
@@ -1218,47 +1211,12 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         let n = pillars.len();
         let discount_factors: Vec<T> = log_df.iter().map(|&x| Float::exp(x)).collect();
 
-        // Build a base curve (without jumps) at pillar nodes for interpolation
-        let base_curve = BootstrappedCurve::new(
+        // Build base curve (pillar DFs only, no jump adjustment).
+        // Jump data is attached by the service layer using the same
+        // forward-rate-shift grid as the sequential bootstrap.
+        let curve = BootstrappedCurve::new(
             pillars.clone(),
             discount_factors.clone(),
-            self.config.interpolation,
-            true,
-        )
-        .map_err(SolverError::NumericalInstability)?;
-
-        // Merge pillar times with jump times to produce an output curve
-        // that correctly represents forward rate discontinuities at jump
-        // dates (matching the sequential bootstrap behaviour).
-        let tol: T = from_f64(1e-10);
-        let mut merged_times = pillars.clone();
-        for jp in problem.jump_pillars() {
-            if !merged_times.iter().any(|&t| Float::abs(t - jp.time) < tol) {
-                merged_times.push(jp.time);
-            }
-        }
-        merged_times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-        let merged_dfs: Vec<T> = merged_times
-            .iter()
-            .map(|&t| {
-                let base_df = base_curve
-                    .discount_factor(t)
-                    .unwrap_or_else(|_| Float::exp(-(from_f64::<T>(0.03) * t)));
-                let jump_factor = problem
-                    .jump_pillars()
-                    .iter()
-                    .zip(jumps.iter())
-                    .fold(T::one(), |acc, (jp, &jv)| {
-                        if jp.time <= t { acc * (T::one() + jv) } else { acc }
-                    });
-                base_df * jump_factor
-            })
-            .collect();
-
-        let curve = BootstrappedCurve::new(
-            merged_times,
-            merged_dfs,
             self.config.interpolation,
             true,
         )
@@ -1267,8 +1225,11 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         // Get realised jumps
         let realised_jumps = Some(problem.get_realised_jumps(params));
 
-        // Compute pricing errors on final curve
-        let pricing_errors = problem.compute_residuals(&curve).ok();
+        // Compute pricing errors on the jump-adjusted curve (for diagnostics)
+        let adjusted_curve = problem.build_curve_with_jumps(log_df, jumps).map_err(|e| {
+            SolverError::NumericalInstability(format!("Failed to build jump curve: {e}"))
+        })?;
+        let pricing_errors = problem.compute_residuals(&adjusted_curve).ok();
 
         // Compute Jacobian inverse for the n×n instrument-pillar sub-block.
         // The full (n+k)×(n+k) Jacobian has structure:
@@ -1286,12 +1247,11 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             None
         };
 
-        let condition_number =
-            jacobian_inverse.as_ref().and_then(|_| {
-                let full_jac = problem.compute_jacobian_with_jumps(params).ok()?;
-                let inst_jac = full_jac.view((0, 0), (n, n)).into_owned();
-                self.estimate_condition_number(&inst_jac)
-            });
+        let condition_number = jacobian_inverse.as_ref().and_then(|_| {
+            let full_jac = problem.compute_jacobian_with_jumps(params).ok()?;
+            let inst_jac = full_jac.view((0, 0), (n, n)).into_owned();
+            self.estimate_condition_number(&inst_jac)
+        });
 
         Ok(GlobalBootstrapResult {
             curve,
@@ -1306,26 +1266,6 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             pricing_errors,
             realised_jumps,
         })
-    }
-
-    /// Fallback calibration without jumps.
-    ///
-    /// This is called when jump calibration fails to converge
-    /// and fallback is enabled.
-    pub fn fallback_calibrate<I>(
-        &self,
-        instruments: &[I],
-    ) -> Result<GlobalBootstrapResult<T>, SolverError>
-    where
-        I: CalibrationInstrument<T> + Clone,
-    {
-        // Perform standard calibration without jumps
-        let mut result = self.calibrate(instruments)?;
-
-        // Mark that no jumps were calibrated (fallback used)
-        result.realised_jumps = Some(Vec::new());
-
-        Ok(result)
     }
 
     /// Solve a least squares problem for overdetermined systems.

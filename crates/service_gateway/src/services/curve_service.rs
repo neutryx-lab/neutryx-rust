@@ -326,37 +326,21 @@ impl CurveService {
                 if jump_pillars.is_empty() {
                     // No jumps: J⁻¹ is n x n. By IFT d(log DF)/dr = J_sys⁻¹
                     // because ∂F/∂r = -I (pricing_error = theoretical - market).
-                    match global.calibrate(&market_instruments) {
-                        Ok(result) => {
-                            let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
-                                let size = n.min(j_inv.nrows());
-                                let mut data = vec![vec![0.0; size]; size];
-                                for i in 0..size {
-                                    for j in 0..size {
-                                        data[i][j] = j_inv[(i, j)];
-                                    }
-                                }
-                                JacobianMatrix { data, size }
-                            });
-                            (result.curve, jacobian, "global")
+                    let result = global.calibrate(&market_instruments).map_err(|e| {
+                        ServerError::Pricing(format!("Global bootstrap failed: {e}"))
+                    })?;
+                    let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                        let size = n.min(j_inv.nrows());
+                        let mut data = vec![vec![0.0; size]; size];
+                        for i in 0..size {
+                            for j in 0..size {
+                                data[i][j] = j_inv[(i, j)];
+                            }
                         }
-                        Err(e) => {
-                            // Global solver failed (e.g. singular Jacobian).
-                            // Fall back to sequential bootstrap with FD Jacobian.
-                            tracing::warn!(
-                                "Global bootstrap failed ({e}), falling back to sequential"
-                            );
-                            let (curve, jac) = bootstrapper
-                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
-                                .map_err(|e2| {
-                                    ServerError::Pricing(format!("Bootstrap failed: {e2}"))
-                                })?;
-                            (curve, Some(jac), "sequential (fallback)")
-                        }
-                    }
+                        JacobianMatrix { data, size }
+                    });
+                    (result.curve, jacobian, "global")
                 } else {
-                    // With jumps: global solver merges regular + jump unknowns,
-                    // so J⁻¹ dimensions don't map cleanly to regular instruments.
                     let pricer_jumps: Vec<PricerJumpPillar<f64>> = jump_pillars
                         .iter()
                         .map(|jp| {
@@ -365,33 +349,32 @@ impl CurveService {
                             PricerJumpPillar::new(time, jp.expected_jump_bps())
                         })
                         .collect();
-                    match global.calibrate_with_jumps(&market_instruments, pricer_jumps) {
-                        Ok(result) => {
-                            let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
-                                let size = n.min(j_inv.nrows());
-                                let mut data = vec![vec![0.0; size]; size];
-                                for i in 0..size {
-                                    for j in 0..size {
-                                        data[i][j] = j_inv[(i, j)];
-                                    }
-                                }
-                                JacobianMatrix { data, size }
-                            });
-                            (result.curve, jacobian, "global")
+                    let result = global
+                        .calibrate_with_jumps(&market_instruments, pricer_jumps)
+                        .map_err(|e| {
+                            ServerError::Pricing(format!(
+                                "Global bootstrap with jumps failed: {e}"
+                            ))
+                        })?;
+                    let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                        let size = n.min(j_inv.nrows());
+                        let mut data = vec![vec![0.0; size]; size];
+                        for i in 0..size {
+                            for j in 0..size {
+                                data[i][j] = j_inv[(i, j)];
+                            }
                         }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Global bootstrap with jumps failed ({e}), \
-                                 falling back to sequential"
-                            );
-                            let (curve, jac) = bootstrapper
-                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
-                                .map_err(|e2| {
-                                    ServerError::Pricing(format!("Bootstrap failed: {e2}"))
-                                })?;
-                            (curve, Some(jac), "sequential (fallback)")
-                        }
-                    }
+                        JacobianMatrix { data, size }
+                    });
+                    // Attach the same forward-rate-shift grid used by
+                    // sequential bootstrap so the output curve renders
+                    // forward rate discontinuities at jump dates.
+                    let curve = if jump_data.is_empty() {
+                        result.curve
+                    } else {
+                        result.curve.with_jumps(jump_data.to_vec())
+                    };
+                    (curve, jacobian, "global")
                 }
             }
         };

@@ -529,6 +529,21 @@ export interface PortfolioGraphResponse {
   metadata: GraphMetadata;
 }
 
+export interface PricerGraphRequest {
+  instrumentType: string;
+  params: Record<string, unknown>;
+  detailLevel?: 'operation' | 'scope';
+}
+
+export interface PricerGraphResponse {
+  nodes: GraphNode[];
+  links: GraphEdge[];
+  metadata: GraphMetadata & {
+    trade_id?: string;
+    source_locations?: Record<string, string>;
+  };
+}
+
 export interface TradeSummary {
   id: string;
   instrument_type: string;
@@ -580,11 +595,27 @@ export interface VolcubeInstrumentsResponse {
   referenceDate?: string;
 }
 
+export interface SabrInitialParams {
+  alpha?: number;
+  beta?: number;
+  rho?: number;
+  nu?: number;
+}
+
+export interface SabrFixedParams {
+  alpha?: boolean;
+  beta?: boolean;
+  rho?: boolean;
+  nu?: boolean;
+}
+
 export interface VolcubeCalibrateRequest {
   index: string;
   referenceDate?: string;
   model?: string;
   forwardRates?: Record<string, number>;
+  initialParams?: SabrInitialParams;
+  fixedParams?: SabrFixedParams;
 }
 
 export interface CalibrationParameters {

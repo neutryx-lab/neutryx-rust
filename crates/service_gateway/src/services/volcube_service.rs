@@ -312,7 +312,7 @@ impl VolcubeService {
         _state: &Arc<AppState>,
     ) -> Result<VolcubeModelsResponse, ServerError> {
         Ok(VolcubeModelsResponse {
-            models: vec!["SABR".to_string(), "Normal SABR".to_string()],
+            models: vec!["SABR".to_string()],
         })
     }
 
@@ -415,23 +415,60 @@ impl VolcubeService {
         let forward_rates = request.forward_rates.clone().unwrap_or_default();
         let default_forward: f64 = 0.04;
 
-        // 3. Determine vol type and select config based on model selection
+        // 3. Determine vol type and build calibration config with initial/fixed params
         let is_normal_vol = data
             .get("metadata")
             .and_then(|m| m.get("volType"))
             .and_then(|v| v.as_str())
             .map_or(false, |v| v == "normal");
 
-        // When data is normal vol, Normal SABR (β=0) is the correct model.
-        // The Hagan SABR formula with β>0 outputs Black vol, not normal vol,
-        // causing a units mismatch that makes calibration fail for OTM strikes.
-        let use_normal_sabr = is_normal_vol || request.model.as_deref() == Some("Normal SABR");
+        // Resolve user-supplied initial/fixed parameters
+        let initial = request.initial_params.as_ref();
+        let fixed = request.fixed_params.as_ref();
+        let beta_is_fixed = fixed.and_then(|f| f.beta).unwrap_or(true);
+        let beta_value = initial.and_then(|p| p.beta);
 
-        let config = if use_normal_sabr {
+        // When β is fixed to 0 (or data is normal vol), use Normal SABR (Bachelier)
+        let use_normal_sabr =
+            is_normal_vol || (beta_is_fixed && beta_value.map_or(false, |b| b.abs() < 1e-12));
+
+        let mut config = if use_normal_sabr {
             SliceCalibrationConfig::normal()
         } else {
             SliceCalibrationConfig::rates()
         };
+
+        // Apply user-supplied initial parameter guesses
+        if let Some(ip) = initial {
+            config.initial_alpha = ip.alpha.unwrap_or(config.initial_alpha);
+            config.initial_rho = ip.rho.unwrap_or(config.initial_rho);
+            config.initial_nu = ip.nu.unwrap_or(config.initial_nu);
+        }
+
+        // Apply fixed-beta override: if beta is fixed, set fixed_beta to user value;
+        // if beta is not fixed, set fixed_beta = None so the optimiser calibrates it.
+        if beta_is_fixed {
+            config.fixed_beta = beta_value.or(config.fixed_beta);
+        } else {
+            config.fixed_beta = None;
+        }
+
+        // Fix alpha/rho/nu by clamping bounds to a tight range around the initial value
+        if let Some(fp) = fixed {
+            if fp.alpha.unwrap_or(false) {
+                let v = config.initial_alpha;
+                config.bounds.alpha_bounds = (v, v);
+            }
+            if fp.rho.unwrap_or(false) {
+                let v = config.initial_rho;
+                config.bounds.rho_bounds = (v, v);
+            }
+            if fp.nu.unwrap_or(false) {
+                let v = config.initial_nu;
+                config.bounds.nu_bounds = (v, v);
+            }
+        }
+
         let beta = config.fixed_beta.unwrap_or(0.5);
 
         // 4. Build VolCubeBuilder with real quotes
@@ -566,7 +603,13 @@ impl VolcubeService {
             .filter(|d| d.converged)
             .count();
         let elapsed = start.elapsed();
-        let model = request.model.clone().unwrap_or_else(|| "SABR".to_string());
+        let model = if use_normal_sabr {
+            "SABR (β=0)".to_string()
+        } else if config.fixed_beta.is_none() {
+            "SABR (β free)".to_string()
+        } else {
+            format!("SABR (β={:.1})", beta)
+        };
 
         Ok(VolcubeCalibrateResponse {
             model,

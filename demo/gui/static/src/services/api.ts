@@ -43,6 +43,8 @@ import type {
   SabrSmileResponse,
   ImpliedPdfRequest,
   ImpliedPdfResponse,
+  PricerGraphRequest,
+  PricerGraphResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -310,4 +312,12 @@ export async function fetchPortfolioGraph(tradeIds?: string[]): Promise<Portfoli
 
 export async function fetchPortfolioTrades(): Promise<TradeListResponse> {
   return fetchJson<TradeListResponse>(`${PORTFOLIO_API_BASE}/trades`);
+}
+
+// =============================================================================
+// Pricer Graph API
+// =============================================================================
+
+export async function fetchPricerGraph(request: PricerGraphRequest): Promise<PricerGraphResponse> {
+  return postJson<PricerGraphRequest, PricerGraphResponse>(`${API_BASE}/pricer/graph`, request);
 }

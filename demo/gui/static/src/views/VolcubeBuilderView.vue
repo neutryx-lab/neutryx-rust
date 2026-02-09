@@ -55,6 +55,10 @@ const fxSpot = ref('');
 const fxDomesticRate = ref('0');
 const fxForeignRate = ref('0');
 
+// SABR parameter settings (initial values + fixed flags)
+const sabrInitial = ref<Record<SabrParam, number>>({ alpha: 0.03, beta: 0, rho: -0.3, nu: 0.4 });
+const sabrFixed = ref<Record<SabrParam, boolean>>({ alpha: false, beta: true, rho: false, nu: false });
+
 const calibrationResult = ref<VolcubeCalibrateResponse | null>(null);
 const isCalibrating = ref(false);
 const isLoadingData = ref(false); // D-2
@@ -625,6 +629,18 @@ async function calibrate() {
         referenceDate: referenceDate.value,
         model: selectedModel.value,
         forwardRates: Object.fromEntries(fwdSwapRates.value),
+        initialParams: {
+          alpha: sabrInitial.value.alpha,
+          beta: sabrInitial.value.beta,
+          rho: sabrInitial.value.rho,
+          nu: sabrInitial.value.nu,
+        },
+        fixedParams: {
+          alpha: sabrFixed.value.alpha,
+          beta: sabrFixed.value.beta,
+          rho: sabrFixed.value.rho,
+          nu: sabrFixed.value.nu,
+        },
       });
     } else {
       calibrationResult.value = await calibrateFxVol({
@@ -835,6 +851,35 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                   >
                     <option v-for="model in swaptionModels" :key="model" :value="model">{{ model }}</option>
                   </select>
+                </div>
+
+                <!-- SABR Parameter Initial Values + Fix Checkboxes -->
+                <div class="border-t border-[var(--glass-border)] pt-3 mt-2">
+                  <label class="block text-xs text-[var(--text-muted)] mb-2">SABR Parameters</label>
+                  <div class="space-y-2">
+                    <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
+                      <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
+                      <input
+                        :id="'sabr-' + param"
+                        v-model.number="sabrInitial[param]"
+                        type="number"
+                        step="0.01"
+                        class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
+                        :class="{ 'opacity-70': sabrFixed[param] }"
+                      />
+                      <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
+                        <input
+                          v-model="sabrFixed[param]"
+                          type="checkbox"
+                          class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
+                        />
+                        <span class="text-[10px] text-[var(--text-muted)]">fix</span>
+                      </label>
+                    </div>
+                  </div>
+                  <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                    β=0 fixed → Normal SABR (Bachelier)
+                  </p>
                 </div>
               </div>
             </div>

@@ -214,11 +214,28 @@ pub struct DemoPricingResult {
     pub legs: Option<Vec<LegResult>>,
 }
 
-/// Leg result
+/// Leg result with detailed breakdown
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LegResult {
     pub direction: String,
     pub pv: f64,
+    pub currency: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pv_original: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_rate: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cashflows: Option<Vec<CashflowPvResult>>,
+}
+
+/// Cashflow-level PV result
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CashflowPvResult {
+    pub pv: f64,
+    pub discount_factor: f64,
+    pub payment_date: String,
 }
 
 // =============================================================================
@@ -612,6 +629,26 @@ pub struct VolcubeInstrumentsResponse {
     pub reference_date: Option<String>,
 }
 
+/// Initial SABR parameter guesses for calibration
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SabrInitialParams {
+    pub alpha: Option<f64>,
+    pub beta: Option<f64>,
+    pub rho: Option<f64>,
+    pub nu: Option<f64>,
+}
+
+/// Flags indicating which SABR parameters should be held fixed during calibration
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SabrFixedParams {
+    pub alpha: Option<bool>,
+    pub beta: Option<bool>,
+    pub rho: Option<bool>,
+    pub nu: Option<bool>,
+}
+
 /// Volcube calibration request
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -622,6 +659,12 @@ pub struct VolcubeCalibrateRequest {
     /// Forward swap rates keyed by "expiry|tenor" (e.g. "1Y|5Y" → 0.045)
     #[serde(default)]
     pub forward_rates: Option<std::collections::HashMap<String, f64>>,
+    /// Initial SABR parameter guesses
+    #[serde(default)]
+    pub initial_params: Option<SabrInitialParams>,
+    /// Which parameters to hold fixed during calibration
+    #[serde(default)]
+    pub fixed_params: Option<SabrFixedParams>,
 }
 
 /// Volcube calibration response
