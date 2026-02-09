@@ -23,7 +23,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: ./.github/actions/resilient-checkout
         with:
           fetch-depth: 0
 
@@ -57,7 +57,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -98,7 +98,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -134,7 +134,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: ./.github/actions/resilient-checkout
 
       - name: Download changelog artifact
         uses: actions/download-artifact@v4

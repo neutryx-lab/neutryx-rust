@@ -28,7 +28,8 @@ jobs:
       RUSTFLAGS: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -74,7 +75,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@nightly
@@ -175,7 +177,8 @@ jobs:
     needs: [stable-layers, nightly-kernel]
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@nightly
@@ -218,7 +221,8 @@ jobs:
       RUSTFLAGS: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -254,7 +258,8 @@ jobs:
       RUSTFLAGS: ""
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -292,7 +297,8 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@nightly
@@ -418,7 +424,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: ./.github/actions/resilient-checkout
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
