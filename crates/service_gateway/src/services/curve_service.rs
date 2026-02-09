@@ -370,7 +370,7 @@ impl CurveService {
                     let curve = if jump_data.is_empty() {
                         result.curve
                     } else {
-                        result.curve.with_jumps(jump_data.to_vec())
+                        result.curve.with_jumps(jump_data.clone())
                     };
                     (curve, jacobian, "global")
                 }

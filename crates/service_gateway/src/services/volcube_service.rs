@@ -769,7 +769,7 @@ impl VolcubeService {
         let step = 2.0 * range / (n - 1) as f64;
 
         let mut offsets = Vec::with_capacity(n);
-        let mut vols = Vec::with_capacity(n);
+        let mut vols_decimal = Vec::with_capacity(n);
 
         for i in 0..n {
             let offset_bp = -range + i as f64 * step;
@@ -777,17 +777,19 @@ impl VolcubeService {
             // Clamp strike to positive (SABR requires K > 0 for β > 0)
             let strike = strike.max(1e-8);
 
-            let black_vol = sabr_implied_vol(&sabr_params, strike).unwrap_or(request.alpha);
+            let model_vol = sabr_implied_vol(&sabr_params, strike).unwrap_or(request.alpha);
 
-            // Convert Black vol → normal vol (percentage scale matching market data)
-            // σ_Normal ≈ σ_Black × F^β
-            let normal_vol_pct = black_vol * forward.powf(request.beta);
+            // For β > 0: sabr_implied_vol returns Black vol; convert to normal vol.
+            // For β = 0: sabr_implied_vol already returns normal vol (no conversion).
+            // Approximation: σ_Normal ≈ σ_Black × F^β  (identity when β=0)
+            let normal_vol = model_vol * forward.powf(request.beta);
 
             offsets.push(offset_bp);
-            vols.push(normal_vol_pct);
+            vols_decimal.push(normal_vol);
         }
 
         // Compute density via Breeden-Litzenberger (d²C/dk²) using Bachelier
+        // (requires vols in decimal units)
         let dk_bp = step;
         let dk = dk_bp / 10_000.0;
         let mut density = Vec::with_capacity(n);
@@ -798,9 +800,9 @@ impl VolcubeService {
                 continue;
             }
 
-            let vol_lo = vols[i - 1]; // already in decimal (percentage / 1)
-            let vol_mid = vols[i];
-            let vol_hi = vols[i + 1];
+            let vol_lo = vols_decimal[i - 1];
+            let vol_mid = vols_decimal[i];
+            let vol_hi = vols_decimal[i + 1];
 
             let k_lo = forward + offsets[i - 1] / 10_000.0;
             let k_mid = forward + offsets[i] / 10_000.0;
@@ -814,9 +816,15 @@ impl VolcubeService {
             density.push(d2c.max(0.0));
         }
 
+        // Convert vols from decimal to percentage format to match market data
+        // (market data stores normal vol as e.g. 0.68 meaning 68bp;
+        //  calibration divides by 100 to get decimal 0.0068;
+        //  we reverse that here so the frontend can compare directly)
+        let vols_pct: Vec<f64> = vols_decimal.iter().map(|v| v * 100.0).collect();
+
         Ok(SabrSmileResponse {
             offsets,
-            vols,
+            vols: vols_pct,
             density,
         })
     }
