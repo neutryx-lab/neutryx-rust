@@ -4,7 +4,7 @@
 //! CDS, CDS indices, CDS options, and Nth-to-Default baskets.
 
 use super::error::InstrumentError;
-use crate::{Currency, Date};
+use crate::{market::Currency, time::Date};
 
 /// ISDA standard credit events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

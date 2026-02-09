@@ -43,21 +43,24 @@ pub use infra_domain::trade::{SwapDirection, TradeDirection};
 // =============================================================================
 // Book & Portfolio Types (always available)
 // =============================================================================
-pub use infra_domain::{
-    Book, BookBuilder, BookMetadata, BookOwnership, BookType, PortfolioDefinition,
-    PortfolioDefinitionBuilder, PortfolioMetadata, PortfolioScope, RegulatoryBookType,
+pub use infra_domain::book::{
+    Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType,
+};
+pub use infra_domain::portfolio::{
+    PortfolioBookMapping, PortfolioDefinition, PortfolioDefinitionBuilder, PortfolioMetadata,
+    PortfolioScope,
 };
 // =============================================================================
 // Error Types (always available)
 // =============================================================================
-pub use infra_domain::{
+pub use infra_domain::error::{
     BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
     PortfolioError, ValidationError, ValidationResult,
 };
 // =============================================================================
 // Counterparty Types (always available)
 // =============================================================================
-pub use infra_domain::{CsaTerms, NettingSet};
+pub use infra_domain::counterparty::{CsaTerms, NettingSet};
 // =============================================================================
 // Pricing Result Types (full feature)
 // =============================================================================

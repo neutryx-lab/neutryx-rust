@@ -93,7 +93,7 @@ fn test_error_types_exports() {
 /// Test that FxRate is accessible.
 #[test]
 fn test_fx_rate_exports() {
-    use infra_domain::Currency;
+    use infra_domain::market::Currency;
     use pricer_core::types::FxRate;
 
     let pair: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -113,7 +113,7 @@ fn test_time_module_exports() {
     assert!((ttm - 0.4986).abs() < 0.001);
 
     // Test time_to_maturity_dates with Date
-    use infra_domain::Date;
+    use infra_domain::time::Date;
     let start = Date::from_ymd(2024, 1, 1).unwrap();
     let end = Date::from_ymd(2024, 7, 1).unwrap();
     let ttm_dates = time_to_maturity_dates(start, end);

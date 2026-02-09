@@ -8,7 +8,7 @@
 //! ```
 //! use infra_domain::trade::IndexRequirement;
 //! use infra_domain::market::{RateIndex, CurrencyPair};
-//! use infra_domain::Currency;
+//! use infra_domain::market::Currency;
 //!
 //! // Rate curve requirement
 //! let rate_req = IndexRequirement::RateCurve(RateIndex::Sofr);
@@ -44,7 +44,7 @@ use crate::market::{CurrencyPair, RateIndex};
 /// use infra_domain::trade::IndexRequirement;
 /// use infra_domain::market::RateIndex;
 /// use infra_domain::market::CurrencyPair;
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 ///
 /// // A floating leg requires a rate curve
 /// let sofr_curve = IndexRequirement::RateCurve(RateIndex::Sofr);
@@ -119,7 +119,7 @@ impl IndexRequirement {
     /// ```
     /// use infra_domain::trade::IndexRequirement;
     /// use infra_domain::market::CurrencyPair;
-    /// use infra_domain::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
     /// let req = IndexRequirement::FxCurve(pair);
@@ -135,7 +135,7 @@ impl IndexRequirement {
     /// ```
     /// use infra_domain::trade::IndexRequirement;
     /// use infra_domain::market::CurrencyPair;
-    /// use infra_domain::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
     /// let req = IndexRequirement::FxVol(pair);
@@ -173,7 +173,7 @@ impl IndexRequirement {
     /// ```
     /// use infra_domain::trade::IndexRequirement;
     /// use infra_domain::market::CurrencyPair;
-    /// use infra_domain::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
     /// let req = IndexRequirement::FxCurve(pair);
@@ -225,7 +225,7 @@ impl Ord for IndexRequirement {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Currency;
+    use crate::market::Currency;
 
     // ========================================
     // Variant Creation Tests

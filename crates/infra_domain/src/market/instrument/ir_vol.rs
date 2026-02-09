@@ -9,9 +9,9 @@ use super::{
     error::InstrumentError,
 };
 use crate::{
-    time::EndOfMonthRule,
+    market::{Currency, RateIndex},
+    time::{Date, EndOfMonthRule, Frequency, Tenor},
     trade::{ExerciseType, SettlementType},
-    Currency, Date, Frequency, RateIndex, Tenor,
 };
 
 // ============================================================================
@@ -52,7 +52,7 @@ pub enum IrVolInstrumentError {
 /// ```rust
 /// use infra_domain::market::instrument::{Swaption, PayerReceiver};
 /// use infra_domain::trade::{ExerciseType, SettlementType};
-/// use infra_domain::{Currency, Date, Tenor};
+/// use infra_domain::{market::Currency, time::{Date, Tenor}};
 ///
 /// let swaption = Swaption {
 ///     underlying_swap_tenor: Tenor::TenYears,
@@ -276,7 +276,7 @@ impl std::fmt::Display for CapFloorType {
 ///
 /// ```rust
 /// use infra_domain::market::instrument::{CapFloor, CapFloorType, NotionalSchedule};
-/// use infra_domain::{Currency, Date, Frequency, RateIndex, Tenor};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
 ///
 /// let cap = CapFloor {
 ///     cap_floor_type: CapFloorType::Cap,
@@ -567,7 +567,7 @@ impl std::fmt::Display for IrVolInstrument {
 /// ```rust
 /// use infra_domain::market::instrument::{SwaptionBuilder, PayerReceiver};
 /// use infra_domain::trade::{ExerciseType, SettlementType};
-/// use infra_domain::{Currency, Date, Tenor};
+/// use infra_domain::{market::Currency, time::{Date, Tenor}};
 ///
 /// let swaption = SwaptionBuilder::new(
 ///         Date::from_ymd(2026, 1, 15).unwrap(),
@@ -695,7 +695,7 @@ impl SwaptionBuilder {
 ///
 /// ```rust
 /// use infra_domain::market::instrument::{CapFloorBuilder, CapFloorType};
-/// use infra_domain::{Currency, Date, Frequency, RateIndex, Tenor};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
 ///
 /// let cap = CapFloorBuilder::new(
 ///         Date::from_ymd(2025, 1, 1).unwrap(),

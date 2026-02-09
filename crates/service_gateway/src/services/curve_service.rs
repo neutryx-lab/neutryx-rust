@@ -5,10 +5,19 @@
 use std::{sync::Arc, time::Instant};
 
 use adapter_loader::{parse_instruments, validate_rates, InstrumentSpec};
+use chrono::{Datelike, Months, NaiveDate};
+use infra_domain::{
+    market::{definition::JumpPillar, RateIndex},
+    time::{parse_tenor_to_years, Date, DayCounter},
+};
 use pricer_core::math::formulas::{simple_forward_rate, zero_rate_from_df};
 use pricer_models::{
-    builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation},
-    market::YieldCurve,
+    builder::{
+        BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
+        InterpolationMethod as BuilderInterpolation, JacobianMatrix,
+        JumpPillar as PricerJumpPillar,
+    },
+    market::{build_forward_rate_shift_grid, BootstrapInterpolation, YieldCurve},
 };
 
 #[cfg(test)]
@@ -16,12 +25,167 @@ use crate::rest::dto::CurveInstrumentInput;
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
-        DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest, ForwardRateResponse,
-        InterpolationMethod,
+        BootstrapMethod, ChartGridPoint, CurveBuildRequest, CurveBuildResponse, CurvePillar,
+        DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
+        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse,
+        InterpolationMethod, JacobianData,
     },
     state::{AppState, InstrumentInput},
 };
+
+// ---------------------------------------------------------------------------
+// Chart grid generation helpers
+// ---------------------------------------------------------------------------
+
+const MONTH_ABBR: [&str; 12] = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/// Format date for short-term chart axis: "15-Jan"
+fn format_short_term_label(date: NaiveDate) -> String {
+    format!("{}-{}", date.day(), MONTH_ABBR[date.month0() as usize])
+}
+
+/// Format date for long-term chart axis: "Mar-26"
+fn format_long_term_label(date: NaiveDate) -> String {
+    format!(
+        "{}-{:02}",
+        MONTH_ABBR[date.month0() as usize],
+        date.year() % 100
+    )
+}
+
+/// Internal model time axis: ACT/365 Fixed.
+///
+/// All time conversions in this module use this day counter,
+/// ensuring consistency with the pricer_models internal basis.
+const MODEL_DAY_COUNTER: DayCounter = DayCounter::Actual365Fixed;
+
+/// Generate short-term grid dates: daily up to 3M, weekly 3M→1Y.
+fn generate_short_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
+    let three_months = ref_date
+        .checked_add_months(Months::new(3))
+        .unwrap_or(ref_date);
+    let one_year = ref_date
+        .checked_add_months(Months::new(12))
+        .unwrap_or(ref_date);
+
+    let mut dates = Vec::new();
+
+    // Daily up to 3M
+    let mut d = ref_date + chrono::Duration::days(1);
+    while d <= three_months {
+        dates.push(d);
+        d += chrono::Duration::days(1);
+    }
+
+    // Weekly from 3M to 1Y
+    d = three_months + chrono::Duration::days(7);
+    while d <= one_year {
+        dates.push(d);
+        d += chrono::Duration::days(7);
+    }
+
+    dates
+}
+
+/// Generate long-term grid dates: quarterly 3M→10Y, semi-annual 10.5Y→20Y, annual 21Y→30Y.
+fn generate_long_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
+    let mut dates = Vec::new();
+
+    // Quarterly from 3M (q=1) to 10Y (q=40)
+    for q in 1..=40u32 {
+        if let Some(d) = ref_date.checked_add_months(Months::new(q * 3)) {
+            dates.push(d);
+        }
+    }
+
+    // Semi-annual from 10.5Y (h=21) to 20Y (h=40)
+    for h in 21..=40u32 {
+        if let Some(d) = ref_date.checked_add_months(Months::new(h * 6)) {
+            dates.push(d);
+        }
+    }
+
+    // Annual from 21Y to 30Y
+    for y in 21..=30u32 {
+        if let Some(d) = ref_date.checked_add_months(Months::new(y * 12)) {
+            dates.push(d);
+        }
+    }
+
+    dates
+}
+
+/// Build `ChartGridPoint` vec from grid dates.
+///
+/// Time is derived from `(date - ref_date).num_days() / 365.0` at the point of use,
+/// guaranteeing consistency with the internal model basis.
+fn build_chart_grid<C: YieldCurve<f64>>(
+    ref_date: NaiveDate,
+    dates: &[NaiveDate],
+    curve: &C,
+    label_fn: fn(NaiveDate) -> String,
+    day_counter: DayCounter,
+) -> Vec<ChartGridPoint> {
+    dates
+        .iter()
+        .filter_map(|date| {
+            let time = MODEL_DAY_COUNTER.year_fraction_from_days((*date - ref_date).num_days());
+            let df = curve.discount_factor(time).ok()?;
+            let fwd = if time > 0.0 {
+                overnight_forward_rate(curve, ref_date, *date, day_counter)?
+            } else {
+                0.0
+            };
+            Some(ChartGridPoint {
+                date: date.format("%Y-%m-%d").to_string(),
+                time,
+                discount_factor: df,
+                forward_rate: fwd,
+                label: label_fn(*date),
+            })
+        })
+        .collect()
+}
+
+/// Resolve the day count convention from the request index name.
+///
+/// Uses `RateIndex::from_index_name()` to parse compound index names
+/// (e.g., "USD-SOFR", "EUR-EURIBOR-6M") and looks up the `DayCounter`
+/// from the canonical definition in `infra_domain`.
+/// Falls back to ACT/365 Fixed if the index is not recognised.
+fn resolve_day_counter(index: &str) -> DayCounter {
+    RateIndex::from_index_name(index)
+        .map(|ri| ri.day_counter())
+        .unwrap_or(DayCounter::Actual365Fixed)
+}
+
+/// Compute the overnight forward rate at a given date using the proper
+/// day count convention from the index definition.
+///
+/// 1. Query DF at `date` and `date + 1 calendar day` on the curve's
+///    ACT/365 Fixed time axis.
+/// 2. Compute accrual fraction δ = `DayCounter::year_fraction(date, date + 1)`.
+/// 3. Forward rate F = (DF₁ / DF₂ − 1) / δ.
+fn overnight_forward_rate<C: YieldCurve<f64>>(
+    curve: &C,
+    ref_date: NaiveDate,
+    date: NaiveDate,
+    day_counter: DayCounter,
+) -> Option<f64> {
+    let d = (date - ref_date).num_days();
+    let next_date = date + chrono::Duration::days(1);
+    let t1 = MODEL_DAY_COUNTER.year_fraction_from_days(d);
+    let t2 = MODEL_DAY_COUNTER.year_fraction_from_days(d + 1);
+    let df1 = if t1 <= 0.0 { 1.0 } else { curve.discount_factor(t1).ok()? };
+    let df2 = curve.discount_factor(t2).ok()?;
+    let delta = day_counter.year_fraction(Date::from(date), Date::from(next_date));
+    if delta <= 0.0 {
+        return None;
+    }
+    Some((df1 / df2 - 1.0) / delta)
+}
 
 /// Service for building and querying yield curves
 pub struct CurveService;
@@ -42,48 +206,36 @@ impl CurveService {
             chrono::Utc::now().date_naive()
         };
 
-        // Separate regular instruments from events.
-        // rate_shifts: individual forward-rate shifts at event times.
-        //   - FOMC -25bp cut → delta_rate = -0.0025 (forward rate decreases)
-        //   - TOY  +10bp     → delta_rate = +0.001  (forward rate increases)
-        //   - TOY revert     → delta_rate = -0.001  (forward rate returns to base)
+        // Separate regular instruments from event instruments.
+        // Events are converted to infra_domain::JumpPillar definitions,
+        // which pricer_models converts to the internal jump grid.
         let mut regular_specs: Vec<InstrumentSpec> = Vec::new();
-        let mut rate_shifts: Vec<(f64, f64)> = Vec::new();
+        let mut jump_pillars: Vec<JumpPillar> = Vec::new();
 
         for i in &request.instruments {
             if i.instrument_type.to_lowercase() == "event" {
-                // Handle Event instruments (jumps and turns)
                 if let Some(ref event_date_str) = i.event_date {
-                    let event_date = chrono::NaiveDate::parse_from_str(event_date_str, "%Y-%m-%d")
-                        .map_err(|e| {
-                            ServerError::InvalidRequest(format!("Invalid event_date: {e}"))
+                    let event_date = Date::parse(event_date_str).map_err(|e| {
+                        ServerError::InvalidRequest(format!("Invalid event_date: {e}"))
+                    })?;
+
+                    // API sends decimal rates (e.g. -0.0025); JumpPillar takes bps (-25.0)
+                    let expected_spike = i.expected_rate_spike.unwrap_or(i.rate);
+                    let jump_bps = expected_spike * 10_000.0;
+
+                    let mut pillar = JumpPillar::new(event_date, jump_bps, 1.0);
+
+                    // Turn events: spike reverts at end_date
+                    if let Some(ref end_date_str) = i.end_date {
+                        let end_date = Date::parse(end_date_str).map_err(|e| {
+                            ServerError::InvalidRequest(format!("Invalid end_date: {e}"))
                         })?;
-
-                    let days = (event_date - reference_date).num_days();
-                    if days > 0 {
-                        let time_years = days as f64 / 365.0;
-                        let expected_spike = i.expected_rate_spike.unwrap_or(i.rate);
-
-                        // Forward rate shifts by expected_spike at the event date
-                        rate_shifts.push((time_years, expected_spike));
-
-                        // Turn events: forward rate reverts at end_date
-                        if let Some(ref end_date_str) = i.end_date {
-                            if let Ok(end_date) =
-                                chrono::NaiveDate::parse_from_str(end_date_str, "%Y-%m-%d")
-                            {
-                                let end_days = (end_date - reference_date).num_days();
-                                if end_days > 0 {
-                                    let end_time = end_days as f64 / 365.0;
-                                    rate_shifts.push((end_time, -expected_spike));
-                                }
-                            }
-                        }
+                        pillar = pillar.with_end_date(end_date);
                     }
-                    // Skip past events (days <= 0)
+
+                    jump_pillars.push(pillar);
                 }
             } else {
-                // Regular instrument
                 regular_specs.push(InstrumentSpec {
                     instrument_type: i.instrument_type.clone(),
                     tenor: i.tenor.clone(),
@@ -93,8 +245,6 @@ impl CurveService {
                 });
             }
         }
-
-        rate_shifts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
         // Validate rates for regular instruments only
         validate_rates(&regular_specs, -0.10, 0.50)
@@ -113,68 +263,141 @@ impl CurveService {
 
         // Convert interpolation method
         let interpolation = match request.interpolation {
-            InterpolationMethod::Linear => BuilderInterpolation::Linear,
-            InterpolationMethod::LogLinear => BuilderInterpolation::LogLinear,
-            InterpolationMethod::CubicSpline => BuilderInterpolation::CubicSpline,
+            InterpolationMethod::LinearDf => BuilderInterpolation::Linear,
+            InterpolationMethod::LogLinearDf => BuilderInterpolation::LogLinear,
+            InterpolationMethod::FlatForward => BuilderInterpolation::FlatForward,
         };
 
-        // Build curve using pricer_models CurveBootstrapper
-        let base_curve = match request.bootstrap_method {
-            BootstrapMethod::Sequential => {
-                let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
-                    .with_interpolation(interpolation);
+        // Build the forward-rate-shift grid from jump pillars.
+        //
+        // Jump pillars (FOMC meetings, turn-of-year events) are converted to
+        // a dense daily grid of ramp offsets by pricer_models. This model
+        // ensures that forward rates shift as a step function (not a delta),
+        // producing smooth curves suitable for pricing.
+        let valuation_date = Date::from_naive(reference_date);
+        let max_time = market_instruments
+            .iter()
+            .map(|i| i.maturity())
+            .fold(1.0_f64, f64::max);
+        let jump_data = build_forward_rate_shift_grid(
+            &jump_pillars,
+            valuation_date,
+            MODEL_DAY_COUNTER,
+            max_time,
+        );
 
-                CurveBootstrapper::with_config(config)
-                    .bootstrap_to_curve(&market_instruments)
-                    .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?
+        // Build curve using pricer_models.
+        //
+        // When jump data is present, we use jump-aware calibration: the
+        // bootstrapper evaluates instrument pricing errors on the
+        // jump-adjusted curve, so the resulting base DFs ensure the
+        // combined (base + jumps) curve correctly reprices all inputs.
+        let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
+            .with_interpolation(interpolation);
+        let bootstrapper = CurveBootstrapper::with_config(config);
+
+        let (curve, maybe_jacobian) = match request.bootstrap_method {
+            BootstrapMethod::Sequential => {
+                let (curve, jac) = bootstrapper
+                    .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
+                    .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
+                (curve, Some(jac))
             }
             BootstrapMethod::Global => {
-                let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
-                    .with_interpolation(interpolation);
+                let bootstrap_interp = match interpolation {
+                    BuilderInterpolation::Linear => BootstrapInterpolation::Linear,
+                    BuilderInterpolation::LogLinear => BootstrapInterpolation::LogLinear,
+                    BuilderInterpolation::FlatForward => BootstrapInterpolation::FlatForward,
+                };
+                let global_config = GlobalBootstrapConfig::default()
+                    .with_tolerance(request.tolerance)
+                    .with_max_iterations(request.max_iterations)
+                    .with_interpolation(bootstrap_interp)
+                    .with_jacobian_inverse(true);
+                let global = GlobalBootstrapper::new(global_config);
 
-                CurveBootstrapper::with_config(config)
-                    .bootstrap_to_curve(&market_instruments)
-                    .map_err(|e| ServerError::Pricing(format!("Global bootstrap failed: {e}")))?
+                let n = market_instruments.len();
+
+                if jump_pillars.is_empty() {
+                    // No jumps: J⁻¹ is n x n. By IFT d(log DF)/dr = J_sys⁻¹
+                    // because ∂F/∂r = -I (pricing_error = theoretical - market).
+                    let result = global
+                        .calibrate(&market_instruments)
+                        .map_err(|e| {
+                            ServerError::Pricing(format!("Global bootstrap failed: {e}"))
+                        })?;
+
+                    let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                        let size = n.min(j_inv.nrows());
+                        let mut data = vec![vec![0.0; size]; size];
+                        for i in 0..size {
+                            for j in 0..size {
+                                data[i][j] = j_inv[(i, j)];
+                            }
+                        }
+                        JacobianMatrix { data, size }
+                    });
+
+                    (result.curve, jacobian)
+                } else {
+                    // With jumps: global solver merges regular + jump unknowns,
+                    // so J⁻¹ dimensions don't map cleanly to regular instruments.
+                    let pricer_jumps: Vec<PricerJumpPillar<f64>> = jump_pillars
+                        .iter()
+                        .map(|jp| {
+                            let time =
+                                MODEL_DAY_COUNTER.year_fraction(valuation_date, jp.jump_date());
+                            PricerJumpPillar::new(time, jp.expected_jump_bps())
+                        })
+                        .collect();
+                    let result = global
+                        .calibrate_with_jumps(&market_instruments, pricer_jumps)
+                        .map_err(|e| {
+                            ServerError::Pricing(format!("Global bootstrap failed: {e}"))
+                        })?;
+
+                    (result.curve, None)
+                }
             }
         };
 
-        // Generate time-dependent jump data for forward-rate shift model.
-        //
-        // The old model applied constant offsets to log(df), which created
-        // delta-function spikes in daily forward rates (e.g., -25bp cut → 91% spike!).
-        //
-        // The correct model: a forward-rate shift s at time t_j changes the DF as:
-        //   df(t) = base_df(t) * exp(-s * (t - t_j))   for t > t_j
-        //
-        // This gives: f(t) = f_base(t) + s  (smooth shift, no spike).
-        //
-        // We generate a dense daily grid of log-df offsets:
-        //   offset(t) = -sum(s_i * (t - t_i))  for all shifts s_i at t_i <= t
-        let jump_data: Vec<(f64, f64)> = if rate_shifts.is_empty() {
-            Vec::new()
-        } else {
-            let max_time = base_curve.pillars().last().copied().unwrap_or(1.0);
-            let dt = 1.0 / 365.0;
-            let grid_count = (max_time / dt).ceil() as usize + 2;
-            (0..grid_count)
-                .map(|i| {
-                    let t = i as f64 * dt;
-                    let offset: f64 = rate_shifts
-                        .iter()
-                        .take_while(|(t_j, _)| *t_j <= t)
-                        .map(|(t_j, shift)| -shift * (t - t_j))
-                        .sum();
-                    (t, offset)
-                })
-                .collect()
-        };
+        // Build Jacobian labels from regular instrument specs, sorted by
+        // maturity to match the bootstrap order.
+        let jacobian_data = maybe_jacobian.map(|jac| {
+            let mut sorted_specs = regular_specs.clone();
+            sorted_specs.sort_by(|a, b| {
+                let ta = parse_tenor_to_years(&a.tenor).unwrap_or(0.0);
+                let tb = parse_tenor_to_years(&b.tenor).unwrap_or(0.0);
+                ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
+            });
 
-        // Apply jump data to the curve
-        let curve = if jump_data.is_empty() {
-            base_curve
-        } else {
-            base_curve.with_jumps(jump_data)
-        };
+            let jacobian_labels: Vec<String> = sorted_specs
+                .iter()
+                .map(|spec| {
+                    let lower = spec.instrument_type.to_lowercase();
+                    let type_label = match lower.as_str() {
+                        "deposit" | "depo" => "Depo",
+                        "ois" => "OIS",
+                        "fra" => "FRA",
+                        "swap" | "irs" => "IRS",
+                        "future" | "futures" => "Fut",
+                        _ => &lower,
+                    };
+                    format!("{}-{}", type_label, spec.tenor)
+                })
+                .collect();
+
+            JacobianData {
+                row_labels: jacobian_labels.clone(),
+                col_labels: jacobian_labels,
+                matrix: jac.data,
+                size: jac.size,
+            }
+        });
+
+        // Resolve day count convention from the canonical RateIndex definition.
+        // Used for all forward rate annualisation (date-based δ).
+        let day_counter = resolve_day_counter(&request.index);
 
         // Extract pillar data with jump-adjusted discount factors
         let pillars: Vec<CurvePillar> = curve
@@ -182,29 +405,59 @@ impl CurveService {
             .iter()
             .filter_map(|time| {
                 let df = curve.discount_factor(*time).ok()?;
+                let days = (*time * 365.0).round() as i64;
+                let date = reference_date + chrono::Duration::days(days);
+                let fwd = if *time > 0.0 {
+                    overnight_forward_rate(&curve, reference_date, date, day_counter)
+                        .unwrap_or(0.0)
+                } else {
+                    0.0
+                };
                 Some(CurvePillar {
+                    date: date.format("%Y-%m-%d").to_string(),
                     time: *time,
                     discount_factor: df,
                     zero_rate: zero_rate_from_df(df, *time),
-                })
-            })
-            .collect();
-
-        // Generate forward curve on daily grid
-        let max_time = curve.pillars().last().copied().unwrap_or(1.0);
-        let dt = 1.0 / 365.0;
-        let num_points = (max_time / dt).floor() as usize;
-        let forward_curve: Vec<ForwardRatePoint> = (0..num_points)
-            .filter_map(|i| {
-                let t = i as f64 * dt;
-                let t_next = t + dt;
-                let fwd = curve.forward_rate(t, t_next).ok()?;
-                Some(ForwardRatePoint {
-                    time: t,
                     forward_rate: fwd,
                 })
             })
             .collect();
+
+        // Generate forward curve on daily grid (date-based iteration)
+        let max_days = curve
+            .pillars()
+            .last()
+            .map(|t| (t * 365.0).round() as i64)
+            .unwrap_or(365);
+        let forward_curve: Vec<ForwardRatePoint> = (0..max_days)
+            .filter_map(|day| {
+                let date = reference_date + chrono::Duration::days(day);
+                let time = MODEL_DAY_COUNTER.year_fraction_from_days(day);
+                let fwd = overnight_forward_rate(&curve, reference_date, date, day_counter)?;
+                Some(ForwardRatePoint {
+                    date: date.format("%Y-%m-%d").to_string(),
+                    time,
+                    forward_rate: fwd,
+                })
+            })
+            .collect();
+
+        // Generate pre-computed chart display grids (date-based)
+        let short_term_dates = generate_short_term_dates(reference_date);
+        let long_term_dates = generate_long_term_dates(reference_date);
+        let short_term_grid = build_chart_grid(
+            reference_date, &short_term_dates, &curve, format_short_term_label, day_counter,
+        );
+        let long_term_grid = build_chart_grid(
+            reference_date, &long_term_dates, &curve, format_long_term_label, day_counter,
+        );
+
+        let interpolation_str = match request.interpolation {
+            InterpolationMethod::LinearDf => "linear_df",
+            InterpolationMethod::LogLinearDf => "log_linear_df",
+            InterpolationMethod::FlatForward => "flat_forward",
+        }
+        .to_string();
 
         // Cache the curve
         let instrument_inputs: Vec<InstrumentInput> = request
@@ -227,9 +480,13 @@ impl CurveService {
             currency: request.currency.clone(),
             pillars,
             forward_curve,
+            short_term_grid,
+            long_term_grid,
             instrument_count: request.instruments.len(),
+            interpolation: interpolation_str,
             converged: true,
             calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            jacobian: jacobian_data,
         })
     }
 
@@ -259,6 +516,84 @@ impl CurveService {
             discount_factor: df,
             zero_rate,
         })
+    }
+
+    /// Compute forward swap rate matrix from a cached curve
+    pub fn compute_forward_swap_rates(
+        request: &ForwardSwapRateRequest,
+        state: &Arc<AppState>,
+    ) -> Result<ForwardSwapRateResponse, ServerError> {
+        let start = Instant::now();
+
+        let curve_id = request
+            .curve_id
+            .parse()
+            .map_err(|_| ServerError::InvalidRequest("Invalid curve_id format".to_string()))?;
+
+        let entry = state.curve_cache.get(&curve_id).ok_or_else(|| {
+            ServerError::NotFound(format!("Curve {} not found", request.curve_id))
+        })?;
+
+        let mut rates = std::collections::HashMap::new();
+
+        for expiry_str in &request.expiries {
+            let expiry_years = parse_tenor_to_years(expiry_str).map_err(|e| {
+                ServerError::InvalidRequest(format!("Invalid expiry tenor '{expiry_str}': {e}"))
+            })?;
+
+            for tenor_str in &request.tenors {
+                let tenor_years = parse_tenor_to_years(tenor_str).map_err(|e| {
+                    ServerError::InvalidRequest(format!("Invalid swap tenor '{tenor_str}': {e}"))
+                })?;
+
+                let rate = Self::forward_swap_rate(&entry.curve, expiry_years, tenor_years)?;
+                let key = format!("{expiry_str}|{tenor_str}");
+                rates.insert(key, rate);
+            }
+        }
+
+        let elapsed = start.elapsed();
+
+        Ok(ForwardSwapRateResponse {
+            curve_id: request.curve_id.clone(),
+            rates,
+            calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
+        })
+    }
+
+    /// Compute a single forward swap rate: (df_start - df_end) / annuity
+    pub(crate) fn forward_swap_rate(
+        curve: &dyn YieldCurve<f64>,
+        expiry_years: f64,
+        tenor_years: f64,
+    ) -> Result<f64, ServerError> {
+        let df_start = curve.discount_factor(expiry_years).map_err(|e| {
+            ServerError::Pricing(format!("Failed to compute DF at expiry: {e}"))
+        })?;
+        let df_end = curve.discount_factor(expiry_years + tenor_years).map_err(|e| {
+            ServerError::Pricing(format!("Failed to compute DF at maturity: {e}"))
+        })?;
+
+        // Annuity: sum of DFs at annual payment dates
+        let n_payments = tenor_years.ceil() as usize;
+        if n_payments == 0 {
+            return Err(ServerError::InvalidRequest(
+                "Swap tenor must be at least 1 year".to_string(),
+            ));
+        }
+
+        let annuity: f64 = (1..=n_payments)
+            .map(|i| {
+                let t = expiry_years + i as f64;
+                curve.discount_factor(t).unwrap_or(0.0)
+            })
+            .sum();
+
+        if annuity.abs() < 1e-15 {
+            return Err(ServerError::Pricing("Annuity is zero".to_string()));
+        }
+
+        Ok((df_start - df_end) / annuity)
     }
 
     /// Get forward rate from a cached curve
@@ -341,7 +676,7 @@ mod tests {
                     end_date: None,
                 },
             ],
-            interpolation: InterpolationMethod::Linear,
+            interpolation: InterpolationMethod::LinearDf,
             bootstrap_method: BootstrapMethod::Sequential,
             tolerance: 1e-10,
             max_iterations: 100,
@@ -394,7 +729,7 @@ mod tests {
                     end_date: None,
                 },
             ],
-            interpolation: InterpolationMethod::Linear,
+            interpolation: InterpolationMethod::LinearDf,
             bootstrap_method: BootstrapMethod::Sequential,
             tolerance: 1e-10,
             max_iterations: 100,
@@ -450,7 +785,7 @@ mod tests {
                     end_date: None,
                 },
             ],
-            interpolation: InterpolationMethod::Linear,
+            interpolation: InterpolationMethod::LinearDf,
             bootstrap_method: BootstrapMethod::Sequential,
             tolerance: 1e-10,
             max_iterations: 100,
@@ -537,7 +872,7 @@ mod tests {
                     end_date: None,
                 },
             ],
-            interpolation: InterpolationMethod::Linear,
+            interpolation: InterpolationMethod::LinearDf,
             bootstrap_method: BootstrapMethod::Sequential,
             tolerance: 1e-10,
             max_iterations: 100,

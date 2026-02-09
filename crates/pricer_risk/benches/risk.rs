@@ -15,8 +15,8 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use infra_domain::{
+    market::Currency,
     trade::{ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption},
-    Currency,
 };
 use nalgebra::{DMatrix, DVector};
 use pricer_risk::{

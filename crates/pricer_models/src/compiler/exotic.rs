@@ -12,7 +12,7 @@
 //!
 //! ```ignore
 //! use pricer_models::compiler::{ExoticCompiler, IndexMapper};
-//! use infra_domain::Currency;
+//! use infra_domain::market::Currency;
 //!
 //! let mapper = IndexMapper::new();
 //! let compiler = ExoticCompiler::new(mapper);
@@ -20,7 +20,7 @@
 //! let script = compiler.compile_barrier_option(&trade)?;
 //! ```
 
-use infra_domain::{trade::Payoff, Currency, Date};
+use infra_domain::{market::Currency, time::Date, trade::Payoff};
 use pricer_core::kernel::{BarrierType, CompileError, ScriptKernel, ScriptKernelBuilder, ScriptOp};
 
 use super::IndexMapper;
@@ -357,7 +357,7 @@ impl ExoticCompiler {
 
 #[cfg(test)]
 mod tests {
-    use infra_domain::Currency;
+    use infra_domain::market::Currency;
     use pricer_core::kernel::BarrierType;
 
     use super::*;
@@ -546,12 +546,12 @@ mod tests {
             0.05
         )));
         assert!(!ExoticCompiler::requires_script_kernel(&Payoff::floating(
-            IndexType::Rate(infra_domain::RateIndex::Sofr)
+            IndexType::Rate(infra_domain::market::RateIndex::Sofr)
         )));
 
         // VanillaOption requires ScriptKernel
         let vanilla = Payoff::VanillaOption {
-            index: IndexType::Rate(infra_domain::RateIndex::Sofr),
+            index: IndexType::Rate(infra_domain::market::RateIndex::Sofr),
             strike: 0.05,
             option_type: OptionType::Call,
         };

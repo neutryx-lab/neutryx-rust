@@ -276,6 +276,17 @@ impl<T: Float> SabrBounds<T> {
         }
     }
 
+    /// Creates bounds suitable for Normal SABR (β = 0).
+    ///
+    /// Alpha is in normal vol units (decimal), typically 0.001–0.02.
+    pub fn normal() -> Self {
+        Self {
+            alpha_bounds: (from_f64(0.0001), from_f64(0.05)),
+            rho_bounds: (from_f64(-0.9), from_f64(0.5)),
+            nu_bounds: (from_f64(0.05), from_f64(2.0)),
+        }
+    }
+
     /// Creates bounds suitable for FX.
     ///
     /// Uses wider bounds for FX markets.
@@ -428,6 +439,21 @@ impl<T: Float> SliceCalibrationConfig<T> {
             initial_rho: from_f64(-0.3),
             initial_nu: from_f64(0.4),
             bounds: SabrBounds::rates(),
+            ..Self::default()
+        }
+    }
+
+    /// Creates a configuration for Normal SABR (β = 0).
+    ///
+    /// Suitable for swaption normal (Bachelier) volatilities.
+    /// Alpha and vol quotes should be in decimal normal vol (e.g. 0.005 = 50bp).
+    pub fn normal() -> Self {
+        Self {
+            fixed_beta: Some(from_f64(0.0)),
+            initial_alpha: from_f64(0.005),
+            initial_rho: from_f64(-0.3),
+            initial_nu: from_f64(0.4),
+            bounds: SabrBounds::normal(),
             ..Self::default()
         }
     }

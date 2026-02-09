@@ -4,7 +4,7 @@
 //! the cashflow.
 
 use super::payoff::Payoff;
-use crate::{Currency, Date};
+use crate::{market::Currency, time::Date};
 
 /// Daily accrual detail for OIS (Overnight Index Swap) compounding.
 ///
@@ -15,7 +15,7 @@ use crate::{Currency, Date};
 ///
 /// ```rust
 /// use infra_domain::trade::DailyAccrual;
-/// use infra_domain::Date;
+/// use infra_domain::time::Date;
 ///
 /// let accrual = DailyAccrual::new(
 ///     Date::from_ymd(2025, 1, 2).unwrap(),
@@ -241,8 +241,8 @@ impl Cashflow {
 mod tests {
     use super::*;
     use crate::{
+        market::RateIndex,
         trade::{IndexType, Payoff},
-        RateIndex,
     };
 
     fn make_fixed_cashflow() -> Cashflow {

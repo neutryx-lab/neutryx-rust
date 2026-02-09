@@ -5,7 +5,7 @@
 
 use thiserror::Error;
 
-use crate::DateError;
+use crate::error::DateError;
 
 /// Errors that can occur during trade construction and validation.
 ///

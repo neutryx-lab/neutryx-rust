@@ -29,11 +29,19 @@ num_cpus.workspace = true
 # Enum utilities
 strum.workspace = true
 
+# Store dependencies (optional)
+tokio = { workspace = true, optional = true }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"], optional = true }
+async-trait = { version = "0.1", optional = true }
+
 [features]
 default = []
 # Serde is always enabled, but this feature exists for compatibility with
 # dependents that request it explicitly
 serde = []
+# Storage backends
+postgres = ["dep:sqlx", "dep:tokio", "dep:async-trait"]
+redis = ["dep:tokio", "dep:async-trait"]
 
 [dev-dependencies]
 approx.workspace = true

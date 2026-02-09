@@ -49,13 +49,14 @@ function navigateTo(name: string) {
     <div class="sidebar-inner h-full flex flex-col bg-[var(--glass-bg)] backdrop-blur-[20px] border-r border-[var(--glass-border)]">
       <!-- Logo -->
       <div class="logo-container p-4 border-b border-[var(--glass-border)]">
-        <RouterLink to="/dashboard" class="logo flex items-center gap-3 text-[var(--text-primary)] no-underline">
-          <div class="logo-icon w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--primary-dark)] flex items-center justify-center">
-            <i class="fas fa-chart-line text-white text-lg"></i>
-          </div>
-          <div class="logo-text">
-            <span class="font-semibold text-base">Frictional</span>
-            <span class="text-[var(--text-secondary)] font-light text-sm">Bank</span>
+        <RouterLink to="/dashboard" class="logo-link group flex items-center gap-3 text-[var(--text-primary)] no-underline">
+          <div class="logo-icon w-10 h-10 rounded-xl"></div>
+          <div class="logo-text leading-tight">
+            <div>
+              <span class="font-semibold text-base tracking-wide">Frictional</span>
+              <span class="text-[var(--text-muted)] font-light text-[11px] tracking-[0.15em] uppercase">Bank</span>
+              <sup class="text-[9px] font-medium text-emerald-400 ml-0.5 tracking-wider">DEMO</sup>
+            </div>
           </div>
         </RouterLink>
       </div>
@@ -164,6 +165,31 @@ function navigateTo(name: string) {
 .sidebar {
   --sidebar-width: 240px;
 }
+
+/* Logo — animated geometric pattern */
+.logo-icon {
+  position: relative;
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 4px 12px rgb(99 102 241 / .25);
+  transition: box-shadow 0.3s;
+  overflow: hidden;
+}
+.logo-link:hover .logo-icon { box-shadow: 0 4px 24px rgb(99 102 241 / .45); }
+
+.logo-icon::before, .logo-icon::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; transition: filter 0.3s;
+}
+.logo-icon::before {
+  background: conic-gradient(from 0deg, transparent, rgb(255 255 255 / .45) 30deg, transparent 60deg, rgb(255 255 255 / .3) 120deg, transparent 150deg, rgb(255 255 255 / .2) 210deg, transparent 240deg, rgb(255 255 255 / .35) 300deg, transparent);
+  animation: geo-spin 6s linear infinite;
+}
+.logo-icon::after {
+  background: conic-gradient(from 90deg at 40% 60%, transparent, rgb(255 255 255 / .25) 40deg, transparent 80deg, rgb(255 255 255 / .4) 160deg, transparent 200deg, rgb(255 255 255 / .15) 280deg, transparent);
+  animation: geo-spin 10s linear infinite reverse;
+}
+.logo-link:hover .logo-icon::before { animation-duration: 2s; filter: brightness(1.4); }
+.logo-link:hover .logo-icon::after  { animation-duration: 3.5s; filter: brightness(1.4); }
+@keyframes geo-spin { to { transform: rotate(360deg); } }
 
 .nav-link.active {
   background: var(--surface);

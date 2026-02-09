@@ -809,7 +809,7 @@ impl CrossBookNettingAgreementBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Currency;
+    use crate::market::Currency;
 
     // ========================================================================
     // NettingType tests

@@ -14,7 +14,7 @@
 //! ```
 //! use pricer_models::compiler::{IndexMapper, CmsIndex};
 //! use infra_domain::time::Tenor;
-//! use infra_domain::Currency;
+//! use infra_domain::market::Currency;
 //!
 //! let mut mapper = IndexMapper::new();
 //!
@@ -28,7 +28,7 @@
 
 use std::collections::HashMap;
 
-use infra_domain::{time::Tenor, Currency, RateIndex};
+use infra_domain::{market::{Currency, RateIndex}, time::Tenor};
 use pricer_core::{kernel::CompileError, types::FxPair};
 
 /// CMS (Constant Maturity Swap) index definition.
@@ -41,7 +41,7 @@ use pricer_core::{kernel::CompileError, types::FxPair};
 ///
 /// ```
 /// use pricer_models::compiler::CmsIndex;
-/// use infra_domain::{time::Tenor, Currency};
+/// use infra_domain::{time::Tenor, market::Currency};
 ///
 /// // 10Y USD CMS rate
 /// let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
@@ -128,7 +128,7 @@ pub enum ForwardIndexType {
 ///
 /// ```
 /// use pricer_models::compiler::IndexMapper;
-/// use infra_domain::{RateIndex, Currency};
+/// use infra_domain::market::{RateIndex, Currency};
 ///
 /// let mut mapper = IndexMapper::new();
 ///
@@ -310,7 +310,7 @@ impl IndexMapper {
     ///
     /// ```
     /// use pricer_models::compiler::{IndexMapper, CmsIndex};
-    /// use infra_domain::{time::Tenor, Currency};
+    /// use infra_domain::{time::Tenor, market::Currency};
     ///
     /// let mut mapper = IndexMapper::new();
     /// let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);

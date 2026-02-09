@@ -223,7 +223,7 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use infra_domain::RateIndex;
+    use infra_domain::market::RateIndex;
     use pricer_models::market::curves::{CurveEnum, CurveName};
     use OptionType;
 

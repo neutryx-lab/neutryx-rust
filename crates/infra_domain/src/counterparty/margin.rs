@@ -7,7 +7,7 @@
 #![allow(clippy::return_self_not_must_use)]
 
 use super::CallFrequency;
-use crate::Currency;
+use crate::market::Currency;
 
 // ============================================================================
 // Enums
@@ -226,7 +226,7 @@ impl Default for VmTerms {
 ///
 /// ```
 /// use infra_domain::counterparty::{ImTerms, ImModel, SimmVersion, CallFrequency};
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 ///
 /// let im = ImTerms::new(ImModel::Simm, Currency::USD)
 ///     .with_simm_version(SimmVersion::V2_7)
@@ -317,7 +317,7 @@ pub struct SimmRiskClassMapping {
 ///
 /// ```
 /// use infra_domain::counterparty::{MarginTerms, MarginType, VmTerms, ImTerms, ImModel, CallFrequency};
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 ///
 /// // No margin
 /// let no_margin = MarginTerms::no_margin();

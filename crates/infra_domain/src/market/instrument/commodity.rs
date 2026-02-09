@@ -5,8 +5,9 @@
 
 use super::{common::ExerciseStyle, error::InstrumentError};
 use crate::{
+    market::Currency,
+    time::{Date, Frequency},
     trade::{OptionType, SettlementType},
-    Currency, Date, Frequency,
 };
 
 /// Energy commodity subtypes.

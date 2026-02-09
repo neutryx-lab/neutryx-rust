@@ -6,9 +6,9 @@
 use std::sync::Arc;
 
 use infra_domain::{
-    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Tenor},
+    market::Currency,
+    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date, Tenor},
     trade::{IndexType, Payoff, Trade},
-    Currency, Date,
 };
 use pricer_core::kernel::{CompileError, PricingKernel, PricingKernelBuilder};
 
@@ -345,8 +345,8 @@ impl LinearProductsCompiler {
 #[cfg(test)]
 mod tests {
     use infra_domain::{
+        market::{Currency, RateIndex},
         trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff},
-        Currency, RateIndex,
     };
 
     use super::*;

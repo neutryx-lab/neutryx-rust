@@ -181,7 +181,7 @@ impl Payoff {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RateIndex;
+    use crate::market::RateIndex;
 
     #[test]
     fn test_option_type_sign() {

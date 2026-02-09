@@ -355,6 +355,56 @@ impl RateIndex {
         }
     }
 
+    /// Parses a rate index from a compound index name (e.g., "USD-SOFR", "EUR-EURIBOR-6M").
+    ///
+    /// Falls back to standard `FromStr` parsing first, then tries substring matching
+    /// for compound names commonly used in curve building APIs.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::market::RateIndex;
+    ///
+    /// assert_eq!(RateIndex::from_index_name("USD-SOFR"), Some(RateIndex::Sofr));
+    /// assert_eq!(RateIndex::from_index_name("SOFR"), Some(RateIndex::Sofr));
+    /// assert_eq!(RateIndex::from_index_name("EUR-EURIBOR-6M"), Some(RateIndex::Euribor6M));
+    /// assert_eq!(RateIndex::from_index_name("GBP-SONIA"), Some(RateIndex::Sonia));
+    /// assert_eq!(RateIndex::from_index_name("UNKNOWN"), None);
+    /// ```
+    #[must_use]
+    pub fn from_index_name(s: &str) -> Option<Self> {
+        let upper = s.to_uppercase();
+
+        // Try direct parse first (handles "SOFR", "ESTR", etc.)
+        if let Ok(idx) = upper.parse::<RateIndex>() {
+            return Some(idx);
+        }
+
+        // Substring matching for compound names (e.g., "USD-SOFR")
+        if upper.contains("SOFR") {
+            return Some(Self::Sofr);
+        }
+        if upper.contains("EURIBOR") && upper.contains("6M") {
+            return Some(Self::Euribor6M);
+        }
+        if upper.contains("EURIBOR") {
+            return Some(Self::Euribor3M);
+        }
+        if upper.contains("ESTR") || upper.contains("ESTER") {
+            return Some(Self::Estr);
+        }
+        if upper.contains("SONIA") {
+            return Some(Self::Sonia);
+        }
+        if upper.contains("SARON") {
+            return Some(Self::Saron);
+        }
+        if upper.contains("TONAR") || upper.contains("TONA") {
+            return Some(Self::Tonar);
+        }
+        None
+    }
+
     /// Returns true if this is an overnight index (RFR).
     ///
     /// # Examples
@@ -587,6 +637,34 @@ mod tests {
         assert!(!RateIndex::Saron.is_term_index());
         assert!(RateIndex::Euribor3M.is_term_index());
         assert!(RateIndex::Euribor6M.is_term_index());
+    }
+
+    // ========================================
+    // from_index_name Tests
+    // ========================================
+
+    #[test]
+    fn test_from_index_name_compound() {
+        assert_eq!(RateIndex::from_index_name("USD-SOFR"), Some(RateIndex::Sofr));
+        assert_eq!(RateIndex::from_index_name("EUR-EURIBOR-6M"), Some(RateIndex::Euribor6M));
+        assert_eq!(RateIndex::from_index_name("EUR-EURIBOR-3M"), Some(RateIndex::Euribor3M));
+        assert_eq!(RateIndex::from_index_name("GBP-SONIA"), Some(RateIndex::Sonia));
+        assert_eq!(RateIndex::from_index_name("CHF-SARON"), Some(RateIndex::Saron));
+        assert_eq!(RateIndex::from_index_name("EUR-ESTR"), Some(RateIndex::Estr));
+        assert_eq!(RateIndex::from_index_name("JPY-TONA"), Some(RateIndex::Tonar));
+    }
+
+    #[test]
+    fn test_from_index_name_direct() {
+        assert_eq!(RateIndex::from_index_name("SOFR"), Some(RateIndex::Sofr));
+        assert_eq!(RateIndex::from_index_name("sofr"), Some(RateIndex::Sofr));
+        assert_eq!(RateIndex::from_index_name("SONIA"), Some(RateIndex::Sonia));
+    }
+
+    #[test]
+    fn test_from_index_name_unknown() {
+        assert_eq!(RateIndex::from_index_name("UNKNOWN"), None);
+        assert_eq!(RateIndex::from_index_name("LIBOR"), None);
     }
 
     #[test]

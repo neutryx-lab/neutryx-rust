@@ -84,7 +84,7 @@ pub use compile::{CompileError, CompiledInstrument, InstrumentCompiler, Instrume
 pub use construction::{
     ConstructionConfig, ConstructionError, ConstructionResult, CurveConstructionEngine,
 };
-pub use curve::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
+pub use curve::{BootstrapConfig, CurveBootstrapper, InterpolationMethod, JacobianMatrix};
 #[cfg(feature = "global-bootstrap")]
 pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 #[cfg(feature = "global-bootstrap")]

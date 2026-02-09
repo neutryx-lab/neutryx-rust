@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { Chart, registerables } from 'chart.js';
+import { Chart, type ChartDataset, registerables } from 'chart.js';
 
 Chart.register(...registerables);
 
@@ -20,17 +20,27 @@ interface SwaptionInstrument {
 
 interface FxQuote {
   expiry: number;
+  expiryLabel: string;
   atmVol: number;
   rr25d: number;
   bf25d: number;
   rr10d?: number;
   bf10d?: number;
+  forward?: number;
+}
+
+interface CellParameters {
+  alpha: number;
+  beta: number;
+  rho: number;
+  nu: number;
 }
 
 interface CalibrationResult {
   surfaceId: string;
   model: string;
   parameters: Record<string, number>;
+  cellParameters: Record<string, CellParameters>;
   errors: Array<{ expiry: string; tenor?: string; error: number }>;
   metadata: {
     instrumentCount: number;
@@ -53,6 +63,13 @@ const swaptionModels = ref<string[]>([]);
 const selectedModel = ref('');
 const referenceDate = ref('');
 
+// Forward swap rate matrix state
+const fwdSwapRates = ref<Map<string, number>>(new Map());
+const isBuildingCurve = ref(false);
+const matrixTab = ref<'vol' | 'fwd'>('vol');
+type SabrParam = 'alpha' | 'beta' | 'rho' | 'nu';
+const paramTab = ref<SabrParam>('alpha');
+
 const fxPairs = ref<string[]>([]);
 const selectedFxPair = ref('');
 const fxQuotes = ref<FxQuote[]>([]);
@@ -63,9 +80,12 @@ const fxForeignRate = ref('0');
 const calibrationResult = ref<CalibrationResult | null>(null);
 const isCalibrating = ref(false);
 
-// Popover state
+// Popover state (transient — cleared on outside click)
 const popoverCell = ref<{ expiry: string; tenor: string } | null>(null);
 const popoverPosition = ref<{ top: number; left: number }>({ top: 0, left: 0 });
+
+// Selected cell state (persistent — survives outside click, cleared on next selection or close)
+const selectedCell = ref<{ expiry: string; tenor: string } | null>(null);
 
 // Detail card chart state
 const smileChartCanvas = ref<HTMLCanvasElement | null>(null);
@@ -115,6 +135,17 @@ const popoverInstrument = computed(() => {
   return getCell(popoverCell.value.expiry, popoverCell.value.tenor) ?? null;
 });
 
+const selectedInstrument = computed(() => {
+  if (!selectedCell.value) return null;
+  return getCell(selectedCell.value.expiry, selectedCell.value.tenor) ?? null;
+});
+
+const selectedCellParams = computed(() => {
+  if (!selectedCell.value || !calibrationResult.value?.cellParameters) return null;
+  const key = `${selectedCell.value.expiry}|${selectedCell.value.tenor}`;
+  return calibrationResult.value.cellParameters[key] ?? null;
+});
+
 // Heatmap colour functions
 function heatmapColour(vol: number): string {
   const { min, max } = volRange.value;
@@ -136,6 +167,36 @@ function heatmapTextColour(vol: number): string {
   return 'var(--text-secondary)';
 }
 
+// Calibration param heatmap
+const paramRange = computed(() => {
+  const cp = calibrationResult.value?.cellParameters;
+  if (!cp) return { min: 0, max: 1 };
+  const key = paramTab.value;
+  const vals = Object.values(cp).map(p => p[key]);
+  if (vals.length === 0) return { min: 0, max: 1 };
+  return { min: Math.min(...vals), max: Math.max(...vals) };
+});
+
+function paramHeatmapColour(val: number): string {
+  const { min, max } = paramRange.value;
+  if (max === min) return 'rgba(99, 102, 241, 0.15)';
+  const t = Math.max(0, Math.min(1, (val - min) / (max - min)));
+  const hue = 220 - t * 205;
+  const saturation = 60 + t * 20;
+  const lightness = 45 + (1 - Math.abs(t - 0.5) * 2) * 10;
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, 0.25)`;
+}
+
+function paramTextColour(val: number): string {
+  const { min, max } = paramRange.value;
+  if (max === min) return 'var(--text-primary)';
+  const t = Math.max(0, Math.min(1, (val - min) / (max - min)));
+  if (t > 0.75) return '#f97316';
+  if (t > 0.5) return '#22c55e';
+  if (t > 0.25) return '#3b82f6';
+  return 'var(--text-secondary)';
+}
+
 // Detail card: chart helpers
 function expiryToYears(expiry: string): number {
   const m = expiry.match(/^(\d+)(M|Y)$/);
@@ -144,173 +205,253 @@ function expiryToYears(expiry: string): number {
   return m[2] === 'M' ? n / 12 : n;
 }
 
-function normCdf(x: number): number {
-  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
-  const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
-  const sign = x < 0 ? -1 : 1;
-  const ax = Math.abs(x) / Math.SQRT2;
-  const t = 1.0 / (1.0 + p * ax);
-  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-ax * ax);
-  return 0.5 * (1.0 + sign * y);
-}
+// Forward swap rate computation (delegated to backend)
+async function buildCurveForFwdRates() {
+  const rateFile = selectedSwaptionIndex.value;
+  if (!rateFile) return;
 
-function normPdf(x: number): number {
-  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
-}
+  isBuildingCurve.value = true;
+  try {
+    // Load rate data
+    const rateResp = await fetch(`/data/input/rates/${rateFile}.json`);
+    if (!rateResp.ok) throw new Error(`Failed to load rate data for ${rateFile}`);
+    const rateData = await rateResp.json();
 
-function interpolateSmileVol(inst: SwaptionInstrument, kBp: number): number {
-  const pts = [
-    ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol })),
-    { k: 0, v: inst.atmVol },
-  ].sort((a, b) => a.k - b.k);
-  if (kBp <= pts[0].k) return pts[0].v;
-  if (kBp >= pts[pts.length - 1].k) return pts[pts.length - 1].v;
-  for (let i = 0; i < pts.length - 1; i++) {
-    if (kBp >= pts[i].k && kBp <= pts[i + 1].k) {
-      const frac = (kBp - pts[i].k) / (pts[i + 1].k - pts[i].k);
-      return pts[i].v * (1 - frac) + pts[i + 1].v * frac;
-    }
+    // Use deposits + OIS only (skip events, FRAs, futures to avoid duplicate maturities)
+    const allowedTypes = new Set(['deposit', 'ois']);
+    const instruments = (rateData.instruments || [])
+      .filter((i: { type: string }) => allowedTypes.has(i.type))
+      .map((i: { type: string; tenor: string; rate: number }) => ({
+        instrument_type: i.type,
+        tenor: i.tenor,
+        rate: i.rate,
+      }));
+
+    // Build curve
+    const buildResp = await fetch('/api/curves/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        index: rateData.index,
+        currency: rateData.currency,
+        reference_date: rateData.reference_date,
+        instruments,
+        interpolation: 'log_linear',
+      }),
+    });
+    if (!buildResp.ok) throw new Error('Curve build failed');
+    const buildResult = await buildResp.json();
+
+    // Compute forward swap rates via backend
+    const fwdResp = await fetch('/api/curves/forward-swap-rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        curve_id: buildResult.curve_id,
+        expiries: matrixExpiries.value,
+        tenors: matrixTenors.value,
+      }),
+    });
+    if (!fwdResp.ok) throw new Error('Forward swap rate computation failed');
+    const fwdResult = await fwdResp.json();
+
+    fwdSwapRates.value = new Map(Object.entries(fwdResult.rates));
+  } catch (error) {
+    console.error('Failed to build curve for forward swap rates:', error);
+  } finally {
+    isBuildingCurve.value = false;
   }
-  return inst.atmVol;
 }
 
-function bachelierCallPrice(kBp: number, volPct: number, T: number): number {
-  const k = kBp / 10000;
-  const sigma = volPct / 100;
-  const sigmaRootT = sigma * Math.sqrt(T);
-  if (sigmaRootT < 1e-12) return Math.max(-k, 0);
-  const d = -k / sigmaRootT;
-  return -k * normCdf(d) + sigmaRootT * normPdf(d);
+// Forward swap rate heatmap helpers
+const fwdRateRange = computed(() => {
+  const vals = [...fwdSwapRates.value.values()].filter(v => v > 0);
+  if (vals.length === 0) return { min: 0, max: 1 };
+  return { min: Math.min(...vals), max: Math.max(...vals) };
+});
+
+function fwdRateHeatmapColour(rate: number): string {
+  const { min, max } = fwdRateRange.value;
+  if (max === min) return 'rgba(99, 102, 241, 0.15)';
+  const t = Math.max(0, Math.min(1, (rate - min) / (max - min)));
+  const hue = 220 - t * 205;
+  const saturation = 60 + t * 20;
+  const lightness = 45 + (1 - Math.abs(t - 0.5) * 2) * 10;
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, 0.25)`;
 }
 
-function computeImpliedPdf(inst: SwaptionInstrument): { offsets: number[]; density: number[] } {
-  const T = expiryToYears(inst.expiry);
-  const dk = 2;
-  const dkDec = dk / 10000;
-  const offsets: number[] = [];
-  const density: number[] = [];
-  for (let kBp = -150; kBp <= 150; kBp += dk) {
-    const vMinus = interpolateSmileVol(inst, kBp - dk);
-    const vCenter = interpolateSmileVol(inst, kBp);
-    const vPlus = interpolateSmileVol(inst, kBp + dk);
-    const cMinus = bachelierCallPrice(kBp - dk, vMinus, T);
-    const cCenter = bachelierCallPrice(kBp, vCenter, T);
-    const cPlus = bachelierCallPrice(kBp + dk, vPlus, T);
-    const d2c = (cMinus - 2 * cCenter + cPlus) / (dkDec * dkDec);
-    offsets.push(kBp);
-    density.push(Math.max(0, d2c));
-  }
-  return { offsets, density };
+function fwdRateTextColour(rate: number): string {
+  const { min, max } = fwdRateRange.value;
+  if (max === min) return 'var(--text-primary)';
+  const t = Math.max(0, Math.min(1, (rate - min) / (max - min)));
+  if (t > 0.75) return '#f97316';
+  if (t > 0.5) return '#22c55e';
+  if (t > 0.25) return '#3b82f6';
+  return 'var(--text-secondary)';
 }
 
-function renderDetailCharts() {
-  const inst = popoverInstrument.value;
-  if (!inst || !inst.smile || inst.smile.length === 0) return;
+async function renderDetailCharts() {
+  if (!selectedCell.value) return;
 
-  const smileData = [
-    ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol })),
-    { k: 0, v: inst.atmVol },
-  ].sort((a, b) => a.k - b.k);
+  const cellParams = selectedCellParams.value;
+  if (!cellParams) return; // No calibrated params — nothing to render
 
-  const smileLabels = smileData.map(p => (p.k > 0 ? '+' : '') + p.k);
-  const smileVols = smileData.map(p => p.v * 100);
+  const inst = selectedInstrument.value;
+  const cell = selectedCell.value;
 
   const axisStyle = {
     ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } },
     grid: { color: 'rgba(255,255,255,0.08)' },
   };
 
-  if (smileChartCanvas.value) {
-    const ctx = smileChartCanvas.value.getContext('2d');
-    if (ctx) {
-      smileChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: smileLabels,
-          datasets: [{
-            data: smileVols,
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99, 102, 241, 0.15)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 4,
-            pointBackgroundColor: smileData.map(p => p.k === 0 ? '#f59e0b' : '#6366f1'),
-            pointBorderColor: smileData.map(p => p.k === 0 ? '#f59e0b' : '#6366f1'),
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
-                label: (item: { raw: unknown }) => `Vol: ${(item.raw as number).toFixed(1)} bp`,
-              },
-            },
-          },
-          scales: {
-            x: {
-              ...axisStyle,
-              title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
-            },
-            y: {
-              ...axisStyle,
-              title: { display: true, text: 'Normal Vol (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
-            },
-          },
-        },
-      });
-    }
-  }
+  // Determine forward rate for this cell
+  const fwdKey = `${cell.expiry}|${cell.tenor}`;
+  const forward = fwdSwapRates.value.get(fwdKey) || 0.03; // fallback
 
-  if (pdfChartCanvas.value) {
-    const { offsets, density } = computeImpliedPdf(inst);
-    const pdfLabels = offsets.map(o => (o > 0 ? '+' : '') + o);
-    const ctx = pdfChartCanvas.value.getContext('2d');
-    if (ctx) {
-      pdfChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: pdfLabels,
-          datasets: [{
-            data: density,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 0,
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: (items: { label: string }[]) => `Offset: ${items[0].label} bp`,
-                label: (item: { raw: unknown }) => `Density: ${(item.raw as number).toExponential(2)}`,
+  try {
+    const resp = await fetch('/api/volcube/sabr-smile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        alpha: cellParams.alpha,
+        beta: cellParams.beta,
+        rho: cellParams.rho,
+        nu: cellParams.nu,
+        forward,
+        expiry_years: expiryToYears(cell.expiry),
+        n_points: 101,
+        range_bp: 200,
+      }),
+    });
+    if (!resp.ok) throw new Error('SABR smile computation failed');
+    const result = await resp.json();
+
+    const smileLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
+    const smileVols = result.vols.map((v: number) => v * 100);
+
+    // Smile chart
+    if (smileChartCanvas.value) {
+      const ctx = smileChartCanvas.value.getContext('2d');
+      if (ctx) {
+        const datasets: ChartDataset<'line'>[] = [{
+          label: 'SABR Fitted',
+          data: smileVols,
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99, 102, 241, 0.10)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+        }];
+
+        // Overlay market data points if available
+        if (inst && inst.smile && inst.smile.length > 0) {
+          const marketPts = [
+            ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol * 100 })),
+            { k: 0, v: inst.atmVol * 100 },
+          ].sort((a, b) => a.k - b.k);
+          const marketData = new Array(result.offsets.length).fill(null);
+          for (const pt of marketPts) {
+            let bestIdx = 0;
+            let bestDist = Math.abs(result.offsets[0] - pt.k);
+            for (let j = 1; j < result.offsets.length; j++) {
+              const dist = Math.abs(result.offsets[j] - pt.k);
+              if (dist < bestDist) { bestDist = dist; bestIdx = j; }
+            }
+            marketData[bestIdx] = pt.v;
+          }
+          datasets.push({
+            label: 'Market',
+            data: marketData,
+            borderColor: '#f59e0b',
+            borderWidth: 0,
+            pointRadius: 5,
+            pointBackgroundColor: '#f59e0b',
+            pointBorderColor: '#f59e0b',
+            showLine: false,
+            fill: false,
+          });
+        }
+
+        smileChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: { labels: smileLabels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: datasets.length > 1, labels: { color: 'rgba(255,255,255,0.7)', font: { size: 10 } } },
+              tooltip: {
+                callbacks: {
+                  title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
+                  label: (item: { raw: unknown }) => item.raw != null ? `Vol: ${(item.raw as number).toFixed(1)} bp` : '',
+                },
+              },
+            },
+            scales: {
+              x: {
+                ...axisStyle,
+                title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
+              },
+              y: {
+                ...axisStyle,
+                title: { display: true, text: 'Normal Vol (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
               },
             },
           },
-          scales: {
-            x: {
-              ...axisStyle,
-              title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
-              ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
+        });
+      }
+    }
+
+    // Density chart
+    if (pdfChartCanvas.value) {
+      const pdfLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
+      const ctx = pdfChartCanvas.value.getContext('2d');
+      if (ctx) {
+        pdfChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: pdfLabels,
+            datasets: [{
+              data: result.density,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: (items: { label: string }[]) => `Offset: ${items[0].label} bp`,
+                  label: (item: { raw: unknown }) => `Density: ${(item.raw as number).toExponential(2)}`,
+                },
+              },
             },
-            y: {
-              ...axisStyle,
-              title: { display: true, text: 'Density', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+            scales: {
+              x: {
+                ...axisStyle,
+                title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
+              },
+              y: {
+                ...axisStyle,
+                title: { display: true, text: 'Density', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+              },
             },
           },
-        },
-      });
+        });
+      }
     }
+  } catch (error) {
+    console.error('Failed to compute SABR smile:', error);
   }
 }
 
@@ -326,7 +467,7 @@ const summaryStats = computed(() => {
     ];
   }
   return [
-    { label: 'Quotes', value: fxQuotes.value.length, icon: 'fa-list', color: '#3b82f6' },
+    { label: 'Valuation Date', value: referenceDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
     { label: 'Selected Pair', value: selectedFxPair.value || '-', icon: 'fa-exchange-alt', color: '#10b981' },
     { label: 'Spot Rate', value: fxSpot.value || '-', icon: 'fa-dollar-sign', color: '#8b5cf6' },
     { label: 'Status', value: calibrationResult.value ? 'Calibrated' : 'Pending', icon: 'fa-info-circle', color: calibrationResult.value ? '#10b981' : '#f59e0b' },
@@ -371,16 +512,26 @@ function togglePopover(event: MouseEvent, expiry: string, tenor: string) {
   };
 
   popoverCell.value = { expiry, tenor };
+  selectedCell.value = { expiry, tenor };
 }
 
 function closePopover() {
   popoverCell.value = null;
 }
 
+function closeDetailCard() {
+  selectedCell.value = null;
+}
+
+function selectCalibrationCell(expiry: string, tenor: string) {
+  selectedCell.value = { expiry, tenor };
+}
+
 function onDocumentClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
   if (!target.closest('.popover-trigger') && !target.closest('.smile-popover')) {
     popoverCell.value = null;
+    // selectedCell intentionally NOT cleared — detail card persists
   }
 }
 
@@ -391,7 +542,7 @@ async function loadSwaptionIndices() {
     if (!response.ok) throw new Error('Failed to load indices');
     const data = await response.json();
     swaptionIndices.value = data.indices || [];
-    const usdIndex = swaptionIndices.value.find(idx => idx.startsWith('USD'));
+    const usdIndex = swaptionIndices.value.find(idx => idx.startsWith('usd'));
     if (usdIndex && !selectedSwaptionIndex.value) {
       selectedSwaptionIndex.value = usdIndex;
     }
@@ -416,13 +567,17 @@ async function loadSwaptionModels() {
 
 async function loadSwaptionInstruments(index: string) {
   try {
-    const response = await fetch(`/api/volcube/instruments/${index}`);
+    const currency = index.split('-')[0];
+    const response = await fetch(`/api/volcube/instruments/${currency}`);
     if (!response.ok) throw new Error('Failed to load instruments');
     const data = await response.json();
     swaptionInstruments.value = data.instruments || [];
     referenceDate.value = data.referenceDate || data.reference_date || data.metadata?.lastUpdated?.split('T')[0] || '';
     calibrationResult.value = null;
     popoverCell.value = null;
+    selectedCell.value = null;
+    // Build curve and compute forward swap rates
+    buildCurveForFwdRates();
   } catch (error) {
     console.error('Failed to load instruments:', error);
   }
@@ -434,6 +589,10 @@ async function loadFxPairs() {
     if (!response.ok) throw new Error('Failed to load FX pairs');
     const data = await response.json();
     fxPairs.value = (data.pairs || []).map((p: { pair: string }) => p.pair);
+    const eurUsd = fxPairs.value.find(p => p === 'EURUSD');
+    if (eurUsd && !selectedFxPair.value) {
+      selectedFxPair.value = eurUsd;
+    }
   } catch (error) {
     console.error('Failed to load FX pairs:', error);
   }
@@ -445,8 +604,14 @@ async function loadFxQuotes(pair: string) {
     if (!response.ok) throw new Error('Failed to load FX quotes');
     const data = await response.json();
     fxQuotes.value = data.quotes || [];
-    if (data.spot) {
+    if (data.spot != null) {
       fxSpot.value = data.spot.toFixed(4);
+    }
+    if (data.domesticRate != null) {
+      fxDomesticRate.value = (data.domesticRate * 100).toFixed(2);
+    }
+    if (data.foreignRate != null) {
+      fxForeignRate.value = (data.foreignRate * 100).toFixed(2);
     }
     calibrationResult.value = null;
   } catch (error) {
@@ -464,15 +629,21 @@ async function calibrate() {
 
     const body = activeTab.value === 'swaption'
       ? {
-          index: selectedSwaptionIndex.value,
+          index: selectedSwaptionIndex.value.split('-')[0],
           referenceDate: referenceDate.value,
           model: selectedModel.value,
+          forwardRates: Object.fromEntries(fwdSwapRates.value),
         }
       : {
           pair: selectedFxPair.value,
           spot: parseFloat(fxSpot.value || '0'),
           domesticRate: parseFloat(fxDomesticRate.value || '0') / 100,
           foreignRate: parseFloat(fxForeignRate.value || '0') / 100,
+          forwardRates: Object.fromEntries(
+            fxQuotes.value
+              .filter(q => q.forward != null)
+              .map(q => [q.expiryLabel, q.forward!])
+          ),
         };
 
     const response = await fetch(endpoint, {
@@ -527,6 +698,12 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 // Watch for selection changes
+watch(activeTab, () => {
+  calibrationResult.value = null;
+  selectedCell.value = null;
+  popoverCell.value = null;
+});
+
 watch(selectedSwaptionIndex, (index) => {
   if (index) loadSwaptionInstruments(index);
 });
@@ -535,7 +712,7 @@ watch(selectedFxPair, (pair) => {
   if (pair) loadFxQuotes(pair);
 });
 
-watch(popoverCell, () => {
+watch(selectedCell, () => {
   if (smileChartInstance) { smileChartInstance.destroy(); smileChartInstance = null; }
   if (pdfChartInstance) { pdfChartInstance.destroy(); pdfChartInstance = null; }
   nextTick(() => renderDetailCharts());
@@ -657,33 +834,21 @@ loadFxPairs();
 
           <div class="glass-card p-5">
             <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Market Data</h3>
-            <div class="space-y-3">
-              <div>
-                <label class="block text-xs text-[var(--text-muted)] mb-1">Spot Rate</label>
-                <input
-                  v-model="fxSpot"
-                  type="number"
-                  step="0.0001"
-                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                >
+            <div class="space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-[var(--text-muted)]">Spot Rate</span>
+                <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxSpot || '--' }}</span>
               </div>
-              <div>
-                <label class="block text-xs text-[var(--text-muted)] mb-1">Domestic Rate (%)</label>
-                <input
-                  v-model="fxDomesticRate"
-                  type="number"
-                  step="0.01"
-                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                >
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-[var(--text-muted)]">Domestic Rate</span>
+                <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxDomesticRate !== '0' ? fxDomesticRate + '%' : '--' }}</span>
               </div>
-              <div>
-                <label class="block text-xs text-[var(--text-muted)] mb-1">Foreign Rate (%)</label>
-                <input
-                  v-model="fxForeignRate"
-                  type="number"
-                  step="0.01"
-                  class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                >
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-[var(--text-muted)]">Foreign Rate</span>
+                <span class="text-sm font-mono text-[var(--text-primary)]">{{ fxForeignRate !== '0' ? fxForeignRate + '%' : '--' }}</span>
+              </div>
+              <div v-if="fxQuotes.length > 0 && fxQuotes.some(q => q.forward != null)" class="border-t border-[var(--glass-border)] pt-2 mt-2">
+                <span class="text-[10px] text-[var(--text-muted)] italic">Forwards computed from bootstrapped discount curves</span>
               </div>
             </div>
           </div>
@@ -699,64 +864,43 @@ loadFxPairs();
             <i :class="['fas', isCalibrating ? 'fa-spinner fa-spin' : 'fa-cogs']"></i>
             {{ isCalibrating ? 'Calibrating...' : 'Calibrate' }}
           </button>
-          <div class="grid grid-cols-2 gap-2 mt-2">
-            <button
-              :disabled="!calibrationResult"
-              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
-              @click="exportCsv"
-            >
-              <i class="fas fa-file-csv mr-1"></i>CSV
-            </button>
-            <button
-              :disabled="!calibrationResult"
-              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
-              @click="exportJson"
-            >
-              <i class="fas fa-file-code mr-1"></i>JSON
-            </button>
-          </div>
         </div>
 
-        <!-- Calibration Result -->
-        <div v-if="calibrationResult" class="glass-card p-5">
-          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-            <i class="fas fa-check-circle text-[var(--success)]"></i>
-            Calibration Result
-          </h3>
-          <div class="space-y-2 mb-4">
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Model:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ calibrationResult.model }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Instruments:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ calibrationResult.metadata.instrumentCount }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Processing Time:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ calibrationResult.metadata.processingTimeMs.toFixed(2) }} ms</span>
-            </div>
-          </div>
-          <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2">Parameters</h4>
-          <div class="space-y-1">
-            <div
-              v-for="(value, key) in calibrationResult.parameters"
-              :key="key"
-              class="flex justify-between text-sm"
-            >
-              <span class="text-[var(--text-muted)]">{{ key }}:</span>
-              <span class="text-[var(--text-primary)] font-mono">{{ Number(value).toFixed(6) }}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- Right Panel: Data Table -->
       <div class="lg:col-span-2">
         <div class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
-            {{ activeTab === 'swaption' ? 'Swaption Instruments' : 'FX Quotes' }}
-          </h3>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+              {{ activeTab === 'swaption' ? 'Swaption Instruments' : 'FX Quotes' }}
+            </h3>
+            <div v-if="activeTab === 'swaption' && swaptionInstruments.length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+              <button
+                :class="[
+                  'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                  matrixTab === 'vol'
+                    ? 'bg-[var(--primary)] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ]"
+                @click="matrixTab = 'vol'"
+              >Vol</button>
+              <button
+                :class="[
+                  'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                  matrixTab === 'fwd'
+                    ? 'bg-[var(--primary)] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ]"
+                :disabled="fwdSwapRates.size === 0"
+                :title="fwdSwapRates.size === 0 ? 'Build curve to view forward rates' : ''"
+                @click="matrixTab = 'fwd'"
+              >
+                Fwd
+                <i v-if="isBuildingCurve" class="fas fa-spinner fa-spin ml-1"></i>
+              </button>
+            </div>
+          </div>
 
           <!-- Swaption Matrix -->
           <template v-if="activeTab === 'swaption'">
@@ -766,8 +910,8 @@ loadFxPairs();
               <p class="text-[var(--text-muted)]">Select an index to load instruments</p>
             </div>
 
-            <!-- Matrix / Heatmap -->
-            <div v-else class="matrix-container relative overflow-x-auto">
+            <!-- Vol Matrix / Heatmap -->
+            <div v-else-if="matrixTab === 'vol'" class="matrix-container relative overflow-x-auto">
               <table class="w-full border-collapse">
                 <thead>
                   <tr>
@@ -794,7 +938,7 @@ loadFxPairs();
                       class="py-2 px-2 text-center border-b border-[var(--glass-border)] transition-all duration-150 popover-trigger"
                       :class="[
                         getCell(expiry, tenor) ? 'cursor-pointer hover-cell' : '',
-                        popoverCell?.expiry === expiry && popoverCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
+                        selectedCell?.expiry === expiry && selectedCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
                       ]"
                       :style="getCell(expiry, tenor)
                         ? { backgroundColor: heatmapColour(getCell(expiry, tenor)!.atmVol) }
@@ -870,22 +1014,244 @@ loadFxPairs();
               </div>
             </div>
 
-            <!-- Detail Card: Smile + PDF -->
-            <div v-if="popoverInstrument" class="detail-card mt-4 p-5 rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)]">
-              <div class="flex items-center justify-between mb-4">
+            <!-- Forward Swap Rate Matrix -->
+            <div v-else class="overflow-x-auto">
+              <div v-if="fwdSwapRates.size === 0" class="text-center py-12">
+                <i class="fas fa-chart-line text-4xl text-[var(--text-muted)] mb-4"></i>
+                <p class="text-[var(--text-muted)]">Build curve to view forward swap rates</p>
+              </div>
+              <table v-else class="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
+                      Expiry \ Tenor
+                    </th>
+                    <th
+                      v-for="tenor in matrixTenors"
+                      :key="tenor"
+                      class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
+                    >
+                      {{ tenor }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="expiry in matrixExpiries" :key="expiry">
+                    <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
+                      {{ expiry }}
+                    </td>
+                    <td
+                      v-for="tenor in matrixTenors"
+                      :key="tenor"
+                      class="py-2 px-2 text-center border-b border-[var(--glass-border)]"
+                      :style="fwdSwapRates.get(`${expiry}|${tenor}`) != null
+                        ? { backgroundColor: fwdRateHeatmapColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }
+                        : {}"
+                    >
+                      <span
+                        v-if="fwdSwapRates.get(`${expiry}|${tenor}`) != null"
+                        class="text-xs font-mono font-medium"
+                        :style="{ color: fwdRateTextColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }"
+                      >
+                        {{ (fwdSwapRates.get(`${expiry}|${tenor}`)! * 100).toFixed(2) }}%
+                      </span>
+                      <span v-else class="text-xs text-[var(--text-muted)]">--</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <!-- FX Table -->
+          <template v-else>
+            <div v-if="fxQuotes.length === 0" class="text-center py-12">
+              <i class="fas fa-exchange-alt text-4xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select a pair to load quotes</p>
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="w-full">
+                <thead>
+                  <tr class="border-b border-[var(--glass-border)]">
+                    <th class="text-left py-3 px-3 text-sm font-medium text-[var(--text-muted)]">Tenor</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">Forward</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">ATM Vol</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">25D RR</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">25D BF</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">10D RR</th>
+                    <th class="text-right py-3 px-3 text-sm font-medium text-[var(--text-muted)]">10D BF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(quote, idx) in fxQuotes"
+                    :key="idx"
+                    class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+                  >
+                    <td class="py-3 px-3 text-sm text-[var(--text-primary)]">{{ quote.expiryLabel || expiryToLabel(quote.expiry) }}</td>
+                    <td class="py-3 px-3 text-sm text-right font-mono text-[var(--text-primary)]">{{ quote.forward != null ? quote.forward.toFixed(4) : '--' }}</td>
+                    <td class="py-3 px-3 text-sm text-right text-[var(--text-primary)] font-mono">{{ (quote.atmVol * 100).toFixed(2) }}%</td>
+                    <td class="py-3 px-3 text-sm text-right font-mono" :class="quote.rr25d < 0 ? 'text-red-400' : 'text-green-400'">{{ (quote.rr25d * 100).toFixed(2) }}%</td>
+                    <td class="py-3 px-3 text-sm text-right text-[var(--text-secondary)] font-mono">{{ (quote.bf25d * 100).toFixed(2) }}%</td>
+                    <td class="py-3 px-3 text-sm text-right font-mono" :class="(quote.rr10d ?? 0) < 0 ? 'text-red-400' : 'text-green-400'">{{ quote.rr10d != null ? (quote.rr10d * 100).toFixed(2) + '%' : '--' }}</td>
+                    <td class="py-3 px-3 text-sm text-right text-[var(--text-secondary)] font-mono">{{ quote.bf10d != null ? (quote.bf10d * 100).toFixed(2) + '%' : '--' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </div>
+
+        <!-- Calibration Result (only shown after calibration, same column as instruments) -->
+        <div v-if="calibrationResult" class="glass-card p-6 mt-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+              <i class="fas fa-check-circle text-[var(--success)]"></i>
+              Calibration Result
+            </h3>
+            <div class="flex items-center gap-4">
+              <!-- SABR param tabs -->
+              <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+                <button
+                  v-for="p in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])"
+                  :key="p"
+                  :class="[
+                    'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                    paramTab === p
+                      ? 'bg-[var(--primary)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                  ]"
+                  @click="paramTab = p"
+                >{{ p === 'alpha' ? '\u03B1' : p === 'beta' ? '\u03B2' : p === 'rho' ? '\u03C1' : '\u03BD' }}</button>
+              </div>
+              <!-- Export buttons -->
+              <div class="flex items-center gap-2">
+                <button
+                  class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+                  @click="exportCsv"
+                >
+                  <i class="fas fa-file-csv mr-1"></i>CSV
+                </button>
+                <button
+                  class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)]"
+                  @click="exportJson"
+                >
+                  <i class="fas fa-file-code mr-1"></i>JSON
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calibration summary badges -->
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-primary)]">
+              <i class="fas fa-cogs text-[var(--primary)]"></i>
+              {{ calibrationResult.model }}
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
+              <i class="fas fa-th"></i>
+              {{ calibrationResult.metadata.instrumentCount }} instruments
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--surface)] text-[var(--text-secondary)]">
+              <i class="fas fa-clock"></i>
+              {{ calibrationResult.metadata.processingTimeMs.toFixed(2) }} ms
+            </span>
+            <span
+              v-for="(value, key) in calibrationResult.parameters"
+              :key="key"
+              class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-secondary)]"
+            >
+              {{ key }}: {{ Number(value).toFixed(4) }}
+            </span>
+          </div>
+
+          <!-- Parameter Matrix -->
+          <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="overflow-x-auto mb-4">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
+                    Expiry \ Tenor
+                  </th>
+                  <th
+                    v-for="tenor in matrixTenors"
+                    :key="tenor"
+                    class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
+                  >
+                    {{ tenor }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="expiry in matrixExpiries" :key="expiry">
+                  <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
+                    {{ expiry }}
+                  </td>
+                  <td
+                    v-for="tenor in matrixTenors"
+                    :key="tenor"
+                    class="py-2 px-2 text-center border-b border-[var(--glass-border)] transition-all duration-150"
+                    :class="[
+                      calibrationResult.cellParameters[`${expiry}|${tenor}`] ? 'cursor-pointer hover-cell' : '',
+                      selectedCell?.expiry === expiry && selectedCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
+                    ]"
+                    :style="calibrationResult.cellParameters[`${expiry}|${tenor}`]
+                      ? { backgroundColor: paramHeatmapColour(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab]) }
+                      : {}"
+                    @click="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
+                  >
+                    <span
+                      v-if="calibrationResult.cellParameters[`${expiry}|${tenor}`]"
+                      class="text-xs font-mono font-medium"
+                      :style="{ color: paramTextColour(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab]) }"
+                    >
+                      {{ calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab].toFixed(4) }}
+                    </span>
+                    <span v-else class="text-xs text-[var(--text-muted)]">--</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Cell detail (only when a cell is selected in the parameter matrix) -->
+          <template v-if="selectedCell">
+            <div class="border-t border-[var(--glass-border)] pt-4">
+              <div class="flex items-center justify-between mb-3">
                 <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                   <i class="fas fa-chart-area text-[var(--primary)]"></i>
-                  {{ popoverInstrument.expiry }} x {{ popoverInstrument.tenor }}
-                  <span class="text-[var(--text-muted)] font-normal ml-1">ATM {{ formatVol(popoverInstrument.atmVol) }}</span>
+                  Cell Detail
+                  <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
+                    {{ selectedCell.expiry }} x {{ selectedCell.tenor }}
+                    <template v-if="selectedInstrument"> — ATM {{ formatVol(selectedInstrument.atmVol) }}</template>
+                  </span>
                 </h4>
                 <button
-                  class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs p-1"
-                  @click="closePopover"
+                  class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
+                  @click="closeDetailCard"
                 >
                   <i class="fas fa-times"></i>
                 </button>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <!-- Calibrated SABR parameters -->
+              <div v-if="selectedCellParams" class="flex flex-wrap gap-2 mb-4">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&alpha;</span> {{ selectedCellParams.alpha.toFixed(4) }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&beta;</span> {{ selectedCellParams.beta.toFixed(4) }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&rho;</span> {{ selectedCellParams.rho.toFixed(4) }}
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                  <span class="text-[var(--primary)] font-semibold">&nu;</span> {{ selectedCellParams.nu.toFixed(4) }}
+                </span>
+              </div>
+
+              <!-- Smile & PDF charts (only when SABR params are available) -->
+              <div v-if="selectedCellParams" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
                   <div class="chart-wrapper">
@@ -901,36 +1267,12 @@ loadFxPairs();
               </div>
             </div>
           </template>
-
-          <!-- FX Table -->
           <template v-else>
-            <div v-if="fxQuotes.length === 0" class="text-center py-12">
-              <i class="fas fa-exchange-alt text-4xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">Select a pair to load quotes</p>
-            </div>
-            <div v-else class="overflow-x-auto">
-              <table class="w-full">
-                <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Expiry</th>
-                    <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">ATM Vol</th>
-                    <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">25D RR</th>
-                    <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">25D BF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="(quote, idx) in fxQuotes"
-                    :key="idx"
-                    class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
-                  >
-                    <td class="py-3 px-4 text-sm text-[var(--text-primary)]">{{ expiryToLabel(quote.expiry) }}</td>
-                    <td class="py-3 px-4 text-sm text-right text-[var(--text-primary)] font-mono">{{ formatVol(quote.atmVol) }}</td>
-                    <td class="py-3 px-4 text-sm text-right text-[var(--text-secondary)] font-mono">{{ (quote.rr25d * 10000).toFixed(1) }} bps</td>
-                    <td class="py-3 px-4 text-sm text-right text-[var(--text-secondary)] font-mono">{{ (quote.bf25d * 10000).toFixed(1) }} bps</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
+              <p class="text-sm text-[var(--text-muted)]">
+                <i class="fas fa-mouse-pointer mr-1"></i>
+                Select a cell in the parameter matrix to view calibrated parameters &amp; charts
+              </p>
             </div>
           </template>
         </div>

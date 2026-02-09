@@ -59,7 +59,7 @@ pub use infra_config as config;
 pub use infra_domain as master;
 /// Persistence layer: database backends, storage traits.
 #[cfg(feature = "storage")]
-pub use infra_store as store;
+pub use infra_config::store;
 // =============================================================================
 // Pricer Layer (P) - Feature-gated
 // =============================================================================

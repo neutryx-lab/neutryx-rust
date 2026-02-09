@@ -5,7 +5,7 @@
 
 use derive_more::{Add, Sub};
 
-use crate::{Currency, Date, Frequency, RateIndex};
+use crate::{market::{Currency, RateIndex}, time::{Date, Frequency}};
 
 // ============================================================================
 // BasisSpread Newtype
@@ -243,7 +243,7 @@ impl std::fmt::Display for XccyTenor {
 /// use infra_domain::trade::instrument_def::{
 ///     CrossCurrencyBasisSwap, BasisSpread, XccyLeg, XccyBasisConvention,
 /// };
-/// use infra_domain::{Currency, Date, Frequency, RateIndex};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency}};
 ///
 /// let xccy = CrossCurrencyBasisSwap {
 ///     domestic_currency: Currency::USD,

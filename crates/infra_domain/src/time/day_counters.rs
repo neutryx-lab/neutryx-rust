@@ -109,6 +109,37 @@ impl DayCounter {
         }
     }
 
+    /// Returns the year fraction for a given number of calendar days.
+    ///
+    /// Equivalent to `year_fraction(start, end)` where `end - start = days`,
+    /// but avoids the need to construct `Date` objects.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::time::DayCounter;
+    ///
+    /// let yf = DayCounter::Actual365Fixed.year_fraction_from_days(365);
+    /// assert!((yf - 1.0).abs() < 1e-10);
+    ///
+    /// let yf = DayCounter::Actual360.year_fraction_from_days(360);
+    /// assert!((yf - 1.0).abs() < 1e-10);
+    /// ```
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
+    pub fn year_fraction_from_days(self, days: i64) -> f64 {
+        match self {
+            Self::Actual360 => days as f64 / 360.0,
+            Self::Actual365Fixed => days as f64 / 365.0,
+            Self::Actual36525 => days as f64 / 365.25,
+            Self::ActualActualIsda => days as f64 / 365.25,
+            // 30/360 variants: approximate using actual days
+            Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => {
+                days as f64 / 360.0
+            }
+        }
+    }
+
     /// Calculate the year fraction between two dates.
     ///
     /// Returns a negative value when start > end instead of panicking.
@@ -356,6 +387,15 @@ mod tests {
 
         assert_eq!(DayCounter::Actual365Fixed.day_count(start, end), 10);
         assert_eq!(DayCounter::Actual365Fixed.day_count(end, start), -10);
+    }
+
+    #[test]
+    fn test_year_fraction_from_days() {
+        assert!((DayCounter::Actual365Fixed.year_fraction_from_days(365) - 1.0).abs() < 1e-10);
+        assert!((DayCounter::Actual360.year_fraction_from_days(360) - 1.0).abs() < 1e-10);
+        assert!((DayCounter::Actual365Fixed.year_fraction_from_days(0)).abs() < 1e-15);
+        // Negative days
+        assert!((DayCounter::Actual365Fixed.year_fraction_from_days(-365) + 1.0).abs() < 1e-10);
     }
 
     #[test]

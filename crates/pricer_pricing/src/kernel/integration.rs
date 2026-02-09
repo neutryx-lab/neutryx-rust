@@ -5,10 +5,11 @@
 #[cfg(test)]
 mod tests {
     use infra_domain::{
+        market::{Currency, RateIndex},
+        time::Date,
         trade::{
             Cashflow, CashflowType, Direction, IndexType, Leg, LegType, Payoff, Trade, TradeType,
         },
-        Currency, Date, RateIndex,
     };
     use pricer_core::kernel::PricingKernelBuilder;
     use pricer_models::compiler::{IndexMapper, LinearProductsCompiler, TradeCompiler};

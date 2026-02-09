@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use bon::Builder;
 
 use super::CounterPartyError;
-use crate::Currency;
+use crate::market::Currency;
 
 // ============================================================================
 // Enums
@@ -78,7 +78,7 @@ pub enum CallFrequency {
 ///
 /// ```
 /// use infra_domain::counterparty::{CollateralHaircut, EligibleCollateral};
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 ///
 /// // 2% haircut on government bonds
 /// let haircut = CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap();
@@ -148,7 +148,7 @@ impl CollateralHaircut {
 ///
 /// ```
 /// use infra_domain::counterparty::{CsaTerms, EligibleCollateral, CallFrequency};
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 ///
 /// let csa = CsaTerms::builder()
 ///     .threshold(1_000_000.0)

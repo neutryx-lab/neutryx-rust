@@ -24,7 +24,7 @@
 //!     InstrumentDefinition, AssetClass, Swaption, PayerReceiver,
 //! };
 //! use infra_domain::trade::{ExerciseType, SettlementType};
-//! use infra_domain::{Currency, Date, Tenor};
+//! use infra_domain::{market::Currency, time::{Date, Tenor}};
 //!
 //! let swaption = Swaption {
 //!     underlying_swap_tenor: Tenor::TenYears,
@@ -128,7 +128,7 @@ pub use xccy::{
 /// use infra_domain::market::instrument::{
 ///     InstrumentDefinition, AssetClass, FxSpot, CurrencyPair,
 /// };
-/// use infra_domain::{Currency, Date};
+/// use infra_domain::{market::Currency, time::Date};
 ///
 /// let fx_spot = FxSpot {
 ///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
@@ -234,7 +234,7 @@ impl InstrumentDefinition {
     ///     InstrumentDefinition, AssetClass, Swaption, PayerReceiver,
     /// };
     /// use infra_domain::trade::{ExerciseType, SettlementType};
-    /// use infra_domain::{Currency, Date, Tenor};
+    /// use infra_domain::{market::Currency, time::{Date, Tenor}};
     ///
     /// let swaption = Swaption {
     ///     underlying_swap_tenor: Tenor::TenYears,
@@ -420,7 +420,7 @@ impl InstrumentDefinition {
     /// use infra_domain::market::instrument::{
     ///     InstrumentDefinition, FxSpot, CurrencyPair,
     /// };
-    /// use infra_domain::{Currency, Date};
+    /// use infra_domain::{market::Currency, time::Date};
     ///
     /// let fx_spot = FxSpot {
     ///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
@@ -532,8 +532,9 @@ impl std::fmt::Display for InstrumentDefinition {
 mod tests {
     use super::*;
     use crate::{
+        market::{Currency, RateIndex},
+        time::{Date, Frequency, Tenor},
         trade::{ExerciseType, OptionType, SettlementType},
-        Currency, Date, Frequency, RateIndex, Tenor,
     };
 
     // === Test Helpers ===

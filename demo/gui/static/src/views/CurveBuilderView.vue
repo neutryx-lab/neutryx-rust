@@ -75,14 +75,32 @@ interface InstrumentsData {
 }
 
 interface CurvePillar {
+  date: string;
   time: number;
   discount_factor: number;
   zero_rate: number;
+  forward_rate: number;
 }
 
 interface ForwardRatePoint {
+  date: string;
   time: number;
   forward_rate: number;
+}
+
+interface ChartGridPoint {
+  date: string;
+  time: number;
+  discount_factor: number;
+  forward_rate: number;
+  label: string;
+}
+
+interface JacobianData {
+  row_labels: string[];
+  col_labels: string[];
+  matrix: number[][];
+  size: number;
 }
 
 interface BuildResult {
@@ -92,7 +110,10 @@ interface BuildResult {
   calculation_time_ms?: number;
   pillars?: CurvePillar[];
   forward_curve?: ForwardRatePoint[];
+  short_term_grid?: ChartGridPoint[];
+  long_term_grid?: ChartGridPoint[];
   converged?: boolean;
+  jacobian?: JacobianData;
 }
 
 // State
@@ -110,19 +131,43 @@ const buildError = ref<string | null>(null);
 
 // Build settings (editable)
 const calibrationMethod = ref<string>('sequential');
-const interpolation = ref<string>('loglinear');
+const interpolation = ref<string>('log_linear_df');
 const allowExtrapolation = ref<boolean>(true);
+
+// Last-built settings — used to detect "rebuild required"
+const lastBuiltSettings = ref<{
+  calibrationMethod: string;
+  interpolation: string;
+  allowExtrapolation: boolean;
+} | null>(null);
 
 // Chart
 const shortTermChartCanvas = ref<HTMLCanvasElement | null>(null);
 const longTermChartCanvas = ref<HTMLCanvasElement | null>(null);
 let shortTermChartInstance: Chart | null = null;
 let longTermChartInstance: Chart | null = null;
-const chartType = ref<'zero_rate' | 'discount_factor' | 'forward_rate'>('forward_rate');
+const chartType = ref<'discount_factor' | 'forward_rate'>('forward_rate');
+
+// Normalise interpolation values from curves.json (legacy) to backend snake_case format
+function normaliseInterpolation(value: string): string {
+  const map: Record<string, string> = {
+    'loglinear': 'log_linear_df',
+    'log_linear': 'log_linear_df',
+    'linear': 'linear_df',
+    'monotone_cubic': 'log_linear_df',
+    'cubic': 'log_linear_df',
+    'cubic_spline': 'log_linear_df',
+  };
+  return map[value] || value;
+}
 
 // Options for build settings
-const calibrationMethods = ['sequential', 'global', 'bootstrap'];
-const interpolationMethods = ['linear', 'loglinear', 'cubic', 'monotone_cubic', 'flat_forward'];
+const calibrationMethods = ['sequential', 'global'];
+const interpolationMethods = [
+  { value: 'flat_forward', label: 'Flat Forward' },
+  { value: 'log_linear_df', label: 'Log-Linear DF' },
+  { value: 'linear_df', label: 'Linear DF' },
+];
 
 // Computed
 const curveOptions = computed(() => {
@@ -138,16 +183,18 @@ const enabledInstruments = computed(() =>
 );
 
 const hasChanges = computed(() => {
-  if (!selectedCurve.value) return false;
+  if (!buildResult.value) return false; // never built yet — nothing to rebuild
 
-  // Check if any rate changed
+  // Check if any rate changed since last build
   const rateChanged = instruments.value.some(inst => inst.rate !== inst.originalRate);
 
-  // Check if build settings changed
-  const settingsChanged =
-    calibrationMethod.value !== selectedCurve.value.calibrationMethod ||
-    interpolation.value !== selectedCurve.value.interpolation ||
-    allowExtrapolation.value !== selectedCurve.value.allowExtrapolation;
+  // Check if build settings changed since last build
+  const ref = lastBuiltSettings.value;
+  const settingsChanged = ref != null && (
+    calibrationMethod.value !== ref.calibrationMethod ||
+    interpolation.value !== ref.interpolation ||
+    allowExtrapolation.value !== ref.allowExtrapolation
+  );
 
   return rateChanged || settingsChanged;
 });
@@ -158,105 +205,57 @@ const summaryStats = computed(() => {
   return [
     { label: 'Valuation Date', value: rateData.value?.reference_date || '-', icon: 'fa-calendar', color: '#8b5cf6' },
     { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}${eventCount > 0 ? ` (${eventCount} events)` : ''}`, icon: 'fa-list-alt', color: '#3b82f6' },
-    { label: 'Interpolation', value: interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
+    { label: 'Interpolation', value: interpolationMethods.find(m => m.value === interpolation.value)?.label ?? interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
     { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
   ];
 });
 
-// Chart helper functions
-function interpolateValue(time: number, pillars: CurvePillar[], type: 'zero_rate' | 'discount_factor'): number {
-  if (pillars.length === 0) return 0;
-  if (time <= pillars[0].time) return type === 'zero_rate' ? pillars[0].zero_rate : pillars[0].discount_factor;
-  if (time >= pillars[pillars.length - 1].time) {
-    return type === 'zero_rate' ? pillars[pillars.length - 1].zero_rate : pillars[pillars.length - 1].discount_factor;
-  }
+// Curve data table — merge short + long term grids, deduplicate by date
+const curveTableRows = computed(() => {
+  if (!buildResult.value) return [];
+  const shortGrid = buildResult.value.short_term_grid || [];
+  const longGrid = buildResult.value.long_term_grid || [];
 
-  // Find surrounding pillars
-  for (let i = 0; i < pillars.length - 1; i++) {
-    if (time >= pillars[i].time && time <= pillars[i + 1].time) {
-      const t0 = pillars[i].time;
-      const t1 = pillars[i + 1].time;
-      const v0 = type === 'zero_rate' ? pillars[i].zero_rate : pillars[i].discount_factor;
-      const v1 = type === 'zero_rate' ? pillars[i + 1].zero_rate : pillars[i + 1].discount_factor;
-      const ratio = (time - t0) / (t1 - t0);
-      return v0 + ratio * (v1 - v0);
+  const seen = new Set<string>();
+  const rows: { date: string; time: number; df: number; fwd: number }[] = [];
+  for (const pt of [...shortGrid, ...longGrid]) {
+    if (!seen.has(pt.date)) {
+      seen.add(pt.date);
+      rows.push({ date: pt.date, time: pt.time, df: pt.discount_factor, fwd: pt.forward_rate });
     }
   }
-  return 0;
+  rows.sort((a, b) => a.time - b.time);
+  return rows;
+});
+
+// Jacobian heatmap helpers
+const jacobianAbsMax = computed(() => {
+  if (!buildResult.value?.jacobian) return 1;
+  const vals = buildResult.value.jacobian.matrix.flat().filter(v => v !== 0);
+  if (vals.length === 0) return 1;
+  return Math.max(...vals.map(Math.abs));
+});
+
+function jacobianHeatmapColour(value: number): string {
+  const max = jacobianAbsMax.value;
+  if (max === 0 || value === 0) return 'transparent';
+  const t = Math.min(Math.abs(value) / max, 1);
+  if (value < 0) {
+    return `rgba(239, 68, 68, ${0.08 + t * 0.35})`;
+  }
+  return `rgba(59, 130, 246, ${0.08 + t * 0.35})`;
 }
 
-function interpolateForwardRate(time: number, forwardCurve: ForwardRatePoint[]): number {
-  if (forwardCurve.length === 0) return 0;
-  if (time <= forwardCurve[0].time) return forwardCurve[0].forward_rate;
-  if (time >= forwardCurve[forwardCurve.length - 1].time) {
-    return forwardCurve[forwardCurve.length - 1].forward_rate;
-  }
-
-  for (let i = 0; i < forwardCurve.length - 1; i++) {
-    if (time >= forwardCurve[i].time && time <= forwardCurve[i + 1].time) {
-      const t0 = forwardCurve[i].time;
-      const t1 = forwardCurve[i + 1].time;
-      const v0 = forwardCurve[i].forward_rate;
-      const v1 = forwardCurve[i + 1].forward_rate;
-      const ratio = (time - t0) / (t1 - t0);
-      return v0 + ratio * (v1 - v0);
-    }
-  }
-  return 0;
+function jacobianTextColour(value: number): string {
+  const max = jacobianAbsMax.value;
+  if (max === 0 || value === 0) return 'var(--text-muted)';
+  const t = Math.min(Math.abs(value) / max, 1);
+  if (t > 0.4) return value < 0 ? '#f87171' : '#60a5fa';
+  return 'var(--text-secondary)';
 }
 
-// Generate grid points for short-term chart (Daily up to 3M, Weekly up to 1Y)
-function generateShortTermGrid(): number[] {
-  const grid: number[] = [];
-  const dayFraction = 1 / 365;
-  const weekFraction = 7 / 365;
-  const threeMonths = 0.25; // 3M in years
-  const oneYear = 1.0;
-
-  // Daily grid up to 3M
-  for (let t = 0; t <= threeMonths; t += dayFraction) {
-    grid.push(t);
-  }
-
-  // Weekly grid from 3M to 1Y
-  for (let t = threeMonths + weekFraction; t <= oneYear; t += weekFraction) {
-    grid.push(t);
-  }
-
-  return grid;
-}
-
-// Generate grid points for long-term chart (Monthly up to 20Y, Yearly from 20Y to 30Y)
-function generateLongTermGrid(): number[] {
-  const grid: number[] = [];
-  const monthFraction = 1 / 12;
-
-  // Monthly grid up to 20Y
-  for (let t = monthFraction; t <= 20; t += monthFraction) {
-    grid.push(t);
-  }
-
-  // Yearly grid from 20Y to 30Y
-  for (let t = 21; t <= 30; t += 1) {
-    grid.push(t);
-  }
-
-  return grid;
-}
-
-function formatTimeLabel(time: number, isShortTerm: boolean): string {
-  if (isShortTerm) {
-    const days = Math.round(time * 365);
-    if (days < 7) return `${days}D`;
-    if (days < 30) return `${Math.round(days / 7)}W`;
-    return `${Math.round(days / 30)}M`;
-  } else {
-    if (time < 1) return `${Math.round(time * 12)}M`;
-    return `${time.toFixed(1)}Y`;
-  }
-}
-
-function createChartOptions(yAxisLabel: string, xAxisLabel: string) {
+// Chart options
+function createChartOptions(yAxisLabel: string) {
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -267,12 +266,10 @@ function createChartOptions(yAxisLabel: string, xAxisLabel: string) {
         titleColor: '#fff',
         bodyColor: '#fff',
         callbacks: {
-          title: (items: { label: string }[]) => `Time: ${items[0].label}`,
+          title: (items: { label: string }[]) => items[0].label,
           label: (item: { raw: unknown }) => {
             const value = item.raw as number;
-            if (chartType.value === 'zero_rate') {
-              return `Zero Rate: ${value.toFixed(4)}%`;
-            } else if (chartType.value === 'discount_factor') {
+            if (chartType.value === 'discount_factor') {
               return `DF: ${value.toFixed(6)}`;
             } else {
               return `Forward Rate: ${value.toFixed(4)}%`;
@@ -283,7 +280,6 @@ function createChartOptions(yAxisLabel: string, xAxisLabel: string) {
     },
     scales: {
       x: {
-        title: { display: true, text: xAxisLabel, color: 'rgba(255, 255, 255, 0.6)' },
         ticks: { color: 'rgba(255, 255, 255, 0.6)', maxTicksLimit: 12 },
         grid: { color: 'rgba(255, 255, 255, 0.1)' },
       },
@@ -296,21 +292,95 @@ function createChartOptions(yAxisLabel: string, xAxisLabel: string) {
   };
 }
 
-// Chart functions
-function updateCharts() {
-  if (!buildResult.value?.pillars) return;
+// Milestone definitions for term tick labels
+const SHORT_MILESTONES = [
+  { time: 7 / 365, term: '1W' }, { time: 14 / 365, term: '2W' },
+  { time: 1 / 12, term: '1M' }, { time: 2 / 12, term: '2M' }, { time: 3 / 12, term: '3M' },
+  { time: 6 / 12, term: '6M' }, { time: 9 / 12, term: '9M' }, { time: 1.0, term: '1Y' },
+];
+const LONG_MILESTONES = [
+  { time: 1, term: '1Y' }, { time: 2, term: '2Y' }, { time: 3, term: '3Y' },
+  { time: 5, term: '5Y' }, { time: 7, term: '7Y' }, { time: 10, term: '10Y' },
+  { time: 15, term: '15Y' }, { time: 20, term: '20Y' }, { time: 25, term: '25Y' },
+  { time: 30, term: '30Y' },
+];
 
-  const pillars = buildResult.value.pillars;
-  const forwardCurve = buildResult.value.forward_curve || [];
+// Render chart from pre-computed backend grid with milestone term labels
+function renderChart(
+  canvas: HTMLCanvasElement | null,
+  existing: Chart | null,
+  grid: ChartGridPoint[],
+  label: string,
+  color: string,
+  milestones: { time: number; term: string }[],
+): Chart | null {
+  if (!canvas || grid.length === 0) return existing;
+  if (existing) existing.destroy();
+
+  const labels = grid.map(pt => pt.label);
+  const data = chartType.value === 'forward_rate'
+    ? grid.map(pt => pt.forward_rate * 100)
+    : grid.map(pt => pt.discount_factor);
+
+  // Compute milestone index → [dateLabel, term]
+  const milestoneAt = new Map<number, string[]>();
+  for (const ms of milestones) {
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < grid.length; i++) {
+      const dist = Math.abs(grid[i].time - ms.time);
+      if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+    }
+    milestoneAt.set(bestIdx, [grid[bestIdx].label, ms.term]);
+  }
+
+  const opts = createChartOptions(label);
+  (opts.scales.x as Record<string, unknown>).ticks = {
+    autoSkip: false,
+    maxRotation: 0,
+    color: 'rgba(255, 255, 255, 0.6)',
+    callback: (_value: unknown, index: number) => milestoneAt.get(index) ?? null,
+  };
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  // Flat Forward: use stepped line for forward rate charts to show flat segments
+  const isFlatFwd = interpolation.value === 'flat_forward' && chartType.value === 'forward_rate';
+
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        borderColor: color,
+        backgroundColor: `${color}1a`,
+        borderWidth: 2,
+        fill: true,
+        tension: isFlatFwd ? 0 : 0.3,
+        stepped: isFlatFwd ? 'before' : false,
+        pointRadius: 1,
+        pointBackgroundColor: color,
+      }],
+    },
+    options: opts,
+  });
+}
+
+// Chart update — reads pre-computed grids from backend response
+function updateCharts() {
+  if (!buildResult.value) return;
+
+  const shortGrid = buildResult.value.short_term_grid || [];
+  const longGrid = buildResult.value.long_term_grid || [];
 
   const chartLabels: Record<string, string> = {
-    zero_rate: 'Zero Rate (%)',
     discount_factor: 'Discount Factor',
     forward_rate: 'Forward Rate (%)',
   };
-
   const chartColors: Record<string, string> = {
-    zero_rate: '#6366f1',
     discount_factor: '#6366f1',
     forward_rate: '#10b981',
   };
@@ -318,87 +388,12 @@ function updateCharts() {
   const currentLabel = chartLabels[chartType.value];
   const currentColor = chartColors[chartType.value];
 
-  // Generate grids
-  const shortTermGrid = generateShortTermGrid();
-  const longTermGrid = generateLongTermGrid();
-
-  // Prepare data for short-term chart
-  let shortTermData: number[];
-  if (chartType.value === 'forward_rate') {
-    shortTermData = shortTermGrid.map(t => interpolateForwardRate(t, forwardCurve) * 100);
-  } else if (chartType.value === 'zero_rate') {
-    shortTermData = shortTermGrid.map(t => interpolateValue(t, pillars, 'zero_rate') * 100);
-  } else {
-    shortTermData = shortTermGrid.map(t => interpolateValue(t, pillars, 'discount_factor'));
-  }
-  const shortTermLabels = shortTermGrid.map(t => formatTimeLabel(t, true));
-
-  // Prepare data for long-term chart
-  let longTermData: number[];
-  if (chartType.value === 'forward_rate') {
-    longTermData = longTermGrid.map(t => interpolateForwardRate(t, forwardCurve) * 100);
-  } else if (chartType.value === 'zero_rate') {
-    longTermData = longTermGrid.map(t => interpolateValue(t, pillars, 'zero_rate') * 100);
-  } else {
-    longTermData = longTermGrid.map(t => interpolateValue(t, pillars, 'discount_factor'));
-  }
-  const longTermLabels = longTermGrid.map(t => formatTimeLabel(t, false));
-
-  // Update short-term chart
-  if (shortTermChartCanvas.value) {
-    if (shortTermChartInstance) {
-      shortTermChartInstance.destroy();
-    }
-    const ctx = shortTermChartCanvas.value.getContext('2d');
-    if (ctx) {
-      shortTermChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: shortTermLabels,
-          datasets: [{
-            label: currentLabel,
-            data: shortTermData,
-            borderColor: currentColor,
-            backgroundColor: `${currentColor}1a`,
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 1,
-            pointBackgroundColor: currentColor,
-          }],
-        },
-        options: createChartOptions(currentLabel, 'Short Term (0-1Y: Daily→Weekly)'),
-      });
-    }
-  }
-
-  // Update long-term chart
-  if (longTermChartCanvas.value) {
-    if (longTermChartInstance) {
-      longTermChartInstance.destroy();
-    }
-    const ctx = longTermChartCanvas.value.getContext('2d');
-    if (ctx) {
-      longTermChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: longTermLabels,
-          datasets: [{
-            label: currentLabel,
-            data: longTermData,
-            borderColor: currentColor,
-            backgroundColor: `${currentColor}1a`,
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 1,
-            pointBackgroundColor: currentColor,
-          }],
-        },
-        options: createChartOptions(currentLabel, 'Long Term (0-30Y: Monthly→Yearly)'),
-      });
-    }
-  }
+  shortTermChartInstance = renderChart(
+    shortTermChartCanvas.value, shortTermChartInstance, shortGrid, currentLabel, currentColor, SHORT_MILESTONES,
+  );
+  longTermChartInstance = renderChart(
+    longTermChartCanvas.value, longTermChartInstance, longGrid, currentLabel, currentColor, LONG_MILESTONES,
+  );
 }
 
 // API calls
@@ -471,10 +466,12 @@ function loadInstrumentsForCurve() {
     // Handle event type instruments from rate input file
     if (rateInst.type === 'event') {
       const eventDate = new Date(rateInst.event_date || '');
-      const tenorYears = (eventDate.getTime() - referenceDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
 
       // Skip past events
-      if (tenorYears < 0) continue;
+      if (eventDate < referenceDate) continue;
+
+      // Approximate tenor for display sorting only (not used for pricing)
+      const tenorYears = (eventDate.getTime() - referenceDate.getTime()) / (365.25 * 86_400_000);
 
       const id = rateInst.id || '';
       // Only include if in curve definition
@@ -533,7 +530,7 @@ async function onCurveSelected() {
 
     // Set build settings from curve config
     calibrationMethod.value = curve.calibrationMethod;
-    interpolation.value = curve.interpolation;
+    interpolation.value = normaliseInterpolation(curve.interpolation);
     allowExtrapolation.value = curve.allowExtrapolation;
 
     // Load rate data for this curve's rate index
@@ -555,15 +552,6 @@ async function buildCurve() {
   isBuilding.value = true;
   buildError.value = null;
   try {
-    // Map frontend interpolation values to backend snake_case format
-    const interpolationMap: Record<string, string> = {
-      'linear': 'linear',
-      'loglinear': 'log_linear',
-      'cubic': 'cubic_spline',
-      'monotone_cubic': 'cubic_spline',
-      'flat_forward': 'linear',
-    };
-
     // Build instrument payload including events
     const instrumentPayload = enabledInstruments.value.map(inst => {
       if (inst.type === 'event') {
@@ -597,7 +585,7 @@ async function buildCurve() {
         reference_date: rateData.value?.reference_date,
         instruments: instrumentPayload,
         bootstrap_method: calibrationMethod.value,
-        interpolation: interpolationMap[interpolation.value] || 'log_linear',
+        interpolation: interpolation.value,
       }),
     });
 
@@ -608,10 +596,15 @@ async function buildCurve() {
 
     buildResult.value = await response.json();
 
-    // Update original rates after successful build
+    // Snapshot current state as "last built"
     instruments.value.forEach(inst => {
       inst.originalRate = inst.rate;
     });
+    lastBuiltSettings.value = {
+      calibrationMethod: calibrationMethod.value,
+      interpolation: interpolation.value,
+      allowExtrapolation: allowExtrapolation.value,
+    };
 
     // Update charts
     await nextTick();
@@ -630,7 +623,7 @@ function resetSettings() {
 
   // Reset build settings
   calibrationMethod.value = selectedCurve.value.calibrationMethod;
-  interpolation.value = selectedCurve.value.interpolation;
+  interpolation.value = normaliseInterpolation(selectedCurve.value.interpolation);
   allowExtrapolation.value = selectedCurve.value.allowExtrapolation;
 
   // Reset rates
@@ -684,7 +677,7 @@ watch(selectedCurveName, () => {
 
 // Watch for chart type change
 watch(chartType, () => {
-  if (buildResult.value?.pillars) {
+  if (buildResult.value?.short_term_grid) {
     updateCharts();
   }
 });
@@ -755,12 +748,6 @@ onUnmounted(() => {
             </option>
           </select>
 
-          <div v-if="selectedCurve" class="mt-3 text-sm">
-            <div class="flex justify-between text-xs">
-              <span class="text-[var(--text-muted)]">Rate Index:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ selectedCurve.rateIndex }}</span>
-            </div>
-          </div>
         </div>
 
         <!-- Instruments Table (Compact) -->
@@ -862,7 +849,7 @@ onUnmounted(() => {
                 v-model="interpolation"
                 class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
               >
-                <option v-for="m in interpolationMethods" :key="m" :value="m">{{ m }}</option>
+                <option v-for="m in interpolationMethods" :key="m.value" :value="m.value">{{ m.label }}</option>
               </select>
             </div>
             <label class="flex items-center gap-2 cursor-pointer">
@@ -908,21 +895,12 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Right Panel: Curve Chart -->
-      <div class="lg:col-span-2">
-        <div class="glass-card p-6 h-full">
+      <!-- Right Panel: Curve Chart + Jacobian -->
+      <div class="lg:col-span-2 space-y-6">
+        <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-[var(--text-primary)]">Yield Curve</h3>
-            <div v-if="buildResult?.pillars" class="flex gap-2">
-              <button
-                :class="[
-                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
-                  chartType === 'zero_rate' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
-                ]"
-                @click="chartType = 'zero_rate'"
-              >
-                Zero Rate
-              </button>
+            <div v-if="buildResult?.short_term_grid" class="flex gap-2">
               <button
                 :class="[
                   'px-3 py-1.5 text-xs rounded-lg transition-colors',
@@ -960,22 +938,18 @@ onUnmounted(() => {
 
           <!-- Charts: Short-term (top) and Long-term (bottom) -->
           <div v-else class="space-y-4">
-            <!-- Short-term Chart (0-1Y) -->
             <div>
               <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">
-                <i class="fas fa-clock text-xs mr-1"></i>
-                Short Term (0-1Y)
+                <i class="fas fa-clock text-xs mr-1"></i>Short Term (0-1Y)
               </h4>
               <div class="h-48 bg-[var(--surface)] rounded-lg p-2">
                 <canvas ref="shortTermChartCanvas"></canvas>
               </div>
             </div>
 
-            <!-- Long-term Chart (0-30Y) -->
             <div>
               <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">
-                <i class="fas fa-calendar-alt text-xs mr-1"></i>
-                Long Term (0-30Y)
+                <i class="fas fa-calendar-alt text-xs mr-1"></i>Long Term (0-30Y)
               </h4>
               <div class="h-48 bg-[var(--surface)] rounded-lg p-2">
                 <canvas ref="longTermChartCanvas"></canvas>
@@ -1000,6 +974,96 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- Pillar Data Table -->
+          <div v-if="curveTableRows.length > 0" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+            <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+              <i class="fas fa-table text-xs mr-1"></i>
+              Curve Data ({{ curveTableRows.length }} points)
+            </h4>
+            <div class="max-h-64 overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 z-10">
+                  <tr class="border-b border-[var(--glass-border)] curve-table-header">
+                    <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Date</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Time (Y)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Fwd Rate (%)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">DF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(row, idx) in curveTableRows"
+                    :key="idx"
+                    class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+                  >
+                    <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ row.date }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right text-[var(--text-secondary)] font-mono">{{ row.time.toFixed(4) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ (row.fwd * 100).toFixed(4) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-[var(--text-primary)]">{{ row.df.toFixed(8) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Jacobian Card (below Yield Curve, same width) -->
+        <div v-if="buildResult?.jacobian" class="glass-card p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+              <i class="fas fa-th text-sm mr-2 text-[var(--primary)]"></i>
+              Jacobian <span class="text-sm font-normal text-[var(--text-muted)]">d(log DF) / dr</span>
+            </h3>
+            <span class="text-xs text-[var(--text-muted)] font-mono">
+              {{ buildResult.jacobian.size }} &times; {{ buildResult.jacobian.size }}
+            </span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] jacobian-sticky-cell border-b border-r border-[var(--glass-border)] text-left">
+                    log DF \ Rate
+                  </th>
+                  <th
+                    v-for="label in buildResult.jacobian.col_labels"
+                    :key="'jh-' + label"
+                    class="py-2 px-2 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] whitespace-nowrap"
+                  >
+                    {{ label }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, i) in buildResult.jacobian.matrix"
+                  :key="'jr-' + i"
+                  class="hover:bg-[var(--surface-hover)] transition-colors"
+                >
+                  <td class="sticky left-0 z-10 py-1.5 px-3 text-xs font-medium text-[var(--text-muted)] jacobian-sticky-cell border-r border-b border-[var(--glass-border)] whitespace-nowrap">
+                    {{ buildResult.jacobian.row_labels[i] }}
+                  </td>
+                  <td
+                    v-for="(val, j) in row"
+                    :key="'jc-' + i + '-' + j"
+                    class="py-1.5 px-1 text-center text-xs font-mono border-b border-[var(--glass-border)]"
+                    :style="{ backgroundColor: jacobianHeatmapColour(val) }"
+                  >
+                    <span :style="{ color: jacobianTextColour(val) }">
+                      {{ val === 0 ? '--' : val.toPrecision(2) }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="mt-3 text-xs text-[var(--text-muted)]">
+            <i class="fas fa-info-circle mr-1"></i>
+            Lower-triangular: log DF<sub>i</sub> depends only on rates r<sub>1</sub> .. r<sub>i</sub> in sequential bootstrap.
+          </p>
         </div>
       </div>
     </div>
@@ -1013,5 +1077,18 @@ onUnmounted(() => {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
+}
+
+.curve-table-header {
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--glass-border);
+}
+
+.curve-table-header th {
+  background: inherit;
+}
+
+.jacobian-sticky-cell {
+  background: var(--glass-bg);
 }
 </style>

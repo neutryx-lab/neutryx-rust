@@ -1043,7 +1043,7 @@ mod tests {
 
     #[test]
     fn test_apply_csa_adjustment_below_threshold() {
-        use infra_domain::Currency;
+        use infra_domain::market::Currency;
 
         use crate::portfolio::CollateralAgreement;
 
@@ -1064,7 +1064,7 @@ mod tests {
 
     #[test]
     fn test_apply_csa_adjustment_above_threshold() {
-        use infra_domain::Currency;
+        use infra_domain::market::Currency;
 
         use crate::portfolio::CollateralAgreement;
 
@@ -1085,7 +1085,7 @@ mod tests {
 
     #[test]
     fn test_apply_csa_adjustment_with_independent_amount() {
-        use infra_domain::Currency;
+        use infra_domain::market::Currency;
 
         use crate::portfolio::CollateralAgreement;
 
@@ -1108,7 +1108,7 @@ mod tests {
     fn test_apply_csa_to_portfolio() {
         use std::collections::HashMap;
 
-        use infra_domain::Currency;
+        use infra_domain::market::Currency;
 
         use crate::portfolio::{CollateralAgreement, CounterpartyId, NettingSet, NettingSetId};
 

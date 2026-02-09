@@ -48,7 +48,6 @@ adapter_loader = { path = "../adapter_loader", features = ["curve-builder"] }
 adapter_fpml = { path = "../adapter_fpml" }
 infra_config = { path = "../infra_config" }
 infra_domain = { path = "../infra_domain", features = ["serde"] }
-infra_store = { path = "../infra_store" }
 
 # Caching
 lru = "0.12"

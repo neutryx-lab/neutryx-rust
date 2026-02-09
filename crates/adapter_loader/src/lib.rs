@@ -42,12 +42,14 @@ mod error;
 #[cfg(feature = "curve-builder")]
 mod instrument_parser;
 mod json_loader;
+mod quote;
 mod ticker_loader;
 mod vol_surface_loader;
 
 pub use csa::{CsaTerms, NettingSet};
 pub use csv_loader::CsvLoader;
 pub use error::LoaderError;
+pub use quote::{MarketQuote, QuoteType};
 // Curve builder support (requires curve-builder feature)
 #[cfg(feature = "curve-builder")]
 pub use instrument_parser::{
@@ -67,6 +69,6 @@ pub use vol_surface_loader::{
 pub mod prelude {
     pub use crate::{
         CsaLoader, CsaTerms, CsvLoader, JsonLoader, LoaderError, MarketData, MarketLoader,
-        NettingSet, TickerMappingLoader, TradeLoader,
+        MarketQuote, NettingSet, QuoteType, TickerMappingLoader, TradeLoader,
     };
 }

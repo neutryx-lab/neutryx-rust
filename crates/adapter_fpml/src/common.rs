@@ -3,7 +3,7 @@
 //! Provides helpers for parsing common FpML elements like dates, parties,
 //! and schedule definitions.
 
-use infra_domain::Date;
+use infra_domain::time::Date;
 
 use crate::error::FpmlError;
 

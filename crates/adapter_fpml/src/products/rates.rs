@@ -7,11 +7,12 @@
 //! - Cap/Floor
 
 use infra_domain::{
+    market::{Currency, RateIndex},
+    time::Date,
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, Payoff, SettlementType,
         Trade, TradeMetadata, TradeType,
     },
-    Currency, Date, RateIndex,
 };
 
 use crate::{

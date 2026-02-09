@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_with_fx_curve_and_convention() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_add_delta_vol_slice_success() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_full_pipeline_with_delta_slices() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
