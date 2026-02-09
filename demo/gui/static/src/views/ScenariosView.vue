@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { Chart, registerables, type TooltipItem, type ChartConfiguration } from 'chart.js';
 import { useToast } from '@/composables/useToast';
 
@@ -16,6 +16,13 @@ interface ScenarioParams {
   creditSpread: number;
 }
 
+interface PnLDecomposition {
+  rates: number;
+  vol: number;
+  fx: number;
+  credit: number;
+}
+
 interface Scenario {
   id: string;
   name: string;
@@ -23,33 +30,44 @@ interface Scenario {
   type: ScenarioType;
   params: ScenarioParams;
   pnl: number | null;
+  decomposition: PnLDecomposition | null;
 }
 
 // Default scenarios
 const defaultScenarios: Scenario[] = [
   { id: 'base', name: 'Base Case', description: 'Current market conditions', type: 'parametric',
-    params: { rateShift: 0, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null },
+    params: { rateShift: 0, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null, decomposition: null },
   { id: 'rates_up', name: 'Rates +100bp', description: 'Parallel shift up', type: 'parametric',
-    params: { rateShift: 100, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null },
+    params: { rateShift: 100, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null, decomposition: null },
   { id: 'rates_down', name: 'Rates -100bp', description: 'Parallel shift down', type: 'parametric',
-    params: { rateShift: -100, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null },
+    params: { rateShift: -100, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null, decomposition: null },
   { id: 'vol_up', name: 'Vol +25%', description: 'Volatility increase', type: 'parametric',
-    params: { rateShift: 0, volShift: 25, fxShift: 0, creditSpread: 0 }, pnl: null },
+    params: { rateShift: 0, volShift: 25, fxShift: 0, creditSpread: 0 }, pnl: null, decomposition: null },
   { id: 'fx_stress', name: 'FX Stress', description: 'USD +10% vs all', type: 'parametric',
-    params: { rateShift: 0, volShift: 0, fxShift: 10, creditSpread: 0 }, pnl: null },
+    params: { rateShift: 0, volShift: 0, fxShift: 10, creditSpread: 0 }, pnl: null, decomposition: null },
   { id: 'crisis_2008', name: '2008 Crisis', description: 'Historical replay', type: 'historical',
-    params: { rateShift: -150, volShift: 80, fxShift: 15, creditSpread: 200 }, pnl: null },
+    params: { rateShift: -150, volShift: 80, fxShift: 15, creditSpread: 200 }, pnl: null, decomposition: null },
   { id: 'covid_2020', name: 'COVID-19', description: 'March 2020 shock', type: 'historical',
-    params: { rateShift: -100, volShift: 120, fxShift: 8, creditSpread: 150 }, pnl: null },
+    params: { rateShift: -100, volShift: 120, fxShift: 8, creditSpread: 150 }, pnl: null, decomposition: null },
   { id: 'euro_crisis', name: 'Euro Crisis 2011', description: 'European debt crisis', type: 'historical',
-    params: { rateShift: 50, volShift: 40, fxShift: -12, creditSpread: 180 }, pnl: null },
+    params: { rateShift: 50, volShift: 40, fxShift: -12, creditSpread: 180 }, pnl: null, decomposition: null },
   { id: 'reverse_var', name: 'Reverse VaR', description: 'Find -$5M scenario', type: 'reverse',
-    params: { rateShift: 0, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null },
+    params: { rateShift: 0, volShift: 0, fxShift: 0, creditSpread: 0 }, pnl: null, decomposition: null },
+];
+
+// Risk factor config (shared across charts and legend)
+const riskFactors = [
+  { key: 'rates', label: 'Rates', color: '#3b82f6' },
+  { key: 'vol', label: 'Volatility', color: '#10b981' },
+  { key: 'fx', label: 'FX', color: '#8b5cf6' },
+  { key: 'credit', label: 'Credit', color: '#f59e0b' },
 ];
 
 // State
-const chart = ref<Chart | null>(null);
-const chartContainer = ref<HTMLDivElement | null>(null);
+const pnlChart = ref<Chart | null>(null);
+const pnlChartContainer = ref<HTMLDivElement | null>(null);
+const decompChart = ref<Chart | null>(null);
+const decompChartContainer = ref<HTMLDivElement | null>(null);
 const scenarios = ref<Scenario[]>(JSON.parse(JSON.stringify(defaultScenarios)));
 const selectedType = ref<ScenarioType>('parametric');
 const selectedScenarioId = ref<string>('base');
@@ -67,6 +85,84 @@ const selectedScenario = computed(() =>
 const hasResults = computed(() =>
   scenarios.value.some(s => s.type === selectedType.value && s.pnl !== null)
 );
+
+const calculatedScenarios = computed(() =>
+  filteredScenarios.value.filter(s => s.pnl !== null)
+);
+
+// Top summary stat cards
+const topStats = computed(() => {
+  if (!hasResults.value) return [];
+  const pnls = calculatedScenarios.value.map(s => s.pnl!);
+  if (pnls.length === 0) return [];
+
+  const best = Math.max(...pnls);
+  const worst = Math.min(...pnls);
+  const sorted = [...pnls].sort((a, b) => a - b);
+  const var95Idx = Math.floor(sorted.length * 0.05);
+  const var95 = sorted[var95Idx] ?? sorted[0];
+  const lossCount = pnls.filter(p => p < 0).length;
+  const lossPct = ((lossCount / pnls.length) * 100).toFixed(0);
+
+  return [
+    { label: 'Best Case', value: formatPnl(best), icon: 'fa-arrow-up', color: '#10b981' },
+    { label: 'Worst Case', value: formatPnl(worst), icon: 'fa-arrow-down', color: '#ef4444' },
+    { label: 'VaR (95%)', value: formatPnl(var95), icon: 'fa-shield-alt', color: '#8b5cf6' },
+    { label: 'Loss Scenarios', value: `${lossPct}%`, icon: 'fa-exclamation-triangle', color: '#f59e0b' },
+  ];
+});
+
+// Risk metrics
+const riskMetrics = computed(() => {
+  const pnls = calculatedScenarios.value.map(s => s.pnl!);
+  if (pnls.length < 2) return [];
+
+  const mean = pnls.reduce((a, b) => a + b, 0) / pnls.length;
+  const variance = pnls.reduce((a, b) => a + (b - mean) ** 2, 0) / pnls.length;
+  const stdDev = Math.sqrt(variance);
+
+  const sorted = [...pnls].sort((a, b) => a - b);
+  const var95Idx = Math.max(0, Math.floor(sorted.length * 0.05));
+  const var95 = sorted[var95Idx];
+  const tailValues = sorted.filter(v => v <= var95);
+  const cvar = tailValues.length > 0 ? tailValues.reduce((a, b) => a + b, 0) / tailValues.length : var95;
+
+  const sharpe = stdDev > 0 ? mean / stdDev : 0;
+  const maxDrawdown = Math.min(...pnls);
+
+  return [
+    { label: 'VaR (95%)', value: formatPnl(var95), negative: var95 < 0 },
+    { label: 'CVaR (95%)', value: formatPnl(cvar), negative: cvar < 0 },
+    { label: 'P&L Volatility', value: formatPnl(stdDev), negative: false },
+    { label: 'Mean P&L', value: formatPnl(mean), negative: mean < 0 },
+    { label: 'Sharpe Ratio', value: sharpe.toFixed(2), negative: sharpe < 0 },
+    { label: 'Max Drawdown', value: formatPnl(maxDrawdown), negative: true },
+  ];
+});
+
+// Sensitivity ranking
+const sensitivityRanking = computed(() => {
+  const cs = calculatedScenarios.value;
+  if (cs.length < 2) return [];
+
+  const absContributions = riskFactors.map(f => {
+    const total = cs.reduce((sum, s) => {
+      if (!s.decomposition) return sum;
+      return sum + Math.abs(s.decomposition[f.key as keyof PnLDecomposition]);
+    }, 0);
+    return { ...f, total };
+  });
+
+  const maxTotal = Math.max(...absContributions.map(c => c.total), 1);
+
+  return absContributions
+    .sort((a, b) => b.total - a.total)
+    .map(c => ({
+      label: c.label,
+      color: c.color,
+      pct: Math.round((c.total / maxTotal) * 100),
+    }));
+});
 
 // Type buttons config
 const typeButtons = [
@@ -98,37 +194,36 @@ function formatParamValue(value: number): string {
   return value > 0 ? `+${value}` : String(value);
 }
 
-function calculatePnL(params: ScenarioParams): number {
-  const ratePnL = params.rateShift * -24000;
-  const volPnL = params.volShift * 26000;
-  const fxPnL = params.fxShift * -89000;
-  const creditPnL = params.creditSpread * -15000;
+function calculatePnL(params: ScenarioParams): { pnl: number; decomposition: PnLDecomposition } {
+  const rates = params.rateShift * -24000;
+  const vol = params.volShift * 26000;
+  const fx = params.fxShift * -89000;
+  const credit = params.creditSpread * -15000;
   const noise = (Math.random() - 0.5) * 100000;
-  return ratePnL + volPnL + fxPnL + creditPnL + noise;
+  return {
+    pnl: rates + vol + fx + credit + noise,
+    decomposition: { rates, vol, fx, credit },
+  };
 }
 
 // Chart rendering
-function renderChart() {
-  if (!chartContainer.value) return;
+function renderPnlChart() {
+  if (!pnlChartContainer.value) return;
 
-  if (chart.value) {
-    chart.value.destroy();
-    chart.value = null;
+  if (pnlChart.value) {
+    pnlChart.value.destroy();
+    pnlChart.value = null;
   }
 
-  const calculatedScenarios = scenarios.value.filter(
-    s => s.type === selectedType.value && s.pnl !== null
-  );
+  const cs = calculatedScenarios.value;
+  if (cs.length === 0) return;
 
-  if (calculatedScenarios.length === 0) return;
-
-  // Create canvas
-  chartContainer.value.innerHTML = '';
+  pnlChartContainer.value.innerHTML = '';
   const canvas = document.createElement('canvas');
-  chartContainer.value.appendChild(canvas);
+  pnlChartContainer.value.appendChild(canvas);
 
-  const labels = calculatedScenarios.map(s => s.name);
-  const data = calculatedScenarios.map(s => (s.pnl ?? 0) / 1000000);
+  const labels = cs.map(s => s.name);
+  const data = cs.map(s => (s.pnl ?? 0) / 1000000);
   const colors = data.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)');
 
   const config: ChartConfiguration<'bar'> = {
@@ -140,7 +235,7 @@ function renderChart() {
         data,
         backgroundColor: colors,
         borderColor: colors.map(c => c.replace('0.8', '1')),
-        borderWidth: 2,
+        borderWidth: 1,
         borderRadius: 4,
       }],
     },
@@ -152,6 +247,10 @@ function renderChart() {
         legend: { display: false },
         tooltip: {
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          padding: 12,
+          cornerRadius: 8,
           callbacks: {
             label: (context: TooltipItem<'bar'>) => {
               const value = context.parsed.x ?? 0;
@@ -171,13 +270,88 @@ function renderChart() {
         },
         y: {
           grid: { display: false },
-          ticks: { color: '#94a3b8' },
+          ticks: { color: '#94a3b8', font: { size: 11 } },
         },
       },
     },
   };
 
-  chart.value = new Chart(canvas, config);
+  pnlChart.value = new Chart(canvas, config);
+}
+
+function renderDecompositionChart() {
+  if (!decompChartContainer.value) return;
+
+  if (decompChart.value) {
+    decompChart.value.destroy();
+    decompChart.value = null;
+  }
+
+  const cs = calculatedScenarios.value.filter(s => s.decomposition);
+  if (cs.length === 0) return;
+
+  decompChartContainer.value.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  decompChartContainer.value.appendChild(canvas);
+
+  const labels = cs.map(s => s.name);
+
+  const datasets = riskFactors.map(f => ({
+    label: f.label,
+    data: cs.map(s => (s.decomposition![f.key as keyof PnLDecomposition]) / 1000000),
+    backgroundColor: `${f.color}cc`,
+    borderColor: f.color,
+    borderWidth: 1,
+    borderRadius: 3,
+  }));
+
+  const config: ChartConfiguration<'bar'> = {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: (context: TooltipItem<'bar'>) => {
+              const value = context.parsed.y ?? 0;
+              const sign = value >= 0 ? '+' : '';
+              return `${context.dataset.label}: ${sign}$${value.toFixed(2)}M`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { display: false },
+          ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45 },
+        },
+        y: {
+          stacked: true,
+          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          ticks: {
+            color: '#94a3b8',
+            callback: (value) => `$${value}M`,
+          },
+        },
+      },
+    },
+  };
+
+  decompChart.value = new Chart(canvas, config);
+}
+
+function renderCharts() {
+  renderPnlChart();
+  nextTick(() => renderDecompositionChart());
 }
 
 // Actions
@@ -185,7 +359,7 @@ function selectType(type: ScenarioType) {
   selectedType.value = type;
   const firstOfType = scenarios.value.find(s => s.type === type);
   selectedScenarioId.value = firstOfType?.id ?? '';
-  if (hasResults.value) renderChart();
+  if (hasResults.value) nextTick(() => renderCharts());
 }
 
 function selectScenario(id: string) {
@@ -197,6 +371,7 @@ function updateParam(key: keyof ScenarioParams, value: number) {
   if (scenario) {
     scenario.params[key] = value;
     scenario.pnl = null;
+    scenario.decomposition = null;
   }
 }
 
@@ -208,12 +383,14 @@ async function runScenarios() {
 
   scenarios.value = scenarios.value.map(s => {
     if (s.type === selectedType.value) {
-      return { ...s, pnl: calculatePnL(s.params) };
+      const result = calculatePnL(s.params);
+      return { ...s, pnl: result.pnl, decomposition: result.decomposition };
     }
     return s;
   });
 
-  renderChart();
+  await nextTick();
+  renderCharts();
   isRunning.value = false;
   toast.success('Scenario calculation completed');
 }
@@ -228,25 +405,46 @@ function addScenario() {
     type: selectedType.value,
     params: { rateShift: 0, volShift: 0, fxShift: 0, creditSpread: 0 },
     pnl: null,
+    decomposition: null,
   });
   selectedScenarioId.value = newId;
   toast.success('New scenario added');
 }
 
 onMounted(() => {
-  if (hasResults.value) renderChart();
+  if (hasResults.value) renderCharts();
 });
 
 onUnmounted(() => {
-  if (chart.value) {
-    chart.value.destroy();
-    chart.value = null;
-  }
+  if (pnlChart.value) { pnlChart.value.destroy(); pnlChart.value = null; }
+  if (decompChart.value) { decompChart.value.destroy(); decompChart.value = null; }
 });
 </script>
 
 <template>
   <div class="scenarios-view">
+    <!-- Top Summary Stats -->
+    <div v-if="hasResults" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div
+        v-for="stat in topStats"
+        :key="stat.label"
+        class="glass-card p-4"
+      >
+        <div class="flex items-start justify-between">
+          <div>
+            <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
+            <p class="text-xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
+          </div>
+          <div
+            class="w-9 h-9 rounded-lg flex items-center justify-center"
+            :style="{ backgroundColor: `${stat.color}1a` }"
+          >
+            <i :class="['fas', stat.icon, 'text-sm']" :style="{ color: stat.color }"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Left Panel: Scenario List -->
       <div class="lg:col-span-1 space-y-4">
@@ -351,42 +549,87 @@ onUnmounted(() => {
       </div>
 
       <!-- Right Panel: Results -->
-      <div class="lg:col-span-2">
-        <div class="glass-card p-6 h-full">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Results</h3>
+      <div class="lg:col-span-2 space-y-4">
+        <!-- P&L Impact Chart -->
+        <div class="glass-card p-5">
+          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">
+            <i class="fas fa-chart-bar text-sm mr-2 text-[var(--text-muted)]"></i>
+            P&L Impact
+          </h3>
 
-          <div v-if="!hasResults" class="flex flex-col items-center justify-center h-80 text-center">
-            <i class="fas fa-chart-bar text-4xl text-[var(--text-muted)] mb-4"></i>
-            <p class="text-[var(--text-muted)]">Run scenarios to view results</p>
+          <div v-if="!hasResults" class="flex flex-col items-center justify-center h-56 text-center">
+            <i class="fas fa-chart-bar text-5xl mb-4 opacity-20 text-[var(--text-muted)]"></i>
+            <p class="text-sm text-[var(--text-muted)]">Run scenarios to view results</p>
           </div>
 
-          <div v-else ref="chartContainer" class="h-80"></div>
+          <div v-else ref="pnlChartContainer" class="h-56"></div>
+        </div>
 
-          <!-- Results Summary -->
-          <div v-if="hasResults" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <div class="text-center">
-              <p class="text-xs text-[var(--text-muted)] mb-1">Best Case</p>
-              <p class="text-lg font-semibold text-[var(--success)]">
-                {{ formatPnl(Math.max(...filteredScenarios.filter(s => s.pnl !== null).map(s => s.pnl!))) }}
+        <!-- Risk Factor Decomposition Chart -->
+        <div v-if="hasResults" class="glass-card p-5">
+          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">
+            <i class="fas fa-layer-group text-sm mr-2 text-[var(--text-muted)]"></i>
+            Risk Factor Decomposition
+          </h3>
+
+          <!-- Legend -->
+          <div class="flex flex-wrap gap-3 mb-3">
+            <span
+              v-for="f in riskFactors"
+              :key="f.key"
+              class="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]"
+            >
+              <span class="w-2.5 h-2.5 rounded-sm" :style="{ backgroundColor: f.color }"></span>
+              {{ f.label }}
+            </span>
+          </div>
+
+          <div ref="decompChartContainer" class="h-48"></div>
+        </div>
+
+        <!-- Risk Metrics -->
+        <div v-if="riskMetrics.length > 0" class="glass-card p-5">
+          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">
+            <i class="fas fa-shield-alt text-sm mr-2 text-[var(--text-muted)]"></i>
+            Risk Metrics
+          </h3>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div
+              v-for="metric in riskMetrics"
+              :key="metric.label"
+              class="p-3 rounded-lg bg-[var(--surface)]"
+            >
+              <p class="text-xs text-[var(--text-muted)] mb-1">{{ metric.label }}</p>
+              <p
+                class="text-base font-semibold"
+                :class="metric.negative ? 'text-[var(--danger)]' : 'text-[var(--text-primary)]'"
+              >
+                {{ metric.value }}
               </p>
             </div>
-            <div class="text-center">
-              <p class="text-xs text-[var(--text-muted)] mb-1">Worst Case</p>
-              <p class="text-lg font-semibold text-[var(--danger)]">
-                {{ formatPnl(Math.min(...filteredScenarios.filter(s => s.pnl !== null).map(s => s.pnl!))) }}
-              </p>
-            </div>
-            <div class="text-center">
-              <p class="text-xs text-[var(--text-muted)] mb-1">Average</p>
-              <p class="text-lg font-semibold text-[var(--text-primary)]">
-                {{ formatPnl(filteredScenarios.filter(s => s.pnl !== null).reduce((a, b) => a + (b.pnl ?? 0), 0) / filteredScenarios.filter(s => s.pnl !== null).length) }}
-              </p>
-            </div>
-            <div class="text-center">
-              <p class="text-xs text-[var(--text-muted)] mb-1">Scenarios</p>
-              <p class="text-lg font-semibold text-[var(--text-primary)]">
-                {{ filteredScenarios.filter(s => s.pnl !== null).length }}
-              </p>
+          </div>
+        </div>
+
+        <!-- Top Risk Drivers -->
+        <div v-if="sensitivityRanking.length > 0" class="glass-card p-5">
+          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">
+            <i class="fas fa-sort-amount-down text-sm mr-2 text-[var(--text-muted)]"></i>
+            Top Risk Drivers
+          </h3>
+          <div class="space-y-3">
+            <div
+              v-for="driver in sensitivityRanking"
+              :key="driver.label"
+              class="flex items-center gap-3"
+            >
+              <span class="text-xs w-16 text-[var(--text-muted)] shrink-0">{{ driver.label }}</span>
+              <div class="flex-1 h-2.5 rounded-full bg-[var(--surface)] overflow-hidden">
+                <div
+                  class="h-2.5 rounded-full transition-all duration-500"
+                  :style="{ width: `${driver.pct}%`, backgroundColor: driver.color }"
+                ></div>
+              </div>
+              <span class="text-xs font-medium text-[var(--text-primary)] w-10 text-right">{{ driver.pct }}%</span>
             </div>
           </div>
         </div>

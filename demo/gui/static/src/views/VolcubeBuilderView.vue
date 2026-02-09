@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 
 // Types
+interface SmilePoint {
+  strikeOffsetBp: number;
+  vol: number;
+}
+
 interface SwaptionInstrument {
   expiry: string;
   tenor: string;
   atmVol: number;
-  smile?: Array<{ strikeOffsetBp: number; vol: number }>;
+  volType: string;
+  smile: SmilePoint[];
+  forward?: number;
+  enabled: boolean;
 }
 
 interface FxQuote {
@@ -30,9 +38,15 @@ interface CalibrationResult {
 }
 
 type AssetTab = 'swaption' | 'fx';
+type VolTypeTab = 'normal' | 'lognormal';
+
+// Canonical sort orders
+const EXPIRY_ORDER = ['1M', '3M', '6M', '1Y', '2Y', '5Y', '10Y', '15Y', '20Y', '30Y'];
+const TENOR_ORDER = ['1Y', '2Y', '5Y', '10Y', '15Y', '20Y', '30Y'];
 
 // State
 const activeTab = ref<AssetTab>('swaption');
+const activeVolType = ref<VolTypeTab>('normal');
 const swaptionIndices = ref<string[]>([]);
 const selectedSwaptionIndex = ref('');
 const swaptionInstruments = ref<SwaptionInstrument[]>([]);
@@ -50,13 +64,93 @@ const fxForeignRate = ref('0');
 const calibrationResult = ref<CalibrationResult | null>(null);
 const isCalibrating = ref(false);
 
-// Computed
+// Popover state
+const popoverCell = ref<{ expiry: string; tenor: string } | null>(null);
+const popoverPosition = ref<{ top: number; left: number }>({ top: 0, left: 0 });
+
+// Matrix computed properties
+const filteredInstruments = computed(() =>
+  swaptionInstruments.value.filter(inst => inst.volType === activeVolType.value)
+);
+
+const instrumentMap = computed(() => {
+  const map = new Map<string, SwaptionInstrument>();
+  for (const inst of filteredInstruments.value) {
+    map.set(`${inst.expiry}|${inst.tenor}`, inst);
+  }
+  return map;
+});
+
+function sortByOrder(labels: string[], order: string[]): string[] {
+  return [...labels].sort((a, b) => {
+    const idxA = order.indexOf(a);
+    const idxB = order.indexOf(b);
+    return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+  });
+}
+
+const matrixExpiries = computed(() => {
+  const expiries = [...new Set(filteredInstruments.value.map(i => i.expiry))];
+  return sortByOrder(expiries, EXPIRY_ORDER);
+});
+
+const matrixTenors = computed(() => {
+  const tenors = [...new Set(filteredInstruments.value.map(i => i.tenor))];
+  return sortByOrder(tenors, TENOR_ORDER);
+});
+
+const volRange = computed(() => {
+  const vols = filteredInstruments.value.map(i => i.atmVol);
+  if (vols.length === 0) return { min: 0, max: 1 };
+  return { min: Math.min(...vols), max: Math.max(...vols) };
+});
+
+function getCell(expiry: string, tenor: string): SwaptionInstrument | undefined {
+  return instrumentMap.value.get(`${expiry}|${tenor}`);
+}
+
+const popoverInstrument = computed(() => {
+  if (!popoverCell.value) return null;
+  return getCell(popoverCell.value.expiry, popoverCell.value.tenor) ?? null;
+});
+
+const normalCount = computed(() =>
+  swaptionInstruments.value.filter(i => i.volType === 'normal').length
+);
+const lognormalCount = computed(() =>
+  swaptionInstruments.value.filter(i => i.volType === 'lognormal').length
+);
+
+// Heatmap colour functions
+function heatmapColour(vol: number): string {
+  const { min, max } = volRange.value;
+  if (max === min) return 'rgba(99, 102, 241, 0.15)';
+  const t = Math.max(0, Math.min(1, (vol - min) / (max - min)));
+  const hue = 220 - t * 205;
+  const saturation = 60 + t * 20;
+  const lightness = 45 + (1 - Math.abs(t - 0.5) * 2) * 10;
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, 0.25)`;
+}
+
+function heatmapTextColour(vol: number): string {
+  const { min, max } = volRange.value;
+  if (max === min) return 'var(--text-primary)';
+  const t = Math.max(0, Math.min(1, (vol - min) / (max - min)));
+  if (t > 0.75) return '#f97316';
+  if (t > 0.5) return '#22c55e';
+  if (t > 0.25) return '#3b82f6';
+  return 'var(--text-secondary)';
+}
+
+// Summary stats
 const summaryStats = computed(() => {
   if (activeTab.value === 'swaption') {
+    const volLabel = activeVolType.value === 'normal' ? 'Normal' : 'Lognormal';
+    const filtered = filteredInstruments.value;
     return [
       { label: 'Valuation Date', value: referenceDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
-      { label: 'Instruments', value: swaptionInstruments.value.length, icon: 'fa-list', color: '#3b82f6' },
-      { label: 'Model', value: selectedModel.value || '-', icon: 'fa-cogs', color: '#8b5cf6' },
+      { label: `${volLabel} Instruments`, value: filtered.length, icon: 'fa-th', color: '#3b82f6' },
+      { label: 'Matrix', value: filtered.length > 0 ? `${matrixExpiries.value.length} x ${matrixTenors.value.length}` : '-', icon: 'fa-border-all', color: '#10b981' },
       { label: 'Status', value: calibrationResult.value ? 'Calibrated' : 'Pending', icon: 'fa-info-circle', color: calibrationResult.value ? '#10b981' : '#f59e0b' },
     ];
   }
@@ -83,6 +177,42 @@ function expiryToLabel(expiry: number): string {
   return `${Math.round(expiry)}Y`;
 }
 
+// Popover functions
+function togglePopover(event: MouseEvent, expiry: string, tenor: string) {
+  const cell = getCell(expiry, tenor);
+  if (!cell || !cell.smile || cell.smile.length === 0) return;
+
+  if (popoverCell.value?.expiry === expiry && popoverCell.value?.tenor === tenor) {
+    popoverCell.value = null;
+    return;
+  }
+
+  const target = event.currentTarget as HTMLElement;
+  const container = target.closest('.matrix-container') as HTMLElement;
+  if (!container) return;
+
+  const targetRect = target.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+
+  popoverPosition.value = {
+    top: targetRect.bottom - containerRect.top + 4,
+    left: targetRect.left - containerRect.left + targetRect.width / 2,
+  };
+
+  popoverCell.value = { expiry, tenor };
+}
+
+function closePopover() {
+  popoverCell.value = null;
+}
+
+function onDocumentClick(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.popover-trigger') && !target.closest('.smile-popover')) {
+    popoverCell.value = null;
+  }
+}
+
 // API calls
 async function loadSwaptionIndices() {
   try {
@@ -90,7 +220,6 @@ async function loadSwaptionIndices() {
     if (!response.ok) throw new Error('Failed to load indices');
     const data = await response.json();
     swaptionIndices.value = data.indices || [];
-    // Default to first USD index
     const usdIndex = swaptionIndices.value.find(idx => idx.startsWith('USD'));
     if (usdIndex && !selectedSwaptionIndex.value) {
       selectedSwaptionIndex.value = usdIndex;
@@ -120,9 +249,10 @@ async function loadSwaptionInstruments(index: string) {
     if (!response.ok) throw new Error('Failed to load instruments');
     const data = await response.json();
     swaptionInstruments.value = data.instruments || [];
-    // Extract reference date from API response
     referenceDate.value = data.referenceDate || data.reference_date || data.metadata?.lastUpdated?.split('T')[0] || '';
     calibrationResult.value = null;
+    activeVolType.value = 'normal';
+    popoverCell.value = null;
   } catch (error) {
     console.error('Failed to load instruments:', error);
   }
@@ -233,6 +363,19 @@ watch(selectedSwaptionIndex, (index) => {
 
 watch(selectedFxPair, (pair) => {
   if (pair) loadFxQuotes(pair);
+});
+
+watch(activeVolType, () => {
+  popoverCell.value = null;
+});
+
+// Lifecycle
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocumentClick);
 });
 
 // Initialize
@@ -441,33 +584,158 @@ loadFxPairs();
             {{ activeTab === 'swaption' ? 'Swaption Instruments' : 'FX Quotes' }}
           </h3>
 
-          <!-- Swaption Table -->
+          <!-- Swaption Matrix -->
           <template v-if="activeTab === 'swaption'">
-            <div v-if="swaptionInstruments.length === 0" class="text-center py-12">
-              <i class="fas fa-cube text-4xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">Select an index to load instruments</p>
+            <!-- Vol Type Sub-Tabs -->
+            <div class="flex gap-1 mb-4 p-1 bg-[var(--surface)] rounded-lg inline-flex">
+              <button
+                :class="[
+                  'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
+                  activeVolType === 'normal'
+                    ? 'bg-[var(--primary)] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ]"
+                @click="activeVolType = 'normal'"
+              >
+                Normal
+                <span class="ml-1 text-xs opacity-70">({{ normalCount }})</span>
+              </button>
+              <button
+                :class="[
+                  'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
+                  activeVolType === 'lognormal'
+                    ? 'bg-[var(--primary)] text-white shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ]"
+                @click="activeVolType = 'lognormal'"
+              >
+                Lognormal
+                <span class="ml-1 text-xs opacity-70">({{ lognormalCount }})</span>
+              </button>
             </div>
-            <div v-else class="overflow-x-auto">
-              <table class="w-full">
+
+            <!-- Empty State -->
+            <div v-if="filteredInstruments.length === 0" class="text-center py-12">
+              <i class="fas fa-cube text-4xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">
+                {{ swaptionInstruments.length === 0
+                  ? 'Select an index to load instruments'
+                  : `No ${activeVolType} instruments available` }}
+              </p>
+            </div>
+
+            <!-- Matrix / Heatmap -->
+            <div v-else class="matrix-container relative overflow-x-auto">
+              <table class="w-full border-collapse">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Expiry</th>
-                    <th class="text-left py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Tenor</th>
-                    <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">ATM Vol</th>
+                  <tr>
+                    <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
+                      Expiry \ Tenor
+                    </th>
+                    <th
+                      v-for="tenor in matrixTenors"
+                      :key="tenor"
+                      class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
+                    >
+                      {{ tenor }}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr
-                    v-for="(inst, idx) in swaptionInstruments"
-                    :key="idx"
-                    class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
-                  >
-                    <td class="py-3 px-4 text-sm text-[var(--text-primary)]">{{ inst.expiry }}</td>
-                    <td class="py-3 px-4 text-sm text-[var(--text-secondary)]">{{ inst.tenor }}</td>
-                    <td class="py-3 px-4 text-sm text-right text-[var(--text-primary)] font-mono">{{ formatVol(inst.atmVol) }}</td>
+                  <tr v-for="expiry in matrixExpiries" :key="expiry">
+                    <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
+                      {{ expiry }}
+                    </td>
+                    <td
+                      v-for="tenor in matrixTenors"
+                      :key="tenor"
+                      class="py-2 px-2 text-center border-b border-[var(--glass-border)] transition-all duration-150 popover-trigger"
+                      :class="[
+                        getCell(expiry, tenor) ? 'cursor-pointer hover-cell' : '',
+                        popoverCell?.expiry === expiry && popoverCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
+                      ]"
+                      :style="getCell(expiry, tenor)
+                        ? { backgroundColor: heatmapColour(getCell(expiry, tenor)!.atmVol) }
+                        : {}"
+                      @click="getCell(expiry, tenor) ? togglePopover($event, expiry, tenor) : undefined"
+                    >
+                      <template v-if="getCell(expiry, tenor)">
+                        <span
+                          class="text-xs font-mono font-medium"
+                          :style="{ color: heatmapTextColour(getCell(expiry, tenor)!.atmVol) }"
+                        >
+                          {{ formatVol(getCell(expiry, tenor)!.atmVol) }}
+                        </span>
+                        <div
+                          v-if="activeVolType === 'lognormal' && getCell(expiry, tenor)!.forward != null"
+                          class="text-[10px] text-[var(--text-muted)] mt-0.5"
+                        >
+                          fwd: {{ (getCell(expiry, tenor)!.forward! * 100).toFixed(2) }}%
+                        </div>
+                      </template>
+                      <span v-else class="text-xs text-[var(--text-muted)]">--</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
+
+              <!-- Smile Popover -->
+              <div
+                v-if="popoverInstrument"
+                class="smile-popover absolute z-50 w-64 glass-card p-4 shadow-lg"
+                :style="{
+                  top: `${popoverPosition.top}px`,
+                  left: `${popoverPosition.left}px`,
+                  transform: 'translateX(-50%)',
+                }"
+              >
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="text-sm font-semibold text-[var(--text-primary)]">
+                    {{ popoverInstrument.expiry }} x {{ popoverInstrument.tenor }}
+                  </h4>
+                  <button
+                    class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs"
+                    @click="closePopover"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+
+                <div class="text-xs space-y-1 mb-3">
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">ATM Vol:</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVol(popoverInstrument.atmVol) }}</span>
+                  </div>
+                  <div v-if="popoverInstrument.forward != null" class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Forward:</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ (popoverInstrument.forward! * 100).toFixed(3) }}%</span>
+                  </div>
+                </div>
+
+                <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
+                <table class="w-full text-xs">
+                  <thead>
+                    <tr class="border-b border-[var(--glass-border)]">
+                      <th class="text-left py-1 text-[var(--text-muted)]">Offset (bp)</th>
+                      <th class="text-right py-1 text-[var(--text-muted)]">Vol</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="pt in popoverInstrument.smile"
+                      :key="pt.strikeOffsetBp"
+                      class="border-b border-[var(--glass-border)]"
+                    >
+                      <td class="py-1 text-[var(--text-secondary)]">
+                        {{ pt.strikeOffsetBp > 0 ? '+' : '' }}{{ pt.strikeOffsetBp }}
+                      </td>
+                      <td class="py-1 text-right font-mono text-[var(--text-primary)]">
+                        {{ formatVol(pt.vol) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </template>
 
@@ -515,5 +783,24 @@ loadFxPairs();
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
+}
+
+.matrix-container {
+  position: relative;
+}
+
+.hover-cell:hover {
+  filter: brightness(1.3);
+}
+
+.smile-popover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid var(--glass-border);
 }
 </style>
