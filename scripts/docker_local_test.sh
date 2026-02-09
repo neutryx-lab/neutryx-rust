@@ -80,11 +80,11 @@ cd "$PROJECT_ROOT"
 
 echo -e "${YELLOW}Building Docker image...${NC}"
 echo -e "  Image name: ${IMAGE_NAME}"
-echo -e "  Dockerfile: Dockerfile.gui"
+echo -e "  Dockerfile: docker/Dockerfile.gui"
 echo ""
 
 # Build the image
-if docker build -f Dockerfile.gui -t "$IMAGE_NAME" $NO_CACHE . ; then
+if docker build -f docker/Dockerfile.gui -t "$IMAGE_NAME" $NO_CACHE . ; then
     echo ""
     echo -e "${GREEN}Build successful!${NC}"
 else

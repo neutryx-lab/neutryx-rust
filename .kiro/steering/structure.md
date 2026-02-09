@@ -702,10 +702,9 @@ demo/data/
 - `Dockerfile.stable` - A/I/P/S builds (no Enzyme)
 - `Dockerfile.nightly` - pricer_pricing with Enzyme LLVM plugin
 - `Dockerfile.gui` - Multi-stage build for demo web dashboard
+- `cloudbuild.yaml` - Google Cloud Build CI/CD pipeline (build→push→deploy)
 
 **Cloud Deployment**: Root directory
-
-- `cloudbuild.yaml` - Google Cloud Build CI/CD pipeline (build→push→deploy)
 - `.dockerignore` - Build optimisation (exclude unnecessary files)
 - `.gcloudignore` - Cloud deployment optimisation
 - `demo/frictional_bank/Dockerfile` - Cloud Run deployment container

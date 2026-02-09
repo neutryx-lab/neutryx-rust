@@ -50,11 +50,11 @@ Set-Location $ProjectRoot
 
 Write-Host "Building Docker image..." -ForegroundColor Yellow
 Write-Host "  Image name: $ImageName"
-Write-Host "  Dockerfile: Dockerfile.gui"
+Write-Host "  Dockerfile: docker/Dockerfile.gui"
 Write-Host ""
 
 # Build the image
-$buildArgs = @("-f", "Dockerfile.gui", "-t", $ImageName)
+$buildArgs = @("-f", "docker/Dockerfile.gui", "-t", $ImageName)
 if ($NoCache) {
     $buildArgs += "--no-cache"
 }

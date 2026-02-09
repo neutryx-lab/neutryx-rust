@@ -168,14 +168,14 @@ docker run -it neutryx-enzyme
 ### Containerisation
 
 - **Multi-stage Docker builds**: Separate Dockerfiles for stable, nightly, and web dashboard
-  - `Dockerfile.gui` for web dashboard (Cloud Run deployments)
+  - `docker/Dockerfile.gui` for web dashboard (Cloud Run deployments)
   - `docker/Dockerfile.stable` for stable crates (all crates without enzyme-ad)
   - `docker/Dockerfile.nightly` for pricer_risk with Enzyme AD (enzyme-ad feature)
 - **Cloud Run support**: Environment-based port binding (`PORT` env var), health endpoints (`/health`)
-- **CI/CD**: Google Cloud Build pipeline (`cloudbuild.yaml`) for automated build→push→deploy
-  - Uses `-f Dockerfile.gui` for web dashboard builds
+- **CI/CD**: Google Cloud Build pipeline (`docker/cloudbuild.yaml`) for automated build→push→deploy
+  - Uses `-f docker/Dockerfile.gui` for web dashboard builds
 - **Container registry**: GCR (Google Container Registry)
-- **Target region**: Configurable via `cloudbuild.yaml` substitutions (default: `asia-northeast1`)
+- **Target region**: Configurable via `docker/cloudbuild.yaml` substitutions (default: `asia-northeast1`)
 
 ### Observability
 

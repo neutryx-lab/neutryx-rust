@@ -4,7 +4,7 @@ steps:
     args:
       - 'build'
       - '-f'
-      - 'Dockerfile.gui'
+      - 'docker/Dockerfile.gui'
       - '-t'
       - 'gcr.io/$PROJECT_ID/frictional-bank:$COMMIT_SHA'
       - '-t'
