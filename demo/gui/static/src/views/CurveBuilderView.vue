@@ -113,6 +113,7 @@ interface BuildResult {
   short_term_grid?: ChartGridPoint[];
   long_term_grid?: ChartGridPoint[];
   converged?: boolean;
+  bootstrap_method?: string;
   jacobian?: JacobianData;
 }
 
@@ -959,10 +960,14 @@ onUnmounted(() => {
 
           <!-- Build Info -->
           <div v-if="buildResult" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
-            <div class="grid grid-cols-3 gap-4 text-sm">
+            <div class="grid grid-cols-4 gap-4 text-sm">
               <div>
                 <span class="text-[var(--text-muted)]">Instruments:</span>
                 <span class="ml-2 text-[var(--text-primary)] font-medium">{{ buildResult.instrument_count }}</span>
+              </div>
+              <div>
+                <span class="text-[var(--text-muted)]">Method:</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ buildResult.bootstrap_method ?? calibrationMethod }}</span>
               </div>
               <div>
                 <span class="text-[var(--text-muted)]">Interpolation:</span>

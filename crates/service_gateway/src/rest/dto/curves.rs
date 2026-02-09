@@ -172,6 +172,8 @@ pub struct CurveBuildResponse {
     pub converged: bool,
     /// Calculation time in milliseconds
     pub calculation_time_ms: f64,
+    /// Actual bootstrap method used (may differ from request if fallback occurred)
+    pub bootstrap_method: String,
     /// Jacobian matrix d(log DF)/dr (finite-difference, sequential bootstrap)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jacobian: Option<JacobianData>,
