@@ -222,10 +222,35 @@
     },
     {
       "type": "event",
+      "id": "USD-TOQ-2026Q1",
+      "event_date": "2026-03-31",
+      "end_date": "2026-04-01",
+      "expected_rate_spike": 0.0005,
+      "description": "Q1 quarter-end turn - 5bp spike"
+    },
+    {
+      "type": "event",
+      "id": "USD-TOQ-2026Q2",
+      "event_date": "2026-06-30",
+      "end_date": "2026-07-01",
+      "expected_rate_spike": 0.0006,
+      "description": "Q2 quarter-end turn - 6bp spike (half-year)"
+    },
+    {
+      "type": "event",
+      "id": "USD-TOQ-2026Q3",
+      "event_date": "2026-09-30",
+      "end_date": "2026-10-01",
+      "expected_rate_spike": 0.00045,
+      "description": "Q3 quarter-end turn - 4.5bp spike"
+    },
+    {
+      "type": "event",
       "id": "USD-TOY-2026",
       "event_date": "2026-12-31",
-      "expected_rate_spike": 0.0005,
-      "description": "Year-end turn - liquidity premium"
+      "end_date": "2027-01-04",
+      "expected_rate_spike": 0.001,
+      "description": "Year-end turn - 10bp liquidity premium"
     }
   ]
 }

@@ -42,6 +42,11 @@ pub struct CurveInstrumentInput {
     /// Expected rate spike at event (e.g., -0.0025 for -25bp cut)
     #[serde(default)]
     pub expected_rate_spike: Option<f64>,
+    /// End date for turn events — spike reverts after this date (ISO format).
+    /// If present, the event is treated as a temporary turn (paired entries).
+    /// If absent, the event is treated as a permanent jump.
+    #[serde(default)]
+    pub end_date: Option<String>,
 }
 
 /// Request to build a yield curve

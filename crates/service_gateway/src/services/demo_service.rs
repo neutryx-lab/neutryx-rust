@@ -1663,19 +1663,29 @@ impl DemoService {
                     .unwrap_or("")
                     .to_string();
                 // Use atmVol field from the data
-                let vol = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let atm_vol = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
                 instruments.push(SwaptionInstrument {
                     expiry,
                     tenor,
                     strike: "ATM".to_string(),
-                    vol,
+                    atm_vol,
                     enabled: true,
                 });
             }
         }
 
-        Ok(VolcubeInstrumentsResponse { instruments })
+        // Extract reference date from metadata.lastUpdated
+        let reference_date = data
+            .get("metadata")
+            .and_then(|m| m.get("lastUpdated"))
+            .and_then(|d| d.as_str())
+            .map(|s| s.split('T').next().unwrap_or(s).to_string());
+
+        Ok(VolcubeInstrumentsResponse {
+            instruments,
+            reference_date,
+        })
     }
 
     /// Calibrate volcube (swaption vol surface)

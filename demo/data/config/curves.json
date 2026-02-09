@@ -14,7 +14,7 @@
   "curves": [
     {
       "name": "USD-SOFR",
-      "description": "USD SOFR discount curve with CB events and year-end turns",
+      "description": "USD SOFR discount curve with CB events and quarter/year-end turns",
       "rateIndex": "USD-SOFR",
       "instruments": [
         "USD-Depo-ON",
@@ -25,6 +25,9 @@
         "FED-2026-06",
         "FED-2026-07",
         "FED-2026-08",
+        "USD-TOQ-2026Q1",
+        "USD-TOQ-2026Q2",
+        "USD-TOQ-2026Q3",
         "USD-TOY-2026",
         "USD-OIS-1M",
         "USD-OIS-3M",

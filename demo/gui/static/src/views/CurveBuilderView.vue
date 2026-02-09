@@ -35,6 +35,7 @@ interface RateInstrument {
   id?: string;
   event_date?: string;
   expected_rate_spike?: number;
+  end_date?: string; // Turn events: spike reverts after this date
 }
 
 interface RateData {
@@ -53,6 +54,7 @@ interface DisplayInstrument {
   enabled: boolean;
   originalRate: number;
   eventDate?: string; // For EVENT type instruments
+  endDate?: string; // Turn events: spike reverts after this date
 }
 
 // instruments.json types
@@ -487,6 +489,7 @@ function loadInstrumentsForCurve() {
         originalRate: rateInst.expected_rate_spike || 0,
         enabled: true,
         eventDate: rateInst.event_date,
+        endDate: rateInst.end_date,
       });
     } else {
       // Handle regular instruments (deposit, ois, fra, etc.)
@@ -564,13 +567,18 @@ async function buildCurve() {
     // Build instrument payload including events
     const instrumentPayload = enabledInstruments.value.map(inst => {
       if (inst.type === 'event') {
-        return {
+        const payload: Record<string, unknown> = {
           instrument_type: 'event',
           tenor: '',
           rate: 0,
           event_date: inst.eventDate,
           expected_rate_spike: inst.rate, // rate field stores the spike for events
         };
+        // Turn events: include end_date so the spike reverts
+        if (inst.endDate) {
+          payload.end_date = inst.endDate;
+        }
+        return payload;
       } else {
         return {
           instrument_type: inst.type.toLowerCase(),
@@ -799,15 +807,25 @@ onUnmounted(() => {
               <!-- Event instruments show date and expected spike input -->
               <template v-if="inst.type === 'event'">
                 <span
+                  v-if="inst.endDate"
+                  class="px-1 py-0.5 text-[10px] rounded bg-cyan-500/20 text-cyan-400"
+                  title="Turn event (temporary spike)"
+                >TURN</span>
+                <span
+                  v-else
+                  class="px-1 py-0.5 text-[10px] rounded bg-amber-500/20 text-amber-400"
+                  title="Jump event (permanent shift)"
+                >JUMP</span>
+                <span
                   class="px-1.5 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400 font-mono"
-                  :title="'Event Date'"
+                  :title="inst.endDate ? `Turn: ${inst.eventDate} → ${inst.endDate}` : 'Event Date'"
                 >{{ inst.eventDate }}</span>
                 <input
                   type="number"
-                  :value="(inst.rate * 10000).toFixed(0)"
-                  step="1"
+                  :value="(inst.rate * 10000).toFixed(1)"
+                  step="0.5"
                   class="w-14 px-1.5 py-0.5 text-right text-xs rounded bg-amber-500/10 border border-amber-500/30 text-amber-400"
-                  title="Expected rate spike in basis points"
+                  :title="inst.endDate ? `Turn spike in bp (reverts ${inst.endDate})` : 'Expected rate spike in basis points'"
                   @change="updateSpike(idx, ($event.target as HTMLInputElement).value)"
                 >
                 <span class="text-xs text-amber-400/60">bp</span>

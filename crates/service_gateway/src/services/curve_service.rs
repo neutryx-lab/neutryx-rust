@@ -8,7 +8,7 @@ use adapter_loader::{parse_instruments, validate_rates, InstrumentSpec};
 use pricer_core::math::formulas::{simple_forward_rate, zero_rate_from_df};
 use pricer_models::{
     builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation},
-    market::{curves::MarketInstrument, YieldCurve},
+    market::YieldCurve,
 };
 
 #[cfg(test)]
@@ -42,13 +42,15 @@ impl CurveService {
             chrono::Utc::now().date_naive()
         };
 
-        // Separate regular instruments from events
+        // Separate regular instruments from events.
+        // Jump entries are (time, individual_offset) pairs — turns expand to TWO entries
+        // (spike up at event_date, spike down at end_date).
         let mut regular_specs: Vec<InstrumentSpec> = Vec::new();
-        let mut event_instruments: Vec<MarketInstrument<f64>> = Vec::new();
+        let mut jump_entries: Vec<(f64, f64)> = Vec::new();
 
         for i in &request.instruments {
             if i.instrument_type.to_lowercase() == "event" {
-                // Handle Event instruments
+                // Handle Event instruments (jumps and turns)
                 if let Some(ref event_date_str) = i.event_date {
                     let event_date = chrono::NaiveDate::parse_from_str(event_date_str, "%Y-%m-%d")
                         .map_err(|e| {
@@ -60,10 +62,23 @@ impl CurveService {
                     if days > 0 {
                         let time_years = days as f64 / 365.0;
                         let expected_spike = i.expected_rate_spike.unwrap_or(i.rate);
-                        event_instruments.push(MarketInstrument::event_with_rate(
-                            time_years,
-                            expected_spike,
-                        ));
+
+                        // Spike entry: rate hike (positive) → negative offset (decreases DF)
+                        jump_entries.push((time_years, -expected_spike));
+
+                        // Turn events: emit a reverting entry at end_date
+                        if let Some(ref end_date_str) = i.end_date {
+                            if let Ok(end_date) =
+                                chrono::NaiveDate::parse_from_str(end_date_str, "%Y-%m-%d")
+                            {
+                                let end_days = (end_date - reference_date).num_days();
+                                if end_days > 0 {
+                                    let end_time = end_days as f64 / 365.0;
+                                    // Revert: opposite sign cancels the spike
+                                    jump_entries.push((end_time, expected_spike));
+                                }
+                            }
+                        }
                     }
                     // Skip past events (days <= 0)
                 }
@@ -94,23 +109,14 @@ impl CurveService {
             })?
         };
 
-        // Convert event instruments to jump data for curve
-        // Jump format: (time, cumulative_offset) where offset is in log(df) space
-        // A rate hike (positive spike) decreases df, so offset = -spike
-        let mut jumps: Vec<(f64, f64)> = event_instruments
-            .iter()
-            .filter_map(|inst| inst.expected_jump().map(|jump| (inst.maturity(), jump)))
-            .collect();
-
-        // Sort jumps by time and calculate cumulative offsets
-        jumps.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        // Sort entries by time and calculate cumulative offsets
+        jump_entries
+            .sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
         let mut cumulative = 0.0;
-        let jump_data: Vec<(f64, f64)> = jumps
+        let jump_data: Vec<(f64, f64)> = jump_entries
             .into_iter()
-            .map(|(time, jump)| {
-                // Convert rate jump to log-space offset: offset = -jump (rate hike decreases
-                // df)
-                cumulative -= jump;
+            .map(|(time, offset)| {
+                cumulative += offset;
                 (time, cumulative)
             })
             .collect();
@@ -299,6 +305,7 @@ mod tests {
                     rate: 0.05,
                     event_date: None,
                     expected_rate_spike: None,
+                    end_date: None,
                 },
                 CurveInstrumentInput {
                     instrument_type: "swap".to_string(),
@@ -306,6 +313,7 @@ mod tests {
                     rate: 0.052,
                     event_date: None,
                     expected_rate_spike: None,
+                    end_date: None,
                 },
                 CurveInstrumentInput {
                     instrument_type: "swap".to_string(),
@@ -313,6 +321,7 @@ mod tests {
                     rate: 0.054,
                     event_date: None,
                     expected_rate_spike: None,
+                    end_date: None,
                 },
             ],
             interpolation: InterpolationMethod::Linear,
@@ -349,6 +358,7 @@ mod tests {
                     rate: 0.05,
                     event_date: None,
                     expected_rate_spike: None,
+                    end_date: None,
                 },
                 CurveInstrumentInput {
                     instrument_type: "event".to_string(),
@@ -356,6 +366,7 @@ mod tests {
                     rate: 0.0,
                     event_date: Some("2026-03-18".to_string()),
                     expected_rate_spike: Some(-0.0025),
+                    end_date: None, // Permanent jump (CB meeting)
                 },
                 CurveInstrumentInput {
                     instrument_type: "swap".to_string(),
@@ -363,6 +374,7 @@ mod tests {
                     rate: 0.052,
                     event_date: None,
                     expected_rate_spike: None,
+                    end_date: None,
                 },
             ],
             interpolation: InterpolationMethod::Linear,
@@ -377,5 +389,90 @@ mod tests {
         assert_eq!(response.instrument_count, 3);
         assert!(response.converged);
         assert!(!response.pillars.is_empty());
+    }
+
+    #[test]
+    fn test_build_curve_with_turn_event() {
+        let state = create_test_state();
+
+        let request = CurveBuildRequest {
+            index: "USD-SOFR".to_string(),
+            currency: "USD".to_string(),
+            reference_date: Some("2026-01-29".to_string()),
+            instruments: vec![
+                CurveInstrumentInput {
+                    instrument_type: "deposit".to_string(),
+                    tenor: "1M".to_string(),
+                    rate: 0.05,
+                    event_date: None,
+                    expected_rate_spike: None,
+                    end_date: None,
+                },
+                CurveInstrumentInput {
+                    instrument_type: "event".to_string(),
+                    tenor: String::new(),
+                    rate: 0.0,
+                    event_date: Some("2026-12-31".to_string()),
+                    expected_rate_spike: Some(0.001), // 10bp turn spike
+                    end_date: Some("2027-01-04".to_string()), // Reverts after Jan 4
+                },
+                CurveInstrumentInput {
+                    instrument_type: "swap".to_string(),
+                    tenor: "1Y".to_string(),
+                    rate: 0.052,
+                    event_date: None,
+                    expected_rate_spike: None,
+                    end_date: None,
+                },
+                CurveInstrumentInput {
+                    instrument_type: "swap".to_string(),
+                    tenor: "2Y".to_string(),
+                    rate: 0.054,
+                    event_date: None,
+                    expected_rate_spike: None,
+                    end_date: None,
+                },
+            ],
+            interpolation: InterpolationMethod::Linear,
+            bootstrap_method: BootstrapMethod::Sequential,
+            tolerance: 1e-10,
+            max_iterations: 100,
+        };
+
+        let response = CurveService::build_curve(&request, &state).unwrap();
+
+        assert!(response.converged);
+
+        // Find forward rates around the turn date (Dec 31 ≈ 0.921 years from Jan 29)
+        let turn_time = 336.0 / 365.0; // ~Dec 31
+        let revert_time = 340.0 / 365.0; // ~Jan 4
+
+        // Verify the forward curve has the spike pattern
+        if let Some(fwd_curve) = &Some(&response.forward_curve) {
+            // Find nearest points to the turn date
+            let pre_turn: Vec<_> = fwd_curve
+                .iter()
+                .filter(|p| p.time > turn_time - 0.01 && p.time < turn_time)
+                .collect();
+            let post_revert: Vec<_> = fwd_curve
+                .iter()
+                .filter(|p| p.time > revert_time && p.time < revert_time + 0.05)
+                .collect();
+
+            // Both pre-turn and post-revert should have similar forward rates
+            // (the spike should revert, not persist)
+            if let (Some(pre), Some(post)) = (pre_turn.first(), post_revert.first()) {
+                let diff = (pre.forward_rate - post.forward_rate).abs();
+                // After revert, forward rate should be close to pre-turn level
+                // (within 50bp tolerance for interpolation effects)
+                assert!(
+                    diff < 0.005,
+                    "Turn should revert: pre={:.6}, post={:.6}, diff={:.6}",
+                    pre.forward_rate,
+                    post.forward_rate,
+                    diff
+                );
+            }
+        }
     }
 }

@@ -582,18 +582,22 @@ pub struct VolcubeModelsResponse {
 
 /// Swaption instrument for volcube
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SwaptionInstrument {
     pub expiry: String,
     pub tenor: String,
     pub strike: String,
-    pub vol: f64,
+    pub atm_vol: f64,
     pub enabled: bool,
 }
 
 /// Volcube instruments response
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VolcubeInstrumentsResponse {
     pub instruments: Vec<SwaptionInstrument>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reference_date: Option<String>,
 }
 
 /// Volcube calibration request
