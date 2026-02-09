@@ -588,11 +588,8 @@ pub struct SwaptionInstrument {
     pub tenor: String,
     pub strike: String,
     pub atm_vol: f64,
-    pub vol_type: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub smile: Vec<SmilePoint>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub forward: Option<f64>,
     pub enabled: bool,
 }
 

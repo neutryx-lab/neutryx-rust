@@ -7,10 +7,6 @@ use infra_domain::Date;
 
 use crate::error::FpmlError;
 
-/// Reads XML content into a string for easier processing.
-#[allow(dead_code)]
-pub fn xml_to_string(xml: &str) -> String { xml.to_string() }
-
 /// Parse a date from FpML format (YYYY-MM-DD).
 pub fn parse_date(date_str: &str) -> Result<Date, FpmlError> {
     let parts: Vec<&str> = date_str.split('-').collect();
@@ -116,35 +112,6 @@ impl<'a> XmlNavigator<'a> {
         }
 
         None
-    }
-
-    /// Finds all occurrences of an element.
-    #[allow(dead_code)]
-    pub fn find_all(&self, element_name: &str) -> Vec<String> {
-        let mut results = Vec::new();
-        let start_tag = format!("<{}", element_name);
-        let end_tag = format!("</{}>", element_name);
-
-        let mut search_from = 0;
-        while let Some(start_idx) = self.content[search_from..].find(&start_tag) {
-            let abs_start = search_from + start_idx;
-            let after_start = &self.content[abs_start..];
-
-            if let Some(tag_end) = after_start.find('>') {
-                let content_start = tag_end + 1;
-                if let Some(end_idx) = after_start.find(&end_tag) {
-                    let text = &after_start[content_start..end_idx];
-                    results.push(text.trim().to_string());
-                    search_from = abs_start + end_idx + end_tag.len();
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
-        results
     }
 
     /// Extracts a subsection of XML by element name.

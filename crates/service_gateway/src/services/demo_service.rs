@@ -1663,11 +1663,6 @@ impl DemoService {
                     .unwrap_or("")
                     .to_string();
                 let atm_vol = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let vol_type = quote
-                    .get("volType")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("normal")
-                    .to_string();
                 let smile = quote
                     .get("smile")
                     .and_then(|s| s.as_array())
@@ -1685,16 +1680,13 @@ impl DemoService {
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();
-                let forward = quote.get("forward").and_then(|f| f.as_f64());
 
                 instruments.push(SwaptionInstrument {
                     expiry,
                     tenor,
                     strike: "ATM".to_string(),
                     atm_vol,
-                    vol_type,
                     smile,
-                    forward,
                     enabled: true,
                 });
             }

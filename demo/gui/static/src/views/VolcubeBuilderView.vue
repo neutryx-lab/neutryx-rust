@@ -11,9 +11,7 @@ interface SwaptionInstrument {
   expiry: string;
   tenor: string;
   atmVol: number;
-  volType: string;
   smile: SmilePoint[];
-  forward?: number;
   enabled: boolean;
 }
 
@@ -38,7 +36,6 @@ interface CalibrationResult {
 }
 
 type AssetTab = 'swaption' | 'fx';
-type VolTypeTab = 'normal' | 'lognormal';
 
 // Canonical sort orders
 const EXPIRY_ORDER = ['1M', '3M', '6M', '1Y', '2Y', '5Y', '10Y', '15Y', '20Y', '30Y'];
@@ -46,7 +43,6 @@ const TENOR_ORDER = ['1Y', '2Y', '5Y', '10Y', '15Y', '20Y', '30Y'];
 
 // State
 const activeTab = ref<AssetTab>('swaption');
-const activeVolType = ref<VolTypeTab>('normal');
 const swaptionIndices = ref<string[]>([]);
 const selectedSwaptionIndex = ref('');
 const swaptionInstruments = ref<SwaptionInstrument[]>([]);
@@ -69,13 +65,9 @@ const popoverCell = ref<{ expiry: string; tenor: string } | null>(null);
 const popoverPosition = ref<{ top: number; left: number }>({ top: 0, left: 0 });
 
 // Matrix computed properties
-const filteredInstruments = computed(() =>
-  swaptionInstruments.value.filter(inst => inst.volType === activeVolType.value)
-);
-
 const instrumentMap = computed(() => {
   const map = new Map<string, SwaptionInstrument>();
-  for (const inst of filteredInstruments.value) {
+  for (const inst of swaptionInstruments.value) {
     map.set(`${inst.expiry}|${inst.tenor}`, inst);
   }
   return map;
@@ -90,17 +82,17 @@ function sortByOrder(labels: string[], order: string[]): string[] {
 }
 
 const matrixExpiries = computed(() => {
-  const expiries = [...new Set(filteredInstruments.value.map(i => i.expiry))];
+  const expiries = [...new Set(swaptionInstruments.value.map(i => i.expiry))];
   return sortByOrder(expiries, EXPIRY_ORDER);
 });
 
 const matrixTenors = computed(() => {
-  const tenors = [...new Set(filteredInstruments.value.map(i => i.tenor))];
+  const tenors = [...new Set(swaptionInstruments.value.map(i => i.tenor))];
   return sortByOrder(tenors, TENOR_ORDER);
 });
 
 const volRange = computed(() => {
-  const vols = filteredInstruments.value.map(i => i.atmVol);
+  const vols = swaptionInstruments.value.map(i => i.atmVol);
   if (vols.length === 0) return { min: 0, max: 1 };
   return { min: Math.min(...vols), max: Math.max(...vols) };
 });
@@ -113,13 +105,6 @@ const popoverInstrument = computed(() => {
   if (!popoverCell.value) return null;
   return getCell(popoverCell.value.expiry, popoverCell.value.tenor) ?? null;
 });
-
-const normalCount = computed(() =>
-  swaptionInstruments.value.filter(i => i.volType === 'normal').length
-);
-const lognormalCount = computed(() =>
-  swaptionInstruments.value.filter(i => i.volType === 'lognormal').length
-);
 
 // Heatmap colour functions
 function heatmapColour(vol: number): string {
@@ -145,12 +130,11 @@ function heatmapTextColour(vol: number): string {
 // Summary stats
 const summaryStats = computed(() => {
   if (activeTab.value === 'swaption') {
-    const volLabel = activeVolType.value === 'normal' ? 'Normal' : 'Lognormal';
-    const filtered = filteredInstruments.value;
+    const instruments = swaptionInstruments.value;
     return [
       { label: 'Valuation Date', value: referenceDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
-      { label: `${volLabel} Instruments`, value: filtered.length, icon: 'fa-th', color: '#3b82f6' },
-      { label: 'Matrix', value: filtered.length > 0 ? `${matrixExpiries.value.length} x ${matrixTenors.value.length}` : '-', icon: 'fa-border-all', color: '#10b981' },
+      { label: 'Instruments', value: instruments.length, icon: 'fa-th', color: '#3b82f6' },
+      { label: 'Matrix', value: instruments.length > 0 ? `${matrixExpiries.value.length} x ${matrixTenors.value.length}` : '-', icon: 'fa-border-all', color: '#10b981' },
       { label: 'Status', value: calibrationResult.value ? 'Calibrated' : 'Pending', icon: 'fa-info-circle', color: calibrationResult.value ? '#10b981' : '#f59e0b' },
     ];
   }
@@ -251,7 +235,6 @@ async function loadSwaptionInstruments(index: string) {
     swaptionInstruments.value = data.instruments || [];
     referenceDate.value = data.referenceDate || data.reference_date || data.metadata?.lastUpdated?.split('T')[0] || '';
     calibrationResult.value = null;
-    activeVolType.value = 'normal';
     popoverCell.value = null;
   } catch (error) {
     console.error('Failed to load instruments:', error);
@@ -363,10 +346,6 @@ watch(selectedSwaptionIndex, (index) => {
 
 watch(selectedFxPair, (pair) => {
   if (pair) loadFxQuotes(pair);
-});
-
-watch(activeVolType, () => {
-  popoverCell.value = null;
 });
 
 // Lifecycle
@@ -586,42 +565,10 @@ loadFxPairs();
 
           <!-- Swaption Matrix -->
           <template v-if="activeTab === 'swaption'">
-            <!-- Vol Type Sub-Tabs -->
-            <div class="flex gap-1 mb-4 p-1 bg-[var(--surface)] rounded-lg inline-flex">
-              <button
-                :class="[
-                  'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
-                  activeVolType === 'normal'
-                    ? 'bg-[var(--primary)] text-white shadow-sm'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                ]"
-                @click="activeVolType = 'normal'"
-              >
-                Normal
-                <span class="ml-1 text-xs opacity-70">({{ normalCount }})</span>
-              </button>
-              <button
-                :class="[
-                  'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
-                  activeVolType === 'lognormal'
-                    ? 'bg-[var(--primary)] text-white shadow-sm'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                ]"
-                @click="activeVolType = 'lognormal'"
-              >
-                Lognormal
-                <span class="ml-1 text-xs opacity-70">({{ lognormalCount }})</span>
-              </button>
-            </div>
-
             <!-- Empty State -->
-            <div v-if="filteredInstruments.length === 0" class="text-center py-12">
+            <div v-if="swaptionInstruments.length === 0" class="text-center py-12">
               <i class="fas fa-cube text-4xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">
-                {{ swaptionInstruments.length === 0
-                  ? 'Select an index to load instruments'
-                  : `No ${activeVolType} instruments available` }}
-              </p>
+              <p class="text-[var(--text-muted)]">Select an index to load instruments</p>
             </div>
 
             <!-- Matrix / Heatmap -->
@@ -666,12 +613,6 @@ loadFxPairs();
                         >
                           {{ formatVol(getCell(expiry, tenor)!.atmVol) }}
                         </span>
-                        <div
-                          v-if="activeVolType === 'lognormal' && getCell(expiry, tenor)!.forward != null"
-                          class="text-[10px] text-[var(--text-muted)] mt-0.5"
-                        >
-                          fwd: {{ (getCell(expiry, tenor)!.forward! * 100).toFixed(2) }}%
-                        </div>
                       </template>
                       <span v-else class="text-xs text-[var(--text-muted)]">--</span>
                     </td>
@@ -705,10 +646,6 @@ loadFxPairs();
                   <div class="flex justify-between">
                     <span class="text-[var(--text-muted)]">ATM Vol:</span>
                     <span class="text-[var(--text-primary)] font-mono">{{ formatVol(popoverInstrument.atmVol) }}</span>
-                  </div>
-                  <div v-if="popoverInstrument.forward != null" class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">Forward:</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ (popoverInstrument.forward! * 100).toFixed(3) }}%</span>
                   </div>
                 </div>
 
