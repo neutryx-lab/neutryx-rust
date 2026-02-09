@@ -1,0 +1,73 @@
+# --- Stage 1: Build Frontend ---
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /app/demo/gui/static
+
+COPY demo/gui/static/package*.json ./
+RUN npm ci
+
+COPY demo/gui/static/ ./
+RUN npm run build
+
+# --- Stage 2: Build Backend ---
+FROM rust:1.84-slim-bookworm AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+
+# Copy built frontend from previous stage
+COPY --from=frontend-builder /app/demo/gui/dist ./demo/gui/dist
+
+RUN cargo build --release -p service_gateway --features demo --bin neutryx-server
+
+# --- Stage 3: Runtime ---
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/target/release/neutryx-server ./neutryx-server
+# Copy Vite build output to the path expected by the code
+COPY --from=builder /app/demo/gui/dist ./demo/gui/dist
+# Copy data files for nest_service("/data/input", ServeDir::new("demo/data/input"))
+COPY --from=builder /app/demo/data/input ./demo/data/input
+# Copy config files for nest_service("/data/config", ServeDir::new("demo/data/config"))
+COPY --from=builder /app/demo/data/config ./demo/data/config
+# Copy FpML trades for GraphAppState::new_with_sample()
+COPY --from=builder /app/demo/data/trades ./demo/data/trades
+
+# Verify critical files exist (build will fail if missing)
+# This helps catch file path issues before deployment
+RUN set -e && \
+    echo "=== Verifying Vite build output ===" && \
+    test -f ./demo/gui/dist/index.html && \
+    test -d ./demo/gui/dist/assets && \
+    ls -la ./demo/gui/dist/ && \
+    echo "=== Verifying config files ===" && \
+    test -f ./demo/data/config/curves.json && \
+    test -f ./demo/data/config/instruments.json && \
+    echo "=== Verifying data files ===" && \
+    test -f ./demo/data/input/market_data_config.json && \
+    test -f ./demo/data/input/holidays.json && \
+    test -d ./demo/data/input/rates && \
+    test -f ./demo/data/input/rates/usd-sofr.json && \
+    test -d ./demo/data/input/irvol && \
+    test -d ./demo/data/input/fxvol && \
+    test -d ./demo/data/input/events && \
+    ls -la ./demo/data/input/ && \
+    echo "=== All critical files verified ==="
+
+ENV RUST_LOG=info
+ENV FB_OPEN_BROWSER=false
+
+RUN useradd -m appuser
+USER appuser
+
+CMD ["./neutryx-server"]
