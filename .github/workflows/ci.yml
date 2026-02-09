@@ -29,7 +29,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/resilient-checkout
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@v4
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -76,7 +89,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/resilient-checkout
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@v4
 
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@nightly
@@ -178,7 +204,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/resilient-checkout
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@v4
 
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@nightly
@@ -222,7 +261,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/resilient-checkout
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@v4
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -259,7 +311,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/resilient-checkout
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@v4
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
@@ -298,7 +363,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/resilient-checkout
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@v4
 
       - name: Install nightly Rust
         uses: dtolnay/rust-toolchain@nightly
@@ -425,7 +503,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/resilient-checkout
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+
+      - name: Retry checkout on failure
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
+          sleep 60
+
+      - name: Checkout repository (retry)
+        if: steps.checkout.outcome == 'failure'
+        uses: actions/checkout@v4
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
