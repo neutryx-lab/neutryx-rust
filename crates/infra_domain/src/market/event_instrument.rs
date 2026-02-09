@@ -609,8 +609,7 @@ mod tests {
         let toy = EventInstrument::new(date, EventType::TurnOfYear, 12.5, 1.0, RateIndex::Sofr);
         assert!(toy.is_turn());
 
-        let toq =
-            EventInstrument::new(date, EventType::TurnOfQuarter, 5.0, 1.0, RateIndex::Sofr);
+        let toq = EventInstrument::new(date, EventType::TurnOfQuarter, 5.0, 1.0, RateIndex::Sofr);
         assert!(toq.is_turn());
 
         let tom = EventInstrument::new(date, EventType::TurnOfMonth, 2.0, 1.0, RateIndex::Sofr);

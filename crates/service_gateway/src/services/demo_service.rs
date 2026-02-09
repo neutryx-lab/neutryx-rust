@@ -1669,8 +1669,7 @@ impl DemoService {
                     .map(|arr| {
                         arr.iter()
                             .filter_map(|pt| {
-                                let offset =
-                                    pt.get("strikeOffsetBp").and_then(|o| o.as_f64())?;
+                                let offset = pt.get("strikeOffsetBp").and_then(|o| o.as_f64())?;
                                 let vol = pt.get("vol").and_then(|v| v.as_f64())?;
                                 Some(SmilePoint {
                                     strike_offset_bp: offset,

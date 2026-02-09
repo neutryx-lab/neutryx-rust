@@ -1595,8 +1595,7 @@ pub mod jumps {
             let turn_start = Date::from_ymd(2024, 12, 31).unwrap();
             let turn_end = Date::from_ymd(2025, 1, 2).unwrap();
 
-            let pillars =
-                vec![JumpPillar::new(turn_start, 12.5, 1.0).with_end_date(turn_end)];
+            let pillars = vec![JumpPillar::new(turn_start, 12.5, 1.0).with_end_date(turn_end)];
 
             let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
 
@@ -1651,8 +1650,7 @@ pub mod jumps {
             let turn_start = Date::from_ymd(2024, 6, 30).unwrap();
             let turn_end = Date::from_ymd(2024, 7, 1).unwrap();
 
-            let pillars =
-                vec![JumpPillar::new(turn_start, 5.0, 1.0).with_end_date(turn_end)];
+            let pillars = vec![JumpPillar::new(turn_start, 5.0, 1.0).with_end_date(turn_end)];
 
             let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
             assert_eq!(entries.len(), 2);
