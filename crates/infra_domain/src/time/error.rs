@@ -13,7 +13,7 @@
 
 use thiserror::Error;
 
-use crate::DateError;
+use crate::error::DateError;
 
 /// Unified error type for time-related operations.
 ///

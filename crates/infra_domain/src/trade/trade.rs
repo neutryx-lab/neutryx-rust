@@ -12,7 +12,7 @@ use super::{
 };
 use crate::{
     ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
-    Date,
+    time::Date,
 };
 
 /// Type of option exercise.
@@ -537,8 +537,8 @@ impl Trade {
 mod tests {
     use super::*;
     use crate::{
+        market::Currency,
         trade::{CashflowType, Direction, Payoff},
-        Currency,
     };
 
     fn make_fixed_leg() -> Leg {
@@ -562,7 +562,7 @@ mod tests {
     }
 
     fn make_floating_leg() -> Leg {
-        use crate::{trade::IndexType, RateIndex};
+        use crate::{market::RateIndex, trade::IndexType};
 
         let cashflows = vec![Cashflow::new(
             CashflowType::Coupon,

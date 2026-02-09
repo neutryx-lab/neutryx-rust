@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_domain::{TradeDirection, SwapDirection};
+//! use infra_domain::trade::{TradeDirection, SwapDirection};
 //!
 //! let direction = TradeDirection::Long;
 //! let swap_dir: TradeDirection = SwapDirection::ReceiveFixed.into();
@@ -25,7 +25,7 @@
 /// # Examples
 ///
 /// ```
-/// use infra_domain::TradeDirection;
+/// use infra_domain::trade::TradeDirection;
 ///
 /// let long = TradeDirection::Long;
 /// let short = TradeDirection::Short;
@@ -47,7 +47,7 @@ pub enum TradeDirection {
 /// # Examples
 ///
 /// ```
-/// use infra_domain::{SwapDirection, TradeDirection};
+/// use infra_domain::trade::{SwapDirection, TradeDirection};
 ///
 /// let pay_fixed = SwapDirection::PayFixed;
 /// let trade_dir: TradeDirection = pay_fixed.into();

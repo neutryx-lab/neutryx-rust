@@ -6,10 +6,9 @@
 
 use super::error::InstrumentError;
 use crate::{
-    market::CurrencyPair,
-    time::{CalendarId, DayCounter},
+    market::{Currency, CurrencyPair},
+    time::{CalendarId, Date, DayCounter},
     trade::OptionType,
-    Currency, Date,
 };
 
 // ============================================================================
@@ -407,7 +406,7 @@ impl std::fmt::Display for FxVolInstrument {
 /// use infra_domain::trade::instrument_def::{
 ///     FxVolInstrumentBuilder, CurrencyPair, Delta, FxVolConvention,
 /// };
-/// use infra_domain::{Currency, Date};
+/// use infra_domain::{market::Currency, time::Date};
 ///
 /// let inst = FxVolInstrumentBuilder::new(
 ///         CurrencyPair::new(Currency::EUR, Currency::USD),

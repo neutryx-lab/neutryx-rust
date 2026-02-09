@@ -15,7 +15,7 @@
 //!
 //! ```ignore
 //! use pricer_models::compiler::{XCcyCompiler, IndexMapper};
-//! use infra_domain::Currency;
+//! use infra_domain::market::Currency;
 //!
 //! let mapper = IndexMapper::with_common_indices();
 //! let compiler = XCcyCompiler::new(mapper)
@@ -27,9 +27,9 @@
 use std::sync::Arc;
 
 use infra_domain::{
-    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar},
+    market::Currency,
+    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date},
     trade::{IndexType, Payoff, Trade},
-    Currency, Date,
 };
 use pricer_core::{
     kernel::{CompileError, PricingKernel, PricingKernelBuilder},
@@ -59,7 +59,7 @@ use super::{IndexMapper, TradeCompiler};
 ///
 /// ```ignore
 /// use pricer_models::compiler::{XCcyCompiler, IndexMapper};
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 ///
 /// let mapper = IndexMapper::new();
 /// let compiler = XCcyCompiler::new(mapper)
@@ -371,8 +371,8 @@ impl XCcyCompiler {
 #[cfg(test)]
 mod tests {
     use infra_domain::{
+        market::{Currency, RateIndex},
         trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, TradeType},
-        Currency, RateIndex,
     };
 
     use super::*;

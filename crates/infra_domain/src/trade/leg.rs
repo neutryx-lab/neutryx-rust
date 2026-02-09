@@ -4,7 +4,7 @@
 //! in financial instruments.
 
 use super::cashflow::Cashflow;
-use crate::{Currency, Date};
+use crate::{market::Currency, time::Date};
 
 /// Direction of a leg from the perspective of the trade holder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

@@ -4,8 +4,8 @@
 //! with metadata for portfolio management.
 
 use infra_domain::{
+    market::Currency,
     trade::{PayoffType, PricingInstrument},
-    Currency,
 };
 
 use super::ids::{CounterpartyId, NettingSetId, TradeId};
@@ -19,7 +19,7 @@ use super::ids::{CounterpartyId, NettingSetId, TradeId};
 ///
 /// ```
 /// use pricer_risk::portfolio::{Trade, TradeId, CounterpartyId, NettingSetId};
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 /// use infra_domain::trade::{
 ///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };

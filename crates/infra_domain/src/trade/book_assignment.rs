@@ -77,7 +77,7 @@ impl BookTransferReason {
 ///
 /// ```
 /// use infra_domain::trade::TradeBookAssignment;
-/// use infra_domain::Date;
+/// use infra_domain::time::Date;
 ///
 /// let assignment = TradeBookAssignment::new_trade(
 ///     "TRADE001",
@@ -198,7 +198,7 @@ impl TradeBookAssignment {
 ///
 /// ```
 /// use infra_domain::trade::{TradeBookHistory, TradeBookAssignment, BookTransferReason};
-/// use infra_domain::Date;
+/// use infra_domain::time::Date;
 ///
 /// let mut history = TradeBookHistory::new("TRADE001");
 /// history.add_assignment(TradeBookAssignment::new_trade(

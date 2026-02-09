@@ -8,7 +8,7 @@ use super::{
     common::{BarrierDirection, BarrierType, ExerciseStyle},
     error::InstrumentError,
 };
-use crate::{trade::OptionType, Currency, Date, Frequency};
+use crate::{market::Currency, time::{Date, Frequency}, trade::OptionType};
 
 /// Underlying asset for equity instruments.
 #[derive(Debug, Clone, PartialEq)]

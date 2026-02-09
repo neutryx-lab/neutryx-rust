@@ -5,11 +5,12 @@
 //! - Credit Default Swap Index (CDX, iTraxx)
 
 use infra_domain::{
+    market::Currency,
+    time::Date,
     trade::{
         Cashflow, CashflowType, Direction, Leg, LegType, Payoff, ProtectionSide, Trade,
         TradeMetadata, TradeType,
     },
-    Currency, Date,
 };
 
 use crate::{

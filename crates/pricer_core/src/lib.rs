@@ -63,7 +63,7 @@
 //!
 //! ```rust
 //! use pricer_core::math::smoothing::smooth_max;
-//! use infra_domain::{Date, Currency, DayCounter};
+//! use infra_domain::{time::{Date, DayCounter}, market::Currency};
 //!
 //! // Date operations (from infra_domain)
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();

@@ -27,11 +27,11 @@
 //! ```
 
 use infra_domain::{
+    market::Currency,
     trade::{
         ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
         VanillaOption,
     },
-    Currency,
 };
 
 use super::{

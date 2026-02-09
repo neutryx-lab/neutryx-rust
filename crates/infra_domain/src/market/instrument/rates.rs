@@ -9,7 +9,7 @@ use super::{
     common::{NotionalSchedule, PayerReceiver},
     error::InstrumentError,
 };
-use crate::{time::EndOfMonthRule, Currency, Date, Frequency, RateIndex, Tenor};
+use crate::{market::{Currency, RateIndex}, time::{Date, EndOfMonthRule, Frequency, Tenor}};
 
 // ============================================================================
 // Floating Rate Note (FRN)
@@ -185,7 +185,7 @@ impl InflationSwap {
 ///
 /// ```rust,ignore
 /// use infra_domain::trade::instrument_def::{Ois, PayerReceiver};
-/// use infra_domain::{Currency, Date, RateIndex, Frequency};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency}};
 ///
 /// let ois = Ois {
 ///     rate_index: RateIndex::Sofr,
@@ -260,7 +260,7 @@ impl Ois {
 ///
 /// ```rust,ignore
 /// use infra_domain::trade::instrument_def::Deposit;
-/// use infra_domain::{Currency, Date, Tenor};
+/// use infra_domain::{market::Currency, time::{Date, Tenor}};
 ///
 /// let deposit = Deposit {
 ///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
@@ -326,7 +326,7 @@ impl Deposit {
 ///
 /// ```rust,ignore
 /// use infra_domain::trade::instrument_def::Fra;
-/// use infra_domain::{Currency, Date, RateIndex, Tenor};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Tenor}};
 ///
 /// let fra = Fra {
 ///     fixing_date: Date::from_ymd(2025, 3, 15).unwrap(),
@@ -402,7 +402,7 @@ impl Fra {
 ///
 /// ```rust,ignore
 /// use infra_domain::trade::instrument_def::Futures;
-/// use infra_domain::{Currency, Date, RateIndex, Tenor};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Tenor}};
 ///
 /// let futures = Futures {
 ///     expiry_date: Date::from_ymd(2025, 6, 18).unwrap(),
@@ -481,7 +481,7 @@ impl Futures {
 ///
 /// ```rust,ignore
 /// use infra_domain::trade::instrument_def::{InterestRateSwap, PayerReceiver};
-/// use infra_domain::{Currency, Date, Frequency, RateIndex, Tenor};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
 ///
 /// let irs = InterestRateSwap {
 ///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
@@ -571,7 +571,7 @@ impl InterestRateSwap {
 ///
 /// ```rust,ignore
 /// use infra_domain::trade::instrument_def::{BasisSwap, PayerReceiver};
-/// use infra_domain::{Currency, Date, Frequency, RateIndex, Tenor};
+/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
 ///
 /// let basis = BasisSwap {
 ///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),

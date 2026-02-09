@@ -82,7 +82,7 @@
 //!     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
-//! use infra_domain::Currency;
+//! use infra_domain::market::Currency;
 //! use infra_domain::trade::{
 //!     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 //! };

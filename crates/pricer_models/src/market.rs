@@ -1951,7 +1951,7 @@ mod tests {
 
     #[test]
     fn test_flat_fx_curve() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fwd_pts = 0.02_f64; // 2% forward points per year
@@ -1969,7 +1969,7 @@ mod tests {
 
     #[test]
     fn test_irp_fx_curve() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let dom_curve = FlatCurve::new(0.03_f64); // USD rate
@@ -1992,7 +1992,7 @@ mod tests {
 
     #[test]
     fn test_fx_curve_enum_irp_flat() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY);
         let fx_curve = FxCurveEnum::irp_flat(150.0, 0.05, 0.01, pair);
@@ -2005,7 +2005,7 @@ mod tests {
 
     #[test]
     fn test_fx_curve_currency_pair() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         let pair = CurrencyPair::new(Currency::GBP, Currency::USD);
         let fx_curve: FxCurveEnum<f64> = FxCurveEnum::flat(1.25, 0.01, pair);
@@ -2015,7 +2015,7 @@ mod tests {
 
     #[test]
     fn test_irp_fx_curve_with_negative_spread() {
-        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
 
         // Case where foreign rate > domestic rate (forward < spot)
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY);

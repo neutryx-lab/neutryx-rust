@@ -6,10 +6,11 @@
 //! - Commodity Forward (commodityForward)
 
 use infra_domain::{
+    market::Currency,
+    time::Date,
     trade::{
         Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeMetadata, TradeType,
     },
-    Currency, Date,
 };
 
 use crate::{

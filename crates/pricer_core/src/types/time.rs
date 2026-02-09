@@ -12,7 +12,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_domain::Date;
+//! use infra_domain::time::Date;
 //! use pricer_core::types::time::DayCountConvention;
 //!
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();
@@ -25,7 +25,7 @@
 
 use std::{fmt, str::FromStr};
 
-use infra_domain::{Date, DayCounter};
+use infra_domain::time::{Date, DayCounter};
 
 /// Day Count Convention (year fraction convention).
 ///
@@ -106,7 +106,7 @@ impl DayCountConvention {
     ///
     /// ```
     /// use pricer_core::types::time::DayCountConvention;
-    /// use infra_domain::DayCounter;
+    /// use infra_domain::time::DayCounter;
     ///
     /// let dcc = DayCountConvention::ActualActual365;
     /// let dc: DayCounter = dcc.into();
@@ -136,7 +136,7 @@ impl DayCountConvention {
     ///
     /// ```
     /// use pricer_core::types::time::DayCountConvention;
-    /// use infra_domain::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let start = Date::from_ymd(2024, 1, 1).unwrap();
     /// let end = Date::from_ymd(2024, 7, 1).unwrap();
@@ -294,7 +294,7 @@ pub fn time_to_maturity(start: chrono::NaiveDate, end: chrono::NaiveDate) -> f64
 ///
 /// ```
 /// use pricer_core::types::time::time_to_maturity_dates;
-/// use infra_domain::Date;
+/// use infra_domain::time::Date;
 ///
 /// let valuation_date = Date::from_ymd(2024, 1, 1).unwrap();
 /// let maturity_date = Date::from_ymd(2025, 1, 1).unwrap();

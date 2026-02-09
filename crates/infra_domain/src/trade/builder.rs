@@ -8,7 +8,7 @@
 //! # Examples
 //!
 //! ```rust,ignore
-//! use infra_domain::{Currency, Date, Period};
+//! use infra_domain::{market::Currency, time::{Date, Period}};
 //! use infra_domain::trade::{LegConfig, Trade, Direction, LegType, TradeType};
 //!
 //! let schedule = vec![
@@ -41,7 +41,7 @@ use super::{
     leg::{Direction, Leg, LegType},
     payoff::Payoff,
 };
-use crate::{Currency, Date, DayCounter, RateIndex};
+use crate::{market::{Currency, RateIndex}, time::{Date, DayCounter}};
 
 // ============================================================================
 // LegConfig (bon-based, recommended)
@@ -55,7 +55,7 @@ use crate::{Currency, Date, DayCounter, RateIndex};
 /// # Examples
 ///
 /// ```rust,ignore
-/// use infra_domain::{Currency, Date, DayCounter};
+/// use infra_domain::{market::Currency, time::{Date, DayCounter}};
 /// use infra_domain::trade::{LegConfig, Direction};
 ///
 /// let schedule = vec![

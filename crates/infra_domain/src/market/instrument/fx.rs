@@ -9,7 +9,7 @@ use super::{
 };
 // Re-export CurrencyPair from market module
 pub use crate::market::CurrencyPair;
-use crate::{trade::OptionType, Currency, Date};
+use crate::{market::Currency, time::Date, trade::OptionType};
 
 /// FX spot transaction.
 ///
@@ -416,7 +416,7 @@ impl FxSwapConvention {
 /// use infra_domain::trade::instrument_def::{
 ///     FxSwapInstrument, SwapPoints, FxSwapConvention, CurrencyPair,
 /// };
-/// use infra_domain::{Currency, Date};
+/// use infra_domain::{market::Currency, time::Date};
 ///
 /// let inst = FxSwapInstrument {
 ///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),

@@ -3,7 +3,7 @@
 //! This module provides types for representing various market indices
 //! used in floating-rate instruments.
 
-use crate::{market::CompoundingMethod, time::Frequency, Date, RateIndex};
+use crate::{market::{CompoundingMethod, RateIndex}, time::{Date, Frequency}};
 
 /// Type of market index.
 ///
@@ -83,7 +83,7 @@ impl IndexType {
 ///
 /// ```
 /// use infra_domain::trade::{IndexObservation, IndexType};
-/// use infra_domain::{RateIndex, Date};
+/// use infra_domain::{market::RateIndex, time::Date};
 ///
 /// // Simple observation with lag
 /// let obs = IndexObservation::new(IndexType::Rate(RateIndex::Sofr))
@@ -187,7 +187,7 @@ impl IndexObservation {
     ///
     /// ```
     /// use infra_domain::trade::IndexObservation;
-    /// use infra_domain::RateIndex;
+    /// use infra_domain::market::RateIndex;
     /// use infra_domain::time::Frequency;
     /// use infra_domain::market::CompoundingMethod;
     ///
@@ -209,10 +209,10 @@ impl IndexObservation {
         } else {
             // For term indices, use tenor-based frequency
             match rate_index.tenor() {
-                crate::Tenor::OneMonth => Frequency::Monthly,
-                crate::Tenor::ThreeMonths => Frequency::Quarterly,
-                crate::Tenor::SixMonths => Frequency::SemiAnnual,
-                crate::Tenor::OneYear => Frequency::Annual,
+                crate::time::Tenor::OneMonth => Frequency::Monthly,
+                crate::time::Tenor::ThreeMonths => Frequency::Quarterly,
+                crate::time::Tenor::SixMonths => Frequency::SemiAnnual,
+                crate::time::Tenor::OneYear => Frequency::Annual,
                 _ => Frequency::Quarterly, // Default for unknown tenors
             }
         };

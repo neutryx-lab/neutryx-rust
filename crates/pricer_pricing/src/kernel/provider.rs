@@ -210,7 +210,7 @@ impl CurveProvider for FlatCurveProvider {
 /// ```ignore
 /// use pricer_pricing::kernel::{IndexedMarketAdapter, IndexedMarketAdapterBuilder};
 /// use pricer_models::market::{IndexedMarket, FlatCurve};
-/// use infra_domain::RateIndex;
+/// use infra_domain::market::RateIndex;
 ///
 /// let market = /* construct IndexedMarket<f64> */;
 /// let adapter = IndexedMarketAdapterBuilder::new()

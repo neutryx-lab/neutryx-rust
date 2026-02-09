@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_domain::{TradeDirection, SwapDirection};
+//! use infra_domain::trade::{TradeDirection, SwapDirection};
 //! use pricer_models::{TradeDirectionExt, SwapDirectionExt};
 //!
 //! let long = TradeDirection::Long;
@@ -17,7 +17,7 @@
 //! assert_eq!(short.sign::<f64>(), -1.0);
 //! ```
 
-use infra_domain::{SwapDirection, TradeDirection};
+use infra_domain::trade::{SwapDirection, TradeDirection};
 use num_traits::Float;
 
 /// Extension trait for `TradeDirection` providing numeric sign.
@@ -30,7 +30,7 @@ pub trait TradeDirectionExt {
     /// # Examples
     ///
     /// ```
-    /// use infra_domain::TradeDirection;
+    /// use infra_domain::trade::TradeDirection;
     /// use pricer_models::TradeDirectionExt;
     ///
     /// let long = TradeDirection::Long;
@@ -61,7 +61,7 @@ pub trait SwapDirectionExt {
     /// # Examples
     ///
     /// ```
-    /// use infra_domain::SwapDirection;
+    /// use infra_domain::trade::SwapDirection;
     /// use pricer_models::SwapDirectionExt;
     ///
     /// let receive = SwapDirection::ReceiveFixed;

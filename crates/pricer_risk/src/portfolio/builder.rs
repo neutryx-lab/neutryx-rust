@@ -26,7 +26,7 @@ use super::{
 ///     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 ///     NettingSet, NettingSetId, CreditParams,
 /// };
-/// use infra_domain::Currency;
+/// use infra_domain::market::Currency;
 /// use infra_domain::trade::{
 ///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };
@@ -227,8 +227,8 @@ impl PortfolioBuilder {
 #[cfg(test)]
 mod tests {
     use infra_domain::{
+        market::Currency,
         trade::{ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption},
-        Currency,
     };
 
     use super::*;
