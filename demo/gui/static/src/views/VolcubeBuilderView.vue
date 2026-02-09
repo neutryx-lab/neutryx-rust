@@ -54,6 +54,10 @@ const swaptionModels = ref<string[]>([]);
 const selectedModel = ref('');
 const referenceDate = ref('');
 
+// Forward swap rate matrix state
+const fwdSwapRates = ref<Map<string, number>>(new Map());
+const isBuildingCurve = ref(false);
+
 const fxPairs = ref<string[]>([]);
 const selectedFxPair = ref('');
 const fxQuotes = ref<FxQuote[]>([]);
@@ -153,66 +157,92 @@ function expiryToYears(expiry: string): number {
   return m[2] === 'M' ? n / 12 : n;
 }
 
-function normCdf(x: number): number {
-  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
-  const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
-  const sign = x < 0 ? -1 : 1;
-  const ax = Math.abs(x) / Math.SQRT2;
-  const t = 1.0 / (1.0 + p * ax);
-  const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-ax * ax);
-  return 0.5 * (1.0 + sign * y);
-}
+// Forward swap rate computation (delegated to backend)
+async function buildCurveForFwdRates() {
+  const rateFile = selectedSwaptionIndex.value;
+  if (!rateFile) return;
 
-function normPdf(x: number): number {
-  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
-}
+  isBuildingCurve.value = true;
+  try {
+    // Load rate data
+    const rateResp = await fetch(`/data/input/rates/${rateFile}.json`);
+    if (!rateResp.ok) throw new Error(`Failed to load rate data for ${rateFile}`);
+    const rateData = await rateResp.json();
 
-function interpolateSmileVol(inst: SwaptionInstrument, kBp: number): number {
-  const pts = [
-    ...inst.smile.map(s => ({ k: s.strikeOffsetBp, v: s.vol })),
-    { k: 0, v: inst.atmVol },
-  ].sort((a, b) => a.k - b.k);
-  if (kBp <= pts[0].k) return pts[0].v;
-  if (kBp >= pts[pts.length - 1].k) return pts[pts.length - 1].v;
-  for (let i = 0; i < pts.length - 1; i++) {
-    if (kBp >= pts[i].k && kBp <= pts[i + 1].k) {
-      const frac = (kBp - pts[i].k) / (pts[i + 1].k - pts[i].k);
-      return pts[i].v * (1 - frac) + pts[i + 1].v * frac;
-    }
+    // Use deposits + OIS only (skip events, FRAs, futures to avoid duplicate maturities)
+    const allowedTypes = new Set(['deposit', 'ois']);
+    const instruments = (rateData.instruments || [])
+      .filter((i: { type: string }) => allowedTypes.has(i.type))
+      .map((i: { type: string; tenor: string; rate: number }) => ({
+        instrument_type: i.type,
+        tenor: i.tenor,
+        rate: i.rate,
+      }));
+
+    // Build curve
+    const buildResp = await fetch('/api/curves/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        index: rateData.index,
+        currency: rateData.currency,
+        reference_date: rateData.reference_date,
+        instruments,
+        interpolation: 'log_linear',
+      }),
+    });
+    if (!buildResp.ok) throw new Error('Curve build failed');
+    const buildResult = await buildResp.json();
+
+    // Compute forward swap rates via backend
+    const fwdResp = await fetch('/api/curves/forward-swap-rates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        curve_id: buildResult.curve_id,
+        expiries: matrixExpiries.value,
+        tenors: matrixTenors.value,
+      }),
+    });
+    if (!fwdResp.ok) throw new Error('Forward swap rate computation failed');
+    const fwdResult = await fwdResp.json();
+
+    fwdSwapRates.value = new Map(Object.entries(fwdResult.rates));
+  } catch (error) {
+    console.error('Failed to build curve for forward swap rates:', error);
+  } finally {
+    isBuildingCurve.value = false;
   }
-  return inst.atmVol;
 }
 
-function bachelierCallPrice(kBp: number, volPct: number, T: number): number {
-  const k = kBp / 10000;
-  const sigma = volPct / 100;
-  const sigmaRootT = sigma * Math.sqrt(T);
-  if (sigmaRootT < 1e-12) return Math.max(-k, 0);
-  const d = -k / sigmaRootT;
-  return -k * normCdf(d) + sigmaRootT * normPdf(d);
+// Forward swap rate heatmap helpers
+const fwdRateRange = computed(() => {
+  const vals = [...fwdSwapRates.value.values()].filter(v => v > 0);
+  if (vals.length === 0) return { min: 0, max: 1 };
+  return { min: Math.min(...vals), max: Math.max(...vals) };
+});
+
+function fwdRateHeatmapColour(rate: number): string {
+  const { min, max } = fwdRateRange.value;
+  if (max === min) return 'rgba(99, 102, 241, 0.15)';
+  const t = Math.max(0, Math.min(1, (rate - min) / (max - min)));
+  const hue = 220 - t * 205;
+  const saturation = 60 + t * 20;
+  const lightness = 45 + (1 - Math.abs(t - 0.5) * 2) * 10;
+  return `hsla(${hue}, ${saturation}%, ${lightness}%, 0.25)`;
 }
 
-function computeImpliedPdf(inst: SwaptionInstrument): { offsets: number[]; density: number[] } {
-  const T = expiryToYears(inst.expiry);
-  const dk = 2;
-  const dkDec = dk / 10000;
-  const offsets: number[] = [];
-  const density: number[] = [];
-  for (let kBp = -150; kBp <= 150; kBp += dk) {
-    const vMinus = interpolateSmileVol(inst, kBp - dk);
-    const vCenter = interpolateSmileVol(inst, kBp);
-    const vPlus = interpolateSmileVol(inst, kBp + dk);
-    const cMinus = bachelierCallPrice(kBp - dk, vMinus, T);
-    const cCenter = bachelierCallPrice(kBp, vCenter, T);
-    const cPlus = bachelierCallPrice(kBp + dk, vPlus, T);
-    const d2c = (cMinus - 2 * cCenter + cPlus) / (dkDec * dkDec);
-    offsets.push(kBp);
-    density.push(Math.max(0, d2c));
-  }
-  return { offsets, density };
+function fwdRateTextColour(rate: number): string {
+  const { min, max } = fwdRateRange.value;
+  if (max === min) return 'var(--text-primary)';
+  const t = Math.max(0, Math.min(1, (rate - min) / (max - min)));
+  if (t > 0.75) return '#f97316';
+  if (t > 0.5) return '#22c55e';
+  if (t > 0.25) return '#3b82f6';
+  return 'var(--text-secondary)';
 }
 
-function renderDetailCharts() {
+async function renderDetailCharts() {
   const inst = selectedInstrument.value;
   if (!inst || !inst.smile || inst.smile.length === 0) return;
 
@@ -276,49 +306,67 @@ function renderDetailCharts() {
   }
 
   if (pdfChartCanvas.value) {
-    const { offsets, density } = computeImpliedPdf(inst);
-    const pdfLabels = offsets.map(o => (o > 0 ? '+' : '') + o);
-    const ctx = pdfChartCanvas.value.getContext('2d');
-    if (ctx) {
-      pdfChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: pdfLabels,
-          datasets: [{
-            data: density,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3,
-            pointRadius: 0,
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                title: (items: { label: string }[]) => `Offset: ${items[0].label} bp`,
-                label: (item: { raw: unknown }) => `Density: ${(item.raw as number).toExponential(2)}`,
+    try {
+      const pdfResp = await fetch('/api/volcube/implied-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expiry_years: expiryToYears(inst.expiry),
+          atm_vol: inst.atmVol * 100,
+          smile: inst.smile.map(s => ({
+            strike_offset_bp: s.strikeOffsetBp,
+            vol: s.vol * 100,
+          })),
+        }),
+      });
+      if (!pdfResp.ok) throw new Error('Implied PDF computation failed');
+      const pdfResult = await pdfResp.json();
+
+      const pdfLabels = pdfResult.offsets.map((o: number) => (o > 0 ? '+' : '') + o);
+      const ctx = pdfChartCanvas.value.getContext('2d');
+      if (ctx) {
+        pdfChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: pdfLabels,
+            datasets: [{
+              data: pdfResult.density,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: (items: { label: string }[]) => `Offset: ${items[0].label} bp`,
+                  label: (item: { raw: unknown }) => `Density: ${(item.raw as number).toExponential(2)}`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                ...axisStyle,
+                title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
+              },
+              y: {
+                ...axisStyle,
+                title: { display: true, text: 'Density', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
               },
             },
           },
-          scales: {
-            x: {
-              ...axisStyle,
-              title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
-              ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
-            },
-            y: {
-              ...axisStyle,
-              title: { display: true, text: 'Density', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
-            },
-          },
-        },
-      });
+        });
+      }
+    } catch (error) {
+      console.error('Failed to compute implied PDF:', error);
     }
   }
 }
@@ -406,7 +454,7 @@ async function loadSwaptionIndices() {
     if (!response.ok) throw new Error('Failed to load indices');
     const data = await response.json();
     swaptionIndices.value = data.indices || [];
-    const usdIndex = swaptionIndices.value.find(idx => idx.startsWith('USD'));
+    const usdIndex = swaptionIndices.value.find(idx => idx.startsWith('usd'));
     if (usdIndex && !selectedSwaptionIndex.value) {
       selectedSwaptionIndex.value = usdIndex;
     }
@@ -431,7 +479,8 @@ async function loadSwaptionModels() {
 
 async function loadSwaptionInstruments(index: string) {
   try {
-    const response = await fetch(`/api/volcube/instruments/${index}`);
+    const currency = index.split('-')[0];
+    const response = await fetch(`/api/volcube/instruments/${currency}`);
     if (!response.ok) throw new Error('Failed to load instruments');
     const data = await response.json();
     swaptionInstruments.value = data.instruments || [];
@@ -439,6 +488,8 @@ async function loadSwaptionInstruments(index: string) {
     calibrationResult.value = null;
     popoverCell.value = null;
     selectedCell.value = null;
+    // Build curve and compute forward swap rates
+    buildCurveForFwdRates();
   } catch (error) {
     console.error('Failed to load instruments:', error);
   }
@@ -484,7 +535,7 @@ async function calibrate() {
 
     const body = activeTab.value === 'swaption'
       ? {
-          index: selectedSwaptionIndex.value,
+          index: selectedSwaptionIndex.value.split('-')[0],
           referenceDate: referenceDate.value,
           model: selectedModel.value,
         }
@@ -879,6 +930,61 @@ loadFxPairs();
             </div>
           </template>
         </div>
+      </div>
+    </div>
+
+    <!-- Forward Swap Rate Matrix (shown when curve is built for swaption tab) -->
+    <div v-if="activeTab === 'swaption' && fwdSwapRates.size > 0" class="glass-card p-6 mt-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-semibold text-[var(--text-primary)] flex items-center gap-2">
+          <i class="fas fa-table text-[var(--primary)]"></i>
+          Forward Swap Rates
+        </h3>
+        <span v-if="isBuildingCurve" class="text-xs text-[var(--text-muted)]">
+          <i class="fas fa-spinner fa-spin mr-1"></i>Building curve...
+        </span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr>
+              <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
+                Expiry \ Tenor
+              </th>
+              <th
+                v-for="tenor in matrixTenors"
+                :key="tenor"
+                class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
+              >
+                {{ tenor }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="expiry in matrixExpiries" :key="expiry">
+              <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
+                {{ expiry }}
+              </td>
+              <td
+                v-for="tenor in matrixTenors"
+                :key="tenor"
+                class="py-2 px-2 text-center border-b border-[var(--glass-border)]"
+                :style="fwdSwapRates.get(`${expiry}|${tenor}`) != null
+                  ? { backgroundColor: fwdRateHeatmapColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }
+                  : {}"
+              >
+                <span
+                  v-if="fwdSwapRates.get(`${expiry}|${tenor}`) != null"
+                  class="text-xs font-mono font-medium"
+                  :style="{ color: fwdRateTextColour(fwdSwapRates.get(`${expiry}|${tenor}`)!) }"
+                >
+                  {{ (fwdSwapRates.get(`${expiry}|${tenor}`)! * 100).toFixed(2) }}%
+                </span>
+                <span v-else class="text-xs text-[var(--text-muted)]">--</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

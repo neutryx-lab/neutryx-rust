@@ -654,8 +654,8 @@ pub enum InterpolationMethod {
     /// Log-linear interpolation (default, preserves no-arbitrage)
     #[default]
     LogLinear,
-    /// Cubic spline interpolation
-    CubicSpline,
+    /// Flat forward interpolation (constant simple forward rate between pillars)
+    FlatForward,
 }
 
 /// Error type for curve definition validation.
@@ -961,7 +961,7 @@ impl InterpolationMethod {
         match self {
             Self::Linear => "Linear",
             Self::LogLinear => "Log-Linear",
-            Self::CubicSpline => "Cubic Spline",
+            Self::FlatForward => "Flat Forward",
         }
     }
 }
@@ -1530,12 +1530,12 @@ mod tests {
             .with_instrument("USD-Depo-ON")
             .with_instrument("USD-OIS-5Y")
             .with_calibration_method(CalibrationMethod::Global)
-            .with_interpolation(InterpolationMethod::CubicSpline)
+            .with_interpolation(InterpolationMethod::FlatForward)
             .with_extrapolation(false);
 
         assert_eq!(curve.instruments.len(), 2);
         assert_eq!(curve.calibration_method, CalibrationMethod::Global);
-        assert_eq!(curve.interpolation, InterpolationMethod::CubicSpline);
+        assert_eq!(curve.interpolation, InterpolationMethod::FlatForward);
         assert!(!curve.allow_extrapolation);
     }
 

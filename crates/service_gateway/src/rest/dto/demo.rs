@@ -849,6 +849,48 @@ pub struct IndexConventionsResponse {
 }
 
 // =============================================================================
+// Implied Probability Density
+// =============================================================================
+
+/// A smile point for implied PDF computation
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImpliedPdfSmilePoint {
+    /// Strike offset in basis points from ATM
+    pub strike_offset_bp: f64,
+    /// Normal volatility (percentage, e.g., 80.0 for 80bp)
+    pub vol: f64,
+}
+
+/// Request to compute implied probability density function via Breeden-Litzenberger
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImpliedPdfRequest {
+    /// Time to expiry in years
+    pub expiry_years: f64,
+    /// ATM normal volatility (percentage, e.g., 80.0 for 80bp)
+    pub atm_vol: f64,
+    /// Smile points (strike offset in bp, vol in percentage)
+    pub smile: Vec<ImpliedPdfSmilePoint>,
+    /// Strike range in bp (default: 150, i.e., -150 to +150)
+    #[serde(default = "default_pdf_range_bp")]
+    pub range_bp: f64,
+    /// Strike step in bp (default: 2)
+    #[serde(default = "default_pdf_step_bp")]
+    pub step_bp: f64,
+}
+
+fn default_pdf_range_bp() -> f64 { 150.0 }
+fn default_pdf_step_bp() -> f64 { 2.0 }
+
+/// Response with implied probability density
+#[derive(Debug, Clone, Serialize)]
+pub struct ImpliedPdfResponse {
+    /// Strike offsets in basis points
+    pub offsets: Vec<f64>,
+    /// Probability density values
+    pub density: Vec<f64>,
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 

@@ -101,11 +101,13 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/curves/build", post(handlers::build_curve))
         .route("/curves/discount-factor", post(handlers::get_discount_factor))
         .route("/curves/forward-rate", post(handlers::get_forward_rate))
+        .route("/curves/forward-swap-rates", post(handlers::get_forward_swap_rates))
         // Volcube
         .route("/volcube/indices", get(handlers::demo::get_volcube_indices))
         .route("/volcube/models", get(handlers::demo::get_volcube_models))
         .route("/volcube/instruments/:currency", get(handlers::demo::get_volcube_instruments))
         .route("/volcube/calibrate", post(handlers::demo::calibrate_volcube))
+        .route("/volcube/implied-pdf", post(handlers::demo::compute_implied_pdf))
         .route("/fxvol/calibrate", post(handlers::demo::calibrate_fxvol))
         // Market data
         .route("/market/rates", get(handlers::demo::get_market_rates))
@@ -158,6 +160,7 @@ fn api_routes(state: Arc<AppState>) -> Router {
         .route("/curves/build", post(handlers::build_curve))
         .route("/curves/discount-factor", post(handlers::get_discount_factor))
         .route("/curves/forward-rate", post(handlers::get_forward_rate))
+        .route("/curves/forward-swap-rates", post(handlers::get_forward_swap_rates))
         .with_state(state)
 }
 
@@ -173,7 +176,8 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
         // Curve building endpoints (always available)
         .route("/curves/build", post(handlers::build_curve))
         .route("/curves/discount-factor", post(handlers::get_discount_factor))
-        .route("/curves/forward-rate", post(handlers::get_forward_rate));
+        .route("/curves/forward-rate", post(handlers::get_forward_rate))
+        .route("/curves/forward-swap-rates", post(handlers::get_forward_swap_rates));
 
     // Risk endpoints (feature = "risk")
     #[cfg(feature = "risk")]

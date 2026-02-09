@@ -109,6 +109,66 @@ impl DayCounter {
         }
     }
 
+    /// Returns the year fraction for a single calendar day.
+    ///
+    /// This is the inverse of the convention's denominator:
+    /// - ACT/360: 1/360
+    /// - ACT/365: 1/365
+    /// - 30/360 variants: 1/360
+    ///
+    /// Useful for computing the accrual period δ that a rate index
+    /// requires for flat forward rate calculations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::time::DayCounter;
+    ///
+    /// assert!((DayCounter::Actual360.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
+    /// assert!((DayCounter::Actual365Fixed.accrual_delta() - 1.0 / 365.0).abs() < 1e-15);
+    /// ```
+    #[must_use]
+    pub fn accrual_delta(self) -> f64 {
+        match self {
+            Self::Actual360 => 1.0 / 360.0,
+            Self::Actual365Fixed => 1.0 / 365.0,
+            Self::Actual36525 => 1.0 / 365.25,
+            Self::ActualActualIsda => 1.0 / 365.25,
+            Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => 1.0 / 360.0,
+        }
+    }
+
+    /// Returns the year fraction for a given number of calendar days.
+    ///
+    /// Equivalent to `year_fraction(start, end)` where `end - start = days`,
+    /// but avoids the need to construct `Date` objects.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::time::DayCounter;
+    ///
+    /// let yf = DayCounter::Actual365Fixed.year_fraction_from_days(365);
+    /// assert!((yf - 1.0).abs() < 1e-10);
+    ///
+    /// let yf = DayCounter::Actual360.year_fraction_from_days(360);
+    /// assert!((yf - 1.0).abs() < 1e-10);
+    /// ```
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
+    pub fn year_fraction_from_days(self, days: i64) -> f64 {
+        match self {
+            Self::Actual360 => days as f64 / 360.0,
+            Self::Actual365Fixed => days as f64 / 365.0,
+            Self::Actual36525 => days as f64 / 365.25,
+            Self::ActualActualIsda => days as f64 / 365.25,
+            // 30/360 variants: approximate using actual days
+            Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => {
+                days as f64 / 360.0
+            }
+        }
+    }
+
     /// Calculate the year fraction between two dates.
     ///
     /// Returns a negative value when start > end instead of panicking.
@@ -356,6 +416,22 @@ mod tests {
 
         assert_eq!(DayCounter::Actual365Fixed.day_count(start, end), 10);
         assert_eq!(DayCounter::Actual365Fixed.day_count(end, start), -10);
+    }
+
+    #[test]
+    fn test_accrual_delta() {
+        assert!((DayCounter::Actual360.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
+        assert!((DayCounter::Actual365Fixed.accrual_delta() - 1.0 / 365.0).abs() < 1e-15);
+        assert!((DayCounter::Thirty360Bond.accrual_delta() - 1.0 / 360.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn test_year_fraction_from_days() {
+        assert!((DayCounter::Actual365Fixed.year_fraction_from_days(365) - 1.0).abs() < 1e-10);
+        assert!((DayCounter::Actual360.year_fraction_from_days(360) - 1.0).abs() < 1e-10);
+        assert!((DayCounter::Actual365Fixed.year_fraction_from_days(0)).abs() < 1e-15);
+        // Negative days
+        assert!((DayCounter::Actual365Fixed.year_fraction_from_days(-365) + 1.0).abs() < 1e-10);
     }
 
     #[test]

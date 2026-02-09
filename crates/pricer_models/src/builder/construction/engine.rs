@@ -253,8 +253,8 @@ impl CurveConstructionEngine {
         let interpolation = match curve_def.interpolation {
             infra_domain::market::InterpolationMethod::Linear => InterpolationMethod::Linear,
             infra_domain::market::InterpolationMethod::LogLinear => InterpolationMethod::LogLinear,
-            infra_domain::market::InterpolationMethod::CubicSpline => {
-                InterpolationMethod::CubicSpline
+            infra_domain::market::InterpolationMethod::FlatForward => {
+                InterpolationMethod::FlatForward
             }
         };
 

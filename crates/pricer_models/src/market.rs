@@ -175,8 +175,13 @@ pub mod curves {
         /// Log-linear interpolation (linear on log of discount factors).
         #[default]
         LogLinear,
-        /// Cubic spline interpolation.
-        CubicSpline,
+        /// Flat forward interpolation (constant simple forward rate between pillars).
+        ///
+        /// DF interpolation is identical to LogLinear: `DF(t) = DF_i^(1-w) * DF_{i+1}^w`.
+        /// The distinction is in forward rate computation: FlatForward guarantees that the
+        /// simple forward rate `F(t, t+δ)` is constant within each pillar interval when
+        /// δ matches the index's accrual period (e.g. 1/360 for ACT/360 indices).
+        FlatForward,
     }
 
     /// Market instrument for yield curve calibration.
@@ -542,7 +547,9 @@ pub mod curves {
 
             match self.interpolation {
                 BootstrapInterpolation::Linear => Ok(df1 * (T::one() - w) + df2 * w),
-                BootstrapInterpolation::LogLinear | BootstrapInterpolation::CubicSpline => {
+                BootstrapInterpolation::LogLinear
+
+                | BootstrapInterpolation::FlatForward => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     Ok(log_df.exp())
                 }
@@ -719,7 +726,9 @@ pub mod curves {
                     gradient[i + 1] = w;
                     df
                 }
-                BootstrapInterpolation::LogLinear | BootstrapInterpolation::CubicSpline => {
+                BootstrapInterpolation::LogLinear
+
+                | BootstrapInterpolation::FlatForward => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     let df = log_df.exp();
                     // For LogLinear:
@@ -816,7 +825,9 @@ pub mod curves {
                     gradient[i + 1] = df2 * w;
                     df
                 }
-                BootstrapInterpolation::LogLinear | BootstrapInterpolation::CubicSpline => {
+                BootstrapInterpolation::LogLinear
+
+                | BootstrapInterpolation::FlatForward => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     let df = log_df.exp();
                     // For LogLinear: ∂DF(t)/∂log_df_i = DF(t) * (1-w)
@@ -1438,6 +1449,91 @@ pub mod jumps {
         jumps.iter().any(|j| (j.time - t).abs() < tolerance)
     }
 
+    /// Builds a daily forward-rate-shift grid from jump pillars.
+    ///
+    /// Unlike [`convert_jump_pillars_to_tuples`] (which produces step-function
+    /// offsets in log-DF space), this function produces **ramp offsets** that
+    /// correspond to a step function in the *forward rate*.
+    ///
+    /// # Model
+    ///
+    /// For each rate shift `s_i` at time `t_i`:
+    ///
+    /// ```text
+    /// offset(t) = -Σ s_i · (t - t_i)   for t_i ≤ t
+    /// ```
+    ///
+    /// This yields `df(t) = base_df(t) · exp(offset(t))`, which in turn
+    /// produces `f(t) = f_base(t) + S(t)` where S(t) is a smooth step
+    /// function — exactly the forward-rate-shift model used for central
+    /// bank meeting cuts and turn-of-year adjustments.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillars` - Slice of JumpPillar definitions from `infra_domain`
+    /// * `valuation_date` - Reference date (time = 0)
+    /// * `day_counter` - Day count convention for time axis
+    /// * `max_time` - Maximum time in years for the grid
+    ///
+    /// # Returns
+    ///
+    /// Dense daily grid of `(time, cumulative_offset)` pairs, compatible
+    /// with [`CurveBootstrapper::bootstrap_to_curve_with_jumps`].
+    #[must_use]
+    pub fn build_forward_rate_shift_grid(
+        pillars: &[JumpPillar],
+        valuation_date: Date,
+        day_counter: DayCounter,
+        max_time: f64,
+    ) -> Vec<(f64, f64)> {
+        if pillars.is_empty() {
+            return Vec::new();
+        }
+
+        // Phase 1: Convert pillars to (time, delta_rate) shifts.
+        // Permanent jumps: one shift at jump_date.
+        // Turn events: spike up at jump_date, spike down (revert) at end_date.
+        let mut rate_shifts: Vec<(f64, f64)> = Vec::new();
+
+        for p in pillars {
+            let time = day_counter.year_fraction(valuation_date, p.jump_date());
+            if time <= 0.0 {
+                continue; // Skip past events
+            }
+
+            // Convert confidence-weighted bps to decimal rate
+            let delta_rate = p.weighted_jump_bps() / 10_000.0;
+            rate_shifts.push((time, delta_rate));
+
+            // Turn events: forward rate reverts at end_date
+            if let Some(end_date) = p.end_date() {
+                let end_time = day_counter.year_fraction(valuation_date, end_date);
+                if end_time > 0.0 {
+                    rate_shifts.push((end_time, -delta_rate));
+                }
+            }
+        }
+
+        rate_shifts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Phase 2: Build daily grid with ramp offsets.
+        // offset(t) = -sum(s_i * (t - t_i)) for all t_i <= t
+        let dt = day_counter.accrual_delta(); // one calendar day
+        let grid_count = (max_time / dt).ceil() as usize + 2;
+
+        (0..grid_count)
+            .map(|i| {
+                let t = i as f64 * dt;
+                let offset: f64 = rate_shifts
+                    .iter()
+                    .take_while(|(t_j, _)| *t_j <= t)
+                    .map(|(t_j, shift)| -shift * (t - t_j))
+                    .sum();
+                (t, offset)
+            })
+            .collect()
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -1687,7 +1783,9 @@ pub mod jumps {
 }
 
 // Re-export jump utilities
-pub use jumps::{convert_jump_pillars, convert_jump_pillars_to_tuples, JumpEntry};
+pub use jumps::{
+    build_forward_rate_shift_grid, convert_jump_pillars, convert_jump_pillars_to_tuples, JumpEntry,
+};
 
 #[cfg(test)]
 mod tests {

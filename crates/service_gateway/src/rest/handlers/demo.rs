@@ -25,7 +25,7 @@ use crate::{
         VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
         VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
-    services::DemoService,
+    services::{DemoService, VolcubeService},
     state::AppState,
 };
 
@@ -178,7 +178,7 @@ pub async fn get_convention_detail(
 pub async fn get_ir_vol_currencies(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<IrVolCurrenciesResponse>, ServerError> {
-    let response = DemoService::get_ir_vol_currencies(&state)?;
+    let response = VolcubeService::get_ir_vol_currencies(&state)?;
     Ok(Json(response))
 }
 
@@ -189,7 +189,7 @@ pub async fn get_ir_vol_quotes(
     State(state): State<Arc<AppState>>,
     Path(currency): Path<String>,
 ) -> Result<Json<IrVolQuotesResponse>, ServerError> {
-    let response = DemoService::get_ir_vol_quotes(&currency, &state)?;
+    let response = VolcubeService::get_ir_vol_quotes(&currency, &state)?;
     Ok(Json(response))
 }
 
@@ -203,7 +203,7 @@ pub async fn get_ir_vol_quotes(
 pub async fn get_fx_vol_pairs(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<FxVolPairsResponse>, ServerError> {
-    let response = DemoService::get_fx_vol_pairs(&state)?;
+    let response = VolcubeService::get_fx_vol_pairs(&state)?;
     Ok(Json(response))
 }
 
@@ -214,7 +214,7 @@ pub async fn get_fx_vol_quotes(
     State(state): State<Arc<AppState>>,
     Path(pair): Path<String>,
 ) -> Result<Json<FxVolQuotesResponse>, ServerError> {
-    let response = DemoService::get_fx_vol_quotes(&pair, &state)?;
+    let response = VolcubeService::get_fx_vol_quotes(&pair, &state)?;
     Ok(Json(response))
 }
 
@@ -297,7 +297,7 @@ pub async fn get_curve_instruments(
 pub async fn get_volcube_indices(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<VolcubeIndicesResponse>, ServerError> {
-    let response = DemoService::get_volcube_indices(&state)?;
+    let response = VolcubeService::get_volcube_indices(&state)?;
     Ok(Json(response))
 }
 
@@ -307,7 +307,7 @@ pub async fn get_volcube_indices(
 pub async fn get_volcube_models(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<VolcubeModelsResponse>, ServerError> {
-    let response = DemoService::get_volcube_models(&state)?;
+    let response = VolcubeService::get_volcube_models(&state)?;
     Ok(Json(response))
 }
 
@@ -318,7 +318,7 @@ pub async fn get_volcube_instruments(
     State(state): State<Arc<AppState>>,
     Path(currency): Path<String>,
 ) -> Result<Json<VolcubeInstrumentsResponse>, ServerError> {
-    let response = DemoService::get_volcube_instruments(&currency, &state)?;
+    let response = VolcubeService::get_volcube_instruments(&currency, &state)?;
     Ok(Json(response))
 }
 
@@ -329,7 +329,7 @@ pub async fn calibrate_volcube(
     State(state): State<Arc<AppState>>,
     Json(request): Json<VolcubeCalibrateRequest>,
 ) -> Result<Json<VolcubeCalibrateResponse>, ServerError> {
-    let response = DemoService::calibrate_volcube(&request, &state)?;
+    let response = VolcubeService::calibrate_volcube(&request, &state)?;
     Ok(Json(response))
 }
 
@@ -340,7 +340,7 @@ pub async fn calibrate_fxvol(
     State(state): State<Arc<AppState>>,
     Json(request): Json<FxVolCalibrateRequest>,
 ) -> Result<Json<VolcubeCalibrateResponse>, ServerError> {
-    let response = DemoService::calibrate_fxvol(&request, &state)?;
+    let response = VolcubeService::calibrate_fxvol(&request, &state)?;
     Ok(Json(response))
 }
 
@@ -460,5 +460,19 @@ pub async fn get_index_conventions(
     Path(code): Path<String>,
 ) -> Result<Json<IndexConventionsResponse>, ServerError> {
     let response = DemoService::get_index_conventions(&code, &state)?;
+    Ok(Json(response))
+}
+
+// =============================================================================
+// Implied PDF API
+// =============================================================================
+
+/// Compute implied probability density via Breeden-Litzenberger
+///
+/// POST /api/volcube/implied-pdf
+pub async fn compute_implied_pdf(
+    Json(request): Json<crate::rest::dto::demo::ImpliedPdfRequest>,
+) -> Result<Json<crate::rest::dto::demo::ImpliedPdfResponse>, ServerError> {
+    let response = VolcubeService::compute_implied_pdf(&request)?;
     Ok(Json(response))
 }

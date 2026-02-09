@@ -88,8 +88,8 @@ pub enum InterpolationMethod {
     /// Log-linear interpolation (linear on log of discount factors).
     #[default]
     LogLinear,
-    /// Cubic spline interpolation (not yet implemented).
-    CubicSpline,
+    /// Flat forward interpolation (constant simple forward rate between pillars).
+    FlatForward,
 }
 
 impl InterpolationMethod {
@@ -98,7 +98,7 @@ impl InterpolationMethod {
         match self {
             Self::Linear => BootstrapInterpolation::Linear,
             Self::LogLinear => BootstrapInterpolation::LogLinear,
-            Self::CubicSpline => BootstrapInterpolation::LogLinear, // Fallback
+            Self::FlatForward => BootstrapInterpolation::FlatForward,
         }
     }
 }
@@ -417,7 +417,8 @@ impl CurveBootstrapper {
     /// # Arguments
     ///
     /// * `instruments` - Slice of calibration instruments
-    /// * `jumps` - Pre-computed jump data as (time, cumulative_offset) pairs
+    /// * `jumps` - Pre-computed jump data as `(time, cumulative_offset)` pairs.
+    ///   Typically a dense daily grid produced by the forward-rate-shift model.
     ///
     /// # Returns
     ///

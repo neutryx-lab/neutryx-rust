@@ -10,7 +10,8 @@ use crate::{
     error::ServerError,
     rest::dto::{
         CurveBuildRequest, CurveBuildResponse, DiscountFactorRequest, DiscountFactorResponse,
-        ForwardRateRequest, ForwardRateResponse,
+        ForwardRateRequest, ForwardRateResponse, ForwardSwapRateRequest,
+        ForwardSwapRateResponse,
     },
     services::CurveService,
     state::AppState,
@@ -46,5 +47,16 @@ pub async fn get_forward_rate(
     Json(request): Json<ForwardRateRequest>,
 ) -> Result<Json<ForwardRateResponse>, ServerError> {
     let response = CurveService::get_forward_rate(&request, &state)?;
+    Ok(Json(response))
+}
+
+/// Compute forward swap rate matrix from a cached curve
+///
+/// POST /api/curves/forward-swap-rates
+pub async fn get_forward_swap_rates(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<ForwardSwapRateRequest>,
+) -> Result<Json<ForwardSwapRateResponse>, ServerError> {
+    let response = CurveService::compute_forward_swap_rates(&request, &state)?;
     Ok(Json(response))
 }
