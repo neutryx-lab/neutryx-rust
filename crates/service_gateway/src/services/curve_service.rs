@@ -302,8 +302,14 @@ impl CurveService {
 
         let (curve, maybe_jacobian, actual_method) = match request.bootstrap_method {
             BootstrapMethod::Bootstrapping => {
+                // Sequential bootstrapper requires unique maturities.
+                // Instruments like FRA-3x6 and Future-6M may share the 0.5Y
+                // pillar — deduplicate, keeping the first per maturity.
+                let mut deduped = market_instruments.clone();
+                deduped.dedup_by(|a, b| (a.maturity() - b.maturity()).abs() < 1e-10);
+
                 let (curve, jac) = bootstrapper
-                    .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
+                    .bootstrap_to_curve_with_jacobian(&deduped, &jump_data)
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
                 (curve, Some(jac), "bootstrapping")
             }
