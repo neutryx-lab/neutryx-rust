@@ -129,9 +129,14 @@ pub struct ChartGridPoint {
 
 /// Jacobian matrix data for curve sensitivity analysis.
 ///
-/// Contains the finite-difference Jacobian `d(log DF_i) / dr_j` where:
-/// - Row i corresponds to pillar i (log discount factor)
+/// Contains the normalised Jacobian `[d(log DF_i) / T_i] / dr_j  ≈  −dz_i / dr_j`
+/// where:
+/// - Row i corresponds to pillar i (zero-rate sensitivity)
 /// - Column j corresponds to instrument j (market rate `r_j`)
+/// - `T_i` is the year-fraction to pillar i
+///
+/// Dividing by `T_i` converts raw log-DF sensitivity into zero-rate
+/// units, giving comparable magnitudes across all maturities.
 ///
 /// For bootstrapping, this matrix is lower-triangular.
 #[derive(Debug, Clone, Serialize)]

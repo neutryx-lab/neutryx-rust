@@ -702,6 +702,12 @@ pub struct FxVolCalibrateRequest {
     /// FX forward rates keyed by tenor label (e.g. "1M" → 1.0842)
     #[serde(default)]
     pub forward_rates: Option<std::collections::HashMap<String, f64>>,
+    /// Initial SABR parameter guesses
+    #[serde(default)]
+    pub initial_params: Option<SabrInitialParams>,
+    /// Which parameters to hold fixed during calibration
+    #[serde(default)]
+    pub fixed_params: Option<SabrFixedParams>,
 }
 
 /// Calibration metadata

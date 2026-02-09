@@ -652,6 +652,8 @@ export interface FxVolCalibrateRequest {
   domesticRate: number;
   foreignRate: number;
   forwardRates?: Record<string, number>;
+  initialParams?: SabrInitialParams;
+  fixedParams?: SabrFixedParams;
 }
 
 export interface SabrSmileRequest {

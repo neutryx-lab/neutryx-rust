@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Chart, registerables } from 'chart.js';
+import { getChartColors } from '@/composables/useChartTheme';
 
 Chart.register(...registerables);
 
@@ -266,15 +267,16 @@ function jacobianTextColour(value: number): string {
 
 // Chart options
 function createChartOptions(yAxisLabel: string) {
+  const cc = getChartColors();
   return {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
+        backgroundColor: cc.tooltipBg,
+        titleColor: cc.tooltipTitle,
+        bodyColor: cc.tooltipBody,
         callbacks: {
           title: (items: { label: string }[]) => items[0].label,
           label: (item: { raw: unknown }) => {
@@ -290,13 +292,13 @@ function createChartOptions(yAxisLabel: string) {
     },
     scales: {
       x: {
-        ticks: { color: 'rgba(255, 255, 255, 0.6)', maxTicksLimit: 12 },
-        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        ticks: { color: cc.tick, maxTicksLimit: 12 },
+        grid: { color: cc.grid },
       },
       y: {
-        title: { display: true, text: yAxisLabel, color: 'rgba(255, 255, 255, 0.6)' },
-        ticks: { color: 'rgba(255, 255, 255, 0.6)' },
-        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        title: { display: true, text: yAxisLabel, color: cc.tick },
+        ticks: { color: cc.tick },
+        grid: { color: cc.grid },
       },
     },
   };
@@ -345,10 +347,11 @@ function renderChart(
   }
 
   const opts = createChartOptions(label);
+  const cc = getChartColors();
   (opts.scales.x as Record<string, unknown>).ticks = {
     autoSkip: false,
     maxRotation: 0,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: cc.tick,
     callback: (_value: unknown, index: number) => milestoneAt.get(index) ?? null,
   };
 
@@ -976,7 +979,7 @@ onUnmounted(() => {
               </div>
               <div>
                 <span class="text-[var(--text-muted)]">Method:</span>
-                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ calibrationMethods.find(m => m.value === (buildResult.bootstrap_method ?? calibrationMethod))?.label ?? buildResult.bootstrap_method }}</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ calibrationMethods.find(m => m.value === (buildResult?.bootstrap_method ?? calibrationMethod))?.label ?? buildResult?.bootstrap_method }}</span>
               </div>
               <div>
                 <span class="text-[var(--text-muted)]">Interpolation:</span>
@@ -1027,7 +1030,7 @@ onUnmounted(() => {
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-[var(--text-primary)]">
               <i class="fas fa-th text-sm mr-2 text-[var(--primary)]"></i>
-              Jacobian <span class="text-sm font-normal text-[var(--text-muted)]">d(log DF) / dr</span>
+              Jacobian <span class="text-sm font-normal text-[var(--text-muted)]">d(log DF)/T / dr &approx; &minus;dz/dr</span>
             </h3>
             <span class="text-xs text-[var(--text-muted)] font-mono">
               {{ buildResult.jacobian.size }} &times; {{ buildResult.jacobian.size }}
@@ -1039,7 +1042,7 @@ onUnmounted(() => {
               <thead>
                 <tr>
                   <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] jacobian-sticky-cell border-b border-r border-[var(--glass-border)] text-left">
-                    log DF \ Rate
+                    &minus;dz \ Rate
                   </th>
                   <th
                     v-for="label in buildResult.jacobian.col_labels"
@@ -1076,7 +1079,7 @@ onUnmounted(() => {
 
           <p class="mt-3 text-xs text-[var(--text-muted)]">
             <i class="fas fa-info-circle mr-1"></i>
-            Lower-triangular: log DF<sub>i</sub> depends only on rates r<sub>1</sub> .. r<sub>i</sub> in bootstrapping.
+            Normalised by T<sub>i</sub>: diagonal &approx; &minus;1 (zero rate moves 1:1 with market rate). Lower-triangular in bootstrapping.
           </p>
         </div>
       </div>

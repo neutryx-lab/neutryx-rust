@@ -641,31 +641,99 @@ impl VolcubeService {
         let data: serde_json::Value = serde_json::from_str(&content)
             .map_err(|e| ServerError::Internal(format!("Failed to parse FX vol data: {e}")))?;
 
-        let instrument_count = data
-            .get("smiles")
-            .and_then(|s| s.as_array())
-            .map(|arr| arr.len())
-            .unwrap_or(0);
+        let quotes = data
+            .get("quotes")
+            .and_then(|q| q.as_array())
+            .cloned()
+            .unwrap_or_default();
+        let instrument_count = quotes.len();
+
+        // Resolve user-supplied initial parameters
+        let initial = request.initial_params.as_ref();
+        let user_alpha = initial.and_then(|p| p.alpha).unwrap_or(0.15);
+        let user_beta = initial.and_then(|p| p.beta).unwrap_or(0.5);
+        let user_rho = initial.and_then(|p| p.rho).unwrap_or(-0.20);
+        let user_nu = initial.and_then(|p| p.nu).unwrap_or(0.35);
+
+        // Compute average ATM vol for relative scaling
+        let avg_atm: f64 = if quotes.is_empty() {
+            0.10
+        } else {
+            let sum: f64 = quotes
+                .iter()
+                .filter_map(|q| q.get("atmVol").and_then(|v| v.as_f64()))
+                .sum();
+            sum / quotes.len() as f64
+        };
+
+        // Generate per-tenor mock SABR parameters (scaled from user initial values)
+        let mut cell_parameters = HashMap::new();
+        let mut cell_diagnostics_map = HashMap::new();
+        let mut alpha_sum = 0.0_f64;
+        let mut rho_sum = 0.0_f64;
+        let mut nu_sum = 0.0_f64;
+
+        for quote in &quotes {
+            let tenor_label = quote
+                .get("tenor")
+                .and_then(|t| t.as_str())
+                .unwrap_or("?")
+                .to_string();
+            let atm_vol = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.10);
+            let expiry = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.25);
+
+            // Scale alpha proportionally to ATM vol relative to average
+            let alpha = round4(user_alpha * (atm_vol / avg_atm));
+            let beta = round4(user_beta);
+            // Rho becomes more negative for longer expiries (time decay of skew)
+            let rho = round4((user_rho * (1.0 + 0.15 * expiry.sqrt())).max(-0.99));
+            // Nu decreases for longer expiries (mean-reversion of smile curvature)
+            let nu = round4((user_nu * (1.0 - 0.08 * expiry.sqrt())).max(0.05));
+
+            alpha_sum += alpha;
+            rho_sum += rho;
+            nu_sum += nu;
+
+            cell_parameters.insert(
+                tenor_label.clone(),
+                CalibrationParameters {
+                    alpha,
+                    beta,
+                    rho,
+                    nu,
+                },
+            );
+            cell_diagnostics_map.insert(
+                tenor_label,
+                CellDiagnostics {
+                    converged: true,
+                    iterations: 12,
+                    rmse: 0.0002 + 0.0001 * expiry,
+                },
+            );
+        }
+
+        let n = quotes.len().max(1) as f64;
+        let global_params = CalibrationParameters {
+            alpha: round4(alpha_sum / n),
+            beta: round4(user_beta),
+            rho: round4(rho_sum / n),
+            nu: round4(nu_sum / n),
+        };
 
         let elapsed = start.elapsed();
 
-        // Mock SABR parameters for FX vol
         Ok(VolcubeCalibrateResponse {
             model: "SABR".to_string(),
             metadata: CalibrationMetadata {
                 instrument_count,
                 processing_time_ms: elapsed.as_secs_f64() * 1000.0,
-                converged_count: None,
-                max_rmse: None,
+                converged_count: Some(quotes.len()),
+                max_rmse: Some(0.0005),
             },
-            parameters: CalibrationParameters {
-                alpha: 0.15,
-                beta: 0.5,
-                rho: -0.20,
-                nu: 0.35,
-            },
-            cell_parameters: std::collections::HashMap::new(),
-            cell_diagnostics: None,
+            parameters: global_params,
+            cell_parameters,
+            cell_diagnostics: Some(cell_diagnostics_map),
         })
     }
 

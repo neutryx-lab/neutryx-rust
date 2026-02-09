@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Chart, type ChartDataset, registerables } from 'chart.js';
+import { getChartColors } from '@/composables/useChartTheme';
 import type {
   SwaptionInstrument,
   FxVolQuote,
@@ -80,11 +81,18 @@ const popoverPosition = ref<{ top: number; left: number }>({ top: 0, left: 0 });
 // Selected cell state (persistent — survives outside click, cleared on next selection or close)
 const selectedCell = ref<{ expiry: string; tenor: string } | null>(null);
 
-// Detail card chart state
+// Detail card chart state (Swaption)
 const smileChartCanvas = ref<HTMLCanvasElement | null>(null);
 const pdfChartCanvas = ref<HTMLCanvasElement | null>(null);
 let smileChartInstance: Chart | null = null;
 let pdfChartInstance: Chart | null = null;
+
+// FX selected row + chart state
+const selectedFxTenor = ref<string | null>(null);
+const fxSmileChartCanvas = ref<HTMLCanvasElement | null>(null);
+const fxPdfChartCanvas = ref<HTMLCanvasElement | null>(null);
+let fxSmileChartInstance: Chart | null = null;
+let fxPdfChartInstance: Chart | null = null;
 
 // AbortController for in-flight requests (E-2)
 let activeAbortController: AbortController | null = null;
@@ -146,6 +154,30 @@ const selectedCellParams = computed(() => {
   if (!selectedCell.value || !calibrationResult.value?.cellParameters) return null;
   const key = `${selectedCell.value.expiry}|${selectedCell.value.tenor}`;
   return calibrationResult.value.cellParameters[key] ?? null;
+});
+
+// ── FX delta-vol computed ───────────────────────────────────────────────────
+const fxDeltaVols = computed(() =>
+  fxQuotes.value.map(q => ({
+    tenor: q.expiryLabel,
+    expiry: q.expiry,
+    forward: q.forward,
+    put10: q.rr10d != null && q.bf10d != null ? q.atmVol + q.bf10d - q.rr10d / 2 : null,
+    put25: q.atmVol + q.bf25d - q.rr25d / 2,
+    atm: q.atmVol,
+    call25: q.atmVol + q.bf25d + q.rr25d / 2,
+    call10: q.rr10d != null && q.bf10d != null ? q.atmVol + q.bf10d + q.rr10d / 2 : null,
+  }))
+);
+
+const selectedFxParams = computed(() => {
+  if (!selectedFxTenor.value || !calibrationResult.value?.cellParameters) return null;
+  return calibrationResult.value.cellParameters[selectedFxTenor.value] ?? null;
+});
+
+const selectedFxQuote = computed(() => {
+  if (!selectedFxTenor.value) return null;
+  return fxQuotes.value.find(q => q.expiryLabel === selectedFxTenor.value) ?? null;
 });
 
 // ── Unified heatmap colour functions (F-1) ──────────────────────────────────
@@ -273,9 +305,10 @@ async function renderDetailCharts() {
   const inst = selectedInstrument.value;
   const cell = selectedCell.value;
 
+  const cc = getChartColors();
   const axisStyle = {
-    ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 10 } },
-    grid: { color: 'rgba(255,255,255,0.08)' },
+    ticks: { color: cc.tick, font: { size: 10 } },
+    grid: { color: cc.grid },
   };
 
   // Determine forward rate for this cell (C-2: use ?? instead of ||)
@@ -351,7 +384,7 @@ async function renderDetailCharts() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              legend: { display: datasets.length > 1, labels: { color: 'rgba(255,255,255,0.7)', font: { size: 10 } } },
+              legend: { display: datasets.length > 1, labels: { color: cc.legend, font: { size: 10 } } },
               tooltip: {
                 callbacks: {
                   title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
@@ -362,12 +395,12 @@ async function renderDetailCharts() {
             scales: {
               x: {
                 ...axisStyle,
-                title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                title: { display: true, text: 'Strike Offset (bp)', color: cc.tick, font: { size: 10 } },
                 ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
               },
               y: {
                 ...axisStyle,
-                title: { display: true, text: 'Normal Vol (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                title: { display: true, text: 'Normal Vol (bp)', color: cc.tick, font: { size: 10 } },
               },
             },
           },
@@ -412,12 +445,12 @@ async function renderDetailCharts() {
             scales: {
               x: {
                 ...axisStyle,
-                title: { display: true, text: 'Strike Offset (bp)', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                title: { display: true, text: 'Strike Offset (bp)', color: cc.tick, font: { size: 10 } },
                 ticks: { ...axisStyle.ticks, maxTicksLimit: 10 },
               },
               y: {
                 ...axisStyle,
-                title: { display: true, text: 'Density', color: 'rgba(255,255,255,0.5)', font: { size: 10 } },
+                title: { display: true, text: 'Density', color: cc.tick, font: { size: 10 } },
               },
             },
           },
@@ -428,6 +461,130 @@ async function renderDetailCharts() {
     const msg = error instanceof Error ? error.message : 'SABR smile computation failed';
     showError(msg);
     console.error('Failed to compute SABR smile:', error);
+  }
+}
+
+// ── FX detail charts ─────────────────────────────────────────────────────────
+function destroyFxCharts() {
+  if (fxSmileChartInstance) { fxSmileChartInstance.destroy(); fxSmileChartInstance = null; }
+  if (fxPdfChartInstance) { fxPdfChartInstance.destroy(); fxPdfChartInstance = null; }
+}
+
+async function renderFxDetailCharts() {
+  if (!selectedFxTenor.value) return;
+  const params = selectedFxParams.value;
+  const quote = selectedFxQuote.value;
+  if (!params || !quote) return;
+
+  const forward = quote.forward ?? parseFloat(fxSpot.value);
+  if (!forward || forward <= 0) return;
+
+  const cc = getChartColors();
+  const axisStyle = {
+    ticks: { color: cc.tick, font: { size: 10 } },
+    grid: { color: cc.grid },
+  };
+
+  try {
+    const result = await computeSabrSmile({
+      alpha: params.alpha,
+      beta: params.beta,
+      rho: params.rho,
+      nu: params.nu,
+      forward,
+      expiry_years: quote.expiry,
+      n_points: SABR_SMILE_N_POINTS,
+      range_bp: SABR_SMILE_RANGE_BP,
+    });
+
+    const smileLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
+    const smileVols = result.vols.map((v: number) => v * 100);
+
+    destroyFxCharts();
+
+    // Smile chart
+    if (fxSmileChartCanvas.value) {
+      const ctx = fxSmileChartCanvas.value.getContext('2d');
+      if (ctx) {
+        fxSmileChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: smileLabels,
+            datasets: [{
+              label: 'SABR Fitted',
+              data: smileVols,
+              borderColor: '#6366f1',
+              backgroundColor: 'rgba(99, 102, 241, 0.10)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
+                  label: (item: { raw: unknown }) => item.raw != null ? `Vol: ${(item.raw as number).toFixed(1)}%` : '',
+                },
+              },
+            },
+            scales: {
+              x: { ...axisStyle, title: { display: true, text: 'Strike Offset (bp)', color: cc.tick, font: { size: 10 } }, ticks: { ...axisStyle.ticks, maxTicksLimit: 10 } },
+              y: { ...axisStyle, title: { display: true, text: 'Vol (%)', color: cc.tick, font: { size: 10 } } },
+            },
+          },
+        });
+      }
+    }
+
+    // Density chart
+    if (fxPdfChartCanvas.value) {
+      const pdfLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
+      const ctx = fxPdfChartCanvas.value.getContext('2d');
+      if (ctx) {
+        fxPdfChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: pdfLabels,
+            datasets: [{
+              data: result.density,
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 0,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: (items: { label: string }[]) => `Offset: ${items[0].label} bp`,
+                  label: (item: { raw: unknown }) => item.raw != null ? `Density: ${(item.raw as number).toExponential(2)}` : '',
+                },
+              },
+            },
+            scales: {
+              x: { ...axisStyle, title: { display: true, text: 'Strike Offset (bp)', color: cc.tick, font: { size: 10 } }, ticks: { ...axisStyle.ticks, maxTicksLimit: 10 } },
+              y: { ...axisStyle, title: { display: true, text: 'Density', color: cc.tick, font: { size: 10 } } },
+            },
+          },
+        });
+      }
+    }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'SABR smile computation failed';
+    showError(msg);
+    console.error('Failed to compute FX SABR smile:', error);
   }
 }
 
@@ -643,6 +800,7 @@ async function calibrate() {
         },
       });
     } else {
+      selectedFxTenor.value = null;
       calibrationResult.value = await calibrateFxVol({
         pair: selectedFxPair.value,
         spot: parseFloat(fxSpot.value),
@@ -653,6 +811,18 @@ async function calibrate() {
             .filter(q => q.forward != null)
             .map(q => [q.expiryLabel, q.forward!])
         ),
+        initialParams: {
+          alpha: sabrInitial.value.alpha,
+          beta: sabrInitial.value.beta,
+          rho: sabrInitial.value.rho,
+          nu: sabrInitial.value.nu,
+        },
+        fixedParams: {
+          alpha: sabrFixed.value.alpha,
+          beta: sabrFixed.value.beta,
+          rho: sabrFixed.value.rho,
+          nu: sabrFixed.value.nu,
+        },
       });
     }
   } catch (error) {
@@ -714,6 +884,8 @@ watch(activeTab, () => {
   calibrationResult.value = null;
   selectedCell.value = null;
   popoverCell.value = null;
+  selectedFxTenor.value = null;
+  destroyFxCharts();
 });
 
 watch(selectedSwaptionIndex, (index) => {
@@ -729,6 +901,11 @@ watch(selectedCell, () => {
   nextTick(() => renderDetailCharts());
 });
 
+watch(selectedFxTenor, () => {
+  destroyFxCharts();
+  nextTick(() => renderFxDetailCharts());
+});
+
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
   document.addEventListener('click', onDocumentClick);
@@ -737,6 +914,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick);
   destroyCharts();
+  destroyFxCharts();
   if (activeAbortController) activeAbortController.abort();
   if (errorTimer) clearTimeout(errorTimer);
 });
@@ -1219,7 +1397,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
               </h3>
               <div class="flex items-center gap-4">
                 <!-- SABR param tabs -->
-                <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+                <div v-if="activeTab === 'swaption' && calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
                   <button
                     v-for="p in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])"
                     :key="p"
@@ -1273,120 +1451,223 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
               </span>
             </div>
 
-            <!-- Parameter Matrix -->
-            <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="overflow-x-auto mb-4">
-              <table class="w-full border-collapse" aria-label="SABR parameter matrix" role="grid">
-                <thead>
-                  <tr>
-                    <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
-                      Expiry \ Tenor
-                    </th>
-                    <th
-                      v-for="tenor in matrixTenors"
-                      :key="tenor"
-                      class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
-                    >
-                      {{ tenor }}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="expiry in matrixExpiries" :key="expiry">
-                    <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
-                      {{ expiry }}
-                    </td>
-                    <td
-                      v-for="tenor in matrixTenors"
-                      :key="tenor"
-                      class="py-2 px-2 text-center border-b border-[var(--glass-border)] transition-all duration-150"
-                      :class="[
-                        calibrationResult.cellParameters[`${expiry}|${tenor}`] ? 'cursor-pointer hover-cell' : '',
-                        selectedCell?.expiry === expiry && selectedCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
-                      ]"
-                      :style="calibrationResult.cellParameters[`${expiry}|${tenor}`]
-                        ? { backgroundColor: rangedHeatmapBg(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab], paramRange) }
-                        : {}"
-                      role="gridcell"
-                      :tabindex="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? 0 : -1"
-                      @click="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
-                      @keydown.enter="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
-                      @keydown.space.prevent="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
-                    >
-                      <span
-                        v-if="calibrationResult.cellParameters[`${expiry}|${tenor}`]"
-                        class="text-xs font-mono font-medium"
-                        :style="{ color: rangedHeatmapText(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab], paramRange) }"
+            <!-- ═══ Swaption: Parameter Matrix + Cell Detail ═══ -->
+            <template v-if="activeTab === 'swaption'">
+              <!-- Parameter Matrix -->
+              <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="overflow-x-auto mb-4">
+                <table class="w-full border-collapse" aria-label="SABR parameter matrix" role="grid">
+                  <thead>
+                    <tr>
+                      <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
+                        Expiry \ Tenor
+                      </th>
+                      <th
+                        v-for="tenor in matrixTenors"
+                        :key="tenor"
+                        class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-center border-b border-[var(--glass-border)] min-w-[80px]"
                       >
-                        {{ calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab].toFixed(4) }}
+                        {{ tenor }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="expiry in matrixExpiries" :key="expiry">
+                      <td class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-r border-b border-[var(--glass-border)]">
+                        {{ expiry }}
+                      </td>
+                      <td
+                        v-for="tenor in matrixTenors"
+                        :key="tenor"
+                        class="py-2 px-2 text-center border-b border-[var(--glass-border)] transition-all duration-150"
+                        :class="[
+                          calibrationResult.cellParameters[`${expiry}|${tenor}`] ? 'cursor-pointer hover-cell' : '',
+                          selectedCell?.expiry === expiry && selectedCell?.tenor === tenor ? 'ring-2 ring-[var(--primary)] ring-inset' : ''
+                        ]"
+                        :style="calibrationResult.cellParameters[`${expiry}|${tenor}`]
+                          ? { backgroundColor: rangedHeatmapBg(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab], paramRange) }
+                          : {}"
+                        role="gridcell"
+                        :tabindex="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? 0 : -1"
+                        @click="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
+                        @keydown.enter="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
+                        @keydown.space.prevent="calibrationResult.cellParameters[`${expiry}|${tenor}`] ? selectCalibrationCell(expiry, tenor) : undefined"
+                      >
+                        <span
+                          v-if="calibrationResult.cellParameters[`${expiry}|${tenor}`]"
+                          class="text-xs font-mono font-medium"
+                          :style="{ color: rangedHeatmapText(calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab], paramRange) }"
+                        >
+                          {{ calibrationResult.cellParameters[`${expiry}|${tenor}`][paramTab].toFixed(4) }}
+                        </span>
+                        <span v-else class="text-xs text-[var(--text-muted)]">--</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Cell detail (only when a cell is selected in the parameter matrix) -->
+              <template v-if="selectedCell">
+                <div class="border-t border-[var(--glass-border)] pt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                      <i class="fas fa-chart-area text-[var(--primary)]"></i>
+                      Cell Detail
+                      <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
+                        {{ selectedCell.expiry }} x {{ selectedCell.tenor }}
+                        <template v-if="selectedInstrument"> — ATM {{ formatVol(selectedInstrument.atmVol) }}</template>
                       </span>
-                      <span v-else class="text-xs text-[var(--text-muted)]">--</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                    </h4>
+                    <button
+                      class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
+                      aria-label="Close detail card"
+                      @click="closeDetailCard"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
 
-            <!-- Cell detail (only when a cell is selected in the parameter matrix) -->
-            <template v-if="selectedCell">
-              <div class="border-t border-[var(--glass-border)] pt-4">
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                    <i class="fas fa-chart-area text-[var(--primary)]"></i>
-                    Cell Detail
-                    <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
-                      {{ selectedCell.expiry }} x {{ selectedCell.tenor }}
-                      <template v-if="selectedInstrument"> — ATM {{ formatVol(selectedInstrument.atmVol) }}</template>
+                  <!-- Calibrated SABR parameters -->
+                  <div v-if="selectedCellParams" class="flex flex-wrap gap-2 mb-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&alpha;</span> {{ selectedCellParams.alpha.toFixed(4) }}
                     </span>
-                  </h4>
-                  <button
-                    class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
-                    aria-label="Close detail card"
-                    @click="closeDetailCard"
-                  >
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-
-                <!-- Calibrated SABR parameters -->
-                <div v-if="selectedCellParams" class="flex flex-wrap gap-2 mb-4">
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                    <span class="text-[var(--primary)] font-semibold">&alpha;</span> {{ selectedCellParams.alpha.toFixed(4) }}
-                  </span>
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                    <span class="text-[var(--primary)] font-semibold">&beta;</span> {{ selectedCellParams.beta.toFixed(4) }}
-                  </span>
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                    <span class="text-[var(--primary)] font-semibold">&rho;</span> {{ selectedCellParams.rho.toFixed(4) }}
-                  </span>
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                    <span class="text-[var(--primary)] font-semibold">&nu;</span> {{ selectedCellParams.nu.toFixed(4) }}
-                  </span>
-                </div>
-
-                <!-- Smile & PDF charts (only when SABR params are available) -->
-                <div v-if="selectedCellParams" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
-                    <div class="chart-wrapper">
-                      <canvas ref="smileChartCanvas"></canvas>
-                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&beta;</span> {{ selectedCellParams.beta.toFixed(4) }}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&rho;</span> {{ selectedCellParams.rho.toFixed(4) }}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&nu;</span> {{ selectedCellParams.nu.toFixed(4) }}
+                    </span>
                   </div>
-                  <div>
-                    <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
-                    <div class="chart-wrapper">
-                      <canvas ref="pdfChartCanvas"></canvas>
+
+                  <!-- Smile & PDF charts (only when SABR params are available) -->
+                  <div v-if="selectedCellParams" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
+                      <div class="chart-wrapper">
+                        <canvas ref="smileChartCanvas"></canvas>
+                      </div>
+                    </div>
+                    <div>
+                      <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
+                      <div class="chart-wrapper">
+                        <canvas ref="pdfChartCanvas"></canvas>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </template>
+              <template v-else>
+                <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
+                  <p class="text-sm text-[var(--text-muted)]">
+                    <i class="fas fa-mouse-pointer mr-1"></i>
+                    Select a cell in the parameter matrix to view calibrated parameters &amp; charts
+                  </p>
+                </div>
+              </template>
             </template>
+
+            <!-- ═══ FX: Delta-Vol Table + Row Detail ═══ -->
             <template v-else>
-              <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
-                <p class="text-sm text-[var(--text-muted)]">
-                  <i class="fas fa-mouse-pointer mr-1"></i>
-                  Select a cell in the parameter matrix to view calibrated parameters &amp; charts
-                </p>
+              <!-- Delta-Vol Table -->
+              <div class="overflow-x-auto mb-4">
+                <table class="w-full" aria-label="FX calibrated delta volatilities">
+                  <thead>
+                    <tr class="border-b border-[var(--glass-border)]">
+                      <th class="text-left py-2.5 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
+                      <th class="text-right py-2.5 px-3 text-xs font-medium text-[var(--text-muted)]">Forward</th>
+                      <th class="text-right py-2.5 px-3 text-xs font-medium text-[var(--text-muted)]">10D Put</th>
+                      <th class="text-right py-2.5 px-3 text-xs font-medium text-[var(--text-muted)]">25D Put</th>
+                      <th class="text-right py-2.5 px-3 text-xs font-medium text-[var(--text-muted)]">ATM</th>
+                      <th class="text-right py-2.5 px-3 text-xs font-medium text-[var(--text-muted)]">25D Call</th>
+                      <th class="text-right py-2.5 px-3 text-xs font-medium text-[var(--text-muted)]">10D Call</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="row in fxDeltaVols"
+                      :key="row.tenor"
+                      class="border-b border-[var(--glass-border)] transition-colors cursor-pointer"
+                      :class="selectedFxTenor === row.tenor ? 'bg-[var(--primary)]/10 ring-1 ring-[var(--primary)] ring-inset' : 'hover:bg-[var(--surface-hover)]'"
+                      @click="selectedFxTenor = row.tenor"
+                    >
+                      <td class="py-2.5 px-3 text-sm font-medium text-[var(--text-primary)]">{{ row.tenor }}</td>
+                      <td class="py-2.5 px-3 text-sm text-right font-mono text-[var(--text-primary)]">{{ row.forward != null ? row.forward.toFixed(4) : '--' }}</td>
+                      <td class="py-2.5 px-3 text-sm text-right font-mono text-[var(--text-secondary)]">{{ row.put10 != null ? (row.put10 * 100).toFixed(2) + '%' : '--' }}</td>
+                      <td class="py-2.5 px-3 text-sm text-right font-mono text-[var(--text-primary)]">{{ (row.put25 * 100).toFixed(2) }}%</td>
+                      <td class="py-2.5 px-3 text-sm text-right font-mono font-semibold text-[var(--text-primary)]">{{ (row.atm * 100).toFixed(2) }}%</td>
+                      <td class="py-2.5 px-3 text-sm text-right font-mono text-[var(--text-primary)]">{{ (row.call25 * 100).toFixed(2) }}%</td>
+                      <td class="py-2.5 px-3 text-sm text-right font-mono text-[var(--text-secondary)]">{{ row.call10 != null ? (row.call10 * 100).toFixed(2) + '%' : '--' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
+
+              <!-- FX Row Detail -->
+              <template v-if="selectedFxTenor && selectedFxParams">
+                <div class="border-t border-[var(--glass-border)] pt-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                      <i class="fas fa-chart-area text-[var(--primary)]"></i>
+                      Tenor Detail
+                      <span class="text-xs text-[var(--text-muted)] font-normal ml-2">
+                        {{ selectedFxTenor }}
+                        <template v-if="selectedFxQuote"> — ATM {{ (selectedFxQuote.atmVol * 100).toFixed(2) }}%</template>
+                      </span>
+                    </h4>
+                    <button
+                      class="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm p-1"
+                      aria-label="Close detail"
+                      @click="selectedFxTenor = null"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+
+                  <!-- Calibrated SABR parameters -->
+                  <div class="flex flex-wrap gap-2 mb-4">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&alpha;</span> {{ selectedFxParams.alpha.toFixed(4) }}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&beta;</span> {{ selectedFxParams.beta.toFixed(4) }}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&rho;</span> {{ selectedFxParams.rho.toFixed(4) }}
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
+                      <span class="text-[var(--primary)] font-semibold">&nu;</span> {{ selectedFxParams.nu.toFixed(4) }}
+                    </span>
+                  </div>
+
+                  <!-- Smile & PDF charts -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
+                      <div class="chart-wrapper">
+                        <canvas ref="fxSmileChartCanvas"></canvas>
+                      </div>
+                    </div>
+                    <div>
+                      <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Implied Density (PDF)</h5>
+                      <div class="chart-wrapper">
+                        <canvas ref="fxPdfChartCanvas"></canvas>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
+                  <p class="text-sm text-[var(--text-muted)]">
+                    <i class="fas fa-mouse-pointer mr-1"></i>
+                    Select a row to view calibrated SABR parameters &amp; smile chart
+                  </p>
+                </div>
+              </template>
             </template>
           </div>
         </div>

@@ -404,13 +404,32 @@ impl CurveService {
             // Deduplicate by maturity (keep first label per unique pillar)
             sorted_specs.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-10);
 
+            let pillar_times: Vec<f64> =
+                sorted_specs.iter().map(|(t, _)| *t).collect();
             let jacobian_labels: Vec<String> =
                 sorted_specs.into_iter().map(|(_, label)| label).collect();
+
+            // Normalise: d(log DF_i) / dr_j  →  [d(log DF_i) / T_i] / dr_j
+            // This converts the sensitivity to zero-rate units (≈ −dz_i/dr_j),
+            // giving comparable magnitudes across maturities.
+            let matrix: Vec<Vec<f64>> = jac
+                .data
+                .into_iter()
+                .enumerate()
+                .map(|(i, row)| {
+                    let t_i = pillar_times.get(i).copied().unwrap_or(1.0);
+                    if t_i.abs() < 1e-12 {
+                        row
+                    } else {
+                        row.into_iter().map(|v| v / t_i).collect()
+                    }
+                })
+                .collect();
 
             JacobianData {
                 row_labels: jacobian_labels.clone(),
                 col_labels: jacobian_labels,
-                matrix: jac.data,
+                matrix,
                 size: jac.size,
             }
         });

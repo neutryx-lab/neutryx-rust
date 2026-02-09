@@ -761,6 +761,40 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         &self,
         instruments: &[I],
     ) -> Result<GlobalBootstrapResult<T>, SolverError> {
+        self.calibrate_impl(instruments, &[])
+    }
+
+    /// Calibrate a yield curve with a forward-rate-shift grid.
+    ///
+    /// This method uses the same forward-rate-shift model as the sequential
+    /// bootstrapper: the shift grid is attached to the curve at each Newton
+    /// step so that instruments are priced on the (base + shifts) curve.
+    /// Only log(DF) parameters are calibrated; jump amplitudes are fixed
+    /// by the shift grid.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Calibration instruments
+    /// * `shift_grid` - Pre-computed `(time, cumulative_offset)` pairs from
+    ///   `build_forward_rate_shift_grid`. Pass `&[]` for no shifts.
+    pub fn calibrate_with_shift_grid<I: CalibrationInstrument<T>>(
+        &self,
+        instruments: &[I],
+        shift_grid: &[(T, T)],
+    ) -> Result<GlobalBootstrapResult<T>, SolverError> {
+        self.calibrate_impl(instruments, shift_grid)
+    }
+
+    /// Internal calibration implementation.
+    ///
+    /// When `shift_grid` is non-empty, the forward-rate-shift data is
+    /// attached to the curve at every Newton step so that instrument
+    /// pricing accounts for jump discontinuities.
+    fn calibrate_impl<I: CalibrationInstrument<T>>(
+        &self,
+        instruments: &[I],
+        shift_grid: &[(T, T)],
+    ) -> Result<GlobalBootstrapResult<T>, SolverError> {
         let n = instruments.len();
         if n == 0 {
             return Err(SolverError::NumericalInstability(
@@ -791,7 +825,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         // Newton iteration
         for iter in 0..self.config.max_iterations {
             let discount_factors: Vec<T> = x.iter().map(|&xi| Float::exp(xi)).collect();
-            let curve = self.build_curve(&pillars, &discount_factors)?;
+            let curve = self.build_curve_with_shifts(&pillars, &discount_factors, shift_grid)?;
 
             let residuals = self.compute_residuals(instruments, &curve)?;
             let residual_norm = vector_norm(&residuals);
@@ -802,7 +836,8 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
             // Check convergence
             if residual_norm < self.config.tolerance {
-                let j_vecs = self.compute_jacobian(&x, &pillars, instruments)?;
+                let j_vecs =
+                    self.compute_jacobian_impl(&x, &pillars, instruments, shift_grid)?;
                 let j_matrix =
                     DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j_vecs));
 
@@ -826,8 +861,12 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
                     (None, self.estimate_condition_number(&j_matrix))
                 };
 
+                // Return the **base** curve (without shifts).
+                // The caller attaches the shift grid via
+                // `BootstrappedCurve::with_jumps()` for display.
+                let base_curve = self.build_curve(&pillars, &discount_factors)?;
                 return Ok(GlobalBootstrapResult {
-                    curve,
+                    curve: base_curve,
                     pillars: pillars.clone(),
                     discount_factors,
                     residual_norm,
@@ -842,7 +881,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             }
 
             // Compute Jacobian
-            let j = self.compute_jacobian(&x, &pillars, instruments)?;
+            let j = self.compute_jacobian_impl(&x, &pillars, instruments, shift_grid)?;
 
             // Solve J * delta = -F for delta.
             // For overdetermined systems (n > n_pillars), use least squares
@@ -875,8 +914,9 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
                     (None, self.estimate_condition_number(&j_matrix))
                 };
 
+                let base_curve = self.build_curve(&pillars, &discount_factors)?;
                 return Ok(GlobalBootstrapResult {
-                    curve,
+                    curve: base_curve,
                     pillars: pillars.clone(),
                     discount_factors,
                     residual_norm,
@@ -943,6 +983,25 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             self.config.allow_extrapolation,
         )
         .map_err(SolverError::NumericalInstability)
+    }
+
+    /// Build a curve with optional forward-rate-shift data.
+    ///
+    /// When `shift_grid` is non-empty, the resulting curve includes jump
+    /// adjustments so that instrument pricing accounts for rate
+    /// discontinuities at central bank meeting dates.
+    fn build_curve_with_shifts(
+        &self,
+        pillars: &[T],
+        discount_factors: &[T],
+        shift_grid: &[(T, T)],
+    ) -> Result<BootstrappedCurve<T>, SolverError> {
+        let curve = self.build_curve(pillars, discount_factors)?;
+        if shift_grid.is_empty() {
+            Ok(curve)
+        } else {
+            Ok(curve.with_jumps(shift_grid.to_vec()))
+        }
     }
 
     /// Compute the residual vector (pricing errors).

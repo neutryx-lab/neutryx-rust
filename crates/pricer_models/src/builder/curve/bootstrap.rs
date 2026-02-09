@@ -445,6 +445,9 @@ impl Default for CurveBootstrapper {
 /// - Log-linear interpolation operates in log(DF) space
 /// - log(DF) = −r·t gives uniform scale across maturities
 ///
+/// Note: the service layer normalises each row by T_i to produce
+/// `[d(log DF_i)/T_i] / dr_j ≈ −dz_i/dr_j` (zero-rate sensitivity).
+///
 /// For the sequential bootstrapper this matrix is lower-triangular
 /// because DF_i depends only on rates r_1 .. r_i.
 #[derive(Debug, Clone)]
