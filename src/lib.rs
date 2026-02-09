@@ -57,7 +57,8 @@ pub use infra_config::store;
 /// This module provides the foundational types used throughout Neutryx:
 /// - [`Date`](master::time::Date), [`Calendar`](master::time::Calendar),
 ///   [`DayCounter`](master::time::DayCounter)
-/// - [`Currency`](master::market::Currency), [`RateIndex`](master::market::RateIndex)
+/// - [`Currency`](master::market::Currency),
+///   [`RateIndex`](master::market::RateIndex)
 /// - Trade builders and ID types
 pub use infra_domain as master;
 // =============================================================================
