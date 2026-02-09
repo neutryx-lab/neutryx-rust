@@ -302,11 +302,11 @@ impl CurveService {
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, maybe_jacobian, actual_method) = match request.bootstrap_method {
-            BootstrapMethod::Sequential => {
+            BootstrapMethod::Bootstrapping => {
                 let (curve, jac) = bootstrapper
                     .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
-                (curve, Some(jac), "sequential")
+                (curve, Some(jac), "bootstrapping")
             }
             BootstrapMethod::Global => {
                 let bootstrap_interp = match interpolation {
@@ -365,7 +365,7 @@ impl CurveService {
                         JacobianMatrix { data, size }
                     });
                     // Attach the same forward-rate-shift grid used by
-                    // sequential bootstrap so the output curve renders
+                    // bootstrapping so the output curve renders
                     // forward rate discontinuities at jump dates.
                     let curve = if jump_data.is_empty() {
                         result.curve
@@ -400,9 +400,7 @@ impl CurveService {
                     (t, format!("{}-{}", type_label, spec.tenor))
                 })
                 .collect();
-            sorted_specs.sort_by(|a, b| {
-                a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
-            });
+            sorted_specs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
             // Deduplicate by maturity (keep first label per unique pillar)
             sorted_specs.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-10);
 
@@ -707,7 +705,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };
@@ -760,7 +758,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };
@@ -816,7 +814,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };
@@ -903,7 +901,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };

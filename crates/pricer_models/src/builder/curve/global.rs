@@ -809,23 +809,22 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
                 // For overdetermined systems (n > n_pillars), compute the
                 // normal-equation matrix (J^T J)^{-1} which maps rate changes
                 // to parameter changes. For square systems, compute J^{-1}.
-                let (jacobian_inverse, condition_number) =
-                    if self.config.store_jacobian_inverse {
-                        if n == n_pillars {
-                            let inv = self.compute_inverse(&j_matrix)?;
-                            let cond = self.estimate_condition_number(&j_matrix);
-                            (Some(inv), cond)
-                        } else {
-                            let jtj = j_matrix.transpose() * &j_matrix;
-                            let inv = self.compute_inverse(&jtj).ok();
-                            let cond = inv
-                                .as_ref()
-                                .and_then(|_| self.estimate_condition_number(&jtj));
-                            (inv, cond)
-                        }
+                let (jacobian_inverse, condition_number) = if self.config.store_jacobian_inverse {
+                    if n == n_pillars {
+                        let inv = self.compute_inverse(&j_matrix)?;
+                        let cond = self.estimate_condition_number(&j_matrix);
+                        (Some(inv), cond)
                     } else {
-                        (None, self.estimate_condition_number(&j_matrix))
-                    };
+                        let jtj = j_matrix.transpose() * &j_matrix;
+                        let inv = self.compute_inverse(&jtj).ok();
+                        let cond = inv
+                            .as_ref()
+                            .and_then(|_| self.estimate_condition_number(&jtj));
+                        (inv, cond)
+                    }
+                } else {
+                    (None, self.estimate_condition_number(&j_matrix))
+                };
 
                 return Ok(GlobalBootstrapResult {
                     curve,
@@ -859,23 +858,22 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             // Check parameter convergence
             let param_change = vector_norm(&delta);
             if param_change < self.config.param_tolerance {
-                let (jacobian_inverse, condition_number) =
-                    if self.config.store_jacobian_inverse {
-                        if n == n_pillars {
-                            let inv = self.compute_inverse(&j_matrix)?;
-                            let cond = self.estimate_condition_number(&j_matrix);
-                            (Some(inv), cond)
-                        } else {
-                            let jtj = j_matrix.transpose() * &j_matrix;
-                            let inv = self.compute_inverse(&jtj).ok();
-                            let cond = inv
-                                .as_ref()
-                                .and_then(|_| self.estimate_condition_number(&jtj));
-                            (inv, cond)
-                        }
+                let (jacobian_inverse, condition_number) = if self.config.store_jacobian_inverse {
+                    if n == n_pillars {
+                        let inv = self.compute_inverse(&j_matrix)?;
+                        let cond = self.estimate_condition_number(&j_matrix);
+                        (Some(inv), cond)
                     } else {
-                        (None, self.estimate_condition_number(&j_matrix))
-                    };
+                        let jtj = j_matrix.transpose() * &j_matrix;
+                        let inv = self.compute_inverse(&jtj).ok();
+                        let cond = inv
+                            .as_ref()
+                            .and_then(|_| self.estimate_condition_number(&jtj));
+                        (inv, cond)
+                    }
+                } else {
+                    (None, self.estimate_condition_number(&j_matrix))
+                };
 
                 return Ok(GlobalBootstrapResult {
                     curve,

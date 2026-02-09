@@ -23,7 +23,7 @@ pub enum InterpolationMethod {
 #[serde(rename_all = "snake_case")]
 pub enum BootstrapMethod {
     #[default]
-    Sequential,
+    Bootstrapping,
     Global,
 }
 
@@ -133,7 +133,7 @@ pub struct ChartGridPoint {
 /// - Row i corresponds to pillar i (log discount factor)
 /// - Column j corresponds to instrument j (market rate `r_j`)
 ///
-/// For sequential bootstrap, this matrix is lower-triangular.
+/// For bootstrapping, this matrix is lower-triangular.
 #[derive(Debug, Clone, Serialize)]
 pub struct JacobianData {
     /// Row labels (pillar descriptions, e.g., "Depo-1M", "IRS-5Y").
@@ -175,7 +175,7 @@ pub struct CurveBuildResponse {
     /// Actual bootstrap method used (may differ from request if fallback
     /// occurred)
     pub bootstrap_method: String,
-    /// Jacobian matrix d(log DF)/dr (finite-difference, sequential bootstrap)
+    /// Jacobian matrix d(log DF)/dr (finite-difference)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jacobian: Option<JacobianData>,
 }

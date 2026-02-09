@@ -110,7 +110,7 @@ Defines yield curve calibration specifications:
 | `name` | Unique curve identifier | `"USD-SOFR-Discount"` |
 | `rateIndex` | Associated rate index | `"USD-SOFR"` |
 | `instruments` | Ordered list of instrument IDs | `["USD-Depo-ON", "USD-OIS-1M", ...]` |
-| `calibrationMethod` | Calibration algorithm | `"sequential"` |
+| `calibrationMethod` | Calibration algorithm | `"bootstrapping"` |
 | `interpolation` | Interpolation method | `"loglinear"` |
 | `allowExtrapolation` | Allow extrapolation | `true` |
 
@@ -133,7 +133,7 @@ Defines yield curve calibration specifications:
     "USD-OIS-10Y",
     "USD-OIS-30Y"
   ],
-  "calibrationMethod": "sequential",
+  "calibrationMethod": "bootstrapping",
   "interpolation": "loglinear"
 }
 ```

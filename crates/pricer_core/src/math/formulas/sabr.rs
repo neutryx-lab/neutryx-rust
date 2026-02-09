@@ -380,9 +380,17 @@ fn implied_vol_atm_expansion<T: Float>(
     let twenty_four: T = from_f64(24.0);
 
     // Normal SABR (beta=0)
+    // Must include ρνα/(4F) correction to match `implied_vol_normal` at the
+    // ATM-threshold boundary, otherwise a vol discontinuity causes density spikes.
     if params.is_normal() {
+        let f = params.forward;
+        let term2 = if f.abs() > epsilon {
+            rho * nu * alpha / (four * f)
+        } else {
+            T::zero()
+        };
         let term3 = (two - three * rho * rho) / twenty_four * nu * nu;
-        let expansion = one + term3 * t;
+        let expansion = one + (term2 + term3) * t;
         return alpha * expansion;
     }
 

@@ -131,7 +131,7 @@ const loadError = ref<string | null>(null);
 const buildError = ref<string | null>(null);
 
 // Build settings (editable)
-const calibrationMethod = ref<string>('sequential');
+const calibrationMethod = ref<string>('bootstrapping');
 const interpolation = ref<string>('log_linear_df');
 const allowExtrapolation = ref<boolean>(true);
 
@@ -162,9 +162,15 @@ function normaliseInterpolation(value: string): string {
   return map[value] || value;
 }
 
+// Normalise calibration method values (legacy "sequential" → "bootstrapping")
+function normaliseCalibrationMethod(value: string): string {
+  if (value === 'sequential') return 'bootstrapping';
+  return value;
+}
+
 // Options for build settings
 const calibrationMethods = [
-  { value: 'sequential', label: 'Bootstrapping' },
+  { value: 'bootstrapping', label: 'Bootstrapping' },
   { value: 'global', label: 'Global' },
 ];
 const interpolationMethods = [
@@ -533,7 +539,7 @@ async function onCurveSelected() {
     selectedCurve.value = curve;
 
     // Set build settings from curve config
-    calibrationMethod.value = curve.calibrationMethod;
+    calibrationMethod.value = normaliseCalibrationMethod(curve.calibrationMethod);
     interpolation.value = normaliseInterpolation(curve.interpolation);
     allowExtrapolation.value = curve.allowExtrapolation;
 
@@ -626,7 +632,7 @@ function resetSettings() {
   if (!selectedCurve.value) return;
 
   // Reset build settings
-  calibrationMethod.value = selectedCurve.value.calibrationMethod;
+  calibrationMethod.value = normaliseCalibrationMethod(selectedCurve.value.calibrationMethod);
   interpolation.value = normaliseInterpolation(selectedCurve.value.interpolation);
   allowExtrapolation.value = selectedCurve.value.allowExtrapolation;
 

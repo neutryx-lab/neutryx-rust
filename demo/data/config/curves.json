@@ -48,7 +48,7 @@
         "USD-OIS-25Y",
         "USD-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -85,7 +85,7 @@
         "EUR-OIS-25Y",
         "EUR-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -105,7 +105,7 @@
         "EUR-Swap-20Y",
         "EUR-Swap-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -143,7 +143,7 @@
         "GBP-OIS-25Y",
         "GBP-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -180,7 +180,7 @@
         "JPY-OIS-25Y",
         "JPY-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -214,7 +214,7 @@
         "CHF-OIS-25Y",
         "CHF-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     }
