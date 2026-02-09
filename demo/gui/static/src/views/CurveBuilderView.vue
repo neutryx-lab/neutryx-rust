@@ -163,7 +163,10 @@ function normaliseInterpolation(value: string): string {
 }
 
 // Options for build settings
-const calibrationMethods = ['sequential', 'global'];
+const calibrationMethods = [
+  { value: 'sequential', label: 'Bootstrapping' },
+  { value: 'global', label: 'Global' },
+];
 const interpolationMethods = [
   { value: 'flat_forward', label: 'Flat Forward' },
   { value: 'log_linear_df', label: 'Log-Linear DF' },
@@ -841,7 +844,7 @@ onUnmounted(() => {
                 v-model="calibrationMethod"
                 class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
               >
-                <option v-for="m in calibrationMethods" :key="m" :value="m">{{ m }}</option>
+                <option v-for="m in calibrationMethods" :key="m.value" :value="m.value">{{ m.label }}</option>
               </select>
             </div>
             <div>
@@ -967,7 +970,7 @@ onUnmounted(() => {
               </div>
               <div>
                 <span class="text-[var(--text-muted)]">Method:</span>
-                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ buildResult.bootstrap_method ?? calibrationMethod }}</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ calibrationMethods.find(m => m.value === (buildResult.bootstrap_method ?? calibrationMethod))?.label ?? buildResult.bootstrap_method }}</span>
               </div>
               <div>
                 <span class="text-[var(--text-muted)]">Interpolation:</span>
@@ -1067,7 +1070,7 @@ onUnmounted(() => {
 
           <p class="mt-3 text-xs text-[var(--text-muted)]">
             <i class="fas fa-info-circle mr-1"></i>
-            Lower-triangular: log DF<sub>i</sub> depends only on rates r<sub>1</sub> .. r<sub>i</sub> in sequential bootstrap.
+            Lower-triangular: log DF<sub>i</sub> depends only on rates r<sub>1</sub> .. r<sub>i</sub> in bootstrapping.
           </p>
         </div>
       </div>

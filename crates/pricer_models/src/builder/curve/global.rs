@@ -806,13 +806,26 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
                 let j_matrix =
                     DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j_vecs));
 
-                let jacobian_inverse = if self.config.store_jacobian_inverse {
-                    Some(self.compute_inverse(&j_matrix)?)
-                } else {
-                    None
-                };
-
-                let condition_number = self.estimate_condition_number(&j_matrix);
+                // For overdetermined systems (n > n_pillars), compute the
+                // normal-equation matrix (J^T J)^{-1} which maps rate changes
+                // to parameter changes. For square systems, compute J^{-1}.
+                let (jacobian_inverse, condition_number) =
+                    if self.config.store_jacobian_inverse {
+                        if n == n_pillars {
+                            let inv = self.compute_inverse(&j_matrix)?;
+                            let cond = self.estimate_condition_number(&j_matrix);
+                            (Some(inv), cond)
+                        } else {
+                            let jtj = j_matrix.transpose() * &j_matrix;
+                            let inv = self.compute_inverse(&jtj).ok();
+                            let cond = inv
+                                .as_ref()
+                                .and_then(|_| self.estimate_condition_number(&jtj));
+                            (inv, cond)
+                        }
+                    } else {
+                        (None, self.estimate_condition_number(&j_matrix))
+                    };
 
                 return Ok(GlobalBootstrapResult {
                     curve,
@@ -832,21 +845,37 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             // Compute Jacobian
             let j = self.compute_jacobian(&x, &pillars, instruments)?;
 
-            // Solve J * delta = -F for delta
+            // Solve J * delta = -F for delta.
+            // For overdetermined systems (n > n_pillars), use least squares
+            // via normal equations: (J^T J) delta = J^T (-F).
             let neg_residuals: Vec<T> = residuals.iter().map(|&r| -r).collect();
             let j_matrix = DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j));
-            let delta = self.solve_linear_system(&j_matrix, &neg_residuals)?;
+            let delta = if n == n_pillars {
+                self.solve_linear_system(&j_matrix, &neg_residuals)?
+            } else {
+                self.solve_least_squares(&j_matrix, &neg_residuals)?
+            };
 
             // Check parameter convergence
             let param_change = vector_norm(&delta);
             if param_change < self.config.param_tolerance {
-                let jacobian_inverse = if self.config.store_jacobian_inverse {
-                    Some(self.compute_inverse(&j_matrix)?)
-                } else {
-                    None
-                };
-
-                let condition_number = self.estimate_condition_number(&j_matrix);
+                let (jacobian_inverse, condition_number) =
+                    if self.config.store_jacobian_inverse {
+                        if n == n_pillars {
+                            let inv = self.compute_inverse(&j_matrix)?;
+                            let cond = self.estimate_condition_number(&j_matrix);
+                            (Some(inv), cond)
+                        } else {
+                            let jtj = j_matrix.transpose() * &j_matrix;
+                            let inv = self.compute_inverse(&jtj).ok();
+                            let cond = inv
+                                .as_ref()
+                                .and_then(|_| self.estimate_condition_number(&jtj));
+                            (inv, cond)
+                        }
+                    } else {
+                        (None, self.estimate_condition_number(&j_matrix))
+                    };
 
                 return Ok(GlobalBootstrapResult {
                     curve,
@@ -1231,26 +1260,40 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         })?;
         let pricing_errors = problem.compute_residuals(&adjusted_curve).ok();
 
-        // Compute Jacobian inverse for the n×n instrument-pillar sub-block.
-        // The full (n+k)×(n+k) Jacobian has structure:
-        //   [ J_inst_df   J_inst_jump ]
-        //   [ 0           I_reg       ]
-        // The top-left n×n block J_inst_df is the instrument sensitivity to
-        // base curve parameters — its inverse is the curve risk matrix.
+        // Compute Jacobian inverse for the instrument-pillar sub-block.
+        //
+        // The full Jacobian has structure:
+        //   [ J_inst_df (n_inst × n_pillars)    J_inst_jump (n_inst × k)    ]
+        //   [ 0         (k × n_pillars)          I_reg       (k × k)          ]
+        //
+        // For square systems (n_inst == n_pillars), compute J_inst_df^{-1}.
+        // For overdetermined systems (n_inst > n_pillars), compute
+        // (J^T J)^{-1} which maps rate perturbations to parameter changes.
+        let n_inst = problem.instruments().len();
         let jacobian_inverse = if self.config.store_jacobian_inverse {
             let full_jac = problem.compute_jacobian_with_jumps(params).map_err(|e| {
                 SolverError::NumericalInstability(format!("Jacobian computation failed: {e}"))
             })?;
-            let inst_jac = full_jac.view((0, 0), (n, n)).into_owned();
-            self.compute_inverse(&inst_jac).ok()
+            let inst_jac = full_jac.view((0, 0), (n_inst, n)).into_owned();
+            if n_inst == n {
+                self.compute_inverse(&inst_jac).ok()
+            } else {
+                let jtj = inst_jac.transpose() * &inst_jac;
+                self.compute_inverse(&jtj).ok()
+            }
         } else {
             None
         };
 
         let condition_number = jacobian_inverse.as_ref().and_then(|_| {
             let full_jac = problem.compute_jacobian_with_jumps(params).ok()?;
-            let inst_jac = full_jac.view((0, 0), (n, n)).into_owned();
-            self.estimate_condition_number(&inst_jac)
+            let inst_jac = full_jac.view((0, 0), (n_inst, n)).into_owned();
+            if n_inst == n {
+                self.estimate_condition_number(&inst_jac)
+            } else {
+                let jtj = inst_jac.transpose() * &inst_jac;
+                self.estimate_condition_number(&jtj)
+            }
         });
 
         Ok(GlobalBootstrapResult {
@@ -1678,16 +1721,18 @@ mod tests {
     }
 
     #[test]
-    fn test_fallback_calibrate() {
+    fn test_calibrate_with_empty_jumps_falls_back() {
         let instruments = create_test_instruments();
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
 
-        let result = bootstrapper.fallback_calibrate(&instruments).unwrap();
+        // Empty jump pillars should fall back to regular calibrate
+        let result = bootstrapper
+            .calibrate_with_jumps(&instruments, vec![])
+            .unwrap();
 
         assert!(result.converged);
-        // Fallback sets realised_jumps to empty vec to indicate it was used
-        assert!(result.realised_jumps.is_some());
-        assert!(result.realised_jumps.unwrap().is_empty());
+        // Regular calibrate returns no realised jumps
+        assert!(result.realised_jumps.is_none());
     }
 
     #[test]

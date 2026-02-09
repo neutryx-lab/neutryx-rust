@@ -134,13 +134,9 @@ where
         // Deduplicate pillars
         pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
 
-        // Dimension check: enforce square system for now
-        if instruments.len() != pillars.len() {
-            return Err(CalibrationError::dimension_mismatch(
-                instruments.len(),
-                pillars.len(),
-            ));
-        }
+        // Overdetermined systems (instruments > pillars) are allowed:
+        // instruments sharing a maturity contribute extra equations that
+        // the solver handles via least-squares.
 
         Ok(Self {
             instruments,
@@ -181,13 +177,9 @@ where
         // Deduplicate pillars
         pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
 
-        // Dimension check: enforce square system for now
-        if instruments.len() != pillars.len() {
-            return Err(CalibrationError::dimension_mismatch(
-                instruments.len(),
-                pillars.len(),
-            ));
-        }
+        // Overdetermined systems (instruments > pillars) are allowed:
+        // instruments sharing a maturity contribute extra equations that
+        // the solver handles via least-squares.
 
         // Sort jump pillars by time
         jump_pillars.sort_by(|a, b| {
@@ -832,13 +824,9 @@ where
             );
         }
 
-        // Dimension check: enforce square system for now
-        if instruments.len() != pillars.len() {
-            return Err(CalibrationError::dimension_mismatch(
-                instruments.len(),
-                pillars.len(),
-            ));
-        }
+        // Overdetermined systems (instruments > pillars) are allowed:
+        // instruments sharing a maturity contribute extra equations that
+        // the solver handles via least-squares.
 
         Ok(Self {
             instruments,

@@ -379,17 +379,15 @@ impl CurveService {
 
         // Build Jacobian labels from regular instrument specs, sorted by
         // maturity to match the bootstrap order.
+        //
+        // When instruments share a maturity (e.g. FRA-3x6 and Fut-6M both
+        // at 0.5Y), the Jacobian has fewer rows/columns than instruments.
+        // Deduplicate by maturity so labels match the matrix dimension.
         let jacobian_data = maybe_jacobian.map(|jac| {
-            let mut sorted_specs = regular_specs.clone();
-            sorted_specs.sort_by(|a, b| {
-                let ta = parse_tenor_to_years(&a.tenor).unwrap_or(0.0);
-                let tb = parse_tenor_to_years(&b.tenor).unwrap_or(0.0);
-                ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
-            });
-
-            let jacobian_labels: Vec<String> = sorted_specs
+            let mut sorted_specs: Vec<(f64, String)> = regular_specs
                 .iter()
                 .map(|spec| {
+                    let t = parse_tenor_to_years(&spec.tenor).unwrap_or(0.0);
                     let lower = spec.instrument_type.to_lowercase();
                     let type_label = match lower.as_str() {
                         "deposit" | "depo" => "Depo",
@@ -399,9 +397,17 @@ impl CurveService {
                         "future" | "futures" => "Fut",
                         _ => &lower,
                     };
-                    format!("{}-{}", type_label, spec.tenor)
+                    (t, format!("{}-{}", type_label, spec.tenor))
                 })
                 .collect();
+            sorted_specs.sort_by(|a, b| {
+                a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal)
+            });
+            // Deduplicate by maturity (keep first label per unique pillar)
+            sorted_specs.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-10);
+
+            let jacobian_labels: Vec<String> =
+                sorted_specs.into_iter().map(|(_, label)| label).collect();
 
             JacobianData {
                 row_labels: jacobian_labels.clone(),
