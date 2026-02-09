@@ -3,7 +3,10 @@
 //! This module provides types for representing various market indices
 //! used in floating-rate instruments.
 
-use crate::{market::{CompoundingMethod, RateIndex}, time::{Date, Frequency}};
+use crate::{
+    market::{CompoundingMethod, RateIndex},
+    time::{Date, Frequency},
+};
 
 /// Type of market index.
 ///

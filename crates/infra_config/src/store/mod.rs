@@ -12,7 +12,7 @@ pub use traits::{Load, Save};
 #[cfg(feature = "postgres")]
 mod postgres;
 #[cfg(feature = "postgres")]
-pub use self::postgres::PostgresStore;
+pub use traits::{LoadAsync, SaveAsync};
 
 #[cfg(feature = "postgres")]
-pub use traits::{LoadAsync, SaveAsync};
+pub use self::postgres::PostgresStore;

@@ -27,12 +27,7 @@ pub(crate) mod rates;
 mod tests;
 
 use super::{InstrumentDefinition, InstrumentError};
-use crate::{
-    ids::TradeId,
-    market::convention::ConventionSet,
-    time::Date,
-    trade::Trade,
-};
+use crate::{ids::TradeId, market::convention::ConventionSet, time::Date, trade::Trade};
 
 /// Trait for expanding instrument definitions into trades with cashflows.
 ///

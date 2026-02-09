@@ -41,7 +41,10 @@ use super::{
     leg::{Direction, Leg, LegType},
     payoff::Payoff,
 };
-use crate::{market::{Currency, RateIndex}, time::{Date, DayCounter}};
+use crate::{
+    market::{Currency, RateIndex},
+    time::{Date, DayCounter},
+};
 
 // ============================================================================
 // LegConfig (bon-based, recommended)

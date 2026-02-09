@@ -27,8 +27,8 @@ use crate::{
     rest::dto::{
         BootstrapMethod, ChartGridPoint, CurveBuildRequest, CurveBuildResponse, CurvePillar,
         DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
-        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse,
-        InterpolationMethod, JacobianData,
+        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse, InterpolationMethod,
+        JacobianData,
     },
     state::{AppState, InstrumentInput},
 };
@@ -89,7 +89,8 @@ fn generate_short_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
     dates
 }
 
-/// Generate long-term grid dates: quarterly 3M→10Y, semi-annual 10.5Y→20Y, annual 21Y→30Y.
+/// Generate long-term grid dates: quarterly 3M→10Y, semi-annual 10.5Y→20Y,
+/// annual 21Y→30Y.
 fn generate_long_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
     let mut dates = Vec::new();
 
@@ -119,8 +120,8 @@ fn generate_long_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
 
 /// Build `ChartGridPoint` vec from grid dates.
 ///
-/// Time is derived from `(date - ref_date).num_days() / 365.0` at the point of use,
-/// guaranteeing consistency with the internal model basis.
+/// Time is derived from `(date - ref_date).num_days() / 365.0` at the point of
+/// use, guaranteeing consistency with the internal model basis.
 fn build_chart_grid<C: YieldCurve<f64>>(
     ref_date: NaiveDate,
     dates: &[NaiveDate],
@@ -164,8 +165,8 @@ fn resolve_day_counter(index: &str) -> DayCounter {
 /// Compute the overnight forward rate at a given date using the proper
 /// day count convention from the index definition.
 ///
-/// 1. Query DF at `date` and `date + 1 calendar day` on the curve's
-///    ACT/365 Fixed time axis.
+/// 1. Query DF at `date` and `date + 1 calendar day` on the curve's ACT/365
+///    Fixed time axis.
 /// 2. Compute accrual fraction δ = `DayCounter::year_fraction(date, date + 1)`.
 /// 3. Forward rate F = (DF₁ / DF₂ − 1) / δ.
 fn overnight_forward_rate<C: YieldCurve<f64>>(
@@ -178,7 +179,11 @@ fn overnight_forward_rate<C: YieldCurve<f64>>(
     let next_date = date + chrono::Duration::days(1);
     let t1 = MODEL_DAY_COUNTER.year_fraction_from_days(d);
     let t2 = MODEL_DAY_COUNTER.year_fraction_from_days(d + 1);
-    let df1 = if t1 <= 0.0 { 1.0 } else { curve.discount_factor(t1).ok()? };
+    let df1 = if t1 <= 0.0 {
+        1.0
+    } else {
+        curve.discount_factor(t1).ok()?
+    };
     let df2 = curve.discount_factor(t2).ok()?;
     let delta = day_counter.year_fraction(Date::from(date), Date::from(next_date));
     if delta <= 0.0 {
@@ -296,12 +301,12 @@ impl CurveService {
             .with_interpolation(interpolation);
         let bootstrapper = CurveBootstrapper::with_config(config);
 
-        let (curve, maybe_jacobian) = match request.bootstrap_method {
+        let (curve, maybe_jacobian, actual_method) = match request.bootstrap_method {
             BootstrapMethod::Sequential => {
                 let (curve, jac) = bootstrapper
                     .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
-                (curve, Some(jac))
+                (curve, Some(jac), "sequential")
             }
             BootstrapMethod::Global => {
                 let bootstrap_interp = match interpolation {
@@ -321,24 +326,34 @@ impl CurveService {
                 if jump_pillars.is_empty() {
                     // No jumps: J⁻¹ is n x n. By IFT d(log DF)/dr = J_sys⁻¹
                     // because ∂F/∂r = -I (pricing_error = theoretical - market).
-                    let result = global
-                        .calibrate(&market_instruments)
-                        .map_err(|e| {
-                            ServerError::Pricing(format!("Global bootstrap failed: {e}"))
-                        })?;
-
-                    let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
-                        let size = n.min(j_inv.nrows());
-                        let mut data = vec![vec![0.0; size]; size];
-                        for i in 0..size {
-                            for j in 0..size {
-                                data[i][j] = j_inv[(i, j)];
-                            }
+                    match global.calibrate(&market_instruments) {
+                        Ok(result) => {
+                            let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                                let size = n.min(j_inv.nrows());
+                                let mut data = vec![vec![0.0; size]; size];
+                                for i in 0..size {
+                                    for j in 0..size {
+                                        data[i][j] = j_inv[(i, j)];
+                                    }
+                                }
+                                JacobianMatrix { data, size }
+                            });
+                            (result.curve, jacobian, "global")
                         }
-                        JacobianMatrix { data, size }
-                    });
-
-                    (result.curve, jacobian)
+                        Err(e) => {
+                            // Global solver failed (e.g. singular Jacobian).
+                            // Fall back to sequential bootstrap with FD Jacobian.
+                            tracing::warn!(
+                                "Global bootstrap failed ({e}), falling back to sequential"
+                            );
+                            let (curve, jac) = bootstrapper
+                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
+                                .map_err(|e2| {
+                                    ServerError::Pricing(format!("Bootstrap failed: {e2}"))
+                                })?;
+                            (curve, Some(jac), "sequential (fallback)")
+                        }
+                    }
                 } else {
                     // With jumps: global solver merges regular + jump unknowns,
                     // so J⁻¹ dimensions don't map cleanly to regular instruments.
@@ -350,13 +365,21 @@ impl CurveService {
                             PricerJumpPillar::new(time, jp.expected_jump_bps())
                         })
                         .collect();
-                    let result = global
-                        .calibrate_with_jumps(&market_instruments, pricer_jumps)
-                        .map_err(|e| {
-                            ServerError::Pricing(format!("Global bootstrap failed: {e}"))
-                        })?;
-
-                    (result.curve, None)
+                    match global.calibrate_with_jumps(&market_instruments, pricer_jumps) {
+                        Ok(result) => (result.curve, None, "global"),
+                        Err(e) => {
+                            tracing::warn!(
+                                "Global bootstrap with jumps failed ({e}), \
+                                 falling back to sequential"
+                            );
+                            let (curve, jac) = bootstrapper
+                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
+                                .map_err(|e2| {
+                                    ServerError::Pricing(format!("Bootstrap failed: {e2}"))
+                                })?;
+                            (curve, Some(jac), "sequential (fallback)")
+                        }
+                    }
                 }
             }
         };
@@ -408,8 +431,7 @@ impl CurveService {
                 let days = (*time * 365.0).round() as i64;
                 let date = reference_date + chrono::Duration::days(days);
                 let fwd = if *time > 0.0 {
-                    overnight_forward_rate(&curve, reference_date, date, day_counter)
-                        .unwrap_or(0.0)
+                    overnight_forward_rate(&curve, reference_date, date, day_counter).unwrap_or(0.0)
                 } else {
                     0.0
                 };
@@ -446,10 +468,18 @@ impl CurveService {
         let short_term_dates = generate_short_term_dates(reference_date);
         let long_term_dates = generate_long_term_dates(reference_date);
         let short_term_grid = build_chart_grid(
-            reference_date, &short_term_dates, &curve, format_short_term_label, day_counter,
+            reference_date,
+            &short_term_dates,
+            &curve,
+            format_short_term_label,
+            day_counter,
         );
         let long_term_grid = build_chart_grid(
-            reference_date, &long_term_dates, &curve, format_long_term_label, day_counter,
+            reference_date,
+            &long_term_dates,
+            &curve,
+            format_long_term_label,
+            day_counter,
         );
 
         let interpolation_str = match request.interpolation {
@@ -486,6 +516,7 @@ impl CurveService {
             interpolation: interpolation_str,
             converged: true,
             calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            bootstrap_method: actual_method.to_string(),
             jacobian: jacobian_data,
         })
     }
@@ -567,12 +598,12 @@ impl CurveService {
         expiry_years: f64,
         tenor_years: f64,
     ) -> Result<f64, ServerError> {
-        let df_start = curve.discount_factor(expiry_years).map_err(|e| {
-            ServerError::Pricing(format!("Failed to compute DF at expiry: {e}"))
-        })?;
-        let df_end = curve.discount_factor(expiry_years + tenor_years).map_err(|e| {
-            ServerError::Pricing(format!("Failed to compute DF at maturity: {e}"))
-        })?;
+        let df_start = curve
+            .discount_factor(expiry_years)
+            .map_err(|e| ServerError::Pricing(format!("Failed to compute DF at expiry: {e}")))?;
+        let df_end = curve
+            .discount_factor(expiry_years + tenor_years)
+            .map_err(|e| ServerError::Pricing(format!("Failed to compute DF at maturity: {e}")))?;
 
         // Annuity: sum of DFs at annual payment dates
         let n_payments = tenor_years.ceil() as usize;

@@ -3,7 +3,10 @@
 //! This module provides types for standardised market instruments
 //! used in curve calibration and trading.
 
-use crate::{market::Currency, time::{Date, Tenor}};
+use crate::{
+    market::Currency,
+    time::{Date, Tenor},
+};
 
 /// A market instrument used for curve calibration.
 ///

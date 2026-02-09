@@ -49,17 +49,17 @@
 /// System configuration: pricing parameters, risk settings, service config.
 #[cfg(feature = "full")]
 pub use infra_config as config;
-/// Static master data: dates, currencies, calendars, trade definitions.
-///
-/// This module provides the foundational types used throughout Neutryx:
-/// - [`Date`](master::Date), [`Calendar`](master::Calendar),
-///   [`DayCounter`](master::DayCounter)
-/// - [`Currency`](master::Currency), [`RateIndex`](master::RateIndex)
-/// - Trade builders and ID types
-pub use infra_domain as master;
 /// Persistence layer: database backends, storage traits.
 #[cfg(feature = "storage")]
 pub use infra_config::store;
+/// Static master data: dates, currencies, calendars, trade definitions.
+///
+/// This module provides the foundational types used throughout Neutryx:
+/// - [`Date`](master::time::Date), [`Calendar`](master::time::Calendar),
+///   [`DayCounter`](master::time::DayCounter)
+/// - [`Currency`](master::market::Currency), [`RateIndex`](master::market::RateIndex)
+/// - Trade builders and ID types
+pub use infra_domain as master;
 // =============================================================================
 // Pricer Layer (P) - Feature-gated
 // =============================================================================

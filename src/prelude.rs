@@ -24,32 +24,15 @@ pub use infra_config::{
     ScenarioConfig, ShiftType,
 };
 // =============================================================================
-// ID Types (always available)
-// =============================================================================
-pub use infra_domain::ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
-// =============================================================================
-// Market Types (always available)
-// =============================================================================
-pub use infra_domain::market::{Currency, RateIndex};
-pub use infra_domain::time::{
-    AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date, DayCounter,
-    EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor, TimeError,
-    TimeUnit,
-};
-// =============================================================================
-// Trade Types (always available)
-// =============================================================================
-pub use infra_domain::trade::{SwapDirection, TradeDirection};
-// =============================================================================
 // Book & Portfolio Types (always available)
 // =============================================================================
 pub use infra_domain::book::{
     Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType,
 };
-pub use infra_domain::portfolio::{
-    PortfolioBookMapping, PortfolioDefinition, PortfolioDefinitionBuilder, PortfolioMetadata,
-    PortfolioScope,
-};
+// =============================================================================
+// Counterparty Types (always available)
+// =============================================================================
+pub use infra_domain::counterparty::{CsaTerms, NettingSet};
 // =============================================================================
 // Error Types (always available)
 // =============================================================================
@@ -58,9 +41,28 @@ pub use infra_domain::error::{
     PortfolioError, ValidationError, ValidationResult,
 };
 // =============================================================================
-// Counterparty Types (always available)
+// ID Types (always available)
 // =============================================================================
-pub use infra_domain::counterparty::{CsaTerms, NettingSet};
+pub use infra_domain::ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
+// =============================================================================
+// Market Types (always available)
+// =============================================================================
+pub use infra_domain::market::{Currency, RateIndex};
+// =============================================================================
+// Trade Types (always available)
+// =============================================================================
+pub use infra_domain::trade::{SwapDirection, TradeDirection};
+pub use infra_domain::{
+    portfolio::{
+        PortfolioBookMapping, PortfolioDefinition, PortfolioDefinitionBuilder, PortfolioMetadata,
+        PortfolioScope,
+    },
+    time::{
+        AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
+        DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
+        TimeError, TimeUnit,
+    },
+};
 // =============================================================================
 // Pricing Result Types (full feature)
 // =============================================================================

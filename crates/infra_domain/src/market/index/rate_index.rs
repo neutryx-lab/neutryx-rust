@@ -355,10 +355,11 @@ impl RateIndex {
         }
     }
 
-    /// Parses a rate index from a compound index name (e.g., "USD-SOFR", "EUR-EURIBOR-6M").
+    /// Parses a rate index from a compound index name (e.g., "USD-SOFR",
+    /// "EUR-EURIBOR-6M").
     ///
-    /// Falls back to standard `FromStr` parsing first, then tries substring matching
-    /// for compound names commonly used in curve building APIs.
+    /// Falls back to standard `FromStr` parsing first, then tries substring
+    /// matching for compound names commonly used in curve building APIs.
     ///
     /// # Examples
     ///
@@ -645,13 +646,34 @@ mod tests {
 
     #[test]
     fn test_from_index_name_compound() {
-        assert_eq!(RateIndex::from_index_name("USD-SOFR"), Some(RateIndex::Sofr));
-        assert_eq!(RateIndex::from_index_name("EUR-EURIBOR-6M"), Some(RateIndex::Euribor6M));
-        assert_eq!(RateIndex::from_index_name("EUR-EURIBOR-3M"), Some(RateIndex::Euribor3M));
-        assert_eq!(RateIndex::from_index_name("GBP-SONIA"), Some(RateIndex::Sonia));
-        assert_eq!(RateIndex::from_index_name("CHF-SARON"), Some(RateIndex::Saron));
-        assert_eq!(RateIndex::from_index_name("EUR-ESTR"), Some(RateIndex::Estr));
-        assert_eq!(RateIndex::from_index_name("JPY-TONA"), Some(RateIndex::Tonar));
+        assert_eq!(
+            RateIndex::from_index_name("USD-SOFR"),
+            Some(RateIndex::Sofr)
+        );
+        assert_eq!(
+            RateIndex::from_index_name("EUR-EURIBOR-6M"),
+            Some(RateIndex::Euribor6M)
+        );
+        assert_eq!(
+            RateIndex::from_index_name("EUR-EURIBOR-3M"),
+            Some(RateIndex::Euribor3M)
+        );
+        assert_eq!(
+            RateIndex::from_index_name("GBP-SONIA"),
+            Some(RateIndex::Sonia)
+        );
+        assert_eq!(
+            RateIndex::from_index_name("CHF-SARON"),
+            Some(RateIndex::Saron)
+        );
+        assert_eq!(
+            RateIndex::from_index_name("EUR-ESTR"),
+            Some(RateIndex::Estr)
+        );
+        assert_eq!(
+            RateIndex::from_index_name("JPY-TONA"),
+            Some(RateIndex::Tonar)
+        );
     }
 
     #[test]
