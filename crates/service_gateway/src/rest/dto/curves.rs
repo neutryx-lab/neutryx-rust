@@ -1,22 +1,7 @@
 //! Curve-related DTOs
 
+use pricer_models::market::BootstrapInterpolation;
 use serde::{Deserialize, Serialize};
-
-/// Interpolation method for curve building
-#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum InterpolationMethod {
-    /// Linear interpolation on discount factors
-    #[serde(alias = "linear")]
-    LinearDf,
-    /// Log-linear interpolation (linear on log of discount factors)
-    #[default]
-    #[serde(alias = "log_linear")]
-    LogLinearDf,
-    /// Flat forward interpolation (constant simple forward rate between
-    /// pillars)
-    FlatForward,
-}
 
 /// Bootstrap method for curve building
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
@@ -68,7 +53,7 @@ pub struct CurveBuildRequest {
     pub instruments: Vec<CurveInstrumentInput>,
     /// Interpolation method
     #[serde(default)]
-    pub interpolation: InterpolationMethod,
+    pub interpolation: BootstrapInterpolation,
     /// Bootstrap method
     #[serde(default)]
     pub bootstrap_method: BootstrapMethod,
@@ -221,49 +206,6 @@ pub struct ForwardRateResponse {
     pub start_time: f64,
     pub end_time: f64,
     pub forward_rate: f64,
-}
-
-/// Request to compute bucket DV01
-#[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize)]
-pub struct BucketDv01Request {
-    /// Curve ID from previous build
-    pub curve_id: String,
-    /// Notional amount
-    pub notional: f64,
-    /// Fixed rate of the swap
-    pub fixed_rate: f64,
-    /// Tenor in years
-    pub tenor_years: f64,
-    /// Bump size in basis points
-    #[serde(default = "default_bump_bps")]
-    pub bump_size_bps: f64,
-}
-
-fn default_bump_bps() -> f64 { 1.0 }
-
-/// Single bucket DV01 result
-#[derive(Debug, Clone, Serialize)]
-pub struct BucketDv01Result {
-    /// Tenor bucket label (e.g., "1Y", "2Y")
-    pub tenor: String,
-    /// Time in years
-    pub time: f64,
-    /// DV01 for this bucket
-    pub dv01: f64,
-}
-
-/// Response for bucket DV01 calculation
-#[derive(Debug, Clone, Serialize)]
-pub struct BucketDv01Response {
-    /// Curve ID
-    pub curve_id: String,
-    /// Total DV01 (sum of all buckets)
-    pub total_dv01: f64,
-    /// Per-bucket DV01 results
-    pub buckets: Vec<BucketDv01Result>,
-    /// Calculation time in milliseconds
-    pub calculation_time_ms: f64,
 }
 
 /// Request to compute forward swap rates from a cached curve

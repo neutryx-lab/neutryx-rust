@@ -69,28 +69,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cds_convention_new() {
-        let conv = CdsConvention::new(
-            DayCounter::Actual360,
-            Frequency::Quarterly,
-            CalendarId::NewYork,
-            BusinessDayConvention::Following,
-            0.40,
-        );
-        assert_eq!(conv.recovery_rate, 0.40);
-    }
+    fn test_cds_conventions() {
+        let na = CdsConvention::isda_na();
+        assert_eq!(na.day_count, DayCounter::Actual360);
+        assert_eq!(na.payment_frequency, Frequency::Quarterly);
+        assert_eq!(na.recovery_rate, 0.40);
+        assert_eq!(na.calendar, CalendarId::NewYork);
 
-    #[test]
-    fn test_isda_na_convention() {
-        let conv = CdsConvention::isda_na();
-        assert_eq!(conv.day_count, DayCounter::Actual360);
-        assert_eq!(conv.payment_frequency, Frequency::Quarterly);
-        assert_eq!(conv.recovery_rate, 0.40);
-    }
-
-    #[test]
-    fn test_isda_eu_convention() {
-        let conv = CdsConvention::isda_eu();
-        assert_eq!(conv.calendar, CalendarId::Target);
+        let eu = CdsConvention::isda_eu();
+        assert_eq!(eu.calendar, CalendarId::Target);
+        assert_eq!(eu.recovery_rate, 0.40);
     }
 }

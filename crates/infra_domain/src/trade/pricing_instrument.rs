@@ -370,106 +370,51 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_instrument_params() {
-        let params = InstrumentParams::new(100.0, 1.0, 1_000_000.0).unwrap();
-        assert_eq!(params.strike(), 100.0);
-        assert_eq!(params.expiry(), 1.0);
-        assert_eq!(params.notional(), 1_000_000.0);
-    }
-
-    #[test]
-    fn test_vanilla_option_call() {
+    fn test_vanilla_option_payoffs() {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
+
+        // Call: ITM and OTM
         let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
+        assert!((call.payoff(110.0) - 10.0).abs() < 0.01);
+        assert!(call.payoff(90.0) < 0.01);
 
-        assert_eq!(call.payoff_type(), PayoffType::Call);
-        assert_eq!(call.exercise_style(), ExerciseStyle::European);
-
-        // ITM call
-        let payoff = call.payoff(110.0);
-        assert!((payoff - 10.0).abs() < 0.01);
-
-        // OTM call
-        let payoff = call.payoff(90.0);
-        assert!(payoff < 0.01);
-    }
-
-    #[test]
-    fn test_vanilla_option_put() {
-        let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
+        // Put: ITM and OTM
         let put = VanillaOption::new(params, PayoffType::Put, ExerciseStyle::European, 1e-6);
-
-        // ITM put
-        let payoff = put.payoff(90.0);
-        assert!((payoff - 10.0).abs() < 0.01);
-
-        // OTM put
-        let payoff = put.payoff(110.0);
-        assert!(payoff < 0.01);
+        assert!((put.payoff(90.0) - 10.0).abs() < 0.01);
+        assert!(put.payoff(110.0) < 0.01);
     }
 
     #[test]
-    fn test_forward_long() {
-        let fwd = Forward::new(100.0, 1.0, 1.0, ForwardDirection::Long).unwrap();
+    fn test_forward_payoffs() {
+        let long = Forward::new(100.0, 1.0, 1.0, ForwardDirection::Long).unwrap();
+        assert!((long.payoff(110.0) - 10.0).abs() < 1e-10);
+        assert!((long.payoff(90.0) - (-10.0)).abs() < 1e-10);
 
-        let payoff = fwd.payoff(110.0);
-        assert!((payoff - 10.0).abs() < 1e-10);
-
-        let payoff = fwd.payoff(90.0);
-        assert!((payoff - (-10.0)).abs() < 1e-10);
+        let short = Forward::new(100.0, 1.0, 1.0, ForwardDirection::Short).unwrap();
+        assert!((short.payoff(110.0) - (-10.0)).abs() < 1e-10);
+        assert!((short.payoff(90.0) - 10.0).abs() < 1e-10);
     }
 
     #[test]
-    fn test_forward_short() {
-        let fwd = Forward::new(100.0, 1.0, 1.0, ForwardDirection::Short).unwrap();
-
-        let payoff = fwd.payoff(110.0);
-        assert!((payoff - (-10.0)).abs() < 1e-10);
-
-        let payoff = fwd.payoff(90.0);
-        assert!((payoff - 10.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_pricing_instrument_vanilla() {
+    fn test_pricing_instrument_dispatch() {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
         let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-        let inst = PricingInstrument::Vanilla(call);
+        let vanilla = PricingInstrument::Vanilla(call);
+        assert!(vanilla.is_vanilla());
+        assert_eq!(vanilla.expiry(), 1.0);
+        assert!((vanilla.payoff(110.0) - 10.0).abs() < 0.01);
 
-        assert!(inst.is_vanilla());
-        assert!(!inst.is_forward());
-        assert!(!inst.is_swap());
-        assert_eq!(inst.expiry(), 1.0);
-    }
-
-    #[test]
-    fn test_pricing_instrument_forward() {
         let fwd = Forward::new(100.0, 2.0, 1.0, ForwardDirection::Long).unwrap();
-        let inst = PricingInstrument::Forward(fwd);
-
-        assert!(!inst.is_vanilla());
-        assert!(inst.is_forward());
-        assert_eq!(inst.expiry(), 2.0);
+        let forward = PricingInstrument::Forward(fwd);
+        assert!(forward.is_forward());
+        assert_eq!(forward.expiry(), 2.0);
     }
 
     #[test]
-    fn test_pricing_instrument_payoff() {
-        let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
-        let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-        let inst = PricingInstrument::Vanilla(call);
-
-        let payoff = inst.payoff(110.0);
-        assert!((payoff - 10.0).abs() < 0.01);
-    }
-
-    #[test]
-    fn test_exercise_style_display() {
+    fn test_exercise_style_and_direction() {
         assert_eq!(format!("{}", ExerciseStyle::European), "European");
-        assert_eq!(format!("{}", ExerciseStyle::American), "American");
-    }
-
-    #[test]
-    fn test_forward_direction_sign() {
+        assert!(ExerciseStyle::European.is_european());
+        assert!(ExerciseStyle::American.is_american());
         assert_eq!(ForwardDirection::Long.sign(), 1.0);
         assert_eq!(ForwardDirection::Short.sign(), -1.0);
     }

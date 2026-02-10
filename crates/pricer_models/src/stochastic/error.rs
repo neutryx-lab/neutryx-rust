@@ -91,7 +91,8 @@ mod tests {
     #[cfg(feature = "equity")]
     #[test]
     fn test_heston_error_to_model_error() {
-        let heston_err = HestonError::InvalidSpot(-100.0);
+        use super::super::validation::ParamValidationError;
+        let heston_err = HestonError::Param(ParamValidationError::must_be_positive("spot", -100.0));
         let model_err: ModelError = heston_err.into();
         assert!(matches!(model_err, ModelError::Heston(_)));
     }
@@ -99,7 +100,8 @@ mod tests {
     #[cfg(feature = "equity")]
     #[test]
     fn test_heston_to_pricing_error() {
-        let heston_err = HestonError::InvalidV0(-0.1);
+        use super::super::validation::ParamValidationError;
+        let heston_err = HestonError::Param(ParamValidationError::must_be_positive("v0", -0.1));
         let model_err: ModelError = heston_err.into();
         let pricing_err: PricingError = model_err.into();
         assert!(matches!(pricing_err, PricingError::ModelFailure(_)));

@@ -9,11 +9,8 @@ use infra_domain::market::{
 
 use super::{converter::definition_to_instrument, error::ConstructionError};
 use crate::{
-    builder::{
-        curve::{BootstrapConfig, InterpolationMethod},
-        BootstrapError, CurveBootstrapper,
-    },
-    market::curves::BootstrappedCurve,
+    builder::{BootstrapConfig, BootstrapError, CurveBootstrapper},
+    market::curves::{BootstrapInterpolation, BootstrappedCurve},
 };
 
 /// Configuration for the curve construction engine.
@@ -251,10 +248,12 @@ impl CurveConstructionEngine {
 
         // Convert CurveDefinition interpolation to builder interpolation
         let interpolation = match curve_def.interpolation {
-            infra_domain::market::InterpolationMethod::Linear => InterpolationMethod::Linear,
-            infra_domain::market::InterpolationMethod::LogLinear => InterpolationMethod::LogLinear,
+            infra_domain::market::InterpolationMethod::Linear => BootstrapInterpolation::Linear,
+            infra_domain::market::InterpolationMethod::LogLinear => {
+                BootstrapInterpolation::LogLinear
+            }
             infra_domain::market::InterpolationMethod::FlatForward => {
-                InterpolationMethod::FlatForward
+                BootstrapInterpolation::FlatForward
             }
         };
 

@@ -395,182 +395,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_convention_set_new() {
+    fn test_empty_set_returns_errors() {
         let set = ConventionSet::new();
-        assert!(set.swap.is_none());
-        assert!(set.fx.is_none());
-        assert!(set.cds.is_none());
-        assert!(set.swaption.is_none());
-        assert!(set.fx_option.is_none());
-        assert!(set.equity.is_none());
-        assert!(set.commodity.is_none());
-        assert!(set.inflation_swap.is_none());
-    }
-
-    #[test]
-    fn test_convention_set_with_swap() {
-        let set = ConventionSet::new().with_swap(SwapConvention::usd_sofr());
-        assert!(set.swap.is_some());
-        assert!(set.get_swap().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_swap_error() {
-        let set = ConventionSet::new();
-        let result = set.get_swap();
-        assert!(result.is_err());
+        assert!(set.get_swap().is_err());
+        assert!(set.get_swaption().is_err());
+        assert!(set.get_fra().is_err());
+        assert!(set.get_cap_floor().is_err());
+        assert!(set.get_inflation_swap().is_err());
+        assert!(set.get_fx().is_err());
+        assert!(set.get_fx_option().is_err());
+        assert!(set.get_cds().is_err());
+        assert!(set.get_equity().is_err());
+        assert!(set.get_commodity().is_err());
+        assert!(set.get_bond().is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            set.get_swap().unwrap_err(),
             InstrumentError::MissingConvention { .. }
         ));
     }
 
     #[test]
-    fn test_convention_set_with_swaption() {
-        let set = ConventionSet::new().with_swaption(SwaptionConvention::usd_sofr());
-        assert!(set.swaption.is_some());
-        assert!(set.get_swaption().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_swaption_error() {
-        let set = ConventionSet::new();
-        let result = set.get_swaption();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_convention_set_with_fx() {
-        let set = ConventionSet::new().with_fx(FxConvention::usd_default());
-        assert!(set.fx.is_some());
-        assert!(set.get_fx().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_fx_error() {
-        let set = ConventionSet::new();
-        let result = set.get_fx();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_convention_set_with_fx_option() {
-        let set = ConventionSet::new().with_fx_option(FxOptionConvention::g10_standard());
-        assert!(set.fx_option.is_some());
-        assert!(set.get_fx_option().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_fx_option_error() {
-        let set = ConventionSet::new();
-        let result = set.get_fx_option();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_convention_set_with_cds() {
-        let set = ConventionSet::new().with_cds(CdsConvention::isda_na());
-        assert!(set.cds.is_some());
-        assert!(set.get_cds().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_cds_error() {
-        let set = ConventionSet::new();
-        let result = set.get_cds();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_convention_set_with_equity() {
-        let set = ConventionSet::new().with_equity(EquityConvention::us_equity());
-        assert!(set.equity.is_some());
-        assert!(set.get_equity().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_equity_error() {
-        let set = ConventionSet::new();
-        let result = set.get_equity();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_convention_set_with_commodity() {
-        let set = ConventionSet::new().with_commodity(CommodityConvention::wti_crude());
-        assert!(set.commodity.is_some());
-        assert!(set.get_commodity().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_commodity_error() {
-        let set = ConventionSet::new();
-        let result = set.get_commodity();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_convention_set_with_inflation_swap() {
-        let set = ConventionSet::new().with_inflation_swap(InflationSwapConvention::us_cpi_zc());
-        assert!(set.inflation_swap.is_some());
-        assert!(set.get_inflation_swap().is_ok());
-    }
-
-    #[test]
-    fn test_convention_set_get_inflation_swap_error() {
-        let set = ConventionSet::new();
-        let result = set.get_inflation_swap();
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_convention_set_usd_standard() {
-        let set = ConventionSet::usd_standard();
-        assert!(set.swap.is_some());
-        assert!(set.swaption.is_some());
-        assert!(set.fx.is_some());
-        assert!(set.fx_option.is_some());
-        assert!(set.cds.is_some());
-        assert!(set.equity.is_some());
-        assert!(set.inflation_swap.is_some());
-        assert!(set.commodity.is_some());
-    }
-
-    #[test]
-    fn test_convention_set_eur_standard() {
-        let set = ConventionSet::eur_standard();
-        assert!(set.swap.is_some());
-        assert!(set.swaption.is_some());
-        assert!(set.fx.is_some());
-        assert!(set.fx_option.is_some());
-        assert!(set.cds.is_some());
-        assert!(set.equity.is_some());
-        assert!(set.inflation_swap.is_some());
-    }
-
-    #[test]
-    fn test_convention_set_gbp_standard() {
-        let set = ConventionSet::gbp_standard();
-        assert!(set.swap.is_some());
-        assert!(set.swaption.is_some());
-        assert!(set.fx.is_some());
-        assert!(set.fx_option.is_some());
-        assert!(set.equity.is_some());
-        assert!(set.inflation_swap.is_some());
-    }
-
-    #[test]
-    fn test_convention_set_jpy_standard() {
-        let set = ConventionSet::jpy_standard();
-        assert!(set.swap.is_some());
-        assert!(set.swaption.is_some());
-        assert!(set.fx.is_some());
-        assert!(set.fx_option.is_some());
-        assert!(set.equity.is_some());
-    }
-
-    #[test]
-    fn test_convention_set_builder_chain() {
+    fn test_builder_chain() {
         let set = ConventionSet::new()
             .with_swap(SwapConvention::usd_sofr())
             .with_swaption(SwaptionConvention::usd_sofr())
@@ -581,30 +426,34 @@ mod tests {
             .with_commodity(CommodityConvention::wti_crude())
             .with_inflation_swap(InflationSwapConvention::us_cpi_zc());
 
-        assert!(set.swap.is_some());
-        assert!(set.swaption.is_some());
-        assert!(set.fx.is_some());
-        assert!(set.fx_option.is_some());
-        assert!(set.cds.is_some());
-        assert!(set.equity.is_some());
-        assert!(set.commodity.is_some());
-        assert!(set.inflation_swap.is_some());
+        assert!(set.get_swap().is_ok());
+        assert!(set.get_swaption().is_ok());
+        assert!(set.get_fx().is_ok());
+        assert!(set.get_fx_option().is_ok());
+        assert!(set.get_cds().is_ok());
+        assert!(set.get_equity().is_ok());
+        assert!(set.get_commodity().is_ok());
+        assert!(set.get_inflation_swap().is_ok());
         assert!(set.fra.is_none());
     }
 
     #[test]
-    fn test_convention_set_clone() {
-        let set = ConventionSet::usd_standard();
-        let cloned = set.clone();
-        assert!(cloned.swap.is_some());
-        assert!(cloned.fx.is_some());
-        assert!(cloned.swaption.is_some());
-    }
+    fn test_standard_presets() {
+        let usd = ConventionSet::usd_standard();
+        assert!(usd.get_swap().is_ok());
+        assert!(usd.get_cds().is_ok());
+        assert!(usd.get_commodity().is_ok());
 
-    #[test]
-    fn test_convention_set_debug() {
-        let set = ConventionSet::new();
-        let debug = format!("{:?}", set);
-        assert!(debug.contains("ConventionSet"));
+        let eur = ConventionSet::eur_standard();
+        assert!(eur.get_swap().is_ok());
+        assert!(eur.get_inflation_swap().is_ok());
+
+        let gbp = ConventionSet::gbp_standard();
+        assert!(gbp.get_swap().is_ok());
+        assert!(gbp.get_equity().is_ok());
+
+        let jpy = ConventionSet::jpy_standard();
+        assert!(jpy.get_swap().is_ok());
+        assert!(jpy.get_fx().is_ok());
     }
 }

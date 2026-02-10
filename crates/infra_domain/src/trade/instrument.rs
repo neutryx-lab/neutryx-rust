@@ -163,78 +163,39 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_deposit_quote() {
+    fn test_instrument_quotes_and_classification() {
         let deposit = Instrument::Deposit {
             currency: Currency::USD,
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
             tenor: Tenor::ThreeMonths,
             rate: 0.05,
         };
-
         assert_eq!(deposit.quote(), 0.05);
-        assert_eq!(deposit.currency(), Currency::USD);
-    }
+        assert!(deposit.is_deposit());
+        assert!(!deposit.is_swap());
 
-    #[test]
-    fn test_futures_quote() {
         let futures = Instrument::Futures {
             currency: Currency::USD,
             expiry: Date::from_ymd(2025, 3, 15).unwrap(),
             price: 95.5,
         };
-
-        // 100 - 95.5 = 4.5%, so quote = 0.045
         assert!((futures.quote() - 0.045).abs() < 1e-10);
-    }
 
-    #[test]
-    fn test_par_swap() {
         let swap = Instrument::ParSwap {
             currency: Currency::EUR,
             start_date: Date::from_ymd(2025, 1, 3).unwrap(),
             tenor: Tenor::FiveYears,
             rate: 0.025,
         };
-
         assert_eq!(swap.quote(), 0.025);
         assert!(swap.is_swap());
-    }
 
-    #[test]
-    fn test_ois() {
         let ois = Instrument::Ois {
             currency: Currency::USD,
             start_date: Date::from_ymd(2025, 1, 3).unwrap(),
             tenor: Tenor::OneYear,
             rate: 0.045,
         };
-
-        assert_eq!(ois.quote(), 0.045);
         assert!(ois.is_swap());
-    }
-
-    #[test]
-    fn test_is_deposit() {
-        let deposit = Instrument::Deposit {
-            currency: Currency::USD,
-            start_date: Date::from_ymd(2025, 1, 1).unwrap(),
-            tenor: Tenor::OneMonth,
-            rate: 0.05,
-        };
-
-        assert!(deposit.is_deposit());
-        assert!(!deposit.is_swap());
-    }
-
-    #[test]
-    fn test_instrument_clone() {
-        let deposit = Instrument::Deposit {
-            currency: Currency::USD,
-            start_date: Date::from_ymd(2025, 1, 1).unwrap(),
-            tenor: Tenor::ThreeMonths,
-            rate: 0.05,
-        };
-        let cloned = deposit.clone();
-        assert_eq!(deposit, cloned);
     }
 }

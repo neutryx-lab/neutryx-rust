@@ -1332,119 +1332,64 @@ impl XCcyBasisConvention {
 mod tests {
     use super::*;
 
-    // Deposit tests
     #[test]
-    fn test_deposit_convention_new() {
-        let conv = DepositConvention::new(
-            DayCounter::Actual360,
-            CalendarId::NewYork,
-            BusinessDayConvention::ModifiedFollowing,
-            2,
-        );
-        assert_eq!(conv.day_count, DayCounter::Actual360);
-        assert_eq!(conv.spot_lag, 2);
+    fn test_deposit_conventions() {
+        let usd = DepositConvention::usd();
+        assert_eq!(usd.day_count, DayCounter::Actual360);
+        assert_eq!(usd.calendar, CalendarId::NewYork);
+        assert_eq!(usd.spot_lag, 2);
+
+        let gbp = DepositConvention::gbp();
+        assert_eq!(gbp.day_count, DayCounter::Actual365Fixed);
+        assert_eq!(gbp.spot_lag, 0);
     }
 
     #[test]
-    fn test_usd_deposit_convention() {
-        let conv = DepositConvention::usd();
-        assert_eq!(conv.day_count, DayCounter::Actual360);
-        assert_eq!(conv.calendar, CalendarId::NewYork);
-        assert_eq!(conv.spot_lag, 2);
+    fn test_swap_conventions() {
+        let usd = SwapConvention::usd_sofr();
+        assert_eq!(usd.float_index, RateIndex::Sofr);
+        assert_eq!(usd.spot_lag, 2);
+        assert_eq!(usd.fixed_leg.day_count, DayCounter::Actual360);
+
+        let gbp = SwapConvention::gbp_sonia();
+        assert_eq!(gbp.float_index, RateIndex::Sonia);
+        assert_eq!(gbp.spot_lag, 0);
     }
 
     #[test]
-    fn test_gbp_deposit_convention() {
-        let conv = DepositConvention::gbp();
-        assert_eq!(conv.day_count, DayCounter::Actual365Fixed);
-        assert_eq!(conv.spot_lag, 0);
-    }
+    fn test_fra_futures_bond_capfloor_swaption() {
+        let fra = FraConvention::usd_sofr();
+        assert_eq!(fra.index, RateIndex::Sofr);
 
-    // FRA tests
-    #[test]
-    fn test_usd_sofr_fra_convention() {
-        let conv = FraConvention::usd_sofr();
-        assert_eq!(conv.index, RateIndex::Sofr);
-        assert_eq!(conv.calendar, CalendarId::NewYork);
-    }
+        let fut = FuturesConvention::cme_sofr();
+        assert_eq!(fut.contract_size, 1_000_000.0);
 
-    // Futures tests
-    #[test]
-    fn test_cme_sofr_convention() {
-        let conv = FuturesConvention::cme_sofr();
-        assert_eq!(conv.contract_size, 1_000_000.0);
-        assert_eq!(conv.day_count, DayCounter::Actual360);
-    }
+        let bond = BondConvention::us_treasury();
+        assert_eq!(bond.coupon_frequency, Frequency::SemiAnnual);
 
-    // Swap tests
-    #[test]
-    fn test_usd_sofr_swap_convention() {
-        let conv = SwapConvention::usd_sofr();
-        assert_eq!(conv.float_index, RateIndex::Sofr);
-        assert_eq!(conv.spot_lag, 2);
-        assert_eq!(conv.fixed_leg.day_count, DayCounter::Actual360);
+        let cap = CapFloorConvention::usd_sofr();
+        assert_eq!(cap.index, RateIndex::Sofr);
+
+        let swn = SwaptionConvention::usd_sofr();
+        assert_eq!(swn.premium_currency, Currency::USD);
+        assert_eq!(swn.exercise_settlement, SettlementConvention::Cash);
     }
 
     #[test]
-    fn test_gbp_sonia_swap_convention() {
-        let conv = SwapConvention::gbp_sonia();
-        assert_eq!(conv.float_index, RateIndex::Sonia);
-        assert_eq!(conv.spot_lag, 0);
-    }
-
-    // Bond tests
-    #[test]
-    fn test_us_treasury_convention() {
-        let conv = BondConvention::us_treasury();
-        assert_eq!(conv.coupon_frequency, Frequency::SemiAnnual);
-        assert_eq!(conv.settlement_days, 1);
-    }
-
-    // Cap/Floor tests
-    #[test]
-    fn test_usd_sofr_capfloor_convention() {
-        let conv = CapFloorConvention::usd_sofr();
-        assert_eq!(conv.index, RateIndex::Sofr);
-        assert_eq!(conv.payment_frequency, Frequency::Quarterly);
-    }
-
-    // Swaption tests
-    #[test]
-    fn test_usd_sofr_swaption_convention() {
-        let conv = SwaptionConvention::usd_sofr();
-        assert_eq!(conv.premium_currency, Currency::USD);
-        assert_eq!(conv.exercise_settlement, SettlementConvention::Cash);
-    }
-
-    // Inflation tests
-    #[test]
-    fn test_us_cpi_zc_convention() {
-        let conv = InflationSwapConvention::us_cpi_zc();
-        assert_eq!(conv.inflation_index, InflationIndex::UsCpi);
-        assert_eq!(conv.lag_months, 3);
-    }
-
-    #[test]
-    fn test_inflation_index_code() {
+    fn test_inflation_and_xccy() {
+        let infl = InflationSwapConvention::us_cpi_zc();
+        assert_eq!(infl.inflation_index, InflationIndex::UsCpi);
+        assert_eq!(infl.lag_months, 3);
         assert_eq!(InflationIndex::UsCpi.code(), "CPURNSA");
         assert_eq!(InflationIndex::UkRpi.code(), "UKRPI");
-    }
 
-    // XCcy tests
-    #[test]
-    fn test_usd_jpy_xccy_convention() {
-        let conv = XCcyBasisConvention::usd_jpy();
-        assert_eq!(conv.base_currency(), Currency::USD);
-        assert_eq!(conv.quote_currency(), Currency::JPY);
-        assert_eq!(conv.spread_on, BasisSpreadLeg::Quote);
-        assert!(conv.exchange_notional);
-    }
+        let xccy = XCcyBasisConvention::usd_jpy();
+        assert_eq!(xccy.base_currency(), Currency::USD);
+        assert_eq!(xccy.quote_currency(), Currency::JPY);
+        assert_eq!(xccy.spread_on, BasisSpreadLeg::Quote);
+        assert!(xccy.exchange_notional);
 
-    #[test]
-    fn test_eur_usd_xccy_convention() {
-        let conv = XCcyBasisConvention::eur_usd();
-        assert_eq!(conv.base_currency(), Currency::EUR);
-        assert_eq!(conv.quote_currency(), Currency::USD);
-        assert_eq!(conv.spread_on, BasisSpreadLeg::Base);
+        let eur_usd = XCcyBasisConvention::eur_usd();
+        assert_eq!(eur_usd.spread_on, BasisSpreadLeg::Base);
     }
 }

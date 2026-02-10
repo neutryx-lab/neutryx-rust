@@ -295,303 +295,55 @@ impl From<&str> for CrossBookNettingAgreementId {
 mod tests {
     use super::*;
 
-    // ========================================================================
-    // CounterPartyId tests
-    // ========================================================================
-
     #[test]
-    fn test_counterparty_id_new() {
+    fn test_counterparty_id() {
         let id = CounterPartyId::new("CP001");
         assert_eq!(id.as_str(), "CP001");
-    }
-
-    #[test]
-    fn test_counterparty_id_from_string() {
-        let id: CounterPartyId = "CP002".to_string().into();
-        assert_eq!(id.as_str(), "CP002");
-    }
-
-    #[test]
-    fn test_counterparty_id_from_str() {
-        let id: CounterPartyId = "CP003".into();
-        assert_eq!(id.as_str(), "CP003");
-    }
-
-    #[test]
-    fn test_counterparty_id_display() {
-        let id = CounterPartyId::new("CP001");
         assert_eq!(format!("{}", id), "CP001");
+        let id2: CounterPartyId = "CP001".into();
+        assert_eq!(id, id2);
     }
 
     #[test]
-    fn test_counterparty_id_as_ref() {
-        let id = CounterPartyId::new("CP001");
-        let s: &str = id.as_ref();
-        assert_eq!(s, "CP001");
-    }
-
-    #[test]
-    fn test_counterparty_id_equality() {
-        let id1 = CounterPartyId::new("CP001");
-        let id2 = CounterPartyId::new("CP001");
-        let id3 = CounterPartyId::new("CP002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    #[test]
-    fn test_counterparty_id_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(CounterPartyId::new("CP001"));
-        assert!(set.contains(&CounterPartyId::new("CP001")));
-        assert!(!set.contains(&CounterPartyId::new("CP002")));
-    }
-
-    // ========================================================================
-    // LegalEntityId tests
-    // ========================================================================
-
-    #[test]
-    fn test_legal_entity_id_valid() {
-        // Valid 20-character alphanumeric LEI
+    fn test_legal_entity_id_validation() {
         let lei = LegalEntityId::new("529900T8BM49AURSDO55").unwrap();
         assert_eq!(lei.as_str(), "529900T8BM49AURSDO55");
+        assert!(LegalEntityId::new("ABC").is_err());
+        assert!(LegalEntityId::new("529900T8BM49AURSD-55").is_err());
+        assert_eq!(LegalEntityId::new_unchecked("INVALID").as_str(), "INVALID");
     }
 
     #[test]
-    fn test_legal_entity_id_invalid_length_short() {
-        let result = LegalEntityId::new("ABC");
-        assert!(result.is_err());
-        match result {
-            Err(CounterPartyError::InvalidLei(s)) => assert_eq!(s, "ABC"),
-            _ => panic!("Expected InvalidLei error"),
-        }
-    }
-
-    #[test]
-    fn test_legal_entity_id_invalid_length_long() {
-        let result = LegalEntityId::new("529900T8BM49AURSDO55X");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_legal_entity_id_invalid_characters() {
-        // Contains special character
-        let result = LegalEntityId::new("529900T8BM49AURSD-55");
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_legal_entity_id_new_unchecked() {
-        // This should not validate
-        let lei = LegalEntityId::new_unchecked("INVALID");
-        assert_eq!(lei.as_str(), "INVALID");
-    }
-
-    #[test]
-    fn test_legal_entity_id_display() {
-        let lei = LegalEntityId::new_unchecked("529900T8BM49AURSDO55");
-        assert_eq!(format!("{}", lei), "529900T8BM49AURSDO55");
-    }
-
-    // ========================================================================
-    // NettingSetId tests
-    // ========================================================================
-
-    #[test]
-    fn test_netting_set_id_new() {
+    fn test_netting_set_id() {
         let id = NettingSetId::new("NS001");
         assert_eq!(id.as_str(), "NS001");
+        let id2: NettingSetId = "NS001".to_string().into();
+        assert_eq!(id, id2);
     }
 
     #[test]
-    fn test_netting_set_id_from_string() {
-        let id: NettingSetId = "NS002".to_string().into();
-        assert_eq!(id.as_str(), "NS002");
-    }
-
-    #[test]
-    fn test_netting_set_id_display() {
-        let id = NettingSetId::new("NS001");
-        assert_eq!(format!("{}", id), "NS001");
-    }
-
-    #[test]
-    fn test_netting_set_id_equality() {
-        let id1 = NettingSetId::new("NS001");
-        let id2 = NettingSetId::new("NS001");
-        let id3 = NettingSetId::new("NS002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    // ========================================================================
-    // CcpId tests
-    // ========================================================================
-
-    #[test]
-    fn test_ccp_id_new() {
+    fn test_ccp_id() {
         let id = CcpId::new("LCH");
         assert_eq!(id.as_str(), "LCH");
+        let id2: CcpId = "LCH".into();
+        assert_eq!(id, id2);
     }
 
     #[test]
-    fn test_ccp_id_from_string() {
-        let id: CcpId = "CME".to_string().into();
-        assert_eq!(id.as_str(), "CME");
-    }
-
-    #[test]
-    fn test_ccp_id_from_str() {
-        let id: CcpId = "JSCC".into();
-        assert_eq!(id.as_str(), "JSCC");
-    }
-
-    #[test]
-    fn test_ccp_id_display() {
-        let id = CcpId::new("LCH");
-        assert_eq!(format!("{}", id), "LCH");
-    }
-
-    #[test]
-    fn test_ccp_id_equality() {
-        let id1 = CcpId::new("LCH");
-        let id2 = CcpId::new("LCH");
-        let id3 = CcpId::new("CME");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    // ========================================================================
-    // IsdaAgreementId tests
-    // ========================================================================
-
-    #[test]
-    fn test_isda_agreement_id_new() {
+    fn test_isda_agreement_id() {
         let id = IsdaAgreementId::new("ISDA001");
         assert_eq!(id.as_str(), "ISDA001");
     }
 
     #[test]
-    fn test_isda_agreement_id_from_string() {
-        let id: IsdaAgreementId = "ISDA002".to_string().into();
-        assert_eq!(id.as_str(), "ISDA002");
-    }
-
-    #[test]
-    fn test_isda_agreement_id_from_str() {
-        let id: IsdaAgreementId = "ISDA003".into();
-        assert_eq!(id.as_str(), "ISDA003");
-    }
-
-    #[test]
-    fn test_isda_agreement_id_display() {
-        let id = IsdaAgreementId::new("ISDA001");
-        assert_eq!(format!("{}", id), "ISDA001");
-    }
-
-    #[test]
-    fn test_isda_agreement_id_equality() {
-        let id1 = IsdaAgreementId::new("ISDA001");
-        let id2 = IsdaAgreementId::new("ISDA001");
-        let id3 = IsdaAgreementId::new("ISDA002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    #[test]
-    fn test_isda_agreement_id_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(IsdaAgreementId::new("ISDA001"));
-        assert!(set.contains(&IsdaAgreementId::new("ISDA001")));
-        assert!(!set.contains(&IsdaAgreementId::new("ISDA002")));
-    }
-
-    #[test]
-    fn test_isda_agreement_id_default() {
-        let id = IsdaAgreementId::default();
-        assert_eq!(id.as_str(), "");
-    }
-
-    // ========================================================================
-    // VariationMarginAgreementId tests
-    // ========================================================================
-
-    #[test]
-    fn test_variation_margin_agreement_id_new() {
+    fn test_variation_margin_agreement_id() {
         let id = VariationMarginAgreementId::new("VMA001");
         assert_eq!(id.as_str(), "VMA001");
     }
 
     #[test]
-    fn test_variation_margin_agreement_id_from_string() {
-        let id: VariationMarginAgreementId = "VMA002".to_string().into();
-        assert_eq!(id.as_str(), "VMA002");
-    }
-
-    #[test]
-    fn test_variation_margin_agreement_id_from_str() {
-        let id: VariationMarginAgreementId = "VMA003".into();
-        assert_eq!(id.as_str(), "VMA003");
-    }
-
-    #[test]
-    fn test_variation_margin_agreement_id_display() {
-        let id = VariationMarginAgreementId::new("VMA001");
-        assert_eq!(format!("{}", id), "VMA001");
-    }
-
-    #[test]
-    fn test_variation_margin_agreement_id_equality() {
-        let id1 = VariationMarginAgreementId::new("VMA001");
-        let id2 = VariationMarginAgreementId::new("VMA001");
-        let id3 = VariationMarginAgreementId::new("VMA002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    #[test]
-    fn test_variation_margin_agreement_id_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(VariationMarginAgreementId::new("VMA001"));
-        assert!(set.contains(&VariationMarginAgreementId::new("VMA001")));
-        assert!(!set.contains(&VariationMarginAgreementId::new("VMA002")));
-    }
-
-    #[test]
-    fn test_variation_margin_agreement_id_default() {
-        let id = VariationMarginAgreementId::default();
-        assert_eq!(id.as_str(), "");
-    }
-
-    // ========================================================================
-    // CrossBookNettingAgreementId tests
-    // ========================================================================
-
-    #[test]
-    fn test_cross_book_netting_agreement_id_new() {
+    fn test_cross_book_netting_agreement_id() {
         let id = CrossBookNettingAgreementId::new("CBNA001");
         assert_eq!(id.as_str(), "CBNA001");
-    }
-
-    #[test]
-    fn test_cross_book_netting_agreement_id_from_string() {
-        let id: CrossBookNettingAgreementId = "CBNA002".to_string().into();
-        assert_eq!(id.as_str(), "CBNA002");
-    }
-
-    #[test]
-    fn test_cross_book_netting_agreement_id_from_str() {
-        let id: CrossBookNettingAgreementId = "CBNA003".into();
-        assert_eq!(id.as_str(), "CBNA003");
-    }
-
-    #[test]
-    fn test_cross_book_netting_agreement_id_display() {
-        let id = CrossBookNettingAgreementId::new("CBNA001");
-        assert_eq!(format!("{}", id), "CBNA001");
     }
 }

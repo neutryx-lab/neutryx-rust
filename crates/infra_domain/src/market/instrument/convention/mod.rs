@@ -35,20 +35,11 @@ mod rates;
 
 // Infrastructure modules
 mod convention_set;
-#[cfg(feature = "serde")]
-mod convention_template;
 mod market_convention;
 mod registry;
 
-// Re-export rates types
-// Re-export commodity types
 pub use commodity::{CommodityConvention, DeliveryConvention, PriceQuotation};
-// Re-export infrastructure types
 pub use convention_set::ConventionSet;
-// Template support for bulk convention generation
-#[cfg(feature = "serde")]
-pub use convention_template::{ConventionBundle, ConventionTemplate, CurrencyDefaults};
-// Re-export credit types
 pub use credit::CdsConvention;
 // Re-export equity types
 pub use equity::{DividendConvention, EquityConvention, EquitySettlementType};

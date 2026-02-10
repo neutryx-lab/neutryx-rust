@@ -57,9 +57,7 @@ pub mod instrument_def {
     pub use crate::market::instrument::*;
 }
 
-pub use book_assignment::{BookTransferReason, TradeBookAssignment, TradeBookHistory};
-#[allow(deprecated)]
-pub use builder::LegBuilder;
+pub use book_assignment::{BookTransferReason, TradeBookAssignment};
 pub use builder::{LegConfig, LegConfigBuilder};
 pub use cashflow::{Cashflow, CashflowType, DailyAccrual};
 pub use direction::{SwapDirection, TradeDirection};

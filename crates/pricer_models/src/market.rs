@@ -57,10 +57,6 @@ pub mod curves {
     use super::*;
 
     /// Trait for yield curves providing discount factors and rates.
-    ///
-    /// # Type Parameters
-    ///
-    /// * `T` - Floating-point type (e.g., `f64`) for AD compatibility
     #[enum_dispatch]
     pub trait YieldCurve<T: Float> {
         /// Returns the discount factor for time `t` (in years).
@@ -169,11 +165,15 @@ pub mod curves {
 
     /// Interpolation method for bootstrapped curves.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
     pub enum BootstrapInterpolation {
         /// Linear interpolation on discount factors.
+        #[cfg_attr(feature = "serde", serde(rename = "linear_df", alias = "linear"))]
         Linear,
         /// Log-linear interpolation (linear on log of discount factors).
         #[default]
+        #[cfg_attr(feature = "serde", serde(rename = "log_linear_df", alias = "log_linear"))]
         LogLinear,
         /// Flat forward interpolation (constant simple forward rate between
         /// pillars).
@@ -265,12 +265,7 @@ pub mod curves {
             }
         }
 
-        /// Creates an Event instrument (rate jump).
-        ///
-        /// # Arguments
-        ///
-        /// * `maturity` - Time to event date in years
-        /// * `expected_jump_bps` - Expected rate jump in basis points
+        /// Creates an Event instrument (rate jump in basis points).
         pub fn event(maturity: T, expected_jump_bps: T) -> Self {
             // Convert basis points to absolute rate
             let expected_jump = expected_jump_bps * from_f64::<T>(0.0001);
@@ -281,11 +276,6 @@ pub mod curves {
         }
 
         /// Creates an Event instrument with absolute rate jump.
-        ///
-        /// # Arguments
-        ///
-        /// * `maturity` - Time to event date in years
-        /// * `expected_jump` - Expected rate jump in absolute terms
         pub fn event_with_rate(maturity: T, expected_jump: T) -> Self {
             Self::Event {
                 maturity,
@@ -441,31 +431,7 @@ pub mod curves {
             })
         }
 
-        /// Adds jump data to the curve.
-        ///
-        /// # Arguments
-        ///
-        /// * `jumps` - Vector of (time, cumulative_offset) pairs. The offset is
-        ///   in log-space: adjusted_df = df * exp(cumulative_offset)
-        ///
-        /// # Examples
-        ///
-        /// ```
-        /// use pricer_models::market::curves::{BootstrappedCurve, BootstrapInterpolation};
-        ///
-        /// let pillars: Vec<f64> = vec![0.25, 0.5, 1.0];
-        /// let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03_f64 * t).exp()).collect();
-        /// let curve = BootstrappedCurve::new(
-        ///     pillars,
-        ///     dfs,
-        ///     BootstrapInterpolation::LogLinear,
-        ///     true,
-        /// )
-        /// .unwrap()
-        /// .with_jumps(vec![(0.25, -0.0025)]);
-        ///
-        /// assert!(curve.has_jumps());
-        /// ```
+        /// Adds jump data `(time, cumulative_log_offset)` to the curve.
         pub fn with_jumps(mut self, jumps: Vec<(T, T)>) -> Self {
             self.jumps = jumps;
             self
@@ -514,16 +480,7 @@ pub mod curves {
             }
         }
 
-        /// Returns the discount factor with limit specification.
-        ///
-        /// # Arguments
-        ///
-        /// * `t` - Time in years
-        /// * `limit` - Limit specification (Left, Right, or Continuous)
-        ///
-        /// # Returns
-        ///
-        /// The discount factor at time `t` with the specified limit handling.
+        /// Returns the discount factor with limit specification (Left, Right, or Continuous).
         pub fn discount_factor_with_limit(
             &self,
             t: T,
@@ -606,12 +563,6 @@ pub mod curves {
         }
 
         /// Returns the forward rate with limit specification.
-        ///
-        /// # Arguments
-        ///
-        /// * `t1` - Start time in years
-        /// * `t2` - End time in years
-        /// * `limit` - Limit specification for handling jumps
         pub fn forward_rate_with_limit(
             &self,
             t1: T,
@@ -636,11 +587,6 @@ pub mod curves {
         }
 
         /// Decomposes the forward rate into continuous and jump components.
-        ///
-        /// # Arguments
-        ///
-        /// * `t1` - Start time in years
-        /// * `t2` - End time in years
         pub fn decompose_forward_rate(
             &self,
             t1: T,
@@ -679,139 +625,28 @@ pub mod curves {
         }
 
         // =====================================================================
-        // Enzyme AD / Analytical Gradient Support (Requirements 2.1, 2.2)
+        // Analytical Gradient Support
         // =====================================================================
 
-        /// Returns the discount factor and its gradient with respect to pillar
-        /// values.
-        ///
-        /// # Requirement 2.1
-        ///
-        /// The BootstrappedCurve shall implement a
-        /// `discount_factor_with_gradient` method that returns both the
-        /// discount factor and its gradient with respect to pillar values.
-        ///
-        /// # Requirement 2.2
-        ///
-        /// When using LogLinear interpolation, compute exact analytical
-        /// derivatives: `∂DF(t)/∂DF_i` for all pillar indices i.
-        ///
-        /// For LogLinear interpolation:
-        /// - `log(DF(t)) = (1-w) * log(DF_i) + w * log(DF_{i+1})`
-        /// - `DF(t) = exp(log(DF(t)))`
-        /// - `∂DF(t)/∂DF_i = DF(t) * (1-w) / DF_i` for left pillar
-        /// - `∂DF(t)/∂DF_{i+1} = DF(t) * w / DF_{i+1}` for right pillar
-        ///
-        /// # Arguments
-        ///
-        /// * `t` - Time in years
-        ///
-        /// # Returns
-        ///
-        /// Tuple of `(discount_factor, gradient_vector)` where:
-        /// - `discount_factor` is DF(t)
-        /// - `gradient_vector` has length = number of pillars
-        /// - `gradient_vector[i]` = `∂DF(t)/∂DF_i`
+        /// Returns the discount factor and its gradient w.r.t. pillar DFs.
         pub fn discount_factor_with_gradient(&self, t: T) -> Result<(T, Vec<T>), MarketDataError> {
-            let n = self.pillars.len();
-            let mut gradient = vec![T::zero(); n];
-
-            if t <= T::zero() {
-                return Ok((T::one(), gradient));
-            }
-
-            let max_t = self.pillars[n - 1];
-            if t > max_t && !self.allow_extrapolation {
-                return Err(MarketDataError::MaturityOutOfRange {
-                    maturity: t.to_f64().unwrap_or(0.0),
-                    max_maturity: max_t.to_f64().unwrap_or(0.0),
-                });
-            }
-
-            // Handle single-pillar curve
-            if n == 1 {
-                let t1 = self.pillars[0];
-                let df1 = self.discount_factors[0];
-                if t1 > T::zero() && df1 > T::zero() {
-                    let r = -df1.ln() / t1;
-                    let df = (-r * t).exp();
-                    // ∂DF(t)/∂DF_1 = ∂/∂DF_1 [exp(-(-ln(DF_1)/t_1) * t)]
-                    //              = exp(-(-ln(DF_1)/t_1) * t) * (t / (t_1 * DF_1))
-                    //              = DF(t) * t / (t_1 * DF_1)
-                    gradient[0] = df * (t / (t1 * df1));
-                    return Ok((df, gradient));
-                }
-                gradient[0] = T::one();
-                return Ok((df1, gradient));
-            }
-
-            // Find interpolation interval
-            let mut i = 0;
-            while i < n - 1 && self.pillars[i + 1] < t {
-                i += 1;
-            }
-
-            if i >= n - 1 {
-                i = n - 2;
-            }
-
-            let t1 = self.pillars[i];
-            let t2 = self.pillars[i + 1];
-            let df1 = self.discount_factors[i];
-            let df2 = self.discount_factors[i + 1];
-
-            let w = if t2 > t1 {
-                (t - t1) / (t2 - t1)
-            } else {
-                T::zero()
-            };
-
-            let df = match self.interpolation {
-                BootstrapInterpolation::Linear => {
-                    let df = df1 * (T::one() - w) + df2 * w;
-                    // ∂DF(t)/∂DF_i = (1-w) for left pillar
-                    // ∂DF(t)/∂DF_{i+1} = w for right pillar
-                    gradient[i] = T::one() - w;
-                    gradient[i + 1] = w;
-                    df
-                }
-                BootstrapInterpolation::LogLinear | BootstrapInterpolation::FlatForward => {
-                    let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
-                    let df = log_df.exp();
-                    // For LogLinear:
-                    // ∂DF(t)/∂DF_i = DF(t) * (1-w) / DF_i
-                    // ∂DF(t)/∂DF_{i+1} = DF(t) * w / DF_{i+1}
-                    gradient[i] = df * (T::one() - w) / df1;
-                    gradient[i + 1] = df * w / df2;
-                    df
-                }
-            };
-
-            Ok((df, gradient))
+            self.discount_factor_gradient_impl(t, false)
         }
 
-        /// Returns the discount factor and its gradient with respect to log(DF)
-        /// values.
-        ///
-        /// This is useful for calibration where the unknowns are log discount
-        /// factors.
-        ///
-        /// For LogLinear interpolation:
-        /// - `log(DF(t)) = (1-w) * log_df_i + w * log_df_{i+1}`
-        /// - `∂DF(t)/∂log_df_i = DF(t) * (1-w)`
-        /// - `∂DF(t)/∂log_df_{i+1} = DF(t) * w`
-        ///
-        /// # Arguments
-        ///
-        /// * `t` - Time in years
-        ///
-        /// # Returns
-        ///
-        /// Tuple of `(discount_factor, gradient_wrt_log_df)` where:
-        /// - `gradient_wrt_log_df[i]` = `∂DF(t)/∂log(DF_i)`
+        /// Returns the discount factor and its gradient w.r.t. log(DF) values.
         pub fn discount_factor_with_log_gradient(
             &self,
             t: T,
+        ) -> Result<(T, Vec<T>), MarketDataError> {
+            self.discount_factor_gradient_impl(t, true)
+        }
+
+        /// Shared gradient implementation. When `log_mode` is true, computes
+        /// dDF(t)/d_log(DF_i); otherwise dDF(t)/dDF_i.
+        fn discount_factor_gradient_impl(
+            &self,
+            t: T,
+            log_mode: bool,
         ) -> Result<(T, Vec<T>), MarketDataError> {
             let n = self.pillars.len();
             let mut gradient = vec![T::zero(); n];
@@ -828,27 +663,27 @@ pub mod curves {
                 });
             }
 
-            // Handle single-pillar curve
             if n == 1 {
                 let t1 = self.pillars[0];
                 let df1 = self.discount_factors[0];
                 if t1 > T::zero() && df1 > T::zero() {
                     let r = -df1.ln() / t1;
                     let df = (-r * t).exp();
-                    // ∂DF(t)/∂log_df_1 = DF(t) * (t / t_1)
-                    gradient[0] = df * (t / t1);
+                    gradient[0] = if log_mode {
+                        df * (t / t1)
+                    } else {
+                        df * (t / (t1 * df1))
+                    };
                     return Ok((df, gradient));
                 }
-                gradient[0] = df1;
+                gradient[0] = if log_mode { df1 } else { T::one() };
                 return Ok((df1, gradient));
             }
 
-            // Find interpolation interval
             let mut i = 0;
             while i < n - 1 && self.pillars[i + 1] < t {
                 i += 1;
             }
-
             if i >= n - 1 {
                 i = n - 2;
             }
@@ -867,17 +702,25 @@ pub mod curves {
             let df = match self.interpolation {
                 BootstrapInterpolation::Linear => {
                     let df = df1 * (T::one() - w) + df2 * w;
-                    // For linear: ∂DF(t)/∂log_df_i = DF_i * (1-w)
-                    gradient[i] = df1 * (T::one() - w);
-                    gradient[i + 1] = df2 * w;
+                    if log_mode {
+                        gradient[i] = df1 * (T::one() - w);
+                        gradient[i + 1] = df2 * w;
+                    } else {
+                        gradient[i] = T::one() - w;
+                        gradient[i + 1] = w;
+                    }
                     df
                 }
                 BootstrapInterpolation::LogLinear | BootstrapInterpolation::FlatForward => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     let df = log_df.exp();
-                    // For LogLinear: ∂DF(t)/∂log_df_i = DF(t) * (1-w)
-                    gradient[i] = df * (T::one() - w);
-                    gradient[i + 1] = df * w;
+                    if log_mode {
+                        gradient[i] = df * (T::one() - w);
+                        gradient[i + 1] = df * w;
+                    } else {
+                        gradient[i] = df * (T::one() - w) / df1;
+                        gradient[i + 1] = df * w / df2;
+                    }
                     df
                 }
             };
@@ -1061,13 +904,6 @@ pub mod fx_curves {
     use super::{curves::YieldCurve, *};
 
     /// Trait for FX forward curves providing forward rates.
-    ///
-    /// An FX forward curve represents the term structure of forward exchange
-    /// rates.
-    ///
-    /// # Type Parameters
-    ///
-    /// * `T` - Floating-point type (e.g., `f64`) for AD compatibility
     #[enum_dispatch]
     pub trait FxCurve<T: Float> {
         /// Returns the spot exchange rate.

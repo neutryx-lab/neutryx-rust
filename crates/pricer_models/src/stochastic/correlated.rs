@@ -40,34 +40,40 @@
 //! ```
 
 use pricer_core::traits::Float;
+use thiserror::Error;
 
 /// Error types for correlation operations.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Error, Debug, Clone, PartialEq)]
 pub enum CorrelationError {
-    /// Matrix is not positive definite
+    /// Matrix is not positive definite.
+    #[error("Correlation matrix is not positive definite")]
     NotPositiveDefinite,
-    /// Matrix dimensions are invalid
+    /// Matrix dimensions are invalid.
+    #[error("Invalid matrix dimensions: expected {expected} elements, got {got}")]
     InvalidDimensions {
         /// Expected number of elements
         expected: usize,
         /// Actual number of elements
         got: usize,
     },
-    /// Diagonal elements are not 1.0
+    /// Diagonal elements are not 1.0.
+    #[error("Diagonal element at index {index} is {value}, expected 1.0")]
     InvalidDiagonal {
         /// Index of the invalid diagonal element
         index: usize,
         /// Value of the diagonal element
         value: f64,
     },
-    /// Matrix is not symmetric
+    /// Matrix is not symmetric.
+    #[error("Matrix is not symmetric at ({i}, {j})")]
     NotSymmetric {
         /// Row index
         i: usize,
         /// Column index
         j: usize,
     },
-    /// Correlation value out of range [-1, 1]
+    /// Correlation value out of range [-1, 1].
+    #[error("Correlation at ({i}, {j}) is {value}, must be in [-1, 1]")]
     OutOfRange {
         /// Row index
         i: usize,
@@ -77,42 +83,6 @@ pub enum CorrelationError {
         value: f64,
     },
 }
-
-impl std::fmt::Display for CorrelationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CorrelationError::NotPositiveDefinite => {
-                write!(f, "Correlation matrix is not positive definite")
-            }
-            CorrelationError::InvalidDimensions { expected, got } => {
-                write!(
-                    f,
-                    "Invalid matrix dimensions: expected {} elements, got {}",
-                    expected, got
-                )
-            }
-            CorrelationError::InvalidDiagonal { index, value } => {
-                write!(
-                    f,
-                    "Diagonal element at index {} is {}, expected 1.0",
-                    index, value
-                )
-            }
-            CorrelationError::NotSymmetric { i, j } => {
-                write!(f, "Matrix is not symmetric at ({}, {})", i, j)
-            }
-            CorrelationError::OutOfRange { i, j, value } => {
-                write!(
-                    f,
-                    "Correlation at ({}, {}) is {}, must be in [-1, 1]",
-                    i, j, value
-                )
-            }
-        }
-    }
-}
-
-impl std::error::Error for CorrelationError {}
 
 /// Correlation matrix with validation and Cholesky decomposition.
 ///
@@ -130,23 +100,7 @@ pub struct CorrelationMatrix<T: Float> {
 }
 
 impl<T: Float> CorrelationMatrix<T> {
-    /// Create a new correlation matrix from flat array (row-major).
-    ///
-    /// # Arguments
-    ///
-    /// * `data` - Matrix elements in row-major order (n*n elements)
-    /// * `dim` - Matrix dimension (n)
-    ///
-    /// # Returns
-    ///
-    /// `Ok(CorrelationMatrix)` if valid, `Err(CorrelationError)` otherwise.
-    ///
-    /// # Validation
-    ///
-    /// - Must have exactly dim*dim elements
-    /// - Diagonal elements must be 1.0
-    /// - Must be symmetric
-    /// - Off-diagonal elements must be in [-1, 1]
+    /// Create a new correlation matrix from flat array (row-major, dim*dim elements).
     pub fn new(data: &[T], dim: usize) -> Result<Self, CorrelationError> {
         let expected = dim * dim;
         if data.len() != expected {
@@ -215,11 +169,6 @@ impl<T: Float> CorrelationMatrix<T> {
     pub fn get(&self, i: usize, j: usize) -> T { self.data[i * self.dim + j] }
 
     /// Compute Cholesky decomposition (lower triangular L where C = L * L^T).
-    ///
-    /// # Returns
-    ///
-    /// `Ok(CholeskyFactor)` if decomposition succeeds (matrix is positive
-    /// definite), `Err(CorrelationError::NotPositiveDefinite)` otherwise.
     pub fn cholesky(&self) -> Result<CholeskyFactor<T>, CorrelationError> {
         let n = self.dim;
         let mut lower = vec![T::zero(); n * n];
@@ -275,9 +224,7 @@ impl<T: Float> CholeskyFactor<T> {
     /// Get matrix dimension.
     pub fn dim(&self) -> usize { self.dim }
 
-    /// Get element at (i, j).
-    ///
-    /// Returns zero for upper triangular elements (j > i).
+    /// Get element at (i, j). Returns zero for upper triangular elements.
     pub fn get(&self, i: usize, j: usize) -> T {
         if j > i {
             T::zero()
@@ -286,23 +233,7 @@ impl<T: Float> CholeskyFactor<T> {
         }
     }
 
-    /// Transform independent standard normals to correlated normals.
-    ///
-    /// Given independent Z ~ N(0,1), computes W = L * Z where L is the Cholesky
-    /// factor. The resulting W has correlation structure matching the
-    /// original matrix.
-    ///
-    /// # Arguments
-    ///
-    /// * `z` - Slice of independent standard normal random variables
-    ///
-    /// # Returns
-    ///
-    /// Vector of correlated standard normal random variables.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `z.len() < self.dim()`.
+    /// Transform independent standard normals Z to correlated normals W = L * Z.
     pub fn transform(&self, z: &[T]) -> Vec<T> {
         assert!(
             z.len() >= self.dim,
@@ -325,14 +256,7 @@ impl<T: Float> CholeskyFactor<T> {
         w
     }
 
-    /// Transform independent normals in place.
-    ///
-    /// More efficient when you can reuse the input buffer.
-    ///
-    /// # Arguments
-    ///
-    /// * `z` - Mutable slice of independent standard normals (transformed in
-    ///   place)
+    /// Transform independent normals in place (W = L * Z).
     pub fn transform_inplace(&self, z: &mut [T]) {
         assert!(
             z.len() >= self.dim,
@@ -382,16 +306,7 @@ pub struct CorrelatedModels<T: Float> {
 }
 
 impl<T: Float> CorrelatedModels<T> {
-    /// Create a new correlated models container.
-    ///
-    /// # Arguments
-    ///
-    /// * `correlation_matrix` - Correlation matrix for the factors
-    ///
-    /// # Returns
-    ///
-    /// `Ok(CorrelatedModels)` if Cholesky decomposition succeeds,
-    /// `Err(CorrelationError)` otherwise.
+    /// Create a new correlated models container from a correlation matrix.
     pub fn new(correlation_matrix: CorrelationMatrix<T>) -> Result<Self, CorrelationError> {
         let num_factors = correlation_matrix.dim();
         let cholesky = correlation_matrix.cholesky()?;
@@ -421,14 +336,6 @@ impl<T: Float> CorrelatedModels<T> {
     pub fn cholesky(&self) -> &CholeskyFactor<T> { &self.cholesky }
 
     /// Generate correlated Brownian increments from independent increments.
-    ///
-    /// # Arguments
-    ///
-    /// * `independent_dw` - Independent standard normal increments
-    ///
-    /// # Returns
-    ///
-    /// Correlated standard normal increments.
     pub fn correlate(&self, independent_dw: &[T]) -> Vec<T> {
         self.cholesky.transform(independent_dw)
     }

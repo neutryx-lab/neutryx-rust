@@ -10,9 +10,9 @@ use infra_domain::time::parse_tenor_to_years;
 use pricer_models::{
     builder::{
         vol::{SliceCalibrationConfig, VolCubeBuilder},
-        BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation,
+        BootstrapConfig, CurveBootstrapper,
     },
-    market::YieldCurve,
+    market::{BootstrapInterpolation, YieldCurve},
 };
 
 use crate::{
@@ -1024,7 +1024,7 @@ impl VolcubeService {
             .map_err(|e| ServerError::Internal(format!("Instrument parsing failed: {e}")))?;
 
         let config =
-            BootstrapConfig::new(1e-10, 100).with_interpolation(BuilderInterpolation::LogLinear);
+            BootstrapConfig::new(1e-10, 100).with_interpolation(BootstrapInterpolation::LogLinear);
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, _) = bootstrapper

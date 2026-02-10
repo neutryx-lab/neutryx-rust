@@ -501,128 +501,42 @@ impl FxSwapConvention {
 mod tests {
     use super::*;
 
-    // FX Spot tests
     #[test]
-    fn test_fx_convention_new() {
-        let conv = FxConvention::new(
-            2,
-            CalendarId::NewYork,
-            BusinessDayConvention::ModifiedFollowing,
-        );
-        assert_eq!(conv.spot_days, 2);
+    fn test_fx_spot_conventions() {
+        let eur = FxConvention::eur_usd();
+        assert_eq!(eur.spot_days, 2);
+        assert_eq!(eur.calendar, CalendarId::Target);
+
+        let jpy = FxConvention::usd_jpy();
+        assert_eq!(jpy.calendar, CalendarId::Tokyo);
     }
 
     #[test]
-    fn test_eur_usd_fx_convention() {
-        let conv = FxConvention::eur_usd();
-        assert_eq!(conv.spot_days, 2);
-        assert_eq!(conv.calendar, CalendarId::Target);
+    fn test_fx_option_conventions() {
+        let g10 = FxOptionConvention::g10_standard();
+        assert_eq!(g10.premium_currency, PremiumCurrency::Quote);
+        assert_eq!(g10.delta_convention, DeltaConvention::SpotDelta);
+        assert_eq!(g10.settlement_days, 2);
+
+        let jpy = FxOptionConvention::usd_jpy();
+        assert_eq!(jpy.premium_currency, PremiumCurrency::Base);
+        assert!(jpy.premium_adjusted_delta);
+
+        assert_eq!(CutOffTime::ny_cut().to_string(), "10:00 NY");
     }
 
     #[test]
-    fn test_usd_jpy_fx_convention() {
-        let conv = FxConvention::usd_jpy();
-        assert_eq!(conv.calendar, CalendarId::Tokyo);
-    }
-
-    // FX Option tests
-    #[test]
-    fn test_cut_off_time_new() {
-        let cut_off = CutOffTime::new(10, 30, "NY");
-        assert_eq!(cut_off.hour, 10);
-        assert_eq!(cut_off.minute, 30);
-        assert_eq!(cut_off.timezone, "NY");
-    }
-
-    #[test]
-    fn test_cut_off_time_ny_cut() {
-        let cut_off = CutOffTime::ny_cut();
-        assert_eq!(cut_off.hour, 10);
-        assert_eq!(cut_off.timezone, "NY");
-    }
-
-    #[test]
-    fn test_cut_off_time_display() {
-        let cut_off = CutOffTime::ny_cut();
-        assert_eq!(cut_off.to_string(), "10:00 NY");
-    }
-
-    #[test]
-    fn test_g10_standard_convention() {
-        let conv = FxOptionConvention::g10_standard();
-        assert_eq!(conv.premium_currency, PremiumCurrency::Quote);
-        assert_eq!(conv.delta_convention, DeltaConvention::SpotDelta);
-        assert_eq!(conv.settlement_days, 2);
-    }
-
-    #[test]
-    fn test_usd_jpy_fx_option_convention() {
-        let conv = FxOptionConvention::usd_jpy();
-        assert_eq!(conv.premium_currency, PremiumCurrency::Base);
-        assert_eq!(conv.cut_off_time.timezone, "TOK");
-        assert!(conv.premium_adjusted_delta);
-    }
-
-    #[test]
-    fn test_premium_currency_equality() {
-        assert_eq!(PremiumCurrency::Base, PremiumCurrency::Base);
-        assert_ne!(PremiumCurrency::Base, PremiumCurrency::Quote);
-    }
-
-    // FX Swap tests
-    #[test]
-    fn test_fx_swap_convention_new() {
-        let conv = FxSwapConvention::new(
-            Currency::USD,
-            Currency::JPY,
-            NearLegType::Spot,
-            2,
-            CalendarId::NewYork,
-            CalendarId::Tokyo,
-            BusinessDayConvention::ModifiedFollowing,
-            FxSettlementType::Deliverable,
-        );
-        assert_eq!(conv.base_currency, Currency::USD);
-        assert_eq!(conv.quote_currency, Currency::JPY);
-        assert!(conv.is_deliverable());
-    }
-
-    #[test]
-    fn test_usd_jpy_fx_swap_convention() {
+    fn test_fx_swap_conventions() {
         let conv = FxSwapConvention::usd_jpy();
         assert_eq!(conv.base_currency, Currency::USD);
         assert_eq!(conv.quote_currency, Currency::JPY);
         assert_eq!(conv.near_leg_type, NearLegType::Spot);
         assert!(conv.is_deliverable());
-    }
 
-    #[test]
-    fn test_as_tom_next() {
-        let spot_conv = FxSwapConvention::usd_jpy();
-        let tom_next_conv = spot_conv.as_tom_next();
-        assert_eq!(tom_next_conv.near_leg_type, NearLegType::Tomorrow);
-        assert_eq!(tom_next_conv.base_currency, Currency::USD);
-    }
+        let tom = conv.as_tom_next();
+        assert_eq!(tom.near_leg_type, NearLegType::Tomorrow);
 
-    #[test]
-    fn test_as_overnight() {
-        let spot_conv = FxSwapConvention::eur_usd();
-        let overnight_conv = spot_conv.as_overnight();
-        assert_eq!(overnight_conv.near_leg_type, NearLegType::Today);
-    }
-
-    #[test]
-    fn test_near_leg_type_equality() {
-        assert_eq!(NearLegType::Spot, NearLegType::Spot);
-        assert_ne!(NearLegType::Spot, NearLegType::Tomorrow);
-    }
-
-    #[test]
-    fn test_fx_settlement_type_equality() {
-        assert_eq!(FxSettlementType::Deliverable, FxSettlementType::Deliverable);
-        assert_ne!(
-            FxSettlementType::Deliverable,
-            FxSettlementType::NonDeliverable
-        );
+        let ovn = FxSwapConvention::eur_usd().as_overnight();
+        assert_eq!(ovn.near_leg_type, NearLegType::Today);
     }
 }

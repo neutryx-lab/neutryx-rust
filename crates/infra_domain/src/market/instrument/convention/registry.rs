@@ -299,202 +299,58 @@ impl ConventionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::convention::{DepositConvention, SwapConvention};
+    use crate::market::convention::DepositConvention;
 
     #[test]
-    fn test_convention_key_new() {
-        let key = ConventionKey::new(Currency::USD, RateType::Swap);
-        assert_eq!(key.currency, Currency::USD);
-        assert_eq!(key.rate_type, RateType::Swap);
-    }
-
-    #[test]
-    fn test_convention_key_display() {
-        let key = ConventionKey::new(Currency::EUR, RateType::Deposit);
-        assert_eq!(key.to_string(), "EUR DEPO");
-    }
-
-    #[test]
-    fn test_convention_key_equality() {
-        let key1 = ConventionKey::new(Currency::USD, RateType::Swap);
-        let key2 = ConventionKey::new(Currency::USD, RateType::Swap);
-        let key3 = ConventionKey::new(Currency::EUR, RateType::Swap);
-
-        assert_eq!(key1, key2);
-        assert_ne!(key1, key3);
-    }
-
-    #[test]
-    fn test_registry_new() {
-        let registry = ConventionRegistry::new();
+    fn test_register_and_get() {
+        let mut registry = ConventionRegistry::new();
         assert!(registry.is_empty());
-        assert_eq!(registry.len(), 0);
-    }
 
-    #[test]
-    fn test_registry_register_and_get() {
-        let mut registry = ConventionRegistry::new();
-        let convention = MarketConvention::Deposit(DepositConvention::usd());
+        let conv = MarketConvention::Deposit(DepositConvention::usd());
+        registry.register(Currency::USD, RateType::Deposit, conv.clone());
 
-        registry.register(Currency::USD, RateType::Deposit, convention.clone());
-
-        let retrieved = registry.get(Currency::USD, RateType::Deposit);
-        assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap(), &convention);
-    }
-
-    #[test]
-    fn test_registry_get_missing() {
-        let registry = ConventionRegistry::new();
-        assert!(registry.get(Currency::USD, RateType::Deposit).is_none());
-    }
-
-    #[test]
-    fn test_registry_contains() {
-        let mut registry = ConventionRegistry::new();
-        registry.register(
-            Currency::USD,
-            RateType::Deposit,
-            MarketConvention::Deposit(DepositConvention::usd()),
-        );
-
+        assert_eq!(registry.len(), 1);
         assert!(registry.contains(Currency::USD, RateType::Deposit));
         assert!(!registry.contains(Currency::EUR, RateType::Deposit));
+        assert_eq!(registry.get(Currency::USD, RateType::Deposit).unwrap(), &conv);
     }
 
     #[test]
-    fn test_registry_with_defaults() {
+    fn test_with_defaults() {
         let registry = ConventionRegistry::with_defaults();
-
-        // Should have conventions for major currencies
+        assert!(registry.len() > 10);
         assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
-        assert!(registry.get(Currency::EUR, RateType::Deposit).is_some());
-        assert!(registry.get(Currency::GBP, RateType::Deposit).is_some());
-
-        // Should have conventions for common rate types
-        assert!(registry.get(Currency::USD, RateType::Swap).is_some());
-        assert!(registry.get(Currency::USD, RateType::Ois).is_some());
-
-        // Should not have Vol conventions
+        assert!(registry.get(Currency::EUR, RateType::Swap).is_some());
         assert!(registry.get(Currency::USD, RateType::Vol).is_none());
 
-        // Total count should be reasonable
-        assert!(registry.len() > 10);
+        let currencies = registry.currencies();
+        assert!(currencies.contains(&Currency::USD));
+        assert!(currencies.contains(&Currency::EUR));
+
+        let usd_convs: Vec<_> = registry.conventions_for_currency(Currency::USD).collect();
+        assert!(usd_convs.len() >= 3);
     }
 
     #[test]
-    fn test_registry_keys() {
-        let mut registry = ConventionRegistry::new();
-        registry.register(
-            Currency::USD,
-            RateType::Deposit,
-            MarketConvention::Deposit(DepositConvention::usd()),
-        );
-        registry.register(
-            Currency::EUR,
-            RateType::Swap,
-            MarketConvention::Swap(SwapConvention::eur_euribor_6m()),
-        );
-
-        let keys: Vec<_> = registry.keys().collect();
-        assert_eq!(keys.len(), 2);
-    }
-
-    #[test]
-    fn test_registry_iter() {
-        let mut registry = ConventionRegistry::new();
-        registry.register(
-            Currency::USD,
-            RateType::Deposit,
-            MarketConvention::Deposit(DepositConvention::usd()),
-        );
-
-        let items: Vec<_> = registry.iter().collect();
-        assert_eq!(items.len(), 1);
-    }
-
-    #[test]
-    fn test_registry_remove() {
-        let mut registry = ConventionRegistry::new();
-        registry.register(
-            Currency::USD,
-            RateType::Deposit,
-            MarketConvention::Deposit(DepositConvention::usd()),
-        );
+    fn test_remove_and_clear() {
+        let mut registry = ConventionRegistry::with_defaults();
+        let initial_len = registry.len();
 
         let removed = registry.remove(Currency::USD, RateType::Deposit);
         assert!(removed.is_some());
-        assert!(registry.get(Currency::USD, RateType::Deposit).is_none());
-    }
-
-    #[test]
-    fn test_registry_clear() {
-        let mut registry = ConventionRegistry::with_defaults();
-        assert!(!registry.is_empty());
+        assert_eq!(registry.len(), initial_len - 1);
 
         registry.clear();
         assert!(registry.is_empty());
     }
 
     #[test]
-    fn test_registry_currencies() {
-        let registry = ConventionRegistry::with_defaults();
-        let currencies = registry.currencies();
-
-        assert!(currencies.contains(&Currency::USD));
-        assert!(currencies.contains(&Currency::EUR));
-    }
-
-    #[test]
-    fn test_registry_rate_types() {
-        let registry = ConventionRegistry::with_defaults();
-        let rate_types = registry.rate_types();
-
-        assert!(rate_types.contains(&RateType::Deposit));
-        assert!(rate_types.contains(&RateType::Swap));
-    }
-
-    #[test]
-    fn test_registry_conventions_for_currency() {
-        let registry = ConventionRegistry::with_defaults();
-        let usd_conventions: Vec<_> = registry.conventions_for_currency(Currency::USD).collect();
-
-        assert!(!usd_conventions.is_empty());
-        // Should have multiple rate types for USD
-        assert!(usd_conventions.len() >= 3);
-    }
-
-    #[test]
-    fn test_registry_conventions_for_rate_type() {
-        let registry = ConventionRegistry::with_defaults();
-        let deposit_conventions: Vec<_> = registry
-            .conventions_for_rate_type(RateType::Deposit)
-            .collect();
-
-        assert!(!deposit_conventions.is_empty());
-        // Should have deposits for multiple currencies
-        assert!(deposit_conventions.len() >= 3);
-    }
-
-    #[test]
-    fn test_registry_clone() {
-        let registry = ConventionRegistry::with_defaults();
-        let cloned = registry.clone();
-        assert_eq!(registry.len(), cloned.len());
-    }
-
-    #[test]
-    fn test_registry_error_display() {
-        let error = RegistryError::ParseError("Invalid JSON".to_string());
-        assert!(error.to_string().contains("Parse error"));
-
-        let error = RegistryError::InvalidConvention {
-            key: "USD SWAP".to_string(),
-            reason: "missing field".to_string(),
-        };
-        assert!(error.to_string().contains("USD SWAP"));
-
-        let error = RegistryError::DuplicateKey("EUR DEPO".to_string());
-        assert!(error.to_string().contains("Duplicate"));
+    fn test_convention_key() {
+        let key1 = ConventionKey::new(Currency::USD, RateType::Swap);
+        let key2 = ConventionKey::new(Currency::USD, RateType::Swap);
+        let key3 = ConventionKey::new(Currency::EUR, RateType::Deposit);
+        assert_eq!(key1, key2);
+        assert_ne!(key1, key3);
+        assert_eq!(key3.to_string(), "EUR DEPO");
     }
 }

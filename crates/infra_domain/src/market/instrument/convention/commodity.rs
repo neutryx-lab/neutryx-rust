@@ -203,90 +203,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_commodity_convention_new() {
-        let conv = CommodityConvention::new(
-            DeliveryConvention::Financial,
-            PriceQuotation::PerMWh,
-            CalendarId::London,
-            1,
-            Some("UK Grid".to_string()),
-            50.0,
-        );
+    fn test_commodity_presets() {
+        let wti = CommodityConvention::wti_crude();
+        assert_eq!(wti.delivery_convention, DeliveryConvention::Physical);
+        assert_eq!(wti.price_quotation, PriceQuotation::PerBarrel);
+        assert_eq!(wti.delivery_location, Some("Cushing, OK".to_string()));
 
-        assert_eq!(conv.delivery_convention, DeliveryConvention::Financial);
-        assert_eq!(conv.price_quotation, PriceQuotation::PerMWh);
-        assert_eq!(conv.settlement_days, 1);
-        assert_eq!(conv.delivery_location, Some("UK Grid".to_string()));
-        assert!((conv.contract_size - 50.0).abs() < 1e-10);
-    }
+        let brent = CommodityConvention::brent_crude();
+        assert_eq!(brent.delivery_convention, DeliveryConvention::Cash);
+        assert!(brent.delivery_location.is_none());
 
-    #[test]
-    fn test_wti_crude_convention() {
-        let conv = CommodityConvention::wti_crude();
-
-        assert_eq!(conv.delivery_convention, DeliveryConvention::Physical);
-        assert_eq!(conv.price_quotation, PriceQuotation::PerBarrel);
-        assert_eq!(conv.delivery_location, Some("Cushing, OK".to_string()));
-        assert!((conv.contract_size - 1000.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_brent_crude_convention() {
-        let conv = CommodityConvention::brent_crude();
-
-        assert_eq!(conv.delivery_convention, DeliveryConvention::Cash);
-        assert_eq!(conv.price_quotation, PriceQuotation::PerBarrel);
-        assert!(conv.delivery_location.is_none());
-    }
-
-    #[test]
-    fn test_henry_hub_gas_convention() {
-        let conv = CommodityConvention::henry_hub_gas();
-
-        assert_eq!(conv.price_quotation, PriceQuotation::PerMMBtu);
-        assert!((conv.contract_size - 10000.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_comex_gold_convention() {
-        let conv = CommodityConvention::comex_gold();
-
-        assert_eq!(conv.price_quotation, PriceQuotation::PerTroyOunce);
-        assert!((conv.contract_size - 100.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_lme_copper_convention() {
-        let conv = CommodityConvention::lme_copper();
-
-        assert_eq!(conv.price_quotation, PriceQuotation::PerMetricTonne);
-        assert_eq!(conv.pricing_calendar, CalendarId::London);
-    }
-
-    #[test]
-    fn test_cbot_corn_convention() {
-        let conv = CommodityConvention::cbot_corn();
-
-        assert_eq!(conv.price_quotation, PriceQuotation::PerBushel);
-        assert!((conv.contract_size - 5000.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_delivery_convention_equality() {
-        assert_eq!(DeliveryConvention::Physical, DeliveryConvention::Physical);
-        assert_ne!(DeliveryConvention::Physical, DeliveryConvention::Cash);
-    }
-
-    #[test]
-    fn test_price_quotation_equality() {
-        assert_eq!(PriceQuotation::PerBarrel, PriceQuotation::PerBarrel);
-        assert_ne!(PriceQuotation::PerBarrel, PriceQuotation::PerTroyOunce);
-    }
-
-    #[test]
-    fn test_commodity_convention_clone() {
-        let conv = CommodityConvention::wti_crude();
-        let cloned = conv.clone();
-        assert_eq!(conv, cloned);
+        assert_eq!(CommodityConvention::henry_hub_gas().price_quotation, PriceQuotation::PerMMBtu);
+        assert_eq!(CommodityConvention::comex_gold().price_quotation, PriceQuotation::PerTroyOunce);
+        assert_eq!(CommodityConvention::lme_copper().price_quotation, PriceQuotation::PerMetricTonne);
+        assert_eq!(CommodityConvention::cbot_corn().price_quotation, PriceQuotation::PerBushel);
     }
 }

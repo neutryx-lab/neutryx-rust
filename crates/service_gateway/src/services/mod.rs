@@ -4,6 +4,7 @@
 //! convenient methods for use by REST handlers.
 
 pub mod helpers;
+mod chart_grid;
 mod curve_service;
 mod pricing_service;
 

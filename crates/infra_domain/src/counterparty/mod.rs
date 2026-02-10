@@ -1,8 +1,7 @@
 //! CounterParty and NettingSet management module.
 //!
-//! This module provides comprehensive types for managing counterparty
-//! relationships, netting sets, CSA (Credit Support Annex) terms, and credit
-//! parameters.
+//! This module provides types for managing counterparty relationships,
+//! netting sets, CSA (Credit Support Annex) terms, and credit parameters.
 //!
 //! # Module Structure
 //!
@@ -13,22 +12,6 @@
 //! - `netting_set`: Netting set and exposure configuration
 //! - `counterparty_entity`: CounterParty entity
 //! - `ccp`: CCP entity
-//!
-//! # Example
-//!
-//! ```
-//! use infra_domain::counterparty::prelude::*;
-//!
-//! // Create a counterparty with credit rating
-//! let cp = CounterParty::builder()
-//!     .counterparty_id("CP001")
-//!     .name("Acme Bank")
-//!     .sector(CounterPartySector::Banking)
-//!     .rating(CreditRating::APlus)
-//!     .build();
-//!
-//! assert_eq!(cp.name(), "Acme Bank");
-//! ```
 
 mod aggregation;
 mod ccp;
@@ -58,40 +41,23 @@ pub use netting_set::*;
 pub use xva_config::*;
 
 /// Prelude for commonly used types.
-///
-/// Import this module to get all the essential counterparty types:
-///
-/// ```
-/// use infra_domain::counterparty::prelude::*;
-/// ```
 pub mod prelude {
     pub use super::{
-        AggregationConfig,
-        AggregationError,
-        // Aggregation
+        // Aggregation (stubs)
         AggregationHierarchy,
         AggregationMethod,
         // CSA
         CallFrequency,
-        CapitalConfig,
         // Entities
         Ccp,
-        // IDs
         CcpId,
         CloseoutCalculationMethod,
-        CloseoutNetting,
         CollateralCallFrequency,
         CollateralHaircut,
-        CollateralizedExposureConfig,
         CounterParty,
-        // Error
         CounterPartyError,
         CounterPartyId,
-        // Config
         CounterPartySector,
-        // CounterpartyPortfolio hierarchy
-        CounterpartyPortfolio,
-        CounterpartyPortfolioBuilder,
         // Credit
         CreditParams,
         CreditRating,
@@ -99,58 +65,32 @@ pub mod prelude {
         CrossBookNettingAgreement,
         CrossBookNettingAgreementBuilder,
         CrossBookNettingAgreementId,
-        CrossProductNettingEligibility,
         CsaTerms,
-        DrillDownPath,
-        DrillDownSegment,
         EligibleCollateral,
-        ExposureAggregation,
-        ExposureConfig,
-        ExposurePathBuilder,
-        FundingConfig,
-        GroupingKey,
         // Margin
         ImModel,
         ImTerms,
-        // ISDA and VM Agreements
-        IndependentAmountConfig,
         IsdaAgreementId,
-        IsdaInitialMargin,
-        IsdaMasterAgreement,
-        IsdaMasterAgreementBuilder,
         IsdaPaymentMethod,
         LegalEntityId,
         MarginTerms,
         MarginType,
-        MporConfig,
-        NettingAgreement,
-        NettingAgreementBuilder,
-        // Netting Agreement
+        // Netting Agreement (stubs)
         NettingAgreementType,
         NettingEligibility,
-        NettingJurisdiction,
         NettingSet,
         NettingSetId,
         NettingType,
-        NonNettableTrades,
-        PaymentNetting,
         PaymentNettingFrequency,
-        PfeConfidenceLevel,
-        PreCalculatedExposurePath,
+        // XVA Config (stubs)
         RegulatoryCapitalMethod,
         RoundingDirection,
         RoundingRule,
         SegregationType,
         SimmVersion,
-        VariationMarginAgreement,
-        VariationMarginAgreementBuilder,
         VariationMarginAgreementId,
         VmTerms,
-        WrongWayRiskConfig,
         WwrModelType,
-        // XVA Configuration
         XvaCalculationLevel,
-        XvaConfig,
-        XvaScope,
     };
 }
