@@ -191,6 +191,59 @@ docker run -it neutryx-enzyme
 - **Pattern**: Parses CI error logs → gathers code context → generates fix patches via Gemini API → creates draft PR
 - **Safety**: Confidence scoring, draft-only PRs, human review required
 
+## Lint & Formatting Configuration
+
+### Workspace Lints (Cargo.toml)
+
+```toml
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+float_cmp = "warn"
+suboptimal_flops = "warn"
+doc_markdown = "warn"
+```
+
+All crates inherit via `[lints] workspace = true`.
+
+### clippy.toml
+```toml
+single-char-binding-names-threshold = 10  # Allow math variables (x, y, t, r, v)
+```
+
+### rustfmt.toml
+```toml
+edition = "2021"
+max_width = 100
+use_field_init_shorthand = true
+group_imports = "StdExternalCrate"
+imports_granularity = "Crate"
+```
+
+## Error Type Catalogue
+
+| Error Type | Purpose | Crate |
+|------------|---------|-------|
+| `PricingError` | General pricing failures | pricer_core |
+| `DateError` | Date construction/parsing | pricer_core |
+| `CurrencyError` | Currency parsing | pricer_core |
+| `InterpolationError` | Interpolation domain issues | pricer_core |
+| `SolverError` | Root-finding failures | pricer_core |
+| `CalibrationError` | Model calibration (rich diagnostics: residual_ss, iterations, parameter_values) | pricer_core |
+| `ConfigError` | MC configuration validation | pricer_pricing |
+| `FeedError` | Market data feed issues | adapter_feeds |
+| `FpmlError` | FpML parsing failures | adapter_loader |
+| `LoaderError` | File loading failures | adapter_loader |
+| `GatewayError` | API request handling | service_gateway |
+
+Pattern: `thiserror` with `#[derive(Error, Debug, Clone, PartialEq)]`. Use structured variants with named fields. Propagate via `#[from]`.
+
 ---
 _Created: 2025-12-29_
 _Updated: 2026-02-10_ — service_cli/service_python consolidated into service_gateway (feature-gated cli/python modules)

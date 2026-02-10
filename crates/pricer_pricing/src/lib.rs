@@ -90,11 +90,10 @@
 // Allow unknown lints for clippy compatibility across versions
 #![allow(unknown_lints)]
 
-// Phase 4: L1/L2 integration tests (conditional compilation)
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod integration_tests;
 
-// Pricing Kernel IR runtime engine (Phase 4: L1/L2 integration)
+/// Pricing Kernel IR runtime engine (requires `l1l2-integration` feature).
 #[cfg(feature = "l1l2-integration")]
 pub mod kernel;
 
@@ -104,7 +103,7 @@ pub mod numeric;
 // Pricing methods (Monte Carlo, Tree, Path-dependent)
 pub mod methods;
 
-// Phase 4: Checkpointing for memory-efficient AD
+/// Checkpointing for memory-efficient AD.
 pub mod checkpoint;
 
 // Computation graph visualisation data structures

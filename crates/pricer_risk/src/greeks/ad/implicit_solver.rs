@@ -628,9 +628,7 @@ mod tests {
         assert_relative_eq!(sens.market_sensitivities[1], 49.0, epsilon = 0.01);
     }
 
-    // =========================================================================
-    // Phase 8: AAD Verification Tests
-    // =========================================================================
+    // AAD Verification Tests
 
     #[test]
     fn test_implicit_vs_fd_accuracy_linear_function() {

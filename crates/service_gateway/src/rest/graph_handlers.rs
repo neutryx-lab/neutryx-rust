@@ -49,14 +49,21 @@ pub struct PortfolioGraphResponse {
 /// Graph node DTO
 #[derive(Serialize)]
 pub struct GraphNodeDto {
+    /// Unique node identifier
     pub id: String,
+    /// Node type (e.g. "Input", "Output", "Mul")
     #[serde(rename = "type")]
     pub node_type: String,
+    /// Human-readable label
     pub label: String,
+    /// Computed value, if available
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
+    /// Whether this node is a sensitivity (Greek) target
     pub is_sensitivity_target: bool,
+    /// Grouping category for layout (e.g. "Sensitivity", "Output")
     pub group: String,
+    /// Trade IDs that share this node
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trade_ids: Vec<String>,
 }
@@ -64,8 +71,11 @@ pub struct GraphNodeDto {
 /// Graph edge DTO
 #[derive(Serialize)]
 pub struct GraphEdgeDto {
+    /// Source node ID
     pub source: String,
+    /// Target node ID
     pub target: String,
+    /// Edge weight (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weight: Option<f64>,
 }
@@ -73,13 +83,21 @@ pub struct GraphEdgeDto {
 /// Portfolio graph metadata DTO
 #[derive(Serialize)]
 pub struct PortfolioGraphMetadataDto {
+    /// Total number of nodes
     pub node_count: usize,
+    /// Total number of edges
     pub edge_count: usize,
+    /// Maximum graph depth
     pub depth: usize,
+    /// ISO 8601 timestamp of graph generation
     pub generated_at: String,
+    /// Number of trades in the portfolio
     pub trade_count: usize,
+    /// Number of nodes shared across trades
     pub shared_node_count: usize,
+    /// Ratio of shared to total nodes (deduplication efficiency)
     pub optimisation_ratio: f64,
+    /// True when node count exceeds 10 000
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub large_graph_warning: bool,
 }
@@ -96,9 +114,13 @@ pub struct TradeListQueryParams {
 /// Trade summary for listing
 #[derive(Serialize)]
 pub struct TradeSummaryDto {
+    /// Trade identifier
     pub id: String,
+    /// Instrument type (e.g. "IRS", "FX Forward")
     pub instrument_type: String,
+    /// Currency code (e.g. "USD", "EUR")
     pub currency: String,
+    /// Notional amount
     pub notional: f64,
     /// Maturity date (last cashflow date) as ISO 8601 string, e.g.,
     /// "2025-07-15"
@@ -112,16 +134,22 @@ pub struct TradeSummaryDto {
 /// Trade list response
 #[derive(Serialize)]
 pub struct TradeListResponse {
+    /// Filtered trade summaries
     pub trades: Vec<TradeSummaryDto>,
+    /// Aggregate statistics across all trades
     pub statistics: TradeStatisticsDto,
 }
 
 /// Trade statistics
 #[derive(Serialize)]
 pub struct TradeStatisticsDto {
+    /// Total number of trades
     pub total_count: usize,
+    /// Count by instrument type
     pub by_instrument_type: HashMap<String, usize>,
+    /// Count by currency
     pub by_currency: HashMap<String, usize>,
+    /// Sum of all notional amounts
     pub total_notional: f64,
 }
 

@@ -202,15 +202,6 @@ impl ADMode {
 /// - `Active`: Reverse mode - accumulates gradients during backward pass
 /// - `Duplicated`: Reverse mode - parameter has a separate shadow for gradients
 ///
-/// # Phase 4 Usage
-///
-/// ```rust,ignore
-/// #[autodiff_forward(df, Dual, Const, Dual)]
-/// pub fn f(x: &[f64], y: f64) -> f64 { ... }
-///
-/// #[autodiff_reverse(df, Duplicated, Const, Active)]
-/// pub fn g(x: &mut [f64], y: f64) -> f64 { ... }
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Activity {
     /// Parameter is constant (not differentiated).
@@ -263,33 +254,7 @@ impl Activity {
     pub fn is_forward_mode(&self) -> bool { matches!(self, Activity::Dual) }
 }
 
-/// Compute gradient of function `f` at point `x` using Enzyme.
-///
-/// # Phase 3.0 Implementation
-///
-/// This is a **placeholder implementation** using central finite difference:
-/// ```text
-/// f'(x) ≈ (f(x + h) - f(x - h)) / (2h)
-/// ```
-///
-/// The finite difference step size `h` is set to `1e-8` which provides
-/// a good balance between truncation and rounding errors for most functions.
-///
-/// # Phase 4 Implementation
-///
-/// Phase 4 will replace this with actual Enzyme autodiff:
-/// ```rust,ignore
-/// #[autodiff_reverse(gradient_impl, Active)]
-/// pub fn gradient<F>(f: F, x: f64) -> f64
-/// where
-///     F: Fn(f64) -> f64;
-/// ```
-///
-/// # Arguments
-///
-/// * `f` - The function to differentiate. Must be a closure or function that
-///   takes `f64` and returns `f64`.
-/// * `x` - The point at which to evaluate the gradient.
+/// Compute gradient of `f` at `x` using central finite difference (placeholder for Enzyme).
 ///
 /// # Returns
 ///
@@ -313,8 +278,7 @@ pub fn gradient<F>(f: F, x: f64) -> f64
 where
     F: Fn(f64) -> f64,
 {
-    // Phase 3.0: Finite difference approximation
-    // Phase 4: Replace with Enzyme autodiff
+    // Finite difference approximation (placeholder for Enzyme autodiff)
     const H: f64 = 1e-8;
     (f(x + H) - f(x - H)) / (2.0 * H)
 }

@@ -370,10 +370,6 @@ impl CheckpointPricer {
     /// Forward pass for gradient computation (placeholder for Enzyme
     /// integration).
     ///
-    /// In Phase 5+, this will be the entry point for Enzyme's reverse-mode AD.
-    /// The checkpoints saved during forward pass will be used to replay
-    /// forward computation during the reverse pass.
-    ///
     /// # Arguments
     ///
     /// * `gbm` - GBM parameters
@@ -394,9 +390,6 @@ impl CheckpointPricer {
     }
 
     /// Reverse pass placeholder for gradient computation.
-    ///
-    /// This is a placeholder for the reverse-mode AD pass that will be
-    /// integrated with Enzyme in Phase 5+.
     ///
     /// The reverse pass will:
     /// 1. Start from the terminal payoff adjoint

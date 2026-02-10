@@ -1,4 +1,4 @@
-# Requirements Document
+# Requirements: {{FEATURE_NAME}}
 
 ## Introduction
 {{INTRODUCTION}}
@@ -6,21 +6,19 @@
 ## Requirements
 
 ### Requirement 1: {{REQUIREMENT_AREA_1}}
-<!-- Requirement headings MUST include a leading numeric ID only (for example: "Requirement 1: ...", "1. Overview", "2 Feature: ..."). Alphabetic IDs like "Requirement A" are not allowed. -->
-**Objective:** As a {{ROLE}}, I want {{CAPABILITY}}, so that {{BENEFIT}}
+<!-- Requirement headings MUST include a leading numeric ID (e.g., "Requirement 1: ..."). -->
+**Objective:** [Concise statement of what this requirement achieves]
 
 #### Acceptance Criteria
-1. When [event], the [system] shall [response/action]
-2. If [trigger], then the [system] shall [response/action]
-3. While [precondition], the [system] shall [response/action]
-4. Where [feature is included], the [system] shall [response/action]
-5. The [system] shall [response/action]
+1. [Observable behaviour or measurable outcome]
+2. [Observable behaviour or measurable outcome]
+3. [Observable behaviour or measurable outcome]
 
 ### Requirement 2: {{REQUIREMENT_AREA_2}}
-**Objective:** As a {{ROLE}}, I want {{CAPABILITY}}, so that {{BENEFIT}}
+**Objective:** [Concise statement]
 
 #### Acceptance Criteria
-1. When [event], the [system] shall [response/action]
-2. When [event] and [condition], the [system] shall [response/action]
+1. [Observable behaviour or measurable outcome]
+2. [Observable behaviour or measurable outcome]
 
 <!-- Additional requirements follow the same pattern -->

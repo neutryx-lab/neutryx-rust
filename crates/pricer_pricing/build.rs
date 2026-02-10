@@ -8,11 +8,8 @@
 //! - `ENZYME_LIB`: Path to LLVMEnzyme-18.so plugin (required for enzyme-ad
 //!   feature)
 //!
-//! # Phase 3.0
-//!
 //! This build script provides validation and guidance but does not block builds
-//! when LLVM/Enzyme are not available. Phase 4 will require full Enzyme
-//! integration.
+//! when LLVM/Enzyme are not available.
 
 #[cfg(feature = "enzyme-ad")]
 use std::{env, process::Command};
@@ -109,7 +106,7 @@ fn emit_llvm_version_warning(message: &str) {
     println!("cargo:warning=");
     println!("cargo:warning=Set LLVM_CONFIG environment variable if LLVM is installed in a non-standard location.");
     println!("cargo:warning=");
-    println!("cargo:warning=Phase 3.0 uses placeholder implementation; actual Enzyme AD requires LLVM 18.");
+    println!("cargo:warning=Placeholder implementation active; actual Enzyme AD requires LLVM 18.");
 }
 
 /// Configures Enzyme plugin loading when enzyme-ad feature is enabled.

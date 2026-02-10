@@ -28,7 +28,7 @@ chrono = { workspace = true, optional = true }
 # Error handling
 thiserror.workspace = true
 
-# Parallel processing (Phase 4: Thread-local workspace)
+# Parallel processing
 rayon.workspace = true
 
 # Serialization (optional)
@@ -67,7 +67,7 @@ required-features = ["l1l2-integration"]
 
 [features]
 default = []
-# Phase 4: L1/L2 integration for smoothing functions, YieldCurve, Instrument
+# L1/L2 integration for smoothing functions, YieldCurve, Instrument
 l1l2-integration = ["pricer_core/serde", "pricer_core/equity", "dep:pricer_models", "dep:infra_domain", "dep:chrono"]
 # Serialization support for GreeksResult
 serde = ["dep:serde", "dep:serde_json"]

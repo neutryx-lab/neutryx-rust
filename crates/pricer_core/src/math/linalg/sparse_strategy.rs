@@ -18,8 +18,7 @@
 //! ## Implementation Notes
 //!
 //! The current implementation uses dense LU for the actual solve operation,
-//! with CSR storage for memory efficiency. Full sparse LU (via external
-//! solvers like GMRES) is planned for Phase 2.
+//! with CSR storage for memory efficiency.
 
 use nalgebra::{DMatrix, RealField};
 use num_traits::Float;

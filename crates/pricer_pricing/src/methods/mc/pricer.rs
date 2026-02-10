@@ -430,9 +430,7 @@ impl MonteCarloPricer {
         (up - 2.0 * mid + dn) / (h * h)
     }
 
-    // ========================================================================
-    // Phase 4: L1/L2 Integration - YieldCurve methods
-    // ========================================================================
+    // L1/L2 Integration — YieldCurve methods
 
     /// Prices a European option with discount factor from a `YieldCurve`.
     ///
@@ -540,9 +538,7 @@ impl MonteCarloPricer {
         (price, delta)
     }
 
-    // ========================================================================
-    // Phase 4: Path-Dependent Options Integration
-    // ========================================================================
+    // Path-Dependent Options Integration
 
     /// Prices a path-dependent option (Asian, Barrier, Lookback) using Monte
     /// Carlo.
