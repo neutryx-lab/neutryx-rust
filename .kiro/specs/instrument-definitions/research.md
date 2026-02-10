@@ -42,7 +42,7 @@
 
 ## Architecture Pattern Evaluation
 
-| Option | Description | Strengths | Risks / Limitations | Notes |
+| Option | [Rejected] | - | - |
 |--------|-------------|-----------|---------------------|-------|
 | Enum Dispatch | 各商品タイプを enum variant で表現 | 静的ディスパッチ、Enzyme 最適化、型安全 | 新商品追加時に enum 修正必要 | 選択：Enzyme 互換性優先 |
 | Trait Object | Box<dyn Instrument> による多態 | 拡張性高い、新型追加容易 | 動的ディスパッチ、Enzyme 非互換 | 却下 |

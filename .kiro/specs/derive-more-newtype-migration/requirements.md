@@ -15,19 +15,6 @@ derive_more はこれらの標準トレイト実装を一行で片付けます�
 
 Add, Sub, Mul, Display, From, Into などを宣言的に追加可能。
 
-削減イメージ:
-
-Rust
-use derive_more::{Add, Sub, Mul, Div, Display, From};
-
-#[derive(Add, Sub, Mul, Div, Display, From, Clone, Copy)]
-struct Notional(f64);
-
-// これだけで以下が可能になる
-let n1 = Notional(100.0);
-let n2 = n1 + 50.0.into(); // Add実装済み
-println!("{}", n2);        // Display実装済み
-
 ## Requirements
 
 ### Requirement 1: 依存関係の追加
@@ -49,10 +36,7 @@ println!("{}", n2);        // Display実装済み
 #### Acceptance Criteria
 
 1. When a New Type struct is annotated with `#[derive(Add)]`, the pricer crate shall automatically implement the `std::ops::Add` trait.
-2. When a New Type struct is annotated with `#[derive(Sub)]`, the pricer crate shall automatically implement the `std::ops::Sub` trait.
-3. When a New Type struct is annotated with `#[derive(Mul)]`, the pricer crate shall automatically implement the `std::ops::Mul` trait.
-4. When a New Type struct is annotated with `#[derive(Div)]`, the pricer crate shall automatically implement the `std::ops::Div` trait.
-5. The derived arithmetic operations shall preserve the New Type wrapper semantics (e.g., `Notional + Notional` returns `Notional`).
+2. The derived arithmetic operations shall preserve the New Type wrapper semantics (e.g., `Notional + Notional` returns `Notional`).
 
 ---
 
@@ -63,9 +47,7 @@ println!("{}", n2);        // Display実装済み
 #### Acceptance Criteria
 
 1. When a New Type struct is annotated with `#[derive(From)]`, the crate shall automatically implement `From<inner_type>` for the New Type.
-2. When a New Type struct is annotated with `#[derive(Into)]`, the crate shall automatically implement `Into<inner_type>` for the New Type.
-3. The derived From implementation shall allow `Notional::from(100.0)` syntax for construction.
-4. The derived Into implementation shall allow `let value: f64 = notional.into()` syntax for extraction.
+2. The derived From implementation shall allow `Notional::from(100.0)` syntax for construction.
 
 ---
 
@@ -77,7 +59,6 @@ println!("{}", n2);        // Display実装済み
 
 1. When a New Type struct is annotated with `#[derive(Display)]`, the crate shall automatically implement `std::fmt::Display`.
 2. The derived Display implementation shall output the inner value in a readable format.
-3. Where custom formatting is required, the Display derive shall support format specifier attributes.
 
 ---
 
@@ -90,7 +71,6 @@ println!("{}", n2);        // Display実装済み
 1. The migration shall identify all existing New Type structs with manual arithmetic trait implementations across the codebase.
 2. When manual trait implementations are replaced with derive macros, the crate shall maintain identical runtime behaviour.
 3. The migration shall preserve all existing public API signatures and behaviour.
-4. If a manual implementation has custom logic (e.g., bounds checking), the migration shall retain the manual implementation with documentation explaining the rationale.
 
 ---
 
@@ -102,7 +82,6 @@ println!("{}", n2);        // Display実装済み
 
 1. The derived trait implementations shall be compatible with Enzyme AD's autodiff macro requirements.
 2. While enzyme-ad feature is enabled, the derived arithmetic operations shall support gradient computation.
-3. The migration shall not introduce any `Box<dyn Trait>` patterns that would break Enzyme static dispatch requirements.
 
 ---
 
@@ -114,7 +93,6 @@ println!("{}", n2);        // Display実装済み
 
 1. The test suite shall include unit tests for all derived arithmetic operations on migrated New Types.
 2. The test suite shall include property-based tests (`proptest`) verifying mathematical properties (commutativity, associativity where applicable).
-3. When existing tests exist for manual implementations, the migration shall ensure those tests continue to pass.
 
 ---
 
@@ -126,4 +104,3 @@ println!("{}", n2);        // Display実装済み
 
 1. The steering documentation shall include guidelines for using derive_more with New Type patterns.
 2. The documentation shall specify which derive macros are recommended for different use cases (numeric types, identifiers, etc.).
-3. Where derive_more cannot be used (e.g., custom validation logic), the documentation shall explain the alternative approach.

@@ -13,11 +13,6 @@
 - smooth_max / smooth_indicator を活用した微分可能ペイオフ
 - T: Float ジェネリクスによる f64/Dual64 両対応
 
-### Non-Goals
-- Monte Carlo パス生成（L3 pricer_kernel の責務）
-- 解析解実装（Phase 2.3 Analytical Models で対応）
-- エキゾチックオプション（将来フェーズで拡張）
-
 ## Architecture
 
 ### Architecture Pattern & Boundary Map
@@ -63,15 +58,6 @@ graph TB
 - **Existing patterns preserved**: T: Float ジェネリクス、thiserror エラー型
 - **New components rationale**: PayoffType 分離でペイオフロジック再利用
 - **Steering compliance**: static dispatch via enum 原則を遵守
-
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Core | pricer_core | Float trait, smoothing 関数, エラー型 | 依存 |
-| Business Logic | pricer_models | Instrument 定義, Payoff 計算 | 本機能 |
-| Numeric | num-traits | Float trait bounds | 既存依存 |
-| Error | thiserror | InstrumentError 定義 | 既存パターン |
 
 ## Requirements Traceability
 
@@ -124,24 +110,11 @@ graph TB
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum InstrumentError {
     #[error("Invalid strike: K = {strike}")]
-    InvalidStrike { strike: f64 },
-
     #[error("Invalid expiry: T = {expiry}")]
-    InvalidExpiry { expiry: f64 },
-
     #[error("Invalid notional: N = {notional}")]
-    InvalidNotional { notional: f64 },
-
     #[error("Payoff computation error: {message}")]
-    PayoffError { message: String },
-
     #[error("Invalid parameter: {message}")]
-    InvalidParameter { message: String },
-}
-
-impl From<InstrumentError> for PricingError {
-    fn from(err: InstrumentError) -> Self;
-}
+    // ... implementation omitted ...
 ```
 
 #### PayoffType
@@ -165,23 +138,10 @@ impl From<InstrumentError> for PricingError {
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PayoffType {
-    Call,
-    Put,
-    DigitalCall,
-    DigitalPut,
-}
-
-impl PayoffType {
     /// Evaluate the payoff for given spot and strike.
     ///
     /// Uses smooth approximations for AD compatibility.
-    pub fn evaluate<T: Float>(
-        &self,
-        spot: T,
-        strike: T,
-        epsilon: T,
-    ) -> T;
-}
+    // ... implementation omitted ...
 ```
 - Preconditions: spot > 0, strike > 0, epsilon > 0
 - Postconditions: Returns smooth payoff value
@@ -282,25 +242,7 @@ pub enum ExerciseStyle<T: Float> {
 ```rust
 #[derive(Debug, Clone)]
 pub struct VanillaOption<T: Float> {
-    params: InstrumentParams<T>,
-    payoff_type: PayoffType,
-    exercise_style: ExerciseStyle<T>,
-    epsilon: T,
-}
-
-impl<T: Float> VanillaOption<T> {
-    pub fn new(
-        params: InstrumentParams<T>,
-        payoff_type: PayoffType,
-        exercise_style: ExerciseStyle<T>,
-        epsilon: T,
-    ) -> Self;
-
-    pub fn payoff(&self, spot: T) -> T;
-    pub fn params(&self) -> &InstrumentParams<T>;
-    pub fn payoff_type(&self) -> PayoffType;
-    pub fn exercise_style(&self) -> &ExerciseStyle<T>;
-}
+    // ... implementation omitted ...
 ```
 
 #### Forward
@@ -323,28 +265,9 @@ impl<T: Float> VanillaOption<T> {
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Direction {
-    Long,
-    Short,
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Forward<T: Float> {
-    strike: T,
-    expiry: T,
-    notional: T,
-    direction: Direction,
-}
-
-impl<T: Float> Forward<T> {
-    pub fn new(
-        strike: T,
-        expiry: T,
-        notional: T,
-        direction: Direction,
-    ) -> Result<Self, InstrumentError>;
-
-    pub fn payoff(&self, spot: T) -> T;
-}
+    // ... implementation omitted ...
 ```
 - Postconditions: Long returns notional * (spot - strike), Short returns notional * (strike - spot)
 
@@ -369,30 +292,9 @@ impl<T: Float> Forward<T> {
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PaymentFrequency {
-    Annual,
-    SemiAnnual,
-    Quarterly,
-    Monthly,
-}
-
 #[derive(Debug, Clone)]
 pub struct Swap<T: Float> {
-    notional: T,
-    fixed_rate: T,
-    payment_dates: Vec<T>,
-    frequency: PaymentFrequency,
-    currency: Currency,
-}
-
-impl<T: Float> Swap<T> {
-    pub fn new(
-        notional: T,
-        fixed_rate: T,
-        payment_dates: Vec<T>,
-        frequency: PaymentFrequency,
-        currency: Currency,
-    ) -> Result<Self, InstrumentError>;
-}
+    // ... implementation omitted ...
 ```
 
 #### Instrument Enum

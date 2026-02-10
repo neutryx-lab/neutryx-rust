@@ -370,77 +370,7 @@ CIパイプラインに`infra_domain`の依存関係検証チェックを追加�
 
 ## タスク依存関係
 
-```mermaid
-graph TD
-    subgraph Phase1["Phase 1: 基盤型"]
-        T1[Task 1: Currency]
-        T2[Task 2: CurrencyError]
-        T3[Task 3: Date]
-        T4[Task 4: DateError]
-        T5[Task 5: DayCountConvention]
-        T6[Task 6: BusinessDayConvention]
-        T7[Task 7: Cargo.toml]
-        T8[Task 8: Calendar統合]
-    end
-
-    subgraph Phase2["Phase 2: マスターデータ型"]
-        T9[Task 9: EndOfMonthRule]
-        T10[Task 10: Tenor]
-        T11[Task 11: Frequency]
-        T12[Task 12: Period]
-        T13[Task 13: TradeDirection]
-        T14[Task 14: SwapDirection]
-        T15[Task 15: RateIndex]
-        T16[Task 16: CsaTerms]
-    end
-
-    subgraph Phase3["Phase 3: 再エクスポート"]
-        T17[Task 17: pricer_core依存]
-        T18[Task 18: pricer_core再エクスポート]
-        T19[Task 19: pricer_models依存]
-        T20[Task 20: pricer_models再エクスポート]
-        T21[Task 21: DirectionExt]
-    end
-
-    subgraph Phase4["Phase 4: 検証"]
-        T22[Task 22: ユニットテスト]
-        T23[Task 23: 統合テスト]
-        T24[Task 24: CI]
-        T25[Task 25: pricer_core移行]
-        T26[Task 26: pricer_models移行]
-        T27[Task 27: 全体検証]
-    end
-
-    T1 --> T8
-    T3 --> T8
-    T4 --> T3
-    T2 --> T1
-    T5 --> T12
-    T6 --> T8
-
-    T3 --> T10
-    T9 --> T10
-    T10 --> T15
-    T1 --> T15
-    T5 --> T15
-    T3 --> T12
-    T5 --> T12
-    T13 --> T14
-    T1 --> T16
-
-    T1 --> T17
-    T17 --> T18
-    T19 --> T20
-    T13 --> T21
-    T14 --> T21
-
-    T18 --> T25
-    T20 --> T26
-    T22 --> T27
-    T23 --> T27
-    T25 --> T27
-    T26 --> T27
-```
+*[Task dependency graph omitted]*
 
 ## 並列実行可能タスク
 

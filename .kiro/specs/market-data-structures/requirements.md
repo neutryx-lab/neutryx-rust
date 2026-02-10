@@ -15,8 +15,7 @@
 1. The YieldCurve module shall define a generic trait `YieldCurve<T: Float>` with methods for discount factor and forward rate calculations.
 2. When `discount_factor(t)` is called with time `t`, the YieldCurve shall return the discount factor `D(t) = exp(-r * t)` for the given maturity.
 3. When `forward_rate(t1, t2)` is called with times `t1 < t2`, the YieldCurve shall return the continuously compounded forward rate between `t1` and `t2`.
-4. The YieldCurve shall provide a `zero_rate(t)` method that returns the zero rate for maturity `t`.
-5. If `t < 0` is provided to discount_factor, then the YieldCurve shall return an appropriate error indicating invalid maturity.
+4. If `t < 0` is provided to discount_factor, then the YieldCurve shall return an appropriate error indicating invalid maturity.
 
 ### Requirement 2: FlatCurve Implementation
 
@@ -27,8 +26,7 @@
 1. The FlatCurve struct shall implement `YieldCurve<T>` with a single constant rate parameter.
 2. When FlatCurve is constructed with rate `r`, the FlatCurve shall use this rate for all maturity calculations.
 3. The FlatCurve shall compute `discount_factor(t)` as `exp(-r * t)` using the constant rate.
-4. The FlatCurve shall return the constant rate for all `zero_rate(t)` and `forward_rate(t1, t2)` queries.
-5. The FlatCurve shall be generic over `T: Float` to support both `f64` and `Dual64` types.
+4. The FlatCurve shall be generic over `T: Float` to support both `f64` and `Dual64` types.
 
 ### Requirement 3: InterpolatedCurve Implementation
 
@@ -39,9 +37,7 @@
 1. The InterpolatedCurve struct shall implement `YieldCurve<T>` using pillar points (tenors and rates).
 2. When InterpolatedCurve is constructed with pillar points, the InterpolatedCurve shall store and interpolate between these points.
 3. The InterpolatedCurve shall integrate with `pricer_core::math::interpolators` for interpolation logic.
-4. When `zero_rate(t)` is called for `t` between pillars, the InterpolatedCurve shall use configured interpolation method (linear, cubic spline, etc.).
-5. The InterpolatedCurve shall support log-linear interpolation on discount factors as an alternative method.
-6. If `t` is outside the pillar range, then the InterpolatedCurve shall either extrapolate (flat) or return an error based on configuration.
+4. If `t` is outside the pillar range, then the InterpolatedCurve shall either extrapolate (flat) or return an error based on configuration.
 
 ### Requirement 4: VolatilitySurface Trait Definition
 
@@ -51,9 +47,8 @@
 
 1. The VolatilitySurface module shall define a generic trait `VolatilitySurface<T: Float>` for implied volatility lookup.
 2. When `volatility(strike, expiry)` is called, the VolatilitySurface shall return the implied volatility for the given strike and expiry.
-3. The VolatilitySurface shall support moneyness-based lookup as an alternative coordinate system.
-4. The VolatilitySurface shall provide domain bounds for valid strike and expiry ranges.
-5. If strike or expiry is outside valid bounds, then the VolatilitySurface shall return an appropriate error.
+3. The VolatilitySurface shall provide domain bounds for valid strike and expiry ranges.
+4. If strike or expiry is outside valid bounds, then the VolatilitySurface shall return an appropriate error.
 
 ### Requirement 5: FlatVol Implementation
 
@@ -63,8 +58,7 @@
 
 1. The FlatVol struct shall implement `VolatilitySurface<T>` with a single constant volatility parameter.
 2. When FlatVol is constructed with volatility `sigma`, the FlatVol shall return this value for all strike/expiry queries.
-3. The FlatVol shall accept any positive strike and expiry values as valid inputs.
-4. The FlatVol shall be generic over `T: Float` to support both `f64` and `Dual64` types.
+3. The FlatVol shall be generic over `T: Float` to support both `f64` and `Dual64` types.
 
 ### Requirement 6: InterpolatedVolSurface Implementation
 
@@ -75,9 +69,7 @@
 1. The InterpolatedVolSurface struct shall implement `VolatilitySurface<T>` using a grid of (strike, expiry, vol) points.
 2. When InterpolatedVolSurface is constructed with grid data, the InterpolatedVolSurface shall organise data by expiry slices.
 3. The InterpolatedVolSurface shall use 2D interpolation (bilinear or bicubic) for strike-expiry lookup.
-4. When `volatility(strike, expiry)` is called for points between grid nodes, the InterpolatedVolSurface shall interpolate smoothly.
-5. The InterpolatedVolSurface shall support smile interpolation per expiry slice before interpolating across expiries.
-6. If extrapolation is required, then the InterpolatedVolSurface shall use flat extrapolation or configurable boundary behaviour.
+4. If extrapolation is required, then the InterpolatedVolSurface shall use flat extrapolation or configurable boundary behaviour.
 
 ### Requirement 7: Market Data Error Handling
 
@@ -88,8 +80,7 @@
 1. The market data module shall define `MarketDataError` enum covering all failure modes.
 2. When an invalid maturity (negative time) is provided, the module shall return `MarketDataError::InvalidMaturity`.
 3. When interpolation fails due to out-of-bounds query, the module shall return `MarketDataError::OutOfBounds`.
-4. When volatility surface receives invalid strike (non-positive), the module shall return `MarketDataError::InvalidStrike`.
-5. The MarketDataError shall integrate with existing `PricingError` for unified error handling.
+4. The MarketDataError shall integrate with existing `PricingError` for unified error handling.
 
 ### Requirement 8: Generic Type Compatibility
 
@@ -100,5 +91,3 @@
 1. The YieldCurve and VolatilitySurface traits shall be generic over `T: Float`.
 2. When market data structures are instantiated with `Dual64`, the structures shall propagate derivatives correctly.
 3. The implementations shall use `smooth_max` / `smooth_abs` from `pricer_core::math::smoothing` instead of branching operations where applicable.
-4. While computing discount factors or volatilities, the implementations shall maintain AD tape consistency.
-5. The market data module shall include tests verifying derivative propagation through curve/surface lookups.

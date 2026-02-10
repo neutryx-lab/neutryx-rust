@@ -98,7 +98,7 @@
 
 ## Architecture Pattern Evaluation
 
-| Option | Description | Strengths | Risks / Limitations | Notes |
+| Option | [Rejected] | - | - |
 |--------|-------------|-----------|---------------------|-------|
 | **Direct Move + Re-export** | 型をinfra_domainへ移動し、pricer_coreから再エクスポート | シンプル、後方互換性維持 | 依存関係の循環リスク | **採用**: pricer_core→infra_domainの依存追加で解決 |
 | Trait Abstraction | 共通トレイトをinfra_domainに定義し、具体型は各クレートに残す | 疎結合 | 複雑、オーバーエンジニアリング | 不採用 |

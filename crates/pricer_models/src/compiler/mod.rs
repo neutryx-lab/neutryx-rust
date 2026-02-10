@@ -1,4 +1,4 @@
-/! Trade compiler: transforms hierarchical Trade definitions into PricingKernel IR.
+//! Trade compiler: transforms hierarchical Trade definitions into PricingKernel IR.
 
 mod callable;
 mod exotic;

@@ -1,4 +1,4 @@
-/! Root-finding and optimisation solvers for financial applications.
+//! Root-finding and optimisation solvers for financial applications.
 
 mod config;
 mod levenberg_marquardt;

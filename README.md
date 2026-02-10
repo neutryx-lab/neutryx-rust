@@ -346,17 +346,17 @@ cargo bench
 
 | Operation | Target | Status |
 |-----------|--------|--------|
-| Vanilla option (analytical) | < 1 μs | 🎯 Future |
-| Barrier option (1K paths) | < 100 μs | 🎯 Future |
-| Asian option (10K paths) | < 1 ms | 🎯 Future |
-| CVA (100 trades, 50 steps) | < 5 s | 🎯 Future |
-| Enzyme delta overhead | < 2x vs forward | 🎯 Future |
+| Vanilla option (analytical) | < 1 μs | Future |
+| Barrier option (1K paths) | < 100 μs | Future |
+| Asian option (10K paths) | < 1 ms | Future |
+| CVA (100 trades, 50 steps) | < 5 s | Future |
+| Enzyme delta overhead | < 2x vs forward | Future |
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🤝 Contributing
+## Contributing
 
 ```bash
 # Before submitting
@@ -365,7 +365,7 @@ cargo clippy --all-targets -- -D warnings
 cargo test --workspace --exclude pricer_pricing
 ```
 
-## 🔗 References
+## References
 
 - [Enzyme AD](https://enzyme.mit.edu/) - LLVM-level automatic differentiation
 - [Derivatives Pricing](https://en.wikipedia.org/wiki/Derivative_(finance)) - Financial derivatives
@@ -373,4 +373,4 @@ cargo test --workspace --exclude pricer_pricing
 
 ---
 
-**Status**: ✅ A-I-P-S architecture complete | ✅ Neutryx facade crate | ✅ Enzyme AD integration (L4) | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ Curve & Vol Surface Calibration (FX/IR) | ✅ 44 specifications complete
+**Status**: [x] A-I-P-S architecture complete | [x] Neutryx facade crate | [x] Enzyme AD integration (L4) | [x] Stochastic models (Heston, SABR, Hull-White) | [x] Curve & Vol Surface Calibration (FX/IR) | [x] 44 specifications complete

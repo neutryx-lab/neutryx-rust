@@ -1,4 +1,4 @@
-/! Curve construction from definition registries and market data.
+//! Curve construction from definition registries and market data.
 
 mod converter;
 mod engine;

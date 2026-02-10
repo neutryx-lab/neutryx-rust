@@ -92,10 +92,10 @@
 - `crates/infra_domain/src/trade/instrument_def/fx.rs` (拡張)
 
 **トレードオフ**:
-- ✅ ファイル数最小化
-- ✅ 既存テスト活用
-- ❌ 既存APIの破壊的変更リスク
-- ❌ 単一ファイル肥大化 (fx.rs: 761行 → 1500行超)
+- Complete ファイル数最小化
+- Complete 既存テスト活用
+- Missing 既存APIの破壊的変更リスク
+- Missing 単一ファイル肥大化 (fx.rs: 761行 → 1500行超)
 
 ### Option B: Create New Components (推奨度: ★★★★☆)
 
@@ -122,11 +122,11 @@ crates/infra_domain/src/trade/instrument_def/
 ```
 
 **トレードオフ**:
-- ✅ 明確な責務分離
-- ✅ テスト容易性
-- ✅ 既存コード影響最小
-- ❌ ファイル数増加
-- ❌ インターフェース設計必要
+- Complete 明確な責務分離
+- Complete テスト容易性
+- Complete 既存コード影響最小
+- Missing ファイル数増加
+- Missing インターフェース設計必要
 
 ### Option C: Hybrid Approach (推奨度: ★★★★★)
 
@@ -149,11 +149,11 @@ crates/infra_domain/src/trade/instrument_def/
 - API統一
 
 **トレードオフ**:
-- ✅ リスク分散
-- ✅ 早期価値提供
-- ✅ 既存機能との共存
-- ❌ 一時的な重複
-- ❌ 複数フェーズ管理
+- Complete リスク分散
+- Complete 早期価値提供
+- Complete 既存機能との共存
+- Missing 一時的な重複
+- Missing 複数フェーズ管理
 
 ---
 

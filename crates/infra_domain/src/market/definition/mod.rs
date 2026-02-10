@@ -1,4 +1,4 @@
-/! Market object definitions for curve and surface construction.
+//! Market object definitions for curve and surface construction.
 
 mod curve;
 mod index;

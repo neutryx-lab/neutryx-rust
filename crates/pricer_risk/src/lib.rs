@@ -134,10 +134,6 @@ pub mod scenarios;
 // Risk Engine facade
 pub use engine::{RiskEngine, RiskEngineConfig, ScenarioGreeksResult, ScenarioPortfolioResult};
 pub use error::{PartialGreeksResult, RiskError};
-pub use result::{
-    AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PerformanceMetrics,
-    PortfolioRiskResult, RiskResult,
-};
 // AD types (automatic differentiation)
 pub use greeks::ad::{gradient, gradient_with_step, ADMode, Activity};
 pub use greeks::{
@@ -160,6 +156,10 @@ pub use portfolio::{
     CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating,
     ExposureCalculator, NettingSet, NettingSetId, Portfolio, PortfolioBuilder, PortfolioError,
     Trade, TradeBuilder, TradeId,
+};
+pub use result::{
+    AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PerformanceMetrics,
+    PortfolioRiskResult, RiskResult,
 };
 pub use scenarios::{
     AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,

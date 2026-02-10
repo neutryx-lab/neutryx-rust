@@ -50,7 +50,6 @@
 1. The `infra_config` crate shall `CurrencyRateIndexMap` 構造体を提供し、通貨コード（例: `USD`）から金利インデックス名（例: `SOFR`）へのマッピングを返す
 2. The `infra_config` crate shall 主要通貨（USD→SOFR, EUR→ESTR, GBP→SONIA, JPY→TONA）のデフォルトマッピングを内蔵する
 3. When 設定ファイルでカスタムマッピングが指定された場合, the `infra_config` crate shall デフォルトマッピングを上書きする
-4. The `CurrencyRateIndexMap` shall `to_json()` メソッドで `{ "USD": "SOFR", "EUR": "ESTR", ... }` 形式のJSONを返す
 
 ### Requirement 4: AppConfig統合構造体
 
@@ -61,7 +60,6 @@
 1. The `infra_config` crate shall `AppConfig` 構造体を提供し、以下のフィールドを含む: `enums`, `defaults`, `rate_index_by_currency`
 2. The `AppConfig` struct shall `serde::Serialize` を実装し、JSON形式でシリアライズ可能とする
 3. When `AppConfig::build()` が呼び出された場合, the `infra_config` crate shall `EnumRegistry`, `DefaultsRegistry`, `CurrencyRateIndexMap` から自動的に構築する
-4. The `AppConfig` struct shall フロントエンドの `ConfigLoader` が期待する形式（`enums: Record<string, string[]>`, `defaults: Record<string, unknown>`, `rateIndexByCurrency: Record<string, string>`）と互換性を持つ
 
 ### Requirement 5: /api/config エンドポイント
 
@@ -72,7 +70,6 @@
 1. The `service_gateway` crate shall `GET /api/config` エンドポイントを提供する
 2. When `/api/config` にGETリクエストが送信された場合, the `service_gateway` shall `infra_config::AppConfig::build()` を呼び出し、JSONレスポンスを返す
 3. The `/api/config` endpoint shall `Content-Type: application/json` ヘッダを含むレスポンスを返す
-4. If `AppConfig::build()` が失敗した場合, the `service_gateway` shall HTTP 500エラーとエラーメッセージを返す
 
 ### Requirement 6: 重複ファイルの非推奨化
 
@@ -83,7 +80,6 @@
 1. The project shall `demo/data/config/enums.json` を非推奨とし、ファイル先頭にコメントで `infra_config::AppConfig` への移行を案内する
 2. The project shall `demo/data/config/gui_defaults.json` を非推奨とし、ファイル先頭にコメントで `infra_config::AppConfig` への移行を案内する
 3. The project shall `demo/data/config/rate_index_mapping.json` を非推奨とし、ファイル先頭にコメントで `infra_config::CurrencyRateIndexMap` への移行を案内する
-4. While 移行期間中, the `demo/gui` ConfigLoader shall `/api/config` エンドポイントが利用可能な場合はそちらを優先し、フォールバックとして既存JSONファイルを使用する
 
 ---
 
@@ -92,8 +88,3 @@
 - `demo/data/input/` ディレクトリの市場データファイル（curves、irvol、fxvol等）は本仕様の対象外
 - `demo/data/config/scenarios/` のシナリオファイルは本仕様の対象外
 - `settings.toml` 等のシステム設定ファイルは既存の `Settings::load()` 機能を継続使用
-
-## Dependencies
-
-- A-I-P-S依存ルール: `infra_config`（Iレイヤー）は `service_gateway`（Sレイヤー）に依存しない
-- `serde`, `serde_json` クレートが `infra_config` で利用可能であること

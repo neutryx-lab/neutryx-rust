@@ -16,8 +16,6 @@
 
 ### 1.1 既存の NewType パターン
 
-コードベースには以下の NewType パターンが存在する:
-
 #### 数値型 NewType（f64 ラッパー）
 
 | 型 | 場所 | 算術演算 | バリデーション |
@@ -25,7 +23,6 @@
 | `Delta(f64)` | `infra_domain/trade/instrument_def/fx_vol.rs:167` | なし | あり (0 < delta <= 50) |
 | `BasisSpread(f64)` | `infra_domain/trade/instrument_def/xccy.rs:28` | なし | なし |
 | `TracedFloat` | `pricer_core/types/traced_float.rs:60` | 手動実装 | カスタムロジック |
-| `SimpleDate(i32)` | `pricer_pricing/generic_pricer/result.rs:55` | なし | なし |
 
 #### ID 型 NewType（String ラッパー）
 
@@ -34,21 +31,9 @@
 | `CounterPartyId(String)` | `infra_domain/counterparty/ids.rs:32` | 手動 | 手動 |
 | `LegalEntityId(String)` | `infra_domain/counterparty/ids.rs:91` | 手動 | なし (バリデーションあり) |
 | `NettingSetId(String)` | `infra_domain/counterparty/ids.rs:148` | 手動 | 手動 |
-| `CcpId(String)` | `infra_domain/counterparty/ids.rs:194` | 手動 | 手動 |
-| `IsdaAgreementId(String)` | `infra_domain/counterparty/ids.rs:240` | 手動 | 手動 |
-| `VariationMarginAgreementId(String)` | `infra_domain/counterparty/ids.rs:286` | 手動 | 手動 |
-| `CrossBookNettingAgreementId(String)` | `infra_domain/counterparty/ids.rs:332` | 手動 | 手動 |
 | `TradeId(String)` | `infra_domain/ids.rs` via macro | マクロ | マクロ |
 | `PortfolioId(String)` | `infra_domain/ids.rs` via macro | マクロ | マクロ |
 | `BookId(String)` | `infra_domain/ids.rs` via macro | マクロ | マクロ |
-
-#### その他の NewType
-
-| 型 | 場所 | 備考 |
-|---|---|---|
-| `NodeId(u64)` | `pricer_core/types/traced.rs:36` | 計算グラフ用 |
-| `ScopeId(u64)` | `pricer_core/types/traced.rs:57` | 計算グラフ用 |
-| `Date(NaiveDate)` | `infra_domain/time/types.rs:65` | Sub 手動実装 |
 
 ### 1.2 既存のマクロパターン
 
@@ -59,28 +44,6 @@
 - `AsRef<str>` 実装
 
 **ボイラープレート量**: 約 50 行/型 → マクロで約 10 行/型に削減済み
-
-### 1.3 手動算術演算実装
-
-`TracedFloat` の例 ([traced_float.rs:193-231](crates/pricer_core/src/types/traced_float.rs#L193-L231)):
-```rust
-impl Add for TracedFloat {
-    type Output = Self;
-    #[track_caller]
-    fn add(self, rhs: Self) -> Self::Output {
-        let result = self.value + rhs.value;
-        self.binary_op(rhs, Operation::Add, result)  // カスタムロジック
-    }
-}
-// Sub, Mul, Div も同様のパターン
-```
-
-**注意**: `TracedFloat` は計算グラフをトレースするカスタムロジックを含むため、`derive_more` での置き換え不可。
-
-### 1.4 依存関係の現状
-
-- `derive_more` は `Cargo.lock` に存在（推移的依存）
-- ワークスペース依存関係として明示的に定義されていない
 
 ---
 
@@ -99,17 +62,6 @@ impl Add for TracedFloat {
 | 最小 Rust バージョン | 1.81 |
 | ライセンス | MIT |
 
-#### 利用可能な derive マクロ
-
-| カテゴリ | マクロ |
-|----------|--------|
-| 変換 | `From`, `Into`, `FromStr`, `TryFrom`, `TryInto`, `IntoIterator`, `AsRef`, `AsMut` |
-| 表示 | `Debug`, `Display`, `Binary`, `Octal`, `LowerHex`, `UpperHex`, `LowerExp`, `UpperExp`, `Pointer` |
-| エラー | `Error` |
-| 演算子 | `Add`, `Sub`, `Mul`, `Div`, `Rem`, `Neg`, `Not`, `BitAnd`, `BitOr`, `BitXor`, `Shr`, `Shl` |
-| 代入演算子 | `AddAssign`, `SubAssign`, `MulAssign`, `DivAssign`, etc. |
-| その他 | `Deref`, `DerefMut`, `Index`, `IndexMut`, `Constructor`, `IsVariant`, `Unwrap`, `TryUnwrap` |
-
 #### Feature 設定（コンパイル時間最適化）
 
 ```toml
@@ -118,9 +70,6 @@ derive_more = { version = "2", features = ["from", "display", "as_ref"] }
 
 # 数値型追加
 derive_more = { version = "2", features = ["from", "display", "as_ref", "add", "mul"] }
-
-# 全機能（開発時のみ推奨）
-derive_more = { version = "2", features = ["full"] }
 ```
 
 ### 2.2 Enzyme AD 互換性調査
@@ -145,30 +94,7 @@ derive_more = { version = "2", features = ["full"] }
 
 ---
 
-## 3. 要件実現可能性分析
-
-### 3.1 要件と既存アセットのマッピング
-
-| 要件 | 技術的ニーズ | 既存アセット | ギャップ |
-|------|-------------|-------------|---------|
-| Req 1: 依存関係追加 | `[workspace.dependencies]` 更新 | なし | **Missing**: 明示的依存追加が必要 |
-| Req 2: 算術トレイト | `#[derive(Add, Sub, Mul, Div)]` | 手動実装 | **Partial**: 単純型のみ移行可能 |
-| Req 3: 変換トレイト | `#[derive(From, Into)]` | `define_id!` マクロ, 手動実装 | **Partial**: マクロ置換で削減可能 |
-| Req 4: 表示トレイト | `#[derive(Display)]` | 手動実装, マクロ | **Partial**: マクロ置換で削減可能 |
-| Req 5: 既存移行 | コードベース走査 | 14+ NewType 型 | **Constraint**: カスタムロジック型は除外 |
-| Req 6: AD 互換性 | Enzyme 互換性検証 | `enzyme-ad` feature | **Resolved**: 互換性あり |
-| Req 7: テスト | proptest 追加 | 既存テスト | **Partial**: 移行型にテスト追加 |
-| Req 8: ドキュメント | steering 更新 | `ai_rules.md` 参照 | **Missing**: ガイドライン追加 |
-
-### 3.2 制約事項
-
-1. **カスタムロジック型**: `TracedFloat`, `Delta`, `LegalEntityId`, `Date` は手動実装を維持
-2. **既存マクロ**: `define_id!` を簡略化して維持（メソッド生成のみ）
-3. **feature flags**: `derive_more` の機能を最小限に指定（コンパイル時間最適化）
-
----
-
-## 4. 実装アプローチ決定
+## 3. 実装アプローチ決定
 
 ### 採用アプローチ: Option C（ハイブリッド）
 
@@ -187,7 +113,7 @@ derive_more = { version = "2", features = ["full"] }
 
 ---
 
-## 5. 移行対象・除外リスト
+## 4. 移行対象・除外リスト
 
 ### 移行対象（10 型）
 
@@ -216,17 +142,9 @@ derive_more = { version = "2", features = ["full"] }
 
 ---
 
-## 6. 工数・リスク評価
+## 5. 工数・リスク評価
 
 ### 工数見積
-
-| 項目 | 工数 | 根拠 |
-|------|------|------|
-| 依存関係追加・設定 | S (1日) | Cargo.toml 更新、feature 選定確定済み |
-| Phase 1: counterparty ID 型移行 | S (1日) | 6 型、パターン同一 |
-| Phase 2: マクロ簡略化 + 残り ID 型 | S (2日) | 影響範囲限定的 |
-| Phase 3: 数値型 + ドキュメント | S (1日) | 対象少数 |
-| AD 互換性検証 | S (0.5日) | Phase 1 後にビルド確認のみ |
 
 **総工数**: **S (5-6日)**
 
@@ -237,14 +155,5 @@ derive_more = { version = "2", features = ["full"] }
 | AD 互換性問題 | Low | 技術調査で互換性確認済み、Phase 1 で検証 |
 | 既存テスト破損 | Low | derive 追加は後方互換 |
 | コンパイル時間増加 | Low | feature 最小化で軽減 |
-| 公開 API 変更 | Low | 追加のみ、削除なし |
 
 **総合リスク**: **Low**
-
----
-
-## 参考資料
-
-- [derive_more - Docs.rs](https://docs.rs/derive_more/latest/derive_more/)
-- [derive_more - GitHub](https://github.com/JelteF/derive_more)
-- [derive_more - crates.io](https://lib.rs/crates/derive_more)
