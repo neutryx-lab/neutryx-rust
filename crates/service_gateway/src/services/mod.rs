@@ -3,6 +3,7 @@
 //! These services wrap the pricer_* facade APIs and provide
 //! convenient methods for use by REST handlers.
 
+pub mod helpers;
 mod curve_service;
 mod pricing_service;
 

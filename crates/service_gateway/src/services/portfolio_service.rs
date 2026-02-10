@@ -11,6 +11,7 @@ use chrono::Utc;
 #[cfg(feature = "risk")]
 use crate::{
     error::ServerError,
+    services::helpers,
     rest::dto::{
         AddTradesRequest, AddTradesResponse, CreatePortfolioRequest, CreatePortfolioResponse,
         GetPortfolioResponse, GroupGreeksDto, PortfolioGreeksRequest, PortfolioGreeksResponse,
@@ -58,13 +59,8 @@ impl PortfolioService {
         portfolio_id: &str,
         state: &Arc<AppState>,
     ) -> Result<GetPortfolioResponse, ServerError> {
-        let id: uuid::Uuid = portfolio_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
-
-        let entry = state.portfolio_cache.get(&id).ok_or_else(|| {
-            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
-        })?;
+        let entry =
+            helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
 
         Ok(GetPortfolioResponse {
             portfolio_id: portfolio_id.to_string(),
@@ -83,9 +79,7 @@ impl PortfolioService {
         request: &AddTradesRequest,
         state: &Arc<AppState>,
     ) -> Result<AddTradesResponse, ServerError> {
-        let id: uuid::Uuid = portfolio_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
+        let id = helpers::parse_uuid(portfolio_id, "Portfolio")?;
 
         let mut entry = state.portfolio_cache.get(&id).ok_or_else(|| {
             ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
@@ -113,9 +107,7 @@ impl PortfolioService {
 
     /// Delete a portfolio
     pub fn delete_portfolio(portfolio_id: &str, state: &Arc<AppState>) -> Result<(), ServerError> {
-        let id: uuid::Uuid = portfolio_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
+        let id = helpers::parse_uuid(portfolio_id, "Portfolio")?;
 
         state.portfolio_cache.remove(&id).ok_or_else(|| {
             ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
@@ -131,13 +123,8 @@ impl PortfolioService {
     ) -> Result<PortfolioPriceResponse, ServerError> {
         let start = Instant::now();
 
-        let id: uuid::Uuid = portfolio_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
-
-        let entry = state.portfolio_cache.get(&id).ok_or_else(|| {
-            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
-        })?;
+        let entry =
+            helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
 
         // Simulate pricing - in real implementation would use pricer_risk::RiskEngine
         let trade_pvs: Vec<TradePvDto> = entry
@@ -177,13 +164,8 @@ impl PortfolioService {
     ) -> Result<PortfolioGreeksResponse, ServerError> {
         let start = Instant::now();
 
-        let id: uuid::Uuid = portfolio_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
-
-        let entry = state.portfolio_cache.get(&id).ok_or_else(|| {
-            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
-        })?;
+        let entry =
+            helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
 
         let trade_count = entry.trade_count;
 

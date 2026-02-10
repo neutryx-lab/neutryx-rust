@@ -3390,6 +3390,7 @@ dependencies = [
  "adapter_fpml",
  "adapter_loader",
  "anyhow",
+ "async-trait",
  "axum",
  "chrono",
  "futures-util",

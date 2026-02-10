@@ -35,6 +35,9 @@ futures-util = { version = "0.3", features = ["sink"] }
 # Serialisation
 serde_json = "1.0"
 
+# Async trait (for custom Axum extractors)
+async-trait = "0.1"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

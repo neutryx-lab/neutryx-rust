@@ -29,7 +29,7 @@ use crate::{
         ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse, InterpolationMethod,
         JacobianData,
     },
-    state::{AppState, InstrumentInput},
+    state::{AppState, CurveEntry, InstrumentInput},
 };
 
 // ---------------------------------------------------------------------------
@@ -495,7 +495,9 @@ impl CurveService {
             })
             .collect();
 
-        let curve_id = state.curve_cache.add(curve, instrument_inputs);
+        let curve_id = state
+            .curve_cache
+            .add(CurveEntry { curve, instruments: instrument_inputs });
 
         let elapsed = start.elapsed();
 

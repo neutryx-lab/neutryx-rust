@@ -3,11 +3,14 @@
 //! Provides domain-specific error types for the service layer with
 //! automatic HTTP status code mapping.
 
+use async_trait::async_trait;
 use axum::{
+    extract::{rejection::JsonRejection, FromRequest, Request},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
+use serde::de::DeserializeOwned;
 use serde_json::json;
 use thiserror::Error;
 
@@ -70,6 +73,39 @@ impl ServerError {
             Self::Portfolio(_) => "PORTFOLIO_ERROR",
             Self::Model(_) => "MODEL_ERROR",
             Self::Volatility(_) => "VOLATILITY_ERROR",
+        }
+    }
+}
+
+impl From<JsonRejection> for ServerError {
+    fn from(rejection: JsonRejection) -> Self {
+        Self::InvalidRequest(rejection.body_text())
+    }
+}
+
+impl From<serde_json::Error> for ServerError {
+    fn from(err: serde_json::Error) -> Self {
+        Self::Internal(format!("JSON error: {err}"))
+    }
+}
+
+/// Custom JSON extractor that converts deserialisation failures into
+/// [`ServerError::InvalidRequest`] with a proper JSON body, instead of
+/// Axum's default plain-text `JsonRejection` response.
+pub struct AppJson<T>(pub T);
+
+#[async_trait]
+impl<T, S> FromRequest<S> for AppJson<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = ServerError;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        match axum::Json::<T>::from_request(req, state).await {
+            Ok(Json(value)) => Ok(Self(value)),
+            Err(rejection) => Err(ServerError::from(rejection)),
         }
     }
 }

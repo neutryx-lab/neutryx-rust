@@ -603,8 +603,15 @@ async function buildCurve() {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || errorData.message || 'Build failed');
+      const text = await response.text();
+      let message = 'Build failed';
+      try {
+        const errorData = JSON.parse(text);
+        message = errorData.error || errorData.message || message;
+      } catch {
+        message = text || message;
+      }
+      throw new Error(message);
     }
 
     buildResult.value = await response.json();

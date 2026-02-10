@@ -10,6 +10,7 @@ use pricer_pricing::generic_pricer::{
 
 use crate::{
     error::ServerError,
+    services::helpers,
     rest::dto::demo::{
         AppConfigResponse, AvailableCurvesResponse, Cashflow, CashflowDetail, CashflowPvResult,
         Convention, ConventionDetail, ConventionField, ConventionsResponse, CurveIndicesResponse,
@@ -37,19 +38,13 @@ impl DemoService {
     pub fn get_config(_state: &Arc<AppState>) -> Result<AppConfigResponse, ServerError> {
         // Load currencies from config
         let currencies_path = Path::new("demo/data/config/currencies.json");
-        let currencies_content = std::fs::read_to_string(currencies_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read currencies.json: {e}")))?;
-        let currencies_data: serde_json::Value = serde_json::from_str(&currencies_content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse currencies.json: {e}")))?;
+        let currencies_data: serde_json::Value =
+            helpers::load_json_value(currencies_path, "currencies.json")?;
 
         // Load rate indices from config
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
-        let rate_indices_content = std::fs::read_to_string(rate_indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
-        let rate_indices_data: serde_json::Value = serde_json::from_str(&rate_indices_content)
-            .map_err(|e| {
-                ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
-            })?;
+        let rate_indices_data: serde_json::Value =
+            helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
 
         // Build enums
         let mut enums: HashMap<String, Vec<EnumValue>> = HashMap::new();
@@ -483,12 +478,8 @@ impl DemoService {
     /// Get market rates
     pub fn get_market_rates(_state: &Arc<AppState>) -> Result<MarketRatesResponse, ServerError> {
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
-        let content = std::fs::read_to_string(rates_path).map_err(|e| {
-            ServerError::Internal(format!("Failed to read market_quotes.json: {e}"))
-        })?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse market_quotes.json: {e}"))
-        })?;
+        let data: serde_json::Value =
+            helpers::load_json_value(rates_path, "market_quotes.json")?;
 
         let mut rates = Vec::new();
         let timestamp = chrono::Utc::now().to_rfc3339();
@@ -916,10 +907,8 @@ impl DemoService {
     /// Get conventions
     pub fn get_conventions(_state: &Arc<AppState>) -> Result<ConventionsResponse, ServerError> {
         let conv_path = Path::new("demo/data/input/conventions/conventions.json");
-        let content = std::fs::read_to_string(conv_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read conventions.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse conventions.json: {e}")))?;
+        let data: serde_json::Value =
+            helpers::load_json_value(conv_path, "conventions.json")?;
 
         let mut conventions = Vec::new();
 
@@ -1347,11 +1336,8 @@ impl DemoService {
     pub fn get_curve_indices(_state: &Arc<AppState>) -> Result<CurveIndicesResponse, ServerError> {
         // Load from rate_indices.json
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
-        let content = std::fs::read_to_string(rate_indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
-        })?;
+        let data: serde_json::Value =
+            helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
 
         let indices: Vec<String> = data
             .get("rateIndices")
@@ -1375,12 +1361,8 @@ impl DemoService {
     ) -> Result<CurveInstrumentsResponse, ServerError> {
         // Load market quotes and filter by index
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
-        let content = std::fs::read_to_string(rates_path).map_err(|e| {
-            ServerError::Internal(format!("Failed to read market_quotes.json: {e}"))
-        })?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse market_quotes.json: {e}"))
-        })?;
+        let data: serde_json::Value =
+            helpers::load_json_value(rates_path, "market_quotes.json")?;
 
         // Map index to currency
         let currency = match index {
@@ -1811,11 +1793,8 @@ impl DemoService {
     pub fn get_rate_indices(state: &Arc<AppState>) -> Result<RateIndicesResponse, ServerError> {
         // Load from rate_indices.json
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
-        let content = std::fs::read_to_string(rate_indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
-        })?;
+        let data: serde_json::Value =
+            helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
 
         let mut indices = Vec::new();
 
@@ -1897,11 +1876,8 @@ impl DemoService {
     ) -> Result<RateIndexDetailResponse, ServerError> {
         // Load from rate_indices.json
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
-        let content = std::fs::read_to_string(rate_indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse rate_indices.json: {e}"))
-        })?;
+        let data: serde_json::Value =
+            helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
 
         // Find the index
         let rate_items = data

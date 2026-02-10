@@ -17,6 +17,7 @@ use pricer_models::{
 
 use crate::{
     error::ServerError,
+    services::helpers,
     rest::dto::demo::{
         CalibrationMetadata, CalibrationParameters, CellDiagnostics, CellJacobian,
         FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
@@ -223,10 +224,7 @@ impl VolcubeService {
             )));
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read FX vol file: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse FX vol file: {e}")))?;
+        let data: serde_json::Value = helpers::load_json_value(path, "FX vol file")?;
 
         let spot = data.get("spot").and_then(|s| s.as_f64());
         let domestic_rate = data.get("domesticRate").and_then(|r| r.as_f64());
@@ -286,11 +284,8 @@ impl VolcubeService {
         _state: &Arc<AppState>,
     ) -> Result<VolcubeIndicesResponse, ServerError> {
         let vol_path = Path::new("demo/data/config/vol_surfaces.json");
-        let content = std::fs::read_to_string(vol_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}"))
-        })?;
+        let data: serde_json::Value =
+            helpers::load_json_value(vol_path, "vol_surfaces.json")?;
 
         let indices: Vec<String> = data
             .get("irVol")
@@ -989,10 +984,7 @@ impl VolcubeService {
             )));
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read rate file: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse rate file: {e}")))?;
+        let data: serde_json::Value = helpers::load_json_value(path, "rate file")?;
 
         let instruments = data
             .get("instruments")

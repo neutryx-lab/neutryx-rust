@@ -1114,6 +1114,7 @@ mod tests {
             bf25d: 0.002,
             rr10d: Some(-0.01),
             bf10d: Some(0.003),
+            forward: None,
         };
         let json = serde_json::to_string(&quote).unwrap();
         assert!(json.contains("atmVol"));

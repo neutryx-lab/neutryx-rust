@@ -11,6 +11,7 @@ use chrono::Utc;
 #[cfg(feature = "models")]
 use crate::{
     error::ServerError,
+    services::helpers,
     rest::dto::{
         CreateModelRequest, CreateModelResponse, GetModelResponse, InstrumentDto,
         ModelPricingRequest, ModelPricingResponse, ModelValidationDto, PricingGreeksDto,
@@ -98,14 +99,7 @@ impl ModelService {
         model_id: &str,
         state: &Arc<AppState>,
     ) -> Result<GetModelResponse, ServerError> {
-        let id: uuid::Uuid = model_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid model_id format".to_string()))?;
-
-        let entry = state
-            .model_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Model {} not found", model_id)))?;
+        let entry = helpers::resolve_cached(&state.model_cache, model_id, "Model")?;
 
         let params: serde_json::Value = serde_json::from_str(&entry.params_json)
             .map_err(|e| ServerError::Internal(format!("Failed to parse params: {e}")))?;
@@ -127,14 +121,7 @@ impl ModelService {
     ) -> Result<ModelPricingResponse, ServerError> {
         let start = Instant::now();
 
-        let id: uuid::Uuid = model_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid model_id format".to_string()))?;
-
-        let entry = state
-            .model_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Model {} not found", model_id)))?;
+        let entry = helpers::resolve_cached(&state.model_cache, model_id, "Model")?;
 
         // Extract pricing parameters
         let (price, greeks, num_paths, std_error) = match &request.instrument {

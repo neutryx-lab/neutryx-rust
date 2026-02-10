@@ -11,6 +11,7 @@ use chrono::Utc;
 #[cfg(feature = "volatility")]
 use crate::{
     error::ServerError,
+    services::helpers,
     rest::dto::{
         BuildFxVolSurfaceRequest, BuildFxVolSurfaceResponse, BuildVolCubeRequest,
         BuildVolCubeResponse, CalibrationQualityDto, GetImpliedVolRequest, GetImpliedVolResponse,
@@ -255,14 +256,8 @@ impl VolatilityService {
         request: &GetImpliedVolRequest,
         state: &Arc<AppState>,
     ) -> Result<GetImpliedVolResponse, ServerError> {
-        let id: uuid::Uuid = surface_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid surface_id format".to_string()))?;
-
-        let entry = state
-            .vol_surface_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Surface {} not found", surface_id)))?;
+        let entry =
+            helpers::resolve_cached(&state.vol_surface_cache, surface_id, "Surface")?;
 
         // Convert strike based on type
         let strike = match request.strike_type {
