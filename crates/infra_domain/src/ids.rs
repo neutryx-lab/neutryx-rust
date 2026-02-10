@@ -165,4 +165,3 @@ define_id! {
 ///
 /// Both `CounterpartyId` and `CounterPartyId` are supported for flexibility.
 pub type CounterpartyId = CounterPartyId;
-

@@ -212,19 +212,43 @@ mod tests {
 
     fn make_quote(rate_type: RateType, value: f64) -> MarketQuote {
         let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
-        MarketQuote::new(id, QuoteType::Mid, value, 1700000000000, DataSource::Bloomberg).unwrap()
+        MarketQuote::new(
+            id,
+            QuoteType::Mid,
+            value,
+            1700000000000,
+            DataSource::Bloomberg,
+        )
+        .unwrap()
     }
 
     fn make_quote_unchecked(rate_type: RateType, value: f64) -> MarketQuote {
         let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
-        MarketQuote { id, quote_type: QuoteType::Mid, value, timestamp: 1700000000000, source: DataSource::Bloomberg }
+        MarketQuote {
+            id,
+            quote_type: QuoteType::Mid,
+            value,
+            timestamp: 1700000000000,
+            source: DataSource::Bloomberg,
+        }
     }
 
     #[test]
     fn test_interest_rate_bounds() {
         let v = StandardQuoteValidator::default();
-        for rt in [RateType::Deposit, RateType::Fra, RateType::Futures, RateType::Swap, RateType::Ois, RateType::BasisSwap] {
-            assert!(v.validate(&make_quote(rt, 0.05)).is_ok(), "Failed for {:?}", rt);
+        for rt in [
+            RateType::Deposit,
+            RateType::Fra,
+            RateType::Futures,
+            RateType::Swap,
+            RateType::Ois,
+            RateType::BasisSwap,
+        ] {
+            assert!(
+                v.validate(&make_quote(rt, 0.05)).is_ok(),
+                "Failed for {:?}",
+                rt
+            );
         }
         // Boundary values
         assert!(v.validate(&make_quote(RateType::Swap, -0.10)).is_ok());
@@ -246,21 +270,31 @@ mod tests {
         assert!(v.validate(&make_quote(RateType::FxSpot, 100_000.0)).is_ok());
         // FX out of bounds
         assert!(v.validate(&make_quote(RateType::FxSpot, 0.00001)).is_err());
-        assert!(v.validate(&make_quote(RateType::FxSpot, 200_000.0)).is_err());
+        assert!(v
+            .validate(&make_quote(RateType::FxSpot, 200_000.0))
+            .is_err());
         // Vol valid
         assert!(v.validate(&make_quote(RateType::Vol, 0.20)).is_ok());
         assert!(v.validate(&make_quote(RateType::Vol, 0.0)).is_ok());
         assert!(v.validate(&make_quote(RateType::Vol, 5.0)).is_ok());
         // Vol out of bounds
-        assert!(v.validate(&make_quote_unchecked(RateType::Vol, -0.01)).is_err());
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Vol, -0.01))
+            .is_err());
         assert!(v.validate(&make_quote(RateType::Vol, 6.0)).is_err());
     }
 
     #[test]
     fn test_nan_and_infinity() {
         let v = StandardQuoteValidator::default();
-        assert!(v.validate(&make_quote_unchecked(RateType::Swap, f64::NAN)).is_err());
-        assert!(v.validate(&make_quote_unchecked(RateType::Swap, f64::INFINITY)).is_err());
-        assert!(v.validate(&make_quote_unchecked(RateType::Swap, f64::NEG_INFINITY)).is_err());
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Swap, f64::NAN))
+            .is_err());
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Swap, f64::INFINITY))
+            .is_err());
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Swap, f64::NEG_INFINITY))
+            .is_err());
     }
 }

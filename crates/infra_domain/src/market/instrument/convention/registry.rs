@@ -312,7 +312,10 @@ mod tests {
         assert_eq!(registry.len(), 1);
         assert!(registry.contains(Currency::USD, RateType::Deposit));
         assert!(!registry.contains(Currency::EUR, RateType::Deposit));
-        assert_eq!(registry.get(Currency::USD, RateType::Deposit).unwrap(), &conv);
+        assert_eq!(
+            registry.get(Currency::USD, RateType::Deposit).unwrap(),
+            &conv
+        );
     }
 
     #[test]

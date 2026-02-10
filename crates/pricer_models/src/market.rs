@@ -173,7 +173,10 @@ pub mod curves {
         Linear,
         /// Log-linear interpolation (linear on log of discount factors).
         #[default]
-        #[cfg_attr(feature = "serde", serde(rename = "log_linear_df", alias = "log_linear"))]
+        #[cfg_attr(
+            feature = "serde",
+            serde(rename = "log_linear_df", alias = "log_linear")
+        )]
         LogLinear,
         /// Flat forward interpolation (constant simple forward rate between
         /// pillars).
@@ -480,7 +483,8 @@ pub mod curves {
             }
         }
 
-        /// Returns the discount factor with limit specification (Left, Right, or Continuous).
+        /// Returns the discount factor with limit specification (Left, Right,
+        /// or Continuous).
         pub fn discount_factor_with_limit(
             &self,
             t: T,
@@ -1242,8 +1246,8 @@ pub mod jumps {
 
     /// Builds a daily forward-rate-shift grid from jump pillars.
     ///
-    /// Produces ramp offsets: `offset(t) = -Sum s_i * (t - t_i)` for `t_i <= t`,
-    /// yielding `df(t) = base_df(t) * exp(offset(t))`.
+    /// Produces ramp offsets: `offset(t) = -Sum s_i * (t - t_i)` for `t_i <=
+    /// t`, yielding `df(t) = base_df(t) * exp(offset(t))`.
     #[must_use]
     pub fn build_forward_rate_shift_grid(
         pillars: &[JumpPillar],

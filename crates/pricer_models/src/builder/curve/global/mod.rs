@@ -30,9 +30,8 @@ mod tests;
 
 pub use bootstrapper::GlobalBootstrapper;
 pub use config::GlobalBootstrapConfig;
-pub use result::GlobalBootstrapResult;
-
 use num_traits::Float;
+pub use result::GlobalBootstrapResult;
 
 /// Compute the Euclidean norm of a vector.
 fn vector_norm<T: Float>(v: &[T]) -> T {

@@ -8,11 +8,7 @@ use tracing::{info, warn};
 use crate::error::ServerError;
 
 /// Run the calibrate command
-pub fn run(
-    market_data: &str,
-    model_type: &str,
-    output: Option<&str>,
-) -> Result<(), ServerError> {
+pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<(), ServerError> {
     info!("Starting calibration...");
     info!("  Market data: {}", market_data);
     info!("  Model type: {}", model_type);

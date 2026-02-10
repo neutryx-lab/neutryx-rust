@@ -100,7 +100,8 @@ pub struct CorrelationMatrix<T: Float> {
 }
 
 impl<T: Float> CorrelationMatrix<T> {
-    /// Create a new correlation matrix from flat array (row-major, dim*dim elements).
+    /// Create a new correlation matrix from flat array (row-major, dim*dim
+    /// elements).
     pub fn new(data: &[T], dim: usize) -> Result<Self, CorrelationError> {
         let expected = dim * dim;
         if data.len() != expected {
@@ -233,7 +234,8 @@ impl<T: Float> CholeskyFactor<T> {
         }
     }
 
-    /// Transform independent standard normals Z to correlated normals W = L * Z.
+    /// Transform independent standard normals Z to correlated normals W = L *
+    /// Z.
     pub fn transform(&self, z: &[T]) -> Vec<T> {
         assert!(
             z.len() >= self.dim,

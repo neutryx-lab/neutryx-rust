@@ -442,23 +442,27 @@ impl std::fmt::Display for InstrumentDefinition {
                 match $self { $(InstrumentDefinition::$Variant(_) => $name,)+ }
             };
         }
-        write!(f, "{}", display_name!(self;
-            Deposit => "Deposit", Fra => "FRA", Futures => "Futures",
-            InterestRateSwap => "IRS", BasisSwap => "BasisSwap", Ois => "OIS",
-            Swaption => "Swaption", CapFloor => "CapFloor", Frn => "FRN",
-            CmsSwap => "CMSSwap", InflationSwap => "InflationSwap",
-            FxSpot => "FXSpot", FxForward => "FXForward",
-            FxVanillaOption => "FXVanillaOption", FxBarrierOption => "FXBarrierOption",
-            FxSwap => "FXSwap", CrossCurrencyBasisSwap => "XCCY",
-            EquityForward => "EquityForward", EquityVanillaOption => "EquityVanillaOption",
-            EquityBarrierOption => "EquityBarrierOption", AsianOption => "AsianOption",
-            LookbackOption => "LookbackOption", EquitySwap => "EquitySwap",
-            BasketOption => "BasketOption",
-            Cds => "CDS", CdsIndex => "CDSIndex", CdsOption => "CDSOption", NtdBasket => "NtDBasket",
-            CommodityForward => "CommodityForward", CommoditySwap => "CommoditySwap",
-            CommodityVanillaOption => "CommodityVanillaOption",
-            CommodityAsianOption => "CommodityAsianOption", SpreadOption => "SpreadOption",
-        ))
+        write!(
+            f,
+            "{}",
+            display_name!(self;
+                Deposit => "Deposit", Fra => "FRA", Futures => "Futures",
+                InterestRateSwap => "IRS", BasisSwap => "BasisSwap", Ois => "OIS",
+                Swaption => "Swaption", CapFloor => "CapFloor", Frn => "FRN",
+                CmsSwap => "CMSSwap", InflationSwap => "InflationSwap",
+                FxSpot => "FXSpot", FxForward => "FXForward",
+                FxVanillaOption => "FXVanillaOption", FxBarrierOption => "FXBarrierOption",
+                FxSwap => "FXSwap", CrossCurrencyBasisSwap => "XCCY",
+                EquityForward => "EquityForward", EquityVanillaOption => "EquityVanillaOption",
+                EquityBarrierOption => "EquityBarrierOption", AsianOption => "AsianOption",
+                LookbackOption => "LookbackOption", EquitySwap => "EquitySwap",
+                BasketOption => "BasketOption",
+                Cds => "CDS", CdsIndex => "CDSIndex", CdsOption => "CDSOption", NtdBasket => "NtDBasket",
+                CommodityForward => "CommodityForward", CommoditySwap => "CommoditySwap",
+                CommodityVanillaOption => "CommodityVanillaOption",
+                CommodityAsianOption => "CommodityAsianOption", SpreadOption => "SpreadOption",
+            )
+        )
     }
 }
 
@@ -481,39 +485,53 @@ mod tests {
             expiry: Date::from_ymd(2026, 1, 15).unwrap(),
             exercise_type: ExerciseType::European,
             settlement_type: SettlementType::Cash,
-            strike: 0.03, notional: 10_000_000.0, currency: Currency::USD,
+            strike: 0.03,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
         })
     }
     fn fx_spot() -> InstrumentDefinition {
         InstrumentDefinition::FxSpot(FxSpot {
             currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
-            spot_rate: 1.1050, settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
-            notional: 1_000_000.0, notional_currency: Currency::EUR,
+            spot_rate: 1.1050,
+            settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
+            notional: 1_000_000.0,
+            notional_currency: Currency::EUR,
         })
     }
     fn fx_option() -> InstrumentDefinition {
         InstrumentDefinition::FxVanillaOption(FxVanillaOption {
             currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
-            strike: 1.1000, expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            strike: 1.1000,
+            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
             delivery_date: Date::from_ymd(2025, 6, 17).unwrap(),
-            option_type: OptionType::Call, exercise_style: ExerciseStyle::European,
-            notional: 1_000_000.0, notional_currency: Currency::EUR,
+            option_type: OptionType::Call,
+            exercise_style: ExerciseStyle::European,
+            notional: 1_000_000.0,
+            notional_currency: Currency::EUR,
         })
     }
     fn eq_fwd() -> InstrumentDefinition {
         InstrumentDefinition::EquityForward(EquityForward {
-            underlying: EquityUnderlying::Index { name: "SPX".to_string() },
-            forward_price: 5000.0, settlement_date: Date::from_ymd(2025, 6, 15).unwrap(),
-            notional: 100_000.0, currency: Currency::USD,
+            underlying: EquityUnderlying::Index {
+                name: "SPX".to_string(),
+            },
+            forward_price: 5000.0,
+            settlement_date: Date::from_ymd(2025, 6, 15).unwrap(),
+            notional: 100_000.0,
+            currency: Currency::USD,
         })
     }
     fn cds() -> InstrumentDefinition {
         InstrumentDefinition::Cds(Cds {
-            reference_entity: "ACME".to_string(), notional: 10_000_000.0, spread: 0.01,
+            reference_entity: "ACME".to_string(),
+            notional: 10_000_000.0,
+            spread: 0.01,
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
             maturity: Date::from_ymd(2030, 1, 1).unwrap(),
-            recovery_rate: Some(0.4), currency: Currency::USD,
+            recovery_rate: Some(0.4),
+            currency: Currency::USD,
             credit_events: vec![CreditEvent::Bankruptcy],
         })
     }
@@ -522,17 +540,25 @@ mod tests {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
             delivery_location: "Cushing".to_string(),
             delivery_date: Date::from_ymd(2025, 6, 15).unwrap(),
-            quantity: 1000.0, unit: QuantityUnit::Barrels, forward_price: 75.0,
+            quantity: 1000.0,
+            unit: QuantityUnit::Barrels,
+            forward_price: 75.0,
             currency: Currency::USD,
         })
     }
     fn asian() -> InstrumentDefinition {
         InstrumentDefinition::AsianOption(AsianOption {
-            underlying: EquityUnderlying::Index { name: "SPX".to_string() },
-            strike: 5000.0, expiry: Date::from_ymd(2025, 12, 15).unwrap(),
-            option_type: OptionType::Call, averaging_type: AveragingType::Arithmetic,
+            underlying: EquityUnderlying::Index {
+                name: "SPX".to_string(),
+            },
+            strike: 5000.0,
+            expiry: Date::from_ymd(2025, 12, 15).unwrap(),
+            option_type: OptionType::Call,
+            averaging_type: AveragingType::Arithmetic,
             observation_frequency: crate::time::Frequency::Monthly,
-            observed_values: vec![], notional: 100_000.0, currency: Currency::USD,
+            observed_values: vec![],
+            notional: 100_000.0,
+            currency: Currency::USD,
         })
     }
 
@@ -585,15 +611,21 @@ mod tests {
             expiry: Date::from_ymd(2026, 1, 15).unwrap(),
             exercise_type: ExerciseType::European,
             settlement_type: SettlementType::Cash,
-            strike: 0.03, notional: -100.0, currency: Currency::USD,
+            strike: 0.03,
+            notional: -100.0,
+            currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
         };
-        assert!(InstrumentDefinition::Swaption(bad_swaption).validate().is_err());
+        assert!(InstrumentDefinition::Swaption(bad_swaption)
+            .validate()
+            .is_err());
 
         let bad_fx = FxSpot {
             currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
-            spot_rate: -1.0, settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
-            notional: 1_000_000.0, notional_currency: Currency::EUR,
+            spot_rate: -1.0,
+            settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
+            notional: 1_000_000.0,
+            notional_currency: Currency::EUR,
         };
         assert!(InstrumentDefinition::FxSpot(bad_fx).validate().is_err());
 

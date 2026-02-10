@@ -272,5 +272,4 @@ mod tests {
             _ => panic!("Expected Custom scenario"),
         }
     }
-
 }

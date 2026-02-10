@@ -575,9 +575,18 @@ mod tests {
         assert!((Delta::new(0.001).unwrap().value() - 0.001).abs() < 1e-10);
 
         // Invalid deltas
-        assert!(matches!(Delta::new(0.0), Err(FxVolInstrumentError::InvalidDelta(0.0))));
-        assert!(matches!(Delta::new(-10.0), Err(FxVolInstrumentError::InvalidDelta(_))));
-        assert!(matches!(Delta::new(51.0), Err(FxVolInstrumentError::InvalidDelta(51.0))));
+        assert!(matches!(
+            Delta::new(0.0),
+            Err(FxVolInstrumentError::InvalidDelta(0.0))
+        ));
+        assert!(matches!(
+            Delta::new(-10.0),
+            Err(FxVolInstrumentError::InvalidDelta(_))
+        ));
+        assert!(matches!(
+            Delta::new(51.0),
+            Err(FxVolInstrumentError::InvalidDelta(51.0))
+        ));
 
         // Constants, display, copy
         assert!((Delta::D10.value() - 10.0).abs() < 1e-10);
@@ -610,18 +619,29 @@ mod tests {
 
         // Currency pair lookup
         let pair_eu = CurrencyPair::new(Currency::EUR, Currency::USD);
-        assert_eq!(FxVolConvention::for_currency_pair(&pair_eu).delta_type, DeltaType::SpotDelta);
+        assert_eq!(
+            FxVolConvention::for_currency_pair(&pair_eu).delta_type,
+            DeltaType::SpotDelta
+        );
         let pair_uj = CurrencyPair::new(Currency::USD, Currency::JPY);
-        assert_eq!(FxVolConvention::for_currency_pair(&pair_uj).delta_type, DeltaType::PremiumAdjusted);
+        assert_eq!(
+            FxVolConvention::for_currency_pair(&pair_uj).delta_type,
+            DeltaType::PremiumAdjusted
+        );
         let pair_ej = CurrencyPair::new(Currency::EUR, Currency::JPY);
-        assert_eq!(FxVolConvention::for_currency_pair(&pair_ej).delta_type, DeltaType::PremiumAdjusted);
+        assert_eq!(
+            FxVolConvention::for_currency_pair(&pair_ej).delta_type,
+            DeltaType::PremiumAdjusted
+        );
     }
 
     #[test]
     fn test_fx_vol_instrument_types() {
         // ATM
         let atm = FxVolInstrument::Atm {
-            currency_pair: make_pair(), expiry: make_expiry(), vol: 0.10,
+            currency_pair: make_pair(),
+            expiry: make_expiry(),
+            vol: 0.10,
             convention: FxVolConvention::eurusd(),
         };
         assert_eq!(atm.currency_pair(), make_pair());
@@ -632,15 +652,19 @@ mod tests {
 
         // ATM invalid vol
         let bad_atm = FxVolInstrument::Atm {
-            currency_pair: make_pair(), expiry: make_expiry(), vol: -0.10,
+            currency_pair: make_pair(),
+            expiry: make_expiry(),
+            vol: -0.10,
             convention: FxVolConvention::eurusd(),
         };
         assert!(bad_atm.validate().is_err());
 
         // Butterfly
         let bf = FxVolInstrument::Butterfly {
-            currency_pair: make_pair(), expiry: make_expiry(),
-            delta: Delta::D25, vol_spread: 0.005,
+            currency_pair: make_pair(),
+            expiry: make_expiry(),
+            delta: Delta::D25,
+            vol_spread: 0.005,
             convention: FxVolConvention::eurusd(),
         };
         assert!(bf.validate().is_ok());
@@ -648,8 +672,10 @@ mod tests {
 
         // Risk Reversal
         let rr = FxVolInstrument::RiskReversal {
-            currency_pair: make_pair(), expiry: make_expiry(),
-            delta: Delta::D25, vol_spread: -0.01,
+            currency_pair: make_pair(),
+            expiry: make_expiry(),
+            delta: Delta::D25,
+            vol_spread: -0.01,
             convention: FxVolConvention::eurusd(),
         };
         assert!(rr.validate().is_ok());
@@ -657,16 +683,22 @@ mod tests {
 
         // Delta Quoted (valid + invalid)
         let dq = FxVolInstrument::DeltaQuoted {
-            currency_pair: make_pair(), expiry: make_expiry(),
-            delta: Delta::D25, vol: 0.11, option_type: OptionType::Call,
+            currency_pair: make_pair(),
+            expiry: make_expiry(),
+            delta: Delta::D25,
+            vol: 0.11,
+            option_type: OptionType::Call,
             convention: FxVolConvention::eurusd(),
         };
         assert!(dq.validate().is_ok());
         assert_eq!(dq.to_string(), "EUR/USD 25D C 2026-06-15");
 
         let bad_dq = FxVolInstrument::DeltaQuoted {
-            currency_pair: make_pair(), expiry: make_expiry(),
-            delta: Delta::D25, vol: 0.0, option_type: OptionType::Put,
+            currency_pair: make_pair(),
+            expiry: make_expiry(),
+            delta: Delta::D25,
+            vol: 0.0,
+            option_type: OptionType::Put,
             convention: FxVolConvention::eurusd(),
         };
         assert!(bad_dq.validate().is_err());
@@ -678,36 +710,63 @@ mod tests {
         let exp = make_expiry();
 
         // ATM
-        let atm = FxVolInstrumentBuilder::new(pair, exp).atm(0.10).build().unwrap();
+        let atm = FxVolInstrumentBuilder::new(pair, exp)
+            .atm(0.10)
+            .build()
+            .unwrap();
         assert!(matches!(atm, FxVolInstrument::Atm { vol, .. } if (vol - 0.10).abs() < 1e-10));
 
         // Butterfly
-        let bf = FxVolInstrumentBuilder::new(pair, exp).butterfly(Delta::D25, 0.005).build().unwrap();
-        assert!(matches!(bf, FxVolInstrument::Butterfly { delta, vol_spread, .. }
-            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - 0.005).abs() < 1e-10));
+        let bf = FxVolInstrumentBuilder::new(pair, exp)
+            .butterfly(Delta::D25, 0.005)
+            .build()
+            .unwrap();
+        assert!(
+            matches!(bf, FxVolInstrument::Butterfly { delta, vol_spread, .. }
+            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - 0.005).abs() < 1e-10)
+        );
 
         // Risk Reversal
-        let rr = FxVolInstrumentBuilder::new(pair, exp).risk_reversal(Delta::D25, -0.01).build().unwrap();
-        assert!(matches!(rr, FxVolInstrument::RiskReversal { delta, vol_spread, .. }
-            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - (-0.01)).abs() < 1e-10));
+        let rr = FxVolInstrumentBuilder::new(pair, exp)
+            .risk_reversal(Delta::D25, -0.01)
+            .build()
+            .unwrap();
+        assert!(
+            matches!(rr, FxVolInstrument::RiskReversal { delta, vol_spread, .. }
+            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - (-0.01)).abs() < 1e-10)
+        );
 
         // Delta Quoted
-        let dq = FxVolInstrumentBuilder::new(pair, exp).delta_quoted(Delta::D25, 0.11, OptionType::Call).build().unwrap();
-        assert!(matches!(dq, FxVolInstrument::DeltaQuoted { delta, vol, option_type: OptionType::Call, .. }
-            if (delta.value() - 25.0).abs() < 1e-10 && (vol - 0.11).abs() < 1e-10));
+        let dq = FxVolInstrumentBuilder::new(pair, exp)
+            .delta_quoted(Delta::D25, 0.11, OptionType::Call)
+            .build()
+            .unwrap();
+        assert!(
+            matches!(dq, FxVolInstrument::DeltaQuoted { delta, vol, option_type: OptionType::Call, .. }
+            if (delta.value() - 25.0).abs() < 1e-10 && (vol - 0.11).abs() < 1e-10)
+        );
 
         // Custom convention
         let custom = FxVolInstrumentBuilder::new(pair, exp)
-            .with_convention(FxVolConvention::usdjpy()).atm(0.10).build().unwrap();
+            .with_convention(FxVolConvention::usdjpy())
+            .atm(0.10)
+            .build()
+            .unwrap();
         assert_eq!(custom.convention().delta_type, DeltaType::PremiumAdjusted);
 
         // Fluent chain
         let fluent = FxVolInstrumentBuilder::new(pair, exp)
-            .with_convention(FxVolConvention::eurusd()).butterfly(Delta::D10, 0.003).build().unwrap();
+            .with_convention(FxVolConvention::eurusd())
+            .butterfly(Delta::D10, 0.003)
+            .build()
+            .unwrap();
         assert!(matches!(fluent, FxVolInstrument::Butterfly { .. }));
 
         // Errors
         assert!(FxVolInstrumentBuilder::new(pair, exp).build().is_err());
-        assert!(FxVolInstrumentBuilder::new(pair, exp).atm(-0.10).build().is_err());
+        assert!(FxVolInstrumentBuilder::new(pair, exp)
+            .atm(-0.10)
+            .build()
+            .is_err());
     }
 }

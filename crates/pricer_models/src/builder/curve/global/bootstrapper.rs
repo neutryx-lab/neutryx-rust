@@ -4,18 +4,12 @@ use pricer_core::{
     types::SolverError,
 };
 
+use super::{config::GlobalBootstrapConfig, result::GlobalBootstrapResult, vector_norm};
 use crate::{
     builder::{
-        jump::JumpPillar,
-        CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig,
+        jump::JumpPillar, CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig,
     },
     market::curves::BootstrappedCurve,
-};
-
-use super::{
-    config::GlobalBootstrapConfig,
-    result::GlobalBootstrapResult,
-    vector_norm,
 };
 
 // =============================================================================
@@ -167,7 +161,9 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         // Extract pillars (maturities) from instruments
         let mut pillars: Vec<T> = instruments.iter().map(|i| i.maturity()).collect();
         pillars.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        pillars.dedup_by(|a, b| Float::abs(*a - *b) < pricer_core::math::numeric::from_f64::<T>(1e-10));
+        pillars.dedup_by(|a, b| {
+            Float::abs(*a - *b) < pricer_core::math::numeric::from_f64::<T>(1e-10)
+        });
 
         let n_pillars = pillars.len();
 

@@ -63,9 +63,7 @@ pub struct PyForward {
 impl PyForward {
     /// Create a new forward contract
     #[new]
-    pub fn new(strike: f64, maturity: f64) -> Self {
-        Self { strike, maturity }
-    }
+    pub fn new(strike: f64, maturity: f64) -> Self { Self { strike, maturity } }
 
     fn __repr__(&self) -> String {
         format!(
@@ -96,9 +94,7 @@ pub struct PyHullWhite {
 impl PyHullWhite {
     /// Create a new Hull-White model
     #[new]
-    pub fn new(alpha: f64, sigma: f64) -> Self {
-        Self { alpha, sigma }
-    }
+    pub fn new(alpha: f64, sigma: f64) -> Self { Self { alpha, sigma } }
 
     fn __repr__(&self) -> String {
         format!("HullWhite(alpha={}, sigma={})", self.alpha, self.sigma)

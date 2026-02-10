@@ -93,7 +93,12 @@ mod tests {
 
     #[test]
     fn test_code_display_and_hash() {
-        let cases = [("BID", QuoteType::Bid), ("ASK", QuoteType::Ask), ("MID", QuoteType::Mid), ("LAST", QuoteType::Last)];
+        let cases = [
+            ("BID", QuoteType::Bid),
+            ("ASK", QuoteType::Ask),
+            ("MID", QuoteType::Mid),
+            ("LAST", QuoteType::Last),
+        ];
         for (code, qt) in &cases {
             assert_eq!(qt.code(), *code);
             assert_eq!(format!("{}", qt), *code);

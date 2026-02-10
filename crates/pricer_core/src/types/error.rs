@@ -11,10 +11,10 @@ use std::fmt;
 
 use thiserror::Error;
 
-// Import math errors for From implementations
-use crate::math::normal_dist::DistributionError;
 #[cfg(feature = "linalg")]
 use crate::math::linalg::LinearAlgebraError;
+// Import math errors for From implementations
+use crate::math::normal_dist::DistributionError;
 
 /// Categorised pricing errors.
 ///

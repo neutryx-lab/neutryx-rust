@@ -60,8 +60,14 @@ pub(super) fn settlement_trade(
     trade_type: TradeType,
 ) -> Trade {
     let cf = Cashflow::new(
-        CashflowType::Settlement, date, date, date, 0.0,
-        notional, Payoff::fixed(payoff_value), currency,
+        CashflowType::Settlement,
+        date,
+        date,
+        date,
+        0.0,
+        notional,
+        Payoff::fixed(payoff_value),
+        currency,
     );
     let leg = Leg::new(vec![cf], direction, LegType::Generic, currency);
     Trade::new(trade_id, vec![leg], trade_type)
@@ -84,16 +90,38 @@ pub(super) fn fx_exchange_trade(
     };
 
     let pay_cf = Cashflow::new(
-        CashflowType::Principal, settlement_date, settlement_date, settlement_date,
-        0.0, notional, Payoff::fixed(1.0), notional_currency,
+        CashflowType::Principal,
+        settlement_date,
+        settlement_date,
+        settlement_date,
+        0.0,
+        notional,
+        Payoff::fixed(1.0),
+        notional_currency,
     );
     let receive_cf = Cashflow::new(
-        CashflowType::Principal, settlement_date, settlement_date, settlement_date,
-        0.0, receive_amount, Payoff::fixed(1.0), receive_currency,
+        CashflowType::Principal,
+        settlement_date,
+        settlement_date,
+        settlement_date,
+        0.0,
+        receive_amount,
+        Payoff::fixed(1.0),
+        receive_currency,
     );
 
-    let pay_leg = Leg::new(vec![pay_cf], Direction::Payer, LegType::Principal, notional_currency);
-    let receive_leg = Leg::new(vec![receive_cf], Direction::Receiver, LegType::Principal, receive_currency);
+    let pay_leg = Leg::new(
+        vec![pay_cf],
+        Direction::Payer,
+        LegType::Principal,
+        notional_currency,
+    );
+    let receive_leg = Leg::new(
+        vec![receive_cf],
+        Direction::Receiver,
+        LegType::Principal,
+        receive_currency,
+    );
     Trade::new(trade_id, vec![pay_leg, receive_leg], trade_type)
 }
 
@@ -110,16 +138,33 @@ pub(super) fn coupon_swap_trade(
     floating_leg_type: LegType,
 ) -> Trade {
     let fixed_cf = Cashflow::new(
-        CashflowType::Coupon, maturity, start_date, maturity,
-        1.0, notional, Payoff::fixed(fixed_payoff), currency,
+        CashflowType::Coupon,
+        maturity,
+        start_date,
+        maturity,
+        1.0,
+        notional,
+        Payoff::fixed(fixed_payoff),
+        currency,
     );
     let floating_cf = Cashflow::new(
-        CashflowType::Coupon, maturity, start_date, maturity,
-        1.0, notional, Payoff::fixed(floating_payoff), currency,
+        CashflowType::Coupon,
+        maturity,
+        start_date,
+        maturity,
+        1.0,
+        notional,
+        Payoff::fixed(floating_payoff),
+        currency,
     );
 
     let fixed_leg = Leg::new(vec![fixed_cf], Direction::Payer, fixed_leg_type, currency);
-    let floating_leg = Leg::new(vec![floating_cf], Direction::Receiver, floating_leg_type, currency);
+    let floating_leg = Leg::new(
+        vec![floating_cf],
+        Direction::Receiver,
+        floating_leg_type,
+        currency,
+    );
     Trade::new(trade_id, vec![fixed_leg, floating_leg], TradeType::Swap)
 }
 

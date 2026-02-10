@@ -195,8 +195,14 @@ mod tests {
     #[test]
     fn test_classification() {
         // Interest rate instruments
-        for rt in [RateType::Deposit, RateType::Fra, RateType::Futures,
-                    RateType::Swap, RateType::Ois, RateType::BasisSwap] {
+        for rt in [
+            RateType::Deposit,
+            RateType::Fra,
+            RateType::Futures,
+            RateType::Swap,
+            RateType::Ois,
+            RateType::BasisSwap,
+        ] {
             assert!(rt.is_interest_rate(), "{} should be interest rate", rt);
             assert!(!rt.is_fx());
             assert!(!rt.is_volatility());

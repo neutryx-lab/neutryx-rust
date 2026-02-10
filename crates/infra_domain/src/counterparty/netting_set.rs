@@ -125,7 +125,8 @@ impl NettingSet {
     /// Returns the book IDs allowed for cross-book netting.
     pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
 
-    /// Returns true if cross-book netting is enabled (multiple books specified).
+    /// Returns true if cross-book netting is enabled (multiple books
+    /// specified).
     pub fn allows_cross_book_netting(&self) -> bool { self.book_ids.len() > 1 }
 
     /// Returns true if the specified book is allowed in this netting set.
@@ -308,7 +309,8 @@ impl CrossBookNettingAgreement {
     /// Returns true if the specified book is included in this agreement.
     pub fn is_book_eligible(&self, book_id: &BookId) -> bool { self.book_ids.contains(book_id) }
 
-    /// Returns true if the specified product is eligible for cross-book netting.
+    /// Returns true if the specified product is eligible for cross-book
+    /// netting.
     pub fn is_product_eligible(&self, product: &str) -> bool {
         self.eligible_products.is_empty() || self.eligible_products.iter().any(|p| p == product)
     }

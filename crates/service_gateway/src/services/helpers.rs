@@ -18,10 +18,7 @@ use crate::error::ServerError;
 /// Load a JSON file and deserialise to `T`.
 ///
 /// On failure returns `ServerError::Internal` with the file *label*.
-pub fn load_json_file<T: DeserializeOwned>(
-    path: &Path,
-    label: &str,
-) -> Result<T, ServerError> {
+pub fn load_json_file<T: DeserializeOwned>(path: &Path, label: &str) -> Result<T, ServerError> {
     let content = std::fs::read_to_string(path)
         .map_err(|e| ServerError::Internal(format!("Failed to read {label}: {e}")))?;
     serde_json::from_str(&content)

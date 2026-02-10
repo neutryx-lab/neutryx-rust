@@ -7,11 +7,7 @@ use tracing::info;
 use crate::error::ServerError;
 
 /// Run the report command
-pub fn run(
-    report_type: &str,
-    portfolio: &str,
-    output_dir: &str,
-) -> Result<(), ServerError> {
+pub fn run(report_type: &str, portfolio: &str, output_dir: &str) -> Result<(), ServerError> {
     info!("Generating report...");
     info!("  Report type: {}", report_type);
     info!("  Portfolio: {}", portfolio);

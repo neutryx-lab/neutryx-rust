@@ -140,7 +140,8 @@ impl MonteCarloPricer {
     #[inline]
     pub fn config(&self) -> &MonteCarloConfig { &self.config }
 
-    /// Returns the current RNG seed for reproducible finite difference calculations.
+    /// Returns the current RNG seed for reproducible finite difference
+    /// calculations.
     #[inline]
     pub fn current_seed(&self) -> u64 { self.rng.seed() }
 
@@ -236,9 +237,23 @@ impl MonteCarloPricer {
         let h = (0.01 * gbm.spot).max(0.01);
         let seed = self.rng.seed();
         self.reset_with_seed(seed);
-        let up = self.reprice(GbmParams { spot: gbm.spot + h, ..gbm }, mode, df);
+        let up = self.reprice(
+            GbmParams {
+                spot: gbm.spot + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
         self.reset_with_seed(seed);
-        let dn = self.reprice(GbmParams { spot: gbm.spot - h, ..gbm }, mode, df);
+        let dn = self.reprice(
+            GbmParams {
+                spot: gbm.spot - h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
         (up - dn) / (2.0 * h)
     }
 
@@ -249,9 +264,23 @@ impl MonteCarloPricer {
         self.reset_with_seed(seed);
         let mid = self.reprice(gbm, mode, df);
         self.reset_with_seed(seed);
-        let up = self.reprice(GbmParams { spot: gbm.spot + h, ..gbm }, mode, df);
+        let up = self.reprice(
+            GbmParams {
+                spot: gbm.spot + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
         self.reset_with_seed(seed);
-        let dn = self.reprice(GbmParams { spot: gbm.spot - h, ..gbm }, mode, df);
+        let dn = self.reprice(
+            GbmParams {
+                spot: gbm.spot - h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
         (up - 2.0 * mid + dn) / (h * h)
     }
 
@@ -260,10 +289,20 @@ impl MonteCarloPricer {
         let h = 0.01;
         let seed = self.rng.seed();
         self.reset_with_seed(seed);
-        let up = self.reprice(GbmParams { volatility: gbm.volatility + h, ..gbm }, mode, df);
+        let up = self.reprice(
+            GbmParams {
+                volatility: gbm.volatility + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
         self.reset_with_seed(seed);
         let dn = self.reprice(
-            GbmParams { volatility: (gbm.volatility - h).max(0.001), ..gbm },
+            GbmParams {
+                volatility: (gbm.volatility - h).max(0.001),
+                ..gbm
+            },
             mode,
             df,
         );
@@ -276,7 +315,10 @@ impl MonteCarloPricer {
         let seed = self.rng.seed();
         self.reset_with_seed(seed);
         let short = self.reprice(
-            GbmParams { maturity: (gbm.maturity - h).max(0.001), ..gbm },
+            GbmParams {
+                maturity: (gbm.maturity - h).max(0.001),
+                ..gbm
+            },
             mode,
             df,
         );
@@ -291,10 +333,24 @@ impl MonteCarloPricer {
         let seed = self.rng.seed();
         self.reset_with_seed(seed);
         let df_up = (-(gbm.rate + h) * gbm.maturity).exp();
-        let up = self.reprice(GbmParams { rate: gbm.rate + h, ..gbm }, mode, df_up);
+        let up = self.reprice(
+            GbmParams {
+                rate: gbm.rate + h,
+                ..gbm
+            },
+            mode,
+            df_up,
+        );
         self.reset_with_seed(seed);
         let df_dn = (-(gbm.rate - h) * gbm.maturity).exp();
-        let dn = self.reprice(GbmParams { rate: gbm.rate - h, ..gbm }, mode, df_dn);
+        let dn = self.reprice(
+            GbmParams {
+                rate: gbm.rate - h,
+                ..gbm
+            },
+            mode,
+            df_dn,
+        );
         (up - dn) / (2.0 * h)
     }
 
@@ -306,23 +362,43 @@ impl MonteCarloPricer {
         let seed = self.rng.seed();
         self.reset_with_seed(seed);
         let uu = self.reprice(
-            GbmParams { spot: gbm.spot + h, volatility: gbm.volatility + k, ..gbm },
-            mode, df,
+            GbmParams {
+                spot: gbm.spot + h,
+                volatility: gbm.volatility + k,
+                ..gbm
+            },
+            mode,
+            df,
         );
         self.reset_with_seed(seed);
         let ud = self.reprice(
-            GbmParams { spot: gbm.spot + h, volatility: vol_dn, ..gbm },
-            mode, df,
+            GbmParams {
+                spot: gbm.spot + h,
+                volatility: vol_dn,
+                ..gbm
+            },
+            mode,
+            df,
         );
         self.reset_with_seed(seed);
         let du = self.reprice(
-            GbmParams { spot: gbm.spot - h, volatility: gbm.volatility + k, ..gbm },
-            mode, df,
+            GbmParams {
+                spot: gbm.spot - h,
+                volatility: gbm.volatility + k,
+                ..gbm
+            },
+            mode,
+            df,
         );
         self.reset_with_seed(seed);
         let dd = self.reprice(
-            GbmParams { spot: gbm.spot - h, volatility: vol_dn, ..gbm },
-            mode, df,
+            GbmParams {
+                spot: gbm.spot - h,
+                volatility: vol_dn,
+                ..gbm
+            },
+            mode,
+            df,
         );
         (uu - ud - du + dd) / (4.0 * h * k)
     }
@@ -334,10 +410,20 @@ impl MonteCarloPricer {
         self.reset_with_seed(seed);
         let mid = self.reprice(gbm, mode, df);
         self.reset_with_seed(seed);
-        let up = self.reprice(GbmParams { volatility: gbm.volatility + h, ..gbm }, mode, df);
+        let up = self.reprice(
+            GbmParams {
+                volatility: gbm.volatility + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
         self.reset_with_seed(seed);
         let dn = self.reprice(
-            GbmParams { volatility: (gbm.volatility - h).max(0.001), ..gbm },
+            GbmParams {
+                volatility: (gbm.volatility - h).max(0.001),
+                ..gbm
+            },
             mode,
             df,
         );
@@ -369,7 +455,8 @@ impl MonteCarloPricer {
         self.price_european(gbm, payoff, discount_factor)
     }
 
-    /// Prices a European option with Greeks, discount factor from a `YieldCurve`.
+    /// Prices a European option with Greeks, discount factor from a
+    /// `YieldCurve`.
     #[cfg(feature = "l1l2-integration")]
     pub fn price_with_greeks_and_curve<C>(
         &mut self,
@@ -457,7 +544,8 @@ impl MonteCarloPricer {
     // Phase 4: Path-Dependent Options Integration
     // ========================================================================
 
-    /// Prices a path-dependent option (Asian, Barrier, Lookback) using Monte Carlo.
+    /// Prices a path-dependent option (Asian, Barrier, Lookback) using Monte
+    /// Carlo.
     pub fn price_path_dependent(
         &mut self,
         gbm: GbmParams,
@@ -515,7 +603,8 @@ impl MonteCarloPricer {
         }
     }
 
-    /// Prices a path-dependent option with selected Greeks via bump-and-revalue.
+    /// Prices a path-dependent option with selected Greeks via
+    /// bump-and-revalue.
     pub fn price_path_dependent_with_greeks(
         &mut self,
         gbm: GbmParams,

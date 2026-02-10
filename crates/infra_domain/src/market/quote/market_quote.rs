@@ -222,26 +222,74 @@ mod tests {
 
     #[test]
     fn test_construction_and_validation() {
-        let q = MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.05, 1700000000000, DataSource::Bloomberg).unwrap();
+        let q = MarketQuote::new(
+            test_quote_id(),
+            QuoteType::Mid,
+            0.05,
+            1700000000000,
+            DataSource::Bloomberg,
+        )
+        .unwrap();
         assert!((q.value - 0.05).abs() < f64::EPSILON);
         assert_eq!(q.quote_type, QuoteType::Mid);
 
         // Zero and negative rates are valid
-        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.0, 0, DataSource::Bloomberg).is_ok());
-        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, -0.005, 0, DataSource::Bloomberg).is_ok());
+        assert!(MarketQuote::new(
+            test_quote_id(),
+            QuoteType::Mid,
+            0.0,
+            0,
+            DataSource::Bloomberg
+        )
+        .is_ok());
+        assert!(MarketQuote::new(
+            test_quote_id(),
+            QuoteType::Mid,
+            -0.005,
+            0,
+            DataSource::Bloomberg
+        )
+        .is_ok());
 
         // NaN and Infinite are rejected
-        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, f64::NAN, 0, DataSource::Bloomberg).is_err());
-        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, f64::INFINITY, 0, DataSource::Bloomberg).is_err());
-        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, f64::NEG_INFINITY, 0, DataSource::Bloomberg).is_err());
+        assert!(MarketQuote::new(
+            test_quote_id(),
+            QuoteType::Mid,
+            f64::NAN,
+            0,
+            DataSource::Bloomberg
+        )
+        .is_err());
+        assert!(MarketQuote::new(
+            test_quote_id(),
+            QuoteType::Mid,
+            f64::INFINITY,
+            0,
+            DataSource::Bloomberg
+        )
+        .is_err());
+        assert!(MarketQuote::new(
+            test_quote_id(),
+            QuoteType::Mid,
+            f64::NEG_INFINITY,
+            0,
+            DataSource::Bloomberg
+        )
+        .is_err());
     }
 
     #[test]
     fn test_builder_methods() {
-        let q = MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.05, 1000, DataSource::Bloomberg)
-            .unwrap()
-            .with_timestamp(2000)
-            .with_source(DataSource::Reuters);
+        let q = MarketQuote::new(
+            test_quote_id(),
+            QuoteType::Mid,
+            0.05,
+            1000,
+            DataSource::Bloomberg,
+        )
+        .unwrap()
+        .with_timestamp(2000)
+        .with_source(DataSource::Reuters);
         assert_eq!(q.timestamp, 2000);
         assert_eq!(q.source, DataSource::Reuters);
     }

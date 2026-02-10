@@ -11,12 +11,12 @@ use chrono::Utc;
 #[cfg(feature = "volatility")]
 use crate::{
     error::ServerError,
-    services::helpers,
     rest::dto::{
         BuildFxVolSurfaceRequest, BuildFxVolSurfaceResponse, BuildVolCubeRequest,
         BuildVolCubeResponse, CalibrationQualityDto, GetImpliedVolRequest, GetImpliedVolResponse,
         SabrCalibrationDto, StrikeTypeDto,
     },
+    services::helpers,
     state::{AppState, SabrParams, VolSurfaceEntry, VolSurfaceType},
 };
 
@@ -24,7 +24,13 @@ use crate::{
 #[cfg(feature = "volatility")]
 fn to_cache_params(sabr: &[SabrCalibrationDto]) -> Vec<SabrParams> {
     sabr.iter()
-        .map(|p| SabrParams { expiry: p.expiry, alpha: p.alpha, beta: p.beta, rho: p.rho, nu: p.nu })
+        .map(|p| SabrParams {
+            expiry: p.expiry,
+            alpha: p.alpha,
+            beta: p.beta,
+            rho: p.rho,
+            nu: p.nu,
+        })
         .collect()
 }
 
@@ -240,8 +246,7 @@ impl VolatilityService {
         request: &GetImpliedVolRequest,
         state: &Arc<AppState>,
     ) -> Result<GetImpliedVolResponse, ServerError> {
-        let entry =
-            helpers::resolve_cached(&state.vol_surface_cache, surface_id, "Surface")?;
+        let entry = helpers::resolve_cached(&state.vol_surface_cache, surface_id, "Surface")?;
 
         // Convert strike based on type
         let strike = match request.strike_type {

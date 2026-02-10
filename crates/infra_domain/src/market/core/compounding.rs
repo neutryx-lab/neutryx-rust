@@ -154,15 +154,24 @@ mod tests {
     fn test_from_str_synonyms() {
         // Simple synonyms
         for s in ["Simple", "simple", "SIMPLE", "none"] {
-            assert_eq!(s.parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Simple);
+            assert_eq!(
+                s.parse::<CompoundingMethod>().unwrap(),
+                CompoundingMethod::Simple
+            );
         }
         // Compounded synonyms
         for s in ["Compounded", "compounded", "compound", "daily"] {
-            assert_eq!(s.parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Compounded);
+            assert_eq!(
+                s.parse::<CompoundingMethod>().unwrap(),
+                CompoundingMethod::Compounded
+            );
         }
         // Averaged synonyms
         for s in ["Averaged", "averaged", "average", "arithmetic"] {
-            assert_eq!(s.parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Averaged);
+            assert_eq!(
+                s.parse::<CompoundingMethod>().unwrap(),
+                CompoundingMethod::Averaged
+            );
         }
         // Invalid
         assert!("unknown".parse::<CompoundingMethod>().is_err());

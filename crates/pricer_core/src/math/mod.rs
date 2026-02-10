@@ -3,7 +3,8 @@
 //! ## Submodules
 //! - `smoothing`: Smooth approximations using LogSumExp and sigmoid functions
 //! - `normal_dist`: Standard normal distribution (CDF, PDF, inverse CDF)
-//! - `formulas`: Closed-form pricing formulas (Black-Scholes, Bachelier, SABR)
+//! - `formulas`: Closed-form pricing formulas (GeneralisedBSM, Black-Scholes,
+//!   Bachelier, SABR)
 //! - `solvers`: Root-finding algorithms for numerical solving
 //! - `numeric`: Numeric conversion utilities (`from_f64`)
 //! - `linalg`: Linear algebra operations (requires `linalg` feature)

@@ -241,13 +241,28 @@ mod tests {
     fn test_accessors() {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
 
-        assert_eq!(IndexRequirement::RateCurve(RateIndex::Sofr).as_rate_index(), Some(&RateIndex::Sofr));
-        assert_eq!(IndexRequirement::SwaptionVol(RateIndex::Sonia).as_rate_index(), Some(&RateIndex::Sonia));
+        assert_eq!(
+            IndexRequirement::RateCurve(RateIndex::Sofr).as_rate_index(),
+            Some(&RateIndex::Sofr)
+        );
+        assert_eq!(
+            IndexRequirement::SwaptionVol(RateIndex::Sonia).as_rate_index(),
+            Some(&RateIndex::Sonia)
+        );
         assert_eq!(IndexRequirement::FxCurve(pair).as_rate_index(), None);
 
-        assert_eq!(IndexRequirement::FxCurve(pair).as_currency_pair(), Some(&pair));
-        assert_eq!(IndexRequirement::FxVol(pair).as_currency_pair(), Some(&pair));
-        assert_eq!(IndexRequirement::RateCurve(RateIndex::Sofr).as_currency_pair(), None);
+        assert_eq!(
+            IndexRequirement::FxCurve(pair).as_currency_pair(),
+            Some(&pair)
+        );
+        assert_eq!(
+            IndexRequirement::FxVol(pair).as_currency_pair(),
+            Some(&pair)
+        );
+        assert_eq!(
+            IndexRequirement::RateCurve(RateIndex::Sofr).as_currency_pair(),
+            None
+        );
     }
 
     #[test]

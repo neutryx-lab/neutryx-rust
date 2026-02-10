@@ -104,7 +104,8 @@ macro_rules! path_json_handler {
     };
 }
 
-/// State + JSON body -> `Result<(StatusCode::CREATED, Json<Resp>), ServerError>`
+/// State + JSON body -> `Result<(StatusCode::CREATED, Json<Resp>),
+/// ServerError>`
 ///
 /// Service signature: `fn(&Req, &AppState) -> Result<Resp, ServerError>`
 macro_rules! json_created_handler {

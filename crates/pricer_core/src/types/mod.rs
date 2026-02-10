@@ -4,8 +4,8 @@
 //! - `time`: Time utilities (`DayCountConvention`, `time_to_maturity`) for
 //!   financial calculations
 //! - `currency_pair`: FX rate types for foreign exchange calculations
-//! - `error`: Structured error types for pricing, solver, and
-//!   calibration operations
+//! - `error`: Structured error types for pricing, solver, and calibration
+//!   operations
 //! - `limit`: Limit enum for jump-aware curve interpolation
 //!
 //! # Note

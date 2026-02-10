@@ -275,7 +275,9 @@ mod tests {
 
     #[test]
     fn test_book_metadata_builder() {
-        let m = BookMetadata::new().with_creator("user1").with_updater("user2");
+        let m = BookMetadata::new()
+            .with_creator("user1")
+            .with_updater("user2");
         assert_eq!(m.created_by(), Some("user1"));
         assert_eq!(m.updated_by(), Some("user2"));
     }

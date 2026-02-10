@@ -785,7 +785,14 @@ mod tests {
     use crate::{market::DataSource, time::Tenor};
 
     fn make(ccy: Currency, tenor: Tenor, rt: RateType, qt: QuoteType, val: f64) -> MarketQuote {
-        MarketQuote::new(QuoteId::new(ccy, tenor, rt), qt, val, 1700000000000, DataSource::Bloomberg).unwrap()
+        MarketQuote::new(
+            QuoteId::new(ccy, tenor, rt),
+            qt,
+            val,
+            1700000000000,
+            DataSource::Bloomberg,
+        )
+        .unwrap()
     }
 
     #[test]
@@ -793,7 +800,13 @@ mod tests {
         let mut qs = MarketQuoteSet::new();
         assert!(qs.is_empty());
 
-        qs.insert(make(Currency::USD, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Mid, 0.05));
+        qs.insert(make(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Mid,
+            0.05,
+        ));
         assert_eq!(qs.len(), 1);
 
         let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -809,9 +822,27 @@ mod tests {
         let mut qs = MarketQuoteSet::new();
 
         // Bid/ask for mid computation
-        qs.insert(make(Currency::USD, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Bid, 0.049));
-        qs.insert(make(Currency::USD, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Ask, 0.051));
-        qs.insert(make(Currency::EUR, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Mid, 0.04));
+        qs.insert(make(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Bid,
+            0.049,
+        ));
+        qs.insert(make(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Ask,
+            0.051,
+        ));
+        qs.insert(make(
+            Currency::EUR,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Mid,
+            0.04,
+        ));
 
         let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let mid = qs.get_mid_quote(&id).unwrap();
@@ -823,7 +854,13 @@ mod tests {
 
         // Merge
         let mut other = MarketQuoteSet::new();
-        other.insert(make(Currency::GBP, Tenor::SixMonths, RateType::Swap, QuoteType::Mid, 0.03));
+        other.insert(make(
+            Currency::GBP,
+            Tenor::SixMonths,
+            RateType::Swap,
+            QuoteType::Mid,
+            0.03,
+        ));
         let priority = SourcePriority::default_priority();
         qs.merge(&other, &priority);
         assert_eq!(qs.len(), 4);

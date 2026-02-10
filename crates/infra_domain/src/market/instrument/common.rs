@@ -353,21 +353,33 @@ mod tests {
         let s = Date::from_ymd(2025, 1, 1).unwrap();
 
         // Annual 5Y
-        let ann = PaymentSchedule::generate(s, Date::from_ymd(2030, 1, 1).unwrap(), Frequency::Annual, 0);
+        let ann =
+            PaymentSchedule::generate(s, Date::from_ymd(2030, 1, 1).unwrap(), Frequency::Annual, 0);
         assert_eq!(ann.num_periods(), 5);
         assert_eq!(ann.start_date(), Some(s));
         assert_eq!(ann.end_date(), Some(Date::from_ymd(2030, 1, 1).unwrap()));
 
         // SemiAnnual 2Y
-        let semi = PaymentSchedule::generate(s, Date::from_ymd(2027, 1, 1).unwrap(), Frequency::SemiAnnual, 0);
+        let semi = PaymentSchedule::generate(
+            s,
+            Date::from_ymd(2027, 1, 1).unwrap(),
+            Frequency::SemiAnnual,
+            0,
+        );
         assert_eq!(semi.num_periods(), 4);
 
         // Quarterly 1Y
-        let q = PaymentSchedule::generate(s, Date::from_ymd(2026, 1, 1).unwrap(), Frequency::Quarterly, 0);
+        let q = PaymentSchedule::generate(
+            s,
+            Date::from_ymd(2026, 1, 1).unwrap(),
+            Frequency::Quarterly,
+            0,
+        );
         assert_eq!(q.num_periods(), 4);
 
         // With payment lag
-        let lag = PaymentSchedule::generate(s, Date::from_ymd(2026, 1, 1).unwrap(), Frequency::Annual, 2);
+        let lag =
+            PaymentSchedule::generate(s, Date::from_ymd(2026, 1, 1).unwrap(), Frequency::Annual, 2);
         assert_eq!(lag.num_periods(), 1);
         assert_eq!(lag.payment_dates()[0], Date::from_ymd(2026, 1, 3).unwrap());
 

@@ -22,17 +22,13 @@ pub mod cli;
 pub mod python;
 
 pub use error::ServerError;
-pub use rest::{GraphAppState, WsAppState};
-pub use state::AppState;
-
 // --- Python extension module registration ---
-
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
+pub use rest::{GraphAppState, WsAppState};
+pub use state::AppState;
 
 /// PyO3 module entry point for the `neutryx_py` Python package.
 #[cfg(feature = "python")]
 #[pymodule]
-fn neutryx_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    python::register_module(m)
-}
+fn neutryx_py(m: &Bound<'_, PyModule>) -> PyResult<()> { python::register_module(m) }

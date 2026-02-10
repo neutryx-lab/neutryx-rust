@@ -442,8 +442,7 @@ mod tests {
 
     #[test]
     fn test_heston_error_display() {
-        let param_err =
-            HestonError::Param(ParamValidationError::must_be_positive("spot", -100.0));
+        let param_err = HestonError::Param(ParamValidationError::must_be_positive("spot", -100.0));
         assert!(param_err.to_string().contains("spot"));
         assert!(param_err.to_string().contains("-100"));
 
@@ -491,18 +490,18 @@ mod tests {
         let cases: [(f64, f64, f64, f64, f64, f64, f64, f64); 14] = [
             (-100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0), // negative spot
             (0.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0),    // zero spot
-            (100.0, -0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0),  // negative v0
-            (100.0, 0.0, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0),    // zero v0
-            (100.0, 0.04, -0.04, 1.5, 0.3, -0.7, 0.05, 1.0),  // negative theta
-            (100.0, 0.04, 0.0, 1.5, 0.3, -0.7, 0.05, 1.0),    // zero theta
-            (100.0, 0.04, 0.04, -1.5, 0.3, -0.7, 0.05, 1.0),  // negative kappa
-            (100.0, 0.04, 0.04, 0.0, 0.3, -0.7, 0.05, 1.0),   // zero kappa
-            (100.0, 0.04, 0.04, 1.5, -0.3, -0.7, 0.05, 1.0),  // negative xi
-            (100.0, 0.04, 0.04, 1.5, 0.0, -0.7, 0.05, 1.0),   // zero xi
-            (100.0, 0.04, 0.04, 1.5, 0.3, 1.5, 0.05, 1.0),    // rho > 1
-            (100.0, 0.04, 0.04, 1.5, 0.3, -1.5, 0.05, 1.0),   // rho < -1
-            (100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, -1.0),  // negative maturity
-            (100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 0.0),   // zero maturity
+            (100.0, -0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0), // negative v0
+            (100.0, 0.0, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0),   // zero v0
+            (100.0, 0.04, -0.04, 1.5, 0.3, -0.7, 0.05, 1.0), // negative theta
+            (100.0, 0.04, 0.0, 1.5, 0.3, -0.7, 0.05, 1.0),   // zero theta
+            (100.0, 0.04, 0.04, -1.5, 0.3, -0.7, 0.05, 1.0), // negative kappa
+            (100.0, 0.04, 0.04, 0.0, 0.3, -0.7, 0.05, 1.0),  // zero kappa
+            (100.0, 0.04, 0.04, 1.5, -0.3, -0.7, 0.05, 1.0), // negative xi
+            (100.0, 0.04, 0.04, 1.5, 0.0, -0.7, 0.05, 1.0),  // zero xi
+            (100.0, 0.04, 0.04, 1.5, 0.3, 1.5, 0.05, 1.0),   // rho > 1
+            (100.0, 0.04, 0.04, 1.5, 0.3, -1.5, 0.05, 1.0),  // rho < -1
+            (100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, -1.0), // negative maturity
+            (100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 0.0),  // zero maturity
         ];
         for (s, v0, th, k, xi, rho, r, t) in cases {
             assert!(
@@ -553,8 +552,7 @@ mod tests {
         assert!(default_params().satisfies_feller());
 
         // 2 * 0.5 * 0.04 = 0.04 < 0.5^2 = 0.25 → violated
-        let violated =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
+        let violated = HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
         assert!(!violated.satisfies_feller());
     }
 
@@ -564,8 +562,7 @@ mod tests {
         assert!((ratio - 4.0 / 3.0).abs() < 1e-10);
 
         // 境界: 2 * 1.0 * 0.02 = 0.04 = 0.2^2
-        let boundary =
-            HestonParams::new(100.0_f64, 0.04, 0.02, 1.0, 0.2, -0.7, 0.05, 1.0).unwrap();
+        let boundary = HestonParams::new(100.0_f64, 0.04, 0.02, 1.0, 0.2, -0.7, 0.05, 1.0).unwrap();
         assert!((boundary.feller_ratio() - 1.0).abs() < 1e-10);
         assert!(!boundary.satisfies_feller()); // strictly >
     }
@@ -593,8 +590,7 @@ mod tests {
 
     #[test]
     fn test_model_feller_warning() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         assert!(!model.check_feller_condition());
         assert!(model.variance_floor() > 0.0);
@@ -615,8 +611,7 @@ mod tests {
 
     #[test]
     fn test_qe_moments_mean_reversion() {
-        let params =
-            HestonParams::new(100.0_f64, 0.01, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.01, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         let dt = 1.0 / 252.0;
 
@@ -666,8 +661,7 @@ mod tests {
 
     #[test]
     fn test_qe_exponential_scheme() {
-        let params =
-            HestonParams::new(100.0_f64, 0.001, 0.04, 0.5, 0.8, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.001, 0.04, 0.5, 0.8, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         let (m, _s2, psi) = model.compute_qe_moments(0.001, 1.0 / 12.0);
         let v_next = model.qe_exponential_step(m, psi, 0.5);
@@ -676,8 +670,7 @@ mod tests {
 
     #[test]
     fn test_qe_variance_positivity() {
-        let params =
-            HestonParams::new(100.0_f64, 0.001, 0.04, 0.5, 0.8, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.001, 0.04, 0.5, 0.8, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         let dt = 1.0 / 252.0;
         for uv in [0.01, 0.1, 0.5, 0.9, 0.99] {
@@ -694,7 +687,11 @@ mod tests {
             for v in [0.01, 0.04, 0.1] {
                 let v1 = model.qe_variance_step(v, dt, uv);
                 let v2 = model.qe_variance_step(v * 1.01, dt, uv);
-                assert!((v2 - v1).abs() < 0.01, "Discontinuity at v={v}: {}", (v2 - v1).abs());
+                assert!(
+                    (v2 - v1).abs() < 0.01,
+                    "Discontinuity at v={v}: {}",
+                    (v2 - v1).abs()
+                );
             }
         }
     }
@@ -753,7 +750,12 @@ mod tests {
     fn test_qe_step_multiple_shocks() {
         let model = default_model();
         let dt = 1.0 / 252.0;
-        for (z1, z2, uv) in [(0.5, 0.0, 0.5), (1.5, 0.5, 0.9), (-1.5, -0.5, 0.1), (0.0, 0.0, 0.5)] {
+        for (z1, z2, uv) in [
+            (0.5, 0.0, 0.5),
+            (1.5, 0.5, 0.9),
+            (-1.5, -0.5, 0.1),
+            (0.0, 0.0, 0.5),
+        ] {
             let (s, v) = model.qe_step(100.0, 0.04, dt, z1, z2, uv);
             assert!(s > 0.0, "Price must be positive for z1={z1}");
             assert!(v >= 0.0, "Variance must be non-negative for z1={z1}");
@@ -819,10 +821,16 @@ mod tests {
         let dt = 1.0 / 252.0;
 
         let pos = HestonModel::evolve_step(state, dt, &[2.0, 0.0, 0.5], &params);
-        assert!(pos.first > state.first, "Positive shock should increase price");
+        assert!(
+            pos.first > state.first,
+            "Positive shock should increase price"
+        );
 
         let neg = HestonModel::evolve_step(state, dt, &[-2.0, 0.0, 0.5], &params);
-        assert!(neg.first < state.first, "Negative shock should decrease price");
+        assert!(
+            neg.first < state.first,
+            "Negative shock should decrease price"
+        );
     }
 
     #[test]
@@ -863,8 +871,7 @@ mod tests {
 
     #[test]
     fn test_feller_violation_variance_floor() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         assert!(!params.satisfies_feller());
 
@@ -878,8 +885,7 @@ mod tests {
 
     #[test]
     fn test_feller_violation_evolve_robustness() {
-        let params =
-            HestonParams::new(100.0_f64, 0.01, 0.01, 0.1, 0.8, -0.9, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.01, 0.01, 0.1, 0.8, -0.9, 0.05, 1.0).unwrap();
         assert!(!params.satisfies_feller());
 
         let mut state = HestonModel::initial_state(&params);
@@ -889,30 +895,40 @@ mod tests {
             let z2 = (i as f64 * 0.17).cos();
             let uv = (i as f64 * 0.07).sin().abs();
             state = HestonModel::evolve_step(state, dt, &[z1, z2, uv], &params);
-            assert!(state.first > 0.0 && state.first.is_finite(), "Price invalid at step {i}");
-            assert!(state.second >= 0.0 && state.second.is_finite(), "Var invalid at step {i}");
+            assert!(
+                state.first > 0.0 && state.first.is_finite(),
+                "Price invalid at step {i}"
+            );
+            assert!(
+                state.second >= 0.0 && state.second.is_finite(),
+                "Var invalid at step {i}"
+            );
         }
     }
 
     #[test]
     fn test_extreme_rho_path_stability() {
         for rho in [-0.99_f64, -0.5, 0.0, 0.5, 0.99] {
-            let params =
-                HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, rho, 0.05, 1.0).unwrap();
+            let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, rho, 0.05, 1.0).unwrap();
             let mut state = HestonModel::initial_state(&params);
             let dt = 1.0 / 252.0;
             for i in 0..252 {
                 state = HestonModel::evolve_step(state, dt, &[0.1, 0.1, 0.5], &params);
-                assert!(state.first > 0.0 && state.first.is_finite(), "rho={rho} step {i}");
-                assert!(state.second >= 0.0 && state.second.is_finite(), "rho={rho} step {i}");
+                assert!(
+                    state.first > 0.0 && state.first.is_finite(),
+                    "rho={rho} step {i}"
+                );
+                assert!(
+                    state.second >= 0.0 && state.second.is_finite(),
+                    "rho={rho} step {i}"
+                );
             }
         }
     }
 
     #[test]
     fn test_extreme_mean_reversion_moments() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.08, 10.0, 0.2, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.08, 10.0, 0.2, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         let (mean, var, _) = model.compute_qe_moments(0.01, 0.1);
 
@@ -927,19 +943,25 @@ mod tests {
         let dt = 1.0 / 252.0;
         for v in [1e-8, 1.0] {
             let v_next = model.qe_variance_step(v, dt, 0.5);
-            assert!(v_next >= 0.0 && v_next.is_finite(), "Failed for v={v}: {v_next}");
+            assert!(
+                v_next >= 0.0 && v_next.is_finite(),
+                "Failed for v={v}: {v_next}"
+            );
         }
     }
 
     #[test]
     fn test_long_simulation_stability() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 5.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 5.0).unwrap();
         let mut state = HestonModel::initial_state(&params);
         let dt = 1.0 / 252.0;
         for i in 0..(252 * 5) {
             let phase = i as f64 * 0.1;
-            let dw = [0.1 * phase.sin(), 0.1 * phase.cos(), (phase * 0.7).sin().abs()];
+            let dw = [
+                0.1 * phase.sin(),
+                0.1 * phase.cos(),
+                (phase * 0.7).sin().abs(),
+            ];
             state = HestonModel::evolve_step(state, dt, &dw, &params);
         }
         assert!(state.first > 0.0 && state.first.is_finite());
@@ -948,8 +970,7 @@ mod tests {
 
     #[test]
     fn test_variance_mean_reversion_convergence() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.06, 2.0, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.06, 2.0, 0.3, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
 
         let mut mean = 0.04_f64;

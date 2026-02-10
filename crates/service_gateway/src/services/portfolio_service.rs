@@ -11,12 +11,12 @@ use chrono::Utc;
 #[cfg(feature = "risk")]
 use crate::{
     error::ServerError,
-    services::helpers,
     rest::dto::{
         AddTradesRequest, AddTradesResponse, CreatePortfolioRequest, CreatePortfolioResponse,
         GetPortfolioResponse, GroupGreeksDto, PortfolioGreeksRequest, PortfolioGreeksResponse,
         PortfolioPriceResponse, TradePvDto,
     },
+    services::helpers,
     state::{AppState, PortfolioEntry},
 };
 
@@ -59,8 +59,7 @@ impl PortfolioService {
         portfolio_id: &str,
         state: &Arc<AppState>,
     ) -> Result<GetPortfolioResponse, ServerError> {
-        let entry =
-            helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
+        let entry = helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
 
         Ok(GetPortfolioResponse {
             portfolio_id: portfolio_id.to_string(),
@@ -123,8 +122,7 @@ impl PortfolioService {
     ) -> Result<PortfolioPriceResponse, ServerError> {
         let start = Instant::now();
 
-        let entry =
-            helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
+        let entry = helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
 
         // Simulate pricing - in real implementation would use pricer_risk::RiskEngine
         let trade_pvs: Vec<TradePvDto> = entry
@@ -164,8 +162,7 @@ impl PortfolioService {
     ) -> Result<PortfolioGreeksResponse, ServerError> {
         let start = Instant::now();
 
-        let entry =
-            helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
+        let entry = helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
 
         let trade_count = entry.trade_count;
 

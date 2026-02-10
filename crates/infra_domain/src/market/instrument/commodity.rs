@@ -381,7 +381,10 @@ mod tests {
         assert!(oil.to_string().contains("Energy"));
         assert!(oil.to_string().contains("CrudeOil"));
         assert_eq!(CommodityType::Metals(MetalType::Gold).category(), "Metals");
-        assert_eq!(CommodityType::Agriculture(AgricultureType::Wheat).category(), "Agriculture");
+        assert_eq!(
+            CommodityType::Agriculture(AgricultureType::Wheat).category(),
+            "Agriculture"
+        );
     }
 
     #[test]
@@ -391,8 +394,10 @@ mod tests {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
             delivery_location: "Cushing, OK".to_string(),
             delivery_date: Date::from_ymd(2025, 6, 15).unwrap(),
-            quantity: 1000.0, unit: QuantityUnit::Barrels,
-            forward_price: 75.50, currency: Currency::USD,
+            quantity: 1000.0,
+            unit: QuantityUnit::Barrels,
+            forward_price: 75.50,
+            currency: Currency::USD,
         };
         assert!(fwd.validate().is_ok());
         assert!((fwd.notional_value() - 75500.0).abs() < 0.01);
@@ -406,11 +411,14 @@ mod tests {
         // Swap: valid + invalid dates + empty index
         let swap = CommoditySwap {
             commodity: CommodityType::Energy(EnergyType::NaturalGas),
-            fixed_price: 3.50, floating_index: "Henry Hub".to_string(),
+            fixed_price: 3.50,
+            floating_index: "Henry Hub".to_string(),
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
             maturity: Date::from_ymd(2026, 1, 1).unwrap(),
-            quantity_per_period: 10000.0, unit: QuantityUnit::MMBtu,
-            payment_frequency: Frequency::Monthly, currency: Currency::USD,
+            quantity_per_period: 10000.0,
+            unit: QuantityUnit::MMBtu,
+            payment_frequency: Frequency::Monthly,
+            currency: Currency::USD,
         };
         assert!(swap.validate().is_ok());
         let mut bad = swap.clone();
@@ -423,10 +431,14 @@ mod tests {
         // Vanilla option: valid + negative qty
         let opt = CommodityVanillaOption {
             commodity: CommodityType::Metals(MetalType::Gold),
-            strike: 2000.0, expiry: Date::from_ymd(2025, 6, 15).unwrap(),
-            option_type: OptionType::Call, exercise_style: ExerciseStyle::European,
-            quantity: 100.0, unit: QuantityUnit::TroyOunces,
-            settlement_type: SettlementType::Cash, currency: Currency::USD,
+            strike: 2000.0,
+            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            option_type: OptionType::Call,
+            exercise_style: ExerciseStyle::European,
+            quantity: 100.0,
+            unit: QuantityUnit::TroyOunces,
+            settlement_type: SettlementType::Cash,
+            currency: Currency::USD,
         };
         assert!(opt.validate().is_ok());
         let mut bad = opt.clone();
@@ -436,12 +448,15 @@ mod tests {
         // Asian option: valid + invalid averaging + expiry before averaging
         let asian = CommodityAsianOption {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
-            strike: 70.0, expiry: Date::from_ymd(2025, 12, 31).unwrap(),
+            strike: 70.0,
+            expiry: Date::from_ymd(2025, 12, 31).unwrap(),
             option_type: OptionType::Call,
             averaging_start: Date::from_ymd(2025, 10, 1).unwrap(),
             averaging_end: Date::from_ymd(2025, 12, 31).unwrap(),
             observation_frequency: Frequency::Daily,
-            quantity: 1000.0, unit: QuantityUnit::Barrels, currency: Currency::USD,
+            quantity: 1000.0,
+            unit: QuantityUnit::Barrels,
+            currency: Currency::USD,
         };
         assert!(asian.validate().is_ok());
         let mut bad = asian.clone();
@@ -455,9 +470,12 @@ mod tests {
         let spread = SpreadOption {
             commodity_1: CommodityType::Energy(EnergyType::CrudeOil),
             commodity_2: CommodityType::Energy(EnergyType::HeatingOil),
-            spread_strike: 10.0, expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            spread_strike: 10.0,
+            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
             option_type: OptionType::Call,
-            quantity: 1000.0, unit: QuantityUnit::Barrels, currency: Currency::USD,
+            quantity: 1000.0,
+            unit: QuantityUnit::Barrels,
+            currency: Currency::USD,
         };
         assert!(spread.validate().is_ok());
         let mut bad = spread.clone();

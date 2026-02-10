@@ -66,4 +66,3 @@ impl std::fmt::Display for CentralBank {
         write!(f, "{} ({})", self.name, self.code)
     }
 }
-

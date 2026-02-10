@@ -658,8 +658,10 @@ mod tests {
         // Deposit: valid + end_date
         let deposit = Deposit {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-            tenor: Tenor::ThreeMonths, rate: 0.045,
-            notional: 10_000_000.0, currency: Currency::USD,
+            tenor: Tenor::ThreeMonths,
+            rate: 0.045,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
         };
         assert!(deposit.validate().is_ok());
         assert_eq!(deposit.end_date(), Date::from_ymd(2025, 4, 15).unwrap());
@@ -668,8 +670,11 @@ mod tests {
         let fra = Fra {
             fixing_date: Date::from_ymd(2025, 3, 15).unwrap(),
             start_date: Date::from_ymd(2025, 3, 17).unwrap(),
-            tenor: Tenor::ThreeMonths, strike: 0.04,
-            notional: 10_000_000.0, currency: Currency::USD, rate_index: RateIndex::Sofr,
+            tenor: Tenor::ThreeMonths,
+            strike: 0.04,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            rate_index: RateIndex::Sofr,
         };
         assert!(fra.validate().is_ok());
 
@@ -677,16 +682,22 @@ mod tests {
         let bad_fra = Fra {
             fixing_date: Date::from_ymd(2025, 3, 20).unwrap(),
             start_date: Date::from_ymd(2025, 3, 15).unwrap(),
-            tenor: Tenor::ThreeMonths, strike: 0.04,
-            notional: 10_000_000.0, currency: Currency::USD, rate_index: RateIndex::Sofr,
+            tenor: Tenor::ThreeMonths,
+            strike: 0.04,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            rate_index: RateIndex::Sofr,
         };
         assert!(bad_fra.validate().is_err());
 
         // Futures: valid + implied_rate
         let futures = Futures {
             expiry_date: Date::from_ymd(2025, 6, 18).unwrap(),
-            underlying_tenor: Tenor::ThreeMonths, price: 95.50,
-            notional: 1_000_000.0, currency: Currency::USD, rate_index: RateIndex::Sofr,
+            underlying_tenor: Tenor::ThreeMonths,
+            price: 95.50,
+            notional: 1_000_000.0,
+            currency: Currency::USD,
+            rate_index: RateIndex::Sofr,
         };
         assert!(futures.validate().is_ok());
         assert!((futures.implied_rate() - 0.045).abs() < 1e-10);
@@ -694,8 +705,11 @@ mod tests {
         // Futures: invalid price
         let bad_futures = Futures {
             expiry_date: Date::from_ymd(2025, 6, 18).unwrap(),
-            underlying_tenor: Tenor::ThreeMonths, price: 120.0,
-            notional: 1_000_000.0, currency: Currency::USD, rate_index: RateIndex::Sofr,
+            underlying_tenor: Tenor::ThreeMonths,
+            price: 120.0,
+            notional: 1_000_000.0,
+            currency: Currency::USD,
+            rate_index: RateIndex::Sofr,
         };
         assert!(bad_futures.validate().is_err());
     }
@@ -705,10 +719,14 @@ mod tests {
         // IRS: valid + payer + end_date
         let irs = InterestRateSwap {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-            tenor: Tenor::FiveYears, fixed_rate: 0.04, spread: 0.0,
-            notional: 10_000_000.0, currency: Currency::USD,
+            tenor: Tenor::FiveYears,
+            fixed_rate: 0.04,
+            spread: 0.0,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
-            fixed_frequency: Frequency::SemiAnnual, float_frequency: Frequency::Quarterly,
+            fixed_frequency: Frequency::SemiAnnual,
+            float_frequency: Frequency::Quarterly,
             rate_index: RateIndex::Sofr,
         };
         assert!(irs.validate().is_ok());
@@ -717,42 +735,60 @@ mod tests {
 
         // OIS: valid + payer
         let ois = Ois {
-            rate_index: RateIndex::Sofr, fixed_rate: 0.04,
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
             end_date: Date::from_ymd(2030, 1, 15).unwrap(),
-            notional: 10_000_000.0, currency: Currency::USD,
-            payer_receiver: PayerReceiver::Payer, payment_frequency: Frequency::Annual,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Payer,
+            payment_frequency: Frequency::Annual,
         };
         assert!(ois.validate().is_ok());
         assert!(ois.is_payer());
 
         // OIS: invalid dates
         let bad_ois = Ois {
-            rate_index: RateIndex::Sofr, fixed_rate: 0.04,
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
             start_date: Date::from_ymd(2030, 1, 15).unwrap(),
             end_date: Date::from_ymd(2025, 1, 15).unwrap(),
-            notional: 10_000_000.0, currency: Currency::USD,
-            payer_receiver: PayerReceiver::Payer, payment_frequency: Frequency::Annual,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Payer,
+            payment_frequency: Frequency::Annual,
         };
         assert!(bad_ois.validate().is_err());
 
         // BasisSwap: valid
         let basis = BasisSwap {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-            tenor: Tenor::FiveYears, notional: 10_000_000.0, currency: Currency::USD,
+            tenor: Tenor::FiveYears,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
-            leg1_index: RateIndex::Sofr, leg1_spread: 0.0, leg1_frequency: Frequency::Quarterly,
-            leg2_index: RateIndex::Estr, leg2_spread: 0.001, leg2_frequency: Frequency::Quarterly,
+            leg1_index: RateIndex::Sofr,
+            leg1_spread: 0.0,
+            leg1_frequency: Frequency::Quarterly,
+            leg2_index: RateIndex::Estr,
+            leg2_spread: 0.001,
+            leg2_frequency: Frequency::Quarterly,
         };
         assert!(basis.validate().is_ok());
 
         // BasisSwap: invalid tenor (Overnight)
         let bad_basis = BasisSwap {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-            tenor: Tenor::Overnight, notional: 10_000_000.0, currency: Currency::USD,
+            tenor: Tenor::Overnight,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
-            leg1_index: RateIndex::Sofr, leg1_spread: 0.0, leg1_frequency: Frequency::Quarterly,
-            leg2_index: RateIndex::Estr, leg2_spread: 0.001, leg2_frequency: Frequency::Quarterly,
+            leg1_index: RateIndex::Sofr,
+            leg1_spread: 0.0,
+            leg1_frequency: Frequency::Quarterly,
+            leg2_index: RateIndex::Estr,
+            leg2_spread: 0.001,
+            leg2_frequency: Frequency::Quarterly,
         };
         assert!(bad_basis.validate().is_err());
     }
@@ -761,67 +797,88 @@ mod tests {
     fn test_rates_exotic_instruments() {
         // FRN: valid
         let frn = Frn {
-            coupon_index: RateIndex::Sofr, spread: 0.001,
+            coupon_index: RateIndex::Sofr,
+            spread: 0.001,
             reset_frequency: Frequency::Quarterly,
             principal_schedule: NotionalSchedule::constant(1_000_000.0),
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
-            maturity: Date::from_ymd(2030, 1, 1).unwrap(), currency: Currency::USD,
+            maturity: Date::from_ymd(2030, 1, 1).unwrap(),
+            currency: Currency::USD,
         };
         assert!(frn.validate().is_ok());
 
         // FRN: invalid dates
         let bad_frn = Frn {
-            coupon_index: RateIndex::Sofr, spread: 0.001,
+            coupon_index: RateIndex::Sofr,
+            spread: 0.001,
             reset_frequency: Frequency::Quarterly,
             principal_schedule: NotionalSchedule::constant(1_000_000.0),
             start_date: Date::from_ymd(2030, 1, 1).unwrap(),
-            maturity: Date::from_ymd(2025, 1, 1).unwrap(), currency: Currency::USD,
+            maturity: Date::from_ymd(2025, 1, 1).unwrap(),
+            currency: Currency::USD,
         };
         assert!(bad_frn.validate().is_err());
 
         // CMS: valid
         let cms = CmsSwap {
-            cms_tenor: Tenor::TenYears, convexity_adjustment: Some(0.001),
+            cms_tenor: Tenor::TenYears,
+            convexity_adjustment: Some(0.001),
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
-            tenor: Tenor::FiveYears, notional: 10_000_000.0, currency: Currency::EUR, spread: 0.0,
+            tenor: Tenor::FiveYears,
+            notional: 10_000_000.0,
+            currency: Currency::EUR,
+            spread: 0.0,
         };
         assert!(cms.validate().is_ok());
 
         // CMS: negative notional
         let bad_cms = CmsSwap {
-            cms_tenor: Tenor::TenYears, convexity_adjustment: None,
+            cms_tenor: Tenor::TenYears,
+            convexity_adjustment: None,
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
-            tenor: Tenor::FiveYears, notional: -100.0, currency: Currency::EUR, spread: 0.0,
+            tenor: Tenor::FiveYears,
+            notional: -100.0,
+            currency: Currency::EUR,
+            spread: 0.0,
         };
         assert!(bad_cms.validate().is_err());
 
         // Inflation: valid
         let infl = InflationSwap {
-            inflation_index: "CPI".to_string(), lag_months: 3,
+            inflation_index: "CPI".to_string(),
+            lag_months: 3,
             swap_type: SwapType::ZeroCoupon,
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
             maturity: Date::from_ymd(2030, 1, 1).unwrap(),
-            notional: 5_000_000.0, currency: Currency::USD, fixed_rate: 0.025,
+            notional: 5_000_000.0,
+            currency: Currency::USD,
+            fixed_rate: 0.025,
         };
         assert!(infl.validate().is_ok());
 
         // Inflation: invalid dates
         let bad_infl = InflationSwap {
-            inflation_index: "CPI".to_string(), lag_months: 3,
+            inflation_index: "CPI".to_string(),
+            lag_months: 3,
             swap_type: SwapType::YearOnYear,
             start_date: Date::from_ymd(2030, 1, 1).unwrap(),
             maturity: Date::from_ymd(2025, 1, 1).unwrap(),
-            notional: 5_000_000.0, currency: Currency::USD, fixed_rate: 0.025,
+            notional: 5_000_000.0,
+            currency: Currency::USD,
+            fixed_rate: 0.025,
         };
         assert!(bad_infl.validate().is_err());
 
         // Inflation: empty index
         let empty_idx = InflationSwap {
-            inflation_index: "".to_string(), lag_months: 3,
+            inflation_index: "".to_string(),
+            lag_months: 3,
             swap_type: SwapType::ZeroCoupon,
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
             maturity: Date::from_ymd(2030, 1, 1).unwrap(),
-            notional: 5_000_000.0, currency: Currency::USD, fixed_rate: 0.025,
+            notional: 5_000_000.0,
+            currency: Currency::USD,
+            fixed_rate: 0.025,
         };
         assert!(empty_idx.validate().is_err());
 

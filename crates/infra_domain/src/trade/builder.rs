@@ -200,7 +200,10 @@ mod tests {
             .notional(1_000_000.0)
             .currency(Currency::USD)
             .build();
-        assert!(matches!(config.validate(), Err(TradeError::InvalidSchedule(_))));
+        assert!(matches!(
+            config.validate(),
+            Err(TradeError::InvalidSchedule(_))
+        ));
 
         // Negative notional
         let config = LegConfig::builder()
@@ -208,7 +211,10 @@ mod tests {
             .notional(-1000.0)
             .currency(Currency::USD)
             .build();
-        assert!(matches!(config.validate(), Err(TradeError::InvalidNotional(_))));
+        assert!(matches!(
+            config.validate(),
+            Err(TradeError::InvalidNotional(_))
+        ));
     }
 
     #[test]
@@ -298,7 +304,10 @@ mod tests {
 
         let trade = Trade::builder().id("TRADE002").metadata(metadata).build();
 
-        assert_eq!(trade.metadata.counterparty, Some(CounterpartyId::new("BANK01")));
+        assert_eq!(
+            trade.metadata.counterparty,
+            Some(CounterpartyId::new("BANK01"))
+        );
         assert_eq!(trade.metadata.portfolio, Some(PortfolioId::new("RATES")));
     }
 }

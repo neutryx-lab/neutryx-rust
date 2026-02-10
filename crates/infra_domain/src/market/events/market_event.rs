@@ -202,21 +202,45 @@ mod tests {
     #[test]
     fn test_market_event() {
         // new + basic fields
-        let e = MarketEvent::new("EVT001", EventType::CentralBankMeeting, "FOMC Meeting", "2024-03-20", EventImportance::Critical, "Bloomberg");
+        let e = MarketEvent::new(
+            "EVT001",
+            EventType::CentralBankMeeting,
+            "FOMC Meeting",
+            "2024-03-20",
+            EventImportance::Critical,
+            "Bloomberg",
+        );
         assert_eq!(e.id, "EVT001");
         assert_eq!(e.event_type, EventType::CentralBankMeeting);
         assert!(e.is_high_impact());
 
         // builder pattern
-        let e2 = MarketEvent::new("EVT002", EventType::EconomicRelease, "US NFP", "2024-04-05", EventImportance::High, "Reuters")
-            .with_currency("USD").with_region("United States").with_time("08:30").with_timezone("America/New_York")
-            .with_economic_data(Some("200K".to_string()), Some("180K".to_string()), None);
+        let e2 = MarketEvent::new(
+            "EVT002",
+            EventType::EconomicRelease,
+            "US NFP",
+            "2024-04-05",
+            EventImportance::High,
+            "Reuters",
+        )
+        .with_currency("USD")
+        .with_region("United States")
+        .with_time("08:30")
+        .with_timezone("America/New_York")
+        .with_economic_data(Some("200K".to_string()), Some("180K".to_string()), None);
         assert_eq!(e2.currency, Some("USD".to_string()));
         assert!(e2.is_economic_release());
         assert!(!e2.is_central_bank_event());
 
         // display
-        let e3 = MarketEvent::new("EVT003", EventType::Holiday, "Christmas Day", "2024-12-25", EventImportance::Low, "Internal");
+        let e3 = MarketEvent::new(
+            "EVT003",
+            EventType::Holiday,
+            "Christmas Day",
+            "2024-12-25",
+            EventImportance::Low,
+            "Internal",
+        );
         let d = format!("{}", e3);
         assert!(d.contains("2024-12-25") && d.contains("Christmas Day"));
 
@@ -228,13 +252,27 @@ mod tests {
         assert!(ej.has_expected_jump());
 
         // negative jump (rate cut)
-        let cut = MarketEvent::new("ECB", EventType::CentralBankMeeting, "ECB", "2024-04-11", EventImportance::Critical, "Reuters")
-            .with_expected_jump_bps(-25.0);
+        let cut = MarketEvent::new(
+            "ECB",
+            EventType::CentralBankMeeting,
+            "ECB",
+            "2024-04-11",
+            EventImportance::Critical,
+            "Reuters",
+        )
+        .with_expected_jump_bps(-25.0);
         assert_eq!(cut.expected_jump_bps(), Some(-25.0));
 
         // zero jump
-        let zero = MarketEvent::new("BOJ", EventType::CentralBankMeeting, "BOJ", "2024-01-23", EventImportance::High, "Nikkei")
-            .with_expected_jump_bps(0.0);
+        let zero = MarketEvent::new(
+            "BOJ",
+            EventType::CentralBankMeeting,
+            "BOJ",
+            "2024-01-23",
+            EventImportance::High,
+            "Nikkei",
+        )
+        .with_expected_jump_bps(0.0);
         assert_eq!(zero.expected_jump_bps(), Some(0.0));
         assert!(zero.has_expected_jump());
     }

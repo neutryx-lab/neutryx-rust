@@ -4,9 +4,11 @@
 //! option pricing formulas:
 //!
 //! - [`generalised_bsm`] - Generalised Black-Scholes-Merton with cost-of-carry
-//! - [`black_scholes`] - Black-Scholes model (delegates to GeneralisedBSM, b = r)
+//! - [`black_scholes`] - Black-Scholes model (delegates to GeneralisedBSM, b =
+//!   r)
 //! - [`bachelier`] - Bachelier model for normal dynamics
-//! - [`garman_kohlhagen`] - Garman-Kohlhagen FX model (delegates to GeneralisedBSM, b = rd - rf)
+//! - [`garman_kohlhagen`] - Garman-Kohlhagen FX model (delegates to
+//!   GeneralisedBSM, b = rd - rf)
 //! - [`forward`] - Forward contract pricing
 //! - [`rates`] - Interest rate calculations from discount factors
 //! - [`sabr`] - SABR Hagan implied volatility formula
@@ -32,11 +34,11 @@ pub mod sabr;
 // Re-export main types at module level
 pub use bachelier::Bachelier;
 pub use black_scholes::BlackScholes;
-pub use generalised_bsm::GeneralisedBSM;
 pub use error::FormulaError;
 pub use forward::{forward_price, forward_pv, Forward, ForwardParams};
 pub use fx_delta::{delta_to_strike, strike_to_delta};
 pub use garman_kohlhagen::{fx_call_price, fx_put_price, GarmanKohlhagen, GarmanKohlhagenParams};
+pub use generalised_bsm::GeneralisedBSM;
 pub use rates::{
     continuous_forward_rate, df_from_zero_rate, simple_forward_rate, zero_rate_from_df,
 };

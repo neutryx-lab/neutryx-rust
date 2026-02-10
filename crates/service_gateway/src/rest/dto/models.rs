@@ -365,5 +365,4 @@ mod tests {
             _ => panic!("Expected VanillaOption"),
         }
     }
-
 }

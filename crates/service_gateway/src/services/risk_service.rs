@@ -8,12 +8,12 @@ use std::{sync::Arc, time::Instant};
 #[cfg(feature = "risk")]
 use crate::{
     error::ServerError,
-    services::helpers,
     rest::dto::{
         GreekTypeDto, GreeksModeDto, GreeksRequest, GreeksResultDto, PresetScenarioTypeDto,
         RiskGreeksResponse, ScenarioDefinition, ScenarioRequest, ScenarioResponse,
         ScenarioResultDto, ShiftTypeDto,
     },
+    services::helpers,
     state::AppState,
 };
 
@@ -32,11 +32,8 @@ impl RiskService {
     ) -> Result<RiskGreeksResponse, ServerError> {
         let start = Instant::now();
 
-        let portfolio_entry = helpers::resolve_cached(
-            &state.portfolio_cache,
-            &request.portfolio_id,
-            "Portfolio",
-        )?;
+        let portfolio_entry =
+            helpers::resolve_cached(&state.portfolio_cache, &request.portfolio_id, "Portfolio")?;
 
         // For now, we simulate Greeks calculation since we don't have actual trades
         // In a real implementation, we would use pricer_risk::RiskEngine
@@ -72,11 +69,8 @@ impl RiskService {
     ) -> Result<ScenarioResponse, ServerError> {
         let start = Instant::now();
 
-        let portfolio_entry = helpers::resolve_cached(
-            &state.portfolio_cache,
-            &request.portfolio_id,
-            "Portfolio",
-        )?;
+        let portfolio_entry =
+            helpers::resolve_cached(&state.portfolio_cache, &request.portfolio_id, "Portfolio")?;
 
         // Validate scenarios
         if request.scenarios.is_empty() {

@@ -7,15 +7,15 @@ mod cache;
 
 use std::sync::Arc;
 
+#[cfg(feature = "risk")]
+#[allow(unused_imports)]
+pub use cache::PortfolioEntry;
 #[allow(unused_imports)]
 pub use cache::SabrParams;
 pub use cache::{CurveEntry, FxVolEntry, InstrumentInput, TypedCache};
 #[cfg(feature = "models")]
 #[allow(unused_imports)]
 pub use cache::{ModelEntry, ModelType};
-#[cfg(feature = "risk")]
-#[allow(unused_imports)]
-pub use cache::PortfolioEntry;
 #[cfg(feature = "volatility")]
 #[allow(unused_imports)]
 pub use cache::{VolSurfaceEntry, VolSurfaceType};

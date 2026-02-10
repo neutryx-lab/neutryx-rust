@@ -451,12 +451,22 @@ mod tests {
 
     #[test]
     fn test_equity_underlying_and_types() {
-        assert!(matches!(EquityUnderlying::stock("AAPL"), EquityUnderlying::SingleStock { .. }));
-        assert!(matches!(EquityUnderlying::index("S&P 500"), EquityUnderlying::Index { .. }));
-        if let EquityUnderlying::SingleStock { ticker, exchange } = EquityUnderlying::stock_with_exchange("VOD", "LSE") {
+        assert!(matches!(
+            EquityUnderlying::stock("AAPL"),
+            EquityUnderlying::SingleStock { .. }
+        ));
+        assert!(matches!(
+            EquityUnderlying::index("S&P 500"),
+            EquityUnderlying::Index { .. }
+        ));
+        if let EquityUnderlying::SingleStock { ticker, exchange } =
+            EquityUnderlying::stock_with_exchange("VOD", "LSE")
+        {
             assert_eq!(ticker, "VOD");
             assert_eq!(exchange, Some("LSE".to_string()));
-        } else { panic!("Expected SingleStock"); }
+        } else {
+            panic!("Expected SingleStock");
+        }
 
         assert_eq!(AveragingType::Arithmetic, AveragingType::Arithmetic);
         assert_ne!(AveragingType::Arithmetic, AveragingType::Geometric);
@@ -472,74 +482,117 @@ mod tests {
 
         // Forward: valid + negative notional
         let fwd = EquityForward {
-            underlying: aapl(), forward_price: 150.0, settlement_date: exp,
-            notional: 100.0, currency: Currency::USD,
+            underlying: aapl(),
+            forward_price: 150.0,
+            settlement_date: exp,
+            notional: 100.0,
+            currency: Currency::USD,
         };
         assert!(fwd.validate().is_ok());
-        let mut bad = fwd.clone(); bad.notional = -100.0; assert!(bad.validate().is_err());
+        let mut bad = fwd.clone();
+        bad.notional = -100.0;
+        assert!(bad.validate().is_err());
 
         // Vanilla option
         let opt = EquityVanillaOption {
-            underlying: aapl(), strike: 150.0, expiry: exp,
-            option_type: OptionType::Call, exercise_style: ExerciseStyle::European,
-            notional: 100.0, currency: Currency::USD,
+            underlying: aapl(),
+            strike: 150.0,
+            expiry: exp,
+            option_type: OptionType::Call,
+            exercise_style: ExerciseStyle::European,
+            notional: 100.0,
+            currency: Currency::USD,
         };
         assert!(opt.validate().is_ok());
 
         // Barrier option
         let barrier = EquityBarrierOption {
-            vanilla: opt.clone(), barrier_level: 170.0,
-            barrier_type: BarrierType::KnockOut, barrier_direction: BarrierDirection::Up,
-            monitoring_frequency: MonitoringFrequency::Continuous, rebate: None,
+            vanilla: opt.clone(),
+            barrier_level: 170.0,
+            barrier_type: BarrierType::KnockOut,
+            barrier_direction: BarrierDirection::Up,
+            monitoring_frequency: MonitoringFrequency::Continuous,
+            rebate: None,
         };
         assert!(barrier.validate().is_ok());
 
         // Asian option: valid + negative observed
         let asian = AsianOption {
-            underlying: aapl(), strike: 150.0, expiry: exp, option_type: OptionType::Call,
-            averaging_type: AveragingType::Arithmetic, observation_frequency: Frequency::Daily,
-            observed_values: vec![145.0, 148.0], notional: 100.0, currency: Currency::USD,
+            underlying: aapl(),
+            strike: 150.0,
+            expiry: exp,
+            option_type: OptionType::Call,
+            averaging_type: AveragingType::Arithmetic,
+            observation_frequency: Frequency::Daily,
+            observed_values: vec![145.0, 148.0],
+            notional: 100.0,
+            currency: Currency::USD,
         };
         assert!(asian.validate().is_ok());
-        let mut bad = asian.clone(); bad.observed_values = vec![145.0, -10.0];
+        let mut bad = asian.clone();
+        bad.observed_values = vec![145.0, -10.0];
         bad.averaging_type = AveragingType::Geometric;
         assert!(bad.validate().is_err());
 
         // Lookback option: valid + missing strike
         let lookback = LookbackOption {
-            underlying: aapl(), strike: Some(150.0), expiry: exp,
-            option_type: OptionType::Call, lookback_type: LookbackType::FixedStrike,
+            underlying: aapl(),
+            strike: Some(150.0),
+            expiry: exp,
+            option_type: OptionType::Call,
+            lookback_type: LookbackType::FixedStrike,
             observation_start: Date::from_ymd(2025, 1, 1).unwrap(),
-            notional: 100.0, currency: Currency::USD,
+            notional: 100.0,
+            currency: Currency::USD,
         };
         assert!(lookback.validate().is_ok());
-        let mut bad = lookback.clone(); bad.strike = None; assert!(bad.validate().is_err());
+        let mut bad = lookback.clone();
+        bad.strike = None;
+        assert!(bad.validate().is_err());
 
         // Equity swap: valid + invalid dates
         let swap = EquitySwap {
-            underlying: aapl(), return_type: EquityReturnType::TotalReturn,
-            funding_index: "SOFR".to_string(), funding_spread: 0.001,
+            underlying: aapl(),
+            return_type: EquityReturnType::TotalReturn,
+            funding_index: "SOFR".to_string(),
+            funding_spread: 0.001,
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
             maturity: Date::from_ymd(2026, 1, 1).unwrap(),
-            notional: 1_000_000.0, currency: Currency::USD,
+            notional: 1_000_000.0,
+            currency: Currency::USD,
         };
         assert!(swap.validate().is_ok());
-        let mut bad = swap.clone(); bad.start_date = Date::from_ymd(2026, 1, 1).unwrap();
-        bad.maturity = Date::from_ymd(2025, 1, 1).unwrap(); assert!(bad.validate().is_err());
+        let mut bad = swap.clone();
+        bad.start_date = Date::from_ymd(2026, 1, 1).unwrap();
+        bad.maturity = Date::from_ymd(2025, 1, 1).unwrap();
+        assert!(bad.validate().is_err());
 
         // Basket option: valid + empty + bad weights
         let basket = BasketOption {
             components: vec![
-                BasketComponent { underlying: EquityUnderlying::stock("AAPL"), weight: 0.5 },
-                BasketComponent { underlying: EquityUnderlying::stock("MSFT"), weight: 0.5 },
+                BasketComponent {
+                    underlying: EquityUnderlying::stock("AAPL"),
+                    weight: 0.5,
+                },
+                BasketComponent {
+                    underlying: EquityUnderlying::stock("MSFT"),
+                    weight: 0.5,
+                },
             ],
-            strike: 100.0, expiry: exp, option_type: OptionType::Call,
+            strike: 100.0,
+            expiry: exp,
+            option_type: OptionType::Call,
             exercise_style: ExerciseStyle::European,
-            notional: 1000.0, currency: Currency::USD,
+            notional: 1000.0,
+            currency: Currency::USD,
             correlation_matrix_ref: Some("CORR001".to_string()),
         };
         assert!(basket.validate().is_ok());
-        let mut bad = basket.clone(); bad.components = vec![]; assert!(bad.validate().is_err());
-        let mut bad = basket.clone(); bad.components[1].weight = 0.3; assert!(bad.validate().is_err());
+        let mut bad = basket.clone();
+        bad.components = vec![];
+        assert!(bad.validate().is_err());
+        let mut bad = basket.clone();
+        bad.components[1].weight = 0.3;
+        assert!(bad.validate().is_err());
     }
 }

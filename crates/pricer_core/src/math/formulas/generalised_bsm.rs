@@ -140,45 +140,31 @@ impl<T: Float> GeneralisedBSM<T> {
 
     /// Returns d₁.
     #[inline]
-    pub fn d1(&self) -> T {
-        self.d1
-    }
+    pub fn d1(&self) -> T { self.d1 }
 
     /// Returns d₂.
     #[inline]
-    pub fn d2(&self) -> T {
-        self.d2
-    }
+    pub fn d2(&self) -> T { self.d2 }
 
     /// Returns the spot price.
     #[inline]
-    pub fn spot(&self) -> T {
-        self.spot
-    }
+    pub fn spot(&self) -> T { self.spot }
 
     /// Returns the risk-free rate.
     #[inline]
-    pub fn rate(&self) -> T {
-        self.rate
-    }
+    pub fn rate(&self) -> T { self.rate }
 
     /// Returns the volatility.
     #[inline]
-    pub fn volatility(&self) -> T {
-        self.volatility
-    }
+    pub fn volatility(&self) -> T { self.volatility }
 
     /// Returns exp(-rT).
     #[inline]
-    pub fn discount_factor(&self) -> T {
-        self.df
-    }
+    pub fn discount_factor(&self) -> T { self.df }
 
     /// Returns exp((b-r)T).
     #[inline]
-    pub fn carry_discount_factor(&self) -> T {
-        self.carry_df
-    }
+    pub fn carry_discount_factor(&self) -> T { self.carry_df }
 
     /// Computes option price.
     ///
@@ -214,17 +200,14 @@ impl<T: Float> GeneralisedBSM<T> {
     /// Γ = exp((b-r)T)·φ(d₁) / (S·σ·√T)
     #[inline]
     pub fn gamma(&self) -> T {
-        norm_pdf(self.d1) * self.carry_df
-            / (self.spot * self.volatility * self.sqrt_t)
+        norm_pdf(self.d1) * self.carry_df / (self.spot * self.volatility * self.sqrt_t)
     }
 
     /// Computes Vega (∂V/∂σ), unscaled. Same for call and put.
     ///
     /// ν = S·exp((b-r)T)·φ(d₁)·√T
     #[inline]
-    pub fn vega(&self) -> T {
-        self.spot * self.carry_df * norm_pdf(self.d1) * self.sqrt_t
-    }
+    pub fn vega(&self) -> T { self.spot * self.carry_df * norm_pdf(self.d1) * self.sqrt_t }
 
     /// Computes Theta (-∂V/∂T), unscaled.
     ///
@@ -237,11 +220,11 @@ impl<T: Float> GeneralisedBSM<T> {
         let two: T = from_f64(2.0);
         let b_minus_r = self.cost_of_carry - self.rate;
 
-        let term1 =
-            -self.spot * self.carry_df * pdf_d1 * self.volatility / (two * self.sqrt_t);
+        let term1 = -self.spot * self.carry_df * pdf_d1 * self.volatility / (two * self.sqrt_t);
 
         if is_call {
-            term1 - b_minus_r * self.spot * self.carry_df * nd1
+            term1
+                - b_minus_r * self.spot * self.carry_df * nd1
                 - self.rate * self.strike * self.df * nd2
         } else {
             term1

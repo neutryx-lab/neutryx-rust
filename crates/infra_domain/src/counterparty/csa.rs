@@ -311,7 +311,9 @@ mod tests {
         // Above threshold but excess below MTA
         assert!((csa.required_margin(1_040_000.0, &Currency::USD)).abs() < f64::EPSILON);
         // Above threshold with excess above MTA
-        assert!((csa.required_margin(1_100_000.0, &Currency::USD) - 100_000.0).abs() < f64::EPSILON);
+        assert!(
+            (csa.required_margin(1_100_000.0, &Currency::USD) - 100_000.0).abs() < f64::EPSILON
+        );
     }
 
     #[test]

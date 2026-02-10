@@ -11,12 +11,12 @@ use chrono::Utc;
 #[cfg(feature = "models")]
 use crate::{
     error::ServerError,
-    services::helpers,
     rest::dto::{
         CreateModelRequest, CreateModelResponse, GetModelResponse, InstrumentDto,
         ModelPricingRequest, ModelPricingResponse, ModelValidationDto, PricingGreeksDto,
         PricingMethodDto,
     },
+    services::helpers,
     state::{AppState, ModelEntry, ModelType},
 };
 
@@ -38,23 +38,39 @@ impl ModelService {
 
         let (model_type, name, params_json, validation) = match request {
             CreateModelRequest::Gbm { name, params } => (
-                ModelType::Gbm, name.clone(), ser(params)?,
+                ModelType::Gbm,
+                name.clone(),
+                ser(params)?,
                 Self::validate_gbm(params.drift, params.volatility),
             ),
             CreateModelRequest::Heston { name, params } => (
-                ModelType::Heston, name.clone(), ser(params)?,
-                Self::validate_heston(params.v0, params.kappa, params.theta, params.sigma, params.rho),
+                ModelType::Heston,
+                name.clone(),
+                ser(params)?,
+                Self::validate_heston(
+                    params.v0,
+                    params.kappa,
+                    params.theta,
+                    params.sigma,
+                    params.rho,
+                ),
             ),
             CreateModelRequest::HullWhite { name, params } => (
-                ModelType::HullWhite, name.clone(), ser(params)?,
+                ModelType::HullWhite,
+                name.clone(),
+                ser(params)?,
                 Self::validate_hull_white(params.mean_reversion, params.volatility),
             ),
             CreateModelRequest::Cir { name, params } => (
-                ModelType::Cir, name.clone(), ser(params)?,
+                ModelType::Cir,
+                name.clone(),
+                ser(params)?,
                 Self::validate_cir(params.kappa, params.theta, params.sigma),
             ),
             CreateModelRequest::Sabr { name, params } => (
-                ModelType::Sabr, name.clone(), ser(params)?,
+                ModelType::Sabr,
+                name.clone(),
+                ser(params)?,
                 Self::validate_sabr(params.alpha, params.beta, params.rho, params.nu),
             ),
         };
@@ -287,10 +303,20 @@ impl ModelService {
         let sign = if is_call { 1.0 } else { -1.0 };
         let delta = if is_call { nd1 } else { nd1 - 1.0 };
         let theta = (-(spot * pdf_d1 * vol) / (2.0 * maturity.sqrt())
-            - sign * risk_free_rate * strike * df * if is_call { nd2 } else { 1.0 - nd2 }) / 365.0;
+            - sign * risk_free_rate * strike * df * if is_call { nd2 } else { 1.0 - nd2 })
+            / 365.0;
         let rho = sign * strike * maturity * df * if is_call { nd2 } else { 1.0 - nd2 } / 100.0;
 
-        Ok((price, PricingGreeksDto { delta, gamma, vega, theta, rho }))
+        Ok((
+            price,
+            PricingGreeksDto {
+                delta,
+                gamma,
+                vega,
+                theta,
+                rho,
+            },
+        ))
     }
 
     /// Black-Scholes formula
@@ -316,28 +342,57 @@ impl ModelService {
     }
 
     fn validate_gbm(drift: f64, volatility: f64) -> ModelValidationDto {
-        let mut v = ModelValidationDto { valid: true, errors: vec![], warnings: vec![] };
+        let mut v = ModelValidationDto {
+            valid: true,
+            errors: vec![],
+            warnings: vec![],
+        };
         check_non_neg(&mut v.errors, volatility, "Volatility");
-        if volatility > 2.0 { v.warnings.push("Volatility > 200% is unusually high".into()); }
-        if drift.abs() > 1.0 { v.warnings.push("Drift > 100% is unusually high".into()); }
+        if volatility > 2.0 {
+            v.warnings
+                .push("Volatility > 200% is unusually high".into());
+        }
+        if drift.abs() > 1.0 {
+            v.warnings.push("Drift > 100% is unusually high".into());
+        }
         v.valid = v.errors.is_empty();
         v
     }
 
-    fn validate_heston(v0: f64, kappa: f64, theta: f64, sigma: f64, rho: f64) -> ModelValidationDto {
-        let mut v = ModelValidationDto { valid: true, errors: vec![], warnings: vec![] };
+    fn validate_heston(
+        v0: f64,
+        kappa: f64,
+        theta: f64,
+        sigma: f64,
+        rho: f64,
+    ) -> ModelValidationDto {
+        let mut v = ModelValidationDto {
+            valid: true,
+            errors: vec![],
+            warnings: vec![],
+        };
         check_non_neg(&mut v.errors, v0, "Initial variance (v0)");
         check_non_neg(&mut v.errors, kappa, "Mean reversion (kappa)");
         check_non_neg(&mut v.errors, theta, "Long-term variance (theta)");
         check_non_neg(&mut v.errors, sigma, "Vol-of-vol (sigma)");
         check_correlation(&mut v.errors, rho);
-        check_feller(&mut v.warnings, kappa, theta, sigma, "2*kappa*theta < sigma^2");
+        check_feller(
+            &mut v.warnings,
+            kappa,
+            theta,
+            sigma,
+            "2*kappa*theta < sigma^2",
+        );
         v.valid = v.errors.is_empty();
         v
     }
 
     fn validate_hull_white(mean_reversion: f64, volatility: f64) -> ModelValidationDto {
-        let mut v = ModelValidationDto { valid: true, errors: vec![], warnings: vec![] };
+        let mut v = ModelValidationDto {
+            valid: true,
+            errors: vec![],
+            warnings: vec![],
+        };
         check_non_neg(&mut v.errors, mean_reversion, "Mean reversion");
         check_non_neg(&mut v.errors, volatility, "Volatility");
         v.valid = v.errors.is_empty();
@@ -345,7 +400,11 @@ impl ModelService {
     }
 
     fn validate_cir(kappa: f64, theta: f64, sigma: f64) -> ModelValidationDto {
-        let mut v = ModelValidationDto { valid: true, errors: vec![], warnings: vec![] };
+        let mut v = ModelValidationDto {
+            valid: true,
+            errors: vec![],
+            warnings: vec![],
+        };
         check_non_neg(&mut v.errors, kappa, "Mean reversion (kappa)");
         check_non_neg(&mut v.errors, theta, "Long-term mean (theta)");
         check_non_neg(&mut v.errors, sigma, "Volatility (sigma)");
@@ -355,9 +414,15 @@ impl ModelService {
     }
 
     fn validate_sabr(alpha: f64, beta: f64, rho: f64, nu: f64) -> ModelValidationDto {
-        let mut v = ModelValidationDto { valid: true, errors: vec![], warnings: vec![] };
+        let mut v = ModelValidationDto {
+            valid: true,
+            errors: vec![],
+            warnings: vec![],
+        };
         check_non_neg(&mut v.errors, alpha, "Alpha");
-        if beta < 0.0 || beta > 1.0 { v.errors.push("Beta must be in [0, 1]".into()); }
+        if beta < 0.0 || beta > 1.0 {
+            v.errors.push("Beta must be in [0, 1]".into());
+        }
         check_correlation(&mut v.errors, rho);
         check_non_neg(&mut v.errors, nu, "Nu");
         v.valid = v.errors.is_empty();
@@ -377,12 +442,16 @@ impl ModelService {
 
 #[cfg(feature = "models")]
 fn check_non_neg(errors: &mut Vec<String>, val: f64, name: &str) {
-    if val < 0.0 { errors.push(format!("{name} must be non-negative")); }
+    if val < 0.0 {
+        errors.push(format!("{name} must be non-negative"));
+    }
 }
 
 #[cfg(feature = "models")]
 fn check_correlation(errors: &mut Vec<String>, rho: f64) {
-    if rho < -1.0 || rho > 1.0 { errors.push("Correlation (rho) must be in [-1, 1]".into()); }
+    if rho < -1.0 || rho > 1.0 {
+        errors.push("Correlation (rho) must be in [-1, 1]".into());
+    }
 }
 
 #[cfg(feature = "models")]

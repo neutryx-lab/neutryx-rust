@@ -30,62 +30,49 @@
 #![allow(clippy::cast_lossless)]
 #![allow(clippy::no_effect_underscore_binding)]
 
-//! # pricer_core: Mathematical Foundation for XVA Pricing Library
+//! # pricer_core: Mathematical Foundation for Derivatives Pricing
 //!
 //! ## Layer 1 (Foundation) Role
 //!
 //! pricer_core serves as the bottom layer of the 4-layer architecture,
 //! providing:
+//! - Closed-form pricing formulas (`math::formulas`): GeneralisedBSM,
+//!   Black-Scholes, Garman-Kohlhagen, Bachelier, SABR, forward pricing
+//! - Standard normal distribution (`math::normal_dist`): CDF, PDF, inverse CDF
 //! - Differentiable smoothing functions (`math::smoothing`)
-//! - Dual number type integration (`types::dual`)
+//! - Numerical solvers (`math::solvers`): Newton-Raphson, Levenberg-Marquardt
+//! - SoA kernel IR (`kernel`): aligned buffers, cashflow/callable kernels
 //! - Traits for pricing and differentiability (`traits`)
-//! - Time types: `Date`, `DayCounter`, `BusinessDayConvention` (re-exported
-//!   from `infra_domain`)
-//! - Currency types: `Currency` (re-exported from `infra_domain`)
-//! - Convenience: `DayCountConvention` wrapper for common day count conventions
-//! - Error types: `PricingError`, `DateError`, `CurrencyError` (`types::error`)
+//! - Error types: `PricingError`, `CalibrationError`, `SolverError`
+//!   (`types::error`)
 //!
 //! ## Zero Dependency Principle
 //!
 //! Layer 1 has no dependencies on other pricer_* crates, with minimal external
 //! dependencies:
 //! - num-traits: Traits for generic numerical computation
-//! - num-dual: Dual number types and automatic differentiation (optional)
 //! - infra_domain: Authoritative source for Date, Currency, DayCounter
 //! - serde: Serialisation support (optional)
-//!
-//! ## Stable Rust Toolchain
-//!
-//! Layer 1 can be built with stable Rust only (nightly not required).
-//! The Enzyme AD engine is isolated in Layer 3.
 //!
 //! ## Usage Examples
 //!
 //! ```rust
-//! use pricer_core::math::smoothing::smooth_max;
-//! use infra_domain::{time::{Date, DayCounter}, market::Currency};
+//! use pricer_core::math::formulas::GeneralisedBSM;
 //!
-//! // Date operations (from infra_domain)
-//! let start = Date::from_ymd(2024, 1, 1).unwrap();
-//! let end = Date::from_ymd(2024, 7, 1).unwrap();
-//! let year_fraction = DayCounter::Actual365Fixed.year_fraction(start, end);
-//!
-//! // Currency information (from infra_domain)
-//! let usd = Currency::USD;
-//! assert_eq!(usd.code(), "USD");
-//! assert_eq!(usd.decimal_places(), 2);
-//!
-//! // Computation with f64
-//! let result = smooth_max(3.0_f64, 5.0_f64, 1e-6_f64);
-//! # assert!((result - 5.0_f64).abs() < 1e-3);
+//! // Black-Scholes case: b = r
+//! let bsm = GeneralisedBSM::new(100.0_f64, 100.0, 0.05, 0.05, 0.2, 1.0).unwrap();
+//! let call = bsm.price(true);
+//! let put = bsm.price(false);
+//! assert!(call > 0.0 && put > 0.0);
 //! ```
 //!
 //! ## Feature Flags
 //!
-//! - `num-dual-mode` (default): Use num-dual for automatic differentiation
-//!   (verification mode)
-//! - `enzyme-mode`: Use f64 directly (Enzyme handles AD at LLVM level)
-//! - `serde` (default): Enable serialisation for Date, Currency, DayCounter
+//! - `serde` (default): Enable serialisation
+//! - `equity` (default): Enable equity-specific kernel types
+//! - `parallel` (default): Enable parallel computation via rayon
+//! - `rng`: Random number generation (Sobol, Mersenne Twister)
+//! - `linalg`: Linear algebra operations via nalgebra
 
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]

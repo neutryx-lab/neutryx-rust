@@ -54,4 +54,3 @@ impl std::fmt::Display for CurrencyPair {
         write!(f, "{}/{}", self.base.code(), self.quote.code())
     }
 }
-

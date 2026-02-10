@@ -316,16 +316,37 @@ fn create_ws_trade_graph(trade_id: &str) -> pricer_pricing::graph::ComputationGr
     use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
     let mk = |id, nt, label: &str, sens, group| GraphNode {
-        id, node_type: nt, label: label.to_string(), value: None,
-        is_sensitivity_target: sens, group, trade_ids: vec![trade_id.to_string()],
+        id,
+        node_type: nt,
+        label: label.to_string(),
+        value: None,
+        is_sensitivity_target: sens,
+        group,
+        trade_ids: vec![trade_id.to_string()],
     };
 
     let mut builder = GraphBuilder::with_capacity(5, 5);
     let input_id = format!("{trade_id}_input");
     let output_id = format!("{trade_id}_price");
-    builder.add_node(mk(input_id.clone(), NodeType::Input, "rate", true, NodeGroup::Sensitivity));
-    builder.add_node(mk(output_id.clone(), NodeType::Output, "price", false, NodeGroup::Output));
-    builder.add_edge(GraphEdge { source: input_id, target: output_id, weight: None });
+    builder.add_node(mk(
+        input_id.clone(),
+        NodeType::Input,
+        "rate",
+        true,
+        NodeGroup::Sensitivity,
+    ));
+    builder.add_node(mk(
+        output_id.clone(),
+        NodeType::Output,
+        "price",
+        false,
+        NodeGroup::Output,
+    ));
+    builder.add_edge(GraphEdge {
+        source: input_id,
+        target: output_id,
+        weight: None,
+    });
     builder.build(Some(trade_id.to_string()))
 }
 

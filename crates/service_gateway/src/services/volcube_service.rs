@@ -17,7 +17,6 @@ use pricer_models::{
 
 use crate::{
     error::ServerError,
-    services::helpers,
     rest::dto::demo::{
         CalibrationMetadata, CalibrationParameters, CellDiagnostics, CellJacobian,
         FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
@@ -26,6 +25,7 @@ use crate::{
         VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
         VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
+    services::helpers,
     state::AppState,
 };
 
@@ -47,7 +47,10 @@ fn extract_vol_surface_strings(section: &str, field: &str) -> Option<Vec<String>
 
 /// Extract a string field from a JSON value, returning empty string if absent.
 fn json_str(v: &serde_json::Value, key: &str) -> String {
-    v.get(key).and_then(|s| s.as_str()).unwrap_or("").to_string()
+    v.get(key)
+        .and_then(|s| s.as_str())
+        .unwrap_or("")
+        .to_string()
 }
 
 /// Parse smile points from a JSON quote's "smile" array.
@@ -76,10 +79,17 @@ impl VolcubeService {
     pub fn get_ir_vol_currencies(
         _state: &Arc<AppState>,
     ) -> Result<IrVolCurrenciesResponse, ServerError> {
-        let currencies = extract_vol_surface_strings("irVol", "currency")
-            .unwrap_or_else(|| vec!["USD", "EUR", "JPY", "GBP"].into_iter().map(String::from).collect());
+        let currencies = extract_vol_surface_strings("irVol", "currency").unwrap_or_else(|| {
+            vec!["USD", "EUR", "JPY", "GBP"]
+                .into_iter()
+                .map(String::from)
+                .collect()
+        });
         Ok(IrVolCurrenciesResponse {
-            currencies: currencies.into_iter().map(|c| IrVolCurrency { currency: c }).collect(),
+            currencies: currencies
+                .into_iter()
+                .map(|c| IrVolCurrency { currency: c })
+                .collect(),
         })
     }
 
@@ -108,13 +118,27 @@ impl VolcubeService {
                 .unwrap_or_default()
         } else {
             vec![
-                IrVolQuote { expiry: "1M".into(), tenor: "1Y".into(), atm_vol: 0.0050,
+                IrVolQuote {
+                    expiry: "1M".into(),
+                    tenor: "1Y".into(),
+                    atm_vol: 0.0050,
                     smile: Some(vec![
-                        SmilePoint { strike_offset_bp: -50.0, vol: 0.0055 },
-                        SmilePoint { strike_offset_bp: 50.0, vol: 0.0045 },
+                        SmilePoint {
+                            strike_offset_bp: -50.0,
+                            vol: 0.0055,
+                        },
+                        SmilePoint {
+                            strike_offset_bp: 50.0,
+                            vol: 0.0045,
+                        },
                     ]),
                 },
-                IrVolQuote { expiry: "1Y".into(), tenor: "5Y".into(), atm_vol: 0.0065, smile: None },
+                IrVolQuote {
+                    expiry: "1Y".into(),
+                    tenor: "5Y".into(),
+                    atm_vol: 0.0065,
+                    smile: None,
+                },
             ]
         };
 
@@ -127,8 +151,12 @@ impl VolcubeService {
 
     /// Get FX vol pairs
     pub fn get_fx_vol_pairs(_state: &Arc<AppState>) -> Result<FxVolPairsResponse, ServerError> {
-        let pairs = extract_vol_surface_strings("fxVol", "currencyPair")
-            .unwrap_or_else(|| vec!["EURUSD", "USDJPY"].into_iter().map(String::from).collect());
+        let pairs = extract_vol_surface_strings("fxVol", "currencyPair").unwrap_or_else(|| {
+            vec!["EURUSD", "USDJPY"]
+                .into_iter()
+                .map(String::from)
+                .collect()
+        });
         Ok(FxVolPairsResponse {
             pairs: pairs.into_iter().map(|p| FxVolPair { pair: p }).collect(),
         })
@@ -227,7 +255,9 @@ impl VolcubeService {
             Path::new("demo/data/input/irvol").join(format!("{}.json", currency.to_lowercase()));
 
         let data: serde_json::Value = helpers::load_json_value(&vol_path, "swaption vol data")
-            .map_err(|_| ServerError::NotFound(format!("Swaption vol data not found for: {currency}")))?;
+            .map_err(|_| {
+                ServerError::NotFound(format!("Swaption vol data not found for: {currency}"))
+            })?;
 
         let instruments: Vec<SwaptionInstrument> = data
             .get("quotes")
@@ -270,8 +300,10 @@ impl VolcubeService {
         // 1. Load vol data from file
         let vol_path = Path::new("demo/data/input/irvol")
             .join(format!("{}.json", request.index.to_lowercase()));
-        let data: serde_json::Value = helpers::load_json_value(&vol_path, "vol data")
-            .map_err(|_| ServerError::NotFound(format!("Vol data not found for: {}", request.index)))?;
+        let data: serde_json::Value =
+            helpers::load_json_value(&vol_path, "vol data").map_err(|_| {
+                ServerError::NotFound(format!("Vol data not found for: {}", request.index))
+            })?;
 
         let quotes = data
             .get("quotes")
@@ -385,7 +417,13 @@ impl VolcubeService {
             let vol_scale = if is_normal_vol { 0.01 } else { 1.0 };
             for pt in &smile_pts {
                 let strike = forward + pt.strike_offset_bp / 10_000.0;
-                builder.add_quote(expiry_years, tenor_years, strike, pt.vol * vol_scale, forward);
+                builder.add_quote(
+                    expiry_years,
+                    tenor_years,
+                    strike,
+                    pt.vol * vol_scale,
+                    forward,
+                );
                 strikes.push((strike, format!("{:+.0}bp", pt.strike_offset_bp)));
             }
             cell_quote_strikes.insert(key, (forward, expiry_years, strikes));
@@ -499,8 +537,10 @@ impl VolcubeService {
 
         let vol_path = Path::new("demo/data/input/fxvol")
             .join(format!("{}.json", request.pair.to_lowercase()));
-        let data: serde_json::Value = helpers::load_json_value(&vol_path, "FX vol data")
-            .map_err(|_| ServerError::NotFound(format!("FX vol data not found for: {}", request.pair)))?;
+        let data: serde_json::Value =
+            helpers::load_json_value(&vol_path, "FX vol data").map_err(|_| {
+                ServerError::NotFound(format!("FX vol data not found for: {}", request.pair))
+            })?;
 
         let quotes = data
             .get("quotes")

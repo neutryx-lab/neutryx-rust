@@ -282,5 +282,4 @@ mod tests {
         assert!(matches!(request.strike_type, StrikeTypeDto::Absolute));
         assert!(request.forward.is_none());
     }
-
 }

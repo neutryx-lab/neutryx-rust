@@ -28,6 +28,4 @@ pub fn register_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 /// Get the Neutryx library version
 #[pyfunction]
-fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
-}
+fn version() -> &'static str { env!("CARGO_PKG_VERSION") }

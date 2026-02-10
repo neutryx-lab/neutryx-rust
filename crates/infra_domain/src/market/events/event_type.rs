@@ -114,11 +114,22 @@ mod tests {
 
     #[test]
     fn test_is_turn() {
-        for t in [EventType::Turn, EventType::TurnOfYear, EventType::TurnOfQuarter, EventType::TurnOfMonth] {
+        for t in [
+            EventType::Turn,
+            EventType::TurnOfYear,
+            EventType::TurnOfQuarter,
+            EventType::TurnOfMonth,
+        ] {
             assert!(t.is_turn());
         }
-        for t in [EventType::CentralBankMeeting, EventType::EconomicRelease, EventType::Holiday,
-                   EventType::News, EventType::Expiry, EventType::Other] {
+        for t in [
+            EventType::CentralBankMeeting,
+            EventType::EconomicRelease,
+            EventType::Holiday,
+            EventType::News,
+            EventType::Expiry,
+            EventType::Other,
+        ] {
             assert!(!t.is_turn());
         }
     }

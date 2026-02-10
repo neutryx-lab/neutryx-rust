@@ -26,9 +26,9 @@ use crate::rest::dto::CurveInstrumentInput;
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar,
-        DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
-        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse, JacobianData,
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
+        DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest, ForwardRateResponse,
+        ForwardSwapRateRequest, ForwardSwapRateResponse, JacobianData,
     },
     state::{AppState, CurveEntry, InstrumentInput},
 };
@@ -313,9 +313,10 @@ impl CurveService {
             })
             .collect();
 
-        let curve_id = state
-            .curve_cache
-            .add(CurveEntry { curve, instruments: instrument_inputs });
+        let curve_id = state.curve_cache.add(CurveEntry {
+            curve,
+            instruments: instrument_inputs,
+        });
 
         let elapsed = start.elapsed();
 
@@ -490,37 +491,53 @@ mod tests {
 
     fn inst(itype: &str, tenor: &str, rate: f64) -> CurveInstrumentInput {
         CurveInstrumentInput {
-            instrument_type: itype.to_string(), tenor: tenor.to_string(), rate,
-            event_date: None, expected_rate_spike: None, end_date: None,
+            instrument_type: itype.to_string(),
+            tenor: tenor.to_string(),
+            rate,
+            event_date: None,
+            expected_rate_spike: None,
+            end_date: None,
         }
     }
 
     fn event(date: &str, spike: f64, end: Option<&str>) -> CurveInstrumentInput {
         CurveInstrumentInput {
-            instrument_type: "event".to_string(), tenor: String::new(), rate: 0.0,
-            event_date: Some(date.to_string()), expected_rate_spike: Some(spike),
+            instrument_type: "event".to_string(),
+            tenor: String::new(),
+            rate: 0.0,
+            event_date: Some(date.to_string()),
+            expected_rate_spike: Some(spike),
             end_date: end.map(String::from),
         }
     }
 
-    fn build_req(ref_date: Option<&str>, instruments: Vec<CurveInstrumentInput>) -> CurveBuildRequest {
+    fn build_req(
+        ref_date: Option<&str>,
+        instruments: Vec<CurveInstrumentInput>,
+    ) -> CurveBuildRequest {
         CurveBuildRequest {
-            index: "USD-SOFR".to_string(), currency: "USD".to_string(),
-            reference_date: ref_date.map(String::from), instruments,
+            index: "USD-SOFR".to_string(),
+            currency: "USD".to_string(),
+            reference_date: ref_date.map(String::from),
+            instruments,
             interpolation: BootstrapInterpolation::Linear,
             bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10, max_iterations: 100,
+            tolerance: 1e-10,
+            max_iterations: 100,
         }
     }
 
     #[test]
     fn test_build_simple_curve() {
         let state = create_test_state();
-        let request = build_req(None, vec![
-            inst("deposit", "1M", 0.05),
-            inst("swap", "1Y", 0.052),
-            inst("swap", "2Y", 0.054),
-        ]);
+        let request = build_req(
+            None,
+            vec![
+                inst("deposit", "1M", 0.05),
+                inst("swap", "1Y", 0.052),
+                inst("swap", "2Y", 0.054),
+            ],
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
 
@@ -537,11 +554,14 @@ mod tests {
     #[test]
     fn test_build_curve_with_event() {
         let state = create_test_state();
-        let request = build_req(Some("2026-01-29"), vec![
-            inst("deposit", "1M", 0.05),
-            event("2026-03-18", -0.0025, None),
-            inst("swap", "1Y", 0.052),
-        ]);
+        let request = build_req(
+            Some("2026-01-29"),
+            vec![
+                inst("deposit", "1M", 0.05),
+                event("2026-03-18", -0.0025, None),
+                inst("swap", "1Y", 0.052),
+            ],
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
 
@@ -554,12 +574,15 @@ mod tests {
     #[test]
     fn test_build_curve_with_turn_event() {
         let state = create_test_state();
-        let request = build_req(Some("2026-01-29"), vec![
-            inst("deposit", "1M", 0.05),
-            event("2026-12-31", 0.001, Some("2027-01-04")),
-            inst("swap", "1Y", 0.052),
-            inst("swap", "2Y", 0.054),
-        ]);
+        let request = build_req(
+            Some("2026-01-29"),
+            vec![
+                inst("deposit", "1M", 0.05),
+                event("2026-12-31", 0.001, Some("2027-01-04")),
+                inst("swap", "1Y", 0.052),
+                inst("swap", "2Y", 0.054),
+            ],
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);
@@ -609,11 +632,14 @@ mod tests {
     #[test]
     fn test_forward_rate_shift_no_spike() {
         let state = create_test_state();
-        let request = build_req(Some("2026-01-29"), vec![
-            inst("deposit", "1M", 0.05),
-            event("2026-06-01", -0.0025, None),
-            inst("swap", "1Y", 0.05),
-        ]);
+        let request = build_req(
+            Some("2026-01-29"),
+            vec![
+                inst("deposit", "1M", 0.05),
+                event("2026-06-01", -0.0025, None),
+                inst("swap", "1Y", 0.05),
+            ],
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);

@@ -171,7 +171,8 @@ mod tests {
         assert_eq!(id.description(), "USD 3M SWAP");
         assert_eq!(format!("{}", id), "USD 3M SWAP");
 
-        let with_idx = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
+        let with_idx =
+            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
         assert_eq!(with_idx.rate_index, Some(RateIndex::Sofr));
         assert_eq!(format!("{}", with_idx), "USD 1Y OIS (SOFR)");
     }

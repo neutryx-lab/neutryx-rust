@@ -41,9 +41,7 @@ impl<T: Clone> TypedCache<T> {
     }
 
     /// Retrieve a clone of the entry (promotes to MRU).
-    pub fn get(&self, id: &Uuid) -> Option<T> {
-        self.inner.write().get(id).cloned()
-    }
+    pub fn get(&self, id: &Uuid) -> Option<T> { self.inner.write().get(id).cloned() }
 
     /// Replace an existing entry. Returns `true` if the key was present.
     pub fn update(&self, id: &Uuid, entry: T) -> bool {
@@ -72,9 +70,7 @@ impl<T: Clone> TypedCache<T> {
     pub fn clear(&self) { self.inner.write().clear(); }
 
     /// List all cached UUIDs.
-    pub fn list_ids(&self) -> Vec<Uuid> {
-        self.inner.read().iter().map(|(id, _)| *id).collect()
-    }
+    pub fn list_ids(&self) -> Vec<Uuid> { self.inner.read().iter().map(|(id, _)| *id).collect() }
 }
 
 impl<T: Clone> Default for TypedCache<T> {

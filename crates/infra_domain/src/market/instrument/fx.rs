@@ -497,44 +497,60 @@ mod tests {
     fn test_fx_instruments_validation() {
         // FxSpot: valid + negative notional
         let spot = FxSpot {
-            currency_pair: pair(), spot_rate: 1.1050,
+            currency_pair: pair(),
+            spot_rate: 1.1050,
             settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
-            notional: 1_000_000.0, notional_currency: Currency::EUR,
+            notional: 1_000_000.0,
+            notional_currency: Currency::EUR,
         };
         assert!(spot.validate().is_ok());
-        let mut bad = spot.clone(); bad.notional = -1_000.0; assert!(bad.validate().is_err());
+        let mut bad = spot.clone();
+        bad.notional = -1_000.0;
+        assert!(bad.validate().is_err());
 
         // FxForward: valid + negative rate
         let fwd = FxForward {
-            currency_pair: pair(), forward_rate: 1.1100,
+            currency_pair: pair(),
+            forward_rate: 1.1100,
             settlement_date: Date::from_ymd(2025, 7, 3).unwrap(),
-            notional: 1_000_000.0, notional_currency: Currency::EUR,
+            notional: 1_000_000.0,
+            notional_currency: Currency::EUR,
         };
         assert!(fwd.validate().is_ok());
-        let mut bad = fwd.clone(); bad.forward_rate = -1.1100; assert!(bad.validate().is_err());
+        let mut bad = fwd.clone();
+        bad.forward_rate = -1.1100;
+        assert!(bad.validate().is_err());
 
         // FxVanillaOption: valid + invalid dates
         let opt = FxVanillaOption {
-            currency_pair: pair(), strike: 1.1000,
+            currency_pair: pair(),
+            strike: 1.1000,
             expiry: Date::from_ymd(2025, 6, 15).unwrap(),
             delivery_date: Date::from_ymd(2025, 6, 17).unwrap(),
-            option_type: OptionType::Call, exercise_style: ExerciseStyle::European,
-            notional: 1_000_000.0, notional_currency: Currency::EUR,
+            option_type: OptionType::Call,
+            exercise_style: ExerciseStyle::European,
+            notional: 1_000_000.0,
+            notional_currency: Currency::EUR,
         };
         assert!(opt.validate().is_ok());
-        let mut bad = opt.clone(); bad.delivery_date = Date::from_ymd(2025, 6, 14).unwrap();
+        let mut bad = opt.clone();
+        bad.delivery_date = Date::from_ymd(2025, 6, 14).unwrap();
         assert!(bad.validate().is_err());
 
         // FxBarrierOption: valid + invalid barrier level
         let barrier = FxBarrierOption {
-            vanilla: opt.clone(), barrier_level: 1.1500,
-            barrier_type: BarrierType::KnockOut, barrier_direction: BarrierDirection::Up,
+            vanilla: opt.clone(),
+            barrier_level: 1.1500,
+            barrier_type: BarrierType::KnockOut,
+            barrier_direction: BarrierDirection::Up,
             rebate: Some(0.001),
         };
         assert!(barrier.validate().is_ok());
         let bad_barrier = FxBarrierOption {
-            vanilla: opt.clone(), barrier_level: 1.0500,
-            barrier_type: BarrierType::KnockOut, barrier_direction: BarrierDirection::Up,
+            vanilla: opt.clone(),
+            barrier_level: 1.0500,
+            barrier_type: BarrierType::KnockOut,
+            barrier_direction: BarrierDirection::Up,
             rebate: None,
         };
         assert!(bad_barrier.validate().is_err());
@@ -544,8 +560,10 @@ mod tests {
             currency_pair: pair(),
             near_leg_date: Date::from_ymd(2025, 1, 3).unwrap(),
             far_leg_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            near_rate: 1.1050, far_rate: 1.1070,
-            notional: 1_000_000.0, notional_currency: Currency::EUR,
+            near_rate: 1.1050,
+            far_rate: 1.1070,
+            notional: 1_000_000.0,
+            notional_currency: Currency::EUR,
         };
         assert!(swap.validate().is_ok());
         assert!((swap.swap_points() - 0.0020).abs() < 1e-10);
@@ -591,7 +609,8 @@ mod tests {
             currency_pair: pair(),
             near_date: Date::from_ymd(2025, 1, 3).unwrap(),
             far_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            spot_rate: 1.1000, swap_points: SwapPoints::for_eurusd(50.0),
+            spot_rate: 1.1000,
+            swap_points: SwapPoints::for_eurusd(50.0),
             convention: FxSwapConvention::default(),
         };
         assert!((inst.implied_forward_rate() - 1.1050).abs() < 1e-10);
@@ -602,7 +621,8 @@ mod tests {
             currency_pair: pair(),
             near_date: Date::from_ymd(2025, 4, 3).unwrap(),
             far_date: Date::from_ymd(2025, 1, 3).unwrap(),
-            spot_rate: 1.1000, swap_points: SwapPoints::for_eurusd(50.0),
+            spot_rate: 1.1000,
+            swap_points: SwapPoints::for_eurusd(50.0),
             convention: FxSwapConvention::default(),
         };
         assert!(bad_dates.validate().is_err());
@@ -612,7 +632,8 @@ mod tests {
             currency_pair: pair(),
             near_date: Date::from_ymd(2025, 1, 3).unwrap(),
             far_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            spot_rate: -1.0, swap_points: SwapPoints::for_eurusd(50.0),
+            spot_rate: -1.0,
+            swap_points: SwapPoints::for_eurusd(50.0),
             convention: FxSwapConvention::default(),
         };
         assert!(bad_spot.validate().is_err());

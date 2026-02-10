@@ -50,8 +50,7 @@
 
 use num_traits::Float;
 
-use super::error::FormulaError;
-use super::generalised_bsm::GeneralisedBSM;
+use super::{error::FormulaError, generalised_bsm::GeneralisedBSM};
 use crate::math::{normal_dist::norm_cdf, numeric::from_f64};
 
 /// Parameters for the Garman-Kohlhagen model.
@@ -169,48 +168,32 @@ impl<T: Float> GarmanKohlhagen<T> {
 
     /// Returns a reference to the parameters.
     #[inline]
-    pub fn params(&self) -> &GarmanKohlhagenParams<T> {
-        &self.params
-    }
+    pub fn params(&self) -> &GarmanKohlhagenParams<T> { &self.params }
 
     /// Returns d1.
     #[inline]
-    pub fn d1(&self) -> T {
-        self.bsm.d1()
-    }
+    pub fn d1(&self) -> T { self.bsm.d1() }
 
     /// Returns d2.
     #[inline]
-    pub fn d2(&self) -> T {
-        self.bsm.d2()
-    }
+    pub fn d2(&self) -> T { self.bsm.d2() }
 
     /// Computes the option price.
-    pub fn price(&self, is_call: bool) -> T {
-        self.bsm.price(is_call)
-    }
+    pub fn price(&self, is_call: bool) -> T { self.bsm.price(is_call) }
 
     /// Computes European call option price.
     #[inline]
-    pub fn price_call(&self) -> T {
-        self.bsm.price(true)
-    }
+    pub fn price_call(&self) -> T { self.bsm.price(true) }
 
     /// Computes European put option price.
     #[inline]
-    pub fn price_put(&self) -> T {
-        self.bsm.price(false)
-    }
+    pub fn price_put(&self) -> T { self.bsm.price(false) }
 
     /// Computes Delta.
-    pub fn delta(&self, is_call: bool) -> T {
-        self.bsm.delta(is_call)
-    }
+    pub fn delta(&self, is_call: bool) -> T { self.bsm.delta(is_call) }
 
     /// Computes Gamma. Same for call and put.
-    pub fn gamma(&self) -> T {
-        self.bsm.gamma()
-    }
+    pub fn gamma(&self) -> T { self.bsm.gamma() }
 
     /// Computes Vega (per 1% volatility change).
     pub fn vega(&self) -> T {

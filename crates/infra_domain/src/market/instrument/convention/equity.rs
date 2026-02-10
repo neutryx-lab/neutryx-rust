@@ -182,7 +182,10 @@ mod tests {
         let us = EquityConvention::us_equity();
         assert_eq!(us.settlement_days, 2);
         assert_eq!(us.calendar, CalendarId::NewYork);
-        assert_eq!(us.dividend_convention, DividendConvention::DiscreteDividends);
+        assert_eq!(
+            us.dividend_convention,
+            DividendConvention::DiscreteDividends
+        );
         assert_eq!(us.settlement_type, EquitySettlementType::Cash);
 
         assert_eq!(EquityConvention::eu_equity().calendar, CalendarId::Target);

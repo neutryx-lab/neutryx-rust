@@ -1,7 +1,8 @@
 //! Counterparty portfolio hierarchy (stub for future XVA integration).
 //!
 //! This module will provide the complete hierarchy for XVA calculation:
-//! `CounterpartyPortfolio` -> `IsdaMasterAgreement` -> `VariationMarginAgreement` -> Trade
+//! `CounterpartyPortfolio` -> `IsdaMasterAgreement` ->
+//! `VariationMarginAgreement` -> Trade
 //!
 //! Currently provides minimal enum types. Full implementation will be added
 //! when the XVA engine is integrated.

@@ -269,14 +269,46 @@ mod tests {
     #[test]
     fn test_instrument_type_name_and_rate_type() {
         let cases: Vec<(MarketConvention, &str, RateType)> = vec![
-            (MarketConvention::Deposit(DepositConvention::usd()), "Deposit", RateType::Deposit),
-            (MarketConvention::Swap(SwapConvention::usd_sofr()), "Swap", RateType::Swap),
-            (MarketConvention::Ois(SwapConvention::usd_sofr()), "OIS", RateType::Ois),
-            (MarketConvention::Fra(FraConvention::usd_sofr()), "FRA", RateType::Fra),
-            (MarketConvention::Futures(FuturesConvention::cme_sofr()), "Futures", RateType::Futures),
-            (MarketConvention::XCcyBasis(XCcyBasisConvention::usd_jpy()), "XCcyBasis", RateType::BasisSwap),
-            (MarketConvention::FxForward(FxConvention::usd_default()), "FxForward", RateType::FxForward),
-            (MarketConvention::FxSwap(FxSwapConvention::usd_jpy()), "FxSwap", RateType::FxForward),
+            (
+                MarketConvention::Deposit(DepositConvention::usd()),
+                "Deposit",
+                RateType::Deposit,
+            ),
+            (
+                MarketConvention::Swap(SwapConvention::usd_sofr()),
+                "Swap",
+                RateType::Swap,
+            ),
+            (
+                MarketConvention::Ois(SwapConvention::usd_sofr()),
+                "OIS",
+                RateType::Ois,
+            ),
+            (
+                MarketConvention::Fra(FraConvention::usd_sofr()),
+                "FRA",
+                RateType::Fra,
+            ),
+            (
+                MarketConvention::Futures(FuturesConvention::cme_sofr()),
+                "Futures",
+                RateType::Futures,
+            ),
+            (
+                MarketConvention::XCcyBasis(XCcyBasisConvention::usd_jpy()),
+                "XCcyBasis",
+                RateType::BasisSwap,
+            ),
+            (
+                MarketConvention::FxForward(FxConvention::usd_default()),
+                "FxForward",
+                RateType::FxForward,
+            ),
+            (
+                MarketConvention::FxSwap(FxSwapConvention::usd_jpy()),
+                "FxSwap",
+                RateType::FxForward,
+            ),
         ];
         for (conv, name, rt) in &cases {
             assert_eq!(conv.instrument_type_name(), *name);
@@ -287,7 +319,13 @@ mod tests {
     #[test]
     fn test_for_quote_id_all_types() {
         // Deposit: all 5 currencies
-        for ccy in [Currency::USD, Currency::EUR, Currency::GBP, Currency::JPY, Currency::CHF] {
+        for ccy in [
+            Currency::USD,
+            Currency::EUR,
+            Currency::GBP,
+            Currency::JPY,
+            Currency::CHF,
+        ] {
             let qid = QuoteId::new(ccy, Tenor::ThreeMonths, RateType::Deposit);
             assert!(MarketConvention::for_quote_id(&qid).unwrap().is_deposit());
         }
@@ -296,17 +334,55 @@ mod tests {
             let qid = QuoteId::new(ccy, Tenor::FiveYears, RateType::Swap);
             assert!(MarketConvention::for_quote_id(&qid).unwrap().is_swap());
         }
-        assert!(MarketConvention::for_quote_id(&QuoteId::new(Currency::CHF, Tenor::FiveYears, RateType::Swap)).is_none());
+        assert!(MarketConvention::for_quote_id(&QuoteId::new(
+            Currency::CHF,
+            Tenor::FiveYears,
+            RateType::Swap
+        ))
+        .is_none());
         // FRA: USD/EUR only
-        assert!(MarketConvention::for_quote_id(&QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra)).unwrap().is_fra());
-        assert!(MarketConvention::for_quote_id(&QuoteId::new(Currency::GBP, Tenor::ThreeMonths, RateType::Fra)).is_none());
+        assert!(MarketConvention::for_quote_id(&QuoteId::new(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Fra
+        ))
+        .unwrap()
+        .is_fra());
+        assert!(MarketConvention::for_quote_id(&QuoteId::new(
+            Currency::GBP,
+            Tenor::ThreeMonths,
+            RateType::Fra
+        ))
+        .is_none());
         // Futures: USD/EUR
-        assert!(MarketConvention::for_quote_id(&QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Futures)).unwrap().is_futures());
+        assert!(MarketConvention::for_quote_id(&QuoteId::new(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Futures
+        ))
+        .unwrap()
+        .is_futures());
         // FxForward
-        assert!(MarketConvention::for_quote_id(&QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::FxForward)).unwrap().is_fx_forward());
+        assert!(MarketConvention::for_quote_id(&QuoteId::new(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::FxForward
+        ))
+        .unwrap()
+        .is_fx_forward());
         // Vol / BasisSwap return None
-        assert!(MarketConvention::for_quote_id(&QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Vol)).is_none());
-        assert!(MarketConvention::for_quote_id(&QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap)).is_none());
+        assert!(MarketConvention::for_quote_id(&QuoteId::new(
+            Currency::USD,
+            Tenor::OneYear,
+            RateType::Vol
+        ))
+        .is_none());
+        assert!(MarketConvention::for_quote_id(&QuoteId::new(
+            Currency::USD,
+            Tenor::FiveYears,
+            RateType::BasisSwap
+        ))
+        .is_none());
     }
 
     #[test]

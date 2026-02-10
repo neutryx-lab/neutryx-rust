@@ -291,5 +291,4 @@ mod tests {
         assert_eq!(request.trades.len(), 1);
         assert_eq!(request.trades[0].trade_id, "T001");
     }
-
 }

@@ -225,7 +225,8 @@ where
         Ok(residuals)
     }
 
-    /// Compute the Jacobian matrix J[i,j] = dF_i/dx_j using forward differences.
+    /// Compute the Jacobian matrix J\[i,j\] = dF_i/dx_j using forward
+    /// differences.
     pub fn compute_jacobian_finite_diff(
         &self,
         log_df: &[T],
@@ -590,7 +591,8 @@ where
         Self::from_compiled_with_config(instruments, CalibrationProblemConfig::default())
     }
 
-    /// Create a new calibration problem from compiled instruments with custom config.
+    /// Create a new calibration problem from compiled instruments with custom
+    /// config.
     pub fn from_compiled_with_config(
         instruments: Vec<CompiledInstrument<T>>,
         config: CalibrationProblemConfig<T>,
@@ -712,7 +714,8 @@ where
     T: Float + RealField + Copy,
     I: CalibrationInstrument<T> + Clone,
 {
-    /// Compute Jacobian using Enzyme AD, falling back to finite differences on failure.
+    /// Compute Jacobian using Enzyme AD, falling back to finite differences on
+    /// failure.
     pub fn compute_jacobian_enzyme_with_fallback(
         &self,
         log_df: &[T],
@@ -815,7 +818,8 @@ where
         }
     }
 
-    /// Compute Jacobian with full result metadata (method used, timing, fallback).
+    /// Compute Jacobian with full result metadata (method used, timing,
+    /// fallback).
     pub fn compute_jacobian_enzyme_result(
         &self,
         log_df: &[T],
@@ -854,7 +858,8 @@ where
     // AD Instability Auto-Fallback
     // =========================================================================
 
-    /// Compute Jacobian with AD-vs-FD stability check; falls back to central diff if unstable.
+    /// Compute Jacobian with AD-vs-FD stability check; falls back to central
+    /// diff if unstable.
     pub fn compute_jacobian_with_stability_check(
         &self,
         log_df: &[T],

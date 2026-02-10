@@ -215,7 +215,11 @@ mod tests {
     fn test_transfer_assignment() {
         let date = Date::from_ymd(2025, 6, 1).unwrap();
         let assignment = TradeBookAssignment::transfer(
-            "T001", "B001", "B002", date, BookTransferReason::Reallocation,
+            "T001",
+            "B001",
+            "B002",
+            date,
+            BookTransferReason::Reallocation,
         );
 
         assert_eq!(assignment.book_id().as_str(), "B002");

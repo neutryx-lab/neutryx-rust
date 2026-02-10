@@ -833,17 +833,24 @@ mod tests {
         Swaption {
             underlying_swap_tenor: Tenor::TenYears,
             expiry: Date::from_ymd(2026, 1, 15).unwrap(),
-            exercise_type: ExerciseType::European, settlement_type: SettlementType::Cash,
-            strike: 0.03, notional: 10_000_000.0, currency: Currency::USD,
+            exercise_type: ExerciseType::European,
+            settlement_type: SettlementType::Cash,
+            strike: 0.03,
+            notional: 10_000_000.0,
+            currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
         }
     }
     fn cap() -> CapFloor {
         CapFloor {
-            cap_floor_type: CapFloorType::Cap, strikes: vec![0.03], index: RateIndex::Sofr,
-            start_date: Date::from_ymd(2025, 1, 1).unwrap(), tenor: Tenor::FiveYears,
+            cap_floor_type: CapFloorType::Cap,
+            strikes: vec![0.03],
+            index: RateIndex::Sofr,
+            start_date: Date::from_ymd(2025, 1, 1).unwrap(),
+            tenor: Tenor::FiveYears,
             notional_schedule: NotionalSchedule::constant(10_000_000.0),
-            payment_frequency: Frequency::Quarterly, currency: Currency::USD,
+            payment_frequency: Frequency::Quarterly,
+            currency: Currency::USD,
         }
     }
 
@@ -855,19 +862,44 @@ mod tests {
         assert!(s.is_payer());
 
         // Validation failures
-        assert!(Swaption { notional: -100.0, ..s.clone() }.validate().is_err());
-        assert!(Swaption { strike: -0.01, ..s.clone() }.validate().is_err());
-        assert!(Swaption { strike: 0.6, ..s.clone() }.validate().is_err());
+        assert!(Swaption {
+            notional: -100.0,
+            ..s.clone()
+        }
+        .validate()
+        .is_err());
+        assert!(Swaption {
+            strike: -0.01,
+            ..s.clone()
+        }
+        .validate()
+        .is_err());
+        assert!(Swaption {
+            strike: 0.6,
+            ..s.clone()
+        }
+        .validate()
+        .is_err());
 
         // Schedule generation
-        let schedule = s.generate_underlying_schedule(Frequency::Annual, 2).unwrap();
+        let schedule = s
+            .generate_underlying_schedule(Frequency::Annual, 2)
+            .unwrap();
         assert_eq!(schedule.num_periods(), 10);
         assert_eq!(schedule.start_date(), Some(s.expiry));
-        assert_eq!(s.generate_underlying_schedule(Frequency::SemiAnnual, 0).unwrap().num_periods(), 20);
+        assert_eq!(
+            s.generate_underlying_schedule(Frequency::SemiAnnual, 0)
+                .unwrap()
+                .num_periods(),
+            20
+        );
 
         // Swap dates
         assert_eq!(s.underlying_swap_start(), s.expiry);
-        assert_eq!(s.underlying_swap_end(), Date::from_ymd(2036, 1, 15).unwrap());
+        assert_eq!(
+            s.underlying_swap_end(),
+            Date::from_ymd(2036, 1, 15).unwrap()
+        );
         assert!((s.expiry_years(Date::from_ymd(2025, 1, 15).unwrap()) - 1.0).abs() < 0.01);
 
         // Display
@@ -883,10 +915,30 @@ mod tests {
         assert_ne!(CapFloorType::Cap, CapFloorType::Floor);
 
         // Validation failures
-        assert!(CapFloor { strikes: vec![], ..c.clone() }.validate().is_err());
-        assert!(CapFloor { strikes: vec![0.02, 0.04], ..c.clone() }.validate().is_err());
-        assert!(CapFloor { strikes: vec![0.6], ..c.clone() }.validate().is_err());
-        assert!(CapFloor { tenor: Tenor::Overnight, ..c.clone() }.validate().is_err());
+        assert!(CapFloor {
+            strikes: vec![],
+            ..c.clone()
+        }
+        .validate()
+        .is_err());
+        assert!(CapFloor {
+            strikes: vec![0.02, 0.04],
+            ..c.clone()
+        }
+        .validate()
+        .is_err());
+        assert!(CapFloor {
+            strikes: vec![0.6],
+            ..c.clone()
+        }
+        .validate()
+        .is_err());
+        assert!(CapFloor {
+            tenor: Tenor::Overnight,
+            ..c.clone()
+        }
+        .validate()
+        .is_err());
 
         // Schedule, end date, num caplets, primary strike
         assert_eq!(c.generate_underlying_schedule(2).unwrap().num_periods(), 20);
@@ -895,11 +947,19 @@ mod tests {
         assert!((c.primary_strike() - 0.03).abs() < 1e-10);
 
         // Collar
-        let collar = CapFloor { cap_floor_type: CapFloorType::Collar, strikes: vec![0.02, 0.04], ..c.clone() };
+        let collar = CapFloor {
+            cap_floor_type: CapFloorType::Collar,
+            strikes: vec![0.02, 0.04],
+            ..c.clone()
+        };
         assert!(collar.validate().is_ok());
         assert_eq!(collar.floor_strike(), Some(0.02));
         assert_eq!(collar.cap_strike(), Some(0.04));
-        let bad_collar = CapFloor { cap_floor_type: CapFloorType::Collar, strikes: vec![0.04, 0.02], ..c.clone() };
+        let bad_collar = CapFloor {
+            cap_floor_type: CapFloorType::Collar,
+            strikes: vec![0.04, 0.02],
+            ..c.clone()
+        };
         assert!(bad_collar.validate().is_err());
 
         // Display
@@ -925,36 +985,81 @@ mod tests {
     #[test]
     fn test_swaption_builder() {
         let s = SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
-            .strike(0.03).notional(10_000_000.0).currency(Currency::USD).payer().build().unwrap();
+            .strike(0.03)
+            .notional(10_000_000.0)
+            .currency(Currency::USD)
+            .payer()
+            .build()
+            .unwrap();
         assert_eq!(s.strike, 0.03);
         assert!(s.is_payer());
 
         let r = SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
-            .strike(0.03).notional(10_000_000.0).receiver().build().unwrap();
+            .strike(0.03)
+            .notional(10_000_000.0)
+            .receiver()
+            .build()
+            .unwrap();
         assert!(!r.is_payer());
 
         // Missing fields
-        assert!(SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears).notional(10_000_000.0).build().is_err());
-        assert!(SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears).strike(0.03).build().is_err());
+        assert!(
+            SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
+                .notional(10_000_000.0)
+                .build()
+                .is_err()
+        );
+        assert!(
+            SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
+                .strike(0.03)
+                .build()
+                .is_err()
+        );
     }
 
     #[test]
     fn test_capfloor_builder() {
         let d = Date::from_ymd(2025, 1, 1).unwrap();
-        let c = CapFloorBuilder::new(d, Tenor::FiveYears).cap(0.03).index(RateIndex::Sofr).notional(10_000_000.0).build().unwrap();
+        let c = CapFloorBuilder::new(d, Tenor::FiveYears)
+            .cap(0.03)
+            .index(RateIndex::Sofr)
+            .notional(10_000_000.0)
+            .build()
+            .unwrap();
         assert_eq!(c.cap_floor_type, CapFloorType::Cap);
 
-        let f = CapFloorBuilder::new(d, Tenor::FiveYears).floor(0.01).index(RateIndex::Sofr).notional(10_000_000.0).build().unwrap();
+        let f = CapFloorBuilder::new(d, Tenor::FiveYears)
+            .floor(0.01)
+            .index(RateIndex::Sofr)
+            .notional(10_000_000.0)
+            .build()
+            .unwrap();
         assert_eq!(f.cap_floor_type, CapFloorType::Floor);
 
-        let co = CapFloorBuilder::new(d, Tenor::FiveYears).collar(0.01, 0.05).index(RateIndex::Sofr).notional(10_000_000.0).build().unwrap();
+        let co = CapFloorBuilder::new(d, Tenor::FiveYears)
+            .collar(0.01, 0.05)
+            .index(RateIndex::Sofr)
+            .notional(10_000_000.0)
+            .build()
+            .unwrap();
         assert_eq!(co.strikes, vec![0.01, 0.05]);
 
-        let freq = CapFloorBuilder::new(d, Tenor::FiveYears).cap(0.03).notional(10_000_000.0).frequency(Frequency::Monthly).build().unwrap();
+        let freq = CapFloorBuilder::new(d, Tenor::FiveYears)
+            .cap(0.03)
+            .notional(10_000_000.0)
+            .frequency(Frequency::Monthly)
+            .build()
+            .unwrap();
         assert_eq!(freq.payment_frequency, Frequency::Monthly);
 
         // Missing fields
-        assert!(CapFloorBuilder::new(d, Tenor::FiveYears).notional(10_000_000.0).build().is_err());
-        assert!(CapFloorBuilder::new(d, Tenor::FiveYears).cap(0.03).build().is_err());
+        assert!(CapFloorBuilder::new(d, Tenor::FiveYears)
+            .notional(10_000_000.0)
+            .build()
+            .is_err());
+        assert!(CapFloorBuilder::new(d, Tenor::FiveYears)
+            .cap(0.03)
+            .build()
+            .is_err());
     }
 }

@@ -976,7 +976,10 @@ mod tests {
         let simple = EnumValue::Simple("USD".to_string());
         assert_eq!(serde_json::to_string(&simple).unwrap(), "\"USD\"");
 
-        let object = EnumValue::Object { code: "USD".to_string(), name: Some("US Dollar".to_string()) };
+        let object = EnumValue::Object {
+            code: "USD".to_string(),
+            name: Some("US Dollar".to_string()),
+        };
         let json = serde_json::to_string(&object).unwrap();
         assert!(json.contains("US Dollar"));
     }

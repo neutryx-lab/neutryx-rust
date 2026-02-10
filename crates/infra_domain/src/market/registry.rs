@@ -418,8 +418,12 @@ mod tests {
     use super::*;
     use crate::market::{Currency, RateIndex, RateType};
 
-    fn inst(id: &str) -> InstrumentDefinition { InstrumentDefinition::new(id, Currency::USD, RateType::Deposit, "O/N") }
-    fn idx(id: &str) -> RateIndexDefinition { RateIndexDefinition::new(id, Currency::USD, RateIndex::Sofr) }
+    fn inst(id: &str) -> InstrumentDefinition {
+        InstrumentDefinition::new(id, Currency::USD, RateType::Deposit, "O/N")
+    }
+    fn idx(id: &str) -> RateIndexDefinition {
+        RateIndexDefinition::new(id, Currency::USD, RateIndex::Sofr)
+    }
 
     #[test]
     fn test_registry_operations() {
@@ -432,7 +436,10 @@ mod tests {
         assert!(r.register_instrument(inst("USD-Depo-ON")).is_ok());
         assert_eq!(r.instrument_count(), 1);
         assert!(r.get_instrument("USD-Depo-ON").is_some());
-        assert!(matches!(r.register_instrument(inst("USD-Depo-ON")), Err(RegistryError::DuplicateId { .. })));
+        assert!(matches!(
+            r.register_instrument(inst("USD-Depo-ON")),
+            Err(RegistryError::DuplicateId { .. })
+        ));
 
         // Register rate index
         assert!(r.register_rate_index(idx("USD-SOFR")).is_ok());
@@ -440,7 +447,11 @@ mod tests {
         assert!(r.get_rate_index("USD-SOFR").is_some());
 
         // Register curve (success)
-        let curve = CurveDefinition::new("USD-SOFR-Discount", "USD-SOFR", vec!["USD-Depo-ON".to_string()]);
+        let curve = CurveDefinition::new(
+            "USD-SOFR-Discount",
+            "USD-SOFR",
+            vec!["USD-Depo-ON".to_string()],
+        );
         assert!(r.register_curve(curve).is_ok());
         assert_eq!(r.curve_count(), 1);
 
@@ -452,25 +463,49 @@ mod tests {
         let mut r2 = DefinitionRegistry::new();
         r2.register_instrument(inst("USD-Depo-ON")).unwrap();
         assert!(matches!(
-            r2.register_curve(CurveDefinition::new("c", "USD-SOFR", vec!["USD-Depo-ON".into()])),
-            Err(RegistryError::ReferenceNotFound { entity: "rate_index", .. })
+            r2.register_curve(CurveDefinition::new(
+                "c",
+                "USD-SOFR",
+                vec!["USD-Depo-ON".into()]
+            )),
+            Err(RegistryError::ReferenceNotFound {
+                entity: "rate_index",
+                ..
+            })
         ));
 
         // Missing instrument
         let mut r3 = DefinitionRegistry::new();
         r3.register_rate_index(idx("USD-SOFR")).unwrap();
         assert!(matches!(
-            r3.register_curve(CurveDefinition::new("c", "USD-SOFR", vec!["USD-Depo-ON".into()])),
-            Err(RegistryError::ReferenceNotFound { entity: "instrument", .. })
+            r3.register_curve(CurveDefinition::new(
+                "c",
+                "USD-SOFR",
+                vec!["USD-Depo-ON".into()]
+            )),
+            Err(RegistryError::ReferenceNotFound {
+                entity: "instrument",
+                ..
+            })
         ));
 
         // curve_instruments
         let mut r4 = DefinitionRegistry::new();
         r4.register_instrument(inst("USD-Depo-ON")).unwrap();
-        r4.register_instrument(InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y")).unwrap();
+        r4.register_instrument(InstrumentDefinition::new(
+            "USD-OIS-5Y",
+            Currency::USD,
+            RateType::Ois,
+            "5Y",
+        ))
+        .unwrap();
         r4.register_rate_index(idx("USD-SOFR")).unwrap();
-        r4.register_curve(CurveDefinition::new("USD-SOFR-Discount", "USD-SOFR",
-            vec!["USD-Depo-ON".into(), "USD-OIS-5Y".into()])).unwrap();
+        r4.register_curve(CurveDefinition::new(
+            "USD-SOFR-Discount",
+            "USD-SOFR",
+            vec!["USD-Depo-ON".into(), "USD-OIS-5Y".into()],
+        ))
+        .unwrap();
         let insts = r4.curve_instruments("USD-SOFR-Discount").unwrap();
         assert_eq!(insts.len(), 2);
         assert_eq!(insts[0].id, "USD-Depo-ON");
@@ -490,14 +525,27 @@ mod tests {
         assert_eq!(r.instrument_count(), 2);
         assert_eq!(r.rate_index_count(), 1);
         assert_eq!(r.curve_count(), 1);
-        assert_eq!(r.get_instrument("USD-Depo-ON").unwrap().rate_type(), RateType::Deposit);
-        assert_eq!(r.get_instrument("USD-OIS-5Y").unwrap().rate_type(), RateType::Ois);
+        assert_eq!(
+            r.get_instrument("USD-Depo-ON").unwrap().rate_type(),
+            RateType::Deposit
+        );
+        assert_eq!(
+            r.get_instrument("USD-OIS-5Y").unwrap().rate_type(),
+            RateType::Ois
+        );
 
         // Legacy format
         let legacy = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","rateTypeOverride":"Deposit","tenor":"O/N"}],
             "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],
             "curves":[{"name":"c","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON"]}]}"#;
-        assert_eq!(DefinitionRegistry::load_from_json(legacy).unwrap().get_instrument("USD-Depo-ON").unwrap().rate_type(), RateType::Deposit);
+        assert_eq!(
+            DefinitionRegistry::load_from_json(legacy)
+                .unwrap()
+                .get_instrument("USD-Depo-ON")
+                .unwrap()
+                .rate_type(),
+            RateType::Deposit
+        );
 
         // Validation error (missing rate index)
         let bad = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"O/N"}],
@@ -517,17 +565,37 @@ mod tests {
             "curves":[{"name":"USD-SOFR-Discount","rateIndex":"USD-SOFR","instruments":["USD-Depo-O/N","USD-OIS-1M","USD-OIS-5Y"]}]}"#;
         let r = DefinitionRegistry::load_from_json(json).unwrap();
         assert_eq!(r.instrument_count(), 8); // 5 OIS + 2 Depo + 1 Custom
-        assert_eq!(r.get_instrument("USD-OIS-1M").unwrap().rate_type(), RateType::Ois);
+        assert_eq!(
+            r.get_instrument("USD-OIS-1M").unwrap().rate_type(),
+            RateType::Ois
+        );
         assert_eq!(r.get_instrument("USD-OIS-5Y").unwrap().tenor, "5Y");
-        assert_eq!(r.get_instrument("USD-Depo-O/N").unwrap().rate_type(), RateType::Deposit);
+        assert_eq!(
+            r.get_instrument("USD-Depo-O/N").unwrap().rate_type(),
+            RateType::Deposit
+        );
         assert_eq!(r.get_instrument("USD-Custom").unwrap().tenor, "2W");
-        assert_eq!(r.get_curve("USD-SOFR-Discount").unwrap().instruments.len(), 3);
+        assert_eq!(
+            r.get_curve("USD-SOFR-Discount").unwrap().instruments.len(),
+            3
+        );
 
         // Bundle expand
         let bundle = DefinitionBundle {
-            templates: vec![InstrumentTemplate::new("{currency}-OIS-{tenor}", Currency::USD, "USD-SOFR-OIS", vec!["1M".into(), "3M".into(), "6M".into()])],
-            instruments: vec![InstrumentDefinition::from_convention("USD-Custom", Currency::USD, "USD-DEPO", "O/N")],
-            rate_indices: vec![], curves: vec![],
+            templates: vec![InstrumentTemplate::new(
+                "{currency}-OIS-{tenor}",
+                Currency::USD,
+                "USD-SOFR-OIS",
+                vec!["1M".into(), "3M".into(), "6M".into()],
+            )],
+            instruments: vec![InstrumentDefinition::from_convention(
+                "USD-Custom",
+                Currency::USD,
+                "USD-DEPO",
+                "O/N",
+            )],
+            rate_indices: vec![],
+            curves: vec![],
         };
         assert_eq!(bundle.total_instrument_count(), 4);
         let expanded = bundle.expand_instruments();
@@ -539,6 +607,9 @@ mod tests {
             "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],"curves":[]}"#;
         let r2 = DefinitionRegistry::load_from_json(fra_json).unwrap();
         assert_eq!(r2.instrument_count(), 3);
-        assert_eq!(r2.get_instrument("USD-FRA-1x4").unwrap().rate_type(), RateType::Fra);
+        assert_eq!(
+            r2.get_instrument("USD-FRA-1x4").unwrap().rate_type(),
+            RateType::Fra
+        );
     }
 }

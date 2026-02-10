@@ -104,15 +104,11 @@ impl ServerError {
 }
 
 impl From<JsonRejection> for ServerError {
-    fn from(rejection: JsonRejection) -> Self {
-        Self::InvalidRequest(rejection.body_text())
-    }
+    fn from(rejection: JsonRejection) -> Self { Self::InvalidRequest(rejection.body_text()) }
 }
 
 impl From<serde_json::Error> for ServerError {
-    fn from(err: serde_json::Error) -> Self {
-        Self::Internal(format!("JSON error: {err}"))
-    }
+    fn from(err: serde_json::Error) -> Self { Self::Internal(format!("JSON error: {err}")) }
 }
 
 /// Custom JSON extractor that converts deserialisation failures into

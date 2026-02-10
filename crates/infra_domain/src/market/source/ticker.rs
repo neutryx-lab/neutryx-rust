@@ -347,7 +347,10 @@ mod tests {
         assert!(m.lookup("NOPE").is_none());
         assert_eq!(m.len(), 1);
 
-        m.register("T2", QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit));
+        m.register(
+            "T2",
+            QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
+        );
         assert_eq!(m.len(), 2);
 
         // overwrite
@@ -359,7 +362,9 @@ mod tests {
         // clone
         let c = m.clone();
         assert_eq!(c.len(), m.len());
-        for (t, q) in m.iter() { assert_eq!(c.lookup(t), Some(q)); }
+        for (t, q) in m.iter() {
+            assert_eq!(c.lookup(t), Some(q));
+        }
     }
 
     #[test]
@@ -369,7 +374,10 @@ mod tests {
 
         // iter consistency
         assert_eq!(m.iter().count(), m.len());
-        for (t, q) in m.iter() { assert!(!t.is_empty()); assert_eq!(m.lookup(t), Some(q)); }
+        for (t, q) in m.iter() {
+            assert!(!t.is_empty());
+            assert_eq!(m.lookup(t), Some(q));
+        }
 
         // specific lookups
         let q = m.lookup("USD3MD=").unwrap();
@@ -381,8 +389,13 @@ mod tests {
         assert!(m.contains("EUSW5 Curncy"));
 
         // multi-currency defaults
-        for (dep, sw) in [("USD1MD=","USSW1 Curncy"),("EUR1MD=","EUSW1 Curncy"),
-                           ("GBP1MD=","BPSW1 Curncy"),("JPY1MD=","JYSW1 Curncy"),("CHF1MD=","SFSW1 Curncy")] {
+        for (dep, sw) in [
+            ("USD1MD=", "USSW1 Curncy"),
+            ("EUR1MD=", "EUSW1 Curncy"),
+            ("GBP1MD=", "BPSW1 Curncy"),
+            ("JPY1MD=", "JYSW1 Curncy"),
+            ("CHF1MD=", "SFSW1 Curncy"),
+        ] {
             assert!(m.lookup(dep).is_some(), "missing {dep}");
             assert!(m.lookup(sw).is_some(), "missing {sw}");
         }

@@ -13,8 +13,7 @@
 
 use num_traits::Float;
 
-use super::error::FormulaError;
-use super::generalised_bsm::GeneralisedBSM;
+use super::{error::FormulaError, generalised_bsm::GeneralisedBSM};
 use crate::math::numeric::from_f64;
 
 /// Black-Scholes model for European option pricing.
@@ -95,21 +94,15 @@ impl<T: Float> BlackScholes<T> {
 
     /// Returns the spot price.
     #[inline]
-    pub fn spot(&self) -> T {
-        self.spot
-    }
+    pub fn spot(&self) -> T { self.spot }
 
     /// Returns the risk-free rate.
     #[inline]
-    pub fn rate(&self) -> T {
-        self.rate
-    }
+    pub fn rate(&self) -> T { self.rate }
 
     /// Returns the volatility.
     #[inline]
-    pub fn volatility(&self) -> T {
-        self.volatility
-    }
+    pub fn volatility(&self) -> T { self.volatility }
 
     /// Creates a [`GeneralisedBSM`] with `b = r` for the given strike/expiry.
     /// Returns `None` if expiry is near zero or strike is non-positive.
@@ -120,7 +113,12 @@ impl<T: Float> BlackScholes<T> {
             return None;
         }
         GeneralisedBSM::new(
-            self.spot, strike, self.rate, self.rate, self.volatility, expiry,
+            self.spot,
+            strike,
+            self.rate,
+            self.rate,
+            self.volatility,
+            expiry,
         )
         .ok()
     }

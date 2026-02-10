@@ -10,7 +10,6 @@ use pricer_pricing::generic_pricer::{
 
 use crate::{
     error::ServerError,
-    services::helpers,
     rest::dto::demo::{
         AppConfigResponse, AvailableCurvesResponse, Cashflow, CashflowDetail, CashflowPvResult,
         Convention, ConventionDetail, ConventionField, ConventionsResponse, CurveIndicesResponse,
@@ -23,19 +22,31 @@ use crate::{
         RateCashflowsResponse, RateIndexDetailResponse, RateIndexInfo, RateIndexMetadata,
         RateIndicesResponse, RateInstrumentResponse, TradeExpandRequest, TradeLeg, TradeMetadata,
     },
+    services::helpers,
     state::AppState,
 };
 
 /// Demo service providing API endpoints for demo_gui
 pub struct DemoService;
 
-/// Create a `MarketRate` with common defaults (quote_type="Mid", source="Internal").
+/// Create a `MarketRate` with common defaults (quote_type="Mid",
+/// source="Internal").
 fn make_market_rate(
-    id: String, currency: String, tenor: String, rate_type: String,
-    value: f64, rate_index: Option<String>, timestamp: &str,
+    id: String,
+    currency: String,
+    tenor: String,
+    rate_type: String,
+    value: f64,
+    rate_index: Option<String>,
+    timestamp: &str,
 ) -> MarketRate {
     MarketRate {
-        id, currency, tenor, rate_type, value, rate_index,
+        id,
+        currency,
+        tenor,
+        rate_type,
+        value,
+        rate_index,
         quote_type: Some("Mid".to_string()),
         source: "Internal".to_string(),
         timestamp: timestamp.to_string(),
@@ -55,7 +66,9 @@ fn parse_importance(s: &str) -> Importance {
 
 /// Load a JSON file, extract an array by key, and parse each element.
 fn load_and_collect<T>(
-    path: &Path, key: &str, parser: fn(&serde_json::Value) -> Option<T>,
+    path: &Path,
+    key: &str,
+    parser: fn(&serde_json::Value) -> Option<T>,
 ) -> Vec<T> {
     std::fs::read_to_string(path)
         .ok()
@@ -494,8 +507,7 @@ impl DemoService {
     /// Get market rates
     pub fn get_market_rates(_state: &Arc<AppState>) -> Result<MarketRatesResponse, ServerError> {
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
-        let data: serde_json::Value =
-            helpers::load_json_value(rates_path, "market_quotes.json")?;
+        let data: serde_json::Value = helpers::load_json_value(rates_path, "market_quotes.json")?;
 
         let mut rates = Vec::new();
         let timestamp = chrono::Utc::now().to_rfc3339();
@@ -515,8 +527,12 @@ impl DemoService {
 
                                 rates.push(make_market_rate(
                                     format!("{currency}-{rate_type}-{tenor}"),
-                                    currency.clone(), tenor.to_string(), rate_type.clone(),
-                                    value, index.map(String::from), &timestamp,
+                                    currency.clone(),
+                                    tenor.to_string(),
+                                    rate_type.clone(),
+                                    value,
+                                    index.map(String::from),
+                                    &timestamp,
                                 ));
                             }
                         }
@@ -564,9 +580,13 @@ impl DemoService {
                             }
 
                             rates.push(make_market_rate(
-                                id, currency.to_string(), tenor.to_string(),
-                                instr_type.to_string(), rate,
-                                Some(index_name.to_uppercase()), &timestamp,
+                                id,
+                                currency.to_string(),
+                                tenor.to_string(),
+                                instr_type.to_string(),
+                                rate,
+                                Some(index_name.to_uppercase()),
+                                &timestamp,
                             ));
                         }
                     }
@@ -585,9 +605,13 @@ impl DemoService {
                         let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
 
                         rates.push(make_market_rate(
-                            pair.to_string(), base_ccy.to_string(),
-                            "SPOT".to_string(), "fxspot".to_string(),
-                            value, Some(pair.to_string()), &timestamp,
+                            pair.to_string(),
+                            base_ccy.to_string(),
+                            "SPOT".to_string(),
+                            "fxspot".to_string(),
+                            value,
+                            Some(pair.to_string()),
+                            &timestamp,
                         ));
                     }
                 }
@@ -608,9 +632,13 @@ impl DemoService {
                                     fwd.get("points").and_then(|p| p.as_f64()).unwrap_or(0.0);
 
                                 rates.push(make_market_rate(
-                                    format!("{pair}-{tenor}"), base_ccy.to_string(),
-                                    tenor.to_string(), "fxforward".to_string(),
-                                    points, Some(pair.clone()), &timestamp,
+                                    format!("{pair}-{tenor}"),
+                                    base_ccy.to_string(),
+                                    tenor.to_string(),
+                                    "fxforward".to_string(),
+                                    points,
+                                    Some(pair.clone()),
+                                    &timestamp,
                                 ));
                             }
                         }
@@ -635,9 +663,13 @@ impl DemoService {
                                 let index = spread.get("index").and_then(|i| i.as_str());
 
                                 rates.push(make_market_rate(
-                                    format!("XCCY-{pair}-{tenor}"), base_ccy.to_string(),
-                                    tenor.to_string(), "xccybasis".to_string(),
-                                    value, index.map(String::from), &timestamp,
+                                    format!("XCCY-{pair}-{tenor}"),
+                                    base_ccy.to_string(),
+                                    tenor.to_string(),
+                                    "xccybasis".to_string(),
+                                    value,
+                                    index.map(String::from),
+                                    &timestamp,
                                 ));
                             }
                         }
@@ -884,8 +916,7 @@ impl DemoService {
     /// Get conventions
     pub fn get_conventions(_state: &Arc<AppState>) -> Result<ConventionsResponse, ServerError> {
         let conv_path = Path::new("demo/data/input/conventions/conventions.json");
-        let data: serde_json::Value =
-            helpers::load_json_value(conv_path, "conventions.json")?;
+        let data: serde_json::Value = helpers::load_json_value(conv_path, "conventions.json")?;
 
         let mut conventions = Vec::new();
 
@@ -1053,13 +1084,19 @@ impl DemoService {
         }
 
         events.extend(load_and_collect(
-            Path::new("demo/data/input/events/central_bank_meetings.json"), "events", parse_event,
+            Path::new("demo/data/input/events/central_bank_meetings.json"),
+            "events",
+            parse_event,
         ));
         events.extend(load_and_collect(
-            Path::new("demo/data/input/events/economic_releases.json"), "events", parse_event,
+            Path::new("demo/data/input/events/economic_releases.json"),
+            "events",
+            parse_event,
         ));
         events.extend(load_and_collect(
-            Path::new("demo/data/input/events/turns.json"), "turnEvents", parse_turn_event,
+            Path::new("demo/data/input/events/turns.json"),
+            "turnEvents",
+            parse_turn_event,
         ));
 
         // Helper to parse turn event from JSON value
@@ -1215,7 +1252,9 @@ impl DemoService {
         }
 
         holidays.extend(load_and_collect(
-            Path::new("demo/data/input/holidays.json"), "events", parse_holiday,
+            Path::new("demo/data/input/holidays.json"),
+            "events",
+            parse_holiday,
         ));
         // Sort holidays by date
         holidays.sort_by(|a, b| a.date.cmp(&b.date));
@@ -1267,8 +1306,7 @@ impl DemoService {
     ) -> Result<CurveInstrumentsResponse, ServerError> {
         // Load market quotes and filter by index
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
-        let data: serde_json::Value =
-            helpers::load_json_value(rates_path, "market_quotes.json")?;
+        let data: serde_json::Value = helpers::load_json_value(rates_path, "market_quotes.json")?;
 
         // Map index to currency
         let currency = match index {
@@ -1449,30 +1487,60 @@ impl DemoService {
 
         // Helper to build a single-cashflow leg
         let yf = Self::calculate_year_fraction(effective_date, maturity_date, &rate.currency);
-        let mk_cf = |pay_date: chrono::NaiveDate, r: Option<f64>, spread: Option<f64>, payoff: &str| {
-            CashflowDetail {
-                payment_date: pay_date.to_string(),
-                accrual_start: effective_date.to_string(),
-                accrual_end: maturity_date.to_string(),
-                year_fraction: yf, notional: 1_000_000.0,
-                rate: r, spread, payoff_type: payoff.to_string(),
-            }
-        };
-        let mk_leg = |lt: &str, dir: &str, idx: Option<String>, cf: CashflowDetail| {
-            LegCashflows {
-                leg_type: lt.to_string(), direction: dir.to_string(),
-                currency: rate.currency.clone(), rate_index: idx, cashflows: vec![cf],
-            }
+        let mk_cf =
+            |pay_date: chrono::NaiveDate, r: Option<f64>, spread: Option<f64>, payoff: &str| {
+                CashflowDetail {
+                    payment_date: pay_date.to_string(),
+                    accrual_start: effective_date.to_string(),
+                    accrual_end: maturity_date.to_string(),
+                    year_fraction: yf,
+                    notional: 1_000_000.0,
+                    rate: r,
+                    spread,
+                    payoff_type: payoff.to_string(),
+                }
+            };
+        let mk_leg = |lt: &str, dir: &str, idx: Option<String>, cf: CashflowDetail| LegCashflows {
+            leg_type: lt.to_string(),
+            direction: dir.to_string(),
+            currency: rate.currency.clone(),
+            rate_index: idx,
+            cashflows: vec![cf],
         };
 
         let legs = match rate.rate_type.as_str() {
-            "deposit" => vec![mk_leg("Fixed", "Receiver", None, mk_cf(maturity_date, Some(rate.value), None, "Fixed"))],
+            "deposit" => vec![mk_leg(
+                "Fixed",
+                "Receiver",
+                None,
+                mk_cf(maturity_date, Some(rate.value), None, "Fixed"),
+            )],
             "ois" | "swap" => vec![
-                mk_leg("Fixed", "Payer", None, mk_cf(maturity_date, Some(rate.value), None, "Fixed")),
-                mk_leg("Floating", "Receiver", rate.rate_index.clone(), mk_cf(maturity_date, None, Some(0.0), "Linear")),
+                mk_leg(
+                    "Fixed",
+                    "Payer",
+                    None,
+                    mk_cf(maturity_date, Some(rate.value), None, "Fixed"),
+                ),
+                mk_leg(
+                    "Floating",
+                    "Receiver",
+                    rate.rate_index.clone(),
+                    mk_cf(maturity_date, None, Some(0.0), "Linear"),
+                ),
             ],
-            "fra" => vec![mk_leg("FRA", "Payer", rate.rate_index.clone(), mk_cf(effective_date, Some(rate.value), None, "FRA"))],
-            _ => vec![mk_leg("Unknown", "Unknown", None, mk_cf(maturity_date, Some(rate.value), None, "Other"))],
+            "fra" => vec![mk_leg(
+                "FRA",
+                "Payer",
+                rate.rate_index.clone(),
+                mk_cf(effective_date, Some(rate.value), None, "FRA"),
+            )],
+            _ => vec![mk_leg(
+                "Unknown",
+                "Unknown",
+                None,
+                mk_cf(maturity_date, Some(rate.value), None, "Other"),
+            )],
         };
 
         let elapsed = start.elapsed();
@@ -1502,9 +1570,11 @@ impl DemoService {
             _ => {
                 if let Some(years) = t.strip_suffix('Y').and_then(|s| s.parse::<i32>().ok()) {
                     Self::add_months(effective_date, years * 12)
-                } else if let Some(months) = t.strip_suffix('M').and_then(|s| s.parse::<i32>().ok()) {
+                } else if let Some(months) = t.strip_suffix('M').and_then(|s| s.parse::<i32>().ok())
+                {
                     Self::add_months(effective_date, months)
-                } else if let Some(weeks) = t.strip_suffix('W').and_then(|s| s.parse::<i64>().ok()) {
+                } else if let Some(weeks) = t.strip_suffix('W').and_then(|s| s.parse::<i64>().ok())
+                {
                     effective_date + chrono::Duration::weeks(weeks)
                 } else if let Some(days) = t.strip_suffix('D').and_then(|s| s.parse::<i64>().ok()) {
                     effective_date + chrono::Duration::days(days)

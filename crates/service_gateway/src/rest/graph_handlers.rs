@@ -554,8 +554,13 @@ fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGrap
     use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
     let mk_node = |id: String, nt, label: &str, sens, group| GraphNode {
-        id, node_type: nt, label: label.to_string(), value: None,
-        is_sensitivity_target: sens, group, trade_ids: vec![trade_id.to_string()],
+        id,
+        node_type: nt,
+        label: label.to_string(),
+        value: None,
+        is_sensitivity_target: sens,
+        group,
+        trade_ids: vec![trade_id.to_string()],
     };
 
     let mut builder = GraphBuilder::with_capacity(10, 15);
@@ -563,29 +568,64 @@ fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGrap
     let params: &[&str] = match &trade.trade_type {
         TradeType::Swap | TradeType::Ois | TradeType::BasisSwap => &["rate", "spread"],
         TradeType::Swaption { .. } | TradeType::CapFloor => &["rate", "vol", "strike"],
-        TradeType::FxForward | TradeType::FxSpot | TradeType::FxSwap => &["spot", "rate_dom", "rate_for"],
-        TradeType::FxOption { .. } | TradeType::FxBarrierOption { .. } => &["spot", "vol", "rate_dom", "rate_for", "strike"],
+        TradeType::FxForward | TradeType::FxSpot | TradeType::FxSwap => {
+            &["spot", "rate_dom", "rate_for"]
+        }
+        TradeType::FxOption { .. } | TradeType::FxBarrierOption { .. } => {
+            &["spot", "vol", "rate_dom", "rate_for", "strike"]
+        }
         TradeType::EquityOption { .. } => &["spot", "vol", "rate", "div", "strike"],
-        TradeType::CreditDefaultSwap { .. } | TradeType::CreditDefaultSwapIndex { .. } => &["spread", "recovery", "rate"],
+        TradeType::CreditDefaultSwap { .. } | TradeType::CreditDefaultSwapIndex { .. } => {
+            &["spread", "recovery", "rate"]
+        }
         TradeType::CommoditySwap { .. } => &["price", "rate"],
         _ => &["rate"],
     };
 
-    let input_ids: Vec<String> = params.iter().map(|p| {
-        let id = format!("{trade_id}_{p}");
-        builder.add_node(mk_node(id.clone(), NodeType::Input, p, true, NodeGroup::Sensitivity));
-        id
-    }).collect();
+    let input_ids: Vec<String> = params
+        .iter()
+        .map(|p| {
+            let id = format!("{trade_id}_{p}");
+            builder.add_node(mk_node(
+                id.clone(),
+                NodeType::Input,
+                p,
+                true,
+                NodeGroup::Sensitivity,
+            ));
+            id
+        })
+        .collect();
 
     let calc_id = format!("{trade_id}_calc");
-    builder.add_node(mk_node(calc_id.clone(), NodeType::Mul, "calculation", false, NodeGroup::Intermediate));
+    builder.add_node(mk_node(
+        calc_id.clone(),
+        NodeType::Mul,
+        "calculation",
+        false,
+        NodeGroup::Intermediate,
+    ));
     for id in &input_ids {
-        builder.add_edge(GraphEdge { source: id.clone(), target: calc_id.clone(), weight: None });
+        builder.add_edge(GraphEdge {
+            source: id.clone(),
+            target: calc_id.clone(),
+            weight: None,
+        });
     }
 
     let out_id = format!("{trade_id}_price");
-    builder.add_node(mk_node(out_id.clone(), NodeType::Output, "price", false, NodeGroup::Output));
-    builder.add_edge(GraphEdge { source: calc_id, target: out_id, weight: None });
+    builder.add_node(mk_node(
+        out_id.clone(),
+        NodeType::Output,
+        "price",
+        false,
+        NodeGroup::Output,
+    ));
+    builder.add_edge(GraphEdge {
+        source: calc_id,
+        target: out_id,
+        weight: None,
+    });
 
     builder.build(Some(trade_id.to_string()))
 }

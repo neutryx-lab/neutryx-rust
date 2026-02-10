@@ -149,21 +149,37 @@ mod tests {
     #[test]
     fn test_error_variants_display() {
         assert!(MarketQuoteError::nan().to_string().contains("NaN"));
-        assert!(MarketQuoteError::infinite(f64::INFINITY).to_string().contains("infinite"));
-        assert!(MarketQuoteError::out_of_bounds(1.5, 0.0, 1.0).to_string().contains("between"));
-        assert!(MarketQuoteError::unsupported_rate_type(RateType::Vol).to_string().contains("Vol"));
-        assert!(MarketQuoteError::ValidationFailed("msg".into()).to_string().contains("msg"));
+        assert!(MarketQuoteError::infinite(f64::INFINITY)
+            .to_string()
+            .contains("infinite"));
+        assert!(MarketQuoteError::out_of_bounds(1.5, 0.0, 1.0)
+            .to_string()
+            .contains("between"));
+        assert!(MarketQuoteError::unsupported_rate_type(RateType::Vol)
+            .to_string()
+            .contains("Vol"));
+        assert!(MarketQuoteError::ValidationFailed("msg".into())
+            .to_string()
+            .contains("msg"));
 
-        let stale = MarketQuoteError::StaleData { threshold_ms: 60000, description: "USD".into() };
+        let stale = MarketQuoteError::StaleData {
+            threshold_ms: 60000,
+            description: "USD".into(),
+        };
         assert!(stale.to_string().contains("60000"));
 
-        let missing = MarketQuoteError::MissingQuote { description: "EUR 5Y".into() };
+        let missing = MarketQuoteError::MissingQuote {
+            description: "EUR 5Y".into(),
+        };
         assert!(missing.to_string().contains("EUR 5Y"));
     }
 
     #[test]
     fn test_helper_constructors() {
-        assert!(matches!(MarketQuoteError::nan(), MarketQuoteError::InvalidQuote { .. }));
+        assert!(matches!(
+            MarketQuoteError::nan(),
+            MarketQuoteError::InvalidQuote { .. }
+        ));
         assert!(matches!(
             MarketQuoteError::infinite(f64::INFINITY),
             MarketQuoteError::InvalidQuote { value, .. } if value.is_infinite()

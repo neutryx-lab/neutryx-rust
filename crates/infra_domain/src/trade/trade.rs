@@ -552,7 +552,12 @@ mod tests {
             Payoff::fixed(0.05),
             Currency::USD,
         )];
-        Leg::new(cashflows, Direction::Receiver, LegType::Fixed, Currency::USD)
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        )
     }
 
     fn make_floating_leg() -> Leg {
@@ -567,7 +572,12 @@ mod tests {
             Payoff::floating(IndexType::Rate(RateIndex::Sofr)),
             Currency::USD,
         )];
-        Leg::new(cashflows, Direction::Payer, LegType::Floating, Currency::USD)
+        Leg::new(
+            cashflows,
+            Direction::Payer,
+            LegType::Floating,
+            Currency::USD,
+        )
     }
 
     #[test]
@@ -585,19 +595,24 @@ mod tests {
         assert!(swaption.is_option());
 
         assert!(TradeType::FxSpot.is_fx());
-        assert!(TradeType::EquitySwap { underlyer: "SPX".into() }.is_equity());
+        assert!(TradeType::EquitySwap {
+            underlyer: "SPX".into()
+        }
+        .is_equity());
         assert!(TradeType::CreditDefaultSwap {
             reference_entity: "X".into(),
             entity_id: None,
             protection_side: ProtectionSide::Buyer,
-        }.is_credit());
+        }
+        .is_credit());
         assert!(TradeType::CommodityForward {
             commodity: "WTI".into(),
             delivery_date: Date::from_ymd(2025, 6, 1).unwrap(),
             forward_price: 80.0,
             quantity: 1000.0,
             quantity_unit: "BBL".into(),
-        }.is_commodity());
+        }
+        .is_commodity());
     }
 
     #[test]
@@ -608,7 +623,10 @@ mod tests {
             .with_portfolio("Portfolio1")
             .with_book("Trading");
 
-        assert_eq!(metadata.trade_date, Some(Date::from_ymd(2025, 1, 1).unwrap()));
+        assert_eq!(
+            metadata.trade_date,
+            Some(Date::from_ymd(2025, 1, 1).unwrap())
+        );
         assert_eq!(metadata.counterparty, Some(CounterpartyId::new("Bank A")));
         assert_eq!(metadata.portfolio, Some(PortfolioId::new("Portfolio1")));
         assert_eq!(metadata.book, Some(BookId::new("Trading")));
@@ -629,11 +647,19 @@ mod tests {
 
     #[test]
     fn test_vanilla_swap_detection() {
-        let swap = Trade::new("S1", vec![make_fixed_leg(), make_floating_leg()], TradeType::Swap);
+        let swap = Trade::new(
+            "S1",
+            vec![make_fixed_leg(), make_floating_leg()],
+            TradeType::Swap,
+        );
         assert!(swap.is_vanilla_swap());
 
         // Wrong type
-        let generic = Trade::new("G1", vec![make_fixed_leg(), make_floating_leg()], TradeType::Generic);
+        let generic = Trade::new(
+            "G1",
+            vec![make_fixed_leg(), make_floating_leg()],
+            TradeType::Generic,
+        );
         assert!(!generic.is_vanilla_swap());
 
         // Single leg
@@ -641,14 +667,22 @@ mod tests {
         assert!(!single.is_vanilla_swap());
 
         // Both fixed
-        let both_fixed = Trade::new("S3", vec![make_fixed_leg(), make_fixed_leg()], TradeType::Swap);
+        let both_fixed = Trade::new(
+            "S3",
+            vec![make_fixed_leg(), make_fixed_leg()],
+            TradeType::Swap,
+        );
         assert!(!both_fixed.is_vanilla_swap());
     }
 
     #[test]
     fn test_trade_with_metadata() {
         let metadata = TradeMetadata::new().with_counterparty("Bank B");
-        let trade = Trade::with_metadata("T002", vec![make_fixed_leg()], TradeType::Generic, metadata);
-        assert_eq!(trade.metadata.counterparty, Some(CounterpartyId::new("Bank B")));
+        let trade =
+            Trade::with_metadata("T002", vec![make_fixed_leg()], TradeType::Generic, metadata);
+        assert_eq!(
+            trade.metadata.counterparty,
+            Some(CounterpartyId::new("Bank B"))
+        );
     }
 }

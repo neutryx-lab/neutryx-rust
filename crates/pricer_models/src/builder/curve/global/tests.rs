@@ -229,8 +229,7 @@ fn test_config_with_jumps_convenience() {
 
 #[test]
 fn test_config_with_empty_jumps() {
-    let config: GlobalBootstrapConfig<f64> =
-        GlobalBootstrapConfig::default().with_jumps(vec![]);
+    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default().with_jumps(vec![]);
 
     // Empty jump list should not activate jumps
     assert!(!config.has_jumps());
@@ -326,8 +325,7 @@ fn test_calibrate_with_jumps_basic() {
             // If it fails, check it's a convergence issue not a panic
             assert!(matches!(
                 e,
-                SolverError::MaxIterationsExceeded { .. }
-                    | SolverError::NumericalInstability(_)
+                SolverError::MaxIterationsExceeded { .. } | SolverError::NumericalInstability(_)
             ));
         }
     }

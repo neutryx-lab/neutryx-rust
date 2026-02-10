@@ -409,9 +409,19 @@ mod tests {
         assert_eq!(cb(d, 25.0, -0.2, RateIndex::Sofr).confidence(), 0.0);
 
         // Impact
-        let e50 = cb(Date::from_ymd(2024, 6, 12).unwrap(), 50.0, 0.75, RateIndex::Estr);
+        let e50 = cb(
+            Date::from_ymd(2024, 6, 12).unwrap(),
+            50.0,
+            0.75,
+            RateIndex::Estr,
+        );
         assert_eq!(e50.impact_on_curve(), 50.0);
-        let e60 = cb(Date::from_ymd(2024, 9, 18).unwrap(), 50.0, 0.60, RateIndex::Sofr);
+        let e60 = cb(
+            Date::from_ymd(2024, 9, 18).unwrap(),
+            50.0,
+            0.60,
+            RateIndex::Sofr,
+        );
         assert!((e60.weighted_impact() - 30.0).abs() < 1e-10);
 
         // Hike/cut/hold
@@ -423,45 +433,90 @@ mod tests {
 
         // is_central_bank_meeting
         assert!(cb(d, 25.0, 0.85, RateIndex::Sofr).is_central_bank_meeting());
-        assert!(!EventInstrument::new(d, EventType::EconomicRelease, 5.0, 0.5, RateIndex::Sofr).is_central_bank_meeting());
+        assert!(
+            !EventInstrument::new(d, EventType::EconomicRelease, 5.0, 0.5, RateIndex::Sofr)
+                .is_central_bank_meeting()
+        );
 
         // Display
         let disp = format!("{}", cb(d, 25.0, 0.85, RateIndex::Sofr));
-        assert!(disp.contains("Central Bank Meeting") && disp.contains("+25bp") && disp.contains("85%") && disp.contains("SOFR"));
-        let disp_neg = format!("{}", cb(Date::from_ymd(2024, 6, 12).unwrap(), -50.0, 0.70, RateIndex::Estr));
+        assert!(
+            disp.contains("Central Bank Meeting")
+                && disp.contains("+25bp")
+                && disp.contains("85%")
+                && disp.contains("SOFR")
+        );
+        let disp_neg = format!(
+            "{}",
+            cb(
+                Date::from_ymd(2024, 6, 12).unwrap(),
+                -50.0,
+                0.70,
+                RateIndex::Estr
+            )
+        );
         assert!(disp_neg.contains("-50bp") && disp_neg.contains("70%"));
 
         // Multi-currency
-        let ecb = cb(Date::from_ymd(2024, 4, 11).unwrap(), -25.0, 0.65, RateIndex::Estr);
+        let ecb = cb(
+            Date::from_ymd(2024, 4, 11).unwrap(),
+            -25.0,
+            0.65,
+            RateIndex::Estr,
+        );
         assert_eq!(ecb.rate_index(), RateIndex::Estr);
         assert!(ecb.is_rate_cut());
         assert_eq!(ecb.weighted_impact(), -25.0 * 0.65);
-        let boe = cb(Date::from_ymd(2024, 5, 9).unwrap(), 0.0, 0.90, RateIndex::Sonia);
+        let boe = cb(
+            Date::from_ymd(2024, 5, 9).unwrap(),
+            0.0,
+            0.90,
+            RateIndex::Sonia,
+        );
         assert_eq!(boe.impact_on_curve(), 0.0);
     }
 
     #[test]
     fn test_event_instrument_conversion() {
-        let me = MarketEvent::new("FOMC-2024-03", EventType::CentralBankMeeting,
-            "FOMC Meeting", "2024-03-20", EventImportance::Critical, "Bloomberg")
-            .with_expected_jump_bps(25.0);
+        let me = MarketEvent::new(
+            "FOMC-2024-03",
+            EventType::CentralBankMeeting,
+            "FOMC Meeting",
+            "2024-03-20",
+            EventImportance::Critical,
+            "Bloomberg",
+        )
+        .with_expected_jump_bps(25.0);
         let e = EventInstrument::from_historical(&me, RateIndex::Sofr, 0.80).unwrap();
         assert_eq!(e.expected_spread(), 25.0);
         assert_eq!(e.confidence(), 0.80);
         assert_eq!(e.event_date(), Date::from_ymd(2024, 3, 20).unwrap());
 
         // No jump → None
-        let no_jump = MarketEvent::new("FOMC", EventType::CentralBankMeeting,
-            "FOMC", "2024-03-20", EventImportance::Critical, "Bloomberg");
+        let no_jump = MarketEvent::new(
+            "FOMC",
+            EventType::CentralBankMeeting,
+            "FOMC",
+            "2024-03-20",
+            EventImportance::Critical,
+            "Bloomberg",
+        );
         assert!(EventInstrument::from_historical(&no_jump, RateIndex::Sofr, 0.80).is_none());
 
         // Invalid date → None
-        let mut bad = me.clone(); bad.date = "not-a-date".to_string();
+        let mut bad = me.clone();
+        bad.date = "not-a-date".to_string();
         assert!(EventInstrument::from_historical(&bad, RateIndex::Sofr, 0.80).is_none());
 
         // parse_date_string
-        assert_eq!(parse_date_string("2024-03-20"), Date::from_ymd(2024, 3, 20).ok());
-        assert_eq!(parse_date_string("2025-12-01"), Date::from_ymd(2025, 12, 1).ok());
+        assert_eq!(
+            parse_date_string("2024-03-20"),
+            Date::from_ymd(2024, 3, 20).ok()
+        );
+        assert_eq!(
+            parse_date_string("2025-12-01"),
+            Date::from_ymd(2025, 12, 1).ok()
+        );
         assert!(parse_date_string("invalid").is_none());
         assert!(parse_date_string("2024-13-01").is_none());
         assert!(parse_date_string("2024-02-30").is_none());
@@ -471,7 +526,8 @@ mod tests {
     fn test_event_instrument_turns() {
         let ed = Date::from_ymd(2024, 12, 31).unwrap();
         let end = Date::from_ymd(2025, 1, 2).unwrap();
-        let turn = EventInstrument::new_turn(ed, end, EventType::TurnOfYear, 12.5, 1.0, RateIndex::Sofr);
+        let turn =
+            EventInstrument::new_turn(ed, end, EventType::TurnOfYear, 12.5, 1.0, RateIndex::Sofr);
         assert_eq!(turn.event_date(), ed);
         assert_eq!(turn.end_date(), Some(end));
         assert_eq!(turn.event_type(), EventType::TurnOfYear);
@@ -479,20 +535,34 @@ mod tests {
 
         // Display includes revert info
         let disp = format!("{}", turn);
-        assert!(disp.contains("Turn of Year") && disp.contains("+12.5bp") && disp.contains("[reverts"));
+        assert!(
+            disp.contains("Turn of Year") && disp.contains("+12.5bp") && disp.contains("[reverts")
+        );
 
         // Backward compat: no end_date = permanent
-        let perm = cb(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85, RateIndex::Sofr);
+        let perm = cb(
+            Date::from_ymd(2024, 3, 20).unwrap(),
+            25.0,
+            0.85,
+            RateIndex::Sofr,
+        );
         assert!(perm.end_date().is_none() && perm.is_permanent_jump() && !perm.is_turn());
 
         // with_end_date
-        let with_end = EventInstrument::new(ed, EventType::Turn, 5.0, 1.0, RateIndex::Sofr).with_end_date(end);
+        let with_end =
+            EventInstrument::new(ed, EventType::Turn, 5.0, 1.0, RateIndex::Sofr).with_end_date(end);
         assert_eq!(with_end.end_date(), Some(end));
 
         // Turn variants
-        assert!(EventInstrument::new(ed, EventType::TurnOfYear, 12.5, 1.0, RateIndex::Sofr).is_turn());
-        assert!(EventInstrument::new(ed, EventType::TurnOfQuarter, 5.0, 1.0, RateIndex::Sofr).is_turn());
-        assert!(EventInstrument::new(ed, EventType::TurnOfMonth, 2.0, 1.0, RateIndex::Sofr).is_turn());
+        assert!(
+            EventInstrument::new(ed, EventType::TurnOfYear, 12.5, 1.0, RateIndex::Sofr).is_turn()
+        );
+        assert!(
+            EventInstrument::new(ed, EventType::TurnOfQuarter, 5.0, 1.0, RateIndex::Sofr).is_turn()
+        );
+        assert!(
+            EventInstrument::new(ed, EventType::TurnOfMonth, 2.0, 1.0, RateIndex::Sofr).is_turn()
+        );
         assert!(!cb(ed, 25.0, 0.85, RateIndex::Sofr).is_turn());
     }
 }

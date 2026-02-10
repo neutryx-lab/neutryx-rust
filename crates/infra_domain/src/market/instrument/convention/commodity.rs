@@ -213,9 +213,21 @@ mod tests {
         assert_eq!(brent.delivery_convention, DeliveryConvention::Cash);
         assert!(brent.delivery_location.is_none());
 
-        assert_eq!(CommodityConvention::henry_hub_gas().price_quotation, PriceQuotation::PerMMBtu);
-        assert_eq!(CommodityConvention::comex_gold().price_quotation, PriceQuotation::PerTroyOunce);
-        assert_eq!(CommodityConvention::lme_copper().price_quotation, PriceQuotation::PerMetricTonne);
-        assert_eq!(CommodityConvention::cbot_corn().price_quotation, PriceQuotation::PerBushel);
+        assert_eq!(
+            CommodityConvention::henry_hub_gas().price_quotation,
+            PriceQuotation::PerMMBtu
+        );
+        assert_eq!(
+            CommodityConvention::comex_gold().price_quotation,
+            PriceQuotation::PerTroyOunce
+        );
+        assert_eq!(
+            CommodityConvention::lme_copper().price_quotation,
+            PriceQuotation::PerMetricTonne
+        );
+        assert_eq!(
+            CommodityConvention::cbot_corn().price_quotation,
+            PriceQuotation::PerBushel
+        );
     }
 }

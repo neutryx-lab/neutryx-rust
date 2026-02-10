@@ -402,9 +402,16 @@ mod tests {
         assert!((BasisSpread::default().bps()).abs() < 1e-10);
 
         // Arithmetic
-        assert!(((BasisSpread::from_bps(10.0) + BasisSpread::from_bps(5.0)).bps() - 15.0).abs() < 1e-10);
-        assert!(((BasisSpread::from_bps(10.0) - BasisSpread::from_bps(3.0)).bps() - 7.0).abs() < 1e-10);
-        assert!(((BasisSpread::from_bps(-15.0) + BasisSpread::from_bps(5.0)).bps() - (-10.0)).abs() < 1e-10);
+        assert!(
+            ((BasisSpread::from_bps(10.0) + BasisSpread::from_bps(5.0)).bps() - 15.0).abs() < 1e-10
+        );
+        assert!(
+            ((BasisSpread::from_bps(10.0) - BasisSpread::from_bps(3.0)).bps() - 7.0).abs() < 1e-10
+        );
+        assert!(
+            ((BasisSpread::from_bps(-15.0) + BasisSpread::from_bps(5.0)).bps() - (-10.0)).abs()
+                < 1e-10
+        );
         assert!(((BasisSpread::from_bps(10.0) + BasisSpread::zero()).bps() - 10.0).abs() < 1e-10);
 
         // Commutativity
@@ -431,7 +438,8 @@ mod tests {
     #[test]
     fn test_xccy_swap_validation() {
         let xccy = CrossCurrencyBasisSwap {
-            domestic_currency: Currency::USD, foreign_currency: Currency::EUR,
+            domestic_currency: Currency::USD,
+            foreign_currency: Currency::EUR,
             notional: 10_000_000.0,
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
             maturity: Date::from_ymd(2030, 1, 15).unwrap(),
@@ -448,26 +456,45 @@ mod tests {
         assert!(display.contains("-15.0 bps"));
 
         // Invalid notional
-        let mut bad = xccy.clone(); bad.notional = -1_000_000.0;
-        assert!(matches!(bad.validate(), Err(XccySwapError::InvalidNotional(_))));
+        let mut bad = xccy.clone();
+        bad.notional = -1_000_000.0;
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::InvalidNotional(_))
+        ));
 
         // Invalid dates
-        let mut bad = xccy.clone(); bad.maturity = Date::from_ymd(2024, 1, 15).unwrap();
-        assert!(matches!(bad.validate(), Err(XccySwapError::InvalidDates { .. })));
+        let mut bad = xccy.clone();
+        bad.maturity = Date::from_ymd(2024, 1, 15).unwrap();
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::InvalidDates { .. })
+        ));
 
         // Currency mismatch domestic
-        let mut bad = xccy.clone(); bad.domestic_leg.currency = Currency::GBP;
-        assert!(matches!(bad.validate(), Err(XccySwapError::CurrencyMismatch { .. })));
+        let mut bad = xccy.clone();
+        bad.domestic_leg.currency = Currency::GBP;
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::CurrencyMismatch { .. })
+        ));
 
         // Currency mismatch foreign
-        let mut bad = xccy.clone(); bad.foreign_leg.currency = Currency::GBP;
-        assert!(matches!(bad.validate(), Err(XccySwapError::CurrencyMismatch { .. })));
+        let mut bad = xccy.clone();
+        bad.foreign_leg.currency = Currency::GBP;
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::CurrencyMismatch { .. })
+        ));
 
         // Same currency
         let mut bad = xccy.clone();
         bad.foreign_currency = Currency::USD;
         bad.foreign_leg.currency = Currency::USD;
-        assert!(matches!(bad.validate(), Err(XccySwapError::SameCurrency(_))));
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::SameCurrency(_))
+        ));
     }
 }
 
