@@ -16,13 +16,6 @@
 - 両手法の計算時間比較表示（Speedup Ratio）
 - リアルタイムWebSocket通知によるマルチクライアント連携
 
-### Non-Goals
-
-- 複数カーブ（OIS + Tenor）の同時ブートストラップ（将来拡張）
-- カーブの永続化・データベース保存
-- 認証・認可機能（デモ用途のため）
-- プロダクション向けの高可用性設計
-
 ## Architecture
 
 ### Existing Architecture Analysis
@@ -82,16 +75,6 @@ graph TB
 - **Existing patterns preserved**: `handlers.rs` パターン、`pricer_types.rs` 型定義、WebSocketブロードキャスト
 - **New components rationale**: 新規エンドポイント5つ、新規API型、カーブキャッシュ
 - **Steering compliance**: A-I-P-S 依存ルール遵守（Service → Pricer）
-
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Frontend | HTML/CSS/JS + Chart.js | UI入力・結果表示・可視化 | 既存インフラ活用 |
-| Backend | Axum 0.7+ | REST API + WebSocket | 既存パターン |
-| Core | pricer_optimiser, pricer_pricing | Bootstrap, IRS Greeks | 完全実装済み |
-| State | RwLock<HashMap> | カーブキャッシュ | インメモリ |
-| Serialisation | Serde (camelCase) | JSON API | 既存規約 |
 
 ## System Flows
 
@@ -169,10 +152,8 @@ sequenceDiagram
 
 #### bootstrap_handler
 
-| Field | Detail |
-|-------|--------|
-| Intent | Par RateリストからBootstrapを実行しカーブを構築 |
-| Requirements | 2.1, 2.2, 2.3, 2.4, 2.5 |
+**Intent**: Par RateリストからBootstrapを実行しカーブを構築
+**Requirements**: 2.1, 2.2, 2.3, 2.4, 2.5
 
 **Responsibilities & Constraints**
 - Par Rateのバリデーション（正値、数値）
@@ -185,20 +166,10 @@ sequenceDiagram
 - Outbound: CurveCache — カーブ保存 (P0)
 - Outbound: WebSocket Hub — 完了通知 (P1)
 
-**Contracts**: API [x]
-
-##### API Contract
-
-| Method | Endpoint | Request | Response | Errors |
-|--------|----------|---------|----------|--------|
-| POST | /api/bootstrap | BootstrapRequest | BootstrapResponse | 400, 422 |
-
 #### price_irs_handler
 
-| Field | Detail |
-|-------|--------|
-| Intent | ブートストラップされたカーブを使用してIRSのNPVを計算 |
-| Requirements | 3.2, 3.3, 3.4 |
+**Intent**: ブートストラップされたカーブを使用してIRSのNPVを計算
+**Requirements**: 3.2, 3.3, 3.4
 
 **Responsibilities & Constraints**
 - カーブIDからCurveCacheを取得
@@ -210,20 +181,10 @@ sequenceDiagram
 - Inbound: CurveCache — カーブ取得 (P0)
 - Outbound: IrsGreeksCalculator — NPV計算 (P0)
 
-**Contracts**: API [x]
-
-##### API Contract
-
-| Method | Endpoint | Request | Response | Errors |
-|--------|----------|---------|----------|--------|
-| POST | /api/price-irs | IrsPricingRequest | IrsPricingResponse | 400, 404, 422 |
-
 #### risk_compare_handler
 
-| Field | Detail |
-|-------|--------|
-| Intent | Bump法とAAD法の両方でDelta計算を実行し比較結果を返却 |
-| Requirements | 4.1-4.6, 5.1-5.6, 6.1-6.4 |
+**Intent**: Bump法とAAD法の両方でDelta計算を実行し比較結果を返却
+**Requirements**: 4.1-4.6, 5.1-5.6, 6.1-6.4
 
 **Responsibilities & Constraints**
 - BenchmarkRunnerを使用したベンチマーク実行
@@ -236,24 +197,12 @@ sequenceDiagram
 - Outbound: BenchmarkRunner — ベンチマーク実行 (P0)
 - Outbound: WebSocket Hub — 完了通知 (P1)
 
-**Contracts**: API [x]
-
-##### API Contract
-
-| Method | Endpoint | Request | Response | Errors |
-|--------|----------|---------|----------|--------|
-| POST | /api/risk/bump | RiskRequest | RiskBumpResponse | 400, 404, 422 |
-| POST | /api/risk/aad | RiskRequest | RiskAadResponse | 400, 404, 422 |
-| POST | /api/risk/compare | RiskRequest | RiskCompareResponse | 400, 404, 422 |
-
 ### State Management Layer
 
 #### CurveCache
 
-| Field | Detail |
-|-------|--------|
-| Intent | ブートストラップされたカーブのインメモリキャッシュ |
-| Requirements | 2.3, 3.2 |
+**Intent**: ブートストラップされたカーブのインメモリキャッシュ
+**Requirements**: 2.3, 3.2
 
 **Responsibilities & Constraints**
 - UUID によるカーブID管理
@@ -261,9 +210,7 @@ sequenceDiagram
 - スレッドセーフなアクセス（RwLock）
 - TTL ベースの自動クリーンアップ（オプション）
 
-**Contracts**: State [x]
-
-##### State Management
+**State Management**
 
 ```rust
 pub struct CurveCache {
@@ -284,53 +231,7 @@ pub struct CachedCurve {
 
 ## Data Models
 
-### Domain Model
-
-```mermaid
-erDiagram
-    BootstrapRequest ||--o{ ParRateInput : contains
-    BootstrapResponse ||--|| CurveData : contains
-    IrsPricingRequest ||--|| IrsParams : contains
-    RiskCompareResponse ||--|| BumpResult : contains
-    RiskCompareResponse ||--|| AadResult : contains
-    RiskCompareResponse ||--|| TimingComparison : contains
-
-    ParRateInput {
-        string tenor
-        float rate
-    }
-    CurveData {
-        uuid curveId
-        array discountFactors
-        array zeroRates
-        array pillars
-    }
-    IrsParams {
-        float notional
-        float fixedRate
-        int tenorYears
-        string frequency
-    }
-    BumpResult {
-        array deltas
-        float dv01
-        object timing
-    }
-    AadResult {
-        array deltas
-        float dv01
-        object timing
-    }
-    TimingComparison {
-        float bumpTimeMs
-        float aadTimeMs
-        float speedupRatio
-    }
-```
-
-### Data Contracts & Integration
-
-#### API Request/Response Schemas
+### API Request/Response Schemas
 
 ```typescript
 // Bootstrap API
@@ -461,18 +362,6 @@ interface CalculationErrorEvent {
 **System Errors (5xx)**:
 - `500 Internal Server Error`: 予期しないエラー → ログ記録、汎用メッセージ
 
-```mermaid
-flowchart TD
-    A[Request Received] --> B{Validation}
-    B -->|Invalid| C[400 Bad Request<br/>Field-level errors]
-    B -->|Valid| D{Curve Exists?}
-    D -->|No| E[404 Not Found<br/>Curve ID not found]
-    D -->|Yes| F{Calculation}
-    F -->|Convergence Fail| G[422 Unprocessable<br/>Failed tenor + suggestion]
-    F -->|Success| H[200 OK<br/>Result data]
-    F -->|Unexpected| I[500 Internal Error<br/>Log + generic message]
-```
-
 ### Error Response Schema
 
 ```typescript
@@ -519,27 +408,6 @@ interface ErrorResponse {
 - 9テナーDelta計算（Bump）の処理時間
 - 9テナーDelta計算（AAD）の処理時間
 - 10回繰り返しベンチマークの安定性
-
-## Optional Sections
-
-### Performance & Scalability
-
-**Target Metrics**:
-- Bootstrap処理: < 100ms（9テナー）
-- PV計算: < 1ms
-- Bump法Delta（全テナー）: < 50ms
-- AAD法Delta（全テナー）: < 5ms（enzyme-ad有効時）
-- Speedup Ratio目標: 10x以上
-
-**Measurement**:
-- 各APIレスポンスに処理時間を含める
-- BenchmarkRunnerの統計機能を活用
-
-### Security Considerations
-
-- デモ用途のため認証・認可は対象外
-- 入力バリデーションによるインジェクション防止
-- CORS設定は既存WebApp設定に従う
 
 ---
 

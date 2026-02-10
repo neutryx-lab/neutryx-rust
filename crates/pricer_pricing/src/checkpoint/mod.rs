@@ -1,4 +1,4 @@
-﻿/! Checkpointing for memory-efficient reverse-mode automatic differentiation.
+/! Checkpointing for memory-efficient reverse-mode automatic differentiation.
 
 mod budget;
 mod manager;

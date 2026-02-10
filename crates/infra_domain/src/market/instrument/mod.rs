@@ -1,4 +1,4 @@
-﻿/! Standard instrument definitions for all asset classes (Rates, FX, Equity, Credit, Commodity).
+/! Standard instrument definitions for all asset classes (Rates, FX, Equity, Credit, Commodity).
 
 mod common;
 mod error;

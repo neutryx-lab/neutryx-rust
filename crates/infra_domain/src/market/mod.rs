@@ -1,4 +1,4 @@
-﻿/! Market data types and rate infrastructure.
+/! Market data types and rate infrastructure.
 
 // ============================================================================
 // Organized Submodules

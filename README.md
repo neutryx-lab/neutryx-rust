@@ -2,7 +2,7 @@
 
 A production-grade **derivatives pricing library** for Tier-1 banks in Rust, powered by **Enzyme automatic differentiation** for high-performance Greeks computation.
 
-## 🎯 Project Goals
+## Project Goals
 
 - **Multi-Asset Class Pricing**: Comprehensive coverage of Rates, FX, Equity, Credit, and Commodity derivatives
 - **Cutting-edge AD**: Enzyme (LLVM-level AD) with `#[autodiff]` macro for C++-competitive performance
@@ -11,7 +11,7 @@ A production-grade **derivatives pricing library** for Tier-1 banks in Rust, pow
 - **Dual-mode verification**: Enzyme vs num-dual for correctness validation
 - **XVA & Risk Analytics**: CVA, DVA, FVA calculations with exposure metrics (EE, EPE, PFE)
 
-## 🏗️ Architecture
+## Architecture
 
 ### A-I-P-S Unidirectional Data Flow
 
@@ -60,7 +60,7 @@ neutryx-rust/
 3. **I**nfra crates must never depend on **P** or **S** crates.
 4. **A**dapter crates depend only on **I** (for definitions) or **P** (for target types), never on **S**.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Using the Neutryx Facade Crate
 
@@ -216,14 +216,14 @@ cargo run --release -p demo_gui --bin demo-web
 
 After startup, open `http://localhost:8080` in your browser.
 
-## 📚 Documentation
+## Documentation
 
 - **[System Design Document](docs/design/SDD.md)**: Architecture details
 - **API Docs**: `cargo doc --open` (stable crates)
 
 > **Note**: The `pricer_optimiser` crate (L2.5) was removed in 2026-01. Market data (curves, surfaces, bootstrapping, provider) has been consolidated into `pricer_models::market`, and calibration engine into `pricer_models::market::calibration`. Enzyme AD has been moved from `pricer_pricing` (L3) to `pricer_risk` (L4).
 
-## 🧪 Testing
+## Testing
 
 ### Unit Tests
 
@@ -248,7 +248,7 @@ cargo +nightly test -p pricer_risk --features enzyme-ad --test verification
 cargo bench
 ```
 
-## 🛠️ Development
+## Development
 
 ### Coding Guidelines
 
@@ -277,7 +277,7 @@ cargo bench
 - **pricer_risk**:
   - `enzyme-ad`: Enable Enzyme automatic differentiation (requires nightly)
 
-## 🎯 Roadmap
+## Roadmap
 
 - [x] **Phase 0**: Workspace scaffolding
 - [x] **Phase 1**: Foundation (L1) - types, traits, smoothing, math library
@@ -293,7 +293,7 @@ cargo bench
 - [ ] **Phase 11**: Service Layer Enhancement - gRPC, Python bindings expansion
 - [ ] **Phase 12**: Production hardening - docs, benchmarks, CI/CD
 
-## 📊 Completed Specifications (44 Total)
+## Completed Specifications (44 Total)
 
 | Specification | Description | Date |
 |---------------|-------------|------|
@@ -342,7 +342,7 @@ cargo bench
 | pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, LSMC, CMS | 2026-01 |
 | curve-global-solver | Global curve calibration with Newton-Raphson (422 tests) | 2026-01 |
 
-## 📊 Performance Targets
+## Performance Targets
 
 | Operation | Target | Status |
 |-----------|--------|--------|
@@ -352,7 +352,7 @@ cargo bench
 | CVA (100 trades, 50 steps) | < 5 s | 🎯 Future |
 | Enzyme delta overhead | < 2x vs forward | 🎯 Future |
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 

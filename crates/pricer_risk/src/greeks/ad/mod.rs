@@ -201,7 +201,6 @@ impl ADMode {
 /// - `Dual`: Forward mode - carries tangent value alongside primal
 /// - `Active`: Reverse mode - accumulates gradients during backward pass
 /// - `Duplicated`: Reverse mode - parameter has a separate shadow for gradients
-///
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Activity {
     /// Parameter is constant (not differentiated).
@@ -254,7 +253,8 @@ impl Activity {
     pub fn is_forward_mode(&self) -> bool { matches!(self, Activity::Dual) }
 }
 
-/// Compute gradient of `f` at `x` using central finite difference (placeholder for Enzyme).
+/// Compute gradient of `f` at `x` using central finite difference (placeholder
+/// for Enzyme).
 ///
 /// # Returns
 ///

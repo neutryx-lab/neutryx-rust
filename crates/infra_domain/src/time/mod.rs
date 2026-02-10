@@ -1,4 +1,4 @@
-﻿/! Time management: dates, calendars, day count conventions, and period calculations.
+//! Time management: dates, calendars, day count conventions, and period calculations.
 
 mod calendars;
 mod day_counters;
