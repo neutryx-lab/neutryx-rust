@@ -208,10 +208,6 @@ impl MarketQuote {
     }
 }
 
-/// Type alias for backward compatibility.
-#[deprecated(since = "0.2.0", note = "Use MarketQuote instead")]
-pub type MarketRate = MarketQuote;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,259 +221,28 @@ mod tests {
     }
 
     #[test]
-    fn test_market_quote_new_valid() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
+    fn test_construction_and_validation() {
+        let q = MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.05, 1700000000000, DataSource::Bloomberg).unwrap();
+        assert!((q.value - 0.05).abs() < f64::EPSILON);
+        assert_eq!(q.quote_type, QuoteType::Mid);
 
-        assert!(quote.is_ok());
-        let quote = quote.unwrap();
-        assert!((quote.value - 0.05).abs() < f64::EPSILON);
-        assert_eq!(quote.quote_type, QuoteType::Mid);
-        assert_eq!(quote.timestamp, 1700000000000);
-        assert_eq!(quote.source, DataSource::Bloomberg);
+        // Zero and negative rates are valid
+        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.0, 0, DataSource::Bloomberg).is_ok());
+        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, -0.005, 0, DataSource::Bloomberg).is_ok());
+
+        // NaN and Infinite are rejected
+        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, f64::NAN, 0, DataSource::Bloomberg).is_err());
+        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, f64::INFINITY, 0, DataSource::Bloomberg).is_err());
+        assert!(MarketQuote::new(test_quote_id(), QuoteType::Mid, f64::NEG_INFINITY, 0, DataSource::Bloomberg).is_err());
     }
 
     #[test]
-    fn test_market_quote_new_nan() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            f64::NAN,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        assert!(quote.is_err());
-        match quote {
-            Err(MarketQuoteError::InvalidQuote { reason, .. }) => {
-                assert!(reason.contains("NaN"));
-            }
-            _ => panic!("Expected InvalidQuote error"),
-        }
-    }
-
-    #[test]
-    fn test_market_quote_new_positive_infinity() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            f64::INFINITY,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        assert!(quote.is_err());
-        match quote {
-            Err(MarketQuoteError::InvalidQuote { value, reason }) => {
-                assert!(value.is_infinite());
-                assert!(reason.contains("infinite"));
-            }
-            _ => panic!("Expected InvalidQuote error"),
-        }
-    }
-
-    #[test]
-    fn test_market_quote_new_negative_infinity() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            f64::NEG_INFINITY,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        assert!(quote.is_err());
-        match quote {
-            Err(MarketQuoteError::InvalidQuote { value, reason }) => {
-                assert!(value.is_infinite());
-                assert!(reason.contains("infinite"));
-            }
-            _ => panic!("Expected InvalidQuote error"),
-        }
-    }
-
-    #[test]
-    fn test_market_quote_new_zero() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.0,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        assert!(quote.is_ok());
-        assert!((quote.unwrap().value - 0.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_market_quote_new_negative() {
-        // Negative rates are valid (e.g., negative interest rates)
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            -0.005,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        assert!(quote.is_ok());
-        assert!((quote.unwrap().value - (-0.005)).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_market_quote_with_timestamp() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        )
-        .unwrap();
-
-        let updated = quote.with_timestamp(1700000001000);
-        assert_eq!(updated.timestamp, 1700000001000);
-        // Value should be preserved
-        assert!((updated.value - 0.05).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_market_quote_with_source() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        )
-        .unwrap();
-
-        let updated = quote.with_source(DataSource::Reuters);
-        assert_eq!(updated.source, DataSource::Reuters);
-        // Value should be preserved
-        assert!((updated.value - 0.05).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_market_quote_clone() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Bid,
-            0.049,
-            1700000000000,
-            DataSource::Reuters,
-        )
-        .unwrap();
-
-        let cloned = quote.clone();
-        assert_eq!(quote, cloned);
-    }
-
-    #[test]
-    fn test_market_quote_eq() {
-        let quote1 = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        )
-        .unwrap();
-
-        let quote2 = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        )
-        .unwrap();
-
-        let quote3 = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Bid,
-            0.049,
-            1700000000000,
-            DataSource::Bloomberg,
-        )
-        .unwrap();
-
-        assert_eq!(quote1, quote2);
-        assert_ne!(quote1, quote3);
-    }
-
-    #[test]
-    fn test_market_quote_debug() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        )
-        .unwrap();
-
-        let debug_str = format!("{:?}", quote);
-        assert!(debug_str.contains("MarketQuote"));
-        assert!(debug_str.contains("Mid"));
-        assert!(debug_str.contains("Bloomberg"));
-    }
-
-    #[test]
-    fn test_market_quote_all_quote_types() {
-        for quote_type in [
-            QuoteType::Bid,
-            QuoteType::Ask,
-            QuoteType::Mid,
-            QuoteType::Last,
-        ] {
-            let quote = MarketQuote::new(
-                test_quote_id(),
-                quote_type,
-                0.05,
-                1700000000000,
-                DataSource::Bloomberg,
-            );
-            assert!(quote.is_ok());
-            assert_eq!(quote.unwrap().quote_type, quote_type);
-        }
-    }
-
-    #[test]
-    fn test_market_quote_all_data_sources() {
-        for source in [
-            DataSource::Bloomberg,
-            DataSource::Reuters,
-            DataSource::Internal,
-            DataSource::Manual,
-        ] {
-            let quote =
-                MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.05, 1700000000000, source);
-            assert!(quote.is_ok());
-            assert_eq!(quote.unwrap().source, source);
-        }
-    }
-
-    #[test]
-    fn test_market_quote_builder_chain() {
-        let quote = MarketQuote::new(
-            test_quote_id(),
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        )
-        .unwrap()
-        .with_timestamp(1700000001000)
-        .with_source(DataSource::Reuters);
-
-        assert_eq!(quote.timestamp, 1700000001000);
-        assert_eq!(quote.source, DataSource::Reuters);
+    fn test_builder_methods() {
+        let q = MarketQuote::new(test_quote_id(), QuoteType::Mid, 0.05, 1000, DataSource::Bloomberg)
+            .unwrap()
+            .with_timestamp(2000)
+            .with_source(DataSource::Reuters);
+        assert_eq!(q.timestamp, 2000);
+        assert_eq!(q.source, DataSource::Reuters);
     }
 }

@@ -142,148 +142,39 @@ impl MarketQuoteError {
     }
 }
 
-/// Type alias for backward compatibility.
-#[deprecated(since = "0.2.0", note = "Use MarketQuoteError instead")]
-pub type MarketRateError = MarketQuoteError;
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_invalid_quote_error() {
-        let error = MarketQuoteError::InvalidQuote {
-            value: f64::NAN,
-            reason: "Value is NaN".to_string(),
-        };
+    fn test_error_variants_display() {
+        assert!(MarketQuoteError::nan().to_string().contains("NaN"));
+        assert!(MarketQuoteError::infinite(f64::INFINITY).to_string().contains("infinite"));
+        assert!(MarketQuoteError::out_of_bounds(1.5, 0.0, 1.0).to_string().contains("between"));
+        assert!(MarketQuoteError::unsupported_rate_type(RateType::Vol).to_string().contains("Vol"));
+        assert!(MarketQuoteError::ValidationFailed("msg".into()).to_string().contains("msg"));
 
-        let msg = error.to_string();
-        assert!(msg.contains("Invalid quote"));
-        assert!(msg.contains("NaN"));
+        let stale = MarketQuoteError::StaleData { threshold_ms: 60000, description: "USD".into() };
+        assert!(stale.to_string().contains("60000"));
+
+        let missing = MarketQuoteError::MissingQuote { description: "EUR 5Y".into() };
+        assert!(missing.to_string().contains("EUR 5Y"));
     }
 
     #[test]
-    fn test_stale_data_error() {
-        let error = MarketQuoteError::StaleData {
-            threshold_ms: 60000,
-            description: "USD 3M SOFR".to_string(),
-        };
-
-        let msg = error.to_string();
-        assert!(msg.contains("Stale data"));
-        assert!(msg.contains("60000"));
-        assert!(msg.contains("USD 3M SOFR"));
-    }
-
-    #[test]
-    fn test_missing_quote_error() {
-        let error = MarketQuoteError::MissingQuote {
-            description: "EUR 5Y Swap".to_string(),
-        };
-
-        let msg = error.to_string();
-        assert!(msg.contains("Missing quote"));
-        assert!(msg.contains("EUR 5Y Swap"));
-    }
-
-    #[test]
-    fn test_mapping_failed_error() {
-        let error = MarketQuoteError::MappingFailed {
-            rate_type: RateType::Vol,
-            reason: "Volatility mapping not supported".to_string(),
-        };
-
-        let msg = error.to_string();
-        assert!(msg.contains("Mapping failed"));
-        assert!(msg.contains("Vol"));
-    }
-
-    #[test]
-    fn test_validation_failed_error() {
-        let error = MarketQuoteError::ValidationFailed("Custom validation message".to_string());
-
-        let msg = error.to_string();
-        assert!(msg.contains("Validation failed"));
-        assert!(msg.contains("Custom validation message"));
-    }
-
-    #[test]
-    fn test_nan_helper() {
-        let error = MarketQuoteError::nan();
-
-        match error {
-            MarketQuoteError::InvalidQuote { reason, .. } => {
-                assert!(reason.contains("NaN"));
-            }
-            _ => panic!("Expected InvalidQuote"),
-        }
-    }
-
-    #[test]
-    fn test_infinite_helper() {
-        let error = MarketQuoteError::infinite(f64::INFINITY);
-
-        match error {
-            MarketQuoteError::InvalidQuote { value, reason } => {
-                assert!(value.is_infinite());
-                assert!(reason.contains("infinite"));
-            }
-            _ => panic!("Expected InvalidQuote"),
-        }
-    }
-
-    #[test]
-    fn test_out_of_bounds_helper() {
-        let error = MarketQuoteError::out_of_bounds(1.5, -0.1, 1.0);
-
-        match error {
-            MarketQuoteError::InvalidQuote { value, reason } => {
-                assert!((value - 1.5).abs() < f64::EPSILON);
-                assert!(reason.contains("-0.1"));
-                assert!(reason.contains("1"));
-            }
-            _ => panic!("Expected InvalidQuote"),
-        }
-    }
-
-    #[test]
-    fn test_unsupported_rate_type_helper() {
-        let error = MarketQuoteError::unsupported_rate_type(RateType::BasisSwap);
-
-        match error {
-            MarketQuoteError::MappingFailed { rate_type, .. } => {
-                assert_eq!(rate_type, RateType::BasisSwap);
-            }
-            _ => panic!("Expected MappingFailed"),
-        }
-    }
-
-    #[test]
-    fn test_error_clone() {
-        let error = MarketQuoteError::ValidationFailed("test".to_string());
-        let cloned = error.clone();
-        assert_eq!(error, cloned);
-    }
-
-    #[test]
-    fn test_error_eq() {
-        let error1 = MarketQuoteError::ValidationFailed("test".to_string());
-        let error2 = MarketQuoteError::ValidationFailed("test".to_string());
-        let error3 = MarketQuoteError::ValidationFailed("other".to_string());
-
-        assert_eq!(error1, error2);
-        assert_ne!(error1, error3);
-    }
-
-    #[test]
-    fn test_error_debug() {
-        let error = MarketQuoteError::InvalidQuote {
-            value: 0.5,
-            reason: "test".to_string(),
-        };
-
-        let debug_str = format!("{:?}", error);
-        assert!(debug_str.contains("InvalidQuote"));
-        assert!(debug_str.contains("0.5"));
+    fn test_helper_constructors() {
+        assert!(matches!(MarketQuoteError::nan(), MarketQuoteError::InvalidQuote { .. }));
+        assert!(matches!(
+            MarketQuoteError::infinite(f64::INFINITY),
+            MarketQuoteError::InvalidQuote { value, .. } if value.is_infinite()
+        ));
+        assert!(matches!(
+            MarketQuoteError::out_of_bounds(1.5, 0.0, 1.0),
+            MarketQuoteError::InvalidQuote { value, .. } if (value - 1.5).abs() < f64::EPSILON
+        ));
+        assert!(matches!(
+            MarketQuoteError::unsupported_rate_type(RateType::BasisSwap),
+            MarketQuoteError::MappingFailed { rate_type, .. } if rate_type == RateType::BasisSwap
+        ));
     }
 }

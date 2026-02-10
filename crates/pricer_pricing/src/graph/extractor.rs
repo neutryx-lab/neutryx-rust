@@ -30,85 +30,23 @@ use super::{
 };
 
 // =============================================================================
-// GraphExtractable Trait (Task 2.1)
+// GraphExtractable Trait
 // =============================================================================
 
 /// Trait for extracting computation graphs from pricing contexts.
-///
-/// Implementors of this trait can extract the dependency graph of computations
-/// performed during pricing, enabling visualisation of the computation
-/// structure.
-///
-/// # Requirements
-///
-/// - `extract_graph`: Extract the full graph for a trade (or all trades)
-/// - `extract_affected_nodes`: Extract only nodes affected by updates (for
-///   WebSocket)
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use pricer_pricing::graph::{GraphExtractable, SimpleGraphExtractor};
-///
-/// let extractor = SimpleGraphExtractor::new();
-/// let graph = extractor.extract_graph(Some("T001"))?;
-/// println!("Graph has {} nodes", graph.nodes.len());
-/// ```
 pub trait GraphExtractable {
-    /// Extract the computation graph for a specific trade or all trades.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Optional trade ID to filter extraction. If None, extracts
-    ///   the combined graph for all trades.
-    ///
-    /// # Returns
-    ///
-    /// - `Ok(ComputationGraph)` - The extracted graph with nodes, edges, and
-    ///   metadata
-    /// - `Err(GraphError::TradeNotFound)` - If the specified trade does not
-    ///   exist
-    /// - `Err(GraphError::ExtractionFailed)` - If extraction fails for any
-    ///   reason
-    /// - `Err(GraphError::Timeout)` - If extraction exceeds the time limit
-    ///
-    /// # Performance
-    ///
-    /// Should complete within 1 second for graphs up to 10,000 nodes.
+    /// Extract the computation graph for a specific trade (or all if `None`).
     fn extract_graph(&self, trade_id: Option<&str>) -> Result<ComputationGraph, GraphError>;
 
-    /// Extract nodes affected by recent updates (for differential WebSocket
-    /// updates).
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - The trade ID to check for affected nodes
-    ///
-    /// # Returns
-    ///
-    /// - `Ok(Vec<GraphNodeUpdate>)` - List of nodes with updated values
-    /// - `Err(GraphError::TradeNotFound)` - If the trade does not exist
-    ///
-    /// # Usage
-    ///
-    /// This method is called after market data updates to determine which
-    /// nodes have changed values, enabling efficient WebSocket broadcasting.
+    /// Extract nodes affected by recent updates (for differential WebSocket updates).
     fn extract_affected_nodes(&self, trade_id: &str) -> Result<Vec<GraphNodeUpdate>, GraphError>;
 }
 
 // =============================================================================
-// GraphBuilder - Pre-allocated Buffer for Performance (Task 2.3)
+// GraphBuilder
 // =============================================================================
 
 /// Pre-allocated buffer builder for graph construction.
-///
-/// Provides memory-efficient graph construction by pre-allocating
-/// node and edge vectors to avoid repeated allocations.
-///
-/// # Performance
-///
-/// Pre-allocation reduces memory allocation overhead during graph
-/// construction, meeting the 10,000 nodes in 1 second requirement.
 #[derive(Debug)]
 pub struct GraphBuilder {
     /// Pre-allocated node buffer
@@ -120,22 +58,10 @@ pub struct GraphBuilder {
 }
 
 impl GraphBuilder {
-    /// Create a new GraphBuilder with default capacity.
-    ///
-    /// Default capacity is 1,000 nodes and 2,000 edges.
+    /// Create a new GraphBuilder (default: 1,000 nodes, 2,000 edges).
     pub fn new() -> Self { Self::with_capacity(1_000, 2_000) }
 
     /// Create a new GraphBuilder with specified capacity.
-    ///
-    /// # Arguments
-    ///
-    /// * `node_capacity` - Initial capacity for nodes
-    /// * `edge_capacity` - Initial capacity for edges
-    ///
-    /// # Performance
-    ///
-    /// Pre-allocating sufficient capacity avoids reallocations during
-    /// graph construction.
     pub fn with_capacity(node_capacity: usize, edge_capacity: usize) -> Self {
         Self {
             nodes: Vec::with_capacity(node_capacity),
@@ -144,15 +70,7 @@ impl GraphBuilder {
         }
     }
 
-    /// Add a node to the graph.
-    ///
-    /// # Arguments
-    ///
-    /// * `node` - The node to add
-    ///
-    /// # Returns
-    ///
-    /// The index of the added node.
+    /// Add a node to the graph, returning its index.
     pub fn add_node(&mut self, node: GraphNode) -> usize {
         let index = self.nodes.len();
         self.node_index.insert(node.id.clone(), index);
@@ -161,33 +79,17 @@ impl GraphBuilder {
     }
 
     /// Add an edge to the graph.
-    ///
-    /// # Arguments
-    ///
-    /// * `edge` - The edge to add
     pub fn add_edge(&mut self, edge: GraphEdge) { self.edges.push(edge); }
 
     /// Check if a node exists by ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The node ID to check
     pub fn has_node(&self, id: &str) -> bool { self.node_index.contains_key(id) }
 
     /// Get a node by ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The node ID to look up
     pub fn get_node(&self, id: &str) -> Option<&GraphNode> {
         self.node_index.get(id).map(|&idx| &self.nodes[idx])
     }
 
     /// Get a mutable reference to a node by ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The node ID to look up
     pub fn get_node_mut(&mut self, id: &str) -> Option<&mut GraphNode> {
         self.node_index
             .get(id)
@@ -201,23 +103,7 @@ impl GraphBuilder {
     /// Get the number of edges.
     pub fn edge_count(&self) -> usize { self.edges.len() }
 
-    /// Add a trade ID to a node's trade_ids list.
-    ///
-    /// This is used for Portfolio graph construction where nodes may belong
-    /// to multiple trades (shared market data nodes).
-    ///
-    /// # Arguments
-    ///
-    /// * `node_id` - The ID of the node to update
-    /// * `trade_id` - The trade ID to add
-    ///
-    /// # Returns
-    ///
-    /// `Some(())` if the node exists and was updated, `None` otherwise.
-    ///
-    /// # Deduplication
-    ///
-    /// The trade ID is only added if it doesn't already exist in the list.
+    /// Add a trade ID to a node's trade_ids list (deduplicating).
     pub fn add_trade_id(&mut self, node_id: &str, trade_id: &str) -> Option<()> {
         let node = self.get_node_mut(node_id)?;
         let trade_id_string = trade_id.to_string();
@@ -228,15 +114,6 @@ impl GraphBuilder {
     }
 
     /// Set the trade IDs for a node, replacing any existing values.
-    ///
-    /// # Arguments
-    ///
-    /// * `node_id` - The ID of the node to update
-    /// * `trade_ids` - The list of trade IDs to set
-    ///
-    /// # Returns
-    ///
-    /// `Some(())` if the node exists and was updated, `None` otherwise.
     pub fn set_trade_ids(&mut self, node_id: &str, trade_ids: Vec<String>) -> Option<()> {
         let node = self.get_node_mut(node_id)?;
         node.trade_ids = trade_ids;
@@ -317,10 +194,6 @@ impl GraphBuilder {
     }
 
     /// Validate that the graph is a DAG (no cycles).
-    ///
-    /// # Returns
-    ///
-    /// `true` if the graph is a valid DAG, `false` if cycles are detected.
     pub fn is_dag(&self) -> bool {
         if self.nodes.is_empty() {
             return true;
@@ -374,15 +247,7 @@ impl GraphBuilder {
         processed_count == self.nodes.len()
     }
 
-    /// Build the final ComputationGraph.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Optional trade ID for metadata
-    ///
-    /// # Returns
-    ///
-    /// The completed `ComputationGraph` with calculated metadata.
+    /// Build the final ComputationGraph with calculated metadata.
     pub fn build(self, trade_id: Option<String>) -> ComputationGraph {
         let node_count = self.nodes.len();
         let edge_count = self.edges.len();
@@ -404,16 +269,7 @@ impl GraphBuilder {
         }
     }
 
-    /// Build the final ComputationGraph, consuming the builder.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Optional trade ID for metadata
-    /// * `depth` - Pre-calculated depth (for performance when already known)
-    ///
-    /// # Returns
-    ///
-    /// The completed `ComputationGraph` with provided metadata.
+    /// Build the final ComputationGraph with a pre-calculated depth.
     pub fn build_with_depth(self, trade_id: Option<String>, depth: usize) -> ComputationGraph {
         let node_count = self.nodes.len();
         let edge_count = self.edges.len();
@@ -434,11 +290,7 @@ impl GraphBuilder {
         }
     }
 
-    /// Get the current timestamp in ISO 8601 format.
-    ///
-    /// Returns a timestamp string suitable for metadata. Uses Unix epoch
-    /// seconds with 'Z' suffix for simplicity. In production, this could
-    /// use chrono for full RFC 3339 formatting.
+    /// Get the current timestamp as Unix epoch seconds with 'Z' suffix.
     pub fn current_timestamp() -> String {
         // Use a simple format since we don't want to add chrono dependency
         // In production, this would use chrono::Utc::now().to_rfc3339()
@@ -454,38 +306,10 @@ impl Default for GraphBuilder {
 }
 
 // =============================================================================
-// SimpleGraphExtractor (Task 2.2)
+// SimpleGraphExtractor
 // =============================================================================
 
-/// Simple implementation of graph extraction for demonstration purposes.
-///
-/// This extractor simulates graph extraction from a pricing context,
-/// building computation graphs that represent the dependency structure
-/// of pricing calculations.
-///
-/// # Features
-///
-/// - Extract graphs for specific trades or all trades
-/// - Track sensitivity targets for AD
-/// - Calculate graph depth and validate DAG structure
-///
-/// # Performance (Task 2.3)
-///
-/// - Pre-allocated buffers via `GraphBuilder`
-/// - O(V + E) graph construction
-/// - Timeout protection (500ms default)
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_pricing::graph::{SimpleGraphExtractor, GraphExtractable};
-///
-/// let mut extractor = SimpleGraphExtractor::new();
-/// extractor.register_trade("T001", vec!["spot", "vol", "rate"]);
-///
-/// let graph = extractor.extract_graph(Some("T001")).unwrap();
-/// assert!(graph.nodes.len() > 0);
-/// ```
+/// Simple graph extractor for demonstration purposes.
 #[derive(Debug)]
 pub struct SimpleGraphExtractor {
     /// Registered trades with their sensitivity parameters
@@ -520,42 +344,19 @@ impl SimpleGraphExtractor {
         }
     }
 
-    /// Create a new SimpleGraphExtractor with custom timeout.
-    ///
-    /// # Arguments
-    ///
-    /// * `timeout_ms` - Timeout in milliseconds for graph extraction
+    /// Set custom timeout (milliseconds) for graph extraction.
     pub fn with_timeout(mut self, timeout_ms: u64) -> Self {
         self.timeout_ms = timeout_ms;
         self
     }
 
-    /// Create a new SimpleGraphExtractor with custom capacity.
-    ///
-    /// # Arguments
-    ///
-    /// * `node_capacity` - Initial capacity for nodes
-    /// * `edge_capacity` - Initial capacity for edges
+    /// Set custom pre-allocation capacity for nodes and edges.
     pub fn with_capacity(mut self, node_capacity: usize, edge_capacity: usize) -> Self {
         self.builder_capacity = (node_capacity, edge_capacity);
         self
     }
 
-    /// Register a trade with its sensitivity parameters.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - The trade identifier
-    /// * `sensitivity_params` - List of parameter names that are AD seed points
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use pricer_pricing::graph::SimpleGraphExtractor;
-    ///
-    /// let mut extractor = SimpleGraphExtractor::new();
-    /// extractor.register_trade("T001", vec!["spot", "vol", "rate"]);
-    /// ```
+    /// Register a trade with its sensitivity parameters (AD seed points).
     pub fn register_trade<S: Into<String>>(&mut self, trade_id: &str, sensitivity_params: Vec<S>) {
         let info = TradeGraphInfo {
             sensitivity_params: sensitivity_params.into_iter().map(|s| s.into()).collect(),
@@ -565,13 +366,7 @@ impl SimpleGraphExtractor {
         self.trades.insert(trade_id.to_string(), info);
     }
 
-    /// Set parameter values for a trade.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - The trade identifier
-    /// * `param_name` - The parameter name
-    /// * `value` - The parameter value
+    /// Set a parameter value for a trade.
     pub fn set_param_value(
         &mut self,
         trade_id: &str,
@@ -595,13 +390,7 @@ impl SimpleGraphExtractor {
         Ok(())
     }
 
-    /// Set computed value for a trade.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - The trade identifier
-    /// * `node_id` - The node identifier
-    /// * `value` - The computed value
+    /// Set a computed value for a trade node.
     pub fn set_computed_value(
         &mut self,
         trade_id: &str,

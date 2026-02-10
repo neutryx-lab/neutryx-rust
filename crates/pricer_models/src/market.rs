@@ -929,13 +929,6 @@ pub mod fx_curves {
 
     impl<T: Float> FlatFxCurve<T> {
         /// Creates a new flat FX curve.
-        ///
-        /// # Arguments
-        ///
-        /// * `spot` - Spot exchange rate
-        /// * `forward_points_per_year` - Forward points per year (F/S - 1 per
-        ///   year)
-        /// * `currency_pair` - Currency pair
         pub fn new(spot: T, forward_points_per_year: T, currency_pair: CurrencyPair) -> Self {
             Self {
                 spot,
@@ -976,13 +969,6 @@ pub mod fx_curves {
 
     impl<T: Float, D: YieldCurve<T>, F: YieldCurve<T>> IrpFxCurve<T, D, F> {
         /// Creates a new IRP-based FX curve.
-        ///
-        /// # Arguments
-        ///
-        /// * `spot` - Spot exchange rate (domestic per foreign)
-        /// * `domestic_curve` - Domestic currency yield curve
-        /// * `foreign_curve` - Foreign currency yield curve
-        /// * `currency_pair` - Currency pair
         pub fn new(
             spot: T,
             domestic_curve: D,
@@ -1146,36 +1132,7 @@ pub mod jumps {
         pub fn to_tuple(&self) -> (f64, f64) { (self.time, self.cumulative_offset) }
     }
 
-    /// Converts JumpPillars to a vector of JumpEntry for use in bootstrapped
-    /// curves.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - Slice of JumpPillar definitions
-    /// * `valuation_date` - The valuation date (time = 0)
-    /// * `day_counter` - Day count convention for year fraction calculation
-    ///
-    /// # Returns
-    ///
-    /// A vector of JumpEntry sorted by time, with cumulative offsets.
-    /// The offset is calculated as: sum of (weighted_jump_bps / 10000) for all
-    /// previous jumps, applied in log(discount_factor) space.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_models::market::jumps::convert_jump_pillars;
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::time::{Date, DayCounter};
-    ///
-    /// let valuation = Date::from_ymd(2024, 1, 1).unwrap();
-    /// let pillars = vec![
-    ///     JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.8),
-    /// ];
-    ///
-    /// let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
-    /// assert_eq!(entries.len(), 1);
-    /// ```
+    /// Converts JumpPillars to sorted JumpEntry with cumulative offsets.
     #[must_use]
     pub fn convert_jump_pillars(
         pillars: &[JumpPillar],
@@ -1226,20 +1183,7 @@ pub mod jumps {
             .collect()
     }
 
-    /// Converts JumpPillars to a vector of (time, cumulative_offset) tuples.
-    ///
-    /// This is a convenience wrapper around [`convert_jump_pillars`] that
-    /// returns tuples instead of [`JumpEntry`] structs.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - Slice of JumpPillar definitions
-    /// * `valuation_date` - The valuation date (time = 0)
-    /// * `day_counter` - Day count convention for year fraction calculation
-    ///
-    /// # Returns
-    ///
-    /// A vector of (time, cumulative_offset) tuples sorted by time.
+    /// Convenience wrapper returning `(time, cumulative_offset)` tuples.
     #[must_use]
     pub fn convert_jump_pillars_to_tuples(
         pillars: &[JumpPillar],
@@ -1252,19 +1196,7 @@ pub mod jumps {
             .collect()
     }
 
-    /// Finds the cumulative jump offset at a given time.
-    ///
-    /// Uses binary search for O(log n) performance.
-    ///
-    /// # Arguments
-    ///
-    /// * `jumps` - Sorted slice of JumpEntry
-    /// * `t` - Time to query
-    ///
-    /// # Returns
-    ///
-    /// The cumulative offset at time `t`. Returns 0.0 if `t` is before all
-    /// jumps.
+    /// Finds the cumulative jump offset at time `t` (binary search).
     #[must_use]
     pub fn cumulative_offset_at(jumps: &[JumpEntry], t: f64) -> f64 {
         if jumps.is_empty() {
@@ -1286,19 +1218,7 @@ pub mod jumps {
         }
     }
 
-    /// Finds the cumulative jump offset at a given time, excluding the jump at
-    /// that time.
-    ///
-    /// This is useful for calculating the left limit (pre-jump value).
-    ///
-    /// # Arguments
-    ///
-    /// * `jumps` - Sorted slice of JumpEntry
-    /// * `t` - Time to query
-    ///
-    /// # Returns
-    ///
-    /// The cumulative offset just before time `t`.
+    /// Finds the cumulative jump offset just before time `t` (left limit).
     #[must_use]
     pub fn cumulative_offset_before(jumps: &[JumpEntry], t: f64) -> f64 {
         if jumps.is_empty() {
@@ -1314,17 +1234,7 @@ pub mod jumps {
         }
     }
 
-    /// Checks if there is a jump at the given time.
-    ///
-    /// # Arguments
-    ///
-    /// * `jumps` - Sorted slice of JumpEntry
-    /// * `t` - Time to query
-    /// * `tolerance` - Time tolerance for equality comparison (default: 1e-10)
-    ///
-    /// # Returns
-    ///
-    /// True if there is a jump within the tolerance of time `t`.
+    /// Checks if there is a jump within `tolerance` of time `t`.
     #[must_use]
     pub fn has_jump_at(jumps: &[JumpEntry], t: f64, tolerance: f64) -> bool {
         jumps.iter().any(|j| (j.time - t).abs() < tolerance)
@@ -1332,34 +1242,8 @@ pub mod jumps {
 
     /// Builds a daily forward-rate-shift grid from jump pillars.
     ///
-    /// Unlike [`convert_jump_pillars_to_tuples`] (which produces step-function
-    /// offsets in log-DF space), this function produces **ramp offsets** that
-    /// correspond to a step function in the *forward rate*.
-    ///
-    /// # Model
-    ///
-    /// For each rate shift `s_i` at time `t_i`:
-    ///
-    /// ```text
-    /// offset(t) = -Σ s_i · (t - t_i)   for t_i ≤ t
-    /// ```
-    ///
-    /// This yields `df(t) = base_df(t) · exp(offset(t))`, which in turn
-    /// produces `f(t) = f_base(t) + S(t)` where S(t) is a smooth step
-    /// function — exactly the forward-rate-shift model used for central
-    /// bank meeting cuts and turn-of-year adjustments.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - Slice of JumpPillar definitions from `infra_domain`
-    /// * `valuation_date` - Reference date (time = 0)
-    /// * `day_counter` - Day count convention for time axis
-    /// * `max_time` - Maximum time in years for the grid
-    ///
-    /// # Returns
-    ///
-    /// Dense daily grid of `(time, cumulative_offset)` pairs, compatible
-    /// with [`CurveBootstrapper::bootstrap_to_curve_with_jumps`](crate::builder::CurveBootstrapper::bootstrap_to_curve_with_jumps).
+    /// Produces ramp offsets: `offset(t) = -Sum s_i * (t - t_i)` for `t_i <= t`,
+    /// yielding `df(t) = base_df(t) * exp(offset(t))`.
     #[must_use]
     pub fn build_forward_rate_shift_grid(
         pillars: &[JumpPillar],

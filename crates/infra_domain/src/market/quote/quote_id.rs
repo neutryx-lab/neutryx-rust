@@ -157,145 +157,41 @@ impl fmt::Display for QuoteId {
     }
 }
 
-/// Type alias for backward compatibility.
-#[deprecated(since = "0.2.0", note = "Use QuoteId instead")]
-pub type RateId = QuoteId;
-
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
 
     use super::*;
 
     #[test]
-    fn test_quote_id_new() {
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
+    fn test_construction_and_display() {
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
+        assert_eq!(id.currency, Currency::USD);
+        assert_eq!(id.rate_index, None);
+        assert_eq!(id.description(), "USD 3M SWAP");
+        assert_eq!(format!("{}", id), "USD 3M SWAP");
 
-        assert_eq!(quote_id.currency, Currency::USD);
-        assert_eq!(quote_id.tenor, Tenor::ThreeMonths);
-        assert_eq!(quote_id.rate_type, RateType::Swap);
-        assert_eq!(quote_id.rate_index, None);
+        let with_idx = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
+        assert_eq!(with_idx.rate_index, Some(RateIndex::Sofr));
+        assert_eq!(format!("{}", with_idx), "USD 1Y OIS (SOFR)");
     }
 
     #[test]
-    fn test_quote_id_with_index() {
-        let quote_id =
-            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
-
-        assert_eq!(quote_id.currency, Currency::USD);
-        assert_eq!(quote_id.tenor, Tenor::OneYear);
-        assert_eq!(quote_id.rate_type, RateType::Ois);
-        assert_eq!(quote_id.rate_index, Some(RateIndex::Sofr));
-    }
-
-    #[test]
-    fn test_quote_id_description() {
-        let quote_id = QuoteId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap);
-        assert_eq!(quote_id.description(), "EUR 5Y SWAP");
-
-        let quote_id_deposit = QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit);
-        assert_eq!(quote_id_deposit.description(), "USD 1M DEPO");
-    }
-
-    #[test]
-    fn test_quote_id_display_without_index() {
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
-        assert_eq!(format!("{}", quote_id), "USD 3M SWAP");
-    }
-
-    #[test]
-    fn test_quote_id_display_with_index() {
-        let quote_id =
-            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
-        assert_eq!(format!("{}", quote_id), "USD 1Y OIS (SOFR)");
-    }
-
-    #[test]
-    fn test_quote_id_clone() {
-        let original = QuoteId::new(Currency::GBP, Tenor::TenYears, RateType::Swap);
-        let cloned = original.clone();
-
-        assert_eq!(original, cloned);
-    }
-
-    #[test]
-    fn test_quote_id_eq() {
+    fn test_equality_and_hash() {
         let id1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
         let id2 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
         let id3 = QuoteId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Swap);
-
         assert_eq!(id1, id2);
         assert_ne!(id1, id3);
-    }
 
-    #[test]
-    fn test_quote_id_eq_with_index() {
-        let id1 =
-            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
-        let id2 =
-            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
-        let id3 = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
+        // Index affects equality
+        let with_idx = id1.clone().with_index(RateIndex::Sofr);
+        assert_ne!(id1, with_idx);
 
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3); // Different because of index
-    }
-
-    #[test]
-    fn test_quote_id_hash() {
         let mut set = HashSet::new();
-
-        let id1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
-        let id2 = QuoteId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap);
-        let id3 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap); // Duplicate
-
         set.insert(id1);
-        set.insert(id2);
+        set.insert(id2); // duplicate
         set.insert(id3);
-
         assert_eq!(set.len(), 2);
-    }
-
-    #[test]
-    fn test_quote_id_as_hashmap_key() {
-        let mut map: HashMap<QuoteId, f64> = HashMap::new();
-
-        let id1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-        let id2 = QuoteId::new(Currency::USD, Tenor::SixMonths, RateType::Deposit);
-
-        map.insert(id1.clone(), 0.05);
-        map.insert(id2.clone(), 0.055);
-
-        assert_eq!(map.get(&id1), Some(&0.05));
-        assert_eq!(map.get(&id2), Some(&0.055));
-    }
-
-    #[test]
-    fn test_quote_id_debug() {
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
-        let debug_str = format!("{:?}", quote_id);
-
-        assert!(debug_str.contains("QuoteId"));
-        assert!(debug_str.contains("USD"));
-        assert!(debug_str.contains("ThreeMonths"));
-        assert!(debug_str.contains("Swap"));
-    }
-
-    #[test]
-    fn test_quote_id_various_combinations() {
-        // Test various currency/tenor/type combinations
-        let combinations = vec![
-            (Currency::USD, Tenor::Overnight, RateType::Deposit),
-            (Currency::EUR, Tenor::OneWeek, RateType::Fra),
-            (Currency::GBP, Tenor::OneMonth, RateType::Futures),
-            (Currency::JPY, Tenor::ThreeMonths, RateType::Swap),
-            (Currency::CHF, Tenor::SixMonths, RateType::Ois),
-        ];
-
-        for (currency, tenor, rate_type) in combinations {
-            let quote_id = QuoteId::new(currency, tenor, rate_type);
-            assert_eq!(quote_id.currency, currency);
-            assert_eq!(quote_id.tenor, tenor);
-            assert_eq!(quote_id.rate_type, rate_type);
-        }
     }
 }

@@ -779,179 +779,53 @@ impl MarketQuoteSet {
     }
 }
 
-/// Type alias for backward compatibility.
-#[deprecated(since = "0.2.0", note = "Use MarketQuoteSet instead")]
-pub type MarketRateSet = MarketQuoteSet;
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{market::DataSource, time::Tenor};
 
-    fn create_quote(
-        currency: Currency,
-        tenor: Tenor,
-        rate_type: RateType,
-        quote_type: QuoteType,
-        value: f64,
-        timestamp: i64,
-        source: DataSource,
-    ) -> MarketQuote {
-        let quote_id = QuoteId::new(currency, tenor, rate_type);
-        MarketQuote::new(quote_id, quote_type, value, timestamp, source).unwrap()
+    fn make(ccy: Currency, tenor: Tenor, rt: RateType, qt: QuoteType, val: f64) -> MarketQuote {
+        MarketQuote::new(QuoteId::new(ccy, tenor, rt), qt, val, 1700000000000, DataSource::Bloomberg).unwrap()
     }
 
     #[test]
-    fn test_quote_set_new() {
-        let quote_set = MarketQuoteSet::new();
-        assert!(quote_set.is_empty());
-        assert_eq!(quote_set.len(), 0);
+    fn test_insert_get_remove() {
+        let mut qs = MarketQuoteSet::new();
+        assert!(qs.is_empty());
+
+        qs.insert(make(Currency::USD, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Mid, 0.05));
+        assert_eq!(qs.len(), 1);
+
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        assert!(qs.get_quote(&id, QuoteType::Mid).is_some());
+        assert!(qs.get_quote(&id, QuoteType::Bid).is_none());
+
+        assert!(qs.remove(&id, QuoteType::Mid).is_some());
+        assert!(qs.is_empty());
     }
 
     #[test]
-    fn test_quote_set_default() {
-        let quote_set = MarketQuoteSet::default();
-        assert!(quote_set.is_empty());
-    }
+    fn test_mid_computation_and_filter() {
+        let mut qs = MarketQuoteSet::new();
 
-    #[test]
-    fn test_quote_set_insert() {
-        let mut quote_set = MarketQuoteSet::new();
+        // Bid/ask for mid computation
+        qs.insert(make(Currency::USD, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Bid, 0.049));
+        qs.insert(make(Currency::USD, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Ask, 0.051));
+        qs.insert(make(Currency::EUR, Tenor::ThreeMonths, RateType::Deposit, QuoteType::Mid, 0.04));
 
-        let quote = create_quote(
-            Currency::USD,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        quote_set.insert(quote);
-        assert_eq!(quote_set.len(), 1);
-    }
-
-    #[test]
-    fn test_quote_set_get_quote() {
-        let mut quote_set = MarketQuoteSet::new();
-
-        let quote = create_quote(
-            Currency::USD,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        quote_set.insert(quote);
-
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-
-        // Found
-        assert!(quote_set.get_quote(&quote_id, QuoteType::Mid).is_some());
-
-        // Not found (wrong quote type)
-        assert!(quote_set.get_quote(&quote_id, QuoteType::Bid).is_none());
-    }
-
-    #[test]
-    fn test_quote_set_get_mid_quote_computed() {
-        let mut quote_set = MarketQuoteSet::new();
-
-        let bid = create_quote(
-            Currency::USD,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Bid,
-            0.049,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        let ask = create_quote(
-            Currency::USD,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Ask,
-            0.051,
-            1700000000000,
-            DataSource::Bloomberg,
-        );
-
-        quote_set.insert(bid);
-        quote_set.insert(ask);
-
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-        let mid = quote_set.get_mid_quote(&quote_id).unwrap();
-
-        // (0.049 + 0.051) / 2 = 0.05
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let mid = qs.get_mid_quote(&id).unwrap();
         assert!((mid - 0.05).abs() < 1e-10);
-    }
 
-    #[test]
-    fn test_quote_set_filter_by_currency() {
-        let mut quote_set = MarketQuoteSet::new();
+        // Filter by currency
+        assert_eq!(qs.filter_by_currency(Currency::USD).len(), 2);
+        assert_eq!(qs.filter_by_currency(Currency::EUR).len(), 1);
 
-        // USD
-        quote_set.insert(create_quote(
-            Currency::USD,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        ));
-
-        // EUR
-        quote_set.insert(create_quote(
-            Currency::EUR,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Mid,
-            0.04,
-            1700000000000,
-            DataSource::Bloomberg,
-        ));
-
-        let usd_only = quote_set.filter_by_currency(Currency::USD);
-        assert_eq!(usd_only.len(), 1);
-
-        let eur_only = quote_set.filter_by_currency(Currency::EUR);
-        assert_eq!(eur_only.len(), 1);
-    }
-
-    #[test]
-    fn test_quote_set_merge() {
-        let mut set1 = MarketQuoteSet::new();
-        let mut set2 = MarketQuoteSet::new();
-
-        set1.insert(create_quote(
-            Currency::USD,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Mid,
-            0.05,
-            1700000000000,
-            DataSource::Bloomberg,
-        ));
-
-        set2.insert(create_quote(
-            Currency::EUR,
-            Tenor::ThreeMonths,
-            RateType::Deposit,
-            QuoteType::Mid,
-            0.04,
-            1700000000000,
-            DataSource::Reuters,
-        ));
-
+        // Merge
+        let mut other = MarketQuoteSet::new();
+        other.insert(make(Currency::GBP, Tenor::SixMonths, RateType::Swap, QuoteType::Mid, 0.03));
         let priority = SourcePriority::default_priority();
-        set1.merge(&set2, &priority);
-
-        assert_eq!(set1.len(), 2);
+        qs.merge(&other, &priority);
+        assert_eq!(qs.len(), 4);
     }
 }

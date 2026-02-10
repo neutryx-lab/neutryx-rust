@@ -45,7 +45,7 @@
 pub mod core;
 /// Index definitions (RateIndex, FxIndex, SwapIndex).
 pub mod index;
-/// Market quote management (MarketRate, RateId, MarketRateSet).
+/// Market quote management (MarketQuote, QuoteId, MarketQuoteSet).
 pub mod quote;
 /// Data sources and mapping (DataSource, TickerMapping, InstrumentMapper).
 pub mod source;
@@ -87,14 +87,11 @@ pub use index::{SwapIndex, SwapIndexMetadata};
 pub use instrument::convention;
 // Market instrument (for curve calibration)
 pub use market_instrument::{MarketInstrument, MarketInstrumentError};
-// Quote types (new preferred names)
-pub use quote::{MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType};
-// Quote types (deprecated aliases for backward compatibility)
-#[allow(deprecated)]
-pub use quote::{MarketRate, MarketRateError, MarketRateSet, RateId};
-pub use quote::{QuoteValidator, StandardQuoteValidator, StrikeType, VolQuoteType};
-#[allow(deprecated)]
-pub use quote::{RateValidator, StandardRateValidator};
+// Quote types
+pub use quote::{
+    MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType, QuoteValidator,
+    StandardQuoteValidator, StrikeType, VolQuoteType,
+};
 #[cfg(feature = "serde")]
 pub use registry::DefinitionBundle;
 // Registry
