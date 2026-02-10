@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! Neutryx Service Gateway
 //!
 //! Unified service delivery crate providing REST API, CLI, and Python bindings

@@ -96,12 +96,7 @@ impl LegalEntityId {
         Ok(Self(lei))
     }
 
-    /// Creates LEI without validation (for trusted sources).
-    ///
-    /// # Safety
-    ///
-    /// This method does not validate the LEI format. Use only when the
-    /// LEI has already been validated or comes from a trusted source.
+    /// Creates LEI without validation — use only for already-validated inputs.
     pub fn new_unchecked(lei: impl Into<String>) -> Self { Self(lei.into()) }
 
     /// Returns the LEI as a string slice.

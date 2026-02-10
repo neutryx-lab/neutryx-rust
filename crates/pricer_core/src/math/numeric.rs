@@ -6,29 +6,17 @@
 
 use num_traits::Float;
 
-/// Converts an `f64` literal to a generic numeric type implementing `Float`.
-///
-/// # Safety Rationale
-///
-/// This function uses `unwrap()` internally because conversion of standard
-/// floating-point constants (e.g., 0.5, 2.0, 3.14159) to numeric types that
-/// implement `Float` is guaranteed to succeed for all practical numeric types
-/// used in financial computation.
+/// Converts an `f64` literal to a generic `Float` type.
 ///
 /// # Panics
 ///
-/// Panics if the conversion fails, which should never occur for standard
-/// numeric types (f32, f64, Dual, `DualVec`, etc.).
+/// Panics if the conversion fails (should never occur for f32/f64/Dual).
 #[inline]
 #[allow(clippy::unwrap_used)]
 #[must_use]
 pub fn from_f64<T: Float>(value: f64) -> T { T::from(value).unwrap() }
 
-/// Converts an `i32` literal to a generic numeric type implementing `Float`.
-///
-/// # Safety Rationale
-///
-/// Similar to [`from_f64`], this function is safe for integer constants.
+/// Converts an `i32` literal to a generic `Float` type.
 ///
 /// # Panics
 ///
@@ -38,11 +26,7 @@ pub fn from_f64<T: Float>(value: f64) -> T { T::from(value).unwrap() }
 #[must_use]
 pub fn from_i32<T: Float>(value: i32) -> T { T::from(value).unwrap() }
 
-/// Converts a `usize` literal to a generic numeric type implementing `Float`.
-///
-/// # Safety Rationale
-///
-/// Safe for typical index values used in numerical algorithms.
+/// Converts a `usize` literal to a generic `Float` type.
 ///
 /// # Panics
 ///
