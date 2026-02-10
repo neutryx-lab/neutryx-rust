@@ -761,6 +761,40 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         &self,
         instruments: &[I],
     ) -> Result<GlobalBootstrapResult<T>, SolverError> {
+        self.calibrate_impl(instruments, &[])
+    }
+
+    /// Calibrate a yield curve with a forward-rate-shift grid.
+    ///
+    /// This method uses the same forward-rate-shift model as the sequential
+    /// bootstrapper: the shift grid is attached to the curve at each Newton
+    /// step so that instruments are priced on the (base + shifts) curve.
+    /// Only log(DF) parameters are calibrated; jump amplitudes are fixed
+    /// by the shift grid.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Calibration instruments
+    /// * `shift_grid` - Pre-computed `(time, cumulative_offset)` pairs from
+    ///   `build_forward_rate_shift_grid`. Pass `&[]` for no shifts.
+    pub fn calibrate_with_shift_grid<I: CalibrationInstrument<T>>(
+        &self,
+        instruments: &[I],
+        shift_grid: &[(T, T)],
+    ) -> Result<GlobalBootstrapResult<T>, SolverError> {
+        self.calibrate_impl(instruments, shift_grid)
+    }
+
+    /// Internal calibration implementation.
+    ///
+    /// When `shift_grid` is non-empty, the forward-rate-shift data is
+    /// attached to the curve at every Newton step so that instrument
+    /// pricing accounts for jump discontinuities.
+    fn calibrate_impl<I: CalibrationInstrument<T>>(
+        &self,
+        instruments: &[I],
+        shift_grid: &[(T, T)],
+    ) -> Result<GlobalBootstrapResult<T>, SolverError> {
         let n = instruments.len();
         if n == 0 {
             return Err(SolverError::NumericalInstability(
@@ -791,7 +825,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         // Newton iteration
         for iter in 0..self.config.max_iterations {
             let discount_factors: Vec<T> = x.iter().map(|&xi| Float::exp(xi)).collect();
-            let curve = self.build_curve(&pillars, &discount_factors)?;
+            let curve = self.build_curve_with_shifts(&pillars, &discount_factors, shift_grid)?;
 
             let residuals = self.compute_residuals(instruments, &curve)?;
             let residual_norm = vector_norm(&residuals);
@@ -802,20 +836,36 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
             // Check convergence
             if residual_norm < self.config.tolerance {
-                let j_vecs = self.compute_jacobian(&x, &pillars, instruments)?;
+                let j_vecs = self.compute_jacobian_impl(&x, &pillars, instruments, shift_grid)?;
                 let j_matrix =
                     DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j_vecs));
 
-                let jacobian_inverse = if self.config.store_jacobian_inverse {
-                    Some(self.compute_inverse(&j_matrix)?)
+                // For overdetermined systems (n > n_pillars), compute the
+                // normal-equation matrix (J^T J)^{-1} which maps rate changes
+                // to parameter changes. For square systems, compute J^{-1}.
+                let (jacobian_inverse, condition_number) = if self.config.store_jacobian_inverse {
+                    if n == n_pillars {
+                        let inv = self.compute_inverse(&j_matrix)?;
+                        let cond = self.estimate_condition_number(&j_matrix);
+                        (Some(inv), cond)
+                    } else {
+                        let jtj = j_matrix.transpose() * &j_matrix;
+                        let inv = self.compute_inverse(&jtj).ok();
+                        let cond = inv
+                            .as_ref()
+                            .and_then(|_| self.estimate_condition_number(&jtj));
+                        (inv, cond)
+                    }
                 } else {
-                    None
+                    (None, self.estimate_condition_number(&j_matrix))
                 };
 
-                let condition_number = self.estimate_condition_number(&j_matrix);
-
+                // Return the **base** curve (without shifts).
+                // The caller attaches the shift grid via
+                // `BootstrappedCurve::with_jumps()` for display.
+                let base_curve = self.build_curve(&pillars, &discount_factors)?;
                 return Ok(GlobalBootstrapResult {
-                    curve,
+                    curve: base_curve,
                     pillars: pillars.clone(),
                     discount_factors,
                     residual_norm,
@@ -830,26 +880,42 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             }
 
             // Compute Jacobian
-            let j = self.compute_jacobian(&x, &pillars, instruments)?;
+            let j = self.compute_jacobian_impl(&x, &pillars, instruments, shift_grid)?;
 
-            // Solve J * delta = -F for delta
+            // Solve J * delta = -F for delta.
+            // For overdetermined systems (n > n_pillars), use least squares
+            // via normal equations: (J^T J) delta = J^T (-F).
             let neg_residuals: Vec<T> = residuals.iter().map(|&r| -r).collect();
             let j_matrix = DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j));
-            let delta = self.solve_linear_system(&j_matrix, &neg_residuals)?;
+            let delta = if n == n_pillars {
+                self.solve_linear_system(&j_matrix, &neg_residuals)?
+            } else {
+                self.solve_least_squares(&j_matrix, &neg_residuals)?
+            };
 
             // Check parameter convergence
             let param_change = vector_norm(&delta);
             if param_change < self.config.param_tolerance {
-                let jacobian_inverse = if self.config.store_jacobian_inverse {
-                    Some(self.compute_inverse(&j_matrix)?)
+                let (jacobian_inverse, condition_number) = if self.config.store_jacobian_inverse {
+                    if n == n_pillars {
+                        let inv = self.compute_inverse(&j_matrix)?;
+                        let cond = self.estimate_condition_number(&j_matrix);
+                        (Some(inv), cond)
+                    } else {
+                        let jtj = j_matrix.transpose() * &j_matrix;
+                        let inv = self.compute_inverse(&jtj).ok();
+                        let cond = inv
+                            .as_ref()
+                            .and_then(|_| self.estimate_condition_number(&jtj));
+                        (inv, cond)
+                    }
                 } else {
-                    None
+                    (None, self.estimate_condition_number(&j_matrix))
                 };
 
-                let condition_number = self.estimate_condition_number(&j_matrix);
-
+                let base_curve = self.build_curve(&pillars, &discount_factors)?;
                 return Ok(GlobalBootstrapResult {
-                    curve,
+                    curve: base_curve,
                     pillars: pillars.clone(),
                     discount_factors,
                     residual_norm,
@@ -918,6 +984,25 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         .map_err(SolverError::NumericalInstability)
     }
 
+    /// Build a curve with optional forward-rate-shift data.
+    ///
+    /// When `shift_grid` is non-empty, the resulting curve includes jump
+    /// adjustments so that instrument pricing accounts for rate
+    /// discontinuities at central bank meeting dates.
+    fn build_curve_with_shifts(
+        &self,
+        pillars: &[T],
+        discount_factors: &[T],
+        shift_grid: &[(T, T)],
+    ) -> Result<BootstrappedCurve<T>, SolverError> {
+        let curve = self.build_curve(pillars, discount_factors)?;
+        if shift_grid.is_empty() {
+            Ok(curve)
+        } else {
+            Ok(curve.with_jumps(shift_grid.to_vec()))
+        }
+    }
+
     /// Compute the residual vector (pricing errors).
     fn compute_residuals<I: CalibrationInstrument<T>>(
         &self,
@@ -935,18 +1020,20 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     }
 
     /// Compute the Jacobian matrix via finite differences.
-    fn compute_jacobian<I: CalibrationInstrument<T>>(
+    /// Compute the Jacobian matrix with optional forward-rate-shift data.
+    fn compute_jacobian_impl<I: CalibrationInstrument<T>>(
         &self,
         x: &[T],
         pillars: &[T],
         instruments: &[I],
+        shift_grid: &[(T, T)],
     ) -> Result<Vec<Vec<T>>, SolverError> {
         let n = instruments.len();
         let m = pillars.len();
         let eps = self.config.jacobian_epsilon;
 
         let discount_factors: Vec<T> = x.iter().map(|&xi| Float::exp(xi)).collect();
-        let curve = self.build_curve(pillars, &discount_factors)?;
+        let curve = self.build_curve_with_shifts(pillars, &discount_factors, shift_grid)?;
         let f0 = self.compute_residuals(instruments, &curve)?;
 
         let mut jacobian = vec![vec![T::zero(); m]; n];
@@ -956,7 +1043,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             x_pert[j] = x_pert[j] + eps;
 
             let df_pert: Vec<T> = x_pert.iter().map(|&xi| Float::exp(xi)).collect();
-            let curve_pert = self.build_curve(pillars, &df_pert)?;
+            let curve_pert = self.build_curve_with_shifts(pillars, &df_pert, shift_grid)?;
             let f_pert = self.compute_residuals(instruments, &curve_pert)?;
 
             for i in 0..n {
@@ -1087,10 +1174,8 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
         // Initial guess including jump parameters
         let mut x = problem.initial_guess_with_jumps();
-        let n_instruments = instruments.len();
         let n_pillars = problem.pillars().len();
         let n_jumps = problem.num_jumps();
-        let total_params = n_pillars + n_jumps;
 
         // Residual history for debugging
         let mut residual_history = if self.config.debug_logging {
@@ -1145,15 +1230,14 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             // Solve J * delta = -F
             let neg_residuals: Vec<T> = residuals.iter().map(|&r| -r).collect();
 
-            // The Jacobian is n_instruments × total_params, but we need to solve
-            // for the total_params variables. For overdetermined systems (n_instruments >
-            // total_params), we would use least squares. For square systems, we
-            // use LU. Currently, we assume square system (n_instruments ==
-            // n_pillars).
-            let delta = if n_instruments == total_params {
+            // The Jacobian is (n+k) × (n+k) after jump regularisation makes
+            // the system square.  For any remaining non-square cases, fall
+            // back to least squares via normal equations.
+            let n_rows = jacobian.nrows();
+            let n_cols = jacobian.ncols();
+            let delta = if n_rows == n_cols {
                 self.solve_linear_system(&jacobian, &neg_residuals)?
             } else {
-                // For non-square systems, use normal equations: J^T J x = J^T b
                 self.solve_least_squares(&jacobian, &neg_residuals)?
             };
 
@@ -1185,22 +1269,17 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             }
         }
 
-        // Did not converge - try fallback if enabled
-        if let Some(ref jc) = self.config.jump_config {
-            if jc.fallback_on_failure {
-                eprintln!(
-                    "[Jump Calibration] Warning: Failed to converge with jumps, using fallback"
-                );
-                return self.fallback_calibrate(instruments);
-            }
-        }
-
         Err(SolverError::MaxIterationsExceeded {
             iterations: self.config.max_iterations,
         })
     }
 
     /// Finalise the calibration result with jump information.
+    ///
+    /// Returns a **base** curve (pillar DFs only, no jump adjustment).
+    /// The caller must attach jump data via `BootstrappedCurve::with_jumps()`
+    /// using the same forward-rate-shift grid as the sequential bootstrap so
+    /// that forward rate discontinuities are rendered correctly.
     fn finalize_jump_result<I>(
         &self,
         problem: &CalibrationProblem<T, I>,
@@ -1216,18 +1295,64 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         let jumps = problem.extract_jumps(params);
 
         let pillars = problem.pillars().to_vec();
+        let n = pillars.len();
         let discount_factors: Vec<T> = log_df.iter().map(|&x| Float::exp(x)).collect();
 
-        // Build curve with jump adjustments
-        let curve = problem.build_curve_with_jumps(log_df, jumps).map_err(|e| {
-            SolverError::NumericalInstability(format!("Failed to build jump curve: {e}"))
-        })?;
+        // Build base curve (pillar DFs only, no jump adjustment).
+        // Jump data is attached by the service layer using the same
+        // forward-rate-shift grid as the sequential bootstrap.
+        let curve = BootstrappedCurve::new(
+            pillars.clone(),
+            discount_factors.clone(),
+            self.config.interpolation,
+            true,
+        )
+        .map_err(SolverError::NumericalInstability)?;
 
         // Get realised jumps
         let realised_jumps = Some(problem.get_realised_jumps(params));
 
-        // Compute pricing errors on final curve
-        let pricing_errors = problem.compute_residuals(&curve).ok();
+        // Compute pricing errors on the jump-adjusted curve (for diagnostics)
+        let adjusted_curve = problem.build_curve_with_jumps(log_df, jumps).map_err(|e| {
+            SolverError::NumericalInstability(format!("Failed to build jump curve: {e}"))
+        })?;
+        let pricing_errors = problem.compute_residuals(&adjusted_curve).ok();
+
+        // Compute Jacobian inverse for the instrument-pillar sub-block.
+        //
+        // The full Jacobian has structure:
+        //   [ J_inst_df (n_inst × n_pillars)    J_inst_jump (n_inst × k)    ]
+        //   [ 0         (k × n_pillars)          I_reg       (k × k)          ]
+        //
+        // For square systems (n_inst == n_pillars), compute J_inst_df^{-1}.
+        // For overdetermined systems (n_inst > n_pillars), compute
+        // (J^T J)^{-1} which maps rate perturbations to parameter changes.
+        let n_inst = problem.instruments().len();
+        let jacobian_inverse = if self.config.store_jacobian_inverse {
+            let full_jac = problem.compute_jacobian_with_jumps(params).map_err(|e| {
+                SolverError::NumericalInstability(format!("Jacobian computation failed: {e}"))
+            })?;
+            let inst_jac = full_jac.view((0, 0), (n_inst, n)).into_owned();
+            if n_inst == n {
+                self.compute_inverse(&inst_jac).ok()
+            } else {
+                let jtj = inst_jac.transpose() * &inst_jac;
+                self.compute_inverse(&jtj).ok()
+            }
+        } else {
+            None
+        };
+
+        let condition_number = jacobian_inverse.as_ref().and_then(|_| {
+            let full_jac = problem.compute_jacobian_with_jumps(params).ok()?;
+            let inst_jac = full_jac.view((0, 0), (n_inst, n)).into_owned();
+            if n_inst == n {
+                self.estimate_condition_number(&inst_jac)
+            } else {
+                let jtj = inst_jac.transpose() * &inst_jac;
+                self.estimate_condition_number(&jtj)
+            }
+        });
 
         Ok(GlobalBootstrapResult {
             curve,
@@ -1236,32 +1361,12 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             residual_norm,
             iterations,
             converged: true,
-            jacobian_inverse: None, // TODO: Compute extended Jacobian inverse if needed
+            jacobian_inverse,
             residual_history,
-            condition_number: None,
+            condition_number,
             pricing_errors,
             realised_jumps,
         })
-    }
-
-    /// Fallback calibration without jumps.
-    ///
-    /// This is called when jump calibration fails to converge
-    /// and fallback is enabled.
-    pub fn fallback_calibrate<I>(
-        &self,
-        instruments: &[I],
-    ) -> Result<GlobalBootstrapResult<T>, SolverError>
-    where
-        I: CalibrationInstrument<T> + Clone,
-    {
-        // Perform standard calibration without jumps
-        let mut result = self.calibrate(instruments)?;
-
-        // Mark that no jumps were calibrated (fallback used)
-        result.realised_jumps = Some(Vec::new());
-
-        Ok(result)
     }
 
     /// Solve a least squares problem for overdetermined systems.
@@ -1674,16 +1779,18 @@ mod tests {
     }
 
     #[test]
-    fn test_fallback_calibrate() {
+    fn test_calibrate_with_empty_jumps_falls_back() {
         let instruments = create_test_instruments();
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
 
-        let result = bootstrapper.fallback_calibrate(&instruments).unwrap();
+        // Empty jump pillars should fall back to regular calibrate
+        let result = bootstrapper
+            .calibrate_with_jumps(&instruments, vec![])
+            .unwrap();
 
         assert!(result.converged);
-        // Fallback sets realised_jumps to empty vec to indicate it was used
-        assert!(result.realised_jumps.is_some());
-        assert!(result.realised_jumps.unwrap().is_empty());
+        // Regular calibrate returns no realised jumps
+        assert!(result.realised_jumps.is_none());
     }
 
     #[test]

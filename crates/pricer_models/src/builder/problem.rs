@@ -134,13 +134,9 @@ where
         // Deduplicate pillars
         pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
 
-        // Dimension check: enforce square system for now
-        if instruments.len() != pillars.len() {
-            return Err(CalibrationError::dimension_mismatch(
-                instruments.len(),
-                pillars.len(),
-            ));
-        }
+        // Overdetermined systems (instruments > pillars) are allowed:
+        // instruments sharing a maturity contribute extra equations that
+        // the solver handles via least-squares.
 
         Ok(Self {
             instruments,
@@ -181,13 +177,9 @@ where
         // Deduplicate pillars
         pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
 
-        // Dimension check: enforce square system for now
-        if instruments.len() != pillars.len() {
-            return Err(CalibrationError::dimension_mismatch(
-                instruments.len(),
-                pillars.len(),
-            ));
-        }
+        // Overdetermined systems (instruments > pillars) are allowed:
+        // instruments sharing a maturity contribute extra equations that
+        // the solver handles via least-squares.
 
         // Sort jump pillars by time
         jump_pillars.sort_by(|a, b| {
@@ -568,17 +560,28 @@ where
             CalibrationError::numerical_instability(format!("Failed to build jump curve: {e}"))
         })?;
 
-        self.compute_residuals(&curve)
+        let mut residuals = self.compute_residuals(&curve)?;
+
+        // Append jump regularisation residuals: penalise deviation from
+        // expected jump values so the system becomes square (n+k equations
+        // for n+k unknowns) and the Jacobian is non-singular.
+        for (jp, &jump_val) in self.jump_pillars.iter().zip(jumps.iter()) {
+            residuals.push(jump_val - jp.expected_jump);
+        }
+
+        Ok(residuals)
     }
 
     /// Compute the Jacobian matrix including jump parameter derivatives.
     ///
-    /// The Jacobian is an n × (m + k) matrix where:
+    /// The Jacobian is an (n + k) × (m + k) matrix where:
     /// - n = number of instruments
     /// - m = number of pillars
-    /// - k = number of jump pillars
+    /// - k = number of jump pillars (regularisation rows)
     ///
-    /// J\[i,j\] = ∂F_i/∂x_j where x = \[log(DF), jumps\]
+    /// The first n rows are instrument pricing sensitivities computed via
+    /// finite differences.  The last k rows are jump regularisation terms
+    /// with ∂(jump_j - expected_j)/∂jump_j = 1.
     ///
     /// # Arguments
     ///
@@ -594,13 +597,15 @@ where
         let n = self.instruments.len();
         let m = self.pillars.len();
         let k = self.jump_pillars.len();
+        let total_rows = n + k;
+        let total_cols = m + k;
         let eps = self.config.jacobian_epsilon;
 
-        // Base residuals
+        // Base residuals (includes regularisation terms)
         let f0 = self.compute_residuals_with_jumps(params)?;
 
         // Compute Jacobian columns via finite differences
-        let mut jacobian = DMatrix::zeros(n, m + k);
+        let mut jacobian = DMatrix::zeros(total_rows, total_cols);
 
         // Derivatives with respect to log(DF) parameters
         for j in 0..m {
@@ -609,7 +614,7 @@ where
 
             let f_pert = self.compute_residuals_with_jumps(&params_pert)?;
 
-            for i in 0..n {
+            for i in 0..total_rows {
                 jacobian[(i, j)] = (f_pert[i] - f0[i]) / eps;
             }
         }
@@ -621,7 +626,7 @@ where
 
             let f_pert = self.compute_residuals_with_jumps(&params_pert)?;
 
-            for i in 0..n {
+            for i in 0..total_rows {
                 jacobian[(i, m + j)] = (f_pert[i] - f0[i]) / eps;
             }
         }
@@ -635,13 +640,15 @@ where
         params: &[T],
     ) -> Result<DMatrix<T>, CalibrationError> {
         let n = self.instruments.len();
-        let total = self.total_dimension();
+        let k = self.jump_pillars.len();
+        let total_rows = n + k;
+        let total_cols = self.total_dimension();
         let eps = self.config.jacobian_epsilon;
         let two_eps = eps + eps;
 
-        let mut jacobian = DMatrix::zeros(n, total);
+        let mut jacobian = DMatrix::zeros(total_rows, total_cols);
 
-        for j in 0..total {
+        for j in 0..total_cols {
             let mut params_plus = params.to_vec();
             params_plus[j] = params_plus[j] + eps;
             let f_plus = self.compute_residuals_with_jumps(&params_plus)?;
@@ -650,7 +657,7 @@ where
             params_minus[j] = params_minus[j] - eps;
             let f_minus = self.compute_residuals_with_jumps(&params_minus)?;
 
-            for i in 0..n {
+            for i in 0..total_rows {
                 jacobian[(i, j)] = (f_plus[i] - f_minus[i]) / two_eps;
             }
         }
@@ -817,13 +824,9 @@ where
             );
         }
 
-        // Dimension check: enforce square system for now
-        if instruments.len() != pillars.len() {
-            return Err(CalibrationError::dimension_mismatch(
-                instruments.len(),
-                pillars.len(),
-            ));
-        }
+        // Overdetermined systems (instruments > pillars) are allowed:
+        // instruments sharing a maturity contribute extra equations that
+        // the solver handles via least-squares.
 
         Ok(Self {
             instruments,
@@ -1466,8 +1469,8 @@ mod tests {
 
         let jacobian = problem.compute_jacobian_with_jumps(&params).unwrap();
 
-        // Should be 3 instruments × 5 parameters
-        assert_eq!(jacobian.nrows(), 3);
+        // Should be (3 instruments + 2 jump regularisation) × 5 parameters
+        assert_eq!(jacobian.nrows(), 5);
         assert_eq!(jacobian.ncols(), 5);
     }
 

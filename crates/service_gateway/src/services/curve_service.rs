@@ -15,7 +15,6 @@ use pricer_models::{
     builder::{
         BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
         InterpolationMethod as BuilderInterpolation, JacobianMatrix,
-        JumpPillar as PricerJumpPillar,
     },
     market::{build_forward_rate_shift_grid, BootstrapInterpolation, YieldCurve},
 };
@@ -302,11 +301,17 @@ impl CurveService {
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, maybe_jacobian, actual_method) = match request.bootstrap_method {
-            BootstrapMethod::Sequential => {
+            BootstrapMethod::Bootstrapping => {
+                // Sequential bootstrapper requires unique maturities.
+                // Instruments like FRA-3x6 and Future-6M may share the 0.5Y
+                // pillar — deduplicate, keeping the first per maturity.
+                let mut deduped = market_instruments.clone();
+                deduped.dedup_by(|a, b| (a.maturity() - b.maturity()).abs() < 1e-10);
+
                 let (curve, jac) = bootstrapper
-                    .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
+                    .bootstrap_to_curve_with_jacobian(&deduped, &jump_data)
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
-                (curve, Some(jac), "sequential")
+                (curve, Some(jac), "bootstrapping")
             }
             BootstrapMethod::Global => {
                 let bootstrap_interp = match interpolation {
@@ -323,80 +328,46 @@ impl CurveService {
 
                 let n = market_instruments.len();
 
-                if jump_pillars.is_empty() {
-                    // No jumps: J⁻¹ is n x n. By IFT d(log DF)/dr = J_sys⁻¹
-                    // because ∂F/∂r = -I (pricing_error = theoretical - market).
-                    match global.calibrate(&market_instruments) {
-                        Ok(result) => {
-                            let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
-                                let size = n.min(j_inv.nrows());
-                                let mut data = vec![vec![0.0; size]; size];
-                                for i in 0..size {
-                                    for j in 0..size {
-                                        data[i][j] = j_inv[(i, j)];
-                                    }
-                                }
-                                JacobianMatrix { data, size }
-                            });
-                            (result.curve, jacobian, "global")
-                        }
-                        Err(e) => {
-                            // Global solver failed (e.g. singular Jacobian).
-                            // Fall back to sequential bootstrap with FD Jacobian.
-                            tracing::warn!(
-                                "Global bootstrap failed ({e}), falling back to sequential"
-                            );
-                            let (curve, jac) = bootstrapper
-                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
-                                .map_err(|e2| {
-                                    ServerError::Pricing(format!("Bootstrap failed: {e2}"))
-                                })?;
-                            (curve, Some(jac), "sequential (fallback)")
+                // Use the same forward-rate-shift grid as the sequential
+                // bootstrapper so that both methods calibrate base DFs
+                // against the (base + shifts) curve consistently.
+                let result = global
+                    .calibrate_with_shift_grid(&market_instruments, &jump_data)
+                    .map_err(|e| ServerError::Pricing(format!("Global bootstrap failed: {e}")))?;
+                let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
+                    let size = n.min(j_inv.nrows());
+                    let mut data = vec![vec![0.0; size]; size];
+                    for i in 0..size {
+                        for j in 0..size {
+                            data[i][j] = j_inv[(i, j)];
                         }
                     }
+                    JacobianMatrix { data, size }
+                });
+                // Attach the forward-rate-shift grid so the output curve
+                // renders forward rate discontinuities at jump dates.
+                let curve = if jump_data.is_empty() {
+                    result.curve
                 } else {
-                    // With jumps: global solver merges regular + jump unknowns,
-                    // so J⁻¹ dimensions don't map cleanly to regular instruments.
-                    let pricer_jumps: Vec<PricerJumpPillar<f64>> = jump_pillars
-                        .iter()
-                        .map(|jp| {
-                            let time =
-                                MODEL_DAY_COUNTER.year_fraction(valuation_date, jp.jump_date());
-                            PricerJumpPillar::new(time, jp.expected_jump_bps())
-                        })
-                        .collect();
-                    match global.calibrate_with_jumps(&market_instruments, pricer_jumps) {
-                        Ok(result) => (result.curve, None, "global"),
-                        Err(e) => {
-                            tracing::warn!(
-                                "Global bootstrap with jumps failed ({e}), \
-                                 falling back to sequential"
-                            );
-                            let (curve, jac) = bootstrapper
-                                .bootstrap_to_curve_with_jacobian(&market_instruments, &jump_data)
-                                .map_err(|e2| {
-                                    ServerError::Pricing(format!("Bootstrap failed: {e2}"))
-                                })?;
-                            (curve, Some(jac), "sequential (fallback)")
-                        }
-                    }
-                }
+                    result.curve.with_jumps(jump_data.clone())
+                };
+                (curve, jacobian, "global")
             }
         };
 
         // Build Jacobian labels from regular instrument specs, sorted by
         // maturity to match the bootstrap order.
+        //
+        // When instruments share a maturity (e.g. FRA-3x6 and Fut-6M both
+        // at 0.5Y), the Jacobian has fewer rows/columns than instruments.
+        // Deduplicate by maturity so labels match the matrix dimension.
         let jacobian_data = maybe_jacobian.map(|jac| {
-            let mut sorted_specs = regular_specs.clone();
-            sorted_specs.sort_by(|a, b| {
-                let ta = parse_tenor_to_years(&a.tenor).unwrap_or(0.0);
-                let tb = parse_tenor_to_years(&b.tenor).unwrap_or(0.0);
-                ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
-            });
-
-            let jacobian_labels: Vec<String> = sorted_specs
+            let mut sorted_specs: Vec<(f64, String)> = regular_specs
                 .iter()
                 .map(|spec| {
+                    // Use InstrumentSpec::tenor_years() to get the correct
+                    // maturity for FRA instruments (NxM format → end tenor).
+                    let t = spec.tenor_years().unwrap_or(0.0);
                     let lower = spec.instrument_type.to_lowercase();
                     let type_label = match lower.as_str() {
                         "deposit" | "depo" => "Depo",
@@ -406,14 +377,38 @@ impl CurveService {
                         "future" | "futures" => "Fut",
                         _ => &lower,
                     };
-                    format!("{}-{}", type_label, spec.tenor)
+                    (t, format!("{}-{}", type_label, spec.tenor))
+                })
+                .collect();
+            sorted_specs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            // Deduplicate by maturity (keep first label per unique pillar)
+            sorted_specs.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-10);
+
+            let pillar_times: Vec<f64> = sorted_specs.iter().map(|(t, _)| *t).collect();
+            let jacobian_labels: Vec<String> =
+                sorted_specs.into_iter().map(|(_, label)| label).collect();
+
+            // Normalise: d(log DF_i) / dr_j  →  [d(log DF_i) / T_i] / dr_j
+            // This converts the sensitivity to zero-rate units (≈ −dz_i/dr_j),
+            // giving comparable magnitudes across maturities.
+            let matrix: Vec<Vec<f64>> = jac
+                .data
+                .into_iter()
+                .enumerate()
+                .map(|(i, row)| {
+                    let t_i = pillar_times.get(i).copied().unwrap_or(1.0);
+                    if t_i.abs() < 1e-12 {
+                        row
+                    } else {
+                        row.into_iter().map(|v| v / t_i).collect()
+                    }
                 })
                 .collect();
 
             JacobianData {
                 row_labels: jacobian_labels.clone(),
                 col_labels: jacobian_labels,
-                matrix: jac.data,
+                matrix,
                 size: jac.size,
             }
         });
@@ -708,7 +703,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };
@@ -761,7 +756,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };
@@ -817,7 +812,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };
@@ -904,7 +899,7 @@ mod tests {
                 },
             ],
             interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Sequential,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
         };

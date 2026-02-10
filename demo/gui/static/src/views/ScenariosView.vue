@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { Chart, registerables, type TooltipItem, type ChartConfiguration } from 'chart.js';
 import { useToast } from '@/composables/useToast';
+import { getChartColors } from '@/composables/useChartTheme';
 
 Chart.register(...registerables);
 const toast = useToast();
@@ -226,6 +227,7 @@ function renderPnlChart() {
   const data = cs.map(s => (s.pnl ?? 0) / 1000000);
   const colors = data.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)');
 
+  const cc = getChartColors();
   const config: ChartConfiguration<'bar'> = {
     type: 'bar',
     data: {
@@ -246,9 +248,9 @@ function renderPnlChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
           padding: 12,
           cornerRadius: 8,
           callbacks: {
@@ -262,15 +264,15 @@ function renderPnlChart() {
       },
       scales: {
         x: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          grid: { color: cc.grid },
           ticks: {
-            color: '#94a3b8',
+            color: cc.tick,
             callback: (value) => `$${value}M`,
           },
         },
         y: {
           grid: { display: false },
-          ticks: { color: '#94a3b8', font: { size: 11 } },
+          ticks: { color: cc.tick, font: { size: 11 } },
         },
       },
     },
@@ -305,6 +307,7 @@ function renderDecompositionChart() {
     borderRadius: 3,
   }));
 
+  const cc = getChartColors();
   const config: ChartConfiguration<'bar'> = {
     type: 'bar',
     data: { labels, datasets },
@@ -314,9 +317,9 @@ function renderDecompositionChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
           padding: 12,
           cornerRadius: 8,
           callbacks: {
@@ -332,13 +335,13 @@ function renderDecompositionChart() {
         x: {
           stacked: true,
           grid: { display: false },
-          ticks: { color: '#94a3b8', font: { size: 10 }, maxRotation: 45 },
+          ticks: { color: cc.tick, font: { size: 10 }, maxRotation: 45 },
         },
         y: {
           stacked: true,
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          grid: { color: cc.grid },
           ticks: {
-            color: '#94a3b8',
+            color: cc.tick,
             callback: (value) => `$${value}M`,
           },
         },

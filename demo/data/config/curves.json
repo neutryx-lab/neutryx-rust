@@ -18,6 +18,9 @@
       "rateIndex": "USD-SOFR",
       "instruments": [
         "USD-Depo-ON",
+        "USD-Depo-1W",
+        "USD-Depo-2W",
+        "USD-Depo-1M",
         "FED-2026-02",
         "FED-2026-03",
         "FED-2026-04",
@@ -29,17 +32,12 @@
         "USD-TOQ-2026Q2",
         "USD-TOQ-2026Q3",
         "USD-TOY-2026",
-        "USD-OIS-1M",
-        "USD-OIS-3M",
-        "USD-OIS-6M",
-        "USD-OIS-9M",
         "USD-OIS-1Y",
         "USD-OIS-18M",
         "USD-OIS-2Y",
         "USD-OIS-3Y",
         "USD-OIS-4Y",
         "USD-OIS-5Y",
-        "USD-OIS-6Y",
         "USD-OIS-7Y",
         "USD-OIS-10Y",
         "USD-OIS-12Y",
@@ -48,7 +46,7 @@
         "USD-OIS-25Y",
         "USD-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -85,7 +83,7 @@
         "EUR-OIS-25Y",
         "EUR-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -105,7 +103,7 @@
         "EUR-Swap-20Y",
         "EUR-Swap-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -143,7 +141,7 @@
         "GBP-OIS-25Y",
         "GBP-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -180,7 +178,7 @@
         "JPY-OIS-25Y",
         "JPY-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     },
@@ -214,7 +212,7 @@
         "CHF-OIS-25Y",
         "CHF-OIS-30Y"
       ],
-      "calibrationMethod": "sequential",
+      "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
     }

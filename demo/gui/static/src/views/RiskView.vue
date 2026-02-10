@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { Chart, registerables, type TooltipItem, type ChartConfiguration } from 'chart.js';
+import { getChartColors } from '@/composables/useChartTheme';
 
 Chart.register(...registerables);
 
@@ -179,6 +180,7 @@ function renderVaRHistogram() {
     colors.push(x < varThreshold ? 'rgba(239, 68, 68, 0.8)' : 'rgba(59, 130, 246, 0.6)');
   }
 
+  const cc = getChartColors();
   const config: ChartConfiguration<'bar'> = {
     type: 'bar',
     data: {
@@ -200,9 +202,9 @@ function renderVaRHistogram() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.85)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
           padding: 12,
           cornerRadius: 8,
           callbacks: {
@@ -215,7 +217,7 @@ function renderVaRHistogram() {
         x: {
           grid: { display: false },
           ticks: {
-            color: '#94a3b8',
+            color: cc.tick,
             font: { size: 10 },
             maxTicksLimit: 8,
             callback: function(_, index) {
@@ -224,8 +226,8 @@ function renderVaRHistogram() {
           },
         },
         y: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-          ticks: { color: '#94a3b8', font: { size: 10 } },
+          grid: { color: cc.grid },
+          ticks: { color: cc.tick, font: { size: 10 } },
         },
       },
     },
@@ -245,6 +247,7 @@ function renderRiskContribution() {
 
   const bd = varBreakdown.value;
 
+  const cc = getChartColors();
   const config: ChartConfiguration<'doughnut'> = {
     type: 'doughnut',
     data: {
@@ -264,9 +267,9 @@ function renderRiskContribution() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.85)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
           padding: 12,
           cornerRadius: 8,
           callbacks: {
@@ -296,6 +299,7 @@ function renderSensitivityChart() {
 
   const buckets = sensitivityBuckets.value;
 
+  const cc = getChartColors();
   const config: ChartConfiguration<'bar'> = {
     type: 'bar',
     data: {
@@ -333,9 +337,9 @@ function renderSensitivityChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.85)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
           padding: 12,
           cornerRadius: 8,
           callbacks: {
@@ -349,12 +353,12 @@ function renderSensitivityChart() {
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#94a3b8', font: { size: 10 } },
+          ticks: { color: cc.tick, font: { size: 10 } },
         },
         y: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          grid: { color: cc.grid },
           ticks: {
-            color: '#94a3b8',
+            color: cc.tick,
             font: { size: 10 },
             callback: (v) => `$${v}K`,
           },

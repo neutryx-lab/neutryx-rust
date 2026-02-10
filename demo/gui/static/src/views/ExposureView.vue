@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Chart, registerables, type TooltipItem, type ChartConfiguration } from 'chart.js';
+import { getChartColors } from '@/composables/useChartTheme';
 
 Chart.register(...registerables);
 
@@ -74,6 +75,7 @@ function renderChart() {
   const ctx = chartCanvas.value.getContext('2d');
   if (!ctx) return;
 
+  const cc = getChartColors();
   const config: ChartConfiguration<'line'> = {
     type: 'line',
     data: {
@@ -95,9 +97,9 @@ function renderChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
           padding: 12,
           cornerRadius: 8,
           callbacks: {
@@ -110,14 +112,14 @@ function renderChart() {
       },
       scales: {
         x: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-          ticks: { color: '#94a3b8' },
+          grid: { color: cc.grid },
+          ticks: { color: cc.tick },
         },
         y: {
           beginAtZero: false,
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
+          grid: { color: cc.grid },
           ticks: {
-            color: '#94a3b8',
+            color: cc.tick,
             callback: (value) => `$${value}M`,
           },
         },

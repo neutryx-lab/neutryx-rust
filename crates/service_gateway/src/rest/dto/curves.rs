@@ -23,7 +23,7 @@ pub enum InterpolationMethod {
 #[serde(rename_all = "snake_case")]
 pub enum BootstrapMethod {
     #[default]
-    Sequential,
+    Bootstrapping,
     Global,
 }
 
@@ -129,11 +129,16 @@ pub struct ChartGridPoint {
 
 /// Jacobian matrix data for curve sensitivity analysis.
 ///
-/// Contains the finite-difference Jacobian `d(log DF_i) / dr_j` where:
-/// - Row i corresponds to pillar i (log discount factor)
+/// Contains the normalised Jacobian `[d(log DF_i) / T_i] / dr_j  ≈  −dz_i /
+/// dr_j` where:
+/// - Row i corresponds to pillar i (zero-rate sensitivity)
 /// - Column j corresponds to instrument j (market rate `r_j`)
+/// - `T_i` is the year-fraction to pillar i
 ///
-/// For sequential bootstrap, this matrix is lower-triangular.
+/// Dividing by `T_i` converts raw log-DF sensitivity into zero-rate
+/// units, giving comparable magnitudes across all maturities.
+///
+/// For bootstrapping, this matrix is lower-triangular.
 #[derive(Debug, Clone, Serialize)]
 pub struct JacobianData {
     /// Row labels (pillar descriptions, e.g., "Depo-1M", "IRS-5Y").
@@ -175,7 +180,7 @@ pub struct CurveBuildResponse {
     /// Actual bootstrap method used (may differ from request if fallback
     /// occurred)
     pub bootstrap_method: String,
-    /// Jacobian matrix d(log DF)/dr (finite-difference, sequential bootstrap)
+    /// Jacobian matrix d(log DF)/dr (finite-difference)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jacobian: Option<JacobianData>,
 }
