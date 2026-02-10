@@ -126,34 +126,15 @@ impl JsonLoader {
 // =============================================================================
 
 /// Trade data loader for JSON format.
-///
-/// Loads trade data from JSON files into `infra_domain::trade::Trade`
-/// structures.
 pub struct TradeLoader;
 
 impl TradeLoader {
     /// Load a single trade from a JSON file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the trade JSON file
-    ///
-    /// # Returns
-    ///
-    /// Deserialized `Trade` instance.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<infra_domain::trade::Trade, LoaderError> {
         JsonLoader::load(path)
     }
 
     /// Load a portfolio (array of trades) from a JSON file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the JSON file containing an array of trades
-    ///
-    /// # Returns
-    ///
-    /// Vector of `Trade` instances.
     pub fn load_portfolio<P: AsRef<Path>>(
         path: P,
     ) -> Result<Vec<infra_domain::trade::Trade>, LoaderError> {
@@ -161,14 +142,6 @@ impl TradeLoader {
     }
 
     /// Load multiple trades from files matching a glob pattern.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - Glob pattern (e.g., "trades/*.json")
-    ///
-    /// # Returns
-    ///
-    /// Vector of successfully loaded trades.
     pub fn load_glob(pattern: &str) -> Result<Vec<infra_domain::trade::Trade>, LoaderError> {
         JsonLoader::load_glob_ok(pattern)
     }
@@ -296,28 +269,12 @@ pub struct MarketLoader;
 
 impl MarketLoader {
     /// Load market data from a single JSON file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the market data JSON file
-    ///
-    /// # Returns
-    ///
-    /// `MarketData` containing curves, vol surfaces, and FX spots.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<MarketData, LoaderError> {
         JsonLoader::load(path)
     }
 
     /// Load and merge market data from multiple JSON files matching a glob
     /// pattern.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - Glob pattern (e.g., "market/*.json")
-    ///
-    /// # Returns
-    ///
-    /// Merged `MarketData` from all matching files.
     pub fn load_glob(pattern: &str) -> Result<MarketData, LoaderError> {
         let results = JsonLoader::load_glob::<MarketData>(pattern)?;
 
@@ -332,22 +289,16 @@ impl MarketLoader {
     }
 
     /// Load only curve data from a JSON file.
-    ///
-    /// Expects the JSON to be an array of `CurveData` objects.
     pub fn load_curves<P: AsRef<Path>>(path: P) -> Result<Vec<CurveData>, LoaderError> {
         JsonLoader::load(path)
     }
 
     /// Load only volatility surface data from a JSON file.
-    ///
-    /// Expects the JSON to be an array of `VolSurfaceData` objects.
     pub fn load_vol_surfaces<P: AsRef<Path>>(path: P) -> Result<Vec<VolSurfaceData>, LoaderError> {
         JsonLoader::load(path)
     }
 
     /// Load only FX spot data from a JSON file.
-    ///
-    /// Expects the JSON to be an array of `FxSpotData` objects.
     pub fn load_fx_spots<P: AsRef<Path>>(path: P) -> Result<Vec<FxSpotData>, LoaderError> {
         JsonLoader::load(path)
     }
@@ -364,14 +315,6 @@ pub struct CsaLoader;
 
 impl CsaLoader {
     /// Load CSA terms from a JSON file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the CSA JSON file
-    ///
-    /// # Returns
-    ///
-    /// `CsaTerms` instance.
     pub fn load<P: AsRef<Path>>(
         path: P,
     ) -> Result<infra_domain::counterparty::CsaTerms, LoaderError> {
@@ -379,14 +322,6 @@ impl CsaLoader {
     }
 
     /// Load multiple CSA terms from files matching a glob pattern.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - Glob pattern (e.g., "csa/*.json")
-    ///
-    /// # Returns
-    ///
-    /// Vector of successfully loaded CSA terms.
     pub fn load_glob(
         pattern: &str,
     ) -> Result<Vec<infra_domain::counterparty::CsaTerms>, LoaderError> {

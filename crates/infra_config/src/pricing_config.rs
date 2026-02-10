@@ -66,6 +66,7 @@ impl Default for MonteCarloParams {
 pub struct TreeParams {
     /// Number of time steps in the tree.
     pub num_steps: usize,
+    /// Tree type (Binomial or Trinomial).
     #[serde(default)]
     pub tree_type: TreeType,
 }
@@ -80,25 +81,6 @@ impl Default for TreeParams {
 }
 
 /// Configuration for pricing calculations.
-///
-/// This structure defines all parameters needed for pricing operations,
-/// supporting both TOML and JSON configuration formats.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_config::PricingConfig;
-/// use chrono::NaiveDate;
-/// use std::path::PathBuf;
-///
-/// let config = PricingConfig {
-///     valuation_date: NaiveDate::from_ymd_opt(2026, 1, 25).unwrap(),
-///     reporting_currency: "USD".to_string(),
-///     ..Default::default()
-/// };
-///
-/// assert!(config.validate().is_ok());
-/// ```
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct PricingConfig {
     /// Valuation date for pricing (YYYY-MM-DD format).

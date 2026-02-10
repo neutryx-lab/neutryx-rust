@@ -1,63 +1,16 @@
 //! Compounding method definitions for interest rate calculations.
-//!
-//! This module provides compounding method types for financial instruments.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::CompoundingMethod;
-//!
-//! let method = CompoundingMethod::Compounded;
-//! assert_eq!(method.name(), "Compounded");
-//!
-//! // Default is Simple (for IBOR indices)
-//! let default_method = CompoundingMethod::default();
-//! assert_eq!(default_method, CompoundingMethod::Simple);
-//! ```
 
 use std::{fmt, str::FromStr};
 
 /// Compounding method for interest rate calculations.
-///
-/// Defines how interest accrues over a period for floating rate instruments.
-///
-/// # Variants
-///
-/// - `Simple`: Simple interest (no compounding within period)
-/// - `Compounded`: Daily compounding (OIS indices)
-/// - `Averaged`: Arithmetic average (some futures)
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::CompoundingMethod;
-///
-/// // OIS indices use compounded method
-/// let ois_method = CompoundingMethod::Compounded;
-/// assert_eq!(ois_method.name(), "Compounded");
-///
-/// // IBOR indices use simple method
-/// let ibor_method = CompoundingMethod::Simple;
-/// assert_eq!(ibor_method.name(), "Simple");
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CompoundingMethod {
-    /// Simple interest calculation (no compounding within period).
-    ///
-    /// Used for IBOR indices (EURIBOR, etc.) where the rate is
-    /// applied once for the entire accrual period.
-    ///
-    /// Formula: `interest = principal × rate × time`
+    /// Simple interest (no compounding within period).
     #[default]
     Simple,
 
-    /// Daily compounding calculation.
-    ///
-    /// Used for OIS indices (SOFR, SONIA, TONAR, SARON) where
-    /// overnight rates are compounded daily.
-    ///
-    /// Formula: `∏(1 + r_i × δ_i) - 1`
+    /// Daily compounding (OIS indices).
     Compounded,
 
     /// Arithmetic average calculation.

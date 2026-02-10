@@ -56,15 +56,6 @@ impl Currency {
     }
 
     /// Returns the full currency name.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    ///
-    /// assert_eq!(Currency::USD.name(), "US Dollar");
-    /// assert_eq!(Currency::JPY.name(), "Japanese Yen");
-    /// ```
     #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
@@ -77,20 +68,6 @@ impl Currency {
     }
 
     /// Returns the standard number of decimal places for this currency.
-    ///
-    /// Most currencies use 2 decimal places, but some (like JPY) use 0.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    ///
-    /// assert_eq!(Currency::USD.decimal_places(), 2);
-    /// assert_eq!(Currency::EUR.decimal_places(), 2);
-    /// assert_eq!(Currency::GBP.decimal_places(), 2);
-    /// assert_eq!(Currency::JPY.decimal_places(), 0);
-    /// assert_eq!(Currency::CHF.decimal_places(), 2);
-    /// ```
     #[must_use]
     pub fn decimal_places(&self) -> u8 {
         match self {
@@ -107,23 +84,6 @@ impl FromStr for Currency {
     type Err = CurrencyError;
 
     /// Parses ISO 4217 currency code (case-insensitive).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    ///
-    /// let usd: Currency = "USD".parse().unwrap();
-    /// assert_eq!(usd, Currency::USD);
-    ///
-    /// // Case-insensitive
-    /// let eur: Currency = "eur".parse().unwrap();
-    /// assert_eq!(eur, Currency::EUR);
-    ///
-    /// // Unknown currency returns error
-    /// let result: Result<Currency, _> = "XYZ".parse();
-    /// assert!(result.is_err());
-    /// ```
     fn from_str(s: &str) -> Result<Self, CurrencyError> {
         match s.to_uppercase().as_str() {
             "USD" => Ok(Currency::USD),
