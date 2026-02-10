@@ -1,102 +1,33 @@
-//! Currency types for financial calculations.
-//!
-//! This module provides ISO 4217 currency codes with metadata
-//! for decimal precision and serialisation support.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::Currency;
-//!
-//! let usd = Currency::USD;
-//! assert_eq!(usd.code(), "USD");
-//! assert_eq!(usd.decimal_places(), 2);
-//!
-//! let jpy = Currency::JPY;
-//! assert_eq!(jpy.decimal_places(), 0);  // Yen has no decimal places
-//! ```
+//! ISO 4217 currency codes with decimal precision and serialisation support.
 
 use std::{fmt, str::FromStr};
 
 use crate::error::CurrencyError;
 
 /// ISO 4217 currency codes with decimal precision metadata.
-///
-/// Designed for static dispatch (enum-based) for Enzyme AD compatibility.
-/// This enum provides the major trading currencies with their standard
-/// decimal precision for financial calculations.
-///
-/// # Variants
-/// - `USD`: United States Dollar (2 decimal places)
-/// - `EUR`: Euro (2 decimal places)
-/// - `GBP`: British Pound Sterling (2 decimal places)
-/// - `JPY`: Japanese Yen (0 decimal places)
-/// - `CHF`: Swiss Franc (2 decimal places)
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::Currency;
-///
-/// // Get currency code
-/// assert_eq!(Currency::USD.code(), "USD");
-///
-/// // Get decimal places
-/// assert_eq!(Currency::USD.decimal_places(), 2);
-/// assert_eq!(Currency::JPY.decimal_places(), 0);
-///
-/// // Parse from string (case-insensitive)
-/// let eur: Currency = "eur".parse().unwrap();
-/// assert_eq!(eur, Currency::EUR);
-/// ```
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Currency {
-    /// United States Dollar
-    ///
-    /// ISO 4217 code: USD
-    /// Standard decimal places: 2
+    /// United States Dollar (2 dp).
     #[default]
     USD,
 
-    /// Euro
-    ///
-    /// ISO 4217 code: EUR
-    /// Standard decimal places: 2
+    /// Euro (2 dp).
     EUR,
 
-    /// British Pound Sterling
-    ///
-    /// ISO 4217 code: GBP
-    /// Standard decimal places: 2
+    /// British Pound Sterling (2 dp).
     GBP,
 
-    /// Japanese Yen
-    ///
-    /// ISO 4217 code: JPY
-    /// Standard decimal places: 0 (no minor units)
+    /// Japanese Yen (0 dp).
     JPY,
 
-    /// Swiss Franc
-    ///
-    /// ISO 4217 code: CHF
-    /// Standard decimal places: 2
+    /// Swiss Franc (2 dp).
     CHF,
 }
 
 impl Currency {
     /// Returns all supported currencies.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    ///
-    /// let currencies = Currency::all();
-    /// assert_eq!(currencies.len(), 5);
-    /// assert!(currencies.contains(&Currency::USD));
-    /// ```
     #[must_use]
     pub const fn all() -> [Currency; 5] {
         [
@@ -109,31 +40,10 @@ impl Currency {
     }
 
     /// Returns all currency codes.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    ///
-    /// let codes = Currency::all_codes();
-    /// assert_eq!(codes, ["USD", "EUR", "GBP", "JPY", "CHF"]);
-    /// ```
     #[must_use]
     pub const fn all_codes() -> [&'static str; 5] { ["USD", "EUR", "GBP", "JPY", "CHF"] }
 
     /// Returns the ISO 4217 three-letter currency code.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    ///
-    /// assert_eq!(Currency::USD.code(), "USD");
-    /// assert_eq!(Currency::EUR.code(), "EUR");
-    /// assert_eq!(Currency::GBP.code(), "GBP");
-    /// assert_eq!(Currency::JPY.code(), "JPY");
-    /// assert_eq!(Currency::CHF.code(), "CHF");
-    /// ```
     #[must_use]
     pub fn code(&self) -> &'static str {
         match self {

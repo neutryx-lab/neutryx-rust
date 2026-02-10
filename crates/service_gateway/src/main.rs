@@ -1,36 +1,4 @@
 //! Neutryx Server - gRPC/REST API for XVA Pricing
-//!
-//! This is the production integration point for the Neutryx XVA pricing
-//! library.
-//!
-//! # Architecture
-//!
-//! As part of the **S**ervice layer in the A-I-P-S architecture, this crate
-//! provides network interfaces for microservice deployment.
-//!
-//! # Endpoints
-//!
-//! ## REST API v2 (New - uses facade APIs)
-//! - `POST /api/v2/price` - Price a single instrument
-//! - `POST /api/v2/price/batch` - Price a portfolio
-//! - `POST /api/v2/curves/build` - Build a yield curve
-//! - `POST /api/v2/curves/discount-factor` - Get discount factor
-//! - `POST /api/v2/curves/forward-rate` - Get forward rate
-//!
-//! ## REST API v1 (Legacy - placeholder implementations)
-//! - `POST /api/v1/price` - Price a single instrument
-//! - `POST /api/v1/price/batch` - Price a portfolio
-//! - `GET /api/v1/portfolio/graph` - Get Portfolio computation graph
-//! - `GET /api/v1/portfolio/trades` - List Portfolio trades
-//! - `GET /health` - Health check
-//!
-//! ## WebSocket
-//! - `GET /ws` - Real-time graph updates (`select_trades`, `subgraph_update`)
-//!
-//! ## gRPC (Tonic) - Planned
-//! - `PricingService.PriceInstrument` - Price a single instrument
-//! - `PricingService.PricePortfolio` - Price a portfolio (streaming)
-//! - `CalibrationService.Calibrate` - Calibrate model parameters
 
 use std::{net::SocketAddr, sync::Arc};
 

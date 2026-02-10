@@ -1,4 +1,5 @@
-//! Builder module for yield curves, volatility surfaces, and market data calibration.
+//! Builder module for yield curves, volatility surfaces, and market data
+//! calibration.
 
 use pricer_core::types::SolverError;
 use thiserror::Error;

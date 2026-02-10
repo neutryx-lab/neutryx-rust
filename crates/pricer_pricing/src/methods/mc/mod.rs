@@ -1,5 +1,4 @@
 //! Monte Carlo pricing kernels with Enzyme AD integration.
-//!
 pub mod aligned_buffer;
 pub mod config;
 pub mod error;

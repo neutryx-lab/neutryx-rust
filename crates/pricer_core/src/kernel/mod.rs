@@ -2,7 +2,8 @@
 // for custom memory allocation with guaranteed 64-byte alignment.
 #![allow(unsafe_code)]
 
-//! Pricing Kernel: SoA data structures for SIMD-optimised pricing and Enzyme AD.
+//! Pricing Kernel: SoA data structures for SIMD-optimised pricing and Enzyme
+//! AD.
 
 mod aligned_buffer;
 mod callable_kernel;

@@ -250,16 +250,6 @@ pub fn parse_instruments(
 }
 
 /// Validate instrument rate is within acceptable range.
-///
-/// # Arguments
-///
-/// * `rate` - The rate to validate
-/// * `min_rate` - Minimum acceptable rate (default: -0.10)
-/// * `max_rate` - Maximum acceptable rate (default: 0.50)
-///
-/// # Returns
-///
-/// `Ok(())` if valid, `Err` with details if invalid.
 pub fn validate_rate(rate: f64, min_rate: f64, max_rate: f64) -> Result<(), InstrumentParseError> {
     if rate < min_rate || rate > max_rate {
         return Err(InstrumentParseError::InvalidRate {
@@ -271,16 +261,6 @@ pub fn validate_rate(rate: f64, min_rate: f64, max_rate: f64) -> Result<(), Inst
 }
 
 /// Validate all instrument rates in a collection.
-///
-/// # Arguments
-///
-/// * `specs` - Slice of instrument specifications
-/// * `min_rate` - Minimum acceptable rate
-/// * `max_rate` - Maximum acceptable rate
-///
-/// # Returns
-///
-/// `Ok(())` if all rates are valid, `Err` with details of first invalid rate.
 pub fn validate_rates(
     specs: &[InstrumentSpec],
     min_rate: f64,

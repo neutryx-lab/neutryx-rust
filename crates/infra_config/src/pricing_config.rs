@@ -66,7 +66,6 @@ impl Default for MonteCarloParams {
 pub struct TreeParams {
     /// Number of time steps in the tree.
     pub num_steps: usize,
-    /// Tree type (Binomial or Trinomial).
     #[serde(default)]
     pub tree_type: TreeType,
 }

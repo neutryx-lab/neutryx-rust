@@ -5,23 +5,6 @@
 //! - [`TradeLoader`]: Trade data loading from JSON
 //! - [`MarketLoader`]: Market data (curves, vol surfaces, FX) loading
 //! - [`CsaLoader`]: CSA terms loading from JSON
-//!
-//! # Architecture Position
-//!
-//! Part of the **A**dapter layer in the A-I-P-S architecture.
-//! Converts external JSON data into `infra_domain` domain types.
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use adapter_loader::{JsonLoader, TradeLoader};
-//!
-//! // Generic loading
-//! let data: MyStruct = JsonLoader::load("config.json")?;
-//!
-//! // Trade loading
-//! let trades = TradeLoader::load_portfolio("trades.json")?;
-//! ```
 
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
@@ -34,9 +17,6 @@ use crate::error::LoaderError;
 // =============================================================================
 
 /// Generic JSON file loader with glob pattern support.
-///
-/// Provides utility methods for loading JSON files into any type
-/// that implements `DeserializeOwned`.
 pub struct JsonLoader;
 
 impl JsonLoader {
