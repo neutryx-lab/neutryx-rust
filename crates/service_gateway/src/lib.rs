@@ -7,7 +7,7 @@
 //!
 //! - `rest` (default) — Axum-based REST API server
 //! - `cli` — Clap-based command-line interface
-//! - `python` — PyO3 bindings for Jupyter/notebook workflows
+//! - `python` — `PyO3` bindings for Jupyter/notebook workflows
 
 pub mod config;
 pub mod error;
