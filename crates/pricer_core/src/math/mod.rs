@@ -1,21 +1,11 @@
-//! Mathematical utilities and smooth approximations.
-//!
-//! This module provides differentiable smoothing functions that replace
-//! discontinuous operations (max, min, abs, indicator) with smooth
-//! approximations compatible with Enzyme automatic differentiation.
+//! Mathematical utilities for derivatives pricing.
 //!
 //! ## Submodules
 //! - `smoothing`: Smooth approximations using LogSumExp and sigmoid functions
-//! - `interpolators`: Interpolation methods for curve and surface fitting
-//! - `solvers`: Root-finding algorithms for numerical solving
-//! - `distributions`: Probability distributions for financial calculations
-//! - `calculus`: Numerical differentiation using finite differences
-//! - `utilities`: Common mathematical utility functions
-//! - `integrators`: Numerical integration methods (quadrature, ODE solvers)
-//! - `optimisers`: Optimisation algorithms (Nelder-Mead, L-BFGS)
-//! - `fitting`: Curve fitting and regression analysis
-//! - `mesh`: Grid generation for numerical methods
+//! - `normal_dist`: Standard normal distribution (CDF, PDF, inverse CDF)
 //! - `formulas`: Closed-form pricing formulas (Black-Scholes, Bachelier, SABR)
+//! - `solvers`: Root-finding algorithms for numerical solving
+//! - `numeric`: Numeric conversion utilities (`from_f64`)
 //! - `linalg`: Linear algebra operations (requires `linalg` feature)
 //! - `rng`: Random number generation (requires `rng` feature)
 
@@ -24,19 +14,11 @@
 #![allow(clippy::many_single_char_names)]
 #![allow(clippy::similar_names)]
 
-pub mod calculus;
-pub mod distributions;
-pub mod fitting;
 pub mod formulas;
-pub mod integrators;
-pub mod interpolators;
-pub mod mesh;
 pub mod normal_dist;
 pub mod numeric;
-pub mod optimisers;
 pub mod smoothing;
 pub mod solvers;
-pub mod utilities;
 
 #[cfg(feature = "linalg")]
 pub mod linalg;

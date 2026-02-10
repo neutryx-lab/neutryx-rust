@@ -35,18 +35,9 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Result;
+use service_gateway::{rest, AppState, GraphAppState, WsAppState};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-mod config;
-mod error;
-mod rest;
-mod services;
-mod state;
-
-pub use error::ServerError;
-pub use rest::{GraphAppState, WsAppState};
-pub use state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -62,7 +53,7 @@ async fn main() -> Result<()> {
     info!("Starting Neutryx Server...");
 
     // Load configuration from unified settings
-    let config = config::ServerConfig::load()?;
+    let config = service_gateway::config::ServerConfig::load()?;
 
     info!("Configuration loaded");
     info!("  REST enabled: {}", config.rest_enabled);

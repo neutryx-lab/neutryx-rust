@@ -7,9 +7,18 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[lib]
+name = "service_gateway"
+crate-type = ["cdylib", "rlib"]
+
 [[bin]]
 name = "neutryx-server"
 path = "src/main.rs"
+
+[[bin]]
+name = "neutryx"
+path = "src/cli_main.rs"
+required-features = ["cli"]
 
 [dependencies]
 # Workspace dependencies
@@ -51,6 +60,12 @@ adapter_loader = { path = "../adapter_loader", features = ["curve-builder", "fpm
 infra_config = { path = "../infra_config" }
 infra_domain = { path = "../infra_domain", features = ["serde"] }
 
+# CLI (optional, feature-gated)
+clap = { workspace = true, optional = true }
+
+# Python bindings (optional, feature-gated)
+pyo3 = { workspace = true, optional = true }
+
 # Caching
 lru = "0.12"
 uuid = { version = "1", features = ["v4"] }
@@ -74,8 +89,12 @@ models = []
 volatility = []
 # Enable Demo GUI integration
 demo = []
+# Enable CLI (clap-based command line interface)
+cli = ["dep:clap"]
+# Enable Python bindings (PyO3)
+python = ["dep:pyo3"]
 # Full bundle with all services
-full = ["rest", "risk", "models", "volatility", "demo"]
+full = ["rest", "risk", "models", "volatility", "demo", "cli"]
 
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["json"] }

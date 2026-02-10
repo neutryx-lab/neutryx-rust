@@ -16,7 +16,7 @@ use num_traits::Float;
 
 use super::error::FormulaError;
 use crate::math::{
-    distributions::{norm_cdf, norm_pdf},
+    normal_dist::{norm_cdf, norm_pdf},
     numeric::from_f64,
 };
 

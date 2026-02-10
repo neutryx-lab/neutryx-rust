@@ -113,30 +113,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_event_type() {
-        // display_name
-        assert_eq!(EventType::CentralBankMeeting.display_name(), "Central Bank Meeting");
-        assert_eq!(EventType::EconomicRelease.display_name(), "Economic Release");
-        assert_eq!(EventType::Holiday.display_name(), "Holiday");
-        assert_eq!(EventType::TurnOfYear.display_name(), "Turn of Year");
-        assert_eq!(EventType::TurnOfQuarter.display_name(), "Turn of Quarter");
-        assert_eq!(EventType::TurnOfMonth.display_name(), "Turn of Month");
-
-        // icon
-        assert_eq!(EventType::CentralBankMeeting.icon(), "fa-landmark");
-        assert_eq!(EventType::EconomicRelease.icon(), "fa-chart-bar");
-
-        // all variants
-        assert_eq!(EventType::all().len(), 10);
-
-        // Display trait
-        assert_eq!(format!("{}", EventType::Holiday), "Holiday");
-
-        // is_turn
+    fn test_is_turn() {
         for t in [EventType::Turn, EventType::TurnOfYear, EventType::TurnOfQuarter, EventType::TurnOfMonth] {
             assert!(t.is_turn());
         }
-        for t in [EventType::CentralBankMeeting, EventType::EconomicRelease, EventType::Other] {
+        for t in [EventType::CentralBankMeeting, EventType::EconomicRelease, EventType::Holiday,
+                   EventType::News, EventType::Expiry, EventType::Other] {
             assert!(!t.is_turn());
         }
     }

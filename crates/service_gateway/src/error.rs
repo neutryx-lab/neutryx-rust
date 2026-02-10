@@ -57,6 +57,27 @@ pub enum ServerError {
     /// Volatility surface/cube error
     #[error("Volatility error: {0}")]
     Volatility(String),
+
+    // CLI-specific error variants
+    /// Configuration error
+    #[error("Configuration error: {0}")]
+    Config(String),
+
+    /// I/O error
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    /// File not found
+    #[error("File not found: {0}")]
+    FileNotFound(String),
+
+    /// Invalid argument
+    #[error("Invalid argument: {0}")]
+    InvalidArgument(String),
+
+    /// Parse error
+    #[error("Parse error: {0}")]
+    Parse(String),
 }
 
 impl ServerError {
@@ -73,6 +94,11 @@ impl ServerError {
             Self::Portfolio(_) => "PORTFOLIO_ERROR",
             Self::Model(_) => "MODEL_ERROR",
             Self::Volatility(_) => "VOLATILITY_ERROR",
+            Self::Config(_) => "CONFIG_ERROR",
+            Self::Io(_) => "IO_ERROR",
+            Self::FileNotFound(_) => "FILE_NOT_FOUND",
+            Self::InvalidArgument(_) => "INVALID_ARGUMENT",
+            Self::Parse(_) => "PARSE_ERROR",
         }
     }
 }
@@ -125,6 +151,14 @@ impl IntoResponse for ServerError {
             | ServerError::Portfolio(msg)
             | ServerError::Model(msg)
             | ServerError::Volatility(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
+            // CLI-originated errors
+            ServerError::Config(msg) | ServerError::Io(msg) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, msg.to_string())
+            }
+            ServerError::FileNotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+            ServerError::InvalidArgument(msg) | ServerError::Parse(msg) => {
+                (StatusCode::BAD_REQUEST, msg.clone())
+            }
         };
 
         let body = Json(json!({

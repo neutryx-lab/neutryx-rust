@@ -13,12 +13,9 @@ use std::fmt;
 use thiserror::Error;
 
 // Import math errors for From implementations
-use crate::math::distributions::DistributionError;
+use crate::math::normal_dist::DistributionError;
 #[cfg(feature = "linalg")]
 use crate::math::linalg::LinearAlgebraError;
-use crate::math::{
-    fitting::FittingError, integrators::IntegrationError, optimisers::OptimisationError,
-};
 
 /// Categorised pricing errors.
 ///
@@ -507,75 +504,6 @@ impl From<SolverError> for CalibrationError {
 // =============================================================================
 // These conversions enable seamless error propagation from mathematical
 // operations to domain-level error types (PricingError, CalibrationError).
-
-/// Convert optimisation errors to calibration errors.
-///
-/// Optimisation is commonly used in model calibration, so this conversion
-/// provides natural error propagation.
-impl From<OptimisationError> for CalibrationError {
-    fn from(err: OptimisationError) -> Self {
-        match err {
-            OptimisationError::NotConverged { iterations } => {
-                CalibrationError::not_converged(iterations, f64::NAN)
-            }
-            OptimisationError::InvalidInput(msg) => CalibrationError::invalid_parameter(msg),
-            OptimisationError::NumericalError(msg) => CalibrationError::numerical_instability(msg),
-            OptimisationError::DimensionMismatch { expected, got } => {
-                CalibrationError::invalid_parameter(format!(
-                    "Dimension mismatch: expected {expected}, got {got}"
-                ))
-            }
-            OptimisationError::BoundsError(msg) => CalibrationError::constraint_violation(msg),
-            OptimisationError::GradientError(msg) => CalibrationError::numerical_instability(
-                format!("Gradient computation failed: {msg}"),
-            ),
-            OptimisationError::LineSearchError(msg) => {
-                CalibrationError::numerical_instability(format!("Line search failed: {msg}"))
-            }
-            OptimisationError::External(msg) => CalibrationError::numerical_instability(format!(
-                "External optimisation error: {msg}"
-            )),
-        }
-    }
-}
-
-/// Convert fitting errors to calibration errors.
-///
-/// Curve fitting is a common calibration task, so this conversion enables
-/// natural error propagation from fitting algorithms to calibration workflows.
-impl From<FittingError> for CalibrationError {
-    fn from(err: FittingError) -> Self {
-        match err {
-            FittingError::InsufficientData { needed, got } => {
-                CalibrationError::insufficient_data(got, needed)
-            }
-            FittingError::DimensionMismatch(msg) => CalibrationError::invalid_parameter(msg),
-            FittingError::FittingFailed(msg) => CalibrationError::numerical_instability(msg),
-            FittingError::InvalidData(msg) => CalibrationError::invalid_parameter(msg),
-            FittingError::NumericalError(msg) => CalibrationError::numerical_instability(msg),
-        }
-    }
-}
-
-/// Convert integration errors to pricing errors.
-///
-/// Numerical integration is used in option pricing (e.g., integrating payoffs),
-/// so this conversion enables natural error propagation.
-impl From<IntegrationError> for PricingError {
-    fn from(err: IntegrationError) -> Self {
-        match err {
-            IntegrationError::NotConverged { max_iterations } => {
-                PricingError::NumericalInstability(format!(
-                    "Integration did not converge after {max_iterations} iterations"
-                ))
-            }
-            IntegrationError::InvalidBounds { a, b } => {
-                PricingError::InvalidInput(format!("Invalid integration bounds: [{a}, {b}]"))
-            }
-            IntegrationError::NumericalError(msg) => PricingError::NumericalInstability(msg),
-        }
-    }
-}
 
 /// Convert distribution errors to pricing errors.
 ///

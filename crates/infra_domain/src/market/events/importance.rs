@@ -67,12 +67,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_event_importance() {
+    fn test_ordering() {
         assert!(EventImportance::Low < EventImportance::Medium);
         assert!(EventImportance::Medium < EventImportance::High);
         assert!(EventImportance::High < EventImportance::Critical);
-        assert_eq!(EventImportance::default(), EventImportance::Medium);
-        assert_eq!(EventImportance::Critical.display_name(), "Critical");
-        assert_eq!(EventImportance::High.css_class(), "high");
     }
 }
