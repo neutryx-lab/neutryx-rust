@@ -41,7 +41,7 @@
 //! pricer_pricing serves as the AD (Automatic Differentiation) engine in the
 //! 4-layer architecture:
 //! - Enzyme LLVM-level automatic differentiation
-//! - Monte Carlo pricing kernels with AD integration (Phase 3.2)
+//! - Monte Carlo pricing kernels with AD integration
 //! - Gradient verification utilities
 //!
 //! ## Nightly Rust Requirement
@@ -50,14 +50,11 @@
 //! (`nightly-2025-01-15`). Enzyme operates at LLVM level and requires nightly
 //! features for optimal performance.
 //!
-//! ## Layer Integration (Phase 4)
+//! ## Layer Integration
 //!
-//! Phase 4 adds optional L1/L2 integration via the `l1l2-integration` feature:
+//! Optional L1/L2 integration via the `l1l2-integration` feature:
 //! - Layer 1 (pricer_core): smoothing functions, Float trait, YieldCurve
 //! - Layer 2 (pricer_models): StochasticModel trait, Instrument enum
-//!
-//! Without the feature flag, pricer_pricing remains fully isolated.
-//!
 //!
 //! ## Installation
 //!
