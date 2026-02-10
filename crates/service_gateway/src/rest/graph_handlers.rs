@@ -2,20 +2,7 @@
 //!
 //! Provides endpoints for Portfolio-level computation graph extraction
 //! with shared node deduplication and subgraph filtering.
-//!
-//! Note: This module is only used when `demo` feature is disabled.
 #![allow(dead_code)]
-//! # Endpoints
-//!
-//! - `GET /api/v1/portfolio/graph` - Extract Portfolio computation graph
-//! - `GET /api/v1/portfolio/trades` - List trades in Portfolio
-//!
-//! # Requirements Coverage
-//!
-//! - 4.1: `/api/v1/portfolio/graph` endpoint
-//! - 4.2: Timeout and error handling
-//! - 4.3: `/api/v1/portfolio/trades` endpoint
-//! - 4.4: `GraphCache` implementation
 
 use std::{
     collections::HashMap,
@@ -38,10 +25,6 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::error::ServerError;
-
-// ============================================================================
-// Request/Response Types
-// ============================================================================
 
 /// Query parameters for `/api/v1/portfolio/graph`
 #[derive(Debug, Deserialize)]
@@ -142,10 +125,6 @@ pub struct TradeStatisticsDto {
     pub total_notional: f64,
 }
 
-// ============================================================================
-// Application State
-// ============================================================================
-
 /// Shared application state for graph handlers
 pub struct GraphAppState {
     /// `FpML` trades loaded from files
@@ -237,10 +216,6 @@ impl GraphCache {
 
 impl GraphAppState {
     /// Create a new app state by loading `FpML` trades from the demo directory.
-    ///
-    /// # Errors
-    ///
-    /// Returns `ServerError::Internal` if loading `FpML` files fails.
     pub fn new_with_sample(_trade_count: usize, cache_ttl_secs: u64) -> Result<Self, ServerError> {
         let trades = load_fpml_trades()
             .map_err(|e| ServerError::Internal(format!("Failed to load FpML trades: {e}")))?;
@@ -258,10 +233,6 @@ impl GraphAppState {
     }
 
     /// Create with default settings (loads all `FpML` files, 5 second cache)
-    ///
-    /// # Errors
-    ///
-    /// Returns `ServerError::Internal` if loading `FpML` files fails.
     pub fn default_sample() -> Result<Self, ServerError> { Self::new_with_sample(0, 5) }
 
     /// Returns the number of loaded trades.
@@ -320,24 +291,7 @@ fn load_fpml_file(path: &Path) -> Result<FpmlTrade, String> {
     FpmlParser::parse(&xml).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
 }
 
-// ============================================================================
-// Handlers
-// ============================================================================
-
-/// GET /api/v1/portfolio/graph
-///
-/// Extract the Portfolio computation graph with optional subgraph filtering.
-///
-/// # Query Parameters
-///
-/// - `trade_ids`: Comma-separated list of trade IDs for subgraph extraction
-///
-/// # Returns
-///
-/// - 200 OK: Portfolio graph in D3.js-compatible JSON format
-/// - 404 Not Found: If any specified `trade_id` doesn't exist
-/// - 500 Internal Server Error: If extraction fails
-/// - 504 Gateway Timeout: If extraction exceeds 500ms
+/// Extract portfolio computation graph with optional subgraph filtering.
 pub async fn get_portfolio_graph(
     State(state): State<Arc<GraphAppState>>,
     Query(params): Query<GraphQueryParams>,
@@ -418,18 +372,7 @@ pub async fn get_portfolio_graph(
     Ok(Json(convert_to_response(&graph)))
 }
 
-/// GET /api/v1/portfolio/trades
-///
-/// List all trades in the Portfolio with optional filtering.
-///
-/// # Query Parameters
-///
-/// - `instrument_type`: Filter by instrument type
-/// - `currency`: Filter by currency
-///
-/// # Returns
-///
-/// - 200 OK: Trade list with statistics
+/// List all trades in the portfolio with optional filtering.
 pub async fn get_portfolio_trades(
     State(state): State<Arc<GraphAppState>>,
     Query(params): Query<TradeListQueryParams>,
@@ -572,10 +515,6 @@ fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String)
     (currency, notional, maturity, counterparty, book)
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
 /// Extract portfolio graph from `FpML` trades, optionally filtered to specific
 /// trades
 fn extract_fpml_portfolio_graph(
@@ -614,95 +553,39 @@ fn extract_fpml_portfolio_graph(
 fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGraph {
     use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
+    let mk_node = |id: String, nt, label: &str, sens, group| GraphNode {
+        id, node_type: nt, label: label.to_string(), value: None,
+        is_sensitivity_target: sens, group, trade_ids: vec![trade_id.to_string()],
+    };
+
     let mut builder = GraphBuilder::with_capacity(10, 15);
 
-    // Determine sensitivity params based on trade type
-    let params = match &trade.trade_type {
-        TradeType::Swap | TradeType::Ois | TradeType::BasisSwap => {
-            vec!["rate", "spread"]
-        }
-        TradeType::Swaption { .. } => {
-            vec!["rate", "vol", "strike"]
-        }
-        TradeType::CapFloor => {
-            vec!["rate", "vol", "strike"]
-        }
-        TradeType::FxForward | TradeType::FxSpot | TradeType::FxSwap => {
-            vec!["spot", "rate_dom", "rate_for"]
-        }
-        TradeType::FxOption { .. } | TradeType::FxBarrierOption { .. } => {
-            vec!["spot", "vol", "rate_dom", "rate_for", "strike"]
-        }
-        TradeType::EquityOption { .. } => {
-            vec!["spot", "vol", "rate", "div", "strike"]
-        }
-        TradeType::CreditDefaultSwap { .. } | TradeType::CreditDefaultSwapIndex { .. } => {
-            vec!["spread", "recovery", "rate"]
-        }
-        TradeType::CommoditySwap { .. } => {
-            vec!["price", "rate"]
-        }
-        _ => vec!["rate"],
+    let params: &[&str] = match &trade.trade_type {
+        TradeType::Swap | TradeType::Ois | TradeType::BasisSwap => &["rate", "spread"],
+        TradeType::Swaption { .. } | TradeType::CapFloor => &["rate", "vol", "strike"],
+        TradeType::FxForward | TradeType::FxSpot | TradeType::FxSwap => &["spot", "rate_dom", "rate_for"],
+        TradeType::FxOption { .. } | TradeType::FxBarrierOption { .. } => &["spot", "vol", "rate_dom", "rate_for", "strike"],
+        TradeType::EquityOption { .. } => &["spot", "vol", "rate", "div", "strike"],
+        TradeType::CreditDefaultSwap { .. } | TradeType::CreditDefaultSwapIndex { .. } => &["spread", "recovery", "rate"],
+        TradeType::CommoditySwap { .. } => &["price", "rate"],
+        _ => &["rate"],
     };
 
-    // Create input nodes
-    let mut input_ids = Vec::new();
-    for param in &params {
-        let node_id = format!("{trade_id}_{param}");
-        let node = GraphNode {
-            id: node_id.clone(),
-            node_type: NodeType::Input,
-            label: (*param).to_string(),
-            value: None,
-            is_sensitivity_target: true,
-            group: NodeGroup::Sensitivity,
-            trade_ids: vec![trade_id.to_string()],
-        };
-        builder.add_node(node);
-        input_ids.push(node_id);
+    let input_ids: Vec<String> = params.iter().map(|p| {
+        let id = format!("{trade_id}_{p}");
+        builder.add_node(mk_node(id.clone(), NodeType::Input, p, true, NodeGroup::Sensitivity));
+        id
+    }).collect();
+
+    let calc_id = format!("{trade_id}_calc");
+    builder.add_node(mk_node(calc_id.clone(), NodeType::Mul, "calculation", false, NodeGroup::Intermediate));
+    for id in &input_ids {
+        builder.add_edge(GraphEdge { source: id.clone(), target: calc_id.clone(), weight: None });
     }
 
-    // Create intermediate node
-    let intermediate_id = format!("{trade_id}_calc");
-    let intermediate_node = GraphNode {
-        id: intermediate_id.clone(),
-        node_type: NodeType::Mul,
-        label: "calculation".to_string(),
-        value: None,
-        is_sensitivity_target: false,
-        group: NodeGroup::Intermediate,
-        trade_ids: vec![trade_id.to_string()],
-    };
-    builder.add_node(intermediate_node);
-
-    // Connect inputs to intermediate
-    for input_id in &input_ids {
-        builder.add_edge(GraphEdge {
-            source: input_id.clone(),
-            target: intermediate_id.clone(),
-            weight: None,
-        });
-    }
-
-    // Create output node
-    let output_id = format!("{trade_id}_price");
-    let output_node = GraphNode {
-        id: output_id.clone(),
-        node_type: NodeType::Output,
-        label: "price".to_string(),
-        value: None,
-        is_sensitivity_target: false,
-        group: NodeGroup::Output,
-        trade_ids: vec![trade_id.to_string()],
-    };
-    builder.add_node(output_node);
-
-    // Connect intermediate to output
-    builder.add_edge(GraphEdge {
-        source: intermediate_id,
-        target: output_id,
-        weight: None,
-    });
+    let out_id = format!("{trade_id}_price");
+    builder.add_node(mk_node(out_id.clone(), NodeType::Output, "price", false, NodeGroup::Output));
+    builder.add_edge(GraphEdge { source: calc_id, target: out_id, weight: None });
 
     builder.build(Some(trade_id.to_string()))
 }

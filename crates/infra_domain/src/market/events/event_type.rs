@@ -113,50 +113,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_display_name() {
-        assert_eq!(
-            EventType::CentralBankMeeting.display_name(),
-            "Central Bank Meeting"
-        );
-        assert_eq!(
-            EventType::EconomicRelease.display_name(),
-            "Economic Release"
-        );
+    fn test_event_type() {
+        // display_name
+        assert_eq!(EventType::CentralBankMeeting.display_name(), "Central Bank Meeting");
+        assert_eq!(EventType::EconomicRelease.display_name(), "Economic Release");
         assert_eq!(EventType::Holiday.display_name(), "Holiday");
-    }
-
-    #[test]
-    fn test_icon() {
-        assert_eq!(EventType::CentralBankMeeting.icon(), "fa-landmark");
-        assert_eq!(EventType::EconomicRelease.icon(), "fa-chart-bar");
-    }
-
-    #[test]
-    fn test_all_variants() {
-        let all = EventType::all();
-        assert_eq!(all.len(), 10);
-    }
-
-    #[test]
-    fn test_display_trait() {
-        assert_eq!(format!("{}", EventType::Holiday), "Holiday");
-    }
-
-    #[test]
-    fn test_is_turn() {
-        assert!(EventType::Turn.is_turn());
-        assert!(EventType::TurnOfYear.is_turn());
-        assert!(EventType::TurnOfQuarter.is_turn());
-        assert!(EventType::TurnOfMonth.is_turn());
-        assert!(!EventType::CentralBankMeeting.is_turn());
-        assert!(!EventType::EconomicRelease.is_turn());
-        assert!(!EventType::Other.is_turn());
-    }
-
-    #[test]
-    fn test_turn_display_names() {
         assert_eq!(EventType::TurnOfYear.display_name(), "Turn of Year");
         assert_eq!(EventType::TurnOfQuarter.display_name(), "Turn of Quarter");
         assert_eq!(EventType::TurnOfMonth.display_name(), "Turn of Month");
+
+        // icon
+        assert_eq!(EventType::CentralBankMeeting.icon(), "fa-landmark");
+        assert_eq!(EventType::EconomicRelease.icon(), "fa-chart-bar");
+
+        // all variants
+        assert_eq!(EventType::all().len(), 10);
+
+        // Display trait
+        assert_eq!(format!("{}", EventType::Holiday), "Holiday");
+
+        // is_turn
+        for t in [EventType::Turn, EventType::TurnOfYear, EventType::TurnOfQuarter, EventType::TurnOfMonth] {
+            assert!(t.is_turn());
+        }
+        for t in [EventType::CentralBankMeeting, EventType::EconomicRelease, EventType::Other] {
+            assert!(!t.is_turn());
+        }
     }
 }

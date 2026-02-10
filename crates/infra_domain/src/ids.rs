@@ -176,192 +176,48 @@ mod tests {
 
     use super::*;
 
-    // ========================================================================
-    // TradeId tests
-    // ========================================================================
-
-    #[test]
-    fn test_trade_id_new() {
-        let id = TradeId::new("TRADE001");
-        assert_eq!(id.as_str(), "TRADE001");
+    /// Tests all ID types: new, from_string, from_str, display, as_ref, equality, hash.
+    macro_rules! test_id_type {
+        ($ty:ident, $v1:expr, $v2:expr) => {{
+            let id = $ty::new($v1);
+            assert_eq!(id.as_str(), $v1);
+            let from_str: $ty = $v1.into();
+            assert_eq!(from_str.as_str(), $v1);
+            let from_string: $ty = $v1.to_string().into();
+            assert_eq!(from_string.as_str(), $v1);
+            assert_eq!(format!("{}", id), $v1);
+            let as_ref: &str = id.as_ref();
+            assert_eq!(as_ref, $v1);
+            assert_eq!($ty::new($v1), $ty::new($v1));
+            assert_ne!($ty::new($v1), $ty::new($v2));
+        }};
     }
 
     #[test]
-    fn test_trade_id_from_string() {
-        let id: TradeId = "TRADE002".to_string().into();
-        assert_eq!(id.as_str(), "TRADE002");
-    }
+    fn test_id_types() {
+        test_id_type!(TradeId, "TRADE001", "TRADE002");
+        test_id_type!(PortfolioId, "P001", "P002");
+        test_id_type!(BookId, "BOOK001", "BOOK002");
+        test_id_type!(IssuerId, "ISSUER001", "ISSUER002");
 
-    #[test]
-    fn test_trade_id_from_str() {
-        let id: TradeId = "TRADE003".into();
-        assert_eq!(id.as_str(), "TRADE003");
-    }
-
-    #[test]
-    fn test_trade_id_display() {
-        let id = TradeId::new("TRADE001");
-        assert_eq!(format!("{}", id), "TRADE001");
-    }
-
-    #[test]
-    fn test_trade_id_as_ref() {
-        let id = TradeId::new("TRADE001");
-        let s: &str = id.as_ref();
-        assert_eq!(s, "TRADE001");
-    }
-
-    #[test]
-    fn test_trade_id_equality() {
-        let id1 = TradeId::new("TRADE001");
-        let id2 = TradeId::new("TRADE001");
-        let id3 = TradeId::new("TRADE002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    #[test]
-    fn test_trade_id_hash() {
+        // Hash
         let mut set = HashSet::new();
-        set.insert(TradeId::new("T1"));
-        set.insert(TradeId::new("T2"));
-        set.insert(TradeId::new("T1")); // Duplicate
+        set.insert(TradeId::new("T1")); set.insert(TradeId::new("T2")); set.insert(TradeId::new("T1"));
         assert_eq!(set.len(), 2);
     }
 
-    // ========================================================================
-    // PortfolioId tests
-    // ========================================================================
-
     #[test]
-    fn test_portfolio_id_new() {
-        let id = PortfolioId::new("PORTFOLIO001");
-        assert_eq!(id.as_str(), "PORTFOLIO001");
-    }
+    fn test_id_type_safety() {
+        // Same content, different types
+        assert_eq!(TradeId::new("X").as_str(), PortfolioId::new("X").as_str());
+        assert_eq!(BookId::new("X").as_str(), IssuerId::new("X").as_str());
 
-    #[test]
-    fn test_portfolio_id_from_string() {
-        let id: PortfolioId = "PORTFOLIO002".to_string().into();
-        assert_eq!(id.as_str(), "PORTFOLIO002");
-    }
+        // CounterpartyId alias
+        assert_eq!(CounterpartyId::new("CP1"), CounterPartyId::new("CP1"));
 
-    #[test]
-    fn test_portfolio_id_display() {
-        let id = PortfolioId::new("PORTFOLIO001");
-        assert_eq!(format!("{}", id), "PORTFOLIO001");
-    }
-
-    #[test]
-    fn test_portfolio_id_equality() {
-        let id1 = PortfolioId::new("P001");
-        let id2 = PortfolioId::new("P001");
-        let id3 = PortfolioId::new("P002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    // ========================================================================
-    // BookId tests
-    // ========================================================================
-
-    #[test]
-    fn test_book_id_new() {
-        let id = BookId::new("BOOK001");
-        assert_eq!(id.as_str(), "BOOK001");
-    }
-
-    #[test]
-    fn test_book_id_from_string() {
-        let id: BookId = "BOOK002".to_string().into();
-        assert_eq!(id.as_str(), "BOOK002");
-    }
-
-    #[test]
-    fn test_book_id_display() {
-        let id = BookId::new("BOOK001");
-        assert_eq!(format!("{}", id), "BOOK001");
-    }
-
-    #[test]
-    fn test_book_id_equality() {
-        let id1 = BookId::new("B001");
-        let id2 = BookId::new("B001");
-        let id3 = BookId::new("B002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    // ========================================================================
-    // IssuerId tests
-    // ========================================================================
-
-    #[test]
-    fn test_issuer_id_new() {
-        let id = IssuerId::new("ISSUER001");
-        assert_eq!(id.as_str(), "ISSUER001");
-    }
-
-    #[test]
-    fn test_issuer_id_from_string() {
-        let id: IssuerId = "ISSUER002".to_string().into();
-        assert_eq!(id.as_str(), "ISSUER002");
-    }
-
-    #[test]
-    fn test_issuer_id_display() {
-        let id = IssuerId::new("ISSUER001");
-        assert_eq!(format!("{}", id), "ISSUER001");
-    }
-
-    #[test]
-    fn test_issuer_id_equality() {
-        let id1 = IssuerId::new("I001");
-        let id2 = IssuerId::new("I001");
-        let id3 = IssuerId::new("I002");
-        assert_eq!(id1, id2);
-        assert_ne!(id1, id3);
-    }
-
-    // ========================================================================
-    // Type safety tests
-    // ========================================================================
-
-    #[test]
-    fn test_type_safety_different_id_types() {
-        // This test verifies that different ID types are distinct at compile time
-        let trade_id = TradeId::new("ID001");
-        let portfolio_id = PortfolioId::new("ID001");
-        let book_id = BookId::new("ID001");
-        let issuer_id = IssuerId::new("ID001");
-
-        // Same string content, but different types
-        assert_eq!(trade_id.as_str(), portfolio_id.as_str());
-        assert_eq!(portfolio_id.as_str(), book_id.as_str());
-        assert_eq!(book_id.as_str(), issuer_id.as_str());
-
-        // But they cannot be compared directly (different types)
-        // This is the key benefit of newtypes
-    }
-
-    #[test]
-    fn test_counterparty_id_alias() {
-        // Verify that CounterpartyId is an alias for CounterPartyId
-        let id1 = CounterpartyId::new("CP001");
-        let id2 = CounterPartyId::new("CP001");
-        assert_eq!(id1, id2);
-    }
-
-    #[test]
-    fn test_clone() {
-        let id1 = TradeId::new("T1");
-        let id2 = id1.clone();
-        assert_eq!(id1, id2);
-    }
-
-    #[test]
-    fn test_debug() {
+        // Clone + Debug
         let id = TradeId::new("T1");
-        let debug = format!("{:?}", id);
-        assert!(debug.contains("T1"));
+        assert_eq!(id, id.clone());
+        assert!(format!("{:?}", id).contains("T1"));
     }
 }

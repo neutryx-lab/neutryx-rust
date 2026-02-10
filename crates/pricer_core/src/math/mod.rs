@@ -31,6 +31,7 @@ pub mod formulas;
 pub mod integrators;
 pub mod interpolators;
 pub mod mesh;
+pub mod normal_dist;
 pub mod numeric;
 pub mod optimisers;
 pub mod smoothing;

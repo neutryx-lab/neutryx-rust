@@ -76,19 +76,12 @@ S: Service   → Execution environments and interfaces (The Outputs)
 **Function**: Handles connectivity to market data providers (Reuters, Bloomberg, internal lakes).
 **Scope**: Normalises raw quotes (Bid/Ask, Last) into standardised `MarketQuote` structs.
 
-### adapter_fpml
-
-**Location**: `crates/adapter_fpml/src/`
-**Purpose**: Trade definition parsers (FpML/XML)
-**Function**: Parses complex XML/FpML trade structures.
-**Scope**: Maps FpML elements to `pricer_models::Instrument` enums.
-
 ### adapter_loader
 
 **Location**: `crates/adapter_loader/src/`
-**Purpose**: Flat file loaders (CSV/Parquet) & CSA details
-**Function**: Bulk loading of CSV, JSON, or Parquet files.
-**Scope**: Manages CSA (Credit Support Annex) terms, counterparty details, and netting set configurations.
+**Purpose**: Flat file loaders (CSV/Parquet), FpML parser, & CSA details
+**Function**: Bulk loading of CSV, JSON, or Parquet files. With `fpml` feature, parses FpML/XML trade definitions.
+**Scope**: Manages CSA (Credit Support Annex) terms, counterparty details, netting set configurations, and FpML trade parsing.
 
 ---
 

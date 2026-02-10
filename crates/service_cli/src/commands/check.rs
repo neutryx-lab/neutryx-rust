@@ -37,8 +37,7 @@ pub fn run() {
     println!();
     println!("  [A] Adapter Layer:");
     println!("    ✓ adapter_feeds");
-    println!("    ✓ adapter_fpml");
-    println!("    ✓ adapter_loader");
+    println!("    ✓ adapter_loader (incl. fpml feature)");
     println!();
     println!("  [I] Infra Layer:");
     println!("    ✓ infra_config");

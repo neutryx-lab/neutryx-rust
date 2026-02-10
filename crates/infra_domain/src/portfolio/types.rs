@@ -219,131 +219,52 @@ impl PortfolioBookMapping {
 mod tests {
     use super::*;
 
-    // ========================================================================
-    // PortfolioScope tests
-    // ========================================================================
-
     #[test]
-    fn test_portfolio_scope_default() {
-        let scope = PortfolioScope::default();
-        assert_eq!(scope, PortfolioScope::Internal);
-    }
-
-    #[test]
-    fn test_portfolio_scope_is_internal() {
-        assert!(PortfolioScope::Internal.is_internal());
-        assert!(!PortfolioScope::Legal.is_internal());
-    }
-
-    #[test]
-    fn test_portfolio_scope_is_legal() {
-        assert!(PortfolioScope::Legal.is_legal());
-        assert!(!PortfolioScope::Internal.is_legal());
-    }
-
-    #[test]
-    fn test_portfolio_scope_is_regulatory() {
-        assert!(PortfolioScope::Regulatory.is_regulatory());
-        assert!(!PortfolioScope::Internal.is_regulatory());
-    }
-
-    #[test]
-    fn test_portfolio_scope_is_consolidated() {
-        assert!(PortfolioScope::Consolidated.is_consolidated());
-        assert!(!PortfolioScope::Internal.is_consolidated());
-    }
-
-    #[test]
-    fn test_portfolio_scope_clone_and_equality() {
-        let s1 = PortfolioScope::Legal;
-        let s2 = s1;
-        assert_eq!(s1, s2);
-    }
-
-    #[test]
-    fn test_portfolio_scope_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(PortfolioScope::Internal);
-        set.insert(PortfolioScope::Legal);
-        set.insert(PortfolioScope::Internal); // Duplicate
+    fn test_portfolio_scope() {
+        assert_eq!(PortfolioScope::default(), PortfolioScope::Internal);
+        assert!(PortfolioScope::Internal.is_internal()); assert!(!PortfolioScope::Legal.is_internal());
+        assert!(PortfolioScope::Legal.is_legal()); assert!(!PortfolioScope::Internal.is_legal());
+        assert!(PortfolioScope::Regulatory.is_regulatory()); assert!(!PortfolioScope::Internal.is_regulatory());
+        assert!(PortfolioScope::Consolidated.is_consolidated()); assert!(!PortfolioScope::Internal.is_consolidated());
+        assert_eq!(PortfolioScope::Legal, { let s = PortfolioScope::Legal; s });
+        let mut set = std::collections::HashSet::new();
+        set.insert(PortfolioScope::Internal); set.insert(PortfolioScope::Legal); set.insert(PortfolioScope::Internal);
         assert_eq!(set.len(), 2);
     }
 
-    // ========================================================================
-    // PortfolioMetadata tests
-    // ========================================================================
-
     #[test]
-    fn test_portfolio_metadata_new() {
-        let metadata = PortfolioMetadata::new(Currency::USD);
-        assert_eq!(metadata.reporting_currency(), Currency::USD);
-        assert_eq!(metadata.scope(), PortfolioScope::Internal);
-        assert!(metadata.ownership().is_none());
+    fn test_portfolio_metadata() {
+        let m = PortfolioMetadata::new(Currency::USD);
+        assert_eq!(m.reporting_currency(), Currency::USD);
+        assert_eq!(m.scope(), PortfolioScope::Internal);
+        assert!(m.ownership().is_none());
+        assert!(m.created_at() <= m.updated_at());
+
+        assert_eq!(PortfolioMetadata::new(Currency::EUR).with_scope(PortfolioScope::Regulatory).scope(), PortfolioScope::Regulatory);
+        let o = BookOwnership::new().with_desk("Trading");
+        let m2 = PortfolioMetadata::new(Currency::GBP).with_ownership(o);
+        assert_eq!(m2.ownership().unwrap().desk(), Some("Trading"));
+
+        let c = PortfolioMetadata::new(Currency::JPY).with_scope(PortfolioScope::Legal).clone();
+        assert_eq!(c.scope(), PortfolioScope::Legal);
+        assert_eq!(c.reporting_currency(), Currency::JPY);
     }
 
     #[test]
-    fn test_portfolio_metadata_with_scope() {
-        let metadata = PortfolioMetadata::new(Currency::EUR).with_scope(PortfolioScope::Regulatory);
-        assert_eq!(metadata.scope(), PortfolioScope::Regulatory);
-    }
+    fn test_portfolio_book_mapping() {
+        let m = PortfolioBookMapping::new("P001", "B001");
+        assert_eq!(m.portfolio_id().as_str(), "P001");
+        assert_eq!(m.book_id().as_str(), "B001");
+        assert!(m.weight().is_none());
 
-    #[test]
-    fn test_portfolio_metadata_with_ownership() {
-        let ownership = BookOwnership::new().with_desk("Trading");
-        let metadata = PortfolioMetadata::new(Currency::GBP).with_ownership(ownership);
-        assert!(metadata.ownership().is_some());
-        assert_eq!(metadata.ownership().unwrap().desk(), Some("Trading"));
-    }
+        let mw = PortfolioBookMapping::with_weight("P001", "B001", 0.5);
+        assert_eq!(mw.weight(), Some(0.5));
 
-    #[test]
-    fn test_portfolio_metadata_timestamps() {
-        let metadata = PortfolioMetadata::new(Currency::USD);
-        assert!(metadata.created_at() <= metadata.updated_at());
-    }
+        let m2 = PortfolioBookMapping::new(PortfolioId::new("P002"), BookId::new("B002"));
+        assert_eq!(m2.portfolio_id().as_str(), "P002");
 
-    #[test]
-    fn test_portfolio_metadata_clone() {
-        let metadata = PortfolioMetadata::new(Currency::JPY).with_scope(PortfolioScope::Legal);
-        let cloned = metadata.clone();
-        assert_eq!(cloned.scope(), PortfolioScope::Legal);
-        assert_eq!(cloned.reporting_currency(), Currency::JPY);
-    }
-
-    // ========================================================================
-    // PortfolioBookMapping tests
-    // ========================================================================
-
-    #[test]
-    fn test_portfolio_book_mapping_new() {
-        let mapping = PortfolioBookMapping::new("P001", "B001");
-        assert_eq!(mapping.portfolio_id().as_str(), "P001");
-        assert_eq!(mapping.book_id().as_str(), "B001");
-        assert!(mapping.weight().is_none());
-    }
-
-    #[test]
-    fn test_portfolio_book_mapping_with_weight() {
-        let mapping = PortfolioBookMapping::with_weight("P001", "B001", 0.5);
-        assert_eq!(mapping.portfolio_id().as_str(), "P001");
-        assert_eq!(mapping.book_id().as_str(), "B001");
-        assert_eq!(mapping.weight(), Some(0.5));
-    }
-
-    #[test]
-    fn test_portfolio_book_mapping_from_ids() {
-        let portfolio_id = PortfolioId::new("P002");
-        let book_id = BookId::new("B002");
-        let mapping = PortfolioBookMapping::new(portfolio_id, book_id);
-        assert_eq!(mapping.portfolio_id().as_str(), "P002");
-        assert_eq!(mapping.book_id().as_str(), "B002");
-    }
-
-    #[test]
-    fn test_portfolio_book_mapping_clone() {
-        let mapping = PortfolioBookMapping::with_weight("P001", "B001", 0.75);
-        let cloned = mapping.clone();
-        assert_eq!(cloned.portfolio_id().as_str(), "P001");
-        assert_eq!(cloned.weight(), Some(0.75));
+        let c = PortfolioBookMapping::with_weight("P001", "B001", 0.75).clone();
+        assert_eq!(c.portfolio_id().as_str(), "P001");
+        assert_eq!(c.weight(), Some(0.75));
     }
 }

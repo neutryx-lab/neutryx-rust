@@ -20,6 +20,14 @@ use crate::{
     state::{AppState, SabrParams, VolSurfaceEntry, VolSurfaceType},
 };
 
+/// Convert calibration DTOs to cache params.
+#[cfg(feature = "volatility")]
+fn to_cache_params(sabr: &[SabrCalibrationDto]) -> Vec<SabrParams> {
+    sabr.iter()
+        .map(|p| SabrParams { expiry: p.expiry, alpha: p.alpha, beta: p.beta, rho: p.rho, nu: p.nu })
+        .collect()
+}
+
 /// Service for volatility surface operations
 #[cfg(feature = "volatility")]
 pub struct VolatilityService;
@@ -94,22 +102,10 @@ impl VolatilityService {
 
         let expiry_count = sabr_params.len();
 
-        // Store in cache
-        let cache_params: Vec<SabrParams> = sabr_params
-            .iter()
-            .map(|p| SabrParams {
-                expiry: p.expiry,
-                alpha: p.alpha,
-                beta: p.beta,
-                rho: p.rho,
-                nu: p.nu,
-            })
-            .collect();
-
         let entry = VolSurfaceEntry {
             surface_type: VolSurfaceType::FxSurface,
             underlying: request.currency_pair.clone(),
-            sabr_params: cache_params,
+            sabr_params: to_cache_params(&sabr_params),
             expiry_count,
             residual_ss: Some(total_residual),
             created_at: Utc::now(),
@@ -209,22 +205,10 @@ impl VolatilityService {
         let expiry_count = request.expiries.len();
         let tenor_count = request.tenors.len();
 
-        // Store in cache
-        let cache_params: Vec<SabrParams> = sabr_params
-            .iter()
-            .map(|p| SabrParams {
-                expiry: p.expiry,
-                alpha: p.alpha,
-                beta: p.beta,
-                rho: p.rho,
-                nu: p.nu,
-            })
-            .collect();
-
         let entry = VolSurfaceEntry {
             surface_type: VolSurfaceType::IrCube,
             underlying: request.index.clone(),
-            sabr_params: cache_params,
+            sabr_params: to_cache_params(&sabr_params),
             expiry_count: sabr_params.len(),
             residual_ss: Some(total_residual),
             created_at: Utc::now(),

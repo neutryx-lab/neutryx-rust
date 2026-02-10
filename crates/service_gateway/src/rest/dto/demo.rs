@@ -9,10 +9,6 @@
 
 use serde::{Deserialize, Serialize};
 
-// =============================================================================
-// Configuration Types
-// =============================================================================
-
 /// Application configuration response
 #[derive(Debug, Clone, Serialize)]
 pub struct AppConfigResponse {
@@ -33,10 +29,6 @@ pub enum EnumValue {
     /// Object with code and optional name
     Object { code: String, name: Option<String> },
 }
-
-// =============================================================================
-// Instrument Types
-// =============================================================================
 
 /// Instruments response
 #[derive(Debug, Clone, Serialize)]
@@ -101,10 +93,6 @@ pub struct ParameterValidation {
     pub max: Option<f64>,
 }
 
-// =============================================================================
-// Trade Expansion Types
-// =============================================================================
-
 /// Trade expansion request
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -158,10 +146,6 @@ pub struct TradeMetadata {
     pub total_cashflows: usize,
     pub processing_time_ms: f64,
 }
-
-// =============================================================================
-// Pricing Types
-// =============================================================================
 
 /// Pricing request
 #[derive(Debug, Clone, Deserialize)]
@@ -238,10 +222,6 @@ pub struct CashflowPvResult {
     pub payment_date: String,
 }
 
-// =============================================================================
-// Greeks Types
-// =============================================================================
-
 /// Greeks request
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -272,10 +252,6 @@ pub struct DemoGreeksResult {
     pub theta: Option<f64>,
     pub vega: Option<f64>,
 }
-
-// =============================================================================
-// Market Data Types
-// =============================================================================
 
 /// Market rate
 #[derive(Debug, Clone, Serialize)]
@@ -320,10 +296,6 @@ pub struct MarketRateDetailResponse {
     pub convention: Option<Convention>,
 }
 
-// =============================================================================
-// Convention Types
-// =============================================================================
-
 /// Convention
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -349,10 +321,6 @@ pub struct ConventionField {
 pub struct ConventionsResponse {
     pub conventions: Vec<Convention>,
 }
-
-// =============================================================================
-// IR Volatility Types
-// =============================================================================
 
 /// IR vol currency
 #[derive(Debug, Clone, Serialize)]
@@ -395,10 +363,6 @@ pub struct IrVolQuotesResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }
-
-// =============================================================================
-// FX Volatility Types
-// =============================================================================
 
 /// FX vol pair
 #[derive(Debug, Clone, Serialize)]
@@ -446,10 +410,6 @@ pub struct FxVolQuotesResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub foreign_rate: Option<f64>,
 }
-
-// =============================================================================
-// Events Types
-// =============================================================================
 
 /// Market event
 #[derive(Debug, Clone, Serialize)]
@@ -559,10 +519,6 @@ pub struct HolidaysResponse {
     pub holidays: Vec<Holiday>,
 }
 
-// =============================================================================
-// Curves Types (additional to existing curves module)
-// =============================================================================
-
 /// Available curves response
 #[derive(Debug, Clone, Serialize)]
 pub struct AvailableCurvesResponse {
@@ -590,10 +546,6 @@ pub struct CurveInstrument {
 pub struct CurveInstrumentsResponse {
     pub instruments: Vec<CurveInstrument>,
 }
-
-// =============================================================================
-// Volcube Types
-// =============================================================================
 
 /// Volcube indices response
 #[derive(Debug, Clone, Serialize)]
@@ -750,10 +702,6 @@ pub struct CalibrationParameters {
     pub nu: f64,
 }
 
-// =============================================================================
-// SABR Smile / Density (from calibrated parameters)
-// =============================================================================
-
 /// Request to compute SABR smile and implied density from calibrated parameters
 #[derive(Debug, Clone, Deserialize)]
 pub struct SabrSmileRequest {
@@ -791,10 +739,6 @@ pub struct SabrSmileResponse {
     pub density: Vec<f64>,
 }
 
-// =============================================================================
-// Export Types
-// =============================================================================
-
 /// Export format
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -802,10 +746,6 @@ pub enum ExportFormat {
     Csv,
     Json,
 }
-
-// =============================================================================
-// Rate Instrument Types (market-convention-instrument)
-// =============================================================================
 
 /// Rate instrument response
 #[derive(Debug, Clone, Serialize)]
@@ -905,10 +845,6 @@ pub struct CashflowDetail {
     pub payoff_type: String,
 }
 
-// =============================================================================
-// Rate Index Types (market-convention-instrument)
-// =============================================================================
-
 /// Rate index info
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -992,10 +928,6 @@ pub struct IndexConventionsResponse {
     pub conventions: Vec<Convention>,
 }
 
-// =============================================================================
-// Implied Probability Density
-// =============================================================================
-
 /// A smile point for implied PDF computation
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImpliedPdfSmilePoint {
@@ -1034,10 +966,6 @@ pub struct ImpliedPdfResponse {
     /// Probability density values
     pub density: Vec<f64>,
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

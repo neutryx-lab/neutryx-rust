@@ -488,45 +488,39 @@ mod tests {
 
     fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
 
+    fn inst(itype: &str, tenor: &str, rate: f64) -> CurveInstrumentInput {
+        CurveInstrumentInput {
+            instrument_type: itype.to_string(), tenor: tenor.to_string(), rate,
+            event_date: None, expected_rate_spike: None, end_date: None,
+        }
+    }
+
+    fn event(date: &str, spike: f64, end: Option<&str>) -> CurveInstrumentInput {
+        CurveInstrumentInput {
+            instrument_type: "event".to_string(), tenor: String::new(), rate: 0.0,
+            event_date: Some(date.to_string()), expected_rate_spike: Some(spike),
+            end_date: end.map(String::from),
+        }
+    }
+
+    fn build_req(ref_date: Option<&str>, instruments: Vec<CurveInstrumentInput>) -> CurveBuildRequest {
+        CurveBuildRequest {
+            index: "USD-SOFR".to_string(), currency: "USD".to_string(),
+            reference_date: ref_date.map(String::from), instruments,
+            interpolation: BootstrapInterpolation::Linear,
+            bootstrap_method: BootstrapMethod::Bootstrapping,
+            tolerance: 1e-10, max_iterations: 100,
+        }
+    }
+
     #[test]
     fn test_build_simple_curve() {
         let state = create_test_state();
-
-        let request = CurveBuildRequest {
-            index: "USD-SOFR".to_string(),
-            currency: "USD".to_string(),
-            reference_date: None,
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.052,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "2Y".to_string(),
-                    rate: 0.054,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-            ],
-            interpolation: BootstrapInterpolation::Linear,
-            bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10,
-            max_iterations: 100,
-        };
+        let request = build_req(None, vec![
+            inst("deposit", "1M", 0.05),
+            inst("swap", "1Y", 0.052),
+            inst("swap", "2Y", 0.054),
+        ]);
 
         let response = CurveService::build_curve(&request, &state).unwrap();
 
@@ -535,7 +529,6 @@ mod tests {
         assert!(response.converged);
         assert!(!response.pillars.is_empty());
 
-        // Verify discount factors are decreasing
         for window in response.pillars.windows(2) {
             assert!(window[1].discount_factor <= window[0].discount_factor);
         }
@@ -544,42 +537,11 @@ mod tests {
     #[test]
     fn test_build_curve_with_event() {
         let state = create_test_state();
-
-        let request = CurveBuildRequest {
-            index: "USD-SOFR".to_string(),
-            currency: "USD".to_string(),
-            reference_date: Some("2026-01-29".to_string()),
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "event".to_string(),
-                    tenor: String::new(),
-                    rate: 0.0,
-                    event_date: Some("2026-03-18".to_string()),
-                    expected_rate_spike: Some(-0.0025),
-                    end_date: None, // Permanent jump (CB meeting)
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.052,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-            ],
-            interpolation: BootstrapInterpolation::Linear,
-            bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10,
-            max_iterations: 100,
-        };
+        let request = build_req(Some("2026-01-29"), vec![
+            inst("deposit", "1M", 0.05),
+            event("2026-03-18", -0.0025, None),
+            inst("swap", "1Y", 0.052),
+        ]);
 
         let response = CurveService::build_curve(&request, &state).unwrap();
 
@@ -592,50 +554,12 @@ mod tests {
     #[test]
     fn test_build_curve_with_turn_event() {
         let state = create_test_state();
-
-        let request = CurveBuildRequest {
-            index: "USD-SOFR".to_string(),
-            currency: "USD".to_string(),
-            reference_date: Some("2026-01-29".to_string()),
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "event".to_string(),
-                    tenor: String::new(),
-                    rate: 0.0,
-                    event_date: Some("2026-12-31".to_string()),
-                    expected_rate_spike: Some(0.001), // 10bp turn spike
-                    end_date: Some("2027-01-04".to_string()), // Reverts after Jan 4
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.052,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "2Y".to_string(),
-                    rate: 0.054,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-            ],
-            interpolation: BootstrapInterpolation::Linear,
-            bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10,
-            max_iterations: 100,
-        };
+        let request = build_req(Some("2026-01-29"), vec![
+            inst("deposit", "1M", 0.05),
+            event("2026-12-31", 0.001, Some("2027-01-04")),
+            inst("swap", "1Y", 0.052),
+            inst("swap", "2Y", 0.054),
+        ]);
 
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);
@@ -684,45 +608,12 @@ mod tests {
 
     #[test]
     fn test_forward_rate_shift_no_spike() {
-        // Verify that a -25bp CB cut produces a smooth ~25bp downward shift,
-        // not a delta-function spike of 25bp * 365 = 91%.
         let state = create_test_state();
-
-        let request = CurveBuildRequest {
-            index: "USD-SOFR".to_string(),
-            currency: "USD".to_string(),
-            reference_date: Some("2026-01-29".to_string()),
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "event".to_string(),
-                    tenor: String::new(),
-                    rate: 0.0,
-                    event_date: Some("2026-06-01".to_string()),
-                    expected_rate_spike: Some(-0.0025), // -25bp cut
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-            ],
-            interpolation: BootstrapInterpolation::Linear,
-            bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10,
-            max_iterations: 100,
-        };
+        let request = build_req(Some("2026-01-29"), vec![
+            inst("deposit", "1M", 0.05),
+            event("2026-06-01", -0.0025, None),
+            inst("swap", "1Y", 0.05),
+        ]);
 
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);

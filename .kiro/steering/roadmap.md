@@ -90,8 +90,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Status | Notes |
 |-------|--------|-------|
 | adapter_feeds | 🔶 | Basic quote types only |
-| adapter_fpml | 🔶 | Basic FpML parser skeleton |
-| adapter_loader | 🔶 | CSV loader, CSA terms |
+| adapter_loader | 🔶 | CSV loader, CSA terms, FpML parser (`fpml` feature) |
 
 #### Service Layer (S) - Output
 | Crate | Status | Notes |

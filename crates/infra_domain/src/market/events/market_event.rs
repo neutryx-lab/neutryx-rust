@@ -200,100 +200,42 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_new_event() {
-        let event = MarketEvent::new(
-            "EVT001",
-            EventType::CentralBankMeeting,
-            "FOMC Meeting",
-            "2024-03-20",
-            EventImportance::Critical,
-            "Bloomberg",
-        );
-        assert_eq!(event.id, "EVT001");
-        assert_eq!(event.event_type, EventType::CentralBankMeeting);
-        assert!(event.is_high_impact());
-    }
+    fn test_market_event() {
+        // new + basic fields
+        let e = MarketEvent::new("EVT001", EventType::CentralBankMeeting, "FOMC Meeting", "2024-03-20", EventImportance::Critical, "Bloomberg");
+        assert_eq!(e.id, "EVT001");
+        assert_eq!(e.event_type, EventType::CentralBankMeeting);
+        assert!(e.is_high_impact());
 
-    #[test]
-    fn test_builder_pattern() {
-        let event = MarketEvent::new(
-            "EVT002",
-            EventType::EconomicRelease,
-            "US NFP",
-            "2024-04-05",
-            EventImportance::High,
-            "Reuters",
-        )
-        .with_currency("USD")
-        .with_region("United States")
-        .with_time("08:30")
-        .with_timezone("America/New_York")
-        .with_economic_data(Some("200K".to_string()), Some("180K".to_string()), None);
+        // builder pattern
+        let e2 = MarketEvent::new("EVT002", EventType::EconomicRelease, "US NFP", "2024-04-05", EventImportance::High, "Reuters")
+            .with_currency("USD").with_region("United States").with_time("08:30").with_timezone("America/New_York")
+            .with_economic_data(Some("200K".to_string()), Some("180K".to_string()), None);
+        assert_eq!(e2.currency, Some("USD".to_string()));
+        assert!(e2.is_economic_release());
+        assert!(!e2.is_central_bank_event());
 
-        assert_eq!(event.currency, Some("USD".to_string()));
-        assert!(event.is_economic_release());
-        assert!(!event.is_central_bank_event());
-    }
+        // display
+        let e3 = MarketEvent::new("EVT003", EventType::Holiday, "Christmas Day", "2024-12-25", EventImportance::Low, "Internal");
+        let d = format!("{}", e3);
+        assert!(d.contains("2024-12-25") && d.contains("Christmas Day"));
 
-    #[test]
-    fn test_display() {
-        let event = MarketEvent::new(
-            "EVT003",
-            EventType::Holiday,
-            "Christmas Day",
-            "2024-12-25",
-            EventImportance::Low,
-            "Internal",
-        );
-        let display = format!("{}", event);
-        assert!(display.contains("2024-12-25"));
-        assert!(display.contains("Christmas Day"));
-    }
+        // expected jump bps
+        assert!(e.expected_jump_bps().is_none());
+        assert!(!e.has_expected_jump());
+        let ej = e.with_expected_jump_bps(25.0);
+        assert_eq!(ej.expected_jump_bps(), Some(25.0));
+        assert!(ej.has_expected_jump());
 
-    #[test]
-    fn test_expected_jump_bps() {
-        // Test without expected jump
-        let event = MarketEvent::new(
-            "FOMC-2024-03",
-            EventType::CentralBankMeeting,
-            "FOMC Interest Rate Decision",
-            "2024-03-20",
-            EventImportance::Critical,
-            "Bloomberg",
-        );
-        assert!(event.expected_jump_bps().is_none());
-        assert!(!event.has_expected_jump());
+        // negative jump (rate cut)
+        let cut = MarketEvent::new("ECB", EventType::CentralBankMeeting, "ECB", "2024-04-11", EventImportance::Critical, "Reuters")
+            .with_expected_jump_bps(-25.0);
+        assert_eq!(cut.expected_jump_bps(), Some(-25.0));
 
-        // Test with expected jump (rate hike)
-        let event_with_jump = event.with_expected_jump_bps(25.0);
-        assert_eq!(event_with_jump.expected_jump_bps(), Some(25.0));
-        assert!(event_with_jump.has_expected_jump());
-
-        // Test with negative jump (rate cut)
-        let event_cut = MarketEvent::new(
-            "ECB-2024-04",
-            EventType::CentralBankMeeting,
-            "ECB Rate Decision",
-            "2024-04-11",
-            EventImportance::Critical,
-            "Reuters",
-        )
-        .with_expected_jump_bps(-25.0);
-        assert_eq!(event_cut.expected_jump_bps(), Some(-25.0));
-    }
-
-    #[test]
-    fn test_expected_jump_bps_zero() {
-        let event = MarketEvent::new(
-            "BOJ-2024-01",
-            EventType::CentralBankMeeting,
-            "BOJ Policy Decision",
-            "2024-01-23",
-            EventImportance::High,
-            "Nikkei",
-        )
-        .with_expected_jump_bps(0.0);
-        assert_eq!(event.expected_jump_bps(), Some(0.0));
-        assert!(event.has_expected_jump());
+        // zero jump
+        let zero = MarketEvent::new("BOJ", EventType::CentralBankMeeting, "BOJ", "2024-01-23", EventImportance::High, "Nikkei")
+            .with_expected_jump_bps(0.0);
+        assert_eq!(zero.expected_jump_bps(), Some(0.0));
+        assert!(zero.has_expected_jump());
     }
 }

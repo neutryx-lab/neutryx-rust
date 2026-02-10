@@ -23,8 +23,7 @@ neutryx-rust/
 │   │
 │   │   # --- A: Adapter Layer (Input) ---
 │   ├── adapter_feeds/        # Real-time/Snapshot market data parsers
-│   ├── adapter_fpml/         # Trade definition parsers (FpML/XML)
-│   ├── adapter_loader/       # Flat file loaders (CSV/Parquet) & CSA details
+│   ├── adapter_loader/       # Flat file loaders (CSV/Parquet), FpML parser, & CSA details
 │   │
 │   │   # --- I: Infra Layer (Foundation) ---
 │   ├── infra_config/         # System configuration & environment management

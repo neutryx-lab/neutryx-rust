@@ -5,7 +5,7 @@
 **A-I-P-S Unidirectional Data Flow**: The workspace enforces a strict unidirectional data flow mirroring alphabetical order (**A**dapter → **I**nfra → **P**ricer → **S**ervice). This logical progression guides developers from data ingestion to computation and finally to delivery.
 
 ```text
-A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
+A: Adapter   → adapter_feeds, adapter_loader (incl. fpml feature)
 I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pricer_risk (L4)
 S: Service   → service_gateway (active), service_cli (paused), service_python (paused)
@@ -46,7 +46,7 @@ S: Service   → service_gateway (active), service_cli (paused), service_python 
 - **Benchmarking**: `criterion` (time-based), `iai-callgrind` (instruction-count for CI reproducibility)
 
 ### Adapter Layer
-- **XML Parsing**: `quick-xml` (FpML parsing in adapter_fpml)
+- **XML Parsing**: `quick-xml` (FpML parsing in adapter_loader, `fpml` feature)
 - **File Formats**: `csv`, `parquet` (data loading in adapter_loader)
 - **Market Data**: WebSocket/REST clients for adapter_feeds
 

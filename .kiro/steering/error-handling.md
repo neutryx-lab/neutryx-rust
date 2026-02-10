@@ -69,7 +69,7 @@ pub enum InterpolationError {
 | Error Type | Purpose | Location |
 |------------|---------|----------|
 | `FeedError` | Market data feed issues | adapter_feeds |
-| `FpmlError` | FpML parsing failures | adapter_fpml |
+| `FpmlError` | FpML parsing failures | adapter_loader (fpml feature) |
 | `LoaderError` | File loading failures | adapter_loader |
 
 ### Service Layer
