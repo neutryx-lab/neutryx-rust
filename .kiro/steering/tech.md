@@ -8,7 +8,7 @@
 A: Adapter   → adapter_feeds, adapter_loader (incl. fpml feature)
 I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pricer_risk (L4)
-S: Service   → service_gateway (active), service_cli (paused), service_python (paused)
+S: Service   → service_gateway (REST + CLI + Python, feature-gated)
 ```
 
 **Neutryx Facade Crate**: The workspace root (`neutryx` crate) provides a unified entry point for external consumers, re-exporting all underlying crates with intuitive aliases (`master`, `config`, `core`, `models`, `pricing`, `risk`). Feature flags (`minimal`, `analytics`, `full`) control which layers are included.
@@ -56,8 +56,8 @@ S: Service   → service_gateway (active), service_cli (paused), service_python 
 - **Caching**: `redis` (optional, state management)
 
 ### Service Layer
-- **CLI**: `clap` (argument parsing in service_cli)
-- **Python Bindings**: `pyo3` (service_python)
+- **CLI**: `clap` (feature-gated `cli` in service_gateway)
+- **Python Bindings**: `pyo3` (feature-gated `python` in service_gateway)
 - **gRPC**: `tonic` (service_gateway)
 - **REST**: `axum` (service_gateway)
 - **WebSocket**: `axum` WebSocket, `futures-util` (service_gateway real-time updates)
@@ -193,5 +193,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-09_ — service_gateway re-enabled, AI Fixer CI, ndarray removed, QuoteId migration
+_Updated: 2026-02-10_ — service_cli/service_python consolidated into service_gateway (feature-gated cli/python modules)
 _Document standards and patterns, not every dependency_

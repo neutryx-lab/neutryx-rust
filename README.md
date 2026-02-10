@@ -358,8 +358,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🤝 Contributing
 
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
 ```bash
 # Before submitting
 cargo fmt --all -- --check

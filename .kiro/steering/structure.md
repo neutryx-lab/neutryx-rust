@@ -462,54 +462,59 @@ demo.rs     → Portfolio orchestration demo (DemoTrade, Pull-then-Push pattern)
 
 ## S: Service Layer (Output)
 
-**Responsibility**: Delivery of results to end-users or systems.
-
-### service_cli
-
-**Location**: `crates/service_cli/src/`
-**Purpose**: Command Line Operations (Batch/Ops)
-**Function**: Operational entry point.
-**Commands**: `neutryx calibrate`, `neutryx price --portfolio trade_file.csv`.
-**Structure**:
-
-```text
-commands/   → Subcommand implementations (calibrate, price, report)
-config/     → CLI configuration loading
-main.rs     → Entry point with clap argument parsing
-```
+**Responsibility**: Delivery of results to end-users or systems. Unified in a single `service_gateway` crate with feature-gated modules.
 
 ### service_gateway
 
 **Location**: `crates/service_gateway/src/`
-**Purpose**: gRPC/REST API Gateway (Microservices)
-**Function**: Production integration point.
-**Scope**: REST (Axum) and gRPC (Tonic) endpoints for microservice deployment.
+**Purpose**: Unified service delivery (REST API + CLI + Python bindings)
+**Function**: Production integration point with feature-gated modules for REST, CLI, and Python interfaces.
+**Scope**: REST (Axum) and gRPC (Tonic) endpoints, CLI commands, PyO3 bindings — all in one crate.
+
+**Feature Flags**:
+| Feature | Description | Default |
+|---------|-------------|---------|
+| `rest` | Axum-based REST API server | Yes |
+| `cli` | Clap-based CLI (`neutryx` binary) | No |
+| `python` | PyO3 bindings (`neutryx_py` module) | No |
+| `full` | All services (rest + risk + models + volatility + demo + cli) | No |
+
+**Binary Targets**:
+- `neutryx-server` (`src/main.rs`) — REST/gRPC server (always available)
+- `neutryx` (`src/cli_main.rs`) — CLI entry point (`required-features = ["cli"]`)
+
 **Structure**:
 
 ```text
+lib.rs            → Library entry point (module declarations, feature gates, PyO3 registration)
+main.rs           → Server entry point (neutryx-server binary)
+cli_main.rs       → CLI entry point (neutryx binary, feature = "cli")
+config.rs         → Server configuration
+error.rs          → Unified error types (ServerError — HTTP + CLI variants)
 rest/
 ├── handlers/         → REST API handlers
 │   ├── mod.rs            → Handler module exports
 │   ├── demo.rs           → Demo endpoints (curves, volcube, pricing, risk)
 │   └── ...               → Feature-specific handlers
 ├── dto/              → Data Transfer Objects
-│   ├── mod.rs            → DTO module exports
-│   ├── demo.rs           → Demo request/response types
-│   └── ...               → Domain-specific DTOs
 ├── graph_handlers.rs → Portfolio graph REST handlers (subgraph extraction, caching)
 ├── ws_handlers.rs    → WebSocket handlers (real-time graph updates)
 └── mod.rs            → Router configuration (with/without WebSocket state)
 services/         → Business logic services
 ├── mod.rs            → Service module exports
-├── demo_service.rs   → Demo orchestration service (curves, pricing, risk)
+├── demo_service.rs   → Demo orchestration service
 └── cache.rs          → Feature-gated caching infrastructure
+cli/              → CLI module (feature = "cli")
+├── mod.rs            → Cli struct, Commands enum, run function
+└── commands/         → Subcommand implementations (calibrate, price, report, check, demo)
+python/           → PyO3 bindings (feature = "python")
+├── mod.rs            → register_module function, version
+└── bindings.rs       → PyVanillaOption, PyForward, PyHullWhite, pricing functions
 grpc/             → Tonic service implementations (skeleton)
-config.rs         → Server configuration
-error.rs          → Structured error types (ServerError)
-main.rs           → Server entry point with static file serving
+state/            → Application state (AppState, caches)
 ```
 
-**Architecture**: Handler → Service → Pricer Layer pattern separates HTTP concerns from business logic.
+**Architecture**: Handler → Service → Pricer Layer pattern separates HTTP concerns from business logic. CLI commands reuse the same services layer.
 
 **REST API Endpoints**:
 - `/health` - Health check
@@ -524,20 +529,7 @@ main.rs           → Server entry point with static file serving
 **WebSocket Endpoint**:
 - `/ws` - Real-time graph updates (select_trades, subgraph_update events)
 
-**Static File Serving**: Serves demo GUI frontend from `demo/gui/static/` when compiled with `demo` feature.
-
-### service_python
-
-**Location**: `crates/service_python/src/`
-**Purpose**: PyO3 Bindings (Research/Jupyter)
-**Function**: Research interface (critical for PhD/JAX comparison).
-**Scope**: Exposes Rust structs as Python classes via PyO3. Allows direct manipulation of `pricer_optimiser` for notebook-based calibration experiments.
-**Structure**:
-
-```text
-bindings/   → PyO3 class wrappers (PyInstrument, PyModel, PyOptimiser)
-lib.rs      → Module registration and Python module definition
-```
+**Static File Serving**: Serves demo GUI frontend from `demo/gui/dist/` when compiled with `demo` feature.
 
 ---
 
@@ -748,5 +740,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-10_ — service_gateway re-enabled, AI Fixer CI infrastructure, scripts/ removed (moved to .github/)
+_Updated: 2026-02-10_ — service_cli/service_python consolidated into service_gateway (feature-gated cli/python modules)
 _Document patterns, not file trees. New files following patterns should not require updates_
