@@ -107,9 +107,7 @@ members = [
     "crates/pricer_risk",
 
     # --- S: Service Layer (Output) ---
-    # "crates/service_cli",
     "crates/service_gateway",
-    # "crates/service_python",
 ]
 resolver = "2"
 
