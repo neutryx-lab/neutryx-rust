@@ -1,46 +1,4 @@
-//! Standard instrument definitions for financial products.
-//!
-//! This module provides comprehensive definitions for standard financial
-//! instruments across all asset classes (Rates, FX, Equity, Credit, Commodity)
-//! as used by Tier-1 bank trading desks.
-//!
-//! # Architecture
-//!
-//! The instrument definitions follow a hierarchical structure:
-//!
-//! ```text
-//! InstrumentDefinition (enum)
-//! ├── Rates: Swaption, CapFloor, Frn, CmsSwap, InflationSwap
-//! ├── FX: FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap
-//! ├── Equity: EquityForward, EquityVanillaOption, AsianOption, ...
-//! ├── Credit: Cds, CdsIndex, CdsOption, NtdBasket
-//! └── Commodity: CommodityForward, CommoditySwap, ...
-//! ```
-//!
-//! # Example
-//!
-//! ```rust
-//! use infra_domain::market::instrument::{
-//!     InstrumentDefinition, AssetClass, Swaption, PayerReceiver,
-//! };
-//! use infra_domain::trade::{ExerciseType, SettlementType};
-//! use infra_domain::{market::Currency, time::{Date, Tenor}};
-//!
-//! let swaption = Swaption {
-//!     underlying_swap_tenor: Tenor::TenYears,
-//!     expiry: Date::from_ymd(2026, 1, 15).unwrap(),
-//!     exercise_type: ExerciseType::European,
-//!     settlement_type: SettlementType::Cash,
-//!     strike: 0.03,
-//!     notional: 10_000_000.0,
-//!     currency: Currency::USD,
-//!     payer_receiver: PayerReceiver::Payer,
-//! };
-//!
-//! let instrument = InstrumentDefinition::Swaption(swaption);
-//! assert_eq!(instrument.asset_class(), AssetClass::Rates);
-//! assert!(instrument.is_option());
-//! ```
+﻿/! Standard instrument definitions for all asset classes (Rates, FX, Equity, Credit, Commodity).
 
 mod common;
 mod error;

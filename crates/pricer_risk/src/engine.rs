@@ -24,15 +24,13 @@ use std::{collections::HashMap, time::Instant};
 use infra_config::{GreekType, GreeksMethod, RiskConfig, SecondOrderMode};
 use rayon::prelude::*;
 
-use super::{
+use crate::{
     error::RiskError,
+    greeks::{GreeksConfig, GreeksMode, GreeksResult},
+    portfolio::{NettingSetId, Portfolio, Trade, TradeId},
     result::{
         ComputedGreeks, FailedCalculation, PerformanceMetrics, PortfolioRiskResult, RiskResult,
     },
-};
-use crate::{
-    greeks::{GreeksConfig, GreeksMode, GreeksResult},
-    portfolio::{NettingSetId, Portfolio, Trade, TradeId},
     scenarios::{Scenario, ScenarioEngine, ScenarioResult},
 };
 

@@ -1,33 +1,4 @@
-//! Builder module for yield curves, volatility surfaces, and market data
-//! calibration.
-//!
-//! ## Module Structure
-//!
-//! ```text
-//! builder/
-//! ├── Shared Infrastructure
-//! │   ├── grid.rs      - CalibrationGrid for axis management
-//! │   ├── matrix.rs    - CalibrationMatrix, InterpolationMatrix
-//! │   ├── problem.rs   - CalibrationProblem for solver integration
-//! │   ├── error.rs     - CalibrationError types
-//! │   └── instrument.rs - CalibrationInstrument trait
-//! │
-//! ├── curve/           - Yield curve calibration
-//! │   ├── bootstrap.rs - Sequential bootstrapping
-//! │   └── global.rs    - Global calibration (feature-gated)
-//! │
-//! └── vol/             - Volatility calibration
-//!     ├── surface.rs   - FX vol surfaces (2D)
-//!     └── cube.rs      - Swaption vol cubes (3D)
-//! ```
-//!
-//! ## Calibration Patterns
-//!
-//! | Pattern | Module | Description |
-//! |---------|--------|-------------|
-//! | Sequential | [`CurveBootstrapper`] | Solve one pillar at a time (curves) |
-//! | Slice-wise | [`vol`] | Calibrate each slice independently (vol surfaces) |
-//! | Global | `GlobalBootstrapper` | Solve all parameters simultaneously (curves, feature-gated) |
+﻿/! Builder module for yield curves, volatility surfaces, and market data calibration.
 
 use pricer_core::types::SolverError;
 use thiserror::Error;

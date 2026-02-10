@@ -1,40 +1,4 @@
-//! Market data types and rate infrastructure.
-//!
-//! This module provides comprehensive market data handling including:
-//!
-//! - Currency and rate index definitions
-//! - Market rate quotes with metadata
-//! - Rate validation and bounds checking
-//! - Ticker mapping for external data sources
-//! - Instrument mapping for curve calibration
-//!
-//! # Module Structure
-//!
-//! - [`core`]: Fundamental types (Currency, CurrencyPair, RateType,
-//!   CompoundingMethod)
-//! - [`quote`]: Market quote management (MarketRate, RateId, MarketRateSet)
-//! - [`index`]: Index definitions (RateIndex, FxIndex, SwapIndex)
-//! - [`source`]: Data sources and mapping (DataSource, TickerMapping,
-//!   InstrumentMapper)
-//! - [`definition`]: Curve/surface definitions (CurveDefinition,
-//!   CalibrationModel)
-//! - [`events`]: Economic calendar events
-//! - [`instrument`]: Financial instrument definitions (includes conventions via
-//!   `instrument::convention`)
-//!
-//! # Examples
-//!
-//! ## Basic Usage
-//!
-//! ```
-//! use infra_domain::market::{Currency, RateIndex};
-//!
-//! let usd = Currency::USD;
-//! assert_eq!(usd.code(), "USD");
-//!
-//! let sofr = RateIndex::Sofr;
-//! assert_eq!(sofr.currency(), Currency::USD);
-//! ```
+﻿/! Market data types and rate infrastructure.
 
 // ============================================================================
 // Organized Submodules
