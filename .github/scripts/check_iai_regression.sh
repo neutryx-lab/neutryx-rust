@@ -9,8 +9,8 @@
 #   - jq for JSON parsing (apt install jq)
 #
 # Usage:
-#   ./scripts/check_iai_regression.sh --threshold 10
-#   ./scripts/check_iai_regression.sh --threshold 5 --baseline main
+#   ./.github/scripts/check_iai_regression.sh --threshold 10
+#   ./.github/scripts/check_iai_regression.sh --threshold 5 --baseline main
 #
 # Exit codes:
 #   0 - No regression detected

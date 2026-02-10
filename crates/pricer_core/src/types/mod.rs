@@ -22,8 +22,6 @@ pub mod time;
 #[allow(deprecated)]
 pub use currency_pair::CurrencyPair;
 pub use currency_pair::{FxPair, FxRate};
-pub use error::{
-    CalibrationError, CalibrationErrorKind, InterpolationError, PricingError, SolverError,
-};
+pub use error::{CalibrationError, CalibrationErrorKind, PricingError, SolverError};
 pub use limit::Limit;
 pub use time::{time_to_maturity, time_to_maturity_dates};

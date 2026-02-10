@@ -17,40 +17,15 @@
 use num_traits::Float;
 use thiserror::Error;
 
-/// Errors that can occur during probability distribution calculations.
+/// Errors that can occur during normal distribution calculations.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum DistributionError {
-    /// Probability value is outside the valid range [0, 1].
-    #[error("Probability {p} out of range [0, 1]")]
+    /// Probability value is outside the valid range (0, 1).
+    #[error("Probability {p} out of range (0, 1)")]
     InvalidProbability {
         /// The invalid probability value.
         p: f64,
     },
-
-    /// Correlation coefficient is outside the valid range [-1, 1].
-    #[error("Correlation coefficient {rho} out of range [-1, 1]")]
-    InvalidCorrelation {
-        /// The invalid correlation coefficient.
-        rho: f64,
-    },
-
-    /// Degrees of freedom must be positive.
-    #[error("Degrees of freedom must be positive: got {df}")]
-    InvalidDegreesOfFreedom {
-        /// The invalid degrees of freedom value.
-        df: f64,
-    },
-
-    /// Non-centrality parameter must be non-negative.
-    #[error("Non-centrality parameter must be non-negative: got {ncp}")]
-    InvalidNonCentrality {
-        /// The invalid non-centrality parameter.
-        ncp: f64,
-    },
-
-    /// Correlation matrix is not positive definite.
-    #[error("Correlation matrix is not positive definite")]
-    NotPositiveDefinite,
 
     /// A numerical computation failed.
     #[error("Numerical computation failed: {0}")]

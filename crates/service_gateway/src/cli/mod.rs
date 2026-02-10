@@ -26,10 +26,12 @@ pub struct Cli {
     #[arg(short, long, global = true, default_value = "neutryx.toml")]
     pub config: String,
 
+    /// Subcommand to run
     #[command(subcommand)]
     pub command: Commands,
 }
 
+/// Available CLI subcommands
 #[derive(Subcommand)]
 pub enum Commands {
     /// Calibrate model parameters from market data

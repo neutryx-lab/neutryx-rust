@@ -2,7 +2,6 @@
 //!
 //! This module provides:
 //! - `PricingError`: Errors from pricing operations
-//! - `InterpolationError`: Errors from interpolation operations
 //! - `SolverError`: Errors from root-finding solvers
 //! - `CalibrationError`: Errors from model calibration
 //!
@@ -52,59 +51,6 @@ pub enum PricingError {
     /// Instrument type not supported
     #[error("Unsupported instrument: {0}")]
     UnsupportedInstrument(String),
-}
-
-/// Interpolation-related errors.
-///
-/// Provides structured error handling for interpolation operations
-/// with descriptive context for each failure mode.
-///
-/// # Variants
-/// - `OutOfBounds`: Query point outside valid interpolation domain
-/// - `InsufficientData`: Not enough data points for interpolation
-/// - `NonMonotonicData`: Data violates monotonicity requirement
-/// - `InvalidInput`: General invalid input error
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::InterpolationError;
-///
-/// let err = InterpolationError::OutOfBounds { x: 5.0, min: 0.0, max: 3.0 };
-/// assert!(format!("{}", err).contains("outside valid domain"));
-/// ```
-#[derive(Error, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum InterpolationError {
-    /// Query point outside valid interpolation domain.
-    #[error("Query point {x} outside valid domain [{min}, {max}]")]
-    OutOfBounds {
-        /// The query point that was out of bounds
-        x: f64,
-        /// Minimum valid value
-        min: f64,
-        /// Maximum valid value
-        max: f64,
-    },
-
-    /// Insufficient data points for interpolation.
-    #[error("Insufficient data points: got {got}, need at least {need}")]
-    InsufficientData {
-        /// Number of points provided
-        got: usize,
-        /// Minimum number of points required
-        need: usize,
-    },
-
-    /// Data is not monotonic when monotonicity is required.
-    #[error("Data is not monotonic at index {index}")]
-    NonMonotonicData {
-        /// Index where monotonicity violation was detected
-        index: usize,
-    },
-
-    /// Invalid input data or parameters.
-    #[error("Invalid input: {0}")]
-    InvalidInput(String),
 }
 
 /// Root-finding solver errors.
@@ -515,18 +461,6 @@ impl From<DistributionError> for PricingError {
             DistributionError::InvalidProbability { p } => {
                 PricingError::InvalidInput(format!("Invalid probability: {p}"))
             }
-            DistributionError::InvalidCorrelation { rho } => {
-                PricingError::InvalidInput(format!("Invalid correlation: {rho}"))
-            }
-            DistributionError::InvalidDegreesOfFreedom { df } => {
-                PricingError::InvalidInput(format!("Invalid degrees of freedom: {df}"))
-            }
-            DistributionError::InvalidNonCentrality { ncp } => {
-                PricingError::InvalidInput(format!("Invalid non-centrality parameter: {ncp}"))
-            }
-            DistributionError::NotPositiveDefinite => PricingError::NumericalInstability(
-                "Correlation matrix is not positive definite".to_string(),
-            ),
             DistributionError::NumericalError(msg) => PricingError::NumericalInstability(msg),
         }
     }
@@ -602,59 +536,6 @@ mod tests {
     }
 
     // Note: DateError and CurrencyError tests are in infra_domain
-
-    // InterpolationError tests
-
-    #[test]
-    fn test_interpolation_error_out_of_bounds_display() {
-        let err = InterpolationError::OutOfBounds {
-            x: 5.0,
-            min: 0.0,
-            max: 3.0,
-        };
-        assert_eq!(
-            format!("{}", err),
-            "Query point 5 outside valid domain [0, 3]"
-        );
-    }
-
-    #[test]
-    fn test_interpolation_error_insufficient_data_display() {
-        let err = InterpolationError::InsufficientData { got: 1, need: 2 };
-        assert_eq!(
-            format!("{}", err),
-            "Insufficient data points: got 1, need at least 2"
-        );
-    }
-
-    #[test]
-    fn test_interpolation_error_non_monotonic_display() {
-        let err = InterpolationError::NonMonotonicData { index: 3 };
-        assert_eq!(format!("{}", err), "Data is not monotonic at index 3");
-    }
-
-    #[test]
-    fn test_interpolation_error_invalid_input_display() {
-        let err = InterpolationError::InvalidInput("empty array".to_string());
-        assert_eq!(format!("{}", err), "Invalid input: empty array");
-    }
-
-    #[test]
-    fn test_interpolation_error_trait_implementation() {
-        let err = InterpolationError::OutOfBounds {
-            x: 5.0,
-            min: 0.0,
-            max: 3.0,
-        };
-        let _: &dyn std::error::Error = &err;
-    }
-
-    #[test]
-    fn test_interpolation_error_clone_and_equality() {
-        let err1 = InterpolationError::InsufficientData { got: 1, need: 2 };
-        let err2 = err1.clone();
-        assert_eq!(err1, err2);
-    }
 
     // SolverError tests - Multi-dimensional solver extensions (Task 1.1)
 
@@ -969,18 +850,6 @@ mod tests {
     #[cfg(feature = "serde")]
     mod serde_tests {
         use super::*;
-
-        #[test]
-        fn test_interpolation_error_serde_roundtrip() {
-            let err = InterpolationError::OutOfBounds {
-                x: 5.0,
-                min: 0.0,
-                max: 3.0,
-            };
-            let json = serde_json::to_string(&err).unwrap();
-            let deserialized: InterpolationError = serde_json::from_str(&json).unwrap();
-            assert_eq!(err, deserialized);
-        }
 
         #[test]
         fn test_solver_error_serde_roundtrip() {

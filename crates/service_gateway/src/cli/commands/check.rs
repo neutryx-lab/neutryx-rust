@@ -19,10 +19,11 @@ pub fn run() {
 
     // Check for Enzyme (nightly feature)
     println!("Enzyme AD:");
-    #[cfg(feature = "enzyme-ad")]
-    println!("  Status: ✓ Enabled");
-    #[cfg(not(feature = "enzyme-ad"))]
-    println!("  Status: ✗ Disabled (pricer_pricing not built with Enzyme)");
+    #[cfg_attr(not(feature = "enzyme-ad"), allow(dead_code))]
+    {
+        // enzyme-ad is not a feature of this crate; always report disabled
+        println!("  Status: ✗ Disabled (pricer_pricing not built with Enzyme)");
+    }
     println!();
 
     // Check thread pool
