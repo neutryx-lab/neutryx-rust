@@ -343,9 +343,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-bench-
 
-      - name: Run pricer_core benchmarks
-        run: cargo bench -p pricer_core --bench core -- --noplot
-
       - name: Run pricer_models benchmarks
         run: cargo bench -p pricer_models --bench models -- --noplot
 
