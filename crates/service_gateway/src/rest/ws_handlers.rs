@@ -46,22 +46,31 @@ pub enum ServerMessage {
 /// Subgraph data in server message
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphData {
+    /// Graph nodes
     pub nodes: Vec<SubgraphNode>,
+    /// Graph edges (as "links" for D3.js compatibility)
     #[serde(rename = "links")]
     pub edges: Vec<SubgraphEdge>,
+    /// Graph metadata
     pub metadata: SubgraphMetadata,
 }
 
 /// Simplified node for WebSocket message
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphNode {
+    /// Unique node identifier
     pub id: String,
+    /// Node type (e.g. "Input", "Output")
     #[serde(rename = "type")]
     pub node_type: String,
+    /// Human-readable label
     pub label: String,
+    /// Computed value, if available
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
+    /// Grouping category for layout
     pub group: String,
+    /// Trade IDs that share this node
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trade_ids: Vec<String>,
 }
@@ -69,7 +78,9 @@ pub struct SubgraphNode {
 /// Simplified edge for WebSocket message
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphEdge {
+    /// Source node ID
     pub source: String,
+    /// Target node ID
     pub target: String,
 }
 
@@ -77,9 +88,13 @@ pub struct SubgraphEdge {
 #[derive(Debug, Clone, Serialize)]
 #[allow(clippy::struct_field_names)]
 pub struct SubgraphMetadata {
+    /// Total number of nodes
     pub node_count: usize,
+    /// Total number of edges
     pub edge_count: usize,
+    /// Number of selected trades
     pub selected_trade_count: usize,
+    /// Number of nodes shared across trades
     pub shared_node_count: usize,
 }
 
