@@ -23,17 +23,10 @@ use crate::{
 // =============================================================================
 
 /// Registry that exports all enum variant names as JSON.
-///
-/// Uses `strum::VariantNames` to automatically enumerate variants,
-/// ensuring the exported values always match the Rust definitions.
 pub struct EnumRegistry;
 
 impl EnumRegistry {
     /// Returns all exportable enums as a JSON object.
-    ///
-    /// Output format: `{ "enum_name": ["variant1", "variant2", ...] }`
-    ///
-    /// All keys and values are in snake_case to match serde serialisation.
     pub fn to_json() -> serde_json::Value {
         serde_json::json!({
             "pricing_method": PricingMethod::VARIANTS,
@@ -51,15 +44,10 @@ impl EnumRegistry {
 // =============================================================================
 
 /// Registry that exports default values for configuration structures.
-///
-/// Uses the `Default` trait implementations to generate JSON values,
-/// ensuring frontend defaults always match Rust definitions.
 pub struct DefaultsRegistry;
 
 impl DefaultsRegistry {
     /// Returns all default values as a hierarchical JSON object.
-    ///
-    /// Output format: `{ "struct_name": { field: value, ... } }`
     pub fn to_json() -> serde_json::Value {
         serde_json::json!({
             "monte_carlo": MonteCarloParams::default(),

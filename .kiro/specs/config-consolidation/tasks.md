@@ -8,13 +8,13 @@
   - バージョン 0.26 を使用（ワークスペースで一元管理）
   - _Requirements: 1.1_
 
-- [x] 1.2 (P) pricing_config の Enum に strum derive を追加
+- [x] 1.2 pricing_config の Enum に strum derive を追加
   - `PricingMethod` に `strum::VariantNames` と `strum(serialize_all = "snake_case")` を追加
   - `TreeType` に同様の derive を追加
   - 既存の serde 設定との整合性を確認
   - _Requirements: 1.2, 1.4_
 
-- [x] 1.3 (P) risk_config の Enum に strum derive を追加
+- [x] 1.3 risk_config の Enum に strum derive を追加
   - `GreeksMethod`, `GreekType`, `SecondOrderMode`, `ShiftType` に `strum::VariantNames` を追加
   - `strum(serialize_all = "snake_case")` を追加
   - 既存の serde 設定との整合性を確認
@@ -27,14 +27,14 @@
   - キー名を snake_case に変換（`PricingMethod` → `pricing_method`）
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [x] 2.2 (P) DefaultsRegistry を実装
+- [x] 2.2 DefaultsRegistry を実装
   - `DefaultsRegistry::to_json()` で Default 実装済み構造体のデフォルト値を返す
   - `MonteCarloParams`, `TreeParams`, `BumpSizes` を対象
   - `serde_json::to_value(&T::default())` で JSON に変換
   - 階層的な JSON オブジェクトとして構造化
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [x] 2.3 (P) CurrencyRateIndexMap を実装
+- [x] 2.3 CurrencyRateIndexMap を実装
   - デフォルトマッピング（USD→SOFR, EUR→ESTR, GBP→SONIA, JPY→TONA, CHF→SARON）を内蔵
   - `to_json()` で HashMap を JSON オブジェクトとして返す
   - _Requirements: 3.1, 3.2, 3.4_
@@ -62,7 +62,7 @@
   - handlers/mod.rs で `pub mod config` を追加し re-export
   - _Requirements: 5.1_
 
-- [x] 4. (P) 重複ファイルの非推奨化
+- [x] 4. 重複ファイルの非推奨化
   - `demo/data/config/enums.json` 先頭に非推奨コメントを追加
   - `demo/data/config/gui_defaults.json` 先頭に非推奨コメントを追加
   - `demo/data/config/rate_index_mapping.json` 先頭に非推奨コメントを追加

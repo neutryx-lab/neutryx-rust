@@ -41,50 +41,50 @@
 
 #### Acceptance Criteria
 
+*[2 additional criteria omitted]*
 1. The `infra_domain` crate shall export `Currency` enum with at least USD, EUR, GBP, JPY, CHF variants
 2. The `infra_domain` crate shall export `Date` struct wrapping `chrono::NaiveDate`
 3. The `infra_domain` crate shall export unified `DayCountConvention` enum supporting Actual360, Actual365Fixed, ActualActualIsda, Thirty360Bond variants
-*[2 additional criteria omitted]*
 ### Requirement 2: `DayCountConvention`の統一
 
 **Objective:** As a 開発者, I want DayCountConventionが単一の統一された定義を持つ, so that コードベース全体で一貫した日数計算規約を使用できる
 
 #### Acceptance Criteria
 
+*[1 additional criteria omitted]*
 1. The `infra_domain` crate shall define a single authoritative `DayCountConvention` enum
 2. The unified `DayCountConvention` shall include: Actual360, Actual365Fixed, Actual36525, ActualActualIsda, Thirty360Bond, Thirty360European, ThirtyE360Isda
 3. When year fraction calculation is performed, the `infra_domain::DayCountConvention` shall provide the `year_fraction(start: Date, end: Date) -> f64` method
-*[1 additional criteria omitted]*
 ### Requirement 3: `pricer_core`からの再エクスポート（後方互換性）
 
 **Objective:** As a 既存コード利用者, I want pricer_coreからの既存インポートパスが引き続き動作する, so that 移行期間中にコードの大規模変更なしに段階的な移行が可能である
 
 #### Acceptance Criteria
 
+*[2 additional criteria omitted]*
 1. When existing code imports `pricer_core::types::Currency`, the import shall continue to work via re-export
 2. When existing code imports `pricer_core::types::Date`, the import shall continue to work via re-export
 3. The `pricer_core` crate shall add `infra_domain` as a dependency
-*[2 additional criteria omitted]*
 ### Requirement 4: 関連エラー型の移動
 
 **Objective:** As a 開発者, I want DateErrorとCurrencyErrorがinfra_domainに定義されている, so that エラーハンドリングが基本型と同じ場所に配置され一貫性が保たれる
 
 #### Acceptance Criteria
 
+*[1 additional criteria omitted]*
 1. The `infra_domain` crate shall define `DateError` enum for date-related errors
 2. The `infra_domain` crate shall define `CurrencyError` enum for currency-related errors
 3. When `Date::from_ymd(year, month, day)` receives invalid values, the function shall return `Result<Date, DateError>`
-*[1 additional criteria omitted]*
 ### Requirement 5: Calendar統合（既存機能の連携強化）
 
 **Objective:** As a 開発者, I want DateとCalendarが同じクレートで連携する, so that 営業日調整計算が一箇所で完結し、依存関係が簡素化される
 
 #### Acceptance Criteria
 
+*[1 additional criteria omitted]*
 1. The `infra_domain::Calendar` shall use `infra_domain::Date` directly (no external type dependency)
 2. When `calendar.add_business_days(date, n)` is called, the function shall return `Date`
 3. When `calendar.is_business_day(date)` is called, the function shall return `bool`
-*[1 additional criteria omitted]*
 ### Requirement 6: serdeフィーチャーフラグの維持
 
 **Objective:** As a API開発者, I want 基本型のシリアライゼーションがオプショナル機能として維持される, so that バイナリサイズの最適化と必要な場合のJSON/TOML変換が両立できる
@@ -100,50 +100,50 @@
 
 #### Acceptance Criteria
 
+*[1 additional criteria omitted]*
 1. The `infra_domain` crate shall NOT have dependencies on any `pricer_*`, `adapter_*`, or `service_*` crate
 2. The `pricer_core` crate shall have `infra_domain` as a dependency for type re-exports
 3. When `cargo tree -p infra_domain` is executed, the output shall show no pricer/adapter/service dependencies
-*[1 additional criteria omitted]*
 ### Requirement 8: RateIndex（ベンチマーク金利指標）の移動
 
 **Objective:** As a アダプター開発者, I want RateIndexがinfra_domainに定義されている, so that adapter_feedsやadapter_fpmlからベンチマーク金利の参照データにアクセスできる
 
 #### Acceptance Criteria
 
+*[2 additional criteria omitted]*
 1. The `infra_domain` crate shall export `RateIndex` enum with SOFR, TONAR, EURIBOR3M, EURIBOR6M, GBPLIBOR3M, JPYLIBOR6M variants
 2. The `RateIndex` enum shall provide `currency() -> Currency` method returning the associated currency
 3. The `RateIndex` enum shall provide `tenor() -> Tenor` method returning the standard fixing tenor
-*[2 additional criteria omitted]*
 ### Requirement 9: Frequency（支払頻度）の移動
 
 **Objective:** As a 開発者, I want Frequencyがinfra_domainに定義されている, so that スケジュール生成の基本列挙型がマスターデータとして一元管理される
 
 #### Acceptance Criteria
 
+*[1 additional criteria omitted]*
 1. The `infra_domain` crate shall export `Frequency` enum with Annual, SemiAnnual, Quarterly, Monthly, Weekly, Daily variants
 2. The `Frequency` enum shall provide `months_per_period() -> u32` method
 3. The `Frequency` enum shall provide `periods_per_year() -> u32` method
-*[1 additional criteria omitted]*
 ### Requirement 10: Period（単一期間）の移動
 
 **Objective:** As a 開発者, I want Periodがinfra_domainに定義されている, so that アクルーアル期間の構造体がスケジュール構築の基盤としてInfraレイヤーで利用可能になる
 
 #### Acceptance Criteria
 
+*[1 additional criteria omitted]*
 1. The `infra_domain` crate shall export `Period` struct with `start: Date`, `end: Date`, `payment: Date` fields
 2. The `Period` struct shall provide `accrual_days(day_count: DayCountConvention) -> i64` method
 3. The `Period` struct shall provide `year_fraction(day_count: DayCountConvention) -> f64` method
-*[1 additional criteria omitted]*
 ### Requirement 11: TradeDirection（取引方向）の統合と移動
 
 **Objective:** As a 開発者, I want 取引方向を表す型が統一されてinfra_domainに定義されている, so that 散在するDirection型が一元化され、アダプターからも利用可能になる
 
 #### Acceptance Criteria
 
+*[1 additional criteria omitted]*
 1. The `infra_domain` crate shall export unified `TradeDirection` enum with Long, Short variants
 2. The `infra_domain` crate shall export `SwapDirection` enum with PayFixed, ReceiveFixed variants
 3. When existing code imports direction types from `pricer_models`, the imports shall continue to work via re-export
-*[1 additional criteria omitted]*
 ### Requirement 12: CsaTermsのCurrency型統合
 
 **Objective:** As a 開発者, I want CsaTermsがString型ではなくCurrency型を使用する, so that 型安全性が向上し、不正な通貨コード入力を防止できる

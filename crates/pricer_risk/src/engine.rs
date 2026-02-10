@@ -793,7 +793,7 @@ impl ScenarioPortfolioResult {
 
 #[cfg(test)]
 mod tests {
-    use infra_config::{BumpSizes, GreekType};
+    use infra_config::GreekType;
 
     use super::*;
 

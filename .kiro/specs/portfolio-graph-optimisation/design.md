@@ -14,11 +14,6 @@
 - トレード選択によるサブグラフ動的抽出
 - 100トレードのグラフを1秒以内に生成するパフォーマンス
 
-### Non-Goals
-- 実際のEnzyme AD統合（現状はシミュレーショングラフ）
-- WebGL/Canvas切り替えによるフロントエンド最適化（Phase 2）
-- グラフエディタ機能（読み取り専用）
-
 ## Architecture
 
 ### Existing Architecture Analysis
@@ -72,65 +67,14 @@ graph TB
 - **New components rationale**: `PortfolioGraphExtractor`でPortfolio統合ロジックをカプセル化
 - **Steering compliance**: A-I-P-Sレイヤー分離、British English命名規約
 
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Backend / Services | Rust + Axum | REST API、WebSocket handler | 既存パターン維持 |
-| Data / Storage | In-memory HashMap | グラフキャッシュ（TTL 5秒） | `RwLock<GraphCache>` |
-| Serialization | serde + serde_json | D3.js互換JSON出力 | feature gate維持 |
-
 ## System Flows
 
 ### Portfolio Graph Extraction Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as REST API
-    participant PGE as PortfolioGraphExtractor
-    participant GB as GraphBuilder
-    participant Cache as GraphCache
-
-    Client->>API: GET /api/v1/portfolio/graph
-    API->>Cache: Check cache (TTL 5s)
-    alt Cache Hit
-        Cache-->>API: Cached PortfolioGraph
-    else Cache Miss
-        API->>PGE: extract_portfolio_graph(portfolio)
-        PGE->>GB: with_capacity(node_cap, edge_cap)
-        loop For each trade
-            PGE->>PGE: build_trade_subgraph()
-            PGE->>PGE: merge_shared_nodes()
-        end
-        GB-->>PGE: PortfolioComputationGraph
-        PGE-->>API: Result<PortfolioComputationGraph>
-        API->>Cache: Store with TTL
-    end
-    API-->>Client: JSON Response
-```
 
 **Key Decisions**:
 - キャッシュTTLは5秒（既存パターンと同一）
 - タイムアウトは500ms（Requirement 4.5）
 - 共有ノード検出は`(label, node_type)`タプルでハッシュ
-
-### Subgraph Extraction Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as REST API
-    participant PGE as PortfolioGraphExtractor
-
-    Client->>API: GET /api/v1/portfolio/graph?trade_ids=T001,T002
-    API->>PGE: extract_subgraph(trade_ids)
-    PGE->>PGE: Filter nodes by trade_ids
-    PGE->>PGE: Retain shared nodes
-    PGE->>PGE: Filter edges (both endpoints in subgraph)
-    PGE-->>API: Result<PortfolioComputationGraph>
-    API-->>Client: JSON Response
-```
 
 ## Requirements Traceability
 
@@ -162,10 +106,7 @@ sequenceDiagram
 
 #### PortfolioGraphExtractor
 
-| Field | Detail |
-|-------|--------|
-| Intent | Portfolio単位での計算グラフ抽出と共有ノード最適化 |
-| Requirements | 1.1, 1.2, 1.3, 3.1, 3.2, 3.3, 3.4, 6.1, 6.2, 6.3, 6.4 |
+**Intent**: Portfolio単位での計算グラフ抽出と共有ノード最適化
 
 **Responsibilities & Constraints**
 - Portfolio内の全トレードグラフを統合した単一グラフ生成
@@ -179,47 +120,23 @@ sequenceDiagram
 - Outbound: GraphBuilder — グラフ構築 (P0)
 - External: Portfolio — トレード情報取得 (P0)
 
-**Contracts**: Service [x] / API [ ] / Event [ ] / Batch [ ] / State [ ]
+**Contracts**: Service [x]
 
 ##### Service Interface
 
 ```rust
 /// Portfolio計算グラフ抽出トレイト
 pub trait PortfolioGraphExtractable {
-    /// Portfolio全体の統合グラフを抽出
-    fn extract_portfolio_graph(
-        &self,
-        portfolio: &Portfolio,
-    ) -> Result<PortfolioComputationGraph, GraphError>;
-
-    /// 指定トレードIDリストに基づくサブグラフを抽出
-    fn extract_subgraph(
-        &self,
-        portfolio: &Portfolio,
-        trade_ids: &[TradeId],
-    ) -> Result<PortfolioComputationGraph, GraphError>;
-
-    /// 差分更新用の変更ノードを抽出
-    fn extract_portfolio_updates(
-        &self,
-        portfolio: &Portfolio,
-    ) -> Result<Vec<GraphNodeUpdate>, GraphError>;
+    fn extract_portfolio_graph(&self, portfolio: &Portfolio) -> Result<PortfolioComputationGraph, GraphError>;
+    fn extract_subgraph(&self, portfolio: &Portfolio, trade_ids: &[TradeId]) -> Result<PortfolioComputationGraph, GraphError>;
+    fn extract_portfolio_updates(&self, portfolio: &Portfolio) -> Result<Vec<GraphNodeUpdate>, GraphError>;
 }
 
 /// PortfolioGraphExtractor実装
 pub struct PortfolioGraphExtractor {
-    /// 単一トレード用Extractor
     inner: SimpleGraphExtractor,
-    /// タイムアウト（ミリ秒）
     timeout_ms: u64,
-    /// 事前割り当てキャパシティ
     builder_capacity: (usize, usize),
-}
-
-impl PortfolioGraphExtractor {
-    pub fn new() -> Self;
-    pub fn with_timeout(self, timeout_ms: u64) -> Self;
-    pub fn with_capacity(self, node_cap: usize, edge_cap: usize) -> Self;
 }
 ```
 
@@ -234,10 +151,7 @@ impl PortfolioGraphExtractor {
 
 #### GraphNode（拡張）
 
-| Field | Detail |
-|-------|--------|
-| Intent | 既存GraphNodeに`trade_ids`フィールドを追加してPortfolio対応 |
-| Requirements | 1.4 |
+**Intent**: 既存GraphNodeに`trade_ids`フィールドを追加してPortfolio対応
 
 **設計アプローチ**: アプローチ2（GraphNode拡張）
 
@@ -250,33 +164,13 @@ impl PortfolioGraphExtractor {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct GraphNode {
-    /// Unique identifier for the node
     pub id: String,
-
-    /// Operation type performed by this node
     #[cfg_attr(feature = "serde", serde(rename = "type"))]
     pub node_type: NodeType,
-
-    /// Human-readable label (variable name or operation description)
     pub label: String,
-
-    /// Current computed value (None if not yet computed)
     pub value: Option<f64>,
-
-    /// Whether this node is a sensitivity calculation target (AD seed point)
     pub is_sensitivity_target: bool,
-
-    /// Visual grouping for colour coding
     pub group: NodeGroup,
-
-    // ========== Portfolio対応: 新規フィールド ==========
-
-    /// 所属トレードIDリスト（共有ノードは複数のIDを持つ）
-    ///
-    /// - 単一トレードグラフ: 空ベクタまたは単一要素
-    /// - Portfolioグラフ: 1つ以上の要素（共有ノードは複数）
-    ///
-    /// serde属性により空の場合はJSONから省略され、後方互換性を維持
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Vec::is_empty"))]
     pub trade_ids: Vec<String>,
 }
@@ -293,36 +187,9 @@ pub struct GraphNode {
 - 既存テストへの影響最小（フィールド追加のみ）
 - `GraphBuilder`の変更不要
 
-**GraphBuilder への影響**
-
-`GraphBuilder`は`GraphNode`を直接操作するため、`trade_ids`フィールドの設定メソッドを追加:
-
-```rust
-impl GraphBuilder {
-    /// ノードにトレードIDを追加
-    pub fn add_trade_id(&mut self, node_id: &str, trade_id: &str) -> Option<()> {
-        let node = self.get_node_mut(node_id)?;
-        if !node.trade_ids.contains(&trade_id.to_string()) {
-            node.trade_ids.push(trade_id.to_string());
-        }
-        Some(())
-    }
-
-    /// ノードのトレードIDリストを設定
-    pub fn set_trade_ids(&mut self, node_id: &str, trade_ids: Vec<String>) -> Option<()> {
-        let node = self.get_node_mut(node_id)?;
-        node.trade_ids = trade_ids;
-        Some(())
-    }
-}
-```
-
 #### PortfolioGraphMetadata
 
-| Field | Detail |
-|-------|--------|
-| Intent | Portfolio統合グラフの拡張統計情報 |
-| Requirements | 1.5 |
+**Intent**: Portfolio統合グラフの拡張統計情報
 
 **Data Structure**
 
@@ -330,13 +197,10 @@ impl GraphBuilder {
 /// Portfolio用拡張メタデータ
 #[derive(Debug, Clone, Serialize)]
 pub struct PortfolioGraphMetadata {
-    /// 基本メタデータ
     pub node_count: usize,
     pub edge_count: usize,
     pub depth: usize,
     pub generated_at: String,
-
-    /// Portfolio固有メタデータ
     pub trade_count: usize,
     pub shared_node_count: usize,
     pub optimisation_ratio: f64,  // 重複排除前後のノード数比
@@ -345,10 +209,7 @@ pub struct PortfolioGraphMetadata {
 
 #### PortfolioComputationGraph
 
-| Field | Detail |
-|-------|--------|
-| Intent | Portfolio統合計算グラフのコンテナ |
-| Requirements | 1.1, 1.2, 1.5 |
+**Intent**: Portfolio統合計算グラフのコンテナ
 
 **Data Structure**
 
@@ -356,7 +217,6 @@ pub struct PortfolioGraphMetadata {
 /// Portfolio統合計算グラフ
 #[derive(Debug, Clone, Serialize)]
 pub struct PortfolioComputationGraph {
-    /// 拡張されたGraphNodeを使用（trade_idsフィールド含む）
     pub nodes: Vec<GraphNode>,
     #[serde(rename = "links")]
     pub edges: Vec<GraphEdge>,
@@ -364,16 +224,11 @@ pub struct PortfolioComputationGraph {
 }
 ```
 
-**Note**: `nodes`は既存の`GraphNode`型をそのまま使用。`trade_ids`フィールドが追加されているため、Portfolio情報を保持可能。
-
 ### Risk Layer
 
 #### SamplePortfolioBuilder
 
-| Field | Detail |
-|-------|--------|
-| Intent | 複数アセットクラスを含むサンプルPortfolio生成 |
-| Requirements | 2.1, 2.2, 2.3, 2.4, 2.5 |
+**Intent**: 複数アセットクラスを含むサンプルPortfolio生成
 
 **Responsibilities & Constraints**
 - 設定可能なトレード数（デフォルト10〜100件）
@@ -386,7 +241,7 @@ pub struct PortfolioComputationGraph {
 - Outbound: Trade — トレード生成 (P1)
 - Outbound: Instrument — 商品タイプ (P1)
 
-**Contracts**: Service [x] / API [ ] / Event [ ] / Batch [ ] / State [ ]
+**Contracts**: Service [x]
 
 ##### Service Interface
 
@@ -407,60 +262,17 @@ impl SamplePortfolioBuilder {
 }
 ```
 
-- Preconditions: `trade_count > 0`, アセット比率の合計が1.0
-- Postconditions: 生成されたPortfolioは検証済みで、共有マーケットデータを含む
-- Invariants: 最低3種類のInstrumentを含む
-
 ### Service Layer
 
 #### PortfolioGraphHandler
 
-| Field | Detail |
-|-------|--------|
-| Intent | Portfolio計算グラフREST APIハンドラ |
-| Requirements | 4.1, 4.2, 4.3, 4.4, 4.5 |
+**Intent**: Portfolio計算グラフREST APIハンドラ
 
-**Contracts**: Service [ ] / API [x] / Event [ ] / Batch [ ] / State [ ]
-
-##### API Contract
+**Contracts**: API [x]
 
 | Method | Endpoint | Request | Response | Errors |
 |--------|----------|---------|----------|--------|
 | GET | `/api/v1/portfolio/graph` | `?trade_ids=T001,T002` (optional) | `PortfolioComputationGraph` JSON | 404, 500, 504 |
-
-**Request Parameters**:
-- `trade_ids` (optional): カンマ区切りのトレードIDリスト。省略時は全トレード統合グラフ
-
-**Response Schema**:
-```json
-{
-  "nodes": [
-    {
-      "id": "T001_spot",
-      "type": "input",
-      "label": "spot",
-      "value": 100.0,
-      "is_sensitivity_target": true,
-      "group": "sensitivity",
-      "trade_ids": ["T001", "T002"]
-    }
-  ],
-  "links": [
-    { "source": "T001_spot", "target": "T001_op_0", "weight": null }
-  ],
-  "metadata": {
-    "node_count": 150,
-    "edge_count": 200,
-    "depth": 12,
-    "generated_at": "2026-01-19T12:00:00Z",
-    "trade_count": 10,
-    "shared_node_count": 25,
-    "optimisation_ratio": 0.83
-  }
-}
-```
-
-**Note**: 単一トレードノードでは`trade_ids`が空のためJSONから省略される（後方互換性維持）
 
 **Error Responses**:
 - `404 Not Found`: 指定トレードIDが存在しない
@@ -469,52 +281,19 @@ impl SamplePortfolioBuilder {
 
 #### PortfolioTradesHandler
 
-| Field | Detail |
-|-------|--------|
-| Intent | Portfolioトレード一覧REST APIハンドラ |
-| Requirements | 5.1, 5.2, 5.3 |
+**Intent**: Portfolioトレード一覧REST APIハンドラ
 
-**Contracts**: Service [ ] / API [x] / Event [ ] / Batch [ ] / State [ ]
-
-##### API Contract
+**Contracts**: API [x]
 
 | Method | Endpoint | Request | Response | Errors |
 |--------|----------|---------|----------|--------|
 | GET | `/api/v1/portfolio/trades` | - | `PortfolioTradesResponse` JSON | 500 |
 
-**Response Schema**:
-```json
-{
-  "trades": [
-    {
-      "id": "T001",
-      "instrument_type": "VanillaOption",
-      "currency": "USD",
-      "notional": 1000000.0,
-      "maturity": "2027-01-19"
-    }
-  ],
-  "statistics": {
-    "total_count": 50,
-    "by_instrument_type": {
-      "VanillaOption": 20,
-      "IRS": 15,
-      "FxOption": 15
-    }
-  }
-}
-```
-
 #### WebSocket select_trades Event
 
-| Field | Detail |
-|-------|--------|
-| Intent | トレード選択イベントによるリアルタイムサブグラフ更新 |
-| Requirements | 5.4, 5.5 |
+**Intent**: トレード選択イベントによるリアルタイムサブグラフ更新
 
-**Contracts**: Service [ ] / API [ ] / Event [x] / Batch [ ] / State [ ]
-
-##### Event Contract
+**Contracts**: Event [x]
 
 **Client → Server (select_trades)**:
 ```json
@@ -598,23 +377,6 @@ impl SamplePortfolioBuilder {
 - 共有マーケットデータで20%ノード削減達成テスト（Requirement 6.2）
 - 10,000ノードグラフでのタイムアウト動作テスト
 - 並列リクエスト負荷テスト
-
-## Performance & Scalability
-
-**Target Metrics**:
-- 100トレードPortfolioグラフ抽出: < 1秒（Requirement 6.1）
-- ノード重複排除: 20%以上削減（Requirement 6.2）
-- APIレスポンス: < 500ms（Requirement 4.5）
-
-**Optimization Techniques**:
-- `GraphBuilder.with_capacity()` による事前メモリ割り当て
-- `HashMap<(String, NodeType), usize>` による O(1) 共有ノード検索
-- `RwLock<GraphCache>` による5秒TTLキャッシュ
-- `rayon::par_iter()` による並列トレード処理（Phase 2検討）
-
-**Scaling Approaches**:
-- 10,000ノード超: LODモードでの簡略化グラフ（Phase 2）
-- 高負荷時: キャッシュTTL延長、レート制限
 
 ---
 _Generated: 2026-01-19 (Updated: Approach 2 - GraphNode Extension)_

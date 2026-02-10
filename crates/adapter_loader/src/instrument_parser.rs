@@ -1,25 +1,4 @@
 //! Instrument parsing utilities for curve building.
-//!
-//! This module provides functions to parse raw instrument specifications
-//! (type, tenor, rate) into `MarketInstrument` instances for curve calibration.
-//!
-//! # Requirements
-//!
-//! Requires the `curve-builder` feature to be enabled.
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use adapter_loader::{InstrumentSpec, parse_instruments};
-//!
-//! let specs = vec![
-//!     InstrumentSpec::new("deposit", "1M", 0.0430),
-//!     InstrumentSpec::new("fra", "3x6", 0.0405),
-//!     InstrumentSpec::new("ois", "1Y", 0.0358),
-//! ];
-//!
-//! let instruments = parse_instruments(&specs)?;
-//! ```
 
 use pricer_models::market::curves::MarketInstrument;
 
@@ -30,9 +9,6 @@ use crate::vol_surface_loader::{parse_fra_tenor, parse_tenor_string};
 // =============================================================================
 
 /// Raw instrument specification for curve building.
-///
-/// This struct represents the input format for market instruments,
-/// typically loaded from JSON files or API requests.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstrumentSpec {
     /// Instrument type (e.g., "deposit", "ois", "fra", "swap", "future",

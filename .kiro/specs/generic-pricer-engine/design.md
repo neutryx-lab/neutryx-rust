@@ -229,25 +229,6 @@ sequenceDiagram
 
 #### GenericPricer (Concrete Struct)
 
-| Field | Detail |
-|-------|--------|
-| Intent | Trade/InstrumentEnumに対する統一プライシングAPI |
-| Requirements | 1.1, 1.2, 1.3, 1.4, 1.5, 5.1, 5.2, 6.2 |
-
-**Responsibilities & Constraints**
-- TradeまたはInstrumentEnumを受け取り、`PricingResult`（f64固定）を返す
-- `reporting_currency`を必須引数として受け取り、FX換算を実行
-- マーケットデータ解決（Stage 2）とカーネル実行（Stage 3）の調整
-- `get_greeks()`のみ`T: Float`ジェネリックでEnzyme AD対応
-
-**Dependencies**
-- Inbound: service_cli, service_gateway, pricer_risk — プライシングAPI呼び出し (P0)
-- Outbound: MarketProvider — マーケットデータ取得、FxRate取得 (P0)
-- Outbound: PricingKernel — 実際の計算実行 (P0)
-- External: rayon — 並列処理 (P1)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 
 ```rust
@@ -275,23 +256,6 @@ pub struct GenericPricer {
 
 #### ModelConfig
 
-| Field | Detail |
-|-------|--------|
-| Intent | モデルタイプとシミュレーションパラメータの設定 |
-| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6 |
-
-**Responsibilities & Constraints**
-- `StochasticModelEnum`選択とシミュレーションパラメータ（パス数、ステップ数、シード）の保持
-- Builderパターンで構築
-- パラメータ検証（num_paths > 0、num_steps > 0等）
-
-**Dependencies**
-- Inbound: GenericPricer — モデル設定取得 (P0)
-- Outbound: StochasticModelEnum — モデル定義 (P0)
-- Outbound: pricer_models::market::calibration — キャリブレーション結果取得 (P1)
-
-**Contracts**: State [x]
-
 ##### State Management
 
 ```rust
@@ -315,23 +279,6 @@ pub struct ModelConfig {
 
 #### PricerConfig
 
-| Field | Detail |
-|-------|--------|
-| Intent | Greeks計算モードと出力設定 |
-| Requirements | 4.1, 4.2, 4.3, 4.4, 4.5, 6.9 |
-
-**Responsibilities & Constraints**
-- GreeksConfig（計算モード、バンプ幅）の保持
-- デフォルト出力通貨の設定
-- スレッドローカルバッファ使用フラグ
-
-**Dependencies**
-- Inbound: GenericPricer — 設定取得 (P0)
-- Outbound: GreeksConfig — Greeks設定 (P0)
-- Outbound: Currency — 通貨定義 (P1)
-
-**Contracts**: State [x]
-
 ##### State Management
 
 ```rust
@@ -350,23 +297,6 @@ pub struct PricerConfigBuilder {
 ---
 
 #### PricingResult
-
-| Field | Detail |
-|-------|--------|
-| Intent | 階層的プライシング結果（Trade → Leg → Cashflow）、f64固定 |
-| Requirements | 1.4, 6.3, 6.5, 6.6, 6.7 |
-
-**Responsibilities & Constraints**
-- Trade/Leg/Cashflow階層に対応したPV内訳の保持
-- **Leg単位で通貨情報を保持**（CurrencyBreakdown廃止、Enzyme AD互換性向上）
-- MCシミュレーション時のパス分布（オプション）
-- **f64固定**（ADはget_greeks()のみ必要、PV結果にはジェネリック不要）
-
-**Dependencies**
-- Inbound: GenericPricer — 結果返却 (P0)
-- Outbound: LegPricingResult — Leg単位結果 (P0)
-
-**Contracts**: State [x]
 
 ##### State Management
 
@@ -391,25 +321,6 @@ pub struct PricingResult {
 ---
 
 #### BatchPricer
-
-| Field | Detail |
-|-------|--------|
-| Intent | 複数商品の並列バッチプライシング |
-| Requirements | 8.1, 8.2, 8.3, 8.4, 8.5 |
-
-**Responsibilities & Constraints**
-- Rayon並列処理による複数商品同時プライシング
-- Arc-cachedマーケットデータの共有
-- 部分失敗時の継続処理
-- スレッドローカルバッファプールの管理
-
-**Dependencies**
-- Inbound: service_cli, pricer_risk — バッチ呼び出し (P0)
-- Outbound: GenericPricer — 個別プライシング (P0)
-- Outbound: MarketProvider — マーケットデータ共有 (P0)
-- External: rayon — 並列処理 (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 

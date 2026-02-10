@@ -150,23 +150,6 @@ sequenceDiagram
 
 #### Currency
 
-| Field | Detail |
-|-------|--------|
-| Intent | ISO 4217通貨コードの型安全な表現 |
-| Requirements | 1.1, 12.1-12.3 |
-
-**Responsibilities & Constraints**
-- ISO 4217準拠の通貨コード管理
-- 小数点以下桁数（decimal places）のメタデータ提供
-- `#[non_exhaustive]`で将来の通貨追加に対応
-
-**Dependencies**
-- Inbound: None
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[non_exhaustive]
@@ -181,23 +164,6 @@ pub enum Currency {
 
 #### Date
 
-| Field | Detail |
-|-------|--------|
-| Intent | chrono::NaiveDateの型安全ラッパー |
-| Requirements | 1.2, 5.1-5.3 |
-
-**Responsibilities & Constraints**
-- ISO 8601形式のパースとフォーマット
-- 日付算術（加算、減算）
-- 無効な日付の拒否（Result型）
-
-**Dependencies**
-- Inbound: None
-- Outbound: None
-- External: chrono (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -211,23 +177,6 @@ pub struct Date(NaiveDate);
 - Invariants: 内部NaiveDateは常に有効
 
 #### DayCountConvention
-
-| Field | Detail |
-|-------|--------|
-| Intent | 統一された日数計算規約（ISDA準拠） |
-| Requirements | 1.3, 2.1-2.4 |
-
-**Responsibilities & Constraints**
-- 7種類のISDA標準day count conventionをサポート
-- year fraction計算メソッド提供
-- pricer_core版とinfra_domain版の統合
-
-**Dependencies**
-- Inbound: None
-- Outbound: Date (P0)
-- External: chrono (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -244,22 +193,6 @@ pub enum DayCountConvention {
 
 #### BusinessDayConvention
 
-| Field | Detail |
-|-------|--------|
-| Intent | 営業日調整規約の型安全な表現 |
-| Requirements | 1.4, 5.2 |
-
-**Responsibilities & Constraints**
-- 5種類の営業日調整規約をサポート
-- Calendar型との連携（調整メソッドはCalendarで実装）
-
-**Dependencies**
-- Inbound: None
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[non_exhaustive]
@@ -270,23 +203,6 @@ pub enum BusinessDayConvention {
 ```
 
 #### Tenor
-
-| Field | Detail |
-|-------|--------|
-| Intent | 金融期間（3M, 1Y等）の型安全な表現 |
-| Requirements | 13.1-13.4 |
-
-**Responsibilities & Constraints**
-- 標準金融tenorのenum表現
-- 日付算術（tenor加算）
-- RateIndexの依存先として機能
-
-**Dependencies**
-- Inbound: RateIndex (P1)
-- Outbound: Date (P1)
-- External: None
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -315,23 +231,6 @@ pub enum EndOfMonthRule {
 
 #### RateIndex
 
-| Field | Detail |
-|-------|--------|
-| Intent | ベンチマーク金利指標のマスターデータ |
-| Requirements | 8.1-8.5 |
-
-**Responsibilities & Constraints**
-- 主要ベンチマーク金利指標の定義
-- 関連メタデータ（通貨、テナー、DCC）の提供
-- Adapterからの参照データとして機能
-
-**Dependencies**
-- Inbound: pricer_models (re-export)
-- Outbound: Currency (P1), Tenor (P1), DayCountConvention (P1)
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[non_exhaustive]
@@ -342,22 +241,6 @@ pub enum RateIndex {
 ```
 
 #### Frequency
-
-| Field | Detail |
-|-------|--------|
-| Intent | 支払頻度のマスターデータ |
-| Requirements | 9.1-9.4 |
-
-**Responsibilities & Constraints**
-- 標準支払頻度の定義
-- 期間計算メソッドの提供
-
-**Dependencies**
-- Inbound: pricer_models (re-export)
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -380,22 +263,6 @@ impl Frequency {
 
 #### Period
 
-| Field | Detail |
-|-------|--------|
-| Intent | 単一accrual期間の構造体 |
-| Requirements | 10.1-10.4 |
-
-**Responsibilities & Constraints**
-- 開始日、終了日、支払日の保持
-- 日数・year fraction計算
-
-**Dependencies**
-- Inbound: pricer_models (re-export)
-- Outbound: Date (P0), DayCountConvention (P1)
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -414,24 +281,6 @@ impl Period {
 ```
 
 #### TradeDirection / SwapDirection
-
-| Field | Detail |
-|-------|--------|
-| Intent | 汎用取引方向の表現 |
-| Requirements | 11.1-11.4 |
-
-**Responsibilities & Constraints**
-- Long/Shortの汎用方向
-- PayFixed/ReceiveFixedのスワップ方向
-- 相互変換トレイト
-- **Note**: `sign()`等の計算メソッドはinfra_domainには含めない（num_traits依存を避けるため）。pricer_modelsの再エクスポート側で拡張実装を提供
-
-**Dependencies**
-- Inbound: pricer_models (re-export with extension)
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
 
 ##### Service Interface (infra_domain)
 ```rust
@@ -455,16 +304,6 @@ pub trait SwapDirectionExt {
 
 #### Deprecated Re-exports
 
-| Field | Detail |
-|-------|--------|
-| Intent | 後方互換性のための再エクスポート |
-| Requirements | 3.1-3.5 |
-
-**Implementation Notes**
-- Integration: `pub use infra_domain::{Currency, Date, ...};`を`#[deprecated]`付きで提供
-- Validation: コンパイル時deprecation警告
-- Risks: 移行期間後の削除タイミング決定が必要
-
 ```rust
 #[deprecated(since = "0.9.0", note = "Use infra_domain::Currency instead")]
 #[deprecated(since = "0.9.0", note = "Use infra_domain::Date instead")]
@@ -474,7 +313,6 @@ pub trait SwapDirectionExt {
 #[deprecated(since = "0.9.0", note = "Use infra_domain::CurrencyError instead")]
     // ... implementation omitted ...
 ```
-
 ## Data Models
 
 ### Domain Model

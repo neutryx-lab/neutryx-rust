@@ -91,20 +91,6 @@ graph TB
 
 #### InstrumentError
 
-| Field | Detail |
-|-------|--------|
-| Intent | 商品操作のエラーハンドリング |
-| Requirements | 8.1, 8.2, 8.3, 8.4, 8.5 |
-
-**Responsibilities & Constraints**
-- 商品構築・ペイオフ計算のエラーを表現
-- PricingError への変換を提供
-
-**Dependencies**
-- Outbound: PricingError — エラー変換 (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Error, Debug, Clone, PartialEq)]
@@ -118,21 +104,6 @@ pub enum InstrumentError {
 ```
 
 #### PayoffType
-
-| Field | Detail |
-|-------|--------|
-| Intent | Call/Put/Digital ペイオフの微分可能実装 |
-| Requirements | 2.1, 2.2, 2.3, 2.4, 2.5, 9.1, 9.2, 9.3, 9.4, 9.5 |
-
-**Responsibilities & Constraints**
-- smooth_max を使用した Call/Put ペイオフ
-- smooth_indicator を使用した Digital ペイオフ
-- epsilon パラメータによる滑らかさ制御
-
-**Dependencies**
-- External: pricer_core::math::smoothing — smooth_max, smooth_indicator (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -153,20 +124,6 @@ pub enum PayoffType {
 - Risks: 極端な epsilon 値で数値不安定
 
 #### InstrumentParams
-
-| Field | Detail |
-|-------|--------|
-| Intent | 共通商品パラメータの集約 |
-| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5 |
-
-**Responsibilities & Constraints**
-- strike, expiry, notional の格納
-- 構築時バリデーション
-
-**Dependencies**
-- External: num_traits::Float (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -190,21 +147,6 @@ impl<T: Float> InstrumentParams<T> {
 
 #### ExerciseStyle
 
-| Field | Detail |
-|-------|--------|
-| Intent | オプション行使スタイル定義 |
-| Requirements | 5.1, 5.2, 5.3, 5.4, 5.5 |
-
-**Responsibilities & Constraints**
-- European/American/Bermudan/Asian の区別
-- Bermudan: 行使日リスト格納
-- Asian: 平均化パラメータ格納
-
-**Dependencies**
-- External: num_traits::Float (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, PartialEq)]
@@ -222,22 +164,6 @@ pub enum ExerciseStyle<T: Float> {
 
 #### VanillaOption
 
-| Field | Detail |
-|-------|--------|
-| Intent | バニラオプションの統合表現 |
-| Requirements | 4.1, 4.2, 4.3, 4.4, 4.5, 10.1, 10.2, 10.3, 10.4, 10.5 |
-
-**Responsibilities & Constraints**
-- InstrumentParams, PayoffType, ExerciseStyle の組み合わせ
-- 微分可能ペイオフ計算
-
-**Dependencies**
-- Inbound: PayoffType — ペイオフ評価 (P0)
-- Inbound: ExerciseStyle — 行使スタイル (P0)
-- Inbound: InstrumentParams — パラメータ (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone)]
@@ -246,20 +172,6 @@ pub struct VanillaOption<T: Float> {
 ```
 
 #### Forward
-
-| Field | Detail |
-|-------|--------|
-| Intent | フォワード契約の定義 |
-| Requirements | 6.1, 6.2, 6.3, 6.4, 6.5 |
-
-**Responsibilities & Constraints**
-- Long/Short ディレクション
-- 線形ペイオフ (smooth 不要)
-
-**Dependencies**
-- External: num_traits::Float (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -273,21 +185,6 @@ pub struct Forward<T: Float> {
 
 #### Swap
 
-| Field | Detail |
-|-------|--------|
-| Intent | 金利スワップの基本定義 |
-| Requirements | 7.1, 7.2, 7.3, 7.4, 7.5 |
-
-**Responsibilities & Constraints**
-- 固定レート、名目元本、支払頻度
-- 支払日バリデーション
-
-**Dependencies**
-- External: num_traits::Float (P0)
-- External: Currency (P1)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -298,20 +195,6 @@ pub struct Swap<T: Float> {
 ```
 
 #### Instrument Enum
-
-| Field | Detail |
-|-------|--------|
-| Intent | 全商品タイプの統一表現 |
-| Requirements | 1.1, 1.2, 1.3, 1.4, 1.5 |
-
-**Responsibilities & Constraints**
-- 静的ディスパッチによる Enzyme 最適化
-- 各バリアントで具体型を保持
-
-**Dependencies**
-- Inbound: VanillaOption, Forward, Swap (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust

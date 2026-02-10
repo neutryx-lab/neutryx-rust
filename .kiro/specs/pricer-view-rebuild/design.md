@@ -14,12 +14,6 @@
 - 既存インフラ（`services/api.ts`, `types/api.ts`, `utils/format.ts`）の完全再利用
 - 4 フェーズによる段階的実装（MVP → Greeks/メトリクス → 履歴/比較 → ポリッシュ）
 
-### Non-Goals
-- バックエンドの API エンドポイント変更（Phase 1）
-- 他の View（VolcubeBuilderView, GraphView 等）のリファクタリング
-- ユニットテストフレームワークの導入（本スコープは UI リビルドに限定）
-- モバイルファーストのレスポンシブ対応（Phase 4 で検討）
-
 ## Architecture
 
 ### Existing Architecture Analysis
@@ -110,16 +104,6 @@ graph TB
 - **Domain boundaries**: View → Components（UI 表示）、Composables（ドメインロジック）、Store（状態）、Services（API 通信）
 - **Existing patterns preserved**: `glass-card` デザインシステム、`<script setup lang="ts">` 記法、Toast 通知パターン、Pinia Composition API スタイル
 - **Steering compliance**: S 層（Service Gateway）のフロントエンド部分。P/I/A 層への依存なし
-
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Frontend Framework | Vue 3.5.27 | コンポーネントシステム、Composition API | 既存 |
-| State Management | Pinia 3.0.4 | 中央集権的状態管理 | 新規 `stores/pricer.ts` 追加 |
-| Styling | Tailwind CSS 3.4.19 | ユーティリティファースト CSS | 既存デザインシステム準拠 |
-| Type System | TypeScript 5.3.3 | 型安全性 | `types/api.ts` 再利用 |
-| Build | Vite 5.0.12 | 開発サーバー、本番ビルド | 設定変更不要 |
 
 ## System Flows
 
@@ -248,11 +232,6 @@ sequenceDiagram
 
 #### Pinia Store: `stores/pricer.ts`
 
-| Field | Detail |
-|-------|--------|
-| Intent | Pricer 画面の全リアクティブ状態を一元管理する |
-| Requirements | 12.2 |
-
 **Responsibilities & Constraints**
 - 全 Pricer 関連の状態を保持する単一 store
 - `defineStore('pricer', () => { ... })` の Composition API スタイル（`stores/config.ts` パターン準拠）
@@ -265,292 +244,115 @@ sequenceDiagram
 
 ##### State Management
 
-```typescript
-// State Shape (based on existing PricerState + extensions)
-interface PricerStoreState {
-  // Instrument
-  instruments: Instrument[];
-  selectedInstrumentId: string;
-  instrumentParams: Record<string, string | number>;
+State Shape:
+- Instrument: instruments, selectedInstrumentId, instrumentParams
+- Trade Expansion: expandedTrade
+- Cashflow Edits: editedCashflows
+- Pricing Results: pricingResult, greeksResult
+- Valuation Settings: valuationDate, reportingCcy, useDefaults, numPaths, numSteps, seed
+- Bump Sizes: rateBump, fxBump, volBump
+- Market Data: selectedCurveIndex
+- Stochastic Model: modelType, modelParams
+- UI State: isExpanding, isCalculating, apiAvailable
+- Validation: validationErrors
+- Metrics: computationMetrics
+- History: resultHistory, compareMode, compareIndices
 
-  // Trade Expansion
-  expandedTrade: ExpandedTrade | null;
+Computed Getters:
+- selectedInstrument, groupedInstruments, hasEdits, summaryStats, selectedModelConfig, recentHistory, pvDiff, comparedResults, changedParams, currencyAggregation
 
-  // Cashflow Edits
-  editedCashflows: Record<string, CashflowEdit>;
-
-  // Pricing Results
-  pricingResult: PricingResult | null;
-  greeksResult: GreeksResult | null;
-
-  // Valuation Settings
-  valuationDate: string;
-  reportingCcy: string;
-  useDefaults: boolean;
-  numPaths: number;
-  numSteps: number;
-  seed: number | null;
-
-  // Bump Sizes
-  rateBump: number;
-  fxBump: number;
-  volBump: number;
-
-  // Market Data
-  selectedCurveIndex: string;
-
-  // Stochastic Model
-  modelType: string;
-  modelParams: Record<string, number>;
-
-  // UI State
-  isExpanding: boolean;
-  isCalculating: boolean;
-  apiAvailable: boolean;
-
-  // Validation
-  validationErrors: ValidationError[];
-
-  // Metrics
-  computationMetrics: ComputationMetrics | null;
-
-  // History
-  resultHistory: HistoryEntry[];
-  compareMode: boolean;
-  compareIndices: [number, number];
-}
-
-// Computed Getters
-interface PricerStoreGetters {
-  selectedInstrument: Instrument | undefined;
-  groupedInstruments: Record<string, Instrument[]>;
-  hasEdits: boolean;
-  summaryStats: SummaryStat[];
-  selectedModelConfig: StochasticModelConfig;
-  recentHistory: HistoryEntry[];
-  pvDiff: PvDiff | null;
-  comparedResults: CompareResult | null;
-  changedParams: ParamChange[];
-  currencyAggregation: CurrencyAgg[];
-}
-```
-
-- **Persistence**: なし（セッション中のみ有効）
-- **Concurrency**: 単一 UI スレッド、競合なし
+**Persistence**: なし（セッション中のみ有効）
+**Concurrency**: 単一 UI スレッド、競合なし
 
 ### Composable Layer
 
 #### `composables/useInstruments.ts`
 
-| Field | Detail |
-|-------|--------|
-| Intent | 商品一覧のロード、グルーピング、選択、IRS 自動設定を管理 |
-| Requirements | 1.1, 1.2, 1.3, 1.5 |
+**Intent**: 商品一覧のロード、グルーピング、選択、IRS 自動設定を管理
+**Requirements**: 1.1, 1.2, 1.3, 1.5
 
-**Responsibilities & Constraints**
-- `onMounted` で `fetchInstruments()` を呼び出し、ストアに格納
-- IRS が存在する場合の自動選択・デフォルトパラメータ設定
-- 商品変更時の依存状態リセット（watcher）
+**Responsibilities**: `onMounted` で `fetchInstruments()` 呼び出し、IRS 自動選択、商品変更時の依存状態リセット（watcher）
 
-**Dependencies**
-- Outbound: pricer store — 状態読み書き (P0)
-- External: `services/api.ts` の `fetchInstruments` (P0)
-- External: `composables/useToast.ts` — エラー通知 (P1)
+**Dependencies**:
+- Outbound: pricer store (P0)
+- External: `services/api.ts` fetchInstruments (P0)
+- External: `composables/useToast.ts` (P1)
 
 **Contracts**: Service [x]
-
-##### Service Interface
-
-```typescript
-interface UseInstruments {
-  loadInstruments(): Promise<void>;
-  selectInstrument(id: string): void;
-  resetDependentState(): void;
-}
-```
 
 #### `composables/usePricer.ts`
 
-| Field | Detail |
-|-------|--------|
-| Intent | プライシングフロー全体のオーケストレーション（バリデーション → 展開 → 計算 → 履歴記録） |
-| Requirements | 2.1, 3.5, 6.1, 7.3, 10.1, 11.1, 11.3, 11.4 |
+**Intent**: プライシングフロー全体のオーケストレーション（バリデーション → 展開 → 計算 → 履歴記録）
+**Requirements**: 2.1, 3.5, 6.1, 7.3, 10.1, 11.1, 11.3, 11.4
 
-**Responsibilities & Constraints**
-- `expandCashflows()`: パラメータバリデーション → `expandTrade()` API 呼び出し → ストア更新
-- `calculateAll()`: `priceTrade()` + `calculateGreeks()` の並列実行 → ストア更新 → メトリクス記録 → 履歴追加
-- `resetAll()`: 全結果・展開状態のクリア
-- エラー発生時は Toast 通知（`useToast`）で通知
+**Responsibilities**: expandCashflows(), calculateAll(), resetAll(), validateParams()。エラー発生時は Toast 通知
 
-**Dependencies**
-- Outbound: pricer store — 状態読み書き (P0)
-- Outbound: useCashflowEditor — `buildPricingLegs()` (P0)
-- Outbound: usePricerHistory — `addToHistory()` (P1)
-- External: `services/api.ts` の `expandTrade`, `priceTrade`, `calculateGreeks` (P0)
-- External: `composables/useToast.ts` — 通知 (P1)
+**Dependencies**:
+- Outbound: pricer store (P0), useCashflowEditor (P0), usePricerHistory (P1)
+- External: `services/api.ts` (P0), `composables/useToast.ts` (P1)
 
 **Contracts**: Service [x]
-
-##### Service Interface
-
-```typescript
-interface UsePricer {
-  expandCashflows(): Promise<void>;
-  calculateAll(): Promise<void>;
-  resetAll(): void;
-  validateParams(): ValidationError[];
-}
-```
 
 #### `composables/useCashflowEditor.ts`
 
-| Field | Detail |
-|-------|--------|
-| Intent | キャッシュフローの編集状態管理とプライシングリクエスト構築 |
-| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5 |
+**Intent**: キャッシュフローの編集状態管理とプライシングリクエスト構築
+**Requirements**: 3.1, 3.2, 3.3, 3.4, 3.5
 
-**Responsibilities & Constraints**
-- `updateCashflow(legIdx, cfIdx, field, value)`: 個別 CF の編集
-- `resetEdits()`: 全編集の取り消し
-- `buildPricingLegs()`: 展開済み取引 + 編集を反映した PricingLeg 配列の構築
+**Responsibilities**: updateCashflow(), resetEdits(), buildPricingLegs()
 
-**Dependencies**
-- Outbound: pricer store — `editedCashflows`, `expandedTrade` (P0)
+**Dependencies**: Outbound: pricer store (P0)
 
 **Contracts**: Service [x]
-
-##### Service Interface
-
-```typescript
-interface UseCashflowEditor {
-  updateCashflow(legIdx: number, cfIdx: number, field: 'notional' | 'rate', value: number): void;
-  resetEdits(): void;
-  buildPricingLegs(): PricingLeg[];
-}
-```
 
 #### `composables/usePricerHistory.ts`
 
-| Field | Detail |
-|-------|--------|
-| Intent | 結果履歴の管理、復元、比較モード制御 |
-| Requirements | 10.1, 10.2, 10.3, 10.4, 10.5 |
+**Intent**: 結果履歴の管理、復元、比較モード制御
+**Requirements**: 10.1, 10.2, 10.3, 10.4, 10.5
 
-**Responsibilities & Constraints**
-- `addToHistory()`: 現在の計算結果を `HistoryEntry` としてストアに追加（最大 5 件）
-- `restoreFromHistory(entry)`: 指定エントリのパラメータ・結果をストアに復元
-- 比較モードの切り替え・比較対象の選択
+**Responsibilities**: addToHistory()（最大 5 件）, restoreFromHistory(), toggleCompareMode()
 
-**Dependencies**
-- Outbound: pricer store — `resultHistory`, `compareMode`, `compareIndices` (P0)
-- External: `composables/useToast.ts` — 復元通知 (P2)
+**Dependencies**: Outbound: pricer store (P0), useToast (P2)
 
 **Contracts**: Service [x]
-
-##### Service Interface
-
-```typescript
-interface UsePricerHistory {
-  addToHistory(): void;
-  restoreFromHistory(entry: HistoryEntry): void;
-  toggleCompareMode(): void;
-}
-```
 
 ### Constants Layer
 
 #### `constants/pricer.ts`
 
-| Field | Detail |
-|-------|--------|
-| Intent | Pricer 固有の定数と関連型を定義 |
-| Requirements | 12.6 |
+**Intent**: Pricer 固有の定数と関連型を定義
+**Requirements**: 12.6
 
-**Responsibilities & Constraints**
-- `STOCHASTIC_MODELS`: 確率モデルの設定定義（GBM, Heston, Hull-White, CIR）
-- `CURVE_OPTIONS`: ディスカウントカーブの選択肢（USD-SOFR, EUR-ESTR, JPY-TONA, GBP-SONIA）
-- Pricer 固有の型定義: `StochasticModelConfig`, `ModelParamDef`, `HistoryEntry`, `ValidationError`, `ComputationMetrics`, `SummaryStat`, `PvDiff`, `CompareResult`, `ParamChange`, `CurrencyAgg`
+**Responsibilities**: STOCHASTIC_MODELS, CURVE_OPTIONS 定義。Pricer 固有型: StochasticModelConfig, ModelParamDef, HistoryEntry, ValidationError, ComputationMetrics, SummaryStat, PvDiff, CompareResult, ParamChange, CurrencyAgg
 
 ### UI Component Layer
 
-以下のコンポーネントは UI 表示に特化し、新たな境界を導入しない。Pinia ストアから直接状態を読み取り、composable 経由でアクションを呼び出す。
+UI コンポーネントは Pinia ストアから直接状態を読み取り、composable 経由でアクションを呼び出す。
 
-#### PricerView (View)
+**PricerView**: オーケストレータ。`onMounted` で `useInstruments().loadInstruments()` 呼び出し。3 カラムグリッドレイアウト。API 利用不可時のフォールバック表示。200 行以内。
 
-- **Intent**: オーケストレータ。子コンポーネントの合成、レイアウト制御、初期ロード
-- **Requirements**: 1.1, 1.3, 11.2, 12.1, 13.1-13.3
-- **Implementation Notes**: `onMounted` で `useInstruments().loadInstruments()` を呼び出し。3 カラムグリッドレイアウト。API 利用不可時のフォールバック表示。200 行以内。
+**PricerSummaryBar**: 評価日・商品名・PV・DV01 の 4 カードサマリー。`glass-card` スタイル。
 
-#### PricerSummaryBar
+**PricerConfigPanel / PricerResultsPanel**: 子コンポーネントのグルーピング wrapper。ロジックなし。
 
-- **Intent**: 評価日・商品名・PV・DV01 の 4 カードサマリー
-- **Requirements**: 9.1, 9.2
-- **Implementation Notes**: ストアの `summaryStats` getter を使用。`glass-card` スタイル。
+**InstrumentSelector**: アセットクラス別グループ化ドロップダウン + 動的パラメータフォーム。`useInstruments` 使用。バリデーションエラーは赤枠 + メッセージ。
 
-#### PricerConfigPanel / PricerResultsPanel
+**ValuationSettings**: 評価日、通貨、モデル設定トグル、バンプサイズ入力。ストアとの双方向バインド。
 
-- **Intent**: 子コンポーネントのグルーピング wrapper
-- **Implementation Notes**: ロジックなし。`<slot>` またはコンポーネント直接配置。
+**MarketDataSelector**: ディスカウントカーブ選択。`CURVE_OPTIONS` からドロップダウン生成。
 
-#### InstrumentSelector
+**ModelSelector**: 確率モデルタイプ選択 + 動的パラメータフォーム。`STOCHASTIC_MODELS` 使用。モデル変更時にデフォルト値リセット（watcher）。
 
-- **Intent**: アセットクラス別グループ化ドロップダウン + 動的パラメータフォーム
-- **Requirements**: 1.1, 1.2, 1.4
-- **Implementation Notes**: `useInstruments` composable を使用。`requiredParams` を走査し、`fieldType` に応じた input/select を動的生成。バリデーションエラーは赤枠 + メッセージ。
+**PricerActions**: Expand / Price & Risks / Reset ボタン。`usePricer` 使用。処理中はスピナー表示。
 
-#### ValuationSettings
+**PvDisplay**: トータル PV、レグ別内訳、通貨別集約、PV 差分表示。`formatCurrency` 使用。
 
-- **Intent**: 評価日、通貨、モデル設定トグル、バンプサイズ入力
-- **Requirements**: 4.1-4.4
-- **Implementation Notes**: ストアの `valuationDate`, `reportingCcy`, `useDefaults`, `numPaths`, `numSteps`, `rateBump`, `fxBump`, `volBump` を双方向バインド。
+**GreeksDisplay**: DV01, Gamma, Theta, Vega の 2x2 グリッド。正負の色分け。
 
-#### MarketDataSelector
+**ComputationMetrics**: 処理時間、モデル、タイムスタンプの 1 行バー。
 
-- **Intent**: ディスカウントカーブ選択
-- **Requirements**: 5.1
-- **Implementation Notes**: `CURVE_OPTIONS` 定数からドロップダウン生成。
+**CashflowTable**: レグ別 CF テーブル、インライン編集、ローディング/空状態。`useCashflowEditor` 使用。想定元本は K/M/B 変換。編集済みセルは `bg-warning/5` ハイライト。
 
-#### ModelSelector
-
-- **Intent**: 確率モデルタイプ選択 + 動的パラメータフォーム
-- **Requirements**: 5.2, 5.3
-- **Implementation Notes**: `STOCHASTIC_MODELS` 定数からモデル選択。`selectedModelConfig` getter でパラメータフォーム動的生成。モデル変更時にデフォルト値リセット（watcher）。
-
-#### PricerActions
-
-- **Intent**: Expand / Price & Risks / Reset ボタン
-- **Requirements**: 2.1, 6.1-6.3
-- **Implementation Notes**: `usePricer` composable の `expandCashflows`, `calculateAll`, `resetAll` を呼び出し。ストアの `isExpanding`, `isCalculating`, `expandedTrade`, `selectedInstrumentId` で disabled 制御。
-
-#### PvDisplay
-
-- **Intent**: トータル PV、レグ別内訳、通貨別集約、PV 差分表示
-- **Requirements**: 6.4-6.6, 10.4
-- **Implementation Notes**: `pricingResult` が null なら非表示。`currencyAggregation` getter で通貨別集約。`pvDiff` getter で前回比差分。`formatCurrency` を `utils/format.ts` からインポート。
-
-#### GreeksDisplay
-
-- **Intent**: DV01, Gamma, Theta, Vega の 2x2 グリッド表示
-- **Requirements**: 7.1, 7.2
-- **Implementation Notes**: `greeksResult` が null なら非表示。null 値の Greek は非表示。正負の色分け。
-
-#### ComputationMetrics
-
-- **Intent**: 処理時間、モデル、タイムスタンプの 1 行バー
-- **Requirements**: 8.1
-- **Implementation Notes**: `computationMetrics` が null なら非表示。
-
-#### CashflowTable
-
-- **Intent**: レグ別 CF テーブル、インライン編集、ローディング/空状態
-- **Requirements**: 2.1-2.6, 3.1-3.4
-- **Implementation Notes**: `useCashflowEditor` composable を使用。想定元本は `parseFormattedNumber`/`formatNumberCompact` で K/M/B 変換。レートは % 表示。編集済みセルは `bg-warning/5` ハイライト。DF/PV 列は `pricingResult` が存在する場合のみ表示。
-
-#### PricerHistory
-
-- **Intent**: 結果履歴リスト、復元、比較モード
-- **Requirements**: 10.1-10.5
-- **Implementation Notes**: `usePricerHistory` composable を使用。最大 5 件のリスト。クリックで `restoreFromHistory`。比較モードでは 2 件の結果を並列表示 + 変更パラメータハイライト。
+**PricerHistory**: 結果履歴リスト、復元、比較モード。`usePricerHistory` 使用。最大 5 件のリスト。
 
 ## Data Models
 
@@ -559,56 +361,13 @@ interface UsePricerHistory {
 本機能はフロントエンド UI リビルドであり、新規ドメインエンティティの導入はない。既存の `types/api.ts` の型をそのまま使用する。
 
 Pricer 固有の拡張型（`constants/pricer.ts` に定義）:
-
-```typescript
-interface StochasticModelConfig {
-  type: string;
-  label: string;
-  params: ModelParamDef[];
-}
-
-interface ModelParamDef {
-  name: string;
-  label: string;
-  defaultValue: number;
-  min?: number;
-  max?: number;
-  step?: number;
-}
-
-interface HistoryEntry {
-  id: number;
-  timestamp: number;
-  instrumentId: string;
-  instrumentName: string;
-  params: Record<string, string | number>;
-  pricingResult: PricingResult;
-  greeksResult: GreeksResult | null;
-  valuationDate: string;
-  reportingCcy: string;
-  modelType: string;
-  curveIndex: string;
-}
-
-interface ValidationError {
-  field: string;
-  message: string;
-}
-
-interface ComputationMetrics {
-  pricingTimeMs: number;
-  method: string;
-  timestamp: number;
-}
-```
+- StochasticModelConfig, ModelParamDef, HistoryEntry, ValidationError, ComputationMetrics
 
 ## Error Handling
 
 ### Error Strategy
 
 本機能のエラーハンドリングは既存の Toast 通知パターン（`composables/useToast.ts`）に従う。
-
-### Error Categories and Responses
 
 **User Errors**: パラメータバリデーション失敗 → フィールドレベルのエラー表示 + Toast 警告
 **System Errors**: API リクエスト失敗 → Toast エラー通知 + 状態保持（部分的機能維持）

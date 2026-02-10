@@ -1,21 +1,4 @@
 //! CSA (Credit Support Annex) terms and netting set configuration.
-//!
-//! This module re-exports types from `infra_domain::counterparty`.
-//!
-//! # Example
-//!
-//! ```rust
-//! use adapter_loader::{CsaTerms, NettingSet};
-//!
-//! let csa = CsaTerms::builder()
-//!     .threshold(1_000_000.0)
-//!     .build();
-//!
-//! let ns = NettingSet::builder("NS001", "CP001")
-//!     .csa_terms(csa)
-//!     .build()
-//!     .unwrap();
-//! ```
 
 // Re-export from infra_domain::counterparty
 pub use infra_domain::counterparty::{CsaTerms, NettingSet};
