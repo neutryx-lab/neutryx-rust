@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Flat file loaders (CSV/Parquet) and CSA details for Neutryx"
+description = "Flat file loaders (CSV/Parquet), FpML parser, and CSA details for Neutryx"
 
 [dependencies]
 # Master data from Infra layer
@@ -37,11 +37,15 @@ chrono.workspace = true
 parquet = { version = "54", optional = true }
 arrow = { version = "54", optional = true }
 
+# XML parsing (optional, for FpML)
+quick-xml = { version = "0.37", features = ["serialize"], optional = true }
+
 [features]
 default = []
 full-serde = ["infra_domain/serde"]
 parquet = ["dep:parquet", "dep:arrow"]
 curve-builder = ["dep:pricer_models"]
+fpml = ["dep:quick-xml"]
 
 [dev-dependencies]
 approx.workspace = true

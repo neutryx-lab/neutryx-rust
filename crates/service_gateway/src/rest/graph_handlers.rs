@@ -25,7 +25,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use adapter_fpml::FpmlParser;
+use adapter_loader::fpml::FpmlParser;
 use axum::{
     extract::{Query, State},
     Json,

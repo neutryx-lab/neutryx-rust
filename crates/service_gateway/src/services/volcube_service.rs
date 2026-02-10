@@ -33,10 +33,6 @@ use crate::{
 pub struct VolcubeService;
 
 impl VolcubeService {
-    // =========================================================================
-    // IR Volatility API
-    // =========================================================================
-
     /// Get IR vol currencies
     pub fn get_ir_vol_currencies(
         _state: &Arc<AppState>,
@@ -165,10 +161,6 @@ impl VolcubeService {
         })
     }
 
-    // =========================================================================
-    // FX Volatility API
-    // =========================================================================
-
     /// Get FX vol pairs
     pub fn get_fx_vol_pairs(_state: &Arc<AppState>) -> Result<FxVolPairsResponse, ServerError> {
         let vol_path = Path::new("demo/data/config/vol_surfaces.json");
@@ -274,10 +266,6 @@ impl VolcubeService {
             foreign_rate,
         })
     }
-
-    // =========================================================================
-    // Volcube API
-    // =========================================================================
 
     /// Get volcube indices (rate index identifiers)
     pub fn get_volcube_indices(
@@ -757,10 +745,6 @@ impl VolcubeService {
         })
     }
 
-    // =========================================================================
-    // Implied PDF API
-    // =========================================================================
-
     /// Compute implied probability density via Breeden-Litzenberger (d²C/dk²)
     pub fn compute_implied_pdf(
         request: &ImpliedPdfRequest,
@@ -813,10 +797,6 @@ impl VolcubeService {
 
         Ok(ImpliedPdfResponse { offsets, density })
     }
-
-    // =========================================================================
-    // SABR Smile + Density (from calibrated parameters)
-    // =========================================================================
 
     /// Compute a smooth SABR smile and implied density from calibrated
     /// parameters.

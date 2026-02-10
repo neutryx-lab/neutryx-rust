@@ -3,20 +3,6 @@
 version = 4
 
 [[package]]
-name = "adapter_fpml"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "approx",
- "infra_domain",
- "pricer_core",
- "pricer_models",
- "quick-xml",
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "adapter_loader"
 version = "0.1.0"
 dependencies = [
@@ -29,6 +15,7 @@ dependencies = [
  "infra_domain",
  "parquet",
  "pricer_models",
+ "quick-xml",
  "serde",
  "serde_json",
  "tempfile",
@@ -3387,7 +3374,6 @@ dependencies = [
 name = "service_gateway"
 version = "0.1.0"
 dependencies = [
- "adapter_fpml",
  "adapter_loader",
  "anyhow",
  "async-trait",

@@ -15,7 +15,7 @@ use infra_domain::{
     },
 };
 
-use crate::{
+use crate::fpml::{
     common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
     error::FpmlError,
 };

@@ -94,7 +94,6 @@ workspace = true
 [workspace]
 members = [
     # --- A: Adapter Layer (Input) ---
-    "crates/adapter_fpml",
     "crates/adapter_loader",
 
     # --- I: Infra Layer (Foundation) ---
