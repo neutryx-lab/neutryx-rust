@@ -584,18 +584,11 @@ impl DemoService {
                         let value = spot.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
                         let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
 
-                        rates.push(MarketRate {
-                            id: pair.to_string(),
-                            currency: base_ccy.to_string(),
-                            tenor: "SPOT".to_string(),
-                            rate_type: "fxspot".to_string(),
-                            value,
-                            rate_index: Some(pair.to_string()),
-                            quote_type: Some("Mid".to_string()),
-                            source: "Internal".to_string(),
-                            timestamp: timestamp.clone(),
-                            is_stale: false,
-                        });
+                        rates.push(make_market_rate(
+                            pair.to_string(), base_ccy.to_string(),
+                            "SPOT".to_string(), "fxspot".to_string(),
+                            value, Some(pair.to_string()), &timestamp,
+                        ));
                     }
                 }
             }
@@ -614,18 +607,11 @@ impl DemoService {
                                 let points =
                                     fwd.get("points").and_then(|p| p.as_f64()).unwrap_or(0.0);
 
-                                rates.push(MarketRate {
-                                    id: format!("{}-{}", pair, tenor),
-                                    currency: base_ccy.to_string(),
-                                    tenor: tenor.to_string(),
-                                    rate_type: "fxforward".to_string(),
-                                    value: points,
-                                    rate_index: Some(pair.clone()),
-                                    quote_type: Some("Mid".to_string()),
-                                    source: "Internal".to_string(),
-                                    timestamp: timestamp.clone(),
-                                    is_stale: false,
-                                });
+                                rates.push(make_market_rate(
+                                    format!("{pair}-{tenor}"), base_ccy.to_string(),
+                                    tenor.to_string(), "fxforward".to_string(),
+                                    points, Some(pair.clone()), &timestamp,
+                                ));
                             }
                         }
                     }
@@ -648,18 +634,11 @@ impl DemoService {
                                     spread.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
                                 let index = spread.get("index").and_then(|i| i.as_str());
 
-                                rates.push(MarketRate {
-                                    id: format!("XCCY-{}-{}", pair, tenor),
-                                    currency: base_ccy.to_string(),
-                                    tenor: tenor.to_string(),
-                                    rate_type: "xccybasis".to_string(),
-                                    value,
-                                    rate_index: index.map(String::from),
-                                    quote_type: Some("Mid".to_string()),
-                                    source: "Internal".to_string(),
-                                    timestamp: timestamp.clone(),
-                                    is_stale: false,
-                                });
+                                rates.push(make_market_rate(
+                                    format!("XCCY-{pair}-{tenor}"), base_ccy.to_string(),
+                                    tenor.to_string(), "xccybasis".to_string(),
+                                    value, index.map(String::from), &timestamp,
+                                ));
                             }
                         }
                     }
@@ -1001,16 +980,6 @@ impl DemoService {
             }
         }
 
-        // Helper to parse importance from string
-        fn parse_importance(s: &str) -> Importance {
-            match s.to_lowercase().as_str() {
-                "critical" => Importance::Critical,
-                "high" => Importance::High,
-                "medium" => Importance::Medium,
-                _ => Importance::Low,
-            }
-        }
-
         // Helper to parse event from JSON value
         fn parse_event(event: &serde_json::Value) -> Option<MarketEvent> {
             let id = event.get("id")?.as_str()?.to_string();
@@ -1083,47 +1052,15 @@ impl DemoService {
             })
         }
 
-        // Load central bank meetings
-        let cb_path = Path::new("demo/data/input/events/central_bank_meetings.json");
-        if let Ok(content) = std::fs::read_to_string(cb_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
-                    for event in event_arr {
-                        if let Some(parsed) = parse_event(event) {
-                            events.push(parsed);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Load economic releases
-        let econ_path = Path::new("demo/data/input/events/economic_releases.json");
-        if let Ok(content) = std::fs::read_to_string(econ_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
-                    for event in event_arr {
-                        if let Some(parsed) = parse_event(event) {
-                            events.push(parsed);
-                        }
-                    }
-                }
-            }
-        }
-
-        // Load turns (year-end, quarter-end, month-end rate spikes)
-        let turns_path = Path::new("demo/data/input/events/turns.json");
-        if let Ok(content) = std::fs::read_to_string(turns_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(turn_arr) = data.get("turnEvents").and_then(|e| e.as_array()) {
-                    for turn in turn_arr {
-                        if let Some(parsed) = parse_turn_event(turn) {
-                            events.push(parsed);
-                        }
-                    }
-                }
-            }
-        }
+        events.extend(load_and_collect(
+            Path::new("demo/data/input/events/central_bank_meetings.json"), "events", parse_event,
+        ));
+        events.extend(load_and_collect(
+            Path::new("demo/data/input/events/economic_releases.json"), "events", parse_event,
+        ));
+        events.extend(load_and_collect(
+            Path::new("demo/data/input/events/turns.json"), "turnEvents", parse_turn_event,
+        ));
 
         // Helper to parse turn event from JSON value
         fn parse_turn_event(turn: &serde_json::Value) -> Option<MarketEvent> {
@@ -1226,16 +1163,6 @@ impl DemoService {
     pub fn get_holidays(_state: &Arc<AppState>) -> Result<HolidaysResponse, ServerError> {
         let mut holidays = Vec::new();
 
-        // Helper to parse importance from string
-        fn parse_importance(s: &str) -> Importance {
-            match s.to_lowercase().as_str() {
-                "critical" => Importance::Critical,
-                "high" => Importance::High,
-                "medium" => Importance::Medium,
-                _ => Importance::Low,
-            }
-        }
-
         // Helper to parse holiday from JSON value
         fn parse_holiday(event: &serde_json::Value) -> Option<Holiday> {
             let id = event.get("id")?.as_str()?.to_string();
@@ -1287,20 +1214,9 @@ impl DemoService {
             })
         }
 
-        // Load holidays from dedicated file
-        let hol_path = Path::new("demo/data/input/holidays.json");
-        if let Ok(content) = std::fs::read_to_string(hol_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
-                    for event in event_arr {
-                        if let Some(holiday) = parse_holiday(event) {
-                            holidays.push(holiday);
-                        }
-                    }
-                }
-            }
-        }
-
+        holidays.extend(load_and_collect(
+            Path::new("demo/data/input/holidays.json"), "events", parse_holiday,
+        ));
         // Sort holidays by date
         holidays.sort_by(|a, b| a.date.cmp(&b.date));
 
@@ -1515,9 +1431,7 @@ impl DemoService {
         })
     }
 
-    /// Get cashflows for a rate instrument
-    ///
-    /// Expands the instrument to a trade and returns the cashflows.
+    /// Get cashflows for a rate instrument.
     pub fn get_rate_cashflows(
         rate_id: &str,
         state: &Arc<AppState>,
@@ -1533,116 +1447,32 @@ impl DemoService {
         let (effective_date, maturity_date) =
             Self::calculate_dates_from_tenor(&rate.tenor, &rate.currency, valuation_date);
 
-        // Generate cashflows based on rate type
+        // Helper to build a single-cashflow leg
+        let yf = Self::calculate_year_fraction(effective_date, maturity_date, &rate.currency);
+        let mk_cf = |pay_date: chrono::NaiveDate, r: Option<f64>, spread: Option<f64>, payoff: &str| {
+            CashflowDetail {
+                payment_date: pay_date.to_string(),
+                accrual_start: effective_date.to_string(),
+                accrual_end: maturity_date.to_string(),
+                year_fraction: yf, notional: 1_000_000.0,
+                rate: r, spread, payoff_type: payoff.to_string(),
+            }
+        };
+        let mk_leg = |lt: &str, dir: &str, idx: Option<String>, cf: CashflowDetail| {
+            LegCashflows {
+                leg_type: lt.to_string(), direction: dir.to_string(),
+                currency: rate.currency.clone(), rate_index: idx, cashflows: vec![cf],
+            }
+        };
+
         let legs = match rate.rate_type.as_str() {
-            "deposit" => {
-                // Single cashflow at maturity
-                vec![LegCashflows {
-                    leg_type: "Fixed".to_string(),
-                    direction: "Receiver".to_string(),
-                    currency: rate.currency.clone(),
-                    rate_index: None,
-                    cashflows: vec![CashflowDetail {
-                        payment_date: maturity_date.to_string(),
-                        accrual_start: effective_date.to_string(),
-                        accrual_end: maturity_date.to_string(),
-                        year_fraction: Self::calculate_year_fraction(
-                            effective_date,
-                            maturity_date,
-                            &rate.currency,
-                        ),
-                        notional: 1_000_000.0,
-                        rate: Some(rate.value),
-                        spread: None,
-                        payoff_type: "Fixed".to_string(),
-                    }],
-                }]
-            }
-            "ois" | "swap" => {
-                // Fixed and floating legs
-                let year_fraction =
-                    Self::calculate_year_fraction(effective_date, maturity_date, &rate.currency);
-                vec![
-                    LegCashflows {
-                        leg_type: "Fixed".to_string(),
-                        direction: "Payer".to_string(),
-                        currency: rate.currency.clone(),
-                        rate_index: None,
-                        cashflows: vec![CashflowDetail {
-                            payment_date: maturity_date.to_string(),
-                            accrual_start: effective_date.to_string(),
-                            accrual_end: maturity_date.to_string(),
-                            year_fraction,
-                            notional: 1_000_000.0,
-                            rate: Some(rate.value),
-                            spread: None,
-                            payoff_type: "Fixed".to_string(),
-                        }],
-                    },
-                    LegCashflows {
-                        leg_type: "Floating".to_string(),
-                        direction: "Receiver".to_string(),
-                        currency: rate.currency.clone(),
-                        rate_index: rate.rate_index.clone(),
-                        cashflows: vec![CashflowDetail {
-                            payment_date: maturity_date.to_string(),
-                            accrual_start: effective_date.to_string(),
-                            accrual_end: maturity_date.to_string(),
-                            year_fraction,
-                            notional: 1_000_000.0,
-                            rate: None,
-                            spread: Some(0.0),
-                            payoff_type: "Linear".to_string(),
-                        }],
-                    },
-                ]
-            }
-            "fra" => {
-                // Single FRA cashflow
-                vec![LegCashflows {
-                    leg_type: "FRA".to_string(),
-                    direction: "Payer".to_string(),
-                    currency: rate.currency.clone(),
-                    rate_index: rate.rate_index.clone(),
-                    cashflows: vec![CashflowDetail {
-                        payment_date: effective_date.to_string(),
-                        accrual_start: effective_date.to_string(),
-                        accrual_end: maturity_date.to_string(),
-                        year_fraction: Self::calculate_year_fraction(
-                            effective_date,
-                            maturity_date,
-                            &rate.currency,
-                        ),
-                        notional: 1_000_000.0,
-                        rate: Some(rate.value),
-                        spread: None,
-                        payoff_type: "FRA".to_string(),
-                    }],
-                }]
-            }
-            _ => {
-                // Default single cashflow
-                vec![LegCashflows {
-                    leg_type: "Unknown".to_string(),
-                    direction: "Unknown".to_string(),
-                    currency: rate.currency.clone(),
-                    rate_index: None,
-                    cashflows: vec![CashflowDetail {
-                        payment_date: maturity_date.to_string(),
-                        accrual_start: effective_date.to_string(),
-                        accrual_end: maturity_date.to_string(),
-                        year_fraction: Self::calculate_year_fraction(
-                            effective_date,
-                            maturity_date,
-                            &rate.currency,
-                        ),
-                        notional: 1_000_000.0,
-                        rate: Some(rate.value),
-                        spread: None,
-                        payoff_type: "Other".to_string(),
-                    }],
-                }]
-            }
+            "deposit" => vec![mk_leg("Fixed", "Receiver", None, mk_cf(maturity_date, Some(rate.value), None, "Fixed"))],
+            "ois" | "swap" => vec![
+                mk_leg("Fixed", "Payer", None, mk_cf(maturity_date, Some(rate.value), None, "Fixed")),
+                mk_leg("Floating", "Receiver", rate.rate_index.clone(), mk_cf(maturity_date, None, Some(0.0), "Linear")),
+            ],
+            "fra" => vec![mk_leg("FRA", "Payer", rate.rate_index.clone(), mk_cf(effective_date, Some(rate.value), None, "FRA"))],
+            _ => vec![mk_leg("Unknown", "Unknown", None, mk_cf(maturity_date, Some(rate.value), None, "Other"))],
         };
 
         let elapsed = start.elapsed();
@@ -1665,56 +1495,20 @@ impl DemoService {
         let effective_date = valuation_date + chrono::Duration::days(spot_lag);
 
         // Parse tenor and calculate maturity
-        let maturity_date = match tenor.to_uppercase().as_str() {
-            "ON" | "O/N" => effective_date + chrono::Duration::days(1),
-            "TN" | "T/N" => effective_date + chrono::Duration::days(1),
-            "1W" => effective_date + chrono::Duration::weeks(1),
-            "2W" => effective_date + chrono::Duration::weeks(2),
-            "3W" => effective_date + chrono::Duration::weeks(3),
-            "1M" => Self::add_months(effective_date, 1),
-            "2M" => Self::add_months(effective_date, 2),
-            "3M" => Self::add_months(effective_date, 3),
-            "4M" => Self::add_months(effective_date, 4),
-            "5M" => Self::add_months(effective_date, 5),
-            "6M" => Self::add_months(effective_date, 6),
-            "9M" => Self::add_months(effective_date, 9),
-            "1Y" => Self::add_months(effective_date, 12),
-            "18M" => Self::add_months(effective_date, 18),
-            "2Y" => Self::add_months(effective_date, 24),
-            "3Y" => Self::add_months(effective_date, 36),
-            "4Y" => Self::add_months(effective_date, 48),
-            "5Y" => Self::add_months(effective_date, 60),
-            "6Y" => Self::add_months(effective_date, 72),
-            "7Y" => Self::add_months(effective_date, 84),
-            "8Y" => Self::add_months(effective_date, 96),
-            "9Y" => Self::add_months(effective_date, 108),
-            "10Y" => Self::add_months(effective_date, 120),
-            "12Y" => Self::add_months(effective_date, 144),
-            "15Y" => Self::add_months(effective_date, 180),
-            "20Y" => Self::add_months(effective_date, 240),
-            "25Y" => Self::add_months(effective_date, 300),
-            "30Y" => Self::add_months(effective_date, 360),
-            "40Y" => Self::add_months(effective_date, 480),
-            "50Y" => Self::add_months(effective_date, 600),
+        let t = tenor.to_uppercase();
+        let maturity_date = match t.as_str() {
+            "ON" | "O/N" | "TN" | "T/N" => effective_date + chrono::Duration::days(1),
             "SPOT" => effective_date,
             _ => {
-                // Try to parse numeric tenor
-                if let Some(years) = tenor.strip_suffix('Y').and_then(|s| s.parse::<i32>().ok()) {
+                if let Some(years) = t.strip_suffix('Y').and_then(|s| s.parse::<i32>().ok()) {
                     Self::add_months(effective_date, years * 12)
-                } else if let Some(months) =
-                    tenor.strip_suffix('M').and_then(|s| s.parse::<i32>().ok())
-                {
+                } else if let Some(months) = t.strip_suffix('M').and_then(|s| s.parse::<i32>().ok()) {
                     Self::add_months(effective_date, months)
-                } else if let Some(weeks) =
-                    tenor.strip_suffix('W').and_then(|s| s.parse::<i64>().ok())
-                {
+                } else if let Some(weeks) = t.strip_suffix('W').and_then(|s| s.parse::<i64>().ok()) {
                     effective_date + chrono::Duration::weeks(weeks)
-                } else if let Some(days) =
-                    tenor.strip_suffix('D').and_then(|s| s.parse::<i64>().ok())
-                {
+                } else if let Some(days) = t.strip_suffix('D').and_then(|s| s.parse::<i64>().ok()) {
                     effective_date + chrono::Duration::days(days)
                 } else {
-                    // Default to 1 year
                     Self::add_months(effective_date, 12)
                 }
             }

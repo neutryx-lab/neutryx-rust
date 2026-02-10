@@ -560,326 +560,154 @@ impl FxVolInstrumentBuilder {
 mod tests {
     use super::*;
 
-    // === Delta Tests ===
+    fn make_pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
+    fn make_expiry() -> Date { Date::from_ymd(2026, 6, 15).unwrap() }
 
     #[test]
-    fn test_delta_new_valid() {
+    fn test_delta_validation_and_features() {
+        // Valid deltas
         let d25 = Delta::new(25.0).unwrap();
         assert!((d25.value() - 25.0).abs() < 1e-10);
         assert!((d25.as_decimal() - 0.25).abs() < 1e-10);
-    }
 
-    #[test]
-    fn test_delta_new_at_boundary() {
-        // 50 should be valid (ATM)
         let d50 = Delta::new(50.0).unwrap();
         assert!((d50.value() - 50.0).abs() < 1e-10);
+        assert!((Delta::new(0.001).unwrap().value() - 0.001).abs() < 1e-10);
 
-        // Very small but positive should be valid
-        let d_small = Delta::new(0.001).unwrap();
-        assert!((d_small.value() - 0.001).abs() < 1e-10);
-    }
+        // Invalid deltas
+        assert!(matches!(Delta::new(0.0), Err(FxVolInstrumentError::InvalidDelta(0.0))));
+        assert!(matches!(Delta::new(-10.0), Err(FxVolInstrumentError::InvalidDelta(_))));
+        assert!(matches!(Delta::new(51.0), Err(FxVolInstrumentError::InvalidDelta(51.0))));
 
-    #[test]
-    fn test_delta_new_invalid_zero() {
-        let result = Delta::new(0.0);
-        assert!(matches!(
-            result,
-            Err(FxVolInstrumentError::InvalidDelta(0.0))
-        ));
-    }
-
-    #[test]
-    fn test_delta_new_invalid_negative() {
-        let result = Delta::new(-10.0);
-        assert!(matches!(result, Err(FxVolInstrumentError::InvalidDelta(_))));
-    }
-
-    #[test]
-    fn test_delta_new_invalid_above_50() {
-        let result = Delta::new(51.0);
-        assert!(matches!(
-            result,
-            Err(FxVolInstrumentError::InvalidDelta(51.0))
-        ));
-    }
-
-    #[test]
-    fn test_delta_constants() {
+        // Constants, display, copy
         assert!((Delta::D10.value() - 10.0).abs() < 1e-10);
         assert!((Delta::D25.value() - 25.0).abs() < 1e-10);
         assert!((Delta::ATM.value() - 50.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_delta_display() {
-        let d25 = Delta::D25;
-        assert_eq!(d25.to_string(), "25D");
-    }
-
-    // === FxVolConvention Tests ===
-
-    #[test]
-    fn test_convention_default() {
-        let conv = FxVolConvention::default();
-        assert_eq!(conv.delta_type, DeltaType::SpotDelta);
-        assert_eq!(conv.premium_currency, Currency::USD);
-        assert_eq!(conv.cut_off, CutOffTime::NewYork10am);
-    }
-
-    #[test]
-    fn test_convention_eurusd() {
-        let conv = FxVolConvention::eurusd();
-        assert_eq!(conv.delta_type, DeltaType::SpotDelta);
-        assert_eq!(conv.premium_currency, Currency::USD);
-    }
-
-    #[test]
-    fn test_convention_usdjpy() {
-        let conv = FxVolConvention::usdjpy();
-        assert_eq!(conv.delta_type, DeltaType::PremiumAdjusted);
-        assert_eq!(conv.premium_currency, Currency::JPY);
-    }
-
-    #[test]
-    fn test_convention_for_currency_pair() {
-        let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD);
-        let conv_eurusd = FxVolConvention::for_currency_pair(&eurusd);
-        assert_eq!(conv_eurusd.delta_type, DeltaType::SpotDelta);
-
-        let usdjpy = CurrencyPair::new(Currency::USD, Currency::JPY);
-        let conv_usdjpy = FxVolConvention::for_currency_pair(&usdjpy);
-        assert_eq!(conv_usdjpy.delta_type, DeltaType::PremiumAdjusted);
-
-        let eurjpy = CurrencyPair::new(Currency::EUR, Currency::JPY);
-        let conv_eurjpy = FxVolConvention::for_currency_pair(&eurjpy);
-        assert_eq!(conv_eurjpy.delta_type, DeltaType::PremiumAdjusted);
-    }
-
-    // === FxVolInstrument Tests ===
-
-    fn make_test_currency_pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
-
-    fn make_test_expiry() -> Date { Date::from_ymd(2026, 6, 15).unwrap() }
-
-    #[test]
-    fn test_atm_instrument() {
-        let inst = FxVolInstrument::Atm {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            vol: 0.10,
-            convention: FxVolConvention::eurusd(),
-        };
-
-        assert_eq!(inst.currency_pair(), make_test_currency_pair());
-        assert_eq!(inst.expiry(), make_test_expiry());
-        assert!(inst.validate().is_ok());
-    }
-
-    #[test]
-    fn test_atm_instrument_invalid_vol() {
-        let inst = FxVolInstrument::Atm {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            vol: -0.10,
-            convention: FxVolConvention::eurusd(),
-        };
-
-        assert!(inst.validate().is_err());
-    }
-
-    #[test]
-    fn test_butterfly_instrument() {
-        let inst = FxVolInstrument::Butterfly {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            delta: Delta::D25,
-            vol_spread: 0.005, // 0.5% butterfly
-            convention: FxVolConvention::eurusd(),
-        };
-
-        assert!(inst.validate().is_ok());
-        assert_eq!(inst.to_string(), "EUR/USD 25D BF 2026-06-15");
-    }
-
-    #[test]
-    fn test_risk_reversal_instrument() {
-        let inst = FxVolInstrument::RiskReversal {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            delta: Delta::D25,
-            vol_spread: -0.01, // -1% risk reversal (puts richer)
-            convention: FxVolConvention::eurusd(),
-        };
-
-        assert!(inst.validate().is_ok());
-        assert_eq!(inst.to_string(), "EUR/USD 25D RR 2026-06-15");
-    }
-
-    #[test]
-    fn test_delta_quoted_instrument() {
-        let inst = FxVolInstrument::DeltaQuoted {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            delta: Delta::D25,
-            vol: 0.11,
-            option_type: OptionType::Call,
-            convention: FxVolConvention::eurusd(),
-        };
-
-        assert!(inst.validate().is_ok());
-        assert_eq!(inst.to_string(), "EUR/USD 25D C 2026-06-15");
-    }
-
-    #[test]
-    fn test_delta_quoted_invalid_vol() {
-        let inst = FxVolInstrument::DeltaQuoted {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            delta: Delta::D25,
-            vol: 0.0,
-            option_type: OptionType::Put,
-            convention: FxVolConvention::eurusd(),
-        };
-
-        assert!(inst.validate().is_err());
-    }
-
-    #[test]
-    fn test_instrument_display_atm() {
-        let inst = FxVolInstrument::Atm {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            vol: 0.10,
-            convention: FxVolConvention::eurusd(),
-        };
-
-        assert_eq!(inst.to_string(), "EUR/USD ATM 2026-06-15");
-    }
-
-    // === Clone and PartialEq Tests ===
-
-    #[test]
-    fn test_instrument_clone() {
-        let inst = FxVolInstrument::Atm {
-            currency_pair: make_test_currency_pair(),
-            expiry: make_test_expiry(),
-            vol: 0.10,
-            convention: FxVolConvention::eurusd(),
-        };
-
-        let cloned = inst.clone();
-        assert_eq!(inst, cloned);
-    }
-
-    #[test]
-    fn test_delta_clone() {
+        assert_eq!(Delta::D25.to_string(), "25D");
         let d = Delta::D25;
-        let cloned = d;
-        assert_eq!(d, cloned);
-    }
+        let copied = d;
+        assert_eq!(d, copied);
 
-    // === Delta Type Tests ===
-
-    #[test]
-    fn test_delta_type_default() {
+        // Defaults
         assert_eq!(DeltaType::default(), DeltaType::SpotDelta);
-    }
-
-    #[test]
-    fn test_cut_off_time_default() {
         assert_eq!(CutOffTime::default(), CutOffTime::NewYork10am);
     }
 
-    // === Builder Tests ===
-
     #[test]
-    fn test_builder_atm() {
-        let inst = FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry())
-            .atm(0.10)
-            .build()
-            .unwrap();
+    fn test_fx_vol_convention() {
+        let def = FxVolConvention::default();
+        assert_eq!(def.delta_type, DeltaType::SpotDelta);
+        assert_eq!(def.premium_currency, Currency::USD);
+        assert_eq!(def.cut_off, CutOffTime::NewYork10am);
 
-        assert!(matches!(inst, FxVolInstrument::Atm { vol, .. } if (vol - 0.10).abs() < 1e-10));
+        let eurusd = FxVolConvention::eurusd();
+        assert_eq!(eurusd.delta_type, DeltaType::SpotDelta);
+        assert_eq!(eurusd.premium_currency, Currency::USD);
+
+        let usdjpy = FxVolConvention::usdjpy();
+        assert_eq!(usdjpy.delta_type, DeltaType::PremiumAdjusted);
+        assert_eq!(usdjpy.premium_currency, Currency::JPY);
+
+        // Currency pair lookup
+        let pair_eu = CurrencyPair::new(Currency::EUR, Currency::USD);
+        assert_eq!(FxVolConvention::for_currency_pair(&pair_eu).delta_type, DeltaType::SpotDelta);
+        let pair_uj = CurrencyPair::new(Currency::USD, Currency::JPY);
+        assert_eq!(FxVolConvention::for_currency_pair(&pair_uj).delta_type, DeltaType::PremiumAdjusted);
+        let pair_ej = CurrencyPair::new(Currency::EUR, Currency::JPY);
+        assert_eq!(FxVolConvention::for_currency_pair(&pair_ej).delta_type, DeltaType::PremiumAdjusted);
     }
 
     #[test]
-    fn test_builder_butterfly() {
-        let inst = FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry())
-            .butterfly(Delta::D25, 0.005)
-            .build()
-            .unwrap();
+    fn test_fx_vol_instrument_types() {
+        // ATM
+        let atm = FxVolInstrument::Atm {
+            currency_pair: make_pair(), expiry: make_expiry(), vol: 0.10,
+            convention: FxVolConvention::eurusd(),
+        };
+        assert_eq!(atm.currency_pair(), make_pair());
+        assert_eq!(atm.expiry(), make_expiry());
+        assert!(atm.validate().is_ok());
+        assert_eq!(atm.to_string(), "EUR/USD ATM 2026-06-15");
+        assert_eq!(atm.clone(), atm);
 
-        assert!(
-            matches!(inst, FxVolInstrument::Butterfly { delta, vol_spread, .. }
-            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - 0.005).abs() < 1e-10)
-        );
+        // ATM invalid vol
+        let bad_atm = FxVolInstrument::Atm {
+            currency_pair: make_pair(), expiry: make_expiry(), vol: -0.10,
+            convention: FxVolConvention::eurusd(),
+        };
+        assert!(bad_atm.validate().is_err());
+
+        // Butterfly
+        let bf = FxVolInstrument::Butterfly {
+            currency_pair: make_pair(), expiry: make_expiry(),
+            delta: Delta::D25, vol_spread: 0.005,
+            convention: FxVolConvention::eurusd(),
+        };
+        assert!(bf.validate().is_ok());
+        assert_eq!(bf.to_string(), "EUR/USD 25D BF 2026-06-15");
+
+        // Risk Reversal
+        let rr = FxVolInstrument::RiskReversal {
+            currency_pair: make_pair(), expiry: make_expiry(),
+            delta: Delta::D25, vol_spread: -0.01,
+            convention: FxVolConvention::eurusd(),
+        };
+        assert!(rr.validate().is_ok());
+        assert_eq!(rr.to_string(), "EUR/USD 25D RR 2026-06-15");
+
+        // Delta Quoted (valid + invalid)
+        let dq = FxVolInstrument::DeltaQuoted {
+            currency_pair: make_pair(), expiry: make_expiry(),
+            delta: Delta::D25, vol: 0.11, option_type: OptionType::Call,
+            convention: FxVolConvention::eurusd(),
+        };
+        assert!(dq.validate().is_ok());
+        assert_eq!(dq.to_string(), "EUR/USD 25D C 2026-06-15");
+
+        let bad_dq = FxVolInstrument::DeltaQuoted {
+            currency_pair: make_pair(), expiry: make_expiry(),
+            delta: Delta::D25, vol: 0.0, option_type: OptionType::Put,
+            convention: FxVolConvention::eurusd(),
+        };
+        assert!(bad_dq.validate().is_err());
     }
 
     #[test]
-    fn test_builder_risk_reversal() {
-        let inst = FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry())
-            .risk_reversal(Delta::D25, -0.01)
-            .build()
-            .unwrap();
+    fn test_fx_vol_builder() {
+        let pair = make_pair();
+        let exp = make_expiry();
 
-        assert!(
-            matches!(inst, FxVolInstrument::RiskReversal { delta, vol_spread, .. }
-            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - (-0.01)).abs() < 1e-10)
-        );
-    }
+        // ATM
+        let atm = FxVolInstrumentBuilder::new(pair, exp).atm(0.10).build().unwrap();
+        assert!(matches!(atm, FxVolInstrument::Atm { vol, .. } if (vol - 0.10).abs() < 1e-10));
 
-    #[test]
-    fn test_builder_delta_quoted() {
-        let inst = FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry())
-            .delta_quoted(Delta::D25, 0.11, OptionType::Call)
-            .build()
-            .unwrap();
+        // Butterfly
+        let bf = FxVolInstrumentBuilder::new(pair, exp).butterfly(Delta::D25, 0.005).build().unwrap();
+        assert!(matches!(bf, FxVolInstrument::Butterfly { delta, vol_spread, .. }
+            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - 0.005).abs() < 1e-10));
 
-        assert!(
-            matches!(inst, FxVolInstrument::DeltaQuoted { delta, vol, option_type: OptionType::Call, .. }
-            if (delta.value() - 25.0).abs() < 1e-10 && (vol - 0.11).abs() < 1e-10)
-        );
-    }
+        // Risk Reversal
+        let rr = FxVolInstrumentBuilder::new(pair, exp).risk_reversal(Delta::D25, -0.01).build().unwrap();
+        assert!(matches!(rr, FxVolInstrument::RiskReversal { delta, vol_spread, .. }
+            if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - (-0.01)).abs() < 1e-10));
 
-    #[test]
-    fn test_builder_with_custom_convention() {
-        let custom_conv = FxVolConvention::usdjpy();
-        let inst = FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry())
-            .with_convention(custom_conv)
-            .atm(0.10)
-            .build()
-            .unwrap();
+        // Delta Quoted
+        let dq = FxVolInstrumentBuilder::new(pair, exp).delta_quoted(Delta::D25, 0.11, OptionType::Call).build().unwrap();
+        assert!(matches!(dq, FxVolInstrument::DeltaQuoted { delta, vol, option_type: OptionType::Call, .. }
+            if (delta.value() - 25.0).abs() < 1e-10 && (vol - 0.11).abs() < 1e-10));
 
-        assert_eq!(inst.convention().delta_type, DeltaType::PremiumAdjusted);
-    }
+        // Custom convention
+        let custom = FxVolInstrumentBuilder::new(pair, exp)
+            .with_convention(FxVolConvention::usdjpy()).atm(0.10).build().unwrap();
+        assert_eq!(custom.convention().delta_type, DeltaType::PremiumAdjusted);
 
-    #[test]
-    fn test_builder_no_instrument_type_error() {
-        let result =
-            FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry()).build();
+        // Fluent chain
+        let fluent = FxVolInstrumentBuilder::new(pair, exp)
+            .with_convention(FxVolConvention::eurusd()).butterfly(Delta::D10, 0.003).build().unwrap();
+        assert!(matches!(fluent, FxVolInstrument::Butterfly { .. }));
 
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_builder_invalid_vol_error() {
-        let result = FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry())
-            .atm(-0.10)
-            .build();
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_builder_fluent_chain() {
-        // Test that builder methods can be chained in any order
-        let inst = FxVolInstrumentBuilder::new(make_test_currency_pair(), make_test_expiry())
-            .with_convention(FxVolConvention::eurusd())
-            .butterfly(Delta::D10, 0.003)
-            .build()
-            .unwrap();
-
-        assert!(matches!(inst, FxVolInstrument::Butterfly { .. }));
+        // Errors
+        assert!(FxVolInstrumentBuilder::new(pair, exp).build().is_err());
+        assert!(FxVolInstrumentBuilder::new(pair, exp).atm(-0.10).build().is_err());
     }
 }

@@ -366,212 +366,105 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_energy_type_equality() {
+    fn test_commodity_types() {
         assert_eq!(EnergyType::CrudeOil, EnergyType::CrudeOil);
         assert_ne!(EnergyType::CrudeOil, EnergyType::NaturalGas);
-    }
-
-    #[test]
-    fn test_metal_type_equality() {
         assert_eq!(MetalType::Gold, MetalType::Gold);
         assert_ne!(MetalType::Gold, MetalType::Silver);
-    }
-
-    #[test]
-    fn test_agriculture_type_equality() {
         assert_eq!(AgricultureType::Wheat, AgricultureType::Wheat);
         assert_ne!(AgricultureType::Wheat, AgricultureType::Corn);
-    }
+        assert_eq!(QuantityUnit::Barrels, QuantityUnit::Barrels);
+        assert_ne!(QuantityUnit::Barrels, QuantityUnit::MMBtu);
 
-    #[test]
-    fn test_commodity_type_category() {
         let oil = CommodityType::Energy(EnergyType::CrudeOil);
         assert_eq!(oil.category(), "Energy");
-
-        let gold = CommodityType::Metals(MetalType::Gold);
-        assert_eq!(gold.category(), "Metals");
-
-        let wheat = CommodityType::Agriculture(AgricultureType::Wheat);
-        assert_eq!(wheat.category(), "Agriculture");
+        assert!(oil.to_string().contains("Energy"));
+        assert!(oil.to_string().contains("CrudeOil"));
+        assert_eq!(CommodityType::Metals(MetalType::Gold).category(), "Metals");
+        assert_eq!(CommodityType::Agriculture(AgricultureType::Wheat).category(), "Agriculture");
     }
 
     #[test]
-    fn test_commodity_type_display() {
-        let oil = CommodityType::Energy(EnergyType::CrudeOil);
-        assert!(oil.to_string().contains("Energy"));
-        assert!(oil.to_string().contains("CrudeOil"));
-    }
-
-    fn make_test_forward() -> CommodityForward {
-        CommodityForward {
+    fn test_commodity_instruments_validation() {
+        // Forward: valid + negative qty + empty location + notional_value
+        let fwd = CommodityForward {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
             delivery_location: "Cushing, OK".to_string(),
             delivery_date: Date::from_ymd(2025, 6, 15).unwrap(),
-            quantity: 1000.0,
-            unit: QuantityUnit::Barrels,
-            forward_price: 75.50,
-            currency: Currency::USD,
-        }
-    }
-
-    #[test]
-    fn test_commodity_forward_validate_success() {
-        let fwd = make_test_forward();
+            quantity: 1000.0, unit: QuantityUnit::Barrels,
+            forward_price: 75.50, currency: Currency::USD,
+        };
         assert!(fwd.validate().is_ok());
-    }
-
-    #[test]
-    fn test_commodity_forward_validate_negative_quantity() {
-        let mut fwd = make_test_forward();
-        fwd.quantity = -100.0;
-        assert!(fwd.validate().is_err());
-    }
-
-    #[test]
-    fn test_commodity_forward_validate_empty_location() {
-        let mut fwd = make_test_forward();
-        fwd.delivery_location = "".to_string();
-        assert!(fwd.validate().is_err());
-    }
-
-    #[test]
-    fn test_commodity_forward_notional_value() {
-        let fwd = make_test_forward();
         assert!((fwd.notional_value() - 75500.0).abs() < 0.01);
-    }
+        let mut bad = fwd.clone();
+        bad.quantity = -100.0;
+        assert!(bad.validate().is_err());
+        let mut bad = fwd.clone();
+        bad.delivery_location = "".to_string();
+        assert!(bad.validate().is_err());
 
-    fn make_test_swap() -> CommoditySwap {
-        CommoditySwap {
+        // Swap: valid + invalid dates + empty index
+        let swap = CommoditySwap {
             commodity: CommodityType::Energy(EnergyType::NaturalGas),
-            fixed_price: 3.50,
-            floating_index: "Henry Hub".to_string(),
+            fixed_price: 3.50, floating_index: "Henry Hub".to_string(),
             start_date: Date::from_ymd(2025, 1, 1).unwrap(),
             maturity: Date::from_ymd(2026, 1, 1).unwrap(),
-            quantity_per_period: 10000.0,
-            unit: QuantityUnit::MMBtu,
-            payment_frequency: Frequency::Monthly,
-            currency: Currency::USD,
-        }
-    }
-
-    #[test]
-    fn test_commodity_swap_validate_success() {
-        let swap = make_test_swap();
+            quantity_per_period: 10000.0, unit: QuantityUnit::MMBtu,
+            payment_frequency: Frequency::Monthly, currency: Currency::USD,
+        };
         assert!(swap.validate().is_ok());
-    }
+        let mut bad = swap.clone();
+        bad.maturity = Date::from_ymd(2024, 1, 1).unwrap();
+        assert!(bad.validate().is_err());
+        let mut bad = swap.clone();
+        bad.floating_index = "".to_string();
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_commodity_swap_validate_invalid_dates() {
-        let mut swap = make_test_swap();
-        swap.maturity = Date::from_ymd(2024, 1, 1).unwrap();
-        assert!(swap.validate().is_err());
-    }
-
-    #[test]
-    fn test_commodity_swap_validate_empty_index() {
-        let mut swap = make_test_swap();
-        swap.floating_index = "".to_string();
-        assert!(swap.validate().is_err());
-    }
-
-    fn make_test_vanilla_option() -> CommodityVanillaOption {
-        CommodityVanillaOption {
+        // Vanilla option: valid + negative qty
+        let opt = CommodityVanillaOption {
             commodity: CommodityType::Metals(MetalType::Gold),
-            strike: 2000.0,
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
-            option_type: OptionType::Call,
-            exercise_style: ExerciseStyle::European,
-            quantity: 100.0,
-            unit: QuantityUnit::TroyOunces,
-            settlement_type: SettlementType::Cash,
-            currency: Currency::USD,
-        }
-    }
+            strike: 2000.0, expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            option_type: OptionType::Call, exercise_style: ExerciseStyle::European,
+            quantity: 100.0, unit: QuantityUnit::TroyOunces,
+            settlement_type: SettlementType::Cash, currency: Currency::USD,
+        };
+        assert!(opt.validate().is_ok());
+        let mut bad = opt.clone();
+        bad.quantity = -10.0;
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_commodity_vanilla_option_validate_success() {
-        let option = make_test_vanilla_option();
-        assert!(option.validate().is_ok());
-    }
-
-    #[test]
-    fn test_commodity_vanilla_option_validate_negative_quantity() {
-        let mut option = make_test_vanilla_option();
-        option.quantity = -10.0;
-        assert!(option.validate().is_err());
-    }
-
-    fn make_test_asian_option() -> CommodityAsianOption {
-        CommodityAsianOption {
+        // Asian option: valid + invalid averaging + expiry before averaging
+        let asian = CommodityAsianOption {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
-            strike: 70.0,
-            expiry: Date::from_ymd(2025, 12, 31).unwrap(),
+            strike: 70.0, expiry: Date::from_ymd(2025, 12, 31).unwrap(),
             option_type: OptionType::Call,
             averaging_start: Date::from_ymd(2025, 10, 1).unwrap(),
             averaging_end: Date::from_ymd(2025, 12, 31).unwrap(),
             observation_frequency: Frequency::Daily,
-            quantity: 1000.0,
-            unit: QuantityUnit::Barrels,
-            currency: Currency::USD,
-        }
-    }
+            quantity: 1000.0, unit: QuantityUnit::Barrels, currency: Currency::USD,
+        };
+        assert!(asian.validate().is_ok());
+        let mut bad = asian.clone();
+        bad.averaging_end = Date::from_ymd(2025, 9, 1).unwrap();
+        assert!(bad.validate().is_err());
+        let mut bad = asian.clone();
+        bad.expiry = Date::from_ymd(2025, 11, 1).unwrap();
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_commodity_asian_option_validate_success() {
-        let option = make_test_asian_option();
-        assert!(option.validate().is_ok());
-    }
-
-    #[test]
-    fn test_commodity_asian_option_validate_invalid_averaging_dates() {
-        let mut option = make_test_asian_option();
-        option.averaging_end = Date::from_ymd(2025, 9, 1).unwrap(); // Before start
-        assert!(option.validate().is_err());
-    }
-
-    #[test]
-    fn test_commodity_asian_option_validate_expiry_before_averaging() {
-        let mut option = make_test_asian_option();
-        option.expiry = Date::from_ymd(2025, 11, 1).unwrap(); // Before averaging end
-        assert!(option.validate().is_err());
-    }
-
-    fn make_test_spread_option() -> SpreadOption {
-        SpreadOption {
+        // Spread option: valid + negative qty + negative strike allowed
+        let spread = SpreadOption {
             commodity_1: CommodityType::Energy(EnergyType::CrudeOil),
             commodity_2: CommodityType::Energy(EnergyType::HeatingOil),
-            spread_strike: 10.0, // Crack spread
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            spread_strike: 10.0, expiry: Date::from_ymd(2025, 6, 15).unwrap(),
             option_type: OptionType::Call,
-            quantity: 1000.0,
-            unit: QuantityUnit::Barrels,
-            currency: Currency::USD,
-        }
-    }
-
-    #[test]
-    fn test_spread_option_validate_success() {
-        let option = make_test_spread_option();
-        assert!(option.validate().is_ok());
-    }
-
-    #[test]
-    fn test_spread_option_validate_negative_quantity() {
-        let mut option = make_test_spread_option();
-        option.quantity = -100.0;
-        assert!(option.validate().is_err());
-    }
-
-    #[test]
-    fn test_spread_option_negative_strike_allowed() {
-        let mut option = make_test_spread_option();
-        option.spread_strike = -5.0; // Negative spread is valid
-        assert!(option.validate().is_ok());
-    }
-
-    #[test]
-    fn test_quantity_unit_equality() {
-        assert_eq!(QuantityUnit::Barrels, QuantityUnit::Barrels);
-        assert_ne!(QuantityUnit::Barrels, QuantityUnit::MMBtu);
+            quantity: 1000.0, unit: QuantityUnit::Barrels, currency: Currency::USD,
+        };
+        assert!(spread.validate().is_ok());
+        let mut bad = spread.clone();
+        bad.quantity = -100.0;
+        assert!(bad.validate().is_err());
+        let mut ok = spread.clone();
+        ok.spread_strike = -5.0;
+        assert!(ok.validate().is_ok());
     }
 }

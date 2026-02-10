@@ -294,165 +294,93 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_asset_class_display() {
+    fn test_enums_and_traits() {
+        // AssetClass: display, as_str, eq, hash
         assert_eq!(AssetClass::Rates.to_string(), "Rates");
         assert_eq!(AssetClass::Fx.to_string(), "FX");
         assert_eq!(AssetClass::Equity.to_string(), "Equity");
         assert_eq!(AssetClass::Credit.to_string(), "Credit");
         assert_eq!(AssetClass::Commodity.to_string(), "Commodity");
-    }
-
-    #[test]
-    fn test_asset_class_as_str() {
         assert_eq!(AssetClass::Rates.as_str(), "Rates");
         assert_eq!(AssetClass::Fx.as_str(), "FX");
-    }
-
-    #[test]
-    fn test_asset_class_equality() {
         assert_eq!(AssetClass::Rates, AssetClass::Rates);
         assert_ne!(AssetClass::Rates, AssetClass::Fx);
-    }
-
-    #[test]
-    fn test_asset_class_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
+        let mut set = std::collections::HashSet::new();
         set.insert(AssetClass::Rates);
         set.insert(AssetClass::Fx);
-        set.insert(AssetClass::Rates); // Duplicate
+        set.insert(AssetClass::Rates);
         assert_eq!(set.len(), 2);
-    }
 
-    #[test]
-    fn test_exercise_style_equality() {
+        // ExerciseStyle, PayerReceiver, Barrier
         assert_eq!(ExerciseStyle::European, ExerciseStyle::European);
         assert_ne!(ExerciseStyle::European, ExerciseStyle::American);
-    }
-
-    #[test]
-    fn test_payer_receiver_opposite() {
         assert_eq!(PayerReceiver::Payer.opposite(), PayerReceiver::Receiver);
         assert_eq!(PayerReceiver::Receiver.opposite(), PayerReceiver::Payer);
-    }
-
-    #[test]
-    fn test_payer_receiver_sign() {
         assert_eq!(PayerReceiver::Payer.sign(), 1.0);
         assert_eq!(PayerReceiver::Receiver.sign(), -1.0);
-    }
-
-    #[test]
-    fn test_barrier_type_equality() {
         assert_eq!(BarrierType::KnockIn, BarrierType::KnockIn);
         assert_ne!(BarrierType::KnockIn, BarrierType::KnockOut);
-    }
-
-    #[test]
-    fn test_barrier_direction_equality() {
         assert_eq!(BarrierDirection::Up, BarrierDirection::Up);
         assert_ne!(BarrierDirection::Up, BarrierDirection::Down);
     }
 
     #[test]
-    fn test_notional_schedule_constant() {
-        let schedule = NotionalSchedule::constant(1_000_000.0);
-        assert!(schedule.is_constant());
-        assert_eq!(schedule.notional_at(0), 1_000_000.0);
-        assert_eq!(schedule.notional_at(10), 1_000_000.0); // Extrapolation
+    fn test_notional_schedule() {
+        // Constant
+        let c = NotionalSchedule::constant(1_000_000.0);
+        assert!(c.is_constant());
+        assert_eq!(c.notional_at(0), 1_000_000.0);
+        assert_eq!(c.notional_at(10), 1_000_000.0);
+
+        // Amortising
+        let a = NotionalSchedule::from_schedule(vec![1_000_000.0, 800_000.0, 600_000.0]);
+        assert!(!a.is_constant());
+        assert_eq!(a.notional_at(0), 1_000_000.0);
+        assert_eq!(a.notional_at(1), 800_000.0);
+        assert_eq!(a.notional_at(2), 600_000.0);
+        assert_eq!(a.notional_at(5), 600_000.0);
+
+        // Default + clone
+        let d = NotionalSchedule::default();
+        assert!(d.is_constant());
+        assert_eq!(d.notional_at(0), 1_000_000.0);
+        let cloned = NotionalSchedule::from_schedule(vec![100.0, 200.0]);
+        assert_eq!(cloned.clone(), cloned);
     }
 
     #[test]
-    fn test_notional_schedule_amortising() {
-        let schedule = NotionalSchedule::from_schedule(vec![1_000_000.0, 800_000.0, 600_000.0]);
-        assert!(!schedule.is_constant());
-        assert_eq!(schedule.notional_at(0), 1_000_000.0);
-        assert_eq!(schedule.notional_at(1), 800_000.0);
-        assert_eq!(schedule.notional_at(2), 600_000.0);
-        assert_eq!(schedule.notional_at(5), 600_000.0); // Extrapolation
-    }
+    fn test_payment_schedule() {
+        let s = Date::from_ymd(2025, 1, 1).unwrap();
 
-    #[test]
-    fn test_notional_schedule_default() {
-        let schedule = NotionalSchedule::default();
-        assert!(schedule.is_constant());
-        assert_eq!(schedule.notional_at(0), 1_000_000.0);
-    }
+        // Annual 5Y
+        let ann = PaymentSchedule::generate(s, Date::from_ymd(2030, 1, 1).unwrap(), Frequency::Annual, 0);
+        assert_eq!(ann.num_periods(), 5);
+        assert_eq!(ann.start_date(), Some(s));
+        assert_eq!(ann.end_date(), Some(Date::from_ymd(2030, 1, 1).unwrap()));
 
-    #[test]
-    fn test_notional_schedule_clone() {
-        let schedule = NotionalSchedule::from_schedule(vec![100.0, 200.0]);
-        let cloned = schedule.clone();
-        assert_eq!(schedule, cloned);
-    }
+        // SemiAnnual 2Y
+        let semi = PaymentSchedule::generate(s, Date::from_ymd(2027, 1, 1).unwrap(), Frequency::SemiAnnual, 0);
+        assert_eq!(semi.num_periods(), 4);
 
-    // PaymentSchedule tests
+        // Quarterly 1Y
+        let q = PaymentSchedule::generate(s, Date::from_ymd(2026, 1, 1).unwrap(), Frequency::Quarterly, 0);
+        assert_eq!(q.num_periods(), 4);
 
-    #[test]
-    fn test_payment_schedule_generate_annual() {
-        let start = Date::from_ymd(2025, 1, 1).unwrap();
-        let end = Date::from_ymd(2030, 1, 1).unwrap();
-        let schedule = PaymentSchedule::generate(start, end, Frequency::Annual, 0);
+        // With payment lag
+        let lag = PaymentSchedule::generate(s, Date::from_ymd(2026, 1, 1).unwrap(), Frequency::Annual, 2);
+        assert_eq!(lag.num_periods(), 1);
+        assert_eq!(lag.payment_dates()[0], Date::from_ymd(2026, 1, 3).unwrap());
 
-        assert_eq!(schedule.num_periods(), 5);
-        assert_eq!(schedule.start_date(), Some(start));
-        assert_eq!(schedule.end_date(), Some(end));
-    }
+        // From tenor
+        let tenor = PaymentSchedule::generate_from_tenor(s, Tenor::FiveYears, Frequency::Annual, 0);
+        assert_eq!(tenor.num_periods(), 5);
 
-    #[test]
-    fn test_payment_schedule_generate_semiannual() {
-        let start = Date::from_ymd(2025, 1, 1).unwrap();
-        let end = Date::from_ymd(2027, 1, 1).unwrap();
-        let schedule = PaymentSchedule::generate(start, end, Frequency::SemiAnnual, 0);
-
-        assert_eq!(schedule.num_periods(), 4);
-    }
-
-    #[test]
-    fn test_payment_schedule_generate_quarterly() {
-        let start = Date::from_ymd(2025, 1, 1).unwrap();
-        let end = Date::from_ymd(2026, 1, 1).unwrap();
-        let schedule = PaymentSchedule::generate(start, end, Frequency::Quarterly, 0);
-
-        assert_eq!(schedule.num_periods(), 4);
-    }
-
-    #[test]
-    fn test_payment_schedule_generate_with_lag() {
-        let start = Date::from_ymd(2025, 1, 1).unwrap();
-        let end = Date::from_ymd(2026, 1, 1).unwrap();
-        let schedule = PaymentSchedule::generate(start, end, Frequency::Annual, 2);
-
-        assert_eq!(schedule.num_periods(), 1);
-        // Payment date should be 2 days after end date
-        let payment_dates = schedule.payment_dates();
-        assert_eq!(payment_dates[0], Date::from_ymd(2026, 1, 3).unwrap());
-    }
-
-    #[test]
-    fn test_payment_schedule_generate_from_tenor() {
-        let start = Date::from_ymd(2025, 1, 1).unwrap();
-        let schedule =
-            PaymentSchedule::generate_from_tenor(start, Tenor::FiveYears, Frequency::Annual, 0);
-
-        assert_eq!(schedule.num_periods(), 5);
-    }
-
-    #[test]
-    fn test_payment_schedule_empty() {
-        let schedule = PaymentSchedule::empty();
-        assert!(schedule.is_empty());
-        assert_eq!(schedule.num_periods(), 0);
-        assert_eq!(schedule.start_date(), None);
-        assert_eq!(schedule.end_date(), None);
-    }
-
-    #[test]
-    fn test_payment_schedule_clone() {
-        let start = Date::from_ymd(2025, 1, 1).unwrap();
-        let end = Date::from_ymd(2026, 1, 1).unwrap();
-        let schedule = PaymentSchedule::generate(start, end, Frequency::Annual, 0);
-        let cloned = schedule.clone();
-        assert_eq!(schedule, cloned);
+        // Empty + clone
+        let e = PaymentSchedule::empty();
+        assert!(e.is_empty());
+        assert_eq!(e.num_periods(), 0);
+        assert_eq!(e.start_date(), None);
+        assert_eq!(e.end_date(), None);
+        assert_eq!(ann.clone(), ann);
     }
 }
