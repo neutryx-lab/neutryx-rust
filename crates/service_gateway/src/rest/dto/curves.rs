@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum BootstrapMethod {
+    /// Iterative bootstrapping (default)
     #[default]
     Bootstrapping,
+    /// Global optimisation
     Global,
 }
 
@@ -182,9 +184,13 @@ pub struct DiscountFactorRequest {
 /// Response with discount factor
 #[derive(Debug, Clone, Serialize)]
 pub struct DiscountFactorResponse {
+    /// Curve ID used for the lookup
     pub curve_id: String,
+    /// Time in years
     pub time: f64,
+    /// Discount factor at the given time
     pub discount_factor: f64,
+    /// Zero rate (continuously compounded) at the given time
     pub zero_rate: f64,
 }
 
@@ -202,9 +208,13 @@ pub struct ForwardRateRequest {
 /// Response with forward rate
 #[derive(Debug, Clone, Serialize)]
 pub struct ForwardRateResponse {
+    /// Curve ID used for the lookup
     pub curve_id: String,
+    /// Start time in years
     pub start_time: f64,
+    /// End time in years
     pub end_time: f64,
+    /// Forward rate for the period
     pub forward_rate: f64,
 }
 

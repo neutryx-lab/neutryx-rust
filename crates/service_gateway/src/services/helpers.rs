@@ -54,7 +54,7 @@ pub fn parse_uuid(id_str: &str, entity_name: &str) -> Result<Uuid, ServerError> 
         .map_err(|_| ServerError::InvalidRequest(format!("Invalid {entity_name} ID format")))
 }
 
-/// Parse a UUID and look it up in a [`TypedCache`], returning
+/// Parse a UUID and look it up in a [`crate::state::TypedCache`], returning
 /// `ServerError::NotFound` on cache miss.
 pub fn resolve_cached<T: Clone>(
     cache: &crate::state::TypedCache<T>,

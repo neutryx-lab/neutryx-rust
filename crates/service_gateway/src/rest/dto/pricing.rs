@@ -6,10 +6,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum InstrumentType {
+    /// Vanilla option (American or European)
     VanillaOption,
+    /// European-style option
     EuropeanOption,
+    /// Forward contract
     Forward,
+    /// Interest rate swap
     Swap,
+    /// Forward rate agreement
     Fra,
 }
 
@@ -44,10 +49,15 @@ fn default_is_call() -> bool { true }
 /// Greeks computed for an instrument
 #[derive(Debug, Clone, Serialize)]
 pub struct GreeksResponse {
+    /// Delta (dV/dS)
     pub delta: f64,
+    /// Gamma (d²V/dS²)
     pub gamma: f64,
+    /// Vega (dV/dσ)
     pub vega: f64,
+    /// Theta (dV/dt)
     pub theta: f64,
+    /// Rho (dV/dr)
     pub rho: f64,
 }
 
@@ -76,9 +86,12 @@ pub struct PortfolioPricingRequest {
 /// Single instrument result in portfolio
 #[derive(Debug, Clone, Serialize)]
 pub struct PortfolioInstrumentResult {
+    /// Calculated price (present value)
     pub price: f64,
+    /// Greeks if computed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub greeks: Option<GreeksResponse>,
+    /// Error message if pricing failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
@@ -101,6 +114,8 @@ pub struct PortfolioPricingResponse {
 /// Health check response
 #[derive(Debug, Clone, Serialize)]
 pub struct HealthResponse {
+    /// Service status (e.g. "ok")
     pub status: String,
+    /// Service version
     pub version: String,
 }

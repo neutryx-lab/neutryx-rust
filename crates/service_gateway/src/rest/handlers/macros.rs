@@ -10,6 +10,9 @@
 //! `Arc`, `State`, `Json`, `AppJson`, `ServerError`, `AppState`.
 //! Path macros additionally need `Path`; created macros need `StatusCode`.
 
+// Some macros are only used by feature-gated handler modules.
+#![allow(unused_macros)]
+
 /// State + JSON body -> `Result<Json<Resp>, ServerError>`
 ///
 /// Service signature: `fn(&Req, &AppState) -> Result<Resp, ServerError>`

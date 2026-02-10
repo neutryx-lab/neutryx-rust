@@ -84,33 +84,46 @@ impl<T: Clone> Default for TypedCache<T> {
 /// Curve cache entry
 #[derive(Debug, Clone)]
 pub struct CurveEntry {
+    /// Bootstrapped yield curve
     pub curve: BootstrappedCurve<f64>,
+    /// Market instruments used to build the curve
     pub instruments: Vec<InstrumentInput>,
 }
 
 /// Simplified instrument input for caching
 #[derive(Debug, Clone)]
 pub struct InstrumentInput {
+    /// Instrument type (e.g. "deposit", "swap")
     pub instrument_type: String,
+    /// Tenor string (e.g. "3M", "1Y")
     pub tenor: String,
+    /// Par rate (as decimal)
     pub rate: f64,
 }
 
 /// FX volatility surface cache entry
 #[derive(Debug, Clone)]
 pub struct FxVolEntry {
+    /// Currency pair (e.g. "USDJPY")
     pub currency_pair: String,
+    /// Surface type (e.g. "SABR")
     pub surface_type: String,
+    /// Calibrated SABR parameters per expiry slice
     pub calibrated_params: Vec<SabrParams>,
 }
 
 /// SABR parameters for a single expiry slice
 #[derive(Debug, Clone)]
 pub struct SabrParams {
+    /// Expiry in years
     pub expiry: f64,
+    /// SABR alpha (vol-of-vol initial level)
     pub alpha: f64,
+    /// SABR beta (CEV exponent)
     pub beta: f64,
+    /// SABR rho (spot-vol correlation)
     pub rho: f64,
+    /// SABR nu (vol-of-vol)
     pub nu: f64,
 }
 
