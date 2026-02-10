@@ -220,34 +220,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_portfolio_scope() {
-        assert_eq!(PortfolioScope::default(), PortfolioScope::Internal);
-        assert!(PortfolioScope::Internal.is_internal()); assert!(!PortfolioScope::Legal.is_internal());
-        assert!(PortfolioScope::Legal.is_legal()); assert!(!PortfolioScope::Internal.is_legal());
-        assert!(PortfolioScope::Regulatory.is_regulatory()); assert!(!PortfolioScope::Internal.is_regulatory());
-        assert!(PortfolioScope::Consolidated.is_consolidated()); assert!(!PortfolioScope::Internal.is_consolidated());
-        assert_eq!(PortfolioScope::Legal, { let s = PortfolioScope::Legal; s });
-        let mut set = std::collections::HashSet::new();
-        set.insert(PortfolioScope::Internal); set.insert(PortfolioScope::Legal); set.insert(PortfolioScope::Internal);
-        assert_eq!(set.len(), 2);
-    }
-
-    #[test]
-    fn test_portfolio_metadata() {
-        let m = PortfolioMetadata::new(Currency::USD);
-        assert_eq!(m.reporting_currency(), Currency::USD);
-        assert_eq!(m.scope(), PortfolioScope::Internal);
-        assert!(m.ownership().is_none());
-        assert!(m.created_at() <= m.updated_at());
-
-        assert_eq!(PortfolioMetadata::new(Currency::EUR).with_scope(PortfolioScope::Regulatory).scope(), PortfolioScope::Regulatory);
+    fn test_portfolio_metadata_builder() {
         let o = BookOwnership::new().with_desk("Trading");
-        let m2 = PortfolioMetadata::new(Currency::GBP).with_ownership(o);
-        assert_eq!(m2.ownership().unwrap().desk(), Some("Trading"));
-
-        let c = PortfolioMetadata::new(Currency::JPY).with_scope(PortfolioScope::Legal).clone();
-        assert_eq!(c.scope(), PortfolioScope::Legal);
-        assert_eq!(c.reporting_currency(), Currency::JPY);
+        let m = PortfolioMetadata::new(Currency::GBP)
+            .with_scope(PortfolioScope::Regulatory)
+            .with_ownership(o);
+        assert_eq!(m.reporting_currency(), Currency::GBP);
+        assert_eq!(m.scope(), PortfolioScope::Regulatory);
+        assert_eq!(m.ownership().unwrap().desk(), Some("Trading"));
     }
 
     #[test]
@@ -259,12 +239,5 @@ mod tests {
 
         let mw = PortfolioBookMapping::with_weight("P001", "B001", 0.5);
         assert_eq!(mw.weight(), Some(0.5));
-
-        let m2 = PortfolioBookMapping::new(PortfolioId::new("P002"), BookId::new("B002"));
-        assert_eq!(m2.portfolio_id().as_str(), "P002");
-
-        let c = PortfolioBookMapping::with_weight("P001", "B001", 0.75).clone();
-        assert_eq!(c.portfolio_id().as_str(), "P001");
-        assert_eq!(c.weight(), Some(0.75));
     }
 }

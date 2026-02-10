@@ -32,7 +32,6 @@ serde_json = "1.0"
 [features]
 default = ["serde", "equity", "parallel", "external-numerics", "rng"]
 enzyme-mode = []                   # Production mode (Enzyme AD)
-execution-trace = []               # Execution trace mode for computation graph extraction
 serde = ["dep:serde", "chrono/serde", "infra_domain/serde"]  # Serialisation support
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
 rng = ["dep:rand", "dep:rand_distr"]  # Random number generation (PRNG, QMC placeholders)

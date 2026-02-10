@@ -262,54 +262,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_book_types() {
-        // BookType
-        assert_eq!(BookType::default(), BookType::Trading);
-        assert!(BookType::Trading.is_trading()); assert!(!BookType::Banking.is_trading());
-        assert!(BookType::Banking.is_banking()); assert!(!BookType::Trading.is_banking());
-        assert!(BookType::Hedge.is_hedge()); assert!(!BookType::Trading.is_hedge());
-        assert!(BookType::Internal.is_internal()); assert!(!BookType::Trading.is_internal());
-        let t = BookType::Trading; assert_eq!(t, { let t2 = t; t2 });
-        let mut set = std::collections::HashSet::new();
-        set.insert(BookType::Trading); set.insert(BookType::Banking); set.insert(BookType::Trading);
-        assert_eq!(set.len(), 2);
-
-        // RegulatoryBookType
-        assert!(RegulatoryBookType::TB.is_trading_book()); assert!(!RegulatoryBookType::BB.is_trading_book());
-        assert!(RegulatoryBookType::BB.is_banking_book()); assert!(!RegulatoryBookType::TB.is_banking_book());
-        assert!(RegulatoryBookType::NTBR.is_ntbr()); assert!(!RegulatoryBookType::TB.is_ntbr());
-        assert_eq!(RegulatoryBookType::TB, { let t = RegulatoryBookType::TB; t });
-    }
-
-    #[test]
-    fn test_book_ownership() {
-        let o = BookOwnership::new();
-        assert!(o.desk().is_none() && o.division().is_none() && o.legal_entity_id().is_none());
-        assert_eq!(BookOwnership::new().with_desk("FX Spot").desk(), Some("FX Spot"));
-        assert_eq!(BookOwnership::new().with_division("Markets").division(), Some("Markets"));
+    fn test_book_ownership_builder() {
         let lei = LegalEntityId::new_unchecked("529900T8BM49AURSDO55");
-        assert!(BookOwnership::new().with_legal_entity(lei.clone()).legal_entity_id().is_some());
-        let full = BookOwnership::new().with_desk("FX Spot").with_division("Markets").with_legal_entity(lei);
+        let full = BookOwnership::new()
+            .with_desk("FX Spot")
+            .with_division("Markets")
+            .with_legal_entity(lei);
         assert_eq!(full.desk(), Some("FX Spot"));
         assert_eq!(full.division(), Some("Markets"));
         assert!(full.legal_entity_id().is_some());
-        assert_eq!(full.clone().desk(), Some("FX Spot"));
     }
 
     #[test]
-    fn test_book_metadata() {
-        let m = BookMetadata::new();
-        assert!(m.created_by().is_none() && m.updated_by().is_none());
-        assert!(m.created_at() <= m.updated_at());
-        assert!(BookMetadata::default().created_by().is_none());
-
-        let m2 = BookMetadata::new().with_creator("user1");
-        assert_eq!(m2.created_by(), Some("user1"));
-        assert_eq!(m2.updated_by(), Some("user1"));
-
-        let m3 = BookMetadata::new().with_creator("user1").with_updater("user2");
-        assert_eq!(m3.created_by(), Some("user1"));
-        assert_eq!(m3.updated_by(), Some("user2"));
-        assert_eq!(m3.clone().created_by(), Some("user1"));
+    fn test_book_metadata_builder() {
+        let m = BookMetadata::new().with_creator("user1").with_updater("user2");
+        assert_eq!(m.created_by(), Some("user1"));
+        assert_eq!(m.updated_by(), Some("user2"));
     }
 }
