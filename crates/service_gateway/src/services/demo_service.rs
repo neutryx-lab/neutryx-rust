@@ -29,11 +29,43 @@ use crate::{
 /// Demo service providing API endpoints for demo_gui
 pub struct DemoService;
 
-impl DemoService {
-    // =========================================================================
-    // Configuration API
-    // =========================================================================
+/// Create a `MarketRate` with common defaults (quote_type="Mid", source="Internal").
+fn make_market_rate(
+    id: String, currency: String, tenor: String, rate_type: String,
+    value: f64, rate_index: Option<String>, timestamp: &str,
+) -> MarketRate {
+    MarketRate {
+        id, currency, tenor, rate_type, value, rate_index,
+        quote_type: Some("Mid".to_string()),
+        source: "Internal".to_string(),
+        timestamp: timestamp.to_string(),
+        is_stale: false,
+    }
+}
 
+/// Parse importance string to enum.
+fn parse_importance(s: &str) -> Importance {
+    match s.to_lowercase().as_str() {
+        "critical" => Importance::Critical,
+        "high" => Importance::High,
+        "medium" => Importance::Medium,
+        _ => Importance::Low,
+    }
+}
+
+/// Load a JSON file, extract an array by key, and parse each element.
+fn load_and_collect<T>(
+    path: &Path, key: &str, parser: fn(&serde_json::Value) -> Option<T>,
+) -> Vec<T> {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+        .and_then(|d| d.get(key).and_then(|a| a.as_array().cloned()))
+        .map(|arr| arr.iter().filter_map(parser).collect())
+        .unwrap_or_default()
+}
+
+impl DemoService {
     /// Get application configuration
     pub fn get_config(_state: &Arc<AppState>) -> Result<AppConfigResponse, ServerError> {
         // Load currencies from config
@@ -102,10 +134,6 @@ impl DemoService {
             rate_index_by_currency,
         })
     }
-
-    // =========================================================================
-    // Instruments API
-    // =========================================================================
 
     /// Get available instruments
     pub fn get_instruments(_state: &Arc<AppState>) -> Result<InstrumentsResponse, ServerError> {
@@ -242,10 +270,6 @@ impl DemoService {
         Ok(InstrumentsResponse { instruments })
     }
 
-    // =========================================================================
-    // Trade Expansion API
-    // =========================================================================
-
     /// Expand a trade request into cashflows
     pub fn expand_trade(
         request: &TradeExpandRequest,
@@ -353,10 +377,6 @@ impl DemoService {
             },
         })
     }
-
-    // =========================================================================
-    // Pricing API
-    // =========================================================================
 
     /// Price a trade using `GenericPricer`
     pub fn price_trade(
@@ -471,10 +491,6 @@ impl DemoService {
         })
     }
 
-    // =========================================================================
-    // Market Data API
-    // =========================================================================
-
     /// Get market rates
     pub fn get_market_rates(_state: &Arc<AppState>) -> Result<MarketRatesResponse, ServerError> {
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
@@ -497,18 +513,11 @@ impl DemoService {
                                     quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
                                 let index = quote.get("index").and_then(|i| i.as_str());
 
-                                rates.push(MarketRate {
-                                    id: format!("{}-{}-{}", currency, rate_type, tenor),
-                                    currency: currency.clone(),
-                                    tenor: tenor.to_string(),
-                                    rate_type: rate_type.clone(),
-                                    value,
-                                    rate_index: index.map(String::from),
-                                    quote_type: Some("Mid".to_string()),
-                                    source: "Internal".to_string(),
-                                    timestamp: timestamp.clone(),
-                                    is_stale: false,
-                                });
+                                rates.push(make_market_rate(
+                                    format!("{currency}-{rate_type}-{tenor}"),
+                                    currency.clone(), tenor.to_string(), rate_type.clone(),
+                                    value, index.map(String::from), &timestamp,
+                                ));
                             }
                         }
                     }
@@ -554,18 +563,11 @@ impl DemoService {
                                 continue;
                             }
 
-                            rates.push(MarketRate {
-                                id,
-                                currency: currency.to_string(),
-                                tenor: tenor.to_string(),
-                                rate_type: instr_type.to_string(),
-                                value: rate,
-                                rate_index: Some(index_name.to_uppercase()),
-                                quote_type: Some("Mid".to_string()),
-                                source: "Internal".to_string(),
-                                timestamp: timestamp.clone(),
-                                is_stale: false,
-                            });
+                            rates.push(make_market_rate(
+                                id, currency.to_string(), tenor.to_string(),
+                                instr_type.to_string(), rate,
+                                Some(index_name.to_uppercase()), &timestamp,
+                            ));
                         }
                     }
                 }
@@ -900,10 +902,6 @@ impl DemoService {
         Ok(())
     }
 
-    // =========================================================================
-    // Conventions API
-    // =========================================================================
-
     /// Get conventions
     pub fn get_conventions(_state: &Arc<AppState>) -> Result<ConventionsResponse, ServerError> {
         let conv_path = Path::new("demo/data/input/conventions/conventions.json");
@@ -985,10 +983,6 @@ impl DemoService {
             .find(|c| c.id == id)
             .ok_or_else(|| ServerError::NotFound(format!("Convention {} not found", id)))
     }
-
-    // =========================================================================
-    // Events API
-    // =========================================================================
 
     /// Get market events
     pub fn get_events(_state: &Arc<AppState>) -> Result<EventsResponse, ServerError> {
@@ -1313,10 +1307,6 @@ impl DemoService {
         Ok(HolidaysResponse { holidays })
     }
 
-    // =========================================================================
-    // Curves API (additional endpoints)
-    // =========================================================================
-
     /// Get available curves
     pub fn get_available_curves(
         state: &Arc<AppState>,
@@ -1407,10 +1397,6 @@ impl DemoService {
         Ok(CurveInstrumentsResponse { instruments })
     }
 
-    // =========================================================================
-    // Export API
-    // =========================================================================
-
     /// Export market data
     pub fn export_market_data(
         format: ExportFormat,
@@ -1445,13 +1431,7 @@ impl DemoService {
         }
     }
 
-    // =========================================================================
-    // Rate Instrument API (market-convention-instrument)
-    // =========================================================================
-
-    /// Get instrument details for a rate
-    ///
-    /// Creates a MarketInstrument from the rate and returns its details.
+    /// Get instrument details for a rate.
     pub fn get_rate_instrument(
         rate_id: &str,
         state: &Arc<AppState>,
@@ -1785,10 +1765,6 @@ impl DemoService {
         days / year_basis
     }
 
-    // =========================================================================
-    // Rate Index API (market-convention-instrument)
-    // =========================================================================
-
     /// Get all rate indices
     pub fn get_rate_indices(state: &Arc<AppState>) -> Result<RateIndicesResponse, ServerError> {
         // Load from rate_indices.json
@@ -1998,10 +1974,6 @@ impl DemoService {
     }
 }
 
-// =============================================================================
-// GenericPricer helper functions
-// =============================================================================
-
 /// Parse a "YYYY-MM-DD" date string into `SimpleDate`.
 fn parse_simple_date(date_str: &str) -> Result<SimpleDate, ServerError> {
     let parts: Vec<&str> = date_str.split('-').collect();
@@ -2169,10 +2141,6 @@ mod tests {
         assert!(!types.types.is_empty());
     }
 
-    // =========================================================================
-    // Rate Instrument API tests
-    // =========================================================================
-
     #[test]
     fn test_get_rate_indices() {
         if !demo_data_available() {
@@ -2312,10 +2280,6 @@ mod tests {
         let yf_gbp = DemoService::calculate_year_fraction(start, end, "GBP");
         assert!((yf_gbp - 181.0 / 365.0).abs() < 1e-10);
     }
-
-    // =========================================================================
-    // Rate Instrument and Cashflow API tests
-    // =========================================================================
 
     #[test]
     fn test_get_rate_instrument_usd_swap() {

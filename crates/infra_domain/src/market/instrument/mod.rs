@@ -580,7 +580,7 @@ mod tests {
         assert!(cds().validate().is_ok());
 
         // Invalid instruments
-        let mut bad_swaption = Swaption {
+        let bad_swaption = Swaption {
             underlying_swap_tenor: Tenor::TenYears,
             expiry: Date::from_ymd(2026, 1, 15).unwrap(),
             exercise_type: ExerciseType::European,
@@ -590,7 +590,7 @@ mod tests {
         };
         assert!(InstrumentDefinition::Swaption(bad_swaption).validate().is_err());
 
-        let mut bad_fx = FxSpot {
+        let bad_fx = FxSpot {
             currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
             spot_rate: -1.0, settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
             notional: 1_000_000.0, notional_currency: Currency::EUR,
