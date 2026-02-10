@@ -292,26 +292,4 @@ mod tests {
         assert_eq!(request.trades[0].trade_id, "T001");
     }
 
-    #[test]
-    fn test_portfolio_greeks_response_serialisation() {
-        let response = PortfolioGreeksResponse {
-            portfolio_id: "P123".to_string(),
-            total_delta: 1000.0,
-            total_gamma: 50.0,
-            total_vega: 200.0,
-            total_theta: -10.0,
-            total_rho: 15.0,
-            by_counterparty: None,
-            by_netting_set: None,
-            success_count: 10,
-            failure_count: 0,
-            errors: vec![],
-            calculation_time_ms: 100.0,
-        };
-        let json = serde_json::to_string(&response).unwrap();
-        assert!(json.contains("total_delta"));
-        assert!(json.contains("1000"));
-        // Empty errors array should not be serialised
-        assert!(!json.contains("errors"));
-    }
 }

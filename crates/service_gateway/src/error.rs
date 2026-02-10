@@ -152,9 +152,8 @@ impl IntoResponse for ServerError {
             | ServerError::Model(msg)
             | ServerError::Volatility(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
             // CLI-originated errors
-            ServerError::Config(msg) | ServerError::Io(msg) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, msg.to_string())
-            }
+            ServerError::Config(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+            ServerError::Io(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             ServerError::FileNotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
             ServerError::InvalidArgument(msg) | ServerError::Parse(msg) => {
                 (StatusCode::BAD_REQUEST, msg.clone())

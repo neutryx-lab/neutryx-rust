@@ -11,7 +11,7 @@
 
 use pricer_core::{
     math::{
-        distributions::norm_inv_cdf,
+        normal_dist::norm_inv_cdf,
         smoothing::{smooth_indicator, smooth_max, smooth_sqrt},
     },
     traits::{priceable::Differentiable, Float},

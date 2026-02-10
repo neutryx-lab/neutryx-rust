@@ -176,7 +176,7 @@ Codebase redundancy cleanup performed:
 |------|-------------|--------|
 | ndarray-removal | Removed ndarray dependency, updated imports to infra_domain | ✅ |
 | quoteid-migration | Refactored TickerMapping to use QuoteId instead of RateId | ✅ |
-| ai-fixer-ci | Self-healing CI module (scripts/ai_fixer/, Gemini API) | ✅ |
+| ai-fixer-ci | Self-healing CI module (.github/ai_fixer/, Gemini API) | ✅ |
 | service-gateway-reenable | Re-enabled service_gateway in workspace members | ✅ |
 
 ### Future Maintenance (Low Priority)
@@ -224,7 +224,7 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
-| 2026-02-09 | Steering sync: service_gateway re-enabled in workspace, ndarray dependency removed, TickerMapping→QuoteId migration, AI Fixer self-healing CI (scripts/ai_fixer/). 4 active specs unchanged. Total: 48 completed specs |
+| 2026-02-09 | Steering sync: service_gateway re-enabled in workspace, ndarray dependency removed, TickerMapping→QuoteId migration, AI Fixer self-healing CI (.github/ai_fixer/). 4 active specs unchanged. Total: 48 completed specs |
 | 2026-02-04 | Steering sync: Vue 3 frontend migration (Vue + Pinia + Tailwind CSS), CurveDefinition/ConventionTemplate/MarketInstrument patterns, CurveRegistry. 4 active specs unchanged. Total: 48 specs |
 | 2026-02-02 | Steering sync: market-convention-instrument advanced to tasks-generated (ConventionRegistry, EventInstrument, D3.js graph). 4 active specs. Added Convention Registry Pattern to tech.md. Total: 48 specs |
 | 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |

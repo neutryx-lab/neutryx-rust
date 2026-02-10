@@ -702,18 +702,13 @@ demo/data/
 - `.gcloudignore` - Cloud deployment optimisation
 - `demo/frictional_bank/Dockerfile` - Cloud Run deployment container
 
-**Scripts**: `scripts/`
+**CI/CD**: `.github/`
 
-- `install_enzyme.sh` - Enzyme installation helper
-- `verify_enzyme.sh` - Enzyme verification
-- `check_iai_regression.sh` - Instruction-count regression checking
+- `workflows/ci.yml` - Separate jobs for stable and nightly builds
+- `workflows/release.yml` - Release automation and changelog generation
+- `workflows/ai-fixer.yml` - Self-healing CI (auto-remediate failures via AI-generated patches)
+- `scripts/check_iai_regression.sh` - Instruction-count regression checking
 - `ai_fixer/` - Self-healing CI module (parses errors, generates patches via Gemini API)
-
-**CI/CD**: `.github/workflows/`
-
-- `ci.yml` - Separate jobs for stable and nightly builds
-- `release.yml` - Release automation and changelog generation
-- `ai-fixer.yml` - Self-healing CI (auto-remediate failures via AI-generated patches)
 
 ## Naming Conventions (British English)
 
@@ -753,5 +748,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-09_ — service_gateway re-enabled, AI Fixer CI infrastructure, scripts/ai_fixer module
+_Updated: 2026-02-10_ — service_gateway re-enabled, AI Fixer CI infrastructure, scripts/ removed (moved to .github/)
 _Document patterns, not file trees. New files following patterns should not require updates_

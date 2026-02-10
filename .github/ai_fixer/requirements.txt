@@ -1,5 +1,5 @@
 # AI Fixer dependencies
-# Install with: pip install -r scripts/requirements-ai.txt
+# Install with: pip install -r .github/ai_fixer/requirements.txt
 
 # Google Generative AI SDK for Gemini API
 google-generativeai>=0.8.0

@@ -59,7 +59,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r scripts/requirements-ai.txt
+          pip install -r .github/ai_fixer/requirements.txt
 
       - name: Fetch CI failure logs
         id: fetch-logs
@@ -93,7 +93,7 @@ jobs:
         if: steps.fetch-logs.outputs.has_logs == 'true'
         run: |
           echo "Analysing CI failures..."
-          python -m ai_fixer --log failed_log.txt --dry-run --verbose > analysis.txt 2>&1 || true
+          python -m ai_fixer --log ../../failed_log.txt --dry-run --verbose > analysis.txt 2>&1 || true
 
           # Check for fixable failures
           if grep -q "COMPILATION\|CLIPPY\|TEST\|FORMAT" analysis.txt; then
@@ -103,7 +103,7 @@ jobs:
           fi
 
           cat analysis.txt
-        working-directory: scripts
+        working-directory: .github/ai_fixer
 
       - name: Generate AI fix
         id: generate-fix
@@ -115,13 +115,13 @@ jobs:
 
           # Generate fix with JSON output
           python -m ai_fixer \
-            --log ../failed_log.txt \
-            --output ../fix.patch \
+            --log ../../failed_log.txt \
+            --output ../../fix.patch \
             --json \
             --verbose > fix_result.json 2>&1 || true
 
           # Check if patch was generated
-          if [ -s ../fix.patch ]; then
+          if [ -s ../../fix.patch ]; then
             echo "patch_generated=true" >> $GITHUB_OUTPUT
             echo "Patch generated successfully"
 
@@ -133,7 +133,7 @@ jobs:
             echo "No patch generated"
             cat fix_result.json || true
           fi
-        working-directory: scripts
+        working-directory: .github/ai_fixer
 
       - name: Validate patch
         id: validate
@@ -238,7 +238,7 @@ jobs:
 
           **Failure Analysis:**
           ```
-          $(cat scripts/analysis.txt 2>/dev/null || echo "Analysis not available")
+          $(cat .github/ai_fixer/analysis.txt 2>/dev/null || echo "Analysis not available")
           ```
 
           **Possible reasons:**
@@ -261,7 +261,7 @@ jobs:
           path: |
             failed_log.txt
             fix.patch
-            scripts/analysis.txt
-            scripts/fix_result.json
+            .github/ai_fixer/analysis.txt
+            .github/ai_fixer/fix_result.json
           retention-days: 7
           if-no-files-found: ignore

@@ -187,7 +187,7 @@ docker run -it neutryx-enzyme
 
 ### Self-Healing CI
 
-- **AI Fixer**: Automated CI failure remediation (`scripts/ai_fixer/`, `.github/workflows/ai-fixer.yml`)
+- **AI Fixer**: Automated CI failure remediation (`.github/ai_fixer/`, `.github/workflows/ai-fixer.yml`)
 - **Pattern**: Parses CI error logs → gathers code context → generates fix patches via Gemini API → creates draft PR
 - **Safety**: Confidence scoring, draft-only PRs, human review required
 

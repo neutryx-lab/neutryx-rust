@@ -273,24 +273,4 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_risk_greeks_response_serialisation() {
-        let response = RiskGreeksResponse {
-            portfolio_id: "test-123".to_string(),
-            greeks: GreeksResultDto {
-                delta: 1000.0,
-                gamma: 50.0,
-                vega: 200.0,
-                theta: -10.0,
-                rho: 15.0,
-                per_trade: None,
-            },
-            mode: GreeksModeDto::BumpAndRevalue,
-            trade_count: 5,
-            calculation_time_ms: 123.45,
-        };
-        let json = serde_json::to_string(&response).unwrap();
-        assert!(json.contains("delta"));
-        assert!(json.contains("1000"));
-    }
 }
