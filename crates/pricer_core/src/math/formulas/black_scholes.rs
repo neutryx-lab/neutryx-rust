@@ -1,7 +1,6 @@
 //! Black-Scholes pricing model for European options.
 //!
-//! This module provides the Black-Scholes model for pricing European
-//! call and put options with analytical Greeks calculations.
+//! Delegates to [`GeneralisedBSM`] with cost-of-carry `b = r`.
 //!
 //! ## Mathematical Formulas
 //!
@@ -15,10 +14,8 @@
 use num_traits::Float;
 
 use super::error::FormulaError;
-use crate::math::{
-    normal_dist::{norm_cdf, norm_pdf},
-    numeric::from_f64,
-};
+use super::generalised_bsm::GeneralisedBSM;
+use crate::math::numeric::from_f64;
 
 /// Black-Scholes model for European option pricing.
 ///
@@ -98,15 +95,35 @@ impl<T: Float> BlackScholes<T> {
 
     /// Returns the spot price.
     #[inline]
-    pub fn spot(&self) -> T { self.spot }
+    pub fn spot(&self) -> T {
+        self.spot
+    }
 
     /// Returns the risk-free rate.
     #[inline]
-    pub fn rate(&self) -> T { self.rate }
+    pub fn rate(&self) -> T {
+        self.rate
+    }
 
     /// Returns the volatility.
     #[inline]
-    pub fn volatility(&self) -> T { self.volatility }
+    pub fn volatility(&self) -> T {
+        self.volatility
+    }
+
+    /// Creates a [`GeneralisedBSM`] with `b = r` for the given strike/expiry.
+    /// Returns `None` if expiry is near zero or strike is non-positive.
+    #[inline]
+    fn bsm(&self, strike: T, expiry: T) -> Option<GeneralisedBSM<T>> {
+        let epsilon: T = from_f64(1e-10);
+        if expiry <= epsilon {
+            return None;
+        }
+        GeneralisedBSM::new(
+            self.spot, strike, self.rate, self.rate, self.volatility, expiry,
+        )
+        .ok()
+    }
 
     /// Computes the d1 term of the Black-Scholes formula.
     ///
@@ -120,31 +137,19 @@ impl<T: Float> BlackScholes<T> {
     /// The d1 term. Returns large positive/negative values for limiting cases.
     #[inline]
     pub fn d1(&self, strike: T, expiry: T) -> T {
-        let zero = T::zero();
-        let half: T = from_f64(0.5);
-        let epsilon: T = from_f64(1e-10);
-
-        // Handle expiry ≈ 0 case
-        if expiry <= epsilon {
-            // At expiry, if S > K, d1 → +∞, otherwise d1 → -∞
-            let large: T = from_f64(100.0);
-            if self.spot > strike {
-                return large;
-            } else if self.spot < strike {
-                return -large;
-            } else {
-                return zero;
+        match self.bsm(strike, expiry) {
+            Some(m) => m.d1(),
+            None => {
+                let large: T = from_f64(100.0);
+                if self.spot > strike {
+                    large
+                } else if self.spot < strike {
+                    -large
+                } else {
+                    T::zero()
+                }
             }
         }
-
-        let sqrt_t = expiry.sqrt();
-        let vol_sqrt_t = self.volatility * sqrt_t;
-
-        // d1 = (ln(S/K) + (r + σ²/2)T) / (σ√T)
-        let log_moneyness = (self.spot / strike).ln();
-        let drift = (self.rate + half * self.volatility * self.volatility) * expiry;
-
-        (log_moneyness + drift) / vol_sqrt_t
     }
 
     /// Computes the d2 term of the Black-Scholes formula.
@@ -159,14 +164,10 @@ impl<T: Float> BlackScholes<T> {
     /// The d2 term.
     #[inline]
     pub fn d2(&self, strike: T, expiry: T) -> T {
-        let epsilon: T = from_f64(1e-10);
-
-        if expiry <= epsilon {
-            return self.d1(strike, expiry);
+        match self.bsm(strike, expiry) {
+            Some(m) => m.d2(),
+            None => self.d1(strike, expiry),
         }
-
-        let sqrt_t = expiry.sqrt();
-        self.d1(strike, expiry) - self.volatility * sqrt_t
     }
 
     /// Computes European call option price.
@@ -192,22 +193,18 @@ impl<T: Float> BlackScholes<T> {
     /// ```
     #[inline]
     pub fn price_call(&self, strike: T, expiry: T) -> T {
-        let zero = T::zero();
-        let epsilon: T = from_f64(1e-10);
-
-        // Handle expiry = 0: return intrinsic value
-        if expiry <= epsilon {
-            let intrinsic = self.spot - strike;
-            return if intrinsic > zero { intrinsic } else { zero };
+        match self.bsm(strike, expiry) {
+            Some(m) => m.price(true),
+            None => {
+                let zero = T::zero();
+                let intrinsic = self.spot - strike;
+                if intrinsic > zero {
+                    intrinsic
+                } else {
+                    zero
+                }
+            }
         }
-
-        let d1 = self.d1(strike, expiry);
-        let d2 = self.d2(strike, expiry);
-
-        let discount = (-self.rate * expiry).exp();
-
-        // C = S·N(d₁) - K·e^(-rT)·N(d₂)
-        self.spot * norm_cdf(d1) - strike * discount * norm_cdf(d2)
     }
 
     /// Computes European put option price.
@@ -233,33 +230,21 @@ impl<T: Float> BlackScholes<T> {
     /// ```
     #[inline]
     pub fn price_put(&self, strike: T, expiry: T) -> T {
-        let zero = T::zero();
-        let epsilon: T = from_f64(1e-10);
-
-        // Handle expiry = 0: return intrinsic value
-        if expiry <= epsilon {
-            let intrinsic = strike - self.spot;
-            return if intrinsic > zero { intrinsic } else { zero };
+        match self.bsm(strike, expiry) {
+            Some(m) => m.price(false),
+            None => {
+                let zero = T::zero();
+                let intrinsic = strike - self.spot;
+                if intrinsic > zero {
+                    intrinsic
+                } else {
+                    zero
+                }
+            }
         }
-
-        let d1 = self.d1(strike, expiry);
-        let d2 = self.d2(strike, expiry);
-
-        let discount = (-self.rate * expiry).exp();
-
-        // P = K·e^(-rT)·N(-d₂) - S·N(-d₁)
-        strike * discount * norm_cdf(-d2) - self.spot * norm_cdf(-d1)
     }
 
     /// Computes option price based on call/put flag.
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiration
-    /// * `is_call` - True for call, false for put
-    ///
-    /// # Returns
-    /// The theoretical option price.
     #[inline]
     pub fn price(&self, strike: T, expiry: T, is_call: bool) -> T {
         if is_call {
@@ -273,163 +258,62 @@ impl<T: Float> BlackScholes<T> {
     ///
     /// - Call Delta = N(d₁)
     /// - Put Delta = N(d₁) - 1
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiration
-    /// * `is_call` - True for call, false for put
-    ///
-    /// # Returns
-    /// The delta sensitivity.
     #[inline]
     pub fn delta(&self, strike: T, expiry: T, is_call: bool) -> T {
-        let epsilon: T = from_f64(1e-10);
-
-        if expiry <= epsilon {
-            let one = T::one();
-            let zero = T::zero();
-            if is_call {
-                return if self.spot > strike { one } else { zero };
-            } else {
-                return if self.spot < strike { -one } else { zero };
+        match self.bsm(strike, expiry) {
+            Some(m) => m.delta(is_call),
+            None => {
+                let one = T::one();
+                let zero = T::zero();
+                if is_call {
+                    if self.spot > strike {
+                        one
+                    } else {
+                        zero
+                    }
+                } else if self.spot < strike {
+                    -one
+                } else {
+                    zero
+                }
             }
-        }
-
-        let d1 = self.d1(strike, expiry);
-        let n_d1 = norm_cdf(d1);
-
-        if is_call {
-            n_d1
-        } else {
-            n_d1 - T::one()
         }
     }
 
     /// Computes Gamma (∂²V/∂S²).
     ///
     /// Gamma = φ(d₁) / (S·σ·√T)
-    ///
-    /// Gamma is the same for both calls and puts.
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiration
-    ///
-    /// # Returns
-    /// The gamma sensitivity (always non-negative).
     #[inline]
     pub fn gamma(&self, strike: T, expiry: T) -> T {
-        let epsilon: T = from_f64(1e-10);
-
-        if expiry <= epsilon {
-            return T::zero();
-        }
-
-        let d1 = self.d1(strike, expiry);
-        let sqrt_t = expiry.sqrt();
-
-        // Gamma = φ(d₁) / (S·σ·√T)
-        norm_pdf(d1) / (self.spot * self.volatility * sqrt_t)
+        self.bsm(strike, expiry).map_or(T::zero(), |m| m.gamma())
     }
 
     /// Computes Vega (∂V/∂σ).
     ///
     /// Vega = S·√T·φ(d₁)
-    ///
-    /// Vega is the same for both calls and puts.
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiration
-    ///
-    /// # Returns
-    /// The vega sensitivity (always non-negative).
     #[inline]
     pub fn vega(&self, strike: T, expiry: T) -> T {
-        let epsilon: T = from_f64(1e-10);
-
-        if expiry <= epsilon {
-            return T::zero();
-        }
-
-        let d1 = self.d1(strike, expiry);
-        let sqrt_t = expiry.sqrt();
-
-        // Vega = S·√T·φ(d₁)
-        self.spot * sqrt_t * norm_pdf(d1)
+        self.bsm(strike, expiry).map_or(T::zero(), |m| m.vega())
     }
 
     /// Computes Theta (∂V/∂t).
     ///
     /// - Call Theta = -(S·σ·φ(d₁))/(2√T) - r·K·e^(-rT)·N(d₂)
     /// - Put Theta = -(S·σ·φ(d₁))/(2√T) + r·K·e^(-rT)·N(-d₂)
-    ///
-    /// Note: This returns the rate of change with respect to time,
-    /// which is typically negative (time decay).
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiration
-    /// * `is_call` - True for call, false for put
-    ///
-    /// # Returns
-    /// The theta sensitivity (usually negative).
     #[inline]
     pub fn theta(&self, strike: T, expiry: T, is_call: bool) -> T {
-        let epsilon: T = from_f64(1e-10);
-
-        if expiry <= epsilon {
-            return T::zero();
-        }
-
-        let d1 = self.d1(strike, expiry);
-        let d2 = self.d2(strike, expiry);
-        let sqrt_t = expiry.sqrt();
-        let discount = (-self.rate * expiry).exp();
-        let two: T = from_f64(2.0);
-
-        // Common term: -(S·σ·φ(d₁))/(2√T)
-        let term1 = -(self.spot * self.volatility * norm_pdf(d1)) / (two * sqrt_t);
-
-        if is_call {
-            // Call Theta = term1 - r·K·e^(-rT)·N(d₂)
-            term1 - self.rate * strike * discount * norm_cdf(d2)
-        } else {
-            // Put Theta = term1 + r·K·e^(-rT)·N(-d₂)
-            term1 + self.rate * strike * discount * norm_cdf(-d2)
-        }
+        self.bsm(strike, expiry)
+            .map_or(T::zero(), |m| m.theta(is_call))
     }
 
     /// Computes Rho (∂V/∂r).
     ///
     /// - Call Rho = K·T·e^(-rT)·N(d₂)
     /// - Put Rho = -K·T·e^(-rT)·N(-d₂)
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiration
-    /// * `is_call` - True for call, false for put
-    ///
-    /// # Returns
-    /// The rho sensitivity.
     #[inline]
     pub fn rho(&self, strike: T, expiry: T, is_call: bool) -> T {
-        let epsilon: T = from_f64(1e-10);
-
-        if expiry <= epsilon {
-            return T::zero();
-        }
-
-        let d2 = self.d2(strike, expiry);
-        let discount = (-self.rate * expiry).exp();
-
-        if is_call {
-            // Call Rho = K·T·e^(-rT)·N(d₂)
-            strike * expiry * discount * norm_cdf(d2)
-        } else {
-            // Put Rho = -K·T·e^(-rT)·N(-d₂)
-            -strike * expiry * discount * norm_cdf(-d2)
-        }
+        self.bsm(strike, expiry)
+            .map_or(T::zero(), |m| m.rho(is_call))
     }
 }
 
@@ -500,7 +384,6 @@ mod tests {
 
     #[test]
     fn test_new_negative_rate_allowed() {
-        // Negative rates should be allowed
         let bs = BlackScholes::new(100.0_f64, -0.02, 0.2);
         assert!(bs.is_ok());
     }
@@ -514,22 +397,18 @@ mod tests {
         // ATM with r=0: d1 = σ√T / 2
         let bs = BlackScholes::new(100.0_f64, 0.0, 0.2).unwrap();
         let d1 = bs.d1(100.0, 1.0);
-        // d1 = (0 + 0.02/2 * 1) / 0.2 = 0.05
         assert_relative_eq!(d1, 0.1, epsilon = 1e-10);
     }
 
     #[test]
     fn test_d2_atm() {
-        // ATM with r=0: d2 = d1 - σ√T = -σ√T / 2
         let bs = BlackScholes::new(100.0_f64, 0.0, 0.2).unwrap();
         let d2 = bs.d2(100.0, 1.0);
-        // d2 = 0.1 - 0.2 = -0.1
         assert_relative_eq!(d2, -0.1, epsilon = 1e-10);
     }
 
     #[test]
     fn test_d1_d2_relationship() {
-        // d2 = d1 - σ√T
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         let d1 = bs.d1(105.0, 0.5);
         let d2 = bs.d2(105.0, 0.5);
@@ -540,11 +419,9 @@ mod tests {
     #[test]
     fn test_d1_expiry_zero() {
         let bs = BlackScholes::new(110.0_f64, 0.05, 0.2).unwrap();
-        // ITM call at expiry: d1 → +∞
         let d1_itm = bs.d1(100.0, 0.0);
         assert!(d1_itm > 50.0);
 
-        // OTM call at expiry: d1 → -∞
         let d1_otm = bs.d1(120.0, 0.0);
         assert!(d1_otm < -50.0);
     }
@@ -569,8 +446,6 @@ mod tests {
 
     #[test]
     fn test_call_price_reference_value() {
-        // Known reference: S=100, K=100, r=0.05, σ=0.2, T=1
-        // Expected call price ≈ 10.4506
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         let price = bs.price_call(100.0, 1.0);
         assert_relative_eq!(price, 10.4506, epsilon = 0.001);
@@ -578,8 +453,6 @@ mod tests {
 
     #[test]
     fn test_put_price_reference_value() {
-        // Known reference: S=100, K=100, r=0.05, σ=0.2, T=1
-        // Expected put price ≈ 5.5735
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         let price = bs.price_put(100.0, 1.0);
         assert_relative_eq!(price, 5.5735, epsilon = 0.001);
@@ -598,7 +471,6 @@ mod tests {
 
     #[test]
     fn test_put_call_parity() {
-        // C - P = S - K*exp(-rT)
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         let call = bs.price_call(100.0, 1.0);
         let put = bs.price_put(100.0, 1.0);
@@ -623,7 +495,6 @@ mod tests {
 
     #[test]
     fn test_delta_call_bounds() {
-        // Call delta ∈ [0, 1]
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         for strike in [80.0, 90.0, 100.0, 110.0, 120.0] {
             let delta = bs.delta(strike, 1.0, true);
@@ -634,7 +505,6 @@ mod tests {
 
     #[test]
     fn test_delta_put_bounds() {
-        // Put delta ∈ [-1, 0]
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         for strike in [80.0, 90.0, 100.0, 110.0, 120.0] {
             let delta = bs.delta(strike, 1.0, false);
@@ -645,7 +515,6 @@ mod tests {
 
     #[test]
     fn test_delta_call_put_relationship() {
-        // Put delta = Call delta - 1
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         let call_delta = bs.delta(100.0, 1.0, true);
         let put_delta = bs.delta(100.0, 1.0, false);
@@ -656,8 +525,7 @@ mod tests {
     fn test_gamma_non_negative() {
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         for strike in [80.0, 90.0, 100.0, 110.0, 120.0] {
-            let gamma = bs.gamma(strike, 1.0);
-            assert!(gamma >= 0.0, "Gamma should be non-negative");
+            assert!(bs.gamma(strike, 1.0) >= 0.0);
         }
     }
 
@@ -665,33 +533,26 @@ mod tests {
     fn test_vega_non_negative() {
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
         for strike in [80.0, 90.0, 100.0, 110.0, 120.0] {
-            let vega = bs.vega(strike, 1.0);
-            assert!(vega >= 0.0, "Vega should be non-negative");
+            assert!(bs.vega(strike, 1.0) >= 0.0);
         }
     }
 
     #[test]
     fn test_theta_call_typically_negative() {
-        // For most cases, theta is negative (time decay)
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
-        let theta = bs.theta(100.0, 1.0, true);
-        assert!(theta < 0.0, "Call theta should typically be negative");
+        assert!(bs.theta(100.0, 1.0, true) < 0.0);
     }
 
     #[test]
     fn test_rho_call_positive() {
-        // Call rho is typically positive
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
-        let rho = bs.rho(100.0, 1.0, true);
-        assert!(rho > 0.0, "Call rho should be positive");
+        assert!(bs.rho(100.0, 1.0, true) > 0.0);
     }
 
     #[test]
     fn test_rho_put_negative() {
-        // Put rho is typically negative
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
-        let rho = bs.rho(100.0, 1.0, false);
-        assert!(rho < 0.0, "Put rho should be negative");
+        assert!(bs.rho(100.0, 1.0, false) < 0.0);
     }
 
     // ==========================================================
