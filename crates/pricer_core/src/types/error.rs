@@ -535,142 +535,11 @@ impl From<DistributionError> for PricingError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::math::{
-        distributions::DistributionError, fitting::FittingError, integrators::IntegrationError,
-        optimisers::OptimisationError,
-    };
+    use crate::math::normal_dist::DistributionError;
 
     // ==========================================================================
-    // Math Error Conversion Tests (Task 2.1)
+    // Distribution Error Conversion Tests
     // ==========================================================================
-
-    #[test]
-    fn test_optimisation_error_to_calibration_not_converged() {
-        let opt_err = OptimisationError::NotConverged { iterations: 100 };
-        let calib_err: CalibrationError = opt_err.into();
-        assert!(calib_err.is_not_converged());
-        assert_eq!(calib_err.iterations, 100);
-    }
-
-    #[test]
-    fn test_optimisation_error_to_calibration_invalid_input() {
-        let opt_err = OptimisationError::InvalidInput("negative step size".to_string());
-        let calib_err: CalibrationError = opt_err.into();
-        assert!(matches!(
-            calib_err.kind,
-            CalibrationErrorKind::InvalidParameter(_)
-        ));
-    }
-
-    #[test]
-    fn test_optimisation_error_to_calibration_numerical() {
-        let opt_err = OptimisationError::NumericalError("overflow".to_string());
-        let calib_err: CalibrationError = opt_err.into();
-        assert!(calib_err.is_numerical_instability());
-    }
-
-    #[test]
-    fn test_optimisation_error_to_calibration_bounds() {
-        let opt_err = OptimisationError::BoundsError("parameter out of bounds".to_string());
-        let calib_err: CalibrationError = opt_err.into();
-        assert!(calib_err.is_constraint_violation());
-    }
-
-    #[test]
-    fn test_optimisation_error_to_calibration_dimension() {
-        let opt_err = OptimisationError::DimensionMismatch {
-            expected: 3,
-            got: 5,
-        };
-        let calib_err: CalibrationError = opt_err.into();
-        assert!(matches!(
-            calib_err.kind,
-            CalibrationErrorKind::InvalidParameter(_)
-        ));
-    }
-
-    #[test]
-    fn test_optimisation_error_to_calibration_gradient() {
-        let opt_err = OptimisationError::GradientError("NaN gradient".to_string());
-        let calib_err: CalibrationError = opt_err.into();
-        assert!(calib_err.is_numerical_instability());
-    }
-
-    #[test]
-    fn test_optimisation_error_to_calibration_line_search() {
-        let opt_err = OptimisationError::LineSearchError("backtrack failed".to_string());
-        let calib_err: CalibrationError = opt_err.into();
-        assert!(calib_err.is_numerical_instability());
-    }
-
-    #[test]
-    fn test_fitting_error_to_calibration_insufficient_data() {
-        let fit_err = FittingError::InsufficientData { needed: 10, got: 3 };
-        let calib_err: CalibrationError = fit_err.into();
-        assert!(calib_err.is_insufficient_data());
-        if let CalibrationErrorKind::InsufficientData { got, need } = calib_err.kind {
-            assert_eq!(got, 3);
-            assert_eq!(need, 10);
-        } else {
-            panic!("Expected InsufficientData");
-        }
-    }
-
-    #[test]
-    fn test_fitting_error_to_calibration_dimension_mismatch() {
-        let fit_err = FittingError::DimensionMismatch("x and y lengths differ".to_string());
-        let calib_err: CalibrationError = fit_err.into();
-        assert!(matches!(
-            calib_err.kind,
-            CalibrationErrorKind::InvalidParameter(_)
-        ));
-    }
-
-    #[test]
-    fn test_fitting_error_to_calibration_fitting_failed() {
-        let fit_err = FittingError::FittingFailed("singular matrix".to_string());
-        let calib_err: CalibrationError = fit_err.into();
-        assert!(calib_err.is_numerical_instability());
-    }
-
-    #[test]
-    fn test_fitting_error_to_calibration_invalid_data() {
-        let fit_err = FittingError::InvalidData("negative weights".to_string());
-        let calib_err: CalibrationError = fit_err.into();
-        assert!(matches!(
-            calib_err.kind,
-            CalibrationErrorKind::InvalidParameter(_)
-        ));
-    }
-
-    #[test]
-    fn test_fitting_error_to_calibration_numerical() {
-        let fit_err = FittingError::NumericalError("overflow".to_string());
-        let calib_err: CalibrationError = fit_err.into();
-        assert!(calib_err.is_numerical_instability());
-    }
-
-    #[test]
-    fn test_integration_error_to_pricing_not_converged() {
-        let int_err = IntegrationError::NotConverged { max_iterations: 50 };
-        let pricing_err: PricingError = int_err.into();
-        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
-        assert!(format!("{pricing_err}").contains("50"));
-    }
-
-    #[test]
-    fn test_integration_error_to_pricing_invalid_bounds() {
-        let int_err = IntegrationError::InvalidBounds { a: 5.0, b: 2.0 };
-        let pricing_err: PricingError = int_err.into();
-        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
-    }
-
-    #[test]
-    fn test_integration_error_to_pricing_numerical() {
-        let int_err = IntegrationError::NumericalError("overflow".to_string());
-        let pricing_err: PricingError = int_err.into();
-        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
-    }
 
     #[test]
     fn test_distribution_error_to_pricing_invalid_probability() {
@@ -681,34 +550,6 @@ mod tests {
     }
 
     #[test]
-    fn test_distribution_error_to_pricing_invalid_correlation() {
-        let dist_err = DistributionError::InvalidCorrelation { rho: 1.5 };
-        let pricing_err: PricingError = dist_err.into();
-        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
-    }
-
-    #[test]
-    fn test_distribution_error_to_pricing_invalid_df() {
-        let dist_err = DistributionError::InvalidDegreesOfFreedom { df: -1.0 };
-        let pricing_err: PricingError = dist_err.into();
-        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
-    }
-
-    #[test]
-    fn test_distribution_error_to_pricing_invalid_ncp() {
-        let dist_err = DistributionError::InvalidNonCentrality { ncp: -0.5 };
-        let pricing_err: PricingError = dist_err.into();
-        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
-    }
-
-    #[test]
-    fn test_distribution_error_to_pricing_not_positive_definite() {
-        let dist_err = DistributionError::NotPositiveDefinite;
-        let pricing_err: PricingError = dist_err.into();
-        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
-    }
-
-    #[test]
     fn test_distribution_error_to_pricing_numerical() {
         let dist_err = DistributionError::NumericalError("underflow".to_string());
         let pricing_err: PricingError = dist_err.into();
@@ -716,7 +557,7 @@ mod tests {
     }
 
     // ==========================================================================
-    // Original PricingError Tests
+    // PricingError Tests
     // ==========================================================================
 
     #[test]
@@ -1092,14 +933,6 @@ mod tests {
     fn test_calibration_error_from_solver_external() {
         let solver_err = SolverError::External("roots crate error".to_string());
         let calib_err: CalibrationError = solver_err.into();
-        assert!(calib_err.is_numerical_instability());
-        assert!(calib_err.message.as_ref().unwrap().contains("External"));
-    }
-
-    #[test]
-    fn test_calibration_error_from_optimisation_external() {
-        let opt_err = OptimisationError::External("argmin error".to_string());
-        let calib_err: CalibrationError = opt_err.into();
         assert!(calib_err.is_numerical_instability());
         assert!(calib_err.message.as_ref().unwrap().contains("External"));
     }

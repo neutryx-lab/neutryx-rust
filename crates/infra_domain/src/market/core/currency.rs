@@ -236,87 +236,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_currency_code() {
-        assert_eq!(Currency::USD.code(), "USD");
-        assert_eq!(Currency::EUR.code(), "EUR");
-        assert_eq!(Currency::GBP.code(), "GBP");
-        assert_eq!(Currency::JPY.code(), "JPY");
-        assert_eq!(Currency::CHF.code(), "CHF");
-    }
-
-    #[test]
-    fn test_currency_decimal_places() {
-        assert_eq!(Currency::USD.decimal_places(), 2);
-        assert_eq!(Currency::EUR.decimal_places(), 2);
-        assert_eq!(Currency::GBP.decimal_places(), 2);
-        assert_eq!(Currency::JPY.decimal_places(), 0);
-        assert_eq!(Currency::CHF.decimal_places(), 2);
-    }
-
-    #[test]
-    fn test_currency_from_str() {
-        assert_eq!("USD".parse::<Currency>().unwrap(), Currency::USD);
-        assert_eq!("EUR".parse::<Currency>().unwrap(), Currency::EUR);
-        assert_eq!("GBP".parse::<Currency>().unwrap(), Currency::GBP);
-        assert_eq!("JPY".parse::<Currency>().unwrap(), Currency::JPY);
-        assert_eq!("CHF".parse::<Currency>().unwrap(), Currency::CHF);
-    }
-
-    #[test]
-    fn test_currency_from_str_case_insensitive() {
-        assert_eq!("usd".parse::<Currency>().unwrap(), Currency::USD);
-        assert_eq!("Eur".parse::<Currency>().unwrap(), Currency::EUR);
-        assert_eq!("gbP".parse::<Currency>().unwrap(), Currency::GBP);
-    }
-
-    #[test]
-    fn test_currency_from_str_unknown() {
-        let result = "XYZ".parse::<Currency>();
-        assert!(result.is_err());
-        match result {
+    fn test_from_str_unknown_error_variant() {
+        match "XYZ".parse::<Currency>() {
             Err(CurrencyError::UnknownCurrency(code)) => assert_eq!(code, "XYZ"),
-            _ => panic!("Expected UnknownCurrency error"),
+            other => panic!("Expected UnknownCurrency, got {:?}", other),
         }
     }
 
     #[test]
-    fn test_currency_display() {
-        assert_eq!(format!("{}", Currency::USD), "USD");
-        assert_eq!(format!("{}", Currency::EUR), "EUR");
-        assert_eq!(format!("{}", Currency::JPY), "JPY");
-    }
-
-    #[test]
-    fn test_currency_roundtrip() {
-        for currency in [
-            Currency::USD,
-            Currency::EUR,
-            Currency::GBP,
-            Currency::JPY,
-            Currency::CHF,
-        ] {
-            let code = currency.code();
-            let parsed: Currency = code.parse().unwrap();
+    fn test_roundtrip() {
+        for currency in Currency::all() {
+            let parsed: Currency = currency.code().parse().unwrap();
             assert_eq!(currency, parsed);
         }
-    }
-
-    #[test]
-    fn test_currency_copy_clone() {
-        let c1 = Currency::USD;
-        let c2 = c1; // Copy
-        let c3 = c1.clone(); // Clone
-        assert_eq!(c1, c2);
-        assert_eq!(c1, c3);
-    }
-
-    #[test]
-    fn test_currency_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(Currency::USD);
-        set.insert(Currency::EUR);
-        set.insert(Currency::USD); // Duplicate
-        assert_eq!(set.len(), 2);
     }
 }

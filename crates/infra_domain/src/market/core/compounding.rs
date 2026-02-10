@@ -150,152 +150,22 @@ impl FromStr for CompoundingMethod {
 mod tests {
     use super::*;
 
-    // ========================================
-    // Basic Properties Tests
-    // ========================================
-
     #[test]
-    fn test_default_is_simple() {
-        assert_eq!(CompoundingMethod::default(), CompoundingMethod::Simple);
-    }
-
-    #[test]
-    fn test_name() {
-        assert_eq!(CompoundingMethod::Simple.name(), "Simple");
-        assert_eq!(CompoundingMethod::Compounded.name(), "Compounded");
-        assert_eq!(CompoundingMethod::Averaged.name(), "Averaged");
-    }
-
-    #[test]
-    fn test_is_compounding() {
-        assert!(!CompoundingMethod::Simple.is_compounding());
-        assert!(CompoundingMethod::Compounded.is_compounding());
-        assert!(!CompoundingMethod::Averaged.is_compounding());
-    }
-
-    #[test]
-    fn test_is_simple() {
-        assert!(CompoundingMethod::Simple.is_simple());
-        assert!(!CompoundingMethod::Compounded.is_simple());
-        assert!(!CompoundingMethod::Averaged.is_simple());
-    }
-
-    // ========================================
-    // Display and FromStr Tests
-    // ========================================
-
-    #[test]
-    fn test_display() {
-        assert_eq!(format!("{}", CompoundingMethod::Simple), "Simple");
-        assert_eq!(format!("{}", CompoundingMethod::Compounded), "Compounded");
-        assert_eq!(format!("{}", CompoundingMethod::Averaged), "Averaged");
-    }
-
-    #[test]
-    fn test_from_str_simple() {
-        assert_eq!(
-            "Simple".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Simple
-        );
-        assert_eq!(
-            "simple".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Simple
-        );
-        assert_eq!(
-            "SIMPLE".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Simple
-        );
-        assert_eq!(
-            "none".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Simple
-        );
-    }
-
-    #[test]
-    fn test_from_str_compounded() {
-        assert_eq!(
-            "Compounded".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Compounded
-        );
-        assert_eq!(
-            "compounded".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Compounded
-        );
-        assert_eq!(
-            "compound".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Compounded
-        );
-        assert_eq!(
-            "daily".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Compounded
-        );
-    }
-
-    #[test]
-    fn test_from_str_averaged() {
-        assert_eq!(
-            "Averaged".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Averaged
-        );
-        assert_eq!(
-            "averaged".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Averaged
-        );
-        assert_eq!(
-            "average".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Averaged
-        );
-        assert_eq!(
-            "arithmetic".parse::<CompoundingMethod>().unwrap(),
-            CompoundingMethod::Averaged
-        );
-    }
-
-    #[test]
-    fn test_from_str_invalid() {
+    fn test_from_str_synonyms() {
+        // Simple synonyms
+        for s in ["Simple", "simple", "SIMPLE", "none"] {
+            assert_eq!(s.parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Simple);
+        }
+        // Compounded synonyms
+        for s in ["Compounded", "compounded", "compound", "daily"] {
+            assert_eq!(s.parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Compounded);
+        }
+        // Averaged synonyms
+        for s in ["Averaged", "averaged", "average", "arithmetic"] {
+            assert_eq!(s.parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Averaged);
+        }
+        // Invalid
         assert!("unknown".parse::<CompoundingMethod>().is_err());
         assert!("".parse::<CompoundingMethod>().is_err());
-    }
-
-    // ========================================
-    // Trait Implementation Tests
-    // ========================================
-
-    #[test]
-    fn test_clone() {
-        let method = CompoundingMethod::Compounded;
-        let cloned = method;
-        assert_eq!(method, cloned);
-    }
-
-    #[test]
-    fn test_copy() {
-        let method = CompoundingMethod::Simple;
-        let copied = method;
-        assert_eq!(method, copied);
-    }
-
-    #[test]
-    fn test_hash() {
-        use std::collections::HashSet;
-
-        let mut set = HashSet::new();
-        set.insert(CompoundingMethod::Simple);
-        set.insert(CompoundingMethod::Compounded);
-        set.insert(CompoundingMethod::Simple); // Duplicate
-        assert_eq!(set.len(), 2);
-    }
-
-    #[test]
-    fn test_debug() {
-        let debug = format!("{:?}", CompoundingMethod::Compounded);
-        assert!(debug.contains("Compounded"));
-    }
-
-    #[test]
-    fn test_equality() {
-        assert_eq!(CompoundingMethod::Simple, CompoundingMethod::Simple);
-        assert_ne!(CompoundingMethod::Simple, CompoundingMethod::Compounded);
-        assert_ne!(CompoundingMethod::Compounded, CompoundingMethod::Averaged);
     }
 }

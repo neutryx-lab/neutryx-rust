@@ -82,11 +82,10 @@ fn test_day_count_convention_variants() {
 /// Test that pricer_core-specific error types are accessible.
 #[test]
 fn test_error_types_exports() {
-    use pricer_core::types::error::{InterpolationError, PricingError, SolverError};
+    use pricer_core::types::error::{PricingError, SolverError};
 
     // Verify error types can be created
     let _pricing_err = PricingError::InvalidInput("test".to_string());
-    let _interp_err = InterpolationError::InsufficientData { got: 1, need: 2 };
     let _solver_err = SolverError::MaxIterationsExceeded { iterations: 100 };
 }
 
@@ -122,19 +121,6 @@ fn test_time_module_exports() {
     // Test DayCountConvention year_fraction
     let yf = DayCountConvention::ActualActual365.year_fraction(start_naive, end_naive);
     assert!((yf - ttm).abs() < 1e-10);
-}
-
-/// Test interpolator module exports.
-#[test]
-fn test_interpolator_exports() {
-    use pricer_core::math::interpolators::{Interpolator, LinearInterpolator};
-
-    let xs = vec![0.0_f64, 1.0, 2.0];
-    let ys = vec![0.0_f64, 2.0, 4.0];
-    let interp = LinearInterpolator::new(&xs, &ys).unwrap();
-
-    let result = interp.interpolate(0.5_f64).unwrap();
-    assert!((result - 1.0_f64).abs() < 1e-10);
 }
 
 /// Test solver module exports.

@@ -127,14 +127,7 @@ docker run -it neutryx-enzyme
 #### Option 2: Local Installation
 
 ```bash
-# Install Enzyme LLVM plugin
-./scripts/install_enzyme.sh
-
-# Verify installation
-./scripts/verify_enzyme.sh
-
-# Build pricer_risk with Enzyme AD
-export RUSTFLAGS="-C llvm-args=-load=/usr/local/lib/LLVMEnzyme-18.so"
+# Build pricer_risk with Enzyme AD (requires nightly toolchain)
 cargo +nightly build -p pricer_risk --features enzyme-ad
 
 # Run tests
