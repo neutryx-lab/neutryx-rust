@@ -61,7 +61,6 @@ impl std::fmt::Display for RegistryError {
 
 impl std::error::Error for RegistryError {}
 
-
 /// Registry for curve construction definitions.
 #[derive(Debug, Clone, Default)]
 pub struct DefinitionRegistry {

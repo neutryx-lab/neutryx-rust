@@ -1,6 +1,7 @@
 //! Volatility-related DTOs for Vol Surface/Cube operations.
 
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 /// Volatility quote for surface construction.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -50,14 +51,17 @@ pub struct SabrCalibrationDto {
 }
 
 /// Request to build an FX volatility surface.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[allow(dead_code)]
 pub struct BuildFxVolSurfaceRequest {
     /// Currency pair (e.g., "USDJPY", "EURUSD").
+    #[validate(length(min = 1))]
     pub currency_pair: String,
     /// Volatility quotes.
+    #[validate(length(min = 1))]
     pub quotes: Vec<VolQuoteDto>,
     /// FX spot rate.
+    #[validate(range(exclusive_min = 0.0))]
     pub fx_spot: f64,
     /// Domestic risk-free rate.
     pub domestic_rate: f64,
@@ -65,6 +69,7 @@ pub struct BuildFxVolSurfaceRequest {
     pub foreign_rate: f64,
     /// Beta parameter for SABR (optional, defaults to 0.5).
     #[serde(default = "default_beta")]
+    #[validate(range(min = 0.0, max = 1.0))]
     pub beta: f64,
 }
 
@@ -102,22 +107,27 @@ pub struct CalibrationQualityDto {
 }
 
 /// Request to build a volatility cube (IR swaptions).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[allow(dead_code)]
 pub struct BuildVolCubeRequest {
     /// Index name (e.g., "USD-SOFR", "EUR-ESTR").
+    #[validate(length(min = 1))]
     pub index: String,
     /// Expiry tenors (e.g., ["1Y", "2Y", "5Y"]).
+    #[validate(length(min = 1))]
     pub expiries: Vec<String>,
     /// Swap tenors (e.g., ["1Y", "2Y", "5Y", "10Y"]).
+    #[validate(length(min = 1))]
     pub tenors: Vec<String>,
     /// ATM volatilities (expiry x tenor matrix).
+    #[validate(length(min = 1))]
     pub atm_vols: Vec<Vec<f64>>,
     /// Smile quotes (optional).
     #[serde(default)]
     pub smile_quotes: Option<VolCubeSmileQuotes>,
     /// Beta parameter for SABR.
     #[serde(default = "default_beta")]
+    #[validate(range(min = 0.0, max = 1.0))]
     pub beta: f64,
 }
 
@@ -151,10 +161,11 @@ pub struct BuildVolCubeResponse {
 }
 
 /// Request to get implied volatility.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[allow(dead_code)]
 pub struct GetImpliedVolRequest {
     /// Expiry in years.
+    #[validate(range(exclusive_min = 0.0))]
     pub expiry: f64,
     /// Strike (absolute or as forward moneyness).
     pub strike: f64,

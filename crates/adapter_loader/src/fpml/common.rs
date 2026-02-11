@@ -1,5 +1,7 @@
 //! Common FpML parsing utilities.
 
+use quick_xml::{events::Event, Reader};
+
 use infra_domain::{market::Currency, time::Date, trade::TradeMetadata};
 
 use super::error::FpmlError;
@@ -93,9 +95,20 @@ pub fn parse_decimal(value_str: &str) -> Result<f64, FpmlError> {
     })
 }
 
-/// XML element navigator for easier tree traversal.
+/// XML element navigator backed by quick-xml for robust tree traversal.
 pub struct XmlNavigator<'a> {
     content: &'a str,
+}
+
+/// Check if an element name matches the target, ignoring namespace prefixes.
+fn name_matches(name: &[u8], target: &[u8]) -> bool {
+    if name == target {
+        return true;
+    }
+    if let Some(pos) = name.iter().position(|&b| b == b':') {
+        return &name[pos + 1..] == target;
+    }
+    false
 }
 
 impl<'a> XmlNavigator<'a> {
@@ -103,110 +116,154 @@ impl<'a> XmlNavigator<'a> {
     pub fn new(content: &'a str) -> Self { Self { content } }
 
     /// Finds the first occurrence of an element and returns its text content.
+    ///
+    /// Tries leaf-only match first, then falls back to raw inner content.
     pub fn find_text(&self, element_name: &str) -> Option<String> {
         if let Some(text) = self.find_leaf_text(element_name) {
             return Some(text);
         }
 
-        let start_tag = format!("<{}", element_name);
-        let end_tag = format!("</{}>", element_name);
-
-        let start_idx = self.content.find(&start_tag)?;
-        let after_start = &self.content[start_idx..];
-
-        let content_start = after_start.find('>')? + 1;
-
-        let end_idx = after_start.find(&end_tag)?;
-
-        if content_start >= end_idx {
+        // Fallback: extract the section and strip the outer tags.
+        let section = self.extract_section(element_name)?;
+        let content_start = section.find('>')? + 1;
+        let end_tag = format!("</{element_name}>");
+        let content_end = section.rfind(&end_tag)?;
+        if content_start >= content_end {
             return Some(String::new());
         }
-
-        let text = &after_start[content_start..end_idx];
-        Some(text.trim().to_string())
+        Some(section[content_start..content_end].trim().to_string())
     }
 
     /// Finds a leaf element (one with no nested elements) and returns its text.
     pub fn find_leaf_text(&self, element_name: &str) -> Option<String> {
-        let start_tag = format!("<{}", element_name);
-        let end_tag = format!("</{}>", element_name);
+        let mut reader = Reader::from_str(self.content);
+        let target = element_name.as_bytes();
 
-        let mut search_from = 0;
-        while let Some(start_idx) = self.content[search_from..].find(&start_tag) {
-            let abs_start = search_from + start_idx;
-            let after_start = &self.content[abs_start..];
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(e)) => {
+                    if name_matches(e.name().as_ref(), target) {
+                        let mut text = String::new();
+                        let mut is_leaf = true;
+                        let mut depth = 1u32;
 
-            if let Some(tag_close) = after_start.find('>') {
-                let content_start = tag_close + 1;
+                        loop {
+                            match reader.read_event() {
+                                Ok(Event::Start(_)) => {
+                                    is_leaf = false;
+                                    depth += 1;
+                                }
+                                Ok(Event::Empty(_)) => {
+                                    is_leaf = false;
+                                }
+                                Ok(Event::End(_)) => {
+                                    depth -= 1;
+                                    if depth == 0 {
+                                        break;
+                                    }
+                                }
+                                Ok(Event::Text(t)) => {
+                                    if depth == 1 {
+                                        if let Ok(s) = t.unescape() {
+                                            text.push_str(&s);
+                                        }
+                                    }
+                                }
+                                Ok(Event::Eof) | Err(_) => return None,
+                                _ => {}
+                            }
+                        }
 
-                if let Some(end_idx) = after_start.find(&end_tag) {
-                    if content_start < end_idx {
-                        let text = &after_start[content_start..end_idx];
-
-                        if !text.contains('<') {
-                            return Some(text.trim().to_string());
+                        if is_leaf {
+                            let trimmed = text.trim().to_string();
+                            if !trimmed.is_empty() {
+                                return Some(trimmed);
+                            }
                         }
                     }
                 }
+                Ok(Event::Eof) => break,
+                Err(_) => break,
+                _ => {}
             }
-
-            search_from = abs_start + 1;
         }
-
         None
     }
 
     /// Extracts a subsection of XML by element name.
     pub fn extract_section(&self, element_name: &str) -> Option<String> {
-        let start_tag = format!("<{}", element_name);
-        let end_tag = format!("</{}>", element_name);
+        let mut reader = Reader::from_str(self.content);
+        let target = element_name.as_bytes();
 
-        let start_idx = self.content.find(&start_tag)?;
-        let after_start = &self.content[start_idx..];
-        let end_idx = after_start.find(&end_tag)? + end_tag.len();
-
-        Some(after_start[..end_idx].to_string())
+        loop {
+            let start_pos = reader.buffer_position() as usize;
+            match reader.read_event() {
+                Ok(Event::Start(e)) => {
+                    if name_matches(e.name().as_ref(), target) {
+                        reader.read_to_end(e.to_end().name()).ok()?;
+                        let end_pos = reader.buffer_position() as usize;
+                        return Some(self.content[start_pos..end_pos].to_string());
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(_) => break,
+                _ => {}
+            }
+        }
+        None
     }
 
     /// Extracts all subsections of XML by element name.
     pub fn extract_all_sections(&self, element_name: &str) -> Vec<String> {
         let mut results = Vec::new();
-        let start_tag = format!("<{}", element_name);
-        let end_tag = format!("</{}>", element_name);
+        let mut reader = Reader::from_str(self.content);
+        let target = element_name.as_bytes();
 
-        let mut search_from = 0;
-        while let Some(start_idx) = self.content[search_from..].find(&start_tag) {
-            let abs_start = search_from + start_idx;
-            let after_start = &self.content[abs_start..];
-
-            if let Some(end_idx) = after_start.find(&end_tag) {
-                let section = &after_start[..end_idx + end_tag.len()];
-                results.push(section.to_string());
-                search_from = abs_start + end_idx + end_tag.len();
-            } else {
-                break;
+        loop {
+            let start_pos = reader.buffer_position() as usize;
+            match reader.read_event() {
+                Ok(Event::Start(e)) => {
+                    if name_matches(e.name().as_ref(), target) {
+                        if reader.read_to_end(e.to_end().name()).is_ok() {
+                            let end_pos = reader.buffer_position() as usize;
+                            results.push(self.content[start_pos..end_pos].to_string());
+                        }
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(_) => break,
+                _ => {}
             }
         }
-
         results
     }
 
     /// Gets an attribute value from the first matching element.
     pub fn get_attribute(&self, element_name: &str, attr_name: &str) -> Option<String> {
-        let start_tag = format!("<{}", element_name);
+        let mut reader = Reader::from_str(self.content);
+        let target = element_name.as_bytes();
+        let attr_target = attr_name.as_bytes();
 
-        let start_idx = self.content.find(&start_tag)?;
-        let after_start = &self.content[start_idx..];
-        let tag_end = after_start.find('>')?;
-        let tag_content = &after_start[..tag_end];
-
-        let attr_pattern = format!("{}=\"", attr_name);
-        let attr_start = tag_content.find(&attr_pattern)?;
-        let value_start = attr_start + attr_pattern.len();
-        let after_value = &tag_content[value_start..];
-        let value_end = after_value.find('"')?;
-
-        Some(after_value[..value_end].to_string())
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                    if name_matches(e.name().as_ref(), target) {
+                        for attr_result in e.attributes() {
+                            if let Ok(attr) = attr_result {
+                                if attr.key.as_ref() == attr_target {
+                                    return attr.unescape_value().ok().map(|v| v.to_string());
+                                }
+                            }
+                        }
+                        return None;
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(_) => break,
+                _ => {}
+            }
+        }
+        None
     }
 }
 

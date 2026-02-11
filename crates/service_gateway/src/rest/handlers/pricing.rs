@@ -3,7 +3,7 @@
 use axum::Json;
 
 use crate::{
-    error::{AppJson, ServerError},
+    error::{ServerError, ValidatedJson},
     rest::dto::{
         PortfolioPricingRequest, PortfolioPricingResponse, PricingRequest, PricingResponse,
     },
@@ -12,7 +12,7 @@ use crate::{
 
 /// POST /api/price.
 pub async fn price_instrument(
-    AppJson(request): AppJson<PricingRequest>,
+    ValidatedJson(request): ValidatedJson<PricingRequest>,
 ) -> Result<Json<PricingResponse>, ServerError> {
     let response = PricingService::price_instrument(&request)?;
     Ok(Json(response))
@@ -20,7 +20,7 @@ pub async fn price_instrument(
 
 /// POST /api/price/batch.
 pub async fn price_portfolio(
-    AppJson(request): AppJson<PortfolioPricingRequest>,
+    ValidatedJson(request): ValidatedJson<PortfolioPricingRequest>,
 ) -> Result<Json<PortfolioPricingResponse>, ServerError> {
     let response = PricingService::price_portfolio(&request)?;
     Ok(Json(response))

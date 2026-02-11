@@ -66,6 +66,13 @@ clap = { workspace = true, optional = true }
 # Python bindings (optional, feature-gated)
 pyo3 = { workspace = true, optional = true }
 
+# Validation
+validator.workspace = true
+
+# OpenAPI documentation
+utoipa = { workspace = true, optional = true }
+utoipa-swagger-ui = { workspace = true, optional = true }
+
 # Caching
 lru = "0.12"
 uuid = { version = "1", features = ["v4"] }
@@ -93,8 +100,10 @@ demo = []
 cli = ["dep:clap"]
 # Enable Python bindings (PyO3)
 python = ["dep:pyo3"]
+# OpenAPI documentation (Swagger UI)
+openapi = ["dep:utoipa", "dep:utoipa-swagger-ui"]
 # Full bundle with all services
-full = ["rest", "risk", "models", "volatility", "demo", "cli"]
+full = ["rest", "risk", "models", "volatility", "demo", "cli", "openapi"]
 
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["json"] }

@@ -2,9 +2,14 @@
 
 use pricer_models::market::BootstrapInterpolation;
 use serde::{Deserialize, Serialize};
+use validator::Validate;
+
+#[cfg(feature = "openapi")]
+use utoipa::ToSchema;
 
 /// Bootstrap method for curve building.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum BootstrapMethod {
     /// Iterative bootstrapping (default).
@@ -15,10 +20,11 @@ pub enum BootstrapMethod {
 }
 
 /// Single instrument input for curve building.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct CurveInstrumentInput {
     /// Instrument type (e.g., "deposit", "fra", "swap", "event").
     #[serde(alias = "type")]
+    #[validate(length(min = 1))]
     pub instrument_type: String,
     /// Tenor string (e.g., "1M", "3M", "1Y") - optional for event type.
     #[serde(default)]
@@ -39,9 +45,10 @@ pub struct CurveInstrumentInput {
 }
 
 /// Request to build a yield curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct CurveBuildRequest {
     /// Index name (e.g., "USD-SOFR", "EUR-EURIBOR-6M").
+    #[validate(length(min = 1))]
     pub index: String,
     /// Currency code (optional, extracted from index if not provided).
     #[serde(default)]
@@ -50,6 +57,8 @@ pub struct CurveBuildRequest {
     #[serde(default)]
     pub reference_date: Option<String>,
     /// Market instruments for bootstrapping.
+    #[validate(length(min = 1))]
+    #[validate(nested)]
     pub instruments: Vec<CurveInstrumentInput>,
     /// Interpolation method.
     #[serde(default)]
@@ -59,9 +68,11 @@ pub struct CurveBuildRequest {
     pub bootstrap_method: BootstrapMethod,
     /// Tolerance for bootstrap convergence.
     #[serde(default = "default_tolerance")]
+    #[validate(range(exclusive_min = 0.0))]
     pub tolerance: f64,
     /// Maximum iterations for bootstrap.
     #[serde(default = "default_max_iterations")]
+    #[validate(range(min = 1))]
     pub max_iterations: usize,
 }
 
@@ -156,11 +167,13 @@ pub struct CurveBuildResponse {
 }
 
 /// Request to get discount factor from a cached curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct DiscountFactorRequest {
     /// Curve ID from previous build.
+    #[validate(length(min = 1))]
     pub curve_id: String,
     /// Time in years.
+    #[validate(range(min = 0.0))]
     pub time: f64,
 }
 
@@ -178,13 +191,16 @@ pub struct DiscountFactorResponse {
 }
 
 /// Request to get forward rate from a cached curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct ForwardRateRequest {
     /// Curve ID from previous build.
+    #[validate(length(min = 1))]
     pub curve_id: String,
     /// Start time in years.
+    #[validate(range(min = 0.0))]
     pub start_time: f64,
     /// End time in years.
+    #[validate(range(exclusive_min = 0.0))]
     pub end_time: f64,
 }
 
@@ -202,13 +218,16 @@ pub struct ForwardRateResponse {
 }
 
 /// Request to compute forward swap rates from a cached curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct ForwardSwapRateRequest {
     /// Curve ID from previous build.
+    #[validate(length(min = 1))]
     pub curve_id: String,
     /// Expiry tenor strings (e.g., "1M", "3M", "1Y", "5Y", "10Y").
+    #[validate(length(min = 1))]
     pub expiries: Vec<String>,
     /// Swap tenor strings (e.g., "1Y", "2Y", "5Y", "10Y", "30Y").
+    #[validate(length(min = 1))]
     pub tenors: Vec<String>,
 }
 

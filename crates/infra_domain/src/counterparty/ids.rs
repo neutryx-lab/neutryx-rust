@@ -33,7 +33,6 @@ impl LegalEntityId {
     pub fn as_str(&self) -> &str { &self.0 }
 }
 
-
 define_id! {
     /// Type-safe NettingSet identifier.
     NettingSetId

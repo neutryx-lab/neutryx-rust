@@ -1,0 +1,593 @@
+//! Market data loading and convention endpoints.
+
+use std::{path::Path, sync::Arc};
+
+use crate::{
+    error::ServerError,
+    rest::dto::demo::{
+        Convention, ConventionField, ConventionsResponse, EventType, EventsResponse, ExportFormat,
+        Holiday, HolidaysResponse, Importance, MarketEvent, MarketRate, MarketRatesResponse,
+    },
+    services::helpers,
+    state::AppState,
+};
+
+use super::DemoService;
+
+/// Create a `MarketRate` with common defaults (quote_type="Mid").
+fn make_market_rate(
+    id: String,
+    currency: String,
+    tenor: String,
+    rate_type: String,
+    value: f64,
+    rate_index: Option<String>,
+    timestamp: &str,
+) -> MarketRate {
+    MarketRate {
+        id,
+        currency,
+        tenor,
+        rate_type,
+        value,
+        rate_index,
+        quote_type: Some("Mid".to_string()),
+        source: "Internal".to_string(),
+        timestamp: timestamp.to_string(),
+        is_stale: false,
+    }
+}
+
+/// Parse importance string to enum.
+fn parse_importance(s: &str) -> Importance {
+    match s.to_lowercase().as_str() {
+        "critical" => Importance::Critical,
+        "high" => Importance::High,
+        "medium" => Importance::Medium,
+        _ => Importance::Low,
+    }
+}
+
+/// Load a JSON file, extract an array by key, and parse each element.
+fn load_and_collect<T>(
+    path: &Path,
+    key: &str,
+    parser: fn(&serde_json::Value) -> Option<T>,
+) -> Vec<T> {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|c| serde_json::from_str::<serde_json::Value>(&c).ok())
+        .and_then(|d| d.get(key).and_then(|a| a.as_array().cloned()))
+        .map(|arr| arr.iter().filter_map(parser).collect())
+        .unwrap_or_default()
+}
+
+impl DemoService {
+    /// Get market rates.
+    pub fn get_market_rates(_state: &Arc<AppState>) -> Result<MarketRatesResponse, ServerError> {
+        let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
+        let data: serde_json::Value = helpers::load_json_value(rates_path, "market_quotes.json")?;
+
+        let mut rates = Vec::new();
+        let timestamp = chrono::Utc::now().to_rfc3339();
+
+        if let Some(rates_by_currency) = data.get("rates").and_then(|r| r.as_object()) {
+            for (currency, rate_types) in rates_by_currency {
+                if let Some(rate_types_obj) = rate_types.as_object() {
+                    for (rate_type, quotes) in rate_types_obj {
+                        if let Some(quotes_arr) = quotes.as_array() {
+                            for quote in quotes_arr {
+                                let tenor =
+                                    quote.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                                let value =
+                                    quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let index = quote.get("index").and_then(|i| i.as_str());
+
+                                rates.push(make_market_rate(
+                                    format!("{currency}-{rate_type}-{tenor}"),
+                                    currency.clone(),
+                                    tenor.to_string(),
+                                    rate_type.clone(),
+                                    value,
+                                    index.map(String::from),
+                                    &timestamp,
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let curve_files = ["usd-sofr.json", "eur-estr.json", "jpy-tona.json"];
+        for file in &curve_files {
+            let curve_path = Path::new("demo/data/input/rates").join(file);
+            if let Ok(curve_content) = std::fs::read_to_string(&curve_path) {
+                if let Ok(curve_data) = serde_json::from_str::<serde_json::Value>(&curve_content) {
+                    let currency = curve_data
+                        .get("currency")
+                        .and_then(|c| c.as_str())
+                        .unwrap_or("");
+                    let index_name = curve_data
+                        .get("index")
+                        .and_then(|i| i.as_str())
+                        .unwrap_or("");
+
+                    if let Some(instruments) =
+                        curve_data.get("instruments").and_then(|i| i.as_array())
+                    {
+                        for instr in instruments {
+                            let instr_type = instr
+                                .get("type")
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("unknown");
+                            let tenor = instr.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                            let rate = instr.get("rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
+
+                            let id =
+                                format!("{}-{}-{}-{}", currency, index_name, instr_type, tenor);
+
+                            if rates.iter().any(|r| {
+                                r.currency == currency
+                                    && r.tenor == tenor
+                                    && r.rate_type == instr_type
+                            }) {
+                                continue;
+                            }
+
+                            rates.push(make_market_rate(
+                                id,
+                                currency.to_string(),
+                                tenor.to_string(),
+                                instr_type.to_string(),
+                                rate,
+                                Some(index_name.to_uppercase()),
+                                &timestamp,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
+        let fx_path = Path::new("demo/data/input/fx/fx_spots.json");
+        if let Ok(fx_content) = std::fs::read_to_string(fx_path) {
+            if let Ok(fx_data) = serde_json::from_str::<serde_json::Value>(&fx_content) {
+                if let Some(spots) = fx_data.get("spots").and_then(|s| s.as_array()) {
+                    for spot in spots {
+                        let pair = spot.get("pair").and_then(|p| p.as_str()).unwrap_or("");
+                        let value = spot.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
+
+                        rates.push(make_market_rate(
+                            pair.to_string(),
+                            base_ccy.to_string(),
+                            "SPOT".to_string(),
+                            "fxspot".to_string(),
+                            value,
+                            Some(pair.to_string()),
+                            &timestamp,
+                        ));
+                    }
+                }
+            }
+        }
+
+        let fx_fwd_path = Path::new("demo/data/input/fx/fx_forwards.json");
+        if let Ok(fx_fwd_content) = std::fs::read_to_string(fx_fwd_path) {
+            if let Ok(fx_fwd_data) = serde_json::from_str::<serde_json::Value>(&fx_fwd_content) {
+                if let Some(forwards) = fx_fwd_data.get("forwards").and_then(|f| f.as_object()) {
+                    for (pair, tenors) in forwards {
+                        let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
+                        if let Some(tenors_arr) = tenors.as_array() {
+                            for fwd in tenors_arr {
+                                let tenor = fwd.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                                let points =
+                                    fwd.get("points").and_then(|p| p.as_f64()).unwrap_or(0.0);
+
+                                rates.push(make_market_rate(
+                                    format!("{pair}-{tenor}"),
+                                    base_ccy.to_string(),
+                                    tenor.to_string(),
+                                    "fxforward".to_string(),
+                                    points,
+                                    Some(pair.clone()),
+                                    &timestamp,
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let xccy_path = Path::new("demo/data/input/fx/xccy_basis.json");
+        if let Ok(xccy_content) = std::fs::read_to_string(xccy_path) {
+            if let Ok(xccy_data) = serde_json::from_str::<serde_json::Value>(&xccy_content) {
+                if let Some(basis) = xccy_data.get("basis").and_then(|b| b.as_object()) {
+                    for (pair, tenors) in basis {
+                        let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
+                        if let Some(tenors_arr) = tenors.as_array() {
+                            for spread in tenors_arr {
+                                let tenor =
+                                    spread.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                                let value =
+                                    spread.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let index = spread.get("index").and_then(|i| i.as_str());
+
+                                rates.push(make_market_rate(
+                                    format!("XCCY-{pair}-{tenor}"),
+                                    base_ccy.to_string(),
+                                    tenor.to_string(),
+                                    "xccybasis".to_string(),
+                                    value,
+                                    index.map(String::from),
+                                    &timestamp,
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(MarketRatesResponse {
+            rates,
+            last_updated: timestamp,
+        })
+    }
+
+    /// Refresh market rates (mock - just returns success).
+    pub fn refresh_market_rates(_state: &Arc<AppState>) -> Result<(), ServerError> { Ok(()) }
+
+    /// Get conventions.
+    pub fn get_conventions(_state: &Arc<AppState>) -> Result<ConventionsResponse, ServerError> {
+        let conv_path = Path::new("demo/data/input/conventions/conventions.json");
+        let data: serde_json::Value = helpers::load_json_value(conv_path, "conventions.json")?;
+
+        let mut conventions = Vec::new();
+
+        if let Some(conv_obj) = data.get("conventions").and_then(|c| c.as_object()) {
+            for (id, conv) in conv_obj {
+                let convention_type = conv
+                    .get("type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let currency = conv
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let is_default = conv.get("is_default").and_then(|d| d.as_bool());
+
+                let fields = conv.get("fields").and_then(|f| f.as_object()).map(|obj| {
+                    obj.iter()
+                        .map(|(key, value)| ConventionField {
+                            label: key
+                                .replace('_', " ")
+                                .split_whitespace()
+                                .map(|w| {
+                                    let mut c = w.chars();
+                                    match c.next() {
+                                        None => String::new(),
+                                        Some(f) => {
+                                            f.to_uppercase().collect::<String>() + c.as_str()
+                                        }
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" "),
+                            value: value.as_str().map(String::from).unwrap_or_else(|| {
+                                if let Some(n) = value.as_i64() {
+                                    n.to_string()
+                                } else if let Some(n) = value.as_f64() {
+                                    n.to_string()
+                                } else {
+                                    value.to_string()
+                                }
+                            }),
+                        })
+                        .collect()
+                });
+
+                conventions.push(Convention {
+                    id: id.clone(),
+                    convention_type,
+                    currency,
+                    is_default,
+                    fields,
+                });
+            }
+        }
+
+        conventions.sort_by(|a, b| a.id.cmp(&b.id));
+
+        Ok(ConventionsResponse { conventions })
+    }
+
+    /// Get convention detail.
+    pub fn get_convention_detail(
+        id: &str,
+        state: &Arc<AppState>,
+    ) -> Result<Convention, ServerError> {
+        let conventions_response = Self::get_conventions(state)?;
+        conventions_response
+            .conventions
+            .into_iter()
+            .find(|c| c.id == id)
+            .ok_or_else(|| ServerError::NotFound(format!("Convention {} not found", id)))
+    }
+
+    /// Get market events.
+    pub fn get_events(_state: &Arc<AppState>) -> Result<EventsResponse, ServerError> {
+        let mut events = Vec::new();
+
+        fn parse_event_type(s: &str) -> EventType {
+            match s {
+                "central_bank_meeting" => EventType::CentralBankMeeting,
+                "economic_release" => EventType::EconomicRelease,
+                "holiday" => EventType::Holiday,
+                "news" => EventType::News,
+                "expiry" => EventType::Expiry,
+                "turn" => EventType::Turn,
+                _ => EventType::Other,
+            }
+        }
+
+        fn parse_event(event: &serde_json::Value) -> Option<MarketEvent> {
+            let id = event.get("id")?.as_str()?.to_string();
+            let date = event.get("date")?.as_str()?.to_string();
+            let event_type_str = event.get("eventType")?.as_str()?;
+            let title = event.get("title")?.as_str()?.to_string();
+
+            let central_bank = event.get("centralBank").and_then(|cb| {
+                Some(crate::rest::dto::demo::CentralBank {
+                    name: cb.get("name")?.as_str()?.to_string(),
+                    code: cb.get("code")?.as_str()?.to_string(),
+                    currency: cb.get("currency")?.as_str()?.to_string(),
+                })
+            });
+
+            let tags = event.get("tags").and_then(|t| t.as_array()).map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            });
+
+            Some(MarketEvent {
+                id,
+                date,
+                event_type: parse_event_type(event_type_str),
+                title,
+                description: event
+                    .get("description")
+                    .and_then(|d| d.as_str())
+                    .map(String::from),
+                currency: event
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .map(String::from),
+                region: event
+                    .get("region")
+                    .and_then(|r| r.as_str())
+                    .map(String::from),
+                importance: event
+                    .get("importance")
+                    .and_then(|i| i.as_str())
+                    .map(parse_importance)
+                    .unwrap_or(Importance::Medium),
+                time: event.get("time").and_then(|t| t.as_str()).map(String::from),
+                timezone: event
+                    .get("timezone")
+                    .and_then(|t| t.as_str())
+                    .map(String::from),
+                source: event
+                    .get("source")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("Internal")
+                    .to_string(),
+                tags,
+                central_bank,
+                previous: event
+                    .get("previous")
+                    .and_then(|p| p.as_str())
+                    .map(String::from),
+                forecast: event
+                    .get("forecast")
+                    .and_then(|f| f.as_str())
+                    .map(String::from),
+                actual: event
+                    .get("actual")
+                    .and_then(|a| a.as_str())
+                    .map(String::from),
+                expected_spike_bp: event.get("expectedRateBp").and_then(|v| v.as_f64()),
+            })
+        }
+
+        events.extend(load_and_collect(
+            Path::new("demo/data/input/events/central_bank_meetings.json"),
+            "events",
+            parse_event,
+        ));
+        events.extend(load_and_collect(
+            Path::new("demo/data/input/events/economic_releases.json"),
+            "events",
+            parse_event,
+        ));
+        events.extend(load_and_collect(
+            Path::new("demo/data/input/events/turns.json"),
+            "turnEvents",
+            parse_turn_event,
+        ));
+
+        fn parse_turn_event(turn: &serde_json::Value) -> Option<MarketEvent> {
+            let id = turn.get("id")?.as_str()?.to_string();
+            let date = turn.get("date")?.as_str()?.to_string();
+            let currency = turn.get("currency")?.as_str()?.to_string();
+            let turn_type = turn.get("eventType")?.as_str()?;
+            let expected_spike = turn.get("expectedSpikeBp")?.as_f64()?;
+            let notes = turn
+                .get("notes")
+                .and_then(|n| n.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            let title = match turn_type {
+                "turn_of_year" => format!("{} Year-End Turn", currency),
+                "turn_of_quarter" => format!("{} Quarter-End Turn", currency),
+                "turn_of_month" => format!("{} Month-End Turn", currency),
+                _ => format!("{} Turn", currency),
+            };
+
+            let event_type = match turn_type {
+                "turn_of_year" => EventType::TurnOfYear,
+                "turn_of_quarter" => EventType::TurnOfQuarter,
+                "turn_of_month" => EventType::TurnOfMonth,
+                _ => EventType::Turn,
+            };
+
+            let importance = match turn_type {
+                "turn_of_year" => Importance::Critical,
+                "turn_of_quarter" => Importance::High,
+                _ => Importance::Medium,
+            };
+
+            let bid_spike = turn.get("bidSpikeBp").and_then(|b| b.as_f64());
+            let ask_spike = turn.get("askSpikeBp").and_then(|a| a.as_f64());
+            let historical_avg = turn.get("historicalAvgBp").and_then(|h| h.as_f64());
+
+            let mut description = format!("Expected spike: {:.1}bp", expected_spike);
+            if let (Some(bid), Some(ask)) = (bid_spike, ask_spike) {
+                description.push_str(&format!(" (Bid: {:.1}bp, Ask: {:.1}bp)", bid, ask));
+            }
+            if let Some(hist) = historical_avg {
+                description.push_str(&format!(". Historical avg: {:.1}bp", hist));
+            }
+            if !notes.is_empty() {
+                description.push_str(&format!(". {}", notes));
+            }
+
+            Some(MarketEvent {
+                id,
+                date,
+                event_type,
+                title,
+                description: Some(description),
+                currency: Some(currency),
+                region: None,
+                importance,
+                time: None,
+                timezone: None,
+                source: "Internal".to_string(),
+                tags: Some(vec!["turn".to_string(), "curve".to_string()]),
+                central_bank: None,
+                previous: historical_avg.map(|h| format!("{:.1}bp", h)),
+                forecast: Some(format!("{:.1}bp", expected_spike)),
+                actual: None,
+                expected_spike_bp: Some(expected_spike),
+            })
+        }
+
+        events.sort_by(|a, b| a.date.cmp(&b.date));
+
+        Ok(EventsResponse { events })
+    }
+
+    /// Get market holidays.
+    pub fn get_holidays(_state: &Arc<AppState>) -> Result<HolidaysResponse, ServerError> {
+        let mut holidays = Vec::new();
+
+        fn parse_holiday(event: &serde_json::Value) -> Option<Holiday> {
+            let id = event.get("id")?.as_str()?.to_string();
+            let date = event.get("date")?.as_str()?.to_string();
+            let title = event.get("title")?.as_str()?.to_string();
+            let region = event
+                .get("region")
+                .and_then(|r| r.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let currency = event
+                .get("currency")
+                .and_then(|c| c.as_str())
+                .map(String::from);
+            let importance = event
+                .get("importance")
+                .and_then(|i| i.as_str())
+                .map(parse_importance)
+                .unwrap_or(Importance::Medium);
+            let source = event
+                .get("source")
+                .and_then(|s| s.as_str())
+                .map(String::from);
+
+            let holiday_type = event
+                .get("tags")
+                .and_then(|t| t.as_array())
+                .and_then(|arr| {
+                    if arr.iter().any(|v| v.as_str() == Some("market-closed")) {
+                        Some("market".to_string())
+                    } else if arr.iter().any(|v| v.as_str() == Some("settlement-closed")) {
+                        Some("settlement".to_string())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "bank".to_string());
+
+            Some(Holiday {
+                id,
+                date,
+                name: title,
+                country: region,
+                currency,
+                holiday_type,
+                importance,
+                source,
+            })
+        }
+
+        holidays.extend(load_and_collect(
+            Path::new("demo/data/input/holidays.json"),
+            "events",
+            parse_holiday,
+        ));
+        holidays.sort_by(|a, b| a.date.cmp(&b.date));
+
+        Ok(HolidaysResponse { holidays })
+    }
+
+    /// Export market data.
+    pub fn export_market_data(
+        format: ExportFormat,
+        state: &Arc<AppState>,
+    ) -> Result<Vec<u8>, ServerError> {
+        let rates_response = Self::get_market_rates(state)?;
+
+        match format {
+            ExportFormat::Csv => {
+                let mut csv = String::new();
+                csv.push_str("id,currency,tenor,rate_type,value,rate_index,source\n");
+                for rate in &rates_response.rates {
+                    csv.push_str(&format!(
+                        "{},{},{},{},{},{},{}\n",
+                        rate.id,
+                        rate.currency,
+                        rate.tenor,
+                        rate.rate_type,
+                        rate.value,
+                        rate.rate_index.as_deref().unwrap_or(""),
+                        rate.source
+                    ));
+                }
+                Ok(csv.into_bytes())
+            }
+            ExportFormat::Json => {
+                let json = serde_json::to_vec(&rates_response).map_err(|e| {
+                    ServerError::Internal(format!("JSON serialization failed: {e}"))
+                })?;
+                Ok(json)
+            }
+        }
+    }
+}

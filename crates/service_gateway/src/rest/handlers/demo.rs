@@ -10,7 +10,7 @@ use axum::{
 };
 
 use crate::{
-    error::{AppJson, ServerError},
+    error::{ServerError, ValidatedJson},
     rest::dto::demo::{
         AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
         CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
@@ -56,25 +56,25 @@ macro_rules! state_path_handler {
     };
 }
 
-/// Handler: State + AppJson<Request> → Json<Response>.
+/// Handler: State + `ValidatedJson<Request>` → `Json<Response>`.
 macro_rules! state_body_handler {
     ($(#[$doc:meta])* $fn:ident, $svc:ident :: $method:ident($req:ty) -> $res:ty) => {
         $(#[$doc])*
         pub async fn $fn(
             State(state): State<Arc<AppState>>,
-            AppJson(request): AppJson<$req>,
+            ValidatedJson(request): ValidatedJson<$req>,
         ) -> Result<Json<$res>, ServerError> {
             Ok(Json($svc::$method(&request, &state)?))
         }
     };
 }
 
-/// Handler: AppJson<Request> → Json<Response> (no state).
+/// Handler: `ValidatedJson<Request>` → `Json<Response>` (no state).
 macro_rules! body_handler {
     ($(#[$doc:meta])* $fn:ident, $svc:ident :: $method:ident($req:ty) -> $res:ty) => {
         $(#[$doc])*
         pub async fn $fn(
-            AppJson(request): AppJson<$req>,
+            ValidatedJson(request): ValidatedJson<$req>,
         ) -> Result<Json<$res>, ServerError> {
             Ok(Json($svc::$method(&request)?))
         }

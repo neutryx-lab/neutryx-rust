@@ -1,6 +1,7 @@
 //! Model-related DTOs for stochastic model configuration and pricing.
 
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 /// GBM (Geometric Brownian Motion) parameters.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -12,17 +13,22 @@ pub struct GbmParamsDto {
 }
 
 /// Heston stochastic volatility parameters.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct HestonParamsDto {
     /// Initial variance (v0).
+    #[validate(range(exclusive_min = 0.0))]
     pub v0: f64,
     /// Mean reversion speed (kappa).
+    #[validate(range(exclusive_min = 0.0))]
     pub kappa: f64,
     /// Long-term variance (theta).
+    #[validate(range(exclusive_min = 0.0))]
     pub theta: f64,
     /// Volatility of volatility (sigma).
+    #[validate(range(exclusive_min = 0.0))]
     pub sigma: f64,
     /// Correlation between spot and variance (rho).
+    #[validate(range(min = -1.0, max = 1.0))]
     pub rho: f64,
 }
 
@@ -47,15 +53,19 @@ pub struct CirParamsDto {
 }
 
 /// SABR model parameters.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct SabrParamsDto {
     /// Initial volatility (alpha).
+    #[validate(range(exclusive_min = 0.0))]
     pub alpha: f64,
     /// Beta exponent.
+    #[validate(range(min = 0.0, max = 1.0))]
     pub beta: f64,
     /// Correlation (rho).
+    #[validate(range(min = -1.0, max = 1.0))]
     pub rho: f64,
     /// Vol-of-vol (nu).
+    #[validate(range(min = 0.0))]
     pub nu: f64,
 }
 

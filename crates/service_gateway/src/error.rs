@@ -10,6 +10,7 @@ use axum::{
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use thiserror::Error;
+use validator::Validate;
 
 /// Server-specific errors with domain separation.
 #[derive(Error, Debug)]
@@ -77,6 +78,32 @@ where
             Ok(Json(value)) => Ok(Self(value)),
             Err(rejection) => Err(ServerError::from(rejection)),
         }
+    }
+}
+
+/// JSON extractor with automatic validation via the `validator` crate.
+///
+/// Deserialises the request body, then calls [`Validate::validate`] before
+/// yielding the value.  Validation errors are mapped to
+/// [`ServerError::InvalidRequest`] with a human-readable summary.
+pub struct ValidatedJson<T>(pub T);
+
+#[async_trait]
+impl<T, S> FromRequest<S> for ValidatedJson<T>
+where
+    T: DeserializeOwned + Validate,
+    S: Send + Sync,
+{
+    type Rejection = ServerError;
+
+    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+        let Json(value) = axum::Json::<T>::from_request(req, state)
+            .await
+            .map_err(ServerError::from)?;
+        value
+            .validate()
+            .map_err(|e| ServerError::InvalidRequest(e.to_string()))?;
+        Ok(Self(value))
     }
 }
 
