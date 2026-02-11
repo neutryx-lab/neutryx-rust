@@ -364,8 +364,8 @@ mod tests {
     fn test_calibration_matrix_zeros() {
         let matrix: CalibrationMatrix<f64> = CalibrationMatrix::zeros(3, 5);
 
-        assert_eq!(matrix.num_rows(), 3);
-        assert_eq!(matrix.num_cols(), 5);
+        assert_eq!(matrix.inner.nrows(), 3);
+        assert_eq!(matrix.inner.ncols(), 5);
         assert_relative_eq!(matrix.get(0, 0).unwrap(), 0.0, epsilon = 1e-15);
     }
 
@@ -394,33 +394,18 @@ mod tests {
     }
 
     #[test]
-    fn test_calibration_matrix_get_row() {
-        let mut matrix: CalibrationMatrix<f64> = CalibrationMatrix::zeros(2, 3);
-
-        matrix.set(0, 0, 1.0);
-        matrix.set(0, 1, 2.0);
-        matrix.set(0, 2, 3.0);
-
-        let row = matrix.get_row(0).unwrap();
-        assert_eq!(row.len(), 3);
-        assert_relative_eq!(row[0], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(row[1], 2.0, epsilon = 1e-10);
-        assert_relative_eq!(row[2], 3.0, epsilon = 1e-10);
-    }
-
-    #[test]
     fn test_interpolation_matrix_single_pillar() {
         let pillars = vec![1.0];
         let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![0.5, 1.0, 1.5]);
 
         let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
 
-        assert_eq!(interp.num_points(), 3);
-        assert_eq!(interp.num_pillars(), 1);
+        assert_eq!(interp.inner.nrows(), 3);
+        assert_eq!(interp.inner.ncols(), 1);
 
-        assert_relative_eq!(interp.matrix()[(0, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(1, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(2, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(1, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(2, 0)], 1.0, epsilon = 1e-10);
     }
 
     #[test]
@@ -430,20 +415,20 @@ mod tests {
 
         let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
 
-        assert_eq!(interp.num_points(), 3);
-        assert_eq!(interp.num_pillars(), 2);
+        assert_eq!(interp.inner.nrows(), 3);
+        assert_eq!(interp.inner.ncols(), 2);
 
         // t=1.0: maps to pillar 0 only
-        assert_relative_eq!(interp.matrix()[(0, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(0, 1)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 1)], 0.0, epsilon = 1e-10);
 
         // t=1.5: interpolates between pillars 0 and 1
-        assert_relative_eq!(interp.matrix()[(1, 0)], 0.5, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(1, 1)], 0.5, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(1, 0)], 0.5, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(1, 1)], 0.5, epsilon = 1e-10);
 
         // t=2.0: maps to pillar 1 only
-        assert_relative_eq!(interp.matrix()[(2, 0)], 0.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(2, 1)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(2, 0)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(2, 1)], 1.0, epsilon = 1e-10);
     }
 
     #[test]
@@ -483,12 +468,12 @@ mod tests {
         let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
 
         // t=0.5: before first pillar (extrapolate flat)
-        assert_relative_eq!(interp.matrix()[(0, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(0, 1)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 1)], 0.0, epsilon = 1e-10);
 
         // t=3.0: after last pillar (extrapolate flat)
-        assert_relative_eq!(interp.matrix()[(3, 0)], 0.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(3, 1)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(3, 0)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(3, 1)], 1.0, epsilon = 1e-10);
     }
 
     // =========================================================================
@@ -516,9 +501,9 @@ mod tests {
         let interp = InterpolationMatrix::with_jump_pillars(&pillars, &jump_times, &grid);
 
         // Should have 5 grid points
-        assert_eq!(interp.num_points(), 5);
+        assert_eq!(interp.inner.nrows(), 5);
         // Should have 5 "pillars" (3 regular + 2 jump times)
-        assert_eq!(interp.num_pillars(), 5);
+        assert_eq!(interp.inner.ncols(), 5);
     }
 
     #[test]
@@ -684,9 +669,8 @@ mod tests {
 
         // The matrix should be column-major (nalgebra default)
         // This is suitable for SIMD operations on columns
-        let matrix = interp.matrix();
-        assert_eq!(matrix.nrows(), 6);
-        assert_eq!(matrix.ncols(), 4);
+        assert_eq!(interp.inner.nrows(), 6);
+        assert_eq!(interp.inner.ncols(), 4);
 
         // Matrix-vector multiplication should work efficiently
         let pillar_dfs = DVector::from_vec(vec![0.97, 0.94, 0.85, 0.75]);

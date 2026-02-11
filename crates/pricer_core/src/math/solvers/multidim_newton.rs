@@ -155,41 +155,55 @@ impl<T: RealField + Copy> MultidimSolverResult<T> {
 }
 
 // =============================================================================
-// Argmin-math bridge for dynamic nalgebra types
+// Argmin adapter: newtypes + SystemOfEquations → Gradient + Hessian
 // =============================================================================
 
-/// argmin-math traits are not implemented for dynamically-sized nalgebra types
-/// (`DVector`, `DMatrix`). We provide the minimal set needed by `Newton`.
+/// Newtype wrappers for dynamic nalgebra types, allowing us to implement
+/// the argmin-math traits required by `argmin::solver::newton::Newton`.
 mod argmin_bridge {
     use argmin_math::{ArgminDot, ArgminInv, ArgminScaledSub, ArgminSub};
     use nalgebra::{DMatrix, DVector};
+    use std::ops::Deref;
 
-    impl ArgminInv<DMatrix<f64>> for DMatrix<f64> {
-        fn inv(&self) -> Result<DMatrix<f64>, argmin::core::Error> {
-            self.clone()
+    /// Newtype around `DVector<f64>`.
+    #[derive(Debug, Clone)]
+    pub struct DVec(pub DVector<f64>);
+
+    impl Deref for DVec {
+        type Target = DVector<f64>;
+        fn deref(&self) -> &Self::Target { &self.0 }
+    }
+
+    /// Newtype around `DMatrix<f64>`.
+    #[derive(Debug, Clone)]
+    pub struct DMat(pub DMatrix<f64>);
+
+    impl ArgminInv<DMat> for DMat {
+        fn inv(&self) -> Result<DMat, argmin::core::Error> {
+            self.0
+                .clone()
                 .try_inverse()
+                .map(DMat)
                 .ok_or_else(|| argmin::core::Error::msg("Singular matrix"))
         }
     }
 
-    impl ArgminDot<DVector<f64>, DVector<f64>> for DMatrix<f64> {
-        fn dot(&self, rhs: &DVector<f64>) -> DVector<f64> { self * rhs }
+    impl ArgminDot<DVec, DVec> for DMat {
+        fn dot(&self, rhs: &DVec) -> DVec { DVec(&self.0 * &rhs.0) }
     }
 
-    impl ArgminScaledSub<DVector<f64>, f64, DVector<f64>> for DVector<f64> {
-        fn scaled_sub(&self, scale: &f64, rhs: &DVector<f64>) -> DVector<f64> {
-            self - *scale * rhs
+    impl ArgminScaledSub<DVec, f64, DVec> for DVec {
+        fn scaled_sub(&self, scale: &f64, rhs: &DVec) -> DVec {
+            DVec(&self.0 - *scale * &rhs.0)
         }
     }
 
-    impl ArgminSub<DVector<f64>, DVector<f64>> for DVector<f64> {
-        fn sub(&self, rhs: &DVector<f64>) -> DVector<f64> { self - rhs }
+    impl ArgminSub<DVec, DVec> for DVec {
+        fn sub(&self, rhs: &DVec) -> DVec { DVec(&self.0 - &rhs.0) }
     }
 }
 
-// =============================================================================
-// Argmin adapter (f64 only) -- wraps SystemOfEquations as Gradient + Hessian
-// =============================================================================
+use argmin_bridge::{DMat, DVec};
 
 /// Adapter that presents a root-finding problem F(x)=0 as an optimisation
 /// problem for argmin's Newton solver. "Gradient" = F(x), "Hessian" = J(x),
@@ -199,30 +213,36 @@ struct ArgminSystemAdapter<'a, S> {
 }
 
 impl<S: SystemOfEquations<f64>> argmin::core::CostFunction for ArgminSystemAdapter<'_, S> {
-    type Param = DVector<f64>;
+    type Param = DVec;
     type Output = f64;
 
     fn cost(&self, x: &Self::Param) -> Result<f64, argmin::core::Error> {
-        let f = self.system.evaluate(x).map_err(|e| argmin::core::Error::msg(e.to_string()))?;
+        let f = self.system.evaluate(&x.0).map_err(|e| argmin::core::Error::msg(e.to_string()))?;
         Ok(f.norm())
     }
 }
 
 impl<S: SystemOfEquations<f64>> argmin::core::Gradient for ArgminSystemAdapter<'_, S> {
-    type Param = DVector<f64>;
-    type Gradient = DVector<f64>;
+    type Param = DVec;
+    type Gradient = DVec;
 
     fn gradient(&self, x: &Self::Param) -> Result<Self::Gradient, argmin::core::Error> {
-        self.system.evaluate(x).map_err(|e| argmin::core::Error::msg(e.to_string()))
+        self.system
+            .evaluate(&x.0)
+            .map(DVec)
+            .map_err(|e| argmin::core::Error::msg(e.to_string()))
     }
 }
 
 impl<S: SystemOfEquations<f64>> argmin::core::Hessian for ArgminSystemAdapter<'_, S> {
-    type Param = DVector<f64>;
-    type Hessian = DMatrix<f64>;
+    type Param = DVec;
+    type Hessian = DMat;
 
     fn hessian(&self, x: &Self::Param) -> Result<Self::Hessian, argmin::core::Error> {
-        self.system.jacobian(x).map_err(|e| argmin::core::Error::msg(e.to_string()))
+        self.system
+            .jacobian(&x.0)
+            .map(DMat)
+            .map_err(|e| argmin::core::Error::msg(e.to_string()))
     }
 }
 
@@ -326,12 +346,14 @@ impl MultidimensionalNewtonSolver<f64> {
             });
         }
 
+        use argmin::core::State;
+
         let adapter = ArgminSystemAdapter { system };
         let newton = argmin::solver::newton::Newton::new();
         let executor = argmin::core::Executor::new(adapter, newton)
             .configure(|state| {
                 state
-                    .param(initial_guess)
+                    .param(DVec(initial_guess))
                     .max_iters(self.config.max_iterations as u64)
                     .target_cost(self.config.tolerance)
             });
@@ -343,7 +365,7 @@ impl MultidimensionalNewtonSolver<f64> {
         let state = &result.state;
         let solution = state
             .get_best_param()
-            .cloned()
+            .map(|p| p.0.clone())
             .ok_or_else(|| SolverError::NumericalInstability("No solution found".into()))?;
         let best_cost = state.get_best_cost();
         let iterations = state.get_iter() as usize;
