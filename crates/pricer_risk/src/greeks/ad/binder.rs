@@ -706,7 +706,7 @@ mod global_bootstrap_integration {
             &self,
             bootstrap_result: &GlobalBootstrapResult<f64>,
             trade: &T,
-            dF_dquote: &[Vec<f64>],
+            df_dquote: &[Vec<f64>],
         ) -> Result<IftRiskResult, IftRiskError> {
             if !bootstrap_result.can_compute_ift() {
                 return Err(IftRiskError::IftError(IftError::NoJacobianInverse));
@@ -717,10 +717,10 @@ mod global_bootstrap_integration {
                 &bootstrap_result.pillars,
             );
 
-            let mut market_sensitivities = Vec::with_capacity(dF_dquote.len());
+            let mut market_sensitivities = Vec::with_capacity(df_dquote.len());
 
-            for dF_dq in dF_dquote {
-                let df_dquote = bootstrap_result.ift_sensitivity(dF_dq)?;
+            for df_dq in df_dquote {
+                let df_dquote = bootstrap_result.ift_sensitivity(df_dq)?;
 
                 let market_sens: f64 = df_sensitivities
                     .iter()
@@ -744,7 +744,7 @@ mod global_bootstrap_integration {
             &self,
             bootstrap_result: &GlobalBootstrapResult<f64>,
             trades: &[T],
-            dF_dquote: &[Vec<f64>],
+            df_dquote: &[Vec<f64>],
         ) -> Result<BatchIftRiskResult, IftRiskError> {
             if trades.is_empty() {
                 return Err(IftRiskError::EmptyBatch);
@@ -754,11 +754,11 @@ mod global_bootstrap_integration {
                 return Err(IftRiskError::IftError(IftError::NoJacobianInverse));
             }
 
-            let n_quotes = dF_dquote.len();
+            let n_quotes = df_dquote.len();
             let mut df_dquote_cache: Vec<Vec<f64>> = Vec::with_capacity(n_quotes);
 
-            for dF_dq in dF_dquote {
-                let df_dquote = bootstrap_result.ift_sensitivity(dF_dq)?;
+            for df_dq in df_dquote {
+                let df_dquote = bootstrap_result.ift_sensitivity(df_dq)?;
                 df_dquote_cache.push(df_dquote);
             }
 
