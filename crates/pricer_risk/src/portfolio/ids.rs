@@ -1,20 +1,5 @@
-//! Identifier types for portfolio entities.
-//!
-//! This module re-exports ID types from `infra_domain::ids` for convenience.
-//! All ID types are defined centrally in the Infra layer to ensure type safety
-//! across the entire codebase.
-//!
-//! # Migration Note
-//!
-//! Previously, this module defined its own ID types. As of the legacy
-//! compatibility removal, all ID types are now defined in `infra_domain::ids`
-//! and re-exported here for backward compatibility.
-//!
-//! Prefer importing directly from `infra_domain::ids` for new code.
+//! Identifier types for portfolio entities, re-exported from infra_domain::ids.
 
-// Re-export all ID types from infra_domain for backward compatibility.
-// Some types may not be used internally but are re-exported for public API.
-// Also re-export CounterPartyId for code that uses the CamelCase variant
 #[allow(unused_imports)]
 pub use infra_domain::counterparty::CounterPartyId;
 #[allow(unused_imports)]
@@ -66,7 +51,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(TradeId::new("T1"));
         set.insert(TradeId::new("T2"));
-        set.insert(TradeId::new("T1")); // Duplicate
+        set.insert(TradeId::new("T1"));
         assert_eq!(set.len(), 2);
     }
 
@@ -87,7 +72,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(CounterpartyId::new("CP1"));
         set.insert(CounterpartyId::new("CP2"));
-        set.insert(CounterpartyId::new("CP1")); // Duplicate
+        set.insert(CounterpartyId::new("CP1"));
         assert_eq!(set.len(), 2);
     }
 
@@ -108,7 +93,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(NettingSetId::new("NS1"));
         set.insert(NettingSetId::new("NS2"));
-        set.insert(NettingSetId::new("NS1")); // Duplicate
+        set.insert(NettingSetId::new("NS1"));
         assert_eq!(set.len(), 2);
     }
 
@@ -128,7 +113,6 @@ mod tests {
 
     #[test]
     fn test_counterparty_id_alias() {
-        // Verify CounterpartyId and CounterPartyId are compatible
         let id1 = CounterpartyId::new("CP001");
         let id2 = CounterPartyId::new("CP001");
         assert_eq!(id1, id2);

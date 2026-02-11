@@ -1,14 +1,4 @@
 //! Curve shift utilities for scenario analysis.
-//!
-//! This module provides utilities for applying various shift patterns to yield
-//! curves:
-//! - Parallel shifts (uniform across all tenors)
-//! - Twist shifts (steepening/flattening)
-//! - Butterfly shifts (curvature changes)
-//!
-//! # Requirements
-//!
-//! - Requirement 2.4: カーブシフト機能の拡充
 
 use pricer_core::traits::risk::ShiftType;
 use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
@@ -33,13 +23,8 @@ pub enum CurveShiftError {
 /// Specification for a curve shift operation.
 #[derive(Clone, Debug, Serialize)]
 pub struct CurveShiftSpec {
-    /// Name of the curve to shift.
     pub curve_name: String,
-
-    /// Type of shift to apply.
     pub shift_type: CurveShiftType,
-
-    /// Reference tenor for twist/butterfly (years).
     pub pivot_tenor: Option<f64>,
 }
 
@@ -47,43 +32,24 @@ pub struct CurveShiftSpec {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum CurveShiftType {
     /// Uniform shift across all tenors.
-    ///
-    /// `shifted_rate(t) = base_rate(t) + shift_amount`
     Parallel(f64),
 
     /// Linear twist (steepening/flattening).
-    ///
-    /// Short end moves opposite to long end.
-    /// `shifted_rate(t) = base_rate(t) + short_shift + (long_shift -
-    /// short_shift) * t / max_tenor`
     Twist {
-        /// Shift for short end (t=0).
         short_shift: f64,
-        /// Shift for long end (t=max_tenor).
         long_shift: f64,
     },
 
     /// Butterfly shift (curvature).
-    ///
-    /// Wings move opposite to belly.
-    /// `shifted_rate(t) = base_rate(t) + wing_shift + (belly_shift -
-    /// wing_shift) * parabola(t)`
     Butterfly {
-        /// Shift for short and long ends.
         wing_shift: f64,
-        /// Shift for middle (belly).
         belly_shift: f64,
-        /// Belly tenor (default 5Y).
         belly_tenor: f64,
     },
 
     /// Custom tenor-specific shifts.
-    ///
-    /// Applies different shifts at specific tenors with interpolation.
     TenorSpecific {
-        /// Tenors in years.
         tenors: Vec<f64>,
-        /// Shift amounts for each tenor.
         shifts: Vec<f64>,
     },
 }
@@ -93,9 +59,6 @@ impl CurveShiftType {
     pub fn parallel(amount: f64) -> Self { Self::Parallel(amount) }
 
     /// Creates a twist shift (steepening).
-    ///
-    /// Positive values = short end up, long end down (flattening).
-    /// Negative values = short end down, long end up (steepening).
     pub fn twist(short_shift: f64, long_shift: f64) -> Self {
         Self::Twist {
             short_shift,
@@ -104,8 +67,6 @@ impl CurveShiftType {
     }
 
     /// Creates a steepening shift.
-    ///
-    /// Short end down, long end up.
     pub fn steepen(amount: f64) -> Self {
         Self::Twist {
             short_shift: -amount,
@@ -114,8 +75,6 @@ impl CurveShiftType {
     }
 
     /// Creates a flattening shift.
-    ///
-    /// Short end up, long end down.
     pub fn flatten(amount: f64) -> Self {
         Self::Twist {
             short_shift: amount,
@@ -155,7 +114,6 @@ impl CurveShiftType {
                 short_shift,
                 long_shift,
             } => {
-                // Linear interpolation from short to long
                 let t_norm = (tenor / max_tenor).clamp(0.0, 1.0);
                 short_shift + (long_shift - short_shift) * t_norm
             }
@@ -164,9 +122,6 @@ impl CurveShiftType {
                 belly_shift,
                 belly_tenor,
             } => {
-                // Parabolic profile with peak at belly_tenor
-                // f(t) = wing_shift + (belly_shift - wing_shift) * (1 - ((t - belly_tenor) /
-                // belly_tenor)^2)
                 let t_norm = ((tenor - belly_tenor) / belly_tenor).abs();
                 let parabola = (1.0 - t_norm * t_norm).max(0.0);
                 wing_shift + (belly_shift - wing_shift) * parabola
@@ -175,12 +130,10 @@ impl CurveShiftType {
                 ref tenors,
                 ref shifts,
             } => {
-                // Linear interpolation between tenor points
                 if tenors.is_empty() || shifts.is_empty() {
                     return 0.0;
                 }
 
-                // Find surrounding tenors
                 let mut lower_idx = 0;
                 for (i, &t) in tenors.iter().enumerate() {
                     if t <= tenor {
@@ -199,7 +152,6 @@ impl CurveShiftType {
                 let s0 = shifts[lower_idx];
                 let s1 = shifts[lower_idx + 1];
 
-                // Linear interpolation
                 if (t1 - t0).abs() < 1e-10 {
                     s0
                 } else {
@@ -245,58 +197,20 @@ impl CurveShiftSpec {
 }
 
 /// Utility for applying shifts to curve sets.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use pricer_risk::scenarios::{CurveShifter, CurveShiftType};
-///
-/// let shifted = CurveShifter::apply_parallel(&curves, 0.0001)?;
-/// let twisted = CurveShifter::apply_twist(&curves, 0.0005, -0.0003)?;
-/// ```
 pub struct CurveShifter;
 
 impl CurveShifter {
     /// Applies a parallel shift to all curves in the set.
-    ///
-    /// # Arguments
-    ///
-    /// * `curves` - The curve set to shift
-    /// * `shift_amount` - Amount to add to all rates
-    ///
-    /// # Requirements Coverage
-    ///
-    /// - Requirement 2.4: パラレルシフト実装
     pub fn apply_parallel(curves: &CurveSet<f64>, shift_amount: f64) -> CurveSet<f64> {
         Self::apply_shift(curves, CurveShiftType::Parallel(shift_amount))
     }
 
     /// Applies a twist shift to all curves in the set.
-    ///
-    /// # Arguments
-    ///
-    /// * `curves` - The curve set to shift
-    /// * `short_shift` - Shift for short end
-    /// * `long_shift` - Shift for long end
-    ///
-    /// # Requirements Coverage
-    ///
-    /// - Requirement 2.4: ツイストシフト実装
     pub fn apply_twist(curves: &CurveSet<f64>, short_shift: f64, long_shift: f64) -> CurveSet<f64> {
         Self::apply_shift(curves, CurveShiftType::twist(short_shift, long_shift))
     }
 
     /// Applies a butterfly shift to all curves in the set.
-    ///
-    /// # Arguments
-    ///
-    /// * `curves` - The curve set to shift
-    /// * `wing_shift` - Shift for wings (short and long ends)
-    /// * `belly_shift` - Shift for belly (middle)
-    ///
-    /// # Requirements Coverage
-    ///
-    /// - Requirement 2.4: バタフライシフト実装
     pub fn apply_butterfly(
         curves: &CurveSet<f64>,
         wing_shift: f64,
@@ -306,28 +220,18 @@ impl CurveShifter {
     }
 
     /// Applies a shift to all curves in the set.
-    ///
-    /// For flat curves, this creates new flat curves at the shifted level.
-    /// For non-flat curves, the shift is applied at a reference tenor (1Y).
-    #[allow(deprecated)] // Using CurveSet internal access for curve manipulation
+    #[allow(deprecated)]
     pub fn apply_shift(curves: &CurveSet<f64>, shift: CurveShiftType) -> CurveSet<f64> {
         let mut shifted = CurveSet::new();
-        let max_tenor = 30.0; // Standard max tenor for interpolation
+        let max_tenor = 30.0;
 
         for (name, curve) in curves.iter() {
-            // Get base rate at reference tenor (1Y for flat curves)
             let base_rate = curve.zero_rate(1.0).unwrap_or(0.0);
-
-            // For flat curves, use shift at reference tenor
-            // For proper implementation with interpolated curves, would iterate over all
-            // tenors
             let shift_amount = shift.shift_at_tenor(1.0, max_tenor);
             let shifted_rate = base_rate + shift_amount;
-
             shifted.insert(*name, CurveEnum::flat(shifted_rate));
         }
 
-        // Preserve discount curve setting
         if curves.discount_curve().is_some() {
             shifted.set_discount_curve(CurveName::Discount);
         }
@@ -336,7 +240,7 @@ impl CurveShifter {
     }
 
     /// Applies a shift to a specific curve in the set.
-    #[allow(deprecated)] // Using CurveSet internal access for curve manipulation
+    #[allow(deprecated)]
     pub fn apply_shift_to_curve(
         curves: &CurveSet<f64>,
         curve_name: CurveName,
@@ -380,10 +284,6 @@ impl CurveShifter {
 mod tests {
     use super::*;
 
-    // ================================================================
-    // Task 2.3: Curve shift tests (TDD)
-    // ================================================================
-
     fn create_test_curves() -> CurveSet<f64> {
         let mut curves = CurveSet::new();
         curves.insert(CurveName::Discount, CurveEnum::flat(0.03));
@@ -392,7 +292,6 @@ mod tests {
         curves
     }
 
-    // CurveShiftType tests
     #[test]
     fn test_shift_type_parallel() {
         let shift = CurveShiftType::parallel(0.001);
@@ -404,13 +303,8 @@ mod tests {
     fn test_shift_type_twist() {
         let shift = CurveShiftType::twist(0.001, -0.001);
 
-        // At short end (t=0)
         assert!((shift.shift_at_tenor(0.0, 30.0) - 0.001).abs() < 1e-10);
-
-        // At long end (t=30)
         assert!((shift.shift_at_tenor(30.0, 30.0) - (-0.001)).abs() < 1e-10);
-
-        // At midpoint (t=15)
         assert!(shift.shift_at_tenor(15.0, 30.0).abs() < 1e-10);
     }
 
@@ -418,10 +312,7 @@ mod tests {
     fn test_shift_type_steepen() {
         let shift = CurveShiftType::steepen(0.001);
 
-        // Short end should be down
         assert!(shift.shift_at_tenor(0.0, 30.0) < 0.0);
-
-        // Long end should be up
         assert!(shift.shift_at_tenor(30.0, 30.0) > 0.0);
     }
 
@@ -429,10 +320,7 @@ mod tests {
     fn test_shift_type_flatten() {
         let shift = CurveShiftType::flatten(0.001);
 
-        // Short end should be up
         assert!(shift.shift_at_tenor(0.0, 30.0) > 0.0);
-
-        // Long end should be down
         assert!(shift.shift_at_tenor(30.0, 30.0) < 0.0);
     }
 
@@ -440,10 +328,7 @@ mod tests {
     fn test_shift_type_butterfly() {
         let shift = CurveShiftType::butterfly(-0.0005, 0.001);
 
-        // Wings (0 and 10Y) should be at wing_shift
         assert!((shift.shift_at_tenor(0.0, 30.0) - (-0.0005)).abs() < 1e-10);
-
-        // Belly (5Y) should be at belly_shift
         assert!((shift.shift_at_tenor(5.0, 30.0) - 0.001).abs() < 1e-10);
     }
 
@@ -451,10 +336,7 @@ mod tests {
     fn test_shift_type_positive_curvature() {
         let shift = CurveShiftType::positive_curvature(0.002);
 
-        // Belly should be positive
         assert!(shift.shift_at_tenor(5.0, 30.0) > 0.0);
-
-        // Wings should be negative
         assert!(shift.shift_at_tenor(0.0, 30.0) < 0.0);
     }
 
@@ -465,12 +347,10 @@ mod tests {
             shifts: vec![0.001, 0.002, 0.001],
         };
 
-        // At exact tenor points
         assert!((shift.shift_at_tenor(1.0, 30.0) - 0.001).abs() < 1e-10);
         assert!((shift.shift_at_tenor(5.0, 30.0) - 0.002).abs() < 1e-10);
         assert!((shift.shift_at_tenor(10.0, 30.0) - 0.001).abs() < 1e-10);
 
-        // Interpolated at 3Y (between 1Y and 5Y)
         let interp = shift.shift_at_tenor(3.0, 30.0);
         assert!(interp > 0.001 && interp < 0.002);
     }
@@ -487,7 +367,6 @@ mod tests {
         assert!(butterfly.to_shift_type().is_some());
     }
 
-    // CurveShiftSpec tests
     #[test]
     fn test_curve_shift_spec_new() {
         let spec = CurveShiftSpec::new("USD-OIS", CurveShiftType::parallel(0.001));
@@ -502,13 +381,11 @@ mod tests {
         assert_eq!(spec.pivot_tenor, Some(5.0));
     }
 
-    // CurveShifter tests
     #[test]
     fn test_curve_shifter_parallel() {
         let curves = create_test_curves();
         let shifted = CurveShifter::apply_parallel(&curves, 0.001);
 
-        // Discount curve should be shifted
         let original_rate = curves
             .get(&CurveName::Discount)
             .unwrap()
@@ -528,7 +405,6 @@ mod tests {
         let curves = create_test_curves();
         let shifted = CurveShifter::apply_twist(&curves, 0.001, -0.001);
 
-        // Should preserve curve structure
         assert!(shifted.get(&CurveName::Discount).is_some());
         assert!(shifted.get(&CurveName::Forward).is_some());
     }
@@ -538,7 +414,6 @@ mod tests {
         let curves = create_test_curves();
         let shifted = CurveShifter::apply_butterfly(&curves, -0.0005, 0.001);
 
-        // Should preserve curve structure
         assert!(shifted.get(&CurveName::Discount).is_some());
     }
 
@@ -547,7 +422,6 @@ mod tests {
         let curves = create_test_curves();
         let shifted = CurveShifter::steepen(&curves, 0.001);
 
-        // Should preserve discount curve setting
         assert!(shifted.discount_curve().is_some());
     }
 
@@ -556,7 +430,6 @@ mod tests {
         let curves = create_test_curves();
         let shifted = CurveShifter::flatten(&curves, 0.001);
 
-        // Should preserve discount curve setting
         assert!(shifted.discount_curve().is_some());
     }
 
@@ -565,7 +438,6 @@ mod tests {
         let curves = create_test_curves();
         let shifted = CurveShifter::positive_curvature(&curves, 0.002);
 
-        // Should preserve curve structure
         assert!(shifted.get(&CurveName::Discount).is_some());
     }
 
@@ -574,7 +446,6 @@ mod tests {
         let curves = create_test_curves();
         let shifted = CurveShifter::negative_curvature(&curves, 0.002);
 
-        // Should preserve curve structure
         assert!(shifted.get(&CurveName::Discount).is_some());
     }
 
@@ -587,7 +458,6 @@ mod tests {
             CurveShiftType::parallel(0.001),
         );
 
-        // Discount curve should be shifted
         let original_discount = curves
             .get(&CurveName::Discount)
             .unwrap()
@@ -601,7 +471,6 @@ mod tests {
 
         assert!((shifted_discount - original_discount - 0.001).abs() < 1e-10);
 
-        // Forward curve should be unchanged
         let original_forward = curves
             .get(&CurveName::Forward)
             .unwrap()

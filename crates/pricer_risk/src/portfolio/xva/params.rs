@@ -1,41 +1,16 @@
-//! XVA parameter structures.
-//!
-//! Provides funding and own-credit parameters for XVA calculations.
+//! XVA parameter structures for funding and own-credit calculations.
 
 use super::error::XvaError;
 
-/// Funding spread parameters for FVA calculation.
-///
-/// Represents the cost of funding positive exposure (borrowing)
-/// and the benefit of investing negative exposure (lending).
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::FundingParams;
-///
-/// // Symmetric spreads of 50bp
-/// let params = FundingParams::symmetric(0.005);
-///
-/// // Asymmetric spreads: 60bp borrow, 40bp lend
-/// let params = FundingParams::asymmetric(0.006, 0.004);
-///
-/// // From basis points
-/// let params = FundingParams::from_bps(60.0, 40.0);
-/// ```
+/// Funding spread parameters for FVA calculation (borrowing cost and lending benefit).
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct FundingParams {
-    /// Funding spread for borrowing (positive exposure).
-    /// Expressed as annualised decimal (e.g., 0.005 = 50bp).
     pub spread_borrow: f64,
-    /// Funding spread for lending (negative exposure).
     pub spread_lend: f64,
 }
 
 impl FundingParams {
-    /// Creates symmetric funding spreads.
-    ///
-    /// Both borrowing and lending use the same spread.
+    /// Creates symmetric funding spreads (same for borrowing and lending).
     #[inline]
     pub fn symmetric(spread: f64) -> Self {
         Self {
@@ -44,9 +19,7 @@ impl FundingParams {
         }
     }
 
-    /// Creates asymmetric funding spreads.
-    ///
-    /// Allows different spreads for borrowing and lending.
+    /// Creates asymmetric funding spreads with different borrowing and lending rates.
     #[inline]
     pub fn asymmetric(spread_borrow: f64, spread_lend: f64) -> Self {
         Self {
@@ -56,11 +29,6 @@ impl FundingParams {
     }
 
     /// Creates funding parameters from basis points.
-    ///
-    /// # Arguments
-    ///
-    /// * `borrow_bps` - Borrowing spread in basis points
-    /// * `lend_bps` - Lending spread in basis points
     #[inline]
     pub fn from_bps(borrow_bps: f64, lend_bps: f64) -> Self {
         Self {
@@ -90,44 +58,18 @@ impl FundingParams {
 }
 
 impl Default for FundingParams {
-    /// Returns zero funding spreads.
     fn default() -> Self { Self::zero() }
 }
 
-/// Own credit parameters for DVA calculation.
-///
-/// Represents the institution's own default risk parameters.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::OwnCreditParams;
-///
-/// // 2% hazard rate, 40% LGD
-/// let params = OwnCreditParams::new(0.02, 0.4).unwrap();
-///
-/// // Compute survival probability
-/// let surv = params.survival_prob(1.0);
-/// ```
+/// Own credit parameters for DVA calculation (institution's own default risk).
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct OwnCreditParams {
-    /// Own hazard rate (annualised intensity).
     hazard_rate: f64,
-    /// Own Loss Given Default as fraction [0, 1].
     lgd: f64,
 }
 
 impl OwnCreditParams {
-    /// Creates new own credit parameters.
-    ///
-    /// # Arguments
-    ///
-    /// * `hazard_rate` - Annualised hazard rate (must be non-negative)
-    /// * `lgd` - Loss Given Default, must be in range [0, 1]
-    ///
-    /// # Errors
-    ///
-    /// Returns `XvaError::InvalidCreditParam` if parameters are invalid.
+    /// Creates new own credit parameters with validated hazard rate and LGD.
     pub fn new(hazard_rate: f64, lgd: f64) -> Result<Self, XvaError> {
         if hazard_rate < 0.0 {
             return Err(XvaError::InvalidCreditParam(
@@ -154,21 +96,15 @@ impl OwnCreditParams {
     #[inline]
     pub fn recovery_rate(&self) -> f64 { 1.0 - self.lgd }
 
-    /// Computes the survival probability to time t.
-    ///
-    /// Q(t) = exp(-λ * t)
+    /// Computes the survival probability to time t: Q(t) = exp(-lambda * t).
     #[inline]
     pub fn survival_prob(&self, t: f64) -> f64 { (-self.hazard_rate * t).exp() }
 
-    /// Computes the default probability to time t.
-    ///
-    /// PD(t) = 1 - Q(t)
+    /// Computes the default probability to time t: PD(t) = 1 - Q(t).
     #[inline]
     pub fn default_prob(&self, t: f64) -> f64 { 1.0 - self.survival_prob(t) }
 
-    /// Computes the marginal default probability between t1 and t2.
-    ///
-    /// PD(t1, t2) = Q(t1) - Q(t2)
+    /// Computes the marginal default probability between t1 and t2: PD(t1, t2) = Q(t1) - Q(t2).
     #[inline]
     pub fn marginal_pd(&self, t1: f64, t2: f64) -> f64 {
         self.survival_prob(t1) - self.survival_prob(t2)
@@ -252,10 +188,8 @@ mod tests {
     fn test_own_credit_survival_prob() {
         let params = OwnCreditParams::new(0.02, 0.4).unwrap();
 
-        // At t=0, survival = 1
         assert_relative_eq!(params.survival_prob(0.0), 1.0, epsilon = 1e-10);
 
-        // At t=1, survival = exp(-0.02)
         assert_relative_eq!(
             params.survival_prob(1.0),
             (-0.02_f64).exp(),

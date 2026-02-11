@@ -1,7 +1,4 @@
 //! Portfolio error types.
-//!
-//! This module provides structured error types for portfolio operations
-//! using `thiserror` for derivation.
 
 use thiserror::Error;
 

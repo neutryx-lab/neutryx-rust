@@ -1,17 +1,10 @@
 //! Greeks aggregation for portfolio-level risk metrics.
-//!
-//! Provides infrastructure for aggregating instrument-level Greeks
-//! to portfolio level using various methodologies.
 
 use std::collections::HashMap;
 
 use pricer_core::traits::Float;
 
 /// Aggregation methods for combining instrument Greeks.
-///
-/// # Requirements
-///
-/// - Requirements: 10.3
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, strum::AsRefStr)]
 pub enum AggregationMethod {
     /// Simple sum of Greeks (no weighting)
@@ -34,25 +27,13 @@ impl AggregationMethod {
 }
 
 /// Portfolio-level Greeks container.
-///
-/// Holds aggregated sensitivity measures for a portfolio.
-///
-/// # Requirements
-///
-/// - Requirements: 10.3
 #[derive(Clone, Debug)]
 pub struct PortfolioGreeks<T: Float> {
-    /// Total delta (first derivative with respect to underlying)
     pub delta: T,
-    /// Total gamma (second derivative with respect to underlying)
     pub gamma: T,
-    /// Total vega (sensitivity to volatility)
     pub vega: T,
-    /// Total theta (time decay)
     pub theta: T,
-    /// Total rho (sensitivity to interest rate)
     pub rho: T,
-    /// Greeks by risk factor type
     greeks_by_factor: HashMap<String, T>,
 }
 
@@ -141,11 +122,8 @@ impl<T: Float> PortfolioGreeks<T> {
 /// Individual instrument Greeks for aggregation.
 #[derive(Clone, Debug)]
 pub struct InstrumentGreeks<T: Float> {
-    /// Trade identifier
     pub trade_id: String,
-    /// Notional amount
     pub notional: T,
-    /// Greeks values
     pub greeks: PortfolioGreeks<T>,
 }
 
@@ -161,17 +139,9 @@ impl<T: Float> InstrumentGreeks<T> {
 }
 
 /// Aggregator for combining instrument-level Greeks to portfolio level.
-///
-/// Supports multiple aggregation methods for flexibility in risk reporting.
-///
-/// # Requirements
-///
-/// - Requirements: 10.3
 #[derive(Clone, Debug, Default)]
 pub struct GreeksAggregator<T: Float> {
-    /// Aggregation method
     method: AggregationMethod,
-    /// Collected instrument Greeks
     instruments: Vec<InstrumentGreeks<T>>,
 }
 
@@ -215,14 +185,11 @@ impl<T: Float> GreeksAggregator<T> {
             AggregationMethod::Simple => self.aggregate_simple(),
             AggregationMethod::NotionalWeighted => self.aggregate_notional_weighted(),
             AggregationMethod::CorrelationAdjusted => {
-                // For now, fall back to simple aggregation
-                // Full implementation would require correlation matrix
                 self.aggregate_simple()
             }
         }
     }
 
-    /// Simple aggregation: sum all Greeks.
     fn aggregate_simple(&self) -> PortfolioGreeks<T> {
         let mut result = PortfolioGreeks::new();
         for inst in &self.instruments {
@@ -231,7 +198,6 @@ impl<T: Float> GreeksAggregator<T> {
         result
     }
 
-    /// Notional-weighted aggregation.
     fn aggregate_notional_weighted(&self) -> PortfolioGreeks<T> {
         let total_notional: T =
             self.instruments
@@ -268,10 +234,6 @@ impl<T: Float> GreeksAggregator<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ================================================================
-    // Task 11.3: GreeksAggregator tests (TDD)
-    // ================================================================
 
     #[test]
     fn test_aggregation_method_name() {
@@ -343,7 +305,7 @@ mod tests {
         let mut greeks = PortfolioGreeks::<f64>::new();
         greeks.add_factor_greek("USD.OIS.5Y", 0.5);
         greeks.add_factor_greek("USD.OIS.10Y", 0.3);
-        greeks.add_factor_greek("USD.OIS.5Y", 0.2); // Add to existing
+        greeks.add_factor_greek("USD.OIS.5Y", 0.2);
 
         assert!((greeks.get_factor_greek("USD.OIS.5Y").unwrap() - 0.7).abs() < 1e-10);
         assert!((greeks.get_factor_greek("USD.OIS.10Y").unwrap() - 0.3).abs() < 1e-10);
@@ -393,21 +355,17 @@ mod tests {
     #[test]
     fn test_greeks_aggregator_notional_weighted() {
         let mut aggregator = GreeksAggregator::with_method(AggregationMethod::NotionalWeighted);
-        // Trade 1: notional 1M, delta 1.0
         aggregator.add(
             "T001",
             1_000_000.0,
             PortfolioGreeks::with_values(1.0_f64, 0.0, 0.0, 0.0, 0.0),
         );
-        // Trade 2: notional 3M, delta 2.0
         aggregator.add(
             "T002",
             3_000_000.0,
             PortfolioGreeks::with_values(2.0, 0.0, 0.0, 0.0, 0.0),
         );
 
-        // Total notional: 4M
-        // Weighted delta: (1M/4M * 1.0) + (3M/4M * 2.0) = 0.25 + 1.5 = 1.75
         let result = aggregator.aggregate();
         assert!((result.delta - 1.75).abs() < 1e-10);
     }
