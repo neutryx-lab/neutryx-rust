@@ -351,7 +351,6 @@ impl BarrierType {
     pub fn is_down(&self) -> bool { matches!(self, BarrierType::DownIn | BarrierType::DownOut) }
 }
 
-
 /// Builder for constructing `ScriptKernel` instances.
 ///
 /// # Example

@@ -255,79 +255,78 @@ pub enum EndOfMonthRule {
 /// ```
 #[non_exhaustive]
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash,
-    strum::Display, strum::AsRefStr, strum::EnumString,
+    Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr, strum::EnumString,
 )]
 #[strum(ascii_case_insensitive)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Tenor {
     /// Overnight (O/N)
     #[cfg_attr(feature = "serde", serde(rename = "O/N"))]
-    #[strum(serialize = "ON", serialize = "O/N", serialize = "OVERNIGHT")]
+    #[strum(to_string = "ON", serialize = "O/N", serialize = "OVERNIGHT")]
     Overnight,
     /// One week (1W)
     #[cfg_attr(feature = "serde", serde(rename = "1W"))]
-    #[strum(serialize = "1W")]
+    #[strum(to_string = "1W")]
     OneWeek,
     /// Two weeks (2W)
     #[cfg_attr(feature = "serde", serde(rename = "2W"))]
-    #[strum(serialize = "2W")]
+    #[strum(to_string = "2W")]
     TwoWeeks,
     /// One month (1M)
     #[cfg_attr(feature = "serde", serde(rename = "1M"))]
-    #[strum(serialize = "1M")]
+    #[strum(to_string = "1M")]
     OneMonth,
     /// Two months (2M)
     #[cfg_attr(feature = "serde", serde(rename = "2M"))]
-    #[strum(serialize = "2M")]
+    #[strum(to_string = "2M")]
     TwoMonths,
     /// Three months (3M)
     #[cfg_attr(feature = "serde", serde(rename = "3M"))]
-    #[strum(serialize = "3M")]
+    #[strum(to_string = "3M")]
     ThreeMonths,
     /// Six months (6M)
     #[cfg_attr(feature = "serde", serde(rename = "6M"))]
-    #[strum(serialize = "6M")]
+    #[strum(to_string = "6M")]
     SixMonths,
     /// Nine months (9M)
     #[cfg_attr(feature = "serde", serde(rename = "9M"))]
-    #[strum(serialize = "9M")]
+    #[strum(to_string = "9M")]
     NineMonths,
     /// One year (1Y)
     #[cfg_attr(feature = "serde", serde(rename = "1Y"))]
-    #[strum(serialize = "1Y", serialize = "12M")]
+    #[strum(to_string = "1Y", serialize = "12M")]
     OneYear,
     /// Two years (2Y)
     #[cfg_attr(feature = "serde", serde(rename = "2Y"))]
-    #[strum(serialize = "2Y", serialize = "24M")]
+    #[strum(to_string = "2Y", serialize = "24M")]
     TwoYears,
     /// Three years (3Y)
     #[cfg_attr(feature = "serde", serde(rename = "3Y"))]
-    #[strum(serialize = "3Y", serialize = "36M")]
+    #[strum(to_string = "3Y", serialize = "36M")]
     ThreeYears,
     /// Five years (5Y)
     #[cfg_attr(feature = "serde", serde(rename = "5Y"))]
-    #[strum(serialize = "5Y", serialize = "60M")]
+    #[strum(to_string = "5Y", serialize = "60M")]
     FiveYears,
     /// Seven years (7Y)
     #[cfg_attr(feature = "serde", serde(rename = "7Y"))]
-    #[strum(serialize = "7Y", serialize = "84M")]
+    #[strum(to_string = "7Y", serialize = "84M")]
     SevenYears,
     /// Ten years (10Y)
     #[cfg_attr(feature = "serde", serde(rename = "10Y"))]
-    #[strum(serialize = "10Y", serialize = "120M")]
+    #[strum(to_string = "10Y", serialize = "120M")]
     TenYears,
     /// Fifteen years (15Y)
     #[cfg_attr(feature = "serde", serde(rename = "15Y"))]
-    #[strum(serialize = "15Y", serialize = "180M")]
+    #[strum(to_string = "15Y", serialize = "180M")]
     FifteenYears,
     /// Twenty years (20Y)
     #[cfg_attr(feature = "serde", serde(rename = "20Y"))]
-    #[strum(serialize = "20Y", serialize = "240M")]
+    #[strum(to_string = "20Y", serialize = "240M")]
     TwentyYears,
     /// Thirty years (30Y)
     #[cfg_attr(feature = "serde", serde(rename = "30Y"))]
-    #[strum(serialize = "30Y", serialize = "360M")]
+    #[strum(to_string = "30Y", serialize = "360M")]
     ThirtyYears,
 }
 
@@ -648,7 +647,6 @@ fn end_of_month(date: NaiveDate) -> NaiveDate {
             .unwrap_or(date)
     }
 }
-
 
 /// Parses any tenor string to years.
 ///

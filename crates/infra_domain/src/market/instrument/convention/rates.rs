@@ -65,7 +65,6 @@ impl DepositConvention {
             spot_lag,
         }
     }
-
 }
 
 super::define_convention_factories! {
@@ -141,7 +140,6 @@ impl FraConvention {
             index,
         }
     }
-
 }
 
 super::define_convention_factories! {
@@ -192,7 +190,6 @@ impl FuturesConvention {
             calendar,
         }
     }
-
 }
 
 super::define_convention_factories! {
@@ -461,7 +458,6 @@ impl BondConvention {
             settlement_days,
         }
     }
-
 }
 
 super::define_convention_factories! {
@@ -530,7 +526,6 @@ impl CapFloorConvention {
             index,
         }
     }
-
 }
 
 super::define_convention_factories! {

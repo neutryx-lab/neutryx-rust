@@ -29,11 +29,13 @@
 
 use pricer_core::traits::Float;
 
-use super::cir::{CIRModel, CIRParams};
-use super::gbm::{GBMModel, GBMParams};
-use super::heston::{HestonModel, HestonParams};
-use super::hull_white::{HullWhiteModel, HullWhiteParams};
-use super::stochastic::{SingleState, StochasticState, TwoFactorState};
+use super::{
+    cir::{CIRModel, CIRParams},
+    gbm::{GBMModel, GBMParams},
+    heston::{HestonModel, HestonParams},
+    hull_white::{HullWhiteModel, HullWhiteParams},
+    stochastic::{SingleState, StochasticState, TwoFactorState},
+};
 
 /// Unified state type for all models.
 ///

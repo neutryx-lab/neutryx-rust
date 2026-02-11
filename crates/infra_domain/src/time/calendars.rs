@@ -44,10 +44,7 @@ use super::types::Date;
 /// assert_eq!(conv.name(), "Modified Following");
 /// ```
 #[non_exhaustive]
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash,
-    strum::Display, strum::AsRefStr,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BusinessDayConvention {
     /// Move to the next business day.

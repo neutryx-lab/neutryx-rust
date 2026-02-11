@@ -52,11 +52,7 @@ pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
     let fx_nav = XmlNavigator::new(&fx_section);
 
     // Parse value date
-    let value_date = xml_date!(
-        fx_nav,
-        "valueDate",
-        Date::from_ymd(2024, 1, 1).unwrap()
-    );
+    let value_date = xml_date!(fx_nav, "valueDate", Date::from_ymd(2024, 1, 1).unwrap());
 
     // Parse exchanged currencies
     let ccy1_section = fx_nav
@@ -151,11 +147,7 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
         let currency = parse_currency(&xml_text!(ccy_nav, "currency", "USD"));
         let amount = xml_decimal!(ccy_nav, "amount", 0.0);
 
-        let value_date = xml_date!(
-            fx_nav,
-            "valueDate",
-            Date::from_ymd(2024, 1, 1).unwrap()
-        );
+        let value_date = xml_date!(fx_nav, "valueDate", Date::from_ymd(2024, 1, 1).unwrap());
 
         let cf = Cashflow::new(
             CashflowType::Principal,
@@ -180,11 +172,7 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
         let currency = parse_currency(&xml_text!(ccy_nav, "currency", "USD"));
         let amount = xml_decimal!(ccy_nav, "amount", 0.0);
 
-        let value_date = xml_date!(
-            fx_nav,
-            "valueDate",
-            Date::from_ymd(2024, 1, 1).unwrap()
-        );
+        let value_date = xml_date!(fx_nav, "valueDate", Date::from_ymd(2024, 1, 1).unwrap());
 
         let cf = Cashflow::new(
             CashflowType::Principal,
@@ -248,11 +236,7 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
     let strike = xml_decimal_or!(opt_nav, "rate", "strikePrice"; 1.0);
 
     // Parse expiry date
-    let expiry_date = xml_date!(
-        opt_nav,
-        "expiryDate",
-        Date::from_ymd(2025, 1, 1).unwrap()
-    );
+    let expiry_date = xml_date!(opt_nav, "expiryDate", Date::from_ymd(2025, 1, 1).unwrap());
 
     // Parse exercise type
     let exercise_type = if opt_nav.extract_section("europeanExercise").is_some() {
@@ -284,7 +268,8 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
         .transpose()?
         .unwrap_or(0.0);
 
-    // Parse currency (look inside callCurrencyAmount/putCurrencyAmount for currency)
+    // Parse currency (look inside callCurrencyAmount/putCurrencyAmount for
+    // currency)
     let currency_str = opt_nav
         .extract_section("callCurrencyAmount")
         .and_then(|section| XmlNavigator::new(&section).find_text("currency"))

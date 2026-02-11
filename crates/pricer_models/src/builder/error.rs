@@ -783,7 +783,10 @@ impl CalibrationError {
 
     /// Create an instrument evaluation failed error.
     #[must_use]
-    pub fn instrument_evaluation_failed(instrument_index: usize, message: impl Into<String>) -> Self {
+    pub fn instrument_evaluation_failed(
+        instrument_index: usize,
+        message: impl Into<String>,
+    ) -> Self {
         Self::InstrumentEvaluationFailed {
             instrument_index,
             message: message.into(),
@@ -1393,18 +1396,12 @@ mod tests {
     fn test_jacobian_quality_equality() {
         assert_eq!(JacobianQuality::Good, JacobianQuality::Good);
         assert_eq!(
-            JacobianQuality::Warning {
-                reason: "test"
-            },
-            JacobianQuality::Warning {
-                reason: "test"
-            }
+            JacobianQuality::Warning { reason: "test" },
+            JacobianQuality::Warning { reason: "test" }
         );
         assert_ne!(
             JacobianQuality::Good,
-            JacobianQuality::Poor {
-                reason: "NaN"
-            }
+            JacobianQuality::Poor { reason: "NaN" }
         );
     }
 

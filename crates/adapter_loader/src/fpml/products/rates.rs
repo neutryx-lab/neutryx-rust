@@ -333,8 +333,9 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use infra_domain::market::Currency;
+
+    use super::*;
 
     const SAMPLE_SWAP_XML: &str = r#"
         <trade>

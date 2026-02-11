@@ -69,8 +69,13 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// ```
     pub fn new(capacity: usize) -> Self {
         let mut inner = AVec::new(DEFAULT_ALIGNMENT);
-        inner.resize(capacity, T::zero());
-        Self { inner, align: DEFAULT_ALIGNMENT }
+        for _ in 0..capacity {
+            inner.push(T::zero());
+        }
+        Self {
+            inner,
+            align: DEFAULT_ALIGNMENT,
+        }
     }
 
     /// Creates a buffer with custom alignment.
@@ -98,8 +103,13 @@ impl<T: Float> AlignedPathBuffer<T> {
             alignment
         );
         let mut inner = AVec::new(alignment);
-        inner.resize(capacity, T::zero());
-        Self { inner, align: alignment }
+        for _ in 0..capacity {
+            inner.push(T::zero());
+        }
+        Self {
+            inner,
+            align: alignment,
+        }
     }
 
     /// Returns an immutable slice of the buffer.
@@ -188,7 +198,12 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// # Arguments
     ///
     /// * `new_len` - New number of elements
-    pub fn resize(&mut self, new_len: usize) { self.inner.resize(new_len, T::zero()); }
+    pub fn resize(&mut self, new_len: usize) {
+        while self.inner.len() < new_len {
+            self.inner.push(T::zero());
+        }
+        self.inner.truncate(new_len);
+    }
 
     /// Clears the buffer, setting all elements to zero.
     ///
@@ -220,8 +235,13 @@ impl<T: Float> AlignedPathBuffer<T> {
 impl<T: Float + Clone> Clone for AlignedPathBuffer<T> {
     fn clone(&self) -> Self {
         let mut inner = AVec::new(self.align);
-        inner.extend(self.inner.iter().cloned());
-        Self { inner, align: self.align }
+        for val in self.inner.iter().copied() {
+            inner.push(val);
+        }
+        Self {
+            inner,
+            align: self.align,
+        }
     }
 }
 

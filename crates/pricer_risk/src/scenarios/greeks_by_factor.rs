@@ -73,8 +73,7 @@ where
 /// # Requirements
 ///
 /// - Requirement 1.1, 1.2, 1.3, 1.5
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize"))]
 pub struct GreeksResultByFactor<T: Float> {
     /// Greeks results keyed by risk factor.

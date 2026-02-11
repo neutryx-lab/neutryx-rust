@@ -16,8 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::{greeks::GreeksResult, scenarios::RiskFactorId};
 
 /// Computed Greeks for a single trade.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputedGreeks {
     /// Delta: ∂V/∂S.
     pub delta: Option<f64>,
@@ -95,8 +94,7 @@ impl Default for ComputedGreeks {
 }
 
 /// Performance metrics for a calculation.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
     /// Computation time in milliseconds.
     pub computation_time_ms: f64,
@@ -123,8 +121,7 @@ impl PerformanceMetrics {
 }
 
 /// Result of a single trade risk calculation.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiskResult {
     /// Trade identifier.
     pub trade_id: String,
@@ -158,8 +155,7 @@ impl RiskResult {
 }
 
 /// Aggregated Greeks across a portfolio.
-#[derive(Debug, Clone, Default)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AggregatedGreeks {
     /// Greeks by risk factor.
     pub by_risk_factor: HashMap<RiskFactorId, ComputedGreeks>,
@@ -242,8 +238,7 @@ impl AggregatedGreeks {
 }
 
 /// Execution statistics for portfolio risk calculation.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionStats {
     /// Total number of trades processed.
     pub total_trades: usize,
@@ -295,8 +290,7 @@ impl ExecutionStats {
 }
 
 /// A failed calculation entry.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FailedCalculation {
     /// Trade identifier.
     pub trade_id: String,
@@ -315,8 +309,7 @@ impl FailedCalculation {
 }
 
 /// Result of portfolio risk calculation.
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortfolioRiskResult {
     /// Individual trade results.
     pub results: Vec<RiskResult>,

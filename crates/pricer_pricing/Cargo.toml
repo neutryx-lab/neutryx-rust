@@ -20,6 +20,9 @@ enum_dispatch.workspace = true
 # Basic numeric traits
 num-traits.workspace = true
 
+# Linear algebra (Cholesky in LSMC regression)
+nalgebra.workspace = true
+
 # Date/time
 chrono.workspace = true
 

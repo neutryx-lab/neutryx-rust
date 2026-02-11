@@ -36,7 +36,8 @@ fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
     metadata
 }
 
-/// Extract a date from a nested section like `<effectiveDate><unadjustedDate>...`.
+/// Extract a date from a nested section like
+/// `<effectiveDate><unadjustedDate>...`.
 fn extract_nested_date(
     nav: &XmlNavigator,
     section_name: &str,
@@ -51,7 +52,8 @@ fn extract_nested_date(
         .map(|opt| opt.unwrap_or(default))
 }
 
-/// Extract notional from a nested section like `<calculationAmount><amount>...`.
+/// Extract notional from a nested section like
+/// `<calculationAmount><amount>...`.
 fn extract_nested_amount(
     nav: &XmlNavigator,
     section_name: &str,

@@ -1,10 +1,15 @@
 //! Multi-dimensional Newton-Raphson solver for systems of equations.
 //!
 //! This module provides a generalised Newton-Raphson solver for solving
-//! systems of nonlinear equations F(x) = 0, where F: R^n → R^n.
+//! systems of nonlinear equations F(x) = 0, where F: R^n -> R^n.
 //!
 //! The solver is designed for curve calibration and other financial
 //! applications requiring simultaneous solution of multiple equations.
+//!
+//! ## Implementation
+//!
+//! Uses `nalgebra` directly for LU decomposition (linear system solve)
+//! and matrix inversion. No custom linear algebra routines.
 //!
 //! ## Key Features
 //!
@@ -53,13 +58,7 @@
 use nalgebra::{DMatrix, DVector, RealField};
 use num_traits::Float;
 
-use crate::{
-    math::{
-        linalg::{inverse, lu_solve, LinearAlgebraError},
-        numeric::from_f64,
-    },
-    types::SolverError,
-};
+use crate::{math::numeric::from_f64, types::SolverError};
 
 // =============================================================================
 // SystemOfEquations Trait
@@ -518,14 +517,23 @@ impl<T: RealField + Copy + Float> MultidimensionalNewtonSolver<T> {
         })
     }
 
-    /// Solve the linear system J · x = b using LU decomposition.
+    /// Solve the linear system J * x = b using nalgebra's LU decomposition.
     fn solve_linear_system(&self, j: &DMatrix<T>, b: &[T]) -> Result<Vec<T>, SolverError> {
-        lu_solve(j, b).map_err(|e: LinearAlgebraError| e.into())
+        let lu = j.clone().lu();
+        let b_vec = DVector::from_column_slice(b);
+        let x = lu.solve(&b_vec).ok_or_else(|| {
+            SolverError::NumericalInstability("Singular Jacobian matrix".to_string())
+        })?;
+        Ok(x.iter().copied().collect())
     }
 
-    /// Compute the inverse of the Jacobian matrix.
+    /// Compute the inverse of the Jacobian matrix using nalgebra.
     fn compute_inverse(&self, j: &DMatrix<T>) -> Result<DMatrix<T>, SolverError> {
-        inverse(j).map_err(|e: LinearAlgebraError| e.into())
+        j.clone().try_inverse().ok_or_else(|| {
+            SolverError::NumericalInstability(
+                "Singular Jacobian matrix (cannot invert)".to_string(),
+            )
+        })
     }
 }
 

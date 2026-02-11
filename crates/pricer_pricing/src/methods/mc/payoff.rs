@@ -18,11 +18,8 @@
 //! All functions use smooth operations only (no `if`, `max`, `min` on floats).
 //! This ensures Enzyme can compute gradients correctly.
 //!
-//! When the `l1l2-integration` feature is enabled, this module uses
-//! smoothing functions from `pricer_core::math::smoothing` instead of
-//! local implementations.
+//! This module uses smoothing functions from `pricer_core::math::smoothing`.
 
-#[cfg(feature = "l1l2-integration")]
 use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
 
 use super::workspace::PathWorkspace;
@@ -108,16 +105,7 @@ impl PayoffParams {
 /// softplus(x, ε) = ε × ln(1 + exp(x/ε))
 /// ```
 ///
-/// # Numerical Stability
-///
-/// For large positive `x/ε`, uses the approximation `x` to avoid overflow.
-/// For large negative `x/ε`, uses the approximation `ε × exp(x/ε)` for
-/// accuracy.
-///
-/// # L1/L2 Integration
-///
-/// When the `l1l2-integration` feature is enabled, this function delegates to
-/// `pricer_core::math::smoothing::smooth_max(x, 0, ε)` for consistency.
+/// Delegates to `pricer_core::math::smoothing::smooth_max(x, 0, ε)`.
 ///
 /// # Arguments
 ///
@@ -128,28 +116,9 @@ impl PayoffParams {
 ///
 /// Smooth approximation of max(x, 0).
 #[inline]
-#[cfg(feature = "l1l2-integration")]
 pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
     // Delegate to pricer_core's smooth_max for consistency
     smooth_max(x, 0.0, epsilon)
-}
-
-/// Soft-plus function: smooth approximation of max(x, 0).
-///
-/// Local implementation used when `l1l2-integration` feature is disabled.
-#[inline]
-#[cfg(not(feature = "l1l2-integration"))]
-pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
-    let scaled = x / epsilon;
-    if scaled > 20.0 {
-        // Avoid overflow: ln(1 + exp(20)) ≈ 20
-        x
-    } else if scaled < -20.0 {
-        // Avoid underflow: use exp directly
-        epsilon * scaled.exp()
-    } else {
-        epsilon * (1.0 + scaled.exp()).ln()
-    }
 }
 
 /// Derivative of soft-plus: the sigmoid function.
@@ -158,10 +127,7 @@ pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
 /// d/dx softplus(x, ε) = sigmoid(x/ε) = 1 / (1 + exp(-x/ε))
 /// ```
 ///
-/// # L1/L2 Integration
-///
-/// When the `l1l2-integration` feature is enabled, this function delegates to
-/// `pricer_core::math::smoothing::smooth_indicator(x, ε)` for consistency.
+/// Delegates to `pricer_core::math::smoothing::smooth_indicator(x, ε)`.
 ///
 /// # Arguments
 ///
@@ -172,26 +138,9 @@ pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
 ///
 /// Value in (0, 1), approximating the Heaviside step function.
 #[inline]
-#[cfg(feature = "l1l2-integration")]
 pub fn soft_plus_derivative(x: f64, epsilon: f64) -> f64 {
     // Delegate to pricer_core's smooth_indicator for consistency
     smooth_indicator(x, epsilon)
-}
-
-/// Derivative of soft-plus: the sigmoid function.
-///
-/// Local implementation used when `l1l2-integration` feature is disabled.
-#[inline]
-#[cfg(not(feature = "l1l2-integration"))]
-pub fn soft_plus_derivative(x: f64, epsilon: f64) -> f64 {
-    let scaled = x / epsilon;
-    if scaled > 20.0 {
-        1.0
-    } else if scaled < -20.0 {
-        0.0
-    } else {
-        1.0 / (1.0 + (-scaled).exp())
-    }
 }
 
 /// Computes smooth European call payoff.
@@ -494,19 +443,14 @@ mod tests {
 
     /// Tests for pricer_core integration (Phase 4, Task 1.2).
     ///
-    /// These tests verify that the soft_plus function (which now delegates to
-    /// pricer_core when l1l2-integration is enabled) produces consistent
-    /// results.
-    #[cfg(feature = "l1l2-integration")]
+    /// These tests verify that the soft_plus function (which delegates to
+    /// pricer_core) produces consistent results.
     mod core_integration_tests {
         use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
 
         use super::*;
 
         /// Verify soft_plus delegates to pricer_core smooth_max correctly.
-        ///
-        /// When l1l2-integration is enabled, soft_plus(x, ε) should return
-        /// the same result as smooth_max(x, 0, ε).
         #[test]
         fn test_soft_plus_delegates_to_smooth_max() {
             let test_cases = [

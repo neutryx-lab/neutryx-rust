@@ -11,8 +11,9 @@
 ///
 /// * `BumpRevalue` - Finite differences (bump-and-revalue)
 /// * `EnzymeAAD` - Enzyme LLVM-level AAD (requires `enzyme-ad` feature)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum GreeksMode {
     /// Bump-and-revalue using finite differences.
     ///

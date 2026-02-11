@@ -8,8 +8,7 @@
 //! - Processing statistics
 //! - Portfolio aggregations (by currency, netting set, book)
 
-use std::collections::HashMap;
-use std::{sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use infra_config::PricingConfig;
 use infra_domain::trade::Trade;
@@ -19,8 +18,9 @@ use rayon::prelude::*;
 use super::{
     config::{ModelConfig, PricerConfig},
     error::PricingError,
+    pricer::GenericPricer,
+    result::PricingResult,
 };
-use super::{pricer::GenericPricer, result::PricingResult};
 
 // Type alias for batch pricing result type
 type BatchResultType = PricingResult;

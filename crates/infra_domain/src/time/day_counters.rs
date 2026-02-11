@@ -40,10 +40,7 @@ use super::types::Date;
 /// - `Thirty360European`: 30/360 European
 /// - `ThirtyE360Isda`: 30E/360 ISDA
 #[non_exhaustive]
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
-    strum::Display, strum::AsRefStr,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DayCounter {
     /// Actual/360

@@ -68,7 +68,6 @@ impl SimpleDate {
     }
 }
 
-
 /// Cashflow-level pricing result.
 ///
 /// Contains the PV contribution from a single cashflow, with both
@@ -292,9 +291,7 @@ impl PricingResult {
 mod tests {
     use super::*;
 
-    fn sample_date() -> Date {
-        Date::from_ymd(2025, 6, 15).unwrap()
-    }
+    fn sample_date() -> Date { Date::from_ymd(2025, 6, 15).unwrap() }
 
     // =========================================================================
     // CashflowPricingResult Tests (Task 3.1)
@@ -546,5 +543,4 @@ mod tests {
     // =========================================================================
     // Simple Date Tests (without l1l2-integration)
     // =========================================================================
-
 }

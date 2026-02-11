@@ -216,9 +216,12 @@ where
         let mut residuals = Vec::with_capacity(self.instruments.len());
 
         for (idx, instrument) in self.instruments.iter().enumerate() {
-            let error = instrument
-                .pricing_error(curve)
-                .map_err(|e| CalibrationError::InstrumentEvaluationFailed { instrument_index: idx, message: e.to_string() })?;
+            let error = instrument.pricing_error(curve).map_err(|e| {
+                CalibrationError::InstrumentEvaluationFailed {
+                    instrument_index: idx,
+                    message: e.to_string(),
+                }
+            })?;
             residuals.push(error);
         }
 
@@ -236,9 +239,11 @@ where
         let eps = self.config.jacobian_epsilon;
 
         // Base residuals
-        let curve = self.build_curve(log_df).map_err(|e| {
-            CalibrationError::NumericalInstability { message: format!("Failed to build curve: {e}") }
-        })?;
+        let curve =
+            self.build_curve(log_df)
+                .map_err(|e| CalibrationError::NumericalInstability {
+                    message: format!("Failed to build curve: {e}"),
+                })?;
         let f0 = self.compute_residuals(&curve)?;
 
         // Compute Jacobian columns via forward differences
@@ -249,9 +254,9 @@ where
             log_df_pert[j] = log_df_pert[j] + eps;
 
             let curve_pert = self.build_curve(&log_df_pert).map_err(|e| {
-                CalibrationError::NumericalInstability { message: format!(
-                    "Failed to build perturbed curve: {e}"
-                ) }
+                CalibrationError::NumericalInstability {
+                    message: format!("Failed to build perturbed curve: {e}"),
+                }
             })?;
             let f_pert = self.compute_residuals(&curve_pert)?;
 
@@ -278,7 +283,9 @@ where
             let mut log_df_plus = log_df.to_vec();
             log_df_plus[j] = log_df_plus[j] + eps;
             let curve_plus = self.build_curve(&log_df_plus).map_err(|e| {
-                CalibrationError::NumericalInstability { message: format!("Failed to build curve+: {e}") }
+                CalibrationError::NumericalInstability {
+                    message: format!("Failed to build curve+: {e}"),
+                }
             })?;
             let f_plus = self.compute_residuals(&curve_plus)?;
 
@@ -313,14 +320,18 @@ where
         // Check for NaN
         for &val in jacobian.iter() {
             if val.is_nan() {
-                return JacobianQuality::Poor { reason: "NaN detected in Jacobian" };
+                return JacobianQuality::Poor {
+                    reason: "NaN detected in Jacobian",
+                };
             }
         }
 
         // Check for Inf
         for &val in jacobian.iter() {
             if val.is_infinite() {
-                return JacobianQuality::Poor { reason: "Inf detected in Jacobian" };
+                return JacobianQuality::Poor {
+                    reason: "Inf detected in Jacobian",
+                };
             }
         }
 
@@ -329,7 +340,9 @@ where
             for i in 0..nrows {
                 let diag_val = jacobian[(i, i)];
                 if Float::abs(diag_val) < zero_threshold {
-                    return JacobianQuality::Warning { reason: "Near-zero diagonal element detected" };
+                    return JacobianQuality::Warning {
+                        reason: "Near-zero diagonal element detected",
+                    };
                 }
             }
         }
@@ -812,10 +825,7 @@ where
             _ => {
                 // Unknown instrument type - return error to trigger fallback
                 Err(CalibrationError::NumericalInstability {
-                    message: format!(
-                        "Unsupported instrument type for Enzyme AD: {}",
-                        inst_type
-                    ),
+                    message: format!("Unsupported instrument type for Enzyme AD: {}", inst_type),
                 })
             }
         }

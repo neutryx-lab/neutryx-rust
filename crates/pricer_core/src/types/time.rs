@@ -48,10 +48,7 @@ use infra_domain::time::{Date, DayCounter};
 /// assert_eq!(act_365.name(), "ACT/365");
 /// ```
 #[non_exhaustive]
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash,
-    strum::Display, strum::AsRefStr,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr)]
 pub enum DayCountConvention {
     /// Actual/365 Fixed: actual_days / 365.0
     ///

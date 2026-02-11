@@ -19,8 +19,10 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::stochastic::stochastic::{EquityModel, SingleState, StochasticModel};
-use crate::stochastic::validation::DEFAULT_SMOOTHING_EPSILON;
+use crate::stochastic::{
+    stochastic::{EquityModel, SingleState, StochasticModel},
+    validation::DEFAULT_SMOOTHING_EPSILON,
+};
 
 /// GBM model parameters.
 #[derive(Clone, Copy, Debug, PartialEq)]

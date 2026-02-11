@@ -88,7 +88,6 @@ impl CommodityConvention {
             contract_size,
         }
     }
-
 }
 
 super::define_convention_factories! {

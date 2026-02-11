@@ -51,8 +51,10 @@ pub use compile::{CompileError, CompiledInstrument, InstrumentCompiler, Instrume
 pub use construction::{
     ConstructionConfig, ConstructionError, ConstructionResult, CurveConstructionEngine,
 };
-pub use curve::{BootstrapConfig, CurveBootstrapper, JacobianMatrix};
-pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
+pub use curve::{
+    BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapResult,
+    GlobalBootstrapper, JacobianMatrix,
+};
 pub use engine::{
     CalibrationEngine, CalibrationEngineConfig, CalibrationResult, GlobalCalibrationEngine,
     SequentialCalibrationEngine,
@@ -60,11 +62,8 @@ pub use engine::{
 pub use enzyme_jacobian::JacobianResult;
 pub use error::{
     apply_tikhonov_regularisation, estimate_condition_number, should_apply_regularisation,
-    validate_jacobian_dmatrix,
-};
-pub use error::{
-    validate_jacobian_matrix, CalibrationError, IftError, JacobianQuality, NumericalDiagnostics,
-    RegularisationType,
+    validate_jacobian_dmatrix, validate_jacobian_matrix, CalibrationError, IftError,
+    JacobianQuality, NumericalDiagnostics, RegularisationType,
 };
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;

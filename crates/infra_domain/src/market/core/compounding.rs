@@ -2,19 +2,27 @@
 
 /// Compounding method for interest rate calculations.
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
-    strum::Display, strum::EnumString, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    strum::Display,
+    strum::EnumString,
+    strum::AsRefStr,
 )]
 #[strum(ascii_case_insensitive)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CompoundingMethod {
     /// Simple interest (no compounding within period).
     #[default]
-    #[strum(serialize = "Simple", serialize = "none")]
+    #[strum(to_string = "Simple", serialize = "none")]
     Simple,
 
     /// Daily compounding (OIS indices).
-    #[strum(serialize = "Compounded", serialize = "compound", serialize = "daily")]
+    #[strum(to_string = "Compounded", serialize = "compound", serialize = "daily")]
     Compounded,
 
     /// Arithmetic average calculation.
@@ -23,7 +31,11 @@ pub enum CompoundingMethod {
     /// arithmetic average of daily observations.
     ///
     /// Formula: `(Σ r_i) / n`
-    #[strum(serialize = "Averaged", serialize = "average", serialize = "arithmetic")]
+    #[strum(
+        serialize = "Averaged",
+        serialize = "average",
+        serialize = "arithmetic"
+    )]
     Averaged,
 }
 

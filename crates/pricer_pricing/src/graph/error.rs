@@ -39,8 +39,7 @@ use thiserror::Error;
 /// let error = GraphError::Timeout;
 /// assert_eq!(error.http_status_code(), 500);
 /// ```
-#[derive(Error, Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Error, Debug, Clone, Serialize)]
 #[serde(tag = "error_type", content = "message")]
 pub enum GraphError {
     /// The specified trade ID was not found.

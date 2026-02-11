@@ -214,7 +214,6 @@ impl<T: Float> FxVolBuilder<T> {
 
         Ok(self)
     }
-
 }
 
 impl<T: Float> VolBuilder<T> for FxVolBuilder<T> {

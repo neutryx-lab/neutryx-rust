@@ -247,27 +247,27 @@ impl LSMCRegressor {
     /// Evaluates power basis (1, x, x², ...).
     fn power_basis(x: f64, n: usize) -> Vec<f64> { (0..n).map(|i| x.powi(i as i32)).collect() }
 
-    /// Solves normal equations using Cholesky decomposition.
+    /// Solves normal equations using `nalgebra::Cholesky` decomposition.
     fn solve_normal_equations(
         &self,
         x_matrix: &[Vec<f64>],
         y_vec: &[f64],
         num_terms: usize,
     ) -> Vec<f64> {
-        let _n = x_matrix.len();
+        use nalgebra::{DMatrix, DVector};
 
-        // Compute X'X (symmetric)
-        let mut xtx = vec![vec![0.0; num_terms]; num_terms];
+        // Compute X'X (symmetric) as DMatrix
+        let mut xtx = DMatrix::zeros(num_terms, num_terms);
         for row in x_matrix {
             for i in 0..num_terms {
                 for j in 0..num_terms {
-                    xtx[i][j] += row[i] * row[j];
+                    xtx[(i, j)] += row[i] * row[j];
                 }
             }
         }
 
-        // Compute X'Y
-        let mut xty = vec![0.0; num_terms];
+        // Compute X'Y as DVector
+        let mut xty = DVector::zeros(num_terms);
         for (row, &y) in x_matrix.iter().zip(y_vec.iter()) {
             for i in 0..num_terms {
                 xty[i] += row[i] * y;
@@ -277,58 +277,20 @@ impl LSMCRegressor {
         // Add regularisation (ridge) for numerical stability
         let ridge = 1e-10;
         for i in 0..num_terms {
-            xtx[i][i] += ridge;
+            xtx[(i, i)] += ridge;
         }
 
-        // Solve using Cholesky decomposition
-        self.solve_cholesky(&xtx, &xty)
-    }
-
-    /// Solves Ax = b using Cholesky decomposition.
-    fn solve_cholesky(&self, a: &[Vec<f64>], b: &[f64]) -> Vec<f64> {
-        let n = b.len();
-
-        // Cholesky decomposition: A = LL'
-        let mut l = vec![vec![0.0; n]; n];
-        for i in 0..n {
-            for j in 0..=i {
-                let mut sum = a[i][j];
-                for k in 0..j {
-                    sum -= l[i][k] * l[j][k];
-                }
-                if i == j {
-                    if sum <= 0.0 {
-                        // Matrix not positive definite, use fallback
-                        return vec![0.0; n];
-                    }
-                    l[i][j] = sum.sqrt();
-                } else {
-                    l[i][j] = sum / l[j][j];
-                }
+        // Solve using nalgebra Cholesky decomposition
+        match nalgebra::Cholesky::new(xtx) {
+            Some(chol) => {
+                let solution = chol.solve(&xty);
+                solution.iter().copied().collect()
+            }
+            None => {
+                // Matrix not positive definite, return zero coefficients
+                vec![0.0; num_terms]
             }
         }
-
-        // Forward substitution: Ly = b
-        let mut y = vec![0.0; n];
-        for i in 0..n {
-            let mut sum = b[i];
-            for j in 0..i {
-                sum -= l[i][j] * y[j];
-            }
-            y[i] = sum / l[i][i];
-        }
-
-        // Backward substitution: L'x = y
-        let mut x = vec![0.0; n];
-        for i in (0..n).rev() {
-            let mut sum = y[i];
-            for j in (i + 1)..n {
-                sum -= l[j][i] * x[j];
-            }
-            x[i] = sum / l[i][i];
-        }
-
-        x
     }
 
     /// Calculates R-squared goodness of fit.

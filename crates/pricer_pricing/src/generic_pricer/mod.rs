@@ -45,8 +45,10 @@ mod payoff_evaluator;
 mod pricer;
 mod result;
 
-pub use batch::{BatchPricer, BatchPricingResult, BatchStats, ExecutionStats, TradeId};
-pub use batch::{PortfolioAggregations, PortfolioPricer, PortfolioPricingResult};
+pub use batch::{
+    BatchPricer, BatchPricingResult, BatchStats, ExecutionStats, PortfolioAggregations,
+    PortfolioPricer, PortfolioPricingResult, TradeId,
+};
 // Always export DefaultCurrency for standalone pricing
 pub use config::DefaultCurrency;
 pub use config::{ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder};

@@ -50,8 +50,17 @@ use std::str::FromStr;
 /// assert!(Frequency::Monthly < Frequency::Annual);
 /// ```
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default,
-    strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Default,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
@@ -145,7 +154,6 @@ impl FromStr for Frequency {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

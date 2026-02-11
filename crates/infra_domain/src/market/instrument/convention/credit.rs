@@ -38,7 +38,6 @@ impl CdsConvention {
             recovery_rate,
         }
     }
-
 }
 
 super::define_convention_factories! {

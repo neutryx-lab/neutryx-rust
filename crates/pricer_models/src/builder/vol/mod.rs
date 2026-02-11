@@ -49,7 +49,8 @@ pub use surface::{FxVolBuilder, FxVolResult};
 ///
 /// # Associated Types
 ///
-/// * `Result` - The calibrated result type (e.g. `FxVolResult`, `VolCubeResult`)
+/// * `Result` - The calibrated result type (e.g. `FxVolResult`,
+///   `VolCubeResult`)
 ///
 /// # Pattern
 ///

@@ -43,7 +43,6 @@ impl FxConvention {
             business_day_convention,
         }
     }
-
 }
 
 super::define_convention_factories! {

@@ -21,7 +21,8 @@ macro_rules! xml_text {
     };
 }
 
-/// Extract a decimal (f64) field from an `XmlNavigator`, returning a default if absent.
+/// Extract a decimal (f64) field from an `XmlNavigator`, returning a default if
+/// absent.
 ///
 /// Usage: `xml_decimal!(nav, "elementName", 0.0)`
 macro_rules! xml_decimal {
@@ -45,7 +46,8 @@ macro_rules! xml_date {
     };
 }
 
-/// Extract a decimal from one of several candidate elements, returning a default.
+/// Extract a decimal from one of several candidate elements, returning a
+/// default.
 ///
 /// Usage: `xml_decimal_or!(nav, "primary", "fallback", 0.0)`
 macro_rules! xml_decimal_or {

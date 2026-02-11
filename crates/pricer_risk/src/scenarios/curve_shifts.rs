@@ -31,8 +31,7 @@ pub enum CurveShiftError {
 }
 
 /// Specification for a curve shift operation.
-#[derive(Clone, Debug)]
-#[derive(Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct CurveShiftSpec {
     /// Name of the curve to shift.
     pub curve_name: String,
@@ -45,8 +44,7 @@ pub struct CurveShiftSpec {
 }
 
 /// Types of curve shifts.
-#[derive(Clone, Debug, PartialEq)]
-#[derive(Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum CurveShiftType {
     /// Uniform shift across all tenors.
     ///

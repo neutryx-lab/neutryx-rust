@@ -8,8 +8,9 @@ use super::{error::PortfolioError, ids::CounterpartyId};
 /// Credit rating enum following standard rating agencies.
 ///
 /// Ratings range from AAA (highest quality) to D (default).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum CreditRating {
     /// Highest quality (prime)
     AAA,
@@ -80,8 +81,7 @@ impl CreditRating {
 /// assert!(params.survival_prob(1.0) < 1.0);
 /// assert!(params.survival_prob(2.0) < params.survival_prob(1.0));
 /// ```
-#[derive(Clone, Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CreditParams {
     /// Hazard rate (annualised intensity)
     hazard_rate: f64,
@@ -224,8 +224,7 @@ impl CreditParams {
 /// assert_eq!(cp.id().as_str(), "CP001");
 /// assert_eq!(cp.name(), Some("Acme Corp"));
 /// ```
-#[derive(Clone, Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Counterparty {
     id: CounterpartyId,
     name: Option<String>,

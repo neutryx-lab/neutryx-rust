@@ -437,7 +437,6 @@ impl MonteCarloPricer {
     /// # Panics
     ///
     /// Panics if the curve returns an error for the given maturity.
-    #[cfg(feature = "l1l2-integration")]
     pub fn price_european_with_curve<C>(
         &mut self,
         gbm: GbmParams,
@@ -455,7 +454,6 @@ impl MonteCarloPricer {
 
     /// Prices a European option with Greeks, discount factor from a
     /// `YieldCurve`.
-    #[cfg(feature = "l1l2-integration")]
     pub fn price_with_greeks_and_curve<C>(
         &mut self,
         gbm: GbmParams,

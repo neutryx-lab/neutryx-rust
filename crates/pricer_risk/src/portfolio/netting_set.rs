@@ -29,8 +29,7 @@ use super::{
 ///     CollateralAgreement::bilateral_mpor(),
 /// ).unwrap();
 /// ```
-#[derive(Clone, Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CollateralAgreement {
     /// Threshold amount below which no collateral is required
     threshold: f64,
@@ -179,8 +178,7 @@ impl CollateralAgreement {
 ///
 /// assert_eq!(ns.trade_count(), 2);
 /// ```
-#[derive(Clone, Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct NettingSet {
     id: NettingSetId,
     counterparty_id: CounterpartyId,

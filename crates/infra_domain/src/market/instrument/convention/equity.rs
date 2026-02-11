@@ -82,7 +82,6 @@ impl EquityConvention {
             borrow_spread,
         }
     }
-
 }
 
 super::define_convention_factories! {

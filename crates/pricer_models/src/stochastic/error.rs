@@ -3,8 +3,7 @@
 use pricer_core::types::PricingError;
 use thiserror::Error;
 
-use super::correlated::CorrelationError;
-use super::heston::HestonError;
+use super::{correlated::CorrelationError, heston::HestonError};
 
 /// Unified error type for stochastic model operations.
 #[derive(Error, Debug, Clone, PartialEq)]

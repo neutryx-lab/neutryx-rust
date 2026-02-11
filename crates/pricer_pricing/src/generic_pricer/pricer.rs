@@ -27,12 +27,11 @@ use pricer_models::market::{MarketProvider, YieldCurve};
 
 // Standalone types - always available
 use super::config::DefaultCurrency;
-use super::payoff_evaluator::PayoffEvaluator;
-use super::result::{CashflowPricingResult, LegPricingResult, PricingResult};
 use super::{
     config::{ModelConfig, PricerConfig},
     error::PricingError,
-    result::{SimpleDate, SimpleDirection},
+    payoff_evaluator::PayoffEvaluator,
+    result::{CashflowPricingResult, LegPricingResult, PricingResult, SimpleDate, SimpleDirection},
 };
 
 /// Generic pricer for unified pricing API.
@@ -52,7 +51,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct GenericPricer {
     /// Market data provider (Arc-shared for thread safety).
-        market: Arc<MarketProvider>,
+    market: Arc<MarketProvider>,
 
     /// Model configuration (simulation parameters).
     model_config: ModelConfig,
@@ -69,7 +68,7 @@ impl GenericPricer {
     /// * `market` - Arc-shared market data provider
     /// * `model_config` - Model and simulation configuration
     /// * `pricer_config` - Pricer output configuration
-        pub fn new(
+    pub fn new(
         market: Arc<MarketProvider>,
         model_config: ModelConfig,
         pricer_config: PricerConfig,
@@ -101,7 +100,7 @@ impl GenericPricer {
     /// let pricing_config = PricingConfig::from_toml_str(toml_str)?;
     /// let pricer = GenericPricer::from_config(market, &pricing_config)?;
     /// ```
-        pub fn from_config(
+    pub fn from_config(
         market: Arc<MarketProvider>,
         config: &PricingConfig,
     ) -> Result<Self, PricingError> {
@@ -149,7 +148,7 @@ impl GenericPricer {
     }
 
     /// Returns the pricing method from config (Analytical or MonteCarlo).
-        pub fn pricing_method_from_config(config: &PricingConfig) -> PricingMethod {
+    pub fn pricing_method_from_config(config: &PricingConfig) -> PricingMethod {
         config.pricing_method
     }
 
@@ -174,7 +173,7 @@ impl GenericPricer {
     /// - Required market data is missing
     /// - Currency code is invalid
     /// - The instrument type is not supported
-        pub fn price_with_config(
+    pub fn price_with_config(
         &self,
         trade: &Trade,
         config: &PricingConfig,
@@ -227,7 +226,7 @@ impl GenericPricer {
     /// - Required market data is missing
     /// - FX rate is not available
     /// - The instrument type is not supported
-        pub fn get_pv(
+    pub fn get_pv(
         &self,
         trade: &Trade,
         valuation_date: Date,
@@ -252,7 +251,7 @@ impl GenericPricer {
     }
 
     /// Prices a single leg.
-        fn price_leg(
+    fn price_leg(
         &self,
         leg: &Leg,
         valuation_date: Date,
@@ -328,7 +327,7 @@ impl GenericPricer {
     }
 
     /// Evaluates the cashflow amount based on its payoff type.
-        fn evaluate_cashflow_amount(
+    fn evaluate_cashflow_amount(
         &self,
         cf: &infra_domain::trade::Cashflow,
         valuation_date: Date,
@@ -354,7 +353,7 @@ impl GenericPricer {
     ///
     /// Note: This method is preserved for backward compatibility. The new
     /// `evaluate_cashflow_amount` method extracts notional from `cf.notional`.
-        #[allow(dead_code)]
+    #[allow(dead_code)]
     fn get_notional_for_cashflow(&self, _cf: &infra_domain::trade::Cashflow, _leg: &Leg) -> f64 {
         // TODO: Extract notional from cashflow/leg based on cashflow type
         // For now, return a default notional
@@ -362,7 +361,7 @@ impl GenericPricer {
     }
 
     /// Gets the FX rate between two currencies.
-        fn get_fx_rate(&self, from: Currency, to: Currency) -> Result<f64, PricingError> {
+    fn get_fx_rate(&self, from: Currency, to: Currency) -> Result<f64, PricingError> {
         // TODO: Implement MarketProvider::get_fx_rate when available
         // For now, return an error indicating the feature is not yet implemented
         Err(PricingError::fx_rate_not_found(from, to))

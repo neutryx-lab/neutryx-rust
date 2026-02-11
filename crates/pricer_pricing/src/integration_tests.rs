@@ -1,10 +1,9 @@
 //! L1/L2 integration tests for pricer_kernel.
 //!
 //! These tests verify that pricer_kernel correctly integrates with
-//! pricer_core (L1) and pricer_models (L2) when the `l1l2-integration` feature
-//! is enabled.
+//! pricer_core (L1) and pricer_models (L2).
 
-#[cfg(all(test, feature = "l1l2-integration"))]
+#[cfg(test)]
 mod tests {
     use pricer_core::{
         math::smoothing::{smooth_indicator, smooth_max},
@@ -53,7 +52,7 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "l1l2-integration"))]
+#[cfg(test)]
 mod pricer_models_tests {
     use pricer_models::stochastic::{
         SingleState, StochasticModel, StochasticModelEnum, StochasticState,
@@ -94,7 +93,7 @@ mod pricer_models_tests {
 /// These tests verify that the Instrument enum from pricer_models can be
 /// used for static dispatch payoff calculations.
 // TODO: l1l2-integration feature disabled pending refactoring - instruments moved to infra_domain
-#[cfg(all(test, feature = "l1l2-integration", feature = "__disabled__"))]
+#[cfg(all(test, feature = "__disabled__"))]
 mod instrument_tests {
     use pricer_models::instruments::{
         Direction, ExerciseStyle, Forward, Instrument, InstrumentParams, PayoffType, VanillaOption,
@@ -178,7 +177,7 @@ mod instrument_tests {
 ///
 /// These tests verify that the Monte Carlo pricer can use YieldCurve
 /// from pricer_core for discount factor calculations.
-#[cfg(all(test, feature = "l1l2-integration"))]
+#[cfg(test)]
 mod yield_curve_tests {
     use pricer_models::market::curves::{FlatCurve, YieldCurve};
 

@@ -105,7 +105,6 @@ pub trait CurveProvider {
 /// # Examples
 ///
 /// ```
-/// # #[cfg(feature = "l1l2-integration")]
 /// # {
 /// use pricer_pricing::kernel::{CurveProvider, FlatCurveProvider};
 ///

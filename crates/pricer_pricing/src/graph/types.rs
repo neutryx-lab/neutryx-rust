@@ -39,8 +39,7 @@ use serde::Serialize;
 /// - `Div`: Division operation
 /// - `Output`: Final output value
 /// - `Custom(u8)`: User-defined custom operation type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NodeType {
     /// Input variable (market data, model parameters)
@@ -85,8 +84,7 @@ where
 /// - `Intermediate`: Grey (#6b7280)
 /// - `Output`: Green (#22c55e)
 /// - `Sensitivity`: Orange (#f97316)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum NodeGroup {
     /// Input nodes (market data, parameters)
@@ -133,8 +131,7 @@ pub enum NodeGroup {
 ///     trade_ids: vec![],
 /// };
 /// ```
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GraphNode {
     /// Unique identifier for the node
     pub id: String,
@@ -197,8 +194,7 @@ impl Default for GraphNode {
 ///     weight: Some(1.0),
 /// };
 /// ```
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GraphEdge {
     /// Source node ID (input to the operation)
     pub source: String,
@@ -232,8 +228,7 @@ pub struct GraphEdge {
 ///     generated_at: "2026-01-13T12:00:00Z".to_string(),
 /// };
 /// ```
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GraphMetadata {
     /// Trade ID this graph belongs to (None for aggregate graphs)
     pub trade_id: Option<String>,
@@ -274,8 +269,7 @@ pub struct GraphMetadata {
 ///   "metadata": {...}
 /// }
 /// ```
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ComputationGraph {
     /// All nodes in the computation graph
     pub nodes: Vec<GraphNode>,
@@ -506,8 +500,7 @@ impl ComputationGraph {
 ///     delta: Some(1.5),
 /// };
 /// ```
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GraphNodeUpdate {
     /// Node ID being updated
     pub id: String,
@@ -543,8 +536,7 @@ pub struct GraphNodeUpdate {
 ///     optimisation_ratio: 0.83,
 /// };
 /// ```
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PortfolioGraphMetadata {
     /// Total number of nodes in the graph
     pub node_count: usize,
@@ -608,8 +600,7 @@ pub struct PortfolioGraphMetadata {
 ///   }
 /// }
 /// ```
-#[derive(Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PortfolioComputationGraph {
     /// All nodes in the computation graph (with trade_ids populated)
     pub nodes: Vec<GraphNode>,

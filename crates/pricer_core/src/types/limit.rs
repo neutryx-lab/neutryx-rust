@@ -47,9 +47,17 @@ use serde::{Deserialize, Serialize};
 /// assert_eq!(Limit::default(), Limit::Continuous);
 /// ```
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
-    Serialize, Deserialize,
-    strum::Display, strum::AsRefStr,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::AsRefStr,
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Limit {

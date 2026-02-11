@@ -13,9 +13,7 @@ use infra_domain::{
 };
 
 use crate::fpml::{
-    common::{
-        parse_currency, parse_trade_header, xml_date, xml_decimal, xml_text, XmlNavigator,
-    },
+    common::{parse_currency, parse_trade_header, xml_date, xml_decimal, xml_text, XmlNavigator},
     error::FpmlError,
 };
 

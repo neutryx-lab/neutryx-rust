@@ -196,13 +196,9 @@ where
     type ResidualStorage = Owned<f64, Dyn>;
     type JacobianStorage = Owned<f64, Dyn, Dyn>;
 
-    fn set_params(&mut self, params: &DVector<f64>) {
-        self.params.copy_from(params);
-    }
+    fn set_params(&mut self, params: &DVector<f64>) { self.params.copy_from(params); }
 
-    fn params(&self) -> DVector<f64> {
-        self.params.clone()
-    }
+    fn params(&self) -> DVector<f64> { self.params.clone() }
 
     fn residuals(&self) -> Option<DVector<f64>> {
         let r = (self.residuals_fn)(self.params.as_slice());
@@ -325,7 +321,13 @@ impl LevenbergMarquardtSolver {
         // Check if already optimal
         let initial_ss: f64 = r0.iter().map(|x| x * x).sum();
         if initial_ss.sqrt() < self.config.tolerance {
-            return Ok(LMResult::new(initial_params, initial_ss, 0, true, self.config.initial_lambda));
+            return Ok(LMResult::new(
+                initial_params,
+                initial_ss,
+                0,
+                true,
+                self.config.initial_lambda,
+            ));
         }
 
         // Build adapter problem

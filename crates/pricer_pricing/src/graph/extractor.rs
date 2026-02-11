@@ -16,10 +16,7 @@
 //! extraction of computation graphs from multiple trades in a Portfolio,
 //! with shared node deduplication and optimisation.
 
-use std::{
-    collections::HashMap,
-    time::Instant,
-};
+use std::{collections::HashMap, time::Instant};
 
 use petgraph::{
     algo::{is_cyclic_directed, toposort},
@@ -91,9 +88,10 @@ impl GraphBuilder {
     /// Add an edge to the graph.
     pub fn add_edge(&mut self, edge: GraphEdge) {
         // Also add the edge to the petgraph DiGraph when both endpoints exist
-        if let (Some(&src), Some(&tgt)) =
-            (self.node_index.get(&edge.source), self.node_index.get(&edge.target))
-        {
+        if let (Some(&src), Some(&tgt)) = (
+            self.node_index.get(&edge.source),
+            self.node_index.get(&edge.target),
+        ) {
             self.digraph.add_edge(src, tgt, ());
         }
         self.edges.push(edge);

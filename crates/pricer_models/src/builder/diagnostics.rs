@@ -362,13 +362,13 @@ pub fn validate_jacobian_matrix<T: Float>(
 
     // Determine quality
     let quality = if diagnostics.nan_count > 0 {
-        JacobianQuality::poor("NaN detected in Jacobian")
+        JacobianQuality::Poor { reason: "NaN detected in Jacobian" }
     } else if diagnostics.inf_count > 0 {
-        JacobianQuality::poor("Inf detected in Jacobian")
+        JacobianQuality::Poor { reason: "Inf detected in Jacobian" }
     } else if diagnostics.near_zero_diagonal_count > 0 {
-        JacobianQuality::warning("Near-zero diagonal element detected")
+        JacobianQuality::Warning { reason: "Near-zero diagonal element detected" }
     } else {
-        JacobianQuality::good()
+        JacobianQuality::Good
     };
 
     diagnostics.jacobian_quality = quality;
@@ -413,13 +413,13 @@ where
 
     // Determine quality
     let quality = if diagnostics.nan_count > 0 {
-        JacobianQuality::poor("NaN detected in Jacobian")
+        JacobianQuality::Poor { reason: "NaN detected in Jacobian" }
     } else if diagnostics.inf_count > 0 {
-        JacobianQuality::poor("Inf detected in Jacobian")
+        JacobianQuality::Poor { reason: "Inf detected in Jacobian" }
     } else if diagnostics.near_zero_diagonal_count > 0 {
-        JacobianQuality::warning("Near-zero diagonal element detected")
+        JacobianQuality::Warning { reason: "Near-zero diagonal element detected" }
     } else {
-        JacobianQuality::good()
+        JacobianQuality::Good
     };
 
     diagnostics.jacobian_quality = quality;
@@ -513,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_good() {
-        let quality = JacobianQuality::good();
+        let quality = JacobianQuality::Good;
         assert!(quality.is_good());
         assert!(quality.is_acceptable());
         assert!(quality.reason().is_none());
@@ -522,7 +522,7 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_warning() {
-        let quality = JacobianQuality::warning("near-zero diagonal");
+        let quality = JacobianQuality::Warning { reason: "near-zero diagonal" };
         assert!(!quality.is_good());
         assert!(quality.is_acceptable());
         assert_eq!(quality.reason(), Some("near-zero diagonal"));
@@ -531,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_poor() {
-        let quality = JacobianQuality::poor("NaN detected");
+        let quality = JacobianQuality::Poor { reason: "NaN detected" };
         assert!(!quality.is_good());
         assert!(!quality.is_acceptable());
         assert_eq!(quality.reason(), Some("NaN detected"));
@@ -540,12 +540,12 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_equality() {
-        assert_eq!(JacobianQuality::good(), JacobianQuality::good());
+        assert_eq!(JacobianQuality::Good, JacobianQuality::Good);
         assert_eq!(
-            JacobianQuality::warning("test"),
-            JacobianQuality::warning("test")
+            JacobianQuality::Warning { reason: "test" },
+            JacobianQuality::Warning { reason: "test" }
         );
-        assert_ne!(JacobianQuality::good(), JacobianQuality::poor("NaN"));
+        assert_ne!(JacobianQuality::Good, JacobianQuality::Poor { reason: "NaN" });
     }
 
     // =========================================================================
@@ -562,7 +562,7 @@ mod tests {
 
     #[test]
     fn test_regularisation_tikhonov() {
-        let reg: RegularisationType<f64> = RegularisationType::tikhonov(1e-6);
+        let reg: RegularisationType<f64> = RegularisationType::Tikhonov { damping: 1e-6 };
         assert!(reg.is_regularised());
         assert!((reg.damping().unwrap() - 1e-6).abs() < 1e-15);
         assert!(format!("{reg}").contains("Tikhonov"));
@@ -570,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_regularisation_levenberg_marquardt() {
-        let reg: RegularisationType<f64> = RegularisationType::levenberg_marquardt(0.01);
+        let reg: RegularisationType<f64> = RegularisationType::LevenbergMarquardt { lambda: 0.01 };
         assert!(reg.is_regularised());
         assert!((reg.damping().unwrap() - 0.01).abs() < 1e-15);
         assert!(format!("{reg}").contains("LM"));
@@ -670,7 +670,7 @@ mod tests {
     #[test]
     fn test_numerical_diagnostics_with_regularisation() {
         let diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_regularisation(RegularisationType::tikhonov(1e-6));
+            NumericalDiagnostics::new().with_regularisation(RegularisationType::Tikhonov { damping: 1e-6 });
         assert!(diag.was_regularised());
         let summary = diag.summary();
         assert!(summary.contains("Tikhonov"));

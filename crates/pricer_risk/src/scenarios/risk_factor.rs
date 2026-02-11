@@ -35,8 +35,7 @@ use serde::{Deserialize, Serialize};
 /// # Requirements
 ///
 /// - Requirement 1.3: Risk factor identification for Greeks aggregation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RiskFactorId {
     /// Underlying asset identifier (e.g., "USDJPY", "SPX").
     ///

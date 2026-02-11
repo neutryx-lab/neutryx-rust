@@ -337,10 +337,11 @@ pub const DEFAULT_SMOOTHING_EPSILON: f64 = 1e-8;
 // validate_params! macro
 // =============================================================================
 
-/// Macro to generate a `validate()` method body for stochastic model parameters.
+/// Macro to generate a `validate()` method body for stochastic model
+/// parameters.
 ///
-/// Eliminates repetitive sequences of `validate_positive`, `validate_correlation`,
-/// etc. calls across model parameter types.
+/// Eliminates repetitive sequences of `validate_positive`,
+/// `validate_correlation`, etc. calls across model parameter types.
 ///
 /// # Syntax
 ///
@@ -356,8 +357,10 @@ pub const DEFAULT_SMOOTHING_EPSILON: f64 = 1e-8;
 ///
 /// - `positive`: calls `validate_positive` for each field
 /// - `non_negative`: calls `validate_non_negative` for each field
-/// - `correlation`: calls `validate_correlation` for each field (closed [-1, 1])
-/// - `strict_correlation`: calls `validate_strict_correlation` for each field (open (-1, 1))
+/// - `correlation`: calls `validate_correlation` for each field (closed [-1,
+///   1])
+/// - `strict_correlation`: calls `validate_strict_correlation` for each field
+///   (open (-1, 1))
 /// - `unit_interval`: calls `validate_unit_interval` for each field ([0, 1])
 ///
 /// # Example
@@ -380,28 +383,30 @@ pub const DEFAULT_SMOOTHING_EPSILON: f64 = 1e-8;
 #[macro_export]
 macro_rules! __validate_rule {
     (positive, $conv:expr, $self:expr, $field:ident) => {
-        $crate::stochastic::validation::validate_positive(
-            stringify!($field), $conv($self.$field)
-        )?;
+        $crate::stochastic::validation::validate_positive(stringify!($field), $conv($self.$field))?;
     };
     (non_negative, $conv:expr, $self:expr, $field:ident) => {
         $crate::stochastic::validation::validate_non_negative(
-            stringify!($field), $conv($self.$field)
+            stringify!($field),
+            $conv($self.$field),
         )?;
     };
     (correlation, $conv:expr, $self:expr, $field:ident) => {
         $crate::stochastic::validation::validate_correlation(
-            stringify!($field), $conv($self.$field)
+            stringify!($field),
+            $conv($self.$field),
         )?;
     };
     (strict_correlation, $conv:expr, $self:expr, $field:ident) => {
         $crate::stochastic::validation::validate_strict_correlation(
-            stringify!($field), $conv($self.$field)
+            stringify!($field),
+            $conv($self.$field),
         )?;
     };
     (unit_interval, $conv:expr, $self:expr, $field:ident) => {
         $crate::stochastic::validation::validate_unit_interval(
-            stringify!($field), $conv($self.$field)
+            stringify!($field),
+            $conv($self.$field),
         )?;
     };
 }
@@ -409,6 +414,9 @@ macro_rules! __validate_rule {
 #[doc(hidden)]
 pub use __validate_rule;
 
+/// Macro to generate parameter validation from declarative rules.
+///
+/// See [`validate_params`] module-level docs for syntax and examples.
 #[macro_export]
 macro_rules! validate_params {
     (

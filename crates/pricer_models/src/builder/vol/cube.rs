@@ -89,7 +89,6 @@ impl<T: Float> VolCubeBuilder<T> {
             .push(VolQuote::new(strike, volatility, forward, expiry));
         self
     }
-
 }
 
 impl<T: Float> VolBuilder<T> for VolCubeBuilder<T> {

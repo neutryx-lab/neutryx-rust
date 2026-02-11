@@ -576,13 +576,19 @@ impl<T: Float> InstrumentCompiler<T> {
 
         // Validate maturity (Requirement 8.1)
         if instrument.maturity_date <= self.valuation_date {
-            return Err(CompileError::InvalidMaturity { index, rate_id: rate_id.clone() });
+            return Err(CompileError::InvalidMaturity {
+                index,
+                rate_id: rate_id.clone(),
+            });
         }
 
         // Calculate year fractions and cashflow times
         let maturity_years = self.date_to_year_fraction(instrument.maturity_date);
         if maturity_years <= T::zero() {
-            return Err(CompileError::InvalidMaturity { index, rate_id: rate_id.clone() });
+            return Err(CompileError::InvalidMaturity {
+                index,
+                rate_id: rate_id.clone(),
+            });
         }
 
         // Build cashflow structure based on instrument type
@@ -601,7 +607,10 @@ impl<T: Float> InstrumentCompiler<T> {
                 // Event instruments should not go through InstrumentCompiler;
                 // they are created directly as MarketInstrument::Event in CurveService.
                 // This path should never be reached since MarketConvention doesn't have Event.
-                Err(CompileError::UnsupportedInstrument { index, instrument_type: "Event".to_string() })
+                Err(CompileError::UnsupportedInstrument {
+                    index,
+                    instrument_type: "Event".to_string(),
+                })
             }
         }
     }
@@ -641,15 +650,18 @@ impl<T: Float> InstrumentCompiler<T> {
             MarketConvention::Ois(_) => Ok(InstrumentType::Ois),
             MarketConvention::Fra(_) => Ok(InstrumentType::Fra),
             MarketConvention::Futures(_) => Ok(InstrumentType::Futures),
-            MarketConvention::XCcyBasis(_) => {
-                Err(CompileError::UnsupportedInstrument { index, instrument_type: "XCcyBasis".to_string() })
-            }
-            MarketConvention::FxForward(_) => {
-                Err(CompileError::UnsupportedInstrument { index, instrument_type: "FxForward".to_string() })
-            }
-            MarketConvention::FxSwap(_) => {
-                Err(CompileError::UnsupportedInstrument { index, instrument_type: "FxSwap".to_string() })
-            }
+            MarketConvention::XCcyBasis(_) => Err(CompileError::UnsupportedInstrument {
+                index,
+                instrument_type: "XCcyBasis".to_string(),
+            }),
+            MarketConvention::FxForward(_) => Err(CompileError::UnsupportedInstrument {
+                index,
+                instrument_type: "FxForward".to_string(),
+            }),
+            MarketConvention::FxSwap(_) => Err(CompileError::UnsupportedInstrument {
+                index,
+                instrument_type: "FxSwap".to_string(),
+            }),
         }
     }
 
@@ -671,7 +683,10 @@ impl<T: Float> InstrumentCompiler<T> {
         let year_fraction = from_f64::<T>(instrument.year_fraction());
 
         if year_fraction <= T::zero() {
-            return Err(CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() });
+            return Err(CompileError::InvalidYearFraction {
+                index,
+                rate_id: rate_id.to_string(),
+            });
         }
 
         CompiledInstrument::new(
@@ -683,7 +698,10 @@ impl<T: Float> InstrumentCompiler<T> {
             vec![T::one()],
             None,
         )
-        .map_err(|_| CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() })
+        .map_err(|_| CompileError::InvalidYearFraction {
+            index,
+            rate_id: rate_id.to_string(),
+        })
     }
 
     /// Compiles a FRA instrument.
@@ -699,7 +717,10 @@ impl<T: Float> InstrumentCompiler<T> {
         let year_fraction = from_f64::<T>(instrument.year_fraction());
 
         if year_fraction <= T::zero() {
-            return Err(CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() });
+            return Err(CompileError::InvalidYearFraction {
+                index,
+                rate_id: rate_id.to_string(),
+            });
         }
 
         // FRA has two cashflow times: start and end
@@ -719,7 +740,10 @@ impl<T: Float> InstrumentCompiler<T> {
             vec![T::one(); n],
             None,
         )
-        .map_err(|_| CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() })
+        .map_err(|_| CompileError::InvalidYearFraction {
+            index,
+            rate_id: rate_id.to_string(),
+        })
     }
 
     /// Compiles a Swap or OIS instrument.
@@ -756,7 +780,10 @@ impl<T: Float> InstrumentCompiler<T> {
             };
 
             if last_yf <= T::zero() {
-                return Err(CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() });
+                return Err(CompileError::InvalidYearFraction {
+                    index,
+                    rate_id: rate_id.to_string(),
+                });
             }
 
             cashflow_times.push(maturity_years);
@@ -773,7 +800,10 @@ impl<T: Float> InstrumentCompiler<T> {
             notionals,
             Some(market_rate),
         )
-        .map_err(|_| CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() })
+        .map_err(|_| CompileError::InvalidYearFraction {
+            index,
+            rate_id: rate_id.to_string(),
+        })
     }
 
     /// Compiles a Futures instrument.
@@ -789,7 +819,10 @@ impl<T: Float> InstrumentCompiler<T> {
         let year_fraction = from_f64::<T>(instrument.year_fraction());
 
         if year_fraction <= T::zero() {
-            return Err(CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() });
+            return Err(CompileError::InvalidYearFraction {
+                index,
+                rate_id: rate_id.to_string(),
+            });
         }
 
         // Futures similar to FRA
@@ -809,7 +842,10 @@ impl<T: Float> InstrumentCompiler<T> {
             vec![T::one(); n],
             None,
         )
-        .map_err(|_| CompileError::InvalidYearFraction { index, rate_id: rate_id.to_string() })
+        .map_err(|_| CompileError::InvalidYearFraction {
+            index,
+            rate_id: rate_id.to_string(),
+        })
     }
 }
 
@@ -881,7 +917,10 @@ mod tests {
 
     #[test]
     fn test_invalid_maturity_error() {
-        let err = CompileError::InvalidMaturity { index: 0, rate_id: "USD-SOFR-1Y".to_string() };
+        let err = CompileError::InvalidMaturity {
+            index: 0,
+            rate_id: "USD-SOFR-1Y".to_string(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("Invalid maturity"));
         assert!(msg.contains("0"));
@@ -891,7 +930,10 @@ mod tests {
 
     #[test]
     fn test_invalid_year_fraction_error() {
-        let err = CompileError::InvalidYearFraction { index: 3, rate_id: "EUR-ESTR-5Y".to_string() };
+        let err = CompileError::InvalidYearFraction {
+            index: 3,
+            rate_id: "EUR-ESTR-5Y".to_string(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("Invalid year fraction"));
         assert!(msg.contains("3"));
@@ -901,7 +943,10 @@ mod tests {
 
     #[test]
     fn test_convention_mismatch_error() {
-        let err = CompileError::ConventionMismatch { index: 5, rate_id: "JPY-TONA-10Y".to_string() };
+        let err = CompileError::ConventionMismatch {
+            index: 5,
+            rate_id: "JPY-TONA-10Y".to_string(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("Convention mismatch"));
         assert!(msg.contains("5"));
@@ -911,7 +956,10 @@ mod tests {
 
     #[test]
     fn test_invalid_convention_error() {
-        let err = CompileError::InvalidConvention { index: 2, rate_id: "GBP-SONIA-2Y".to_string() };
+        let err = CompileError::InvalidConvention {
+            index: 2,
+            rate_id: "GBP-SONIA-2Y".to_string(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("Invalid convention"));
         assert!(msg.contains("2"));
@@ -921,7 +969,10 @@ mod tests {
 
     #[test]
     fn test_unsupported_instrument_error() {
-        let err = CompileError::UnsupportedInstrument { index: 1, instrument_type: "XCcyBasis".to_string() };
+        let err = CompileError::UnsupportedInstrument {
+            index: 1,
+            instrument_type: "XCcyBasis".to_string(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("Unsupported instrument type"));
         assert!(msg.contains("1"));
@@ -931,16 +982,28 @@ mod tests {
 
     #[test]
     fn test_compile_error_equality() {
-        let err1 = CompileError::InvalidMaturity { index: 0, rate_id: "USD-SOFR-1Y".to_string() };
-        let err2 = CompileError::InvalidMaturity { index: 0, rate_id: "USD-SOFR-1Y".to_string() };
-        let err3 = CompileError::InvalidMaturity { index: 1, rate_id: "USD-SOFR-1Y".to_string() };
+        let err1 = CompileError::InvalidMaturity {
+            index: 0,
+            rate_id: "USD-SOFR-1Y".to_string(),
+        };
+        let err2 = CompileError::InvalidMaturity {
+            index: 0,
+            rate_id: "USD-SOFR-1Y".to_string(),
+        };
+        let err3 = CompileError::InvalidMaturity {
+            index: 1,
+            rate_id: "USD-SOFR-1Y".to_string(),
+        };
         assert_eq!(err1, err2);
         assert_ne!(err1, err3);
     }
 
     #[test]
     fn test_compile_error_debug() {
-        let err = CompileError::InvalidMaturity { index: 0, rate_id: "USD-SOFR-1Y".to_string() };
+        let err = CompileError::InvalidMaturity {
+            index: 0,
+            rate_id: "USD-SOFR-1Y".to_string(),
+        };
         let debug_str = format!("{:?}", err);
         assert!(debug_str.contains("InvalidMaturity"));
         assert!(debug_str.contains("USD-SOFR-1Y"));
@@ -948,7 +1011,10 @@ mod tests {
 
     #[test]
     fn test_compile_error_clone() {
-        let original = CompileError::UnsupportedInstrument { index: 5, instrument_type: "FxForward".to_string() };
+        let original = CompileError::UnsupportedInstrument {
+            index: 5,
+            instrument_type: "FxForward".to_string(),
+        };
         let cloned = original.clone();
         assert_eq!(original, cloned);
     }

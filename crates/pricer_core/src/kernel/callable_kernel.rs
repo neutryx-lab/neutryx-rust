@@ -52,7 +52,9 @@ use super::PricingKernel;
 /// Exercise style for callable products.
 ///
 /// Determines the timing and nature of exercise opportunities.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, strum::Display)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, strum::Display,
+)]
 pub enum ExerciseStyle {
     /// Bermudan: Exercise only at specific dates.
     Bermudan,
