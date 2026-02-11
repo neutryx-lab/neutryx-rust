@@ -18,19 +18,15 @@
 pub enum CompoundingMethod {
     /// Simple interest (no compounding within period).
     #[default]
-    #[strum(to_string = "Simple", serialize = "none")]
+    #[strum(to_string = "Simple")]
     Simple,
 
     /// Daily compounding (OIS indices).
-    #[strum(to_string = "Compounded", serialize = "compound", serialize = "daily")]
+    #[strum(to_string = "Compounded")]
     Compounded,
 
     /// Arithmetic average calculation.
-    #[strum(
-        serialize = "Averaged",
-        serialize = "average",
-        serialize = "arithmetic"
-    )]
+    #[strum(to_string = "Averaged")]
     Averaged,
 }
 
@@ -53,20 +49,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_from_str_synonyms() {
-        for s in ["Simple", "simple", "SIMPLE", "none"] {
+    fn test_from_str_canonical() {
+        // Case-insensitive matching via ascii_case_insensitive
+        for s in ["Simple", "simple", "SIMPLE"] {
             assert_eq!(
                 s.parse::<CompoundingMethod>().unwrap(),
                 CompoundingMethod::Simple
             );
         }
-        for s in ["Compounded", "compounded", "compound", "daily"] {
+        for s in ["Compounded", "compounded", "COMPOUNDED"] {
             assert_eq!(
                 s.parse::<CompoundingMethod>().unwrap(),
                 CompoundingMethod::Compounded
             );
         }
-        for s in ["Averaged", "averaged", "average", "arithmetic"] {
+        for s in ["Averaged", "averaged", "AVERAGED"] {
             assert_eq!(
                 s.parse::<CompoundingMethod>().unwrap(),
                 CompoundingMethod::Averaged
@@ -74,5 +71,11 @@ mod tests {
         }
         assert!("unknown".parse::<CompoundingMethod>().is_err());
         assert!("".parse::<CompoundingMethod>().is_err());
+        // Former aliases are no longer accepted
+        assert!("none".parse::<CompoundingMethod>().is_err());
+        assert!("compound".parse::<CompoundingMethod>().is_err());
+        assert!("daily".parse::<CompoundingMethod>().is_err());
+        assert!("average".parse::<CompoundingMethod>().is_err());
+        assert!("arithmetic".parse::<CompoundingMethod>().is_err());
     }
 }

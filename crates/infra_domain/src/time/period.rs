@@ -129,7 +129,7 @@ pub enum EndOfMonthRule {
 pub enum Tenor {
     /// Overnight (O/N).
     #[cfg_attr(feature = "serde", serde(rename = "O/N"))]
-    #[strum(to_string = "ON", serialize = "O/N", serialize = "OVERNIGHT")]
+    #[strum(to_string = "ON", serialize = "O/N")]
     Overnight,
     /// One week (1W).
     #[cfg_attr(feature = "serde", serde(rename = "1W"))]
@@ -161,39 +161,39 @@ pub enum Tenor {
     NineMonths,
     /// One year (1Y).
     #[cfg_attr(feature = "serde", serde(rename = "1Y"))]
-    #[strum(to_string = "1Y", serialize = "12M")]
+    #[strum(to_string = "1Y")]
     OneYear,
     /// Two years (2Y).
     #[cfg_attr(feature = "serde", serde(rename = "2Y"))]
-    #[strum(to_string = "2Y", serialize = "24M")]
+    #[strum(to_string = "2Y")]
     TwoYears,
     /// Three years (3Y).
     #[cfg_attr(feature = "serde", serde(rename = "3Y"))]
-    #[strum(to_string = "3Y", serialize = "36M")]
+    #[strum(to_string = "3Y")]
     ThreeYears,
     /// Five years (5Y).
     #[cfg_attr(feature = "serde", serde(rename = "5Y"))]
-    #[strum(to_string = "5Y", serialize = "60M")]
+    #[strum(to_string = "5Y")]
     FiveYears,
     /// Seven years (7Y).
     #[cfg_attr(feature = "serde", serde(rename = "7Y"))]
-    #[strum(to_string = "7Y", serialize = "84M")]
+    #[strum(to_string = "7Y")]
     SevenYears,
     /// Ten years (10Y).
     #[cfg_attr(feature = "serde", serde(rename = "10Y"))]
-    #[strum(to_string = "10Y", serialize = "120M")]
+    #[strum(to_string = "10Y")]
     TenYears,
     /// Fifteen years (15Y).
     #[cfg_attr(feature = "serde", serde(rename = "15Y"))]
-    #[strum(to_string = "15Y", serialize = "180M")]
+    #[strum(to_string = "15Y")]
     FifteenYears,
     /// Twenty years (20Y).
     #[cfg_attr(feature = "serde", serde(rename = "20Y"))]
-    #[strum(to_string = "20Y", serialize = "240M")]
+    #[strum(to_string = "20Y")]
     TwentyYears,
     /// Thirty years (30Y).
     #[cfg_attr(feature = "serde", serde(rename = "30Y"))]
-    #[strum(to_string = "30Y", serialize = "360M")]
+    #[strum(to_string = "30Y")]
     ThirtyYears,
 }
 
@@ -670,6 +670,10 @@ mod tests {
     fn test_tenor_from_str_invalid() {
         assert!("INVALID".parse::<Tenor>().is_err());
         assert!("18M".parse::<Tenor>().is_err());
+        // Former month-based aliases are no longer accepted as Tenor variants
+        assert!("12M".parse::<Tenor>().is_err());
+        assert!("24M".parse::<Tenor>().is_err());
+        assert!("OVERNIGHT".parse::<Tenor>().is_err());
     }
 
     #[test]
