@@ -25,7 +25,7 @@ mod global;
 // Re-exports
 // =============================================================================
 
-pub use bootstrap::{BootstrapConfig, CurveBootstrapper, InterpolationMethod, JacobianMatrix};
+pub use bootstrap::{BootstrapConfig, CurveBootstrapper, JacobianMatrix};
 #[cfg(feature = "global-bootstrap")]
 pub use global::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 

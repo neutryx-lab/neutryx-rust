@@ -391,121 +391,53 @@ pub enum XccySwapError {
 mod tests {
     use super::*;
 
-    // === BasisSpread Tests ===
-
     #[test]
-    fn test_basis_spread_from_bps() {
-        let spread = BasisSpread::from_bps(-15.0);
-        assert!((spread.bps() - (-15.0)).abs() < 1e-10);
-    }
+    fn test_basis_spread() {
+        let s = BasisSpread::from_bps(-15.0);
+        assert!((s.bps() - (-15.0)).abs() < 1e-10);
+        assert!((s.as_decimal() - (-0.0015)).abs() < 1e-10);
+        assert_eq!(s.to_string(), "-15.0 bps");
 
-    #[test]
-    fn test_basis_spread_as_decimal() {
-        let spread = BasisSpread::from_bps(-15.0);
-        // -15 bps = -0.0015
-        assert!((spread.as_decimal() - (-0.0015)).abs() < 1e-10);
-    }
+        assert!((BasisSpread::zero().bps()).abs() < 1e-10);
+        assert!((BasisSpread::default().bps()).abs() < 1e-10);
 
-    #[test]
-    fn test_basis_spread_zero() {
-        let spread = BasisSpread::zero();
-        assert!((spread.bps()).abs() < 1e-10);
-    }
+        // Arithmetic
+        assert!(
+            ((BasisSpread::from_bps(10.0) + BasisSpread::from_bps(5.0)).bps() - 15.0).abs() < 1e-10
+        );
+        assert!(
+            ((BasisSpread::from_bps(10.0) - BasisSpread::from_bps(3.0)).bps() - 7.0).abs() < 1e-10
+        );
+        assert!(
+            ((BasisSpread::from_bps(-15.0) + BasisSpread::from_bps(5.0)).bps() - (-10.0)).abs()
+                < 1e-10
+        );
+        assert!(((BasisSpread::from_bps(10.0) + BasisSpread::zero()).bps() - 10.0).abs() < 1e-10);
 
-    #[test]
-    fn test_basis_spread_display() {
-        let spread = BasisSpread::from_bps(-15.0);
-        assert_eq!(spread.to_string(), "-15.0 bps");
-    }
+        // Commutativity
+        let (a, b) = (BasisSpread::from_bps(10.0), BasisSpread::from_bps(5.0));
+        assert!(((a + b).bps() - (b + a).bps()).abs() < 1e-10);
 
-    #[test]
-    fn test_basis_spread_default() {
-        let spread = BasisSpread::default();
-        assert!((spread.bps()).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_basis_spread_add() {
-        let s1 = BasisSpread::from_bps(10.0);
-        let s2 = BasisSpread::from_bps(5.0);
-        let result = s1 + s2;
-        assert!((result.bps() - 15.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_basis_spread_sub() {
-        let s1 = BasisSpread::from_bps(10.0);
-        let s2 = BasisSpread::from_bps(3.0);
-        let result = s1 - s2;
-        assert!((result.bps() - 7.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_basis_spread_add_negative() {
-        let s1 = BasisSpread::from_bps(-15.0);
-        let s2 = BasisSpread::from_bps(5.0);
-        let result = s1 + s2;
-        assert!((result.bps() - (-10.0)).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_basis_spread_add_identity() {
-        let s = BasisSpread::from_bps(10.0);
-        let zero = BasisSpread::zero();
-        let result = s + zero;
-        assert!((result.bps() - 10.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_basis_spread_commutativity() {
-        let s1 = BasisSpread::from_bps(10.0);
-        let s2 = BasisSpread::from_bps(5.0);
-        let r1 = s1 + s2;
-        let r2 = s2 + s1;
-        assert!((r1.bps() - r2.bps()).abs() < 1e-10);
-    }
-
-    // === XccyTenor Tests ===
-
-    #[test]
-    fn test_xccy_tenor_years() {
+        // XccyTenor
         assert_eq!(XccyTenor::Y2.years(), 2);
         assert_eq!(XccyTenor::Y5.years(), 5);
         assert_eq!(XccyTenor::Y10.years(), 10);
         assert_eq!(XccyTenor::Y30.years(), 30);
-    }
-
-    #[test]
-    fn test_xccy_tenor_name() {
         assert_eq!(XccyTenor::Y2.name(), "2Y");
         assert_eq!(XccyTenor::Y10.name(), "10Y");
-    }
-
-    #[test]
-    fn test_xccy_tenor_display() {
         assert_eq!(XccyTenor::Y5.to_string(), "5Y");
-    }
 
-    // === XccyBasisConvention Tests ===
-
-    #[test]
-    fn test_xccy_convention_default() {
-        let conv = XccyBasisConvention::default();
-        assert_eq!(conv.notional_exchange, NotionalExchange::Both);
-        assert!(!conv.mark_to_market);
-        assert_eq!(conv.spread_leg, SpreadLeg::Foreign);
+        // Convention
+        let def = XccyBasisConvention::default();
+        assert_eq!(def.notional_exchange, NotionalExchange::Both);
+        assert!(!def.mark_to_market);
+        assert_eq!(def.spread_leg, SpreadLeg::Foreign);
+        assert!(XccyBasisConvention::resettable().mark_to_market);
     }
 
     #[test]
-    fn test_xccy_convention_resettable() {
-        let conv = XccyBasisConvention::resettable();
-        assert!(conv.mark_to_market);
-    }
-
-    // === CrossCurrencyBasisSwap Tests ===
-
-    fn make_test_xccy() -> CrossCurrencyBasisSwap {
-        CrossCurrencyBasisSwap {
+    fn test_xccy_swap_validation() {
+        let xccy = CrossCurrencyBasisSwap {
             domestic_currency: Currency::USD,
             foreign_currency: Currency::EUR,
             notional: 10_000_000.0,
@@ -515,77 +447,54 @@ mod tests {
             foreign_leg: XccyLeg::new(Currency::EUR, RateIndex::Euribor3M, Frequency::Quarterly),
             basis_spread: BasisSpread::from_bps(-15.0),
             convention: XccyBasisConvention::default(),
-        }
-    }
-
-    #[test]
-    fn test_xccy_validate_success() {
-        let xccy = make_test_xccy();
+        };
         assert!(xccy.validate().is_ok());
-    }
-
-    #[test]
-    fn test_xccy_validate_invalid_notional() {
-        let mut xccy = make_test_xccy();
-        xccy.notional = -1_000_000.0;
-        let result = xccy.validate();
-        assert!(matches!(result, Err(XccySwapError::InvalidNotional(_))));
-    }
-
-    #[test]
-    fn test_xccy_validate_invalid_dates() {
-        let mut xccy = make_test_xccy();
-        xccy.maturity = Date::from_ymd(2024, 1, 15).unwrap(); // before start
-        let result = xccy.validate();
-        assert!(matches!(result, Err(XccySwapError::InvalidDates { .. })));
-    }
-
-    #[test]
-    fn test_xccy_validate_currency_mismatch_domestic() {
-        let mut xccy = make_test_xccy();
-        xccy.domestic_leg.currency = Currency::GBP; // mismatch
-        let result = xccy.validate();
-        assert!(matches!(
-            result,
-            Err(XccySwapError::CurrencyMismatch { .. })
-        ));
-    }
-
-    #[test]
-    fn test_xccy_validate_currency_mismatch_foreign() {
-        let mut xccy = make_test_xccy();
-        xccy.foreign_leg.currency = Currency::GBP; // mismatch
-        let result = xccy.validate();
-        assert!(matches!(
-            result,
-            Err(XccySwapError::CurrencyMismatch { .. })
-        ));
-    }
-
-    #[test]
-    fn test_xccy_validate_same_currency() {
-        let mut xccy = make_test_xccy();
-        xccy.foreign_currency = Currency::USD;
-        xccy.foreign_leg.currency = Currency::USD;
-        let result = xccy.validate();
-        assert!(matches!(result, Err(XccySwapError::SameCurrency(_))));
-    }
-
-    #[test]
-    fn test_xccy_swap_tenor_years() {
-        let xccy = make_test_xccy();
-        let tenor = xccy.tenor_years();
-        // Approximately 5 years
-        assert!((tenor - 5.0).abs() < 0.1);
-    }
-
-    #[test]
-    fn test_xccy_display() {
-        let xccy = make_test_xccy();
+        assert!((xccy.tenor_years() - 5.0).abs() < 0.1);
         let display = xccy.to_string();
         assert!(display.contains("USD/EUR"));
         assert!(display.contains("XCCY"));
         assert!(display.contains("-15.0 bps"));
+
+        // Invalid notional
+        let mut bad = xccy.clone();
+        bad.notional = -1_000_000.0;
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::InvalidNotional(_))
+        ));
+
+        // Invalid dates
+        let mut bad = xccy.clone();
+        bad.maturity = Date::from_ymd(2024, 1, 15).unwrap();
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::InvalidDates { .. })
+        ));
+
+        // Currency mismatch domestic
+        let mut bad = xccy.clone();
+        bad.domestic_leg.currency = Currency::GBP;
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::CurrencyMismatch { .. })
+        ));
+
+        // Currency mismatch foreign
+        let mut bad = xccy.clone();
+        bad.foreign_leg.currency = Currency::GBP;
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::CurrencyMismatch { .. })
+        ));
+
+        // Same currency
+        let mut bad = xccy.clone();
+        bad.foreign_currency = Currency::USD;
+        bad.foreign_leg.currency = Currency::USD;
+        assert!(matches!(
+            bad.validate(),
+            Err(XccySwapError::SameCurrency(_))
+        ));
     }
 }
 

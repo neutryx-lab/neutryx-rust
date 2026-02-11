@@ -313,174 +313,137 @@ mod tests {
         time::Tenor,
     };
 
-    fn test_quote(rate_type: RateType, tenor: Tenor, value: f64) -> MarketQuote {
-        let quote_id = QuoteId::new(Currency::USD, tenor, rate_type);
+    fn q(rt: RateType, t: Tenor, v: f64) -> MarketQuote {
         MarketQuote::new(
-            quote_id,
+            QuoteId::new(Currency::USD, t, rt),
             QuoteType::Mid,
-            value,
+            v,
             1700000000000,
             DataSource::Bloomberg,
         )
         .unwrap()
     }
-
-    fn valuation_date() -> Date { Date::from_ymd(2024, 1, 15).unwrap() }
+    fn vd() -> Date { Date::from_ymd(2024, 1, 15).unwrap() }
+    fn spot() -> Date { Date::from_ymd(2024, 1, 17).unwrap() }
 
     #[test]
-    fn test_standard_mapper_new() {
-        let mapper = StandardInstrumentMapper::new();
-        assert_eq!(mapper.settlement_lag, 2);
-        assert_eq!(mapper.eom_rule, EndOfMonthRule::Adjust);
+    fn test_mapper_construction() {
+        let m = StandardInstrumentMapper::new();
+        assert_eq!(m.settlement_lag, 2);
+        assert_eq!(m.eom_rule, EndOfMonthRule::Adjust);
+        assert_eq!(StandardInstrumentMapper::default().settlement_lag, 2);
+        assert_eq!(
+            StandardInstrumentMapper::with_eom_rule(EndOfMonthRule::Preserve).eom_rule,
+            EndOfMonthRule::Preserve
+        );
+        assert_eq!(
+            StandardInstrumentMapper::new()
+                .with_settlement_lag(1)
+                .settlement_lag,
+            1
+        );
+        assert_eq!(m.clone().settlement_lag, 2);
+        assert!(format!("{:?}", m).contains("StandardInstrumentMapper"));
     }
 
     #[test]
-    fn test_standard_mapper_default() {
-        let mapper = StandardInstrumentMapper::default();
-        assert_eq!(mapper.settlement_lag, 2);
-    }
+    fn test_mapper_instrument_types() {
+        let m = StandardInstrumentMapper::new();
+        let v = vd();
 
-    #[test]
-    fn test_standard_mapper_with_eom_rule() {
-        let mapper = StandardInstrumentMapper::with_eom_rule(EndOfMonthRule::Preserve);
-        assert_eq!(mapper.eom_rule, EndOfMonthRule::Preserve);
-    }
-
-    #[test]
-    fn test_standard_mapper_with_settlement_lag() {
-        let mapper = StandardInstrumentMapper::new().with_settlement_lag(1);
-        assert_eq!(mapper.settlement_lag, 1);
-    }
-
-    #[test]
-    fn test_map_deposit() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::Deposit, Tenor::ThreeMonths, 0.05);
-        let vd = valuation_date();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
+        // Deposit
+        match m
+            .map_to_instrument(&q(RateType::Deposit, Tenor::ThreeMonths, 0.05), v)
+            .unwrap()
+        {
             Instrument::Deposit {
                 currency,
                 start_date,
                 tenor,
-                rate: r,
+                rate,
             } => {
                 assert_eq!(currency, Currency::USD);
-                assert_eq!(start_date, Date::from_ymd(2024, 1, 17).unwrap()); // +2 days
+                assert_eq!(start_date, spot());
                 assert_eq!(tenor, Tenor::ThreeMonths);
-                assert!((r - 0.05).abs() < f64::EPSILON);
+                assert!((rate - 0.05).abs() < f64::EPSILON);
             }
-            _ => panic!("Expected Deposit instrument"),
+            _ => panic!("Expected Deposit"),
         }
-    }
-
-    #[test]
-    fn test_map_fra() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::Fra, Tenor::SixMonths, 0.055);
-        let vd = valuation_date();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
+        // Fra
+        match m
+            .map_to_instrument(&q(RateType::Fra, Tenor::SixMonths, 0.055), v)
+            .unwrap()
+        {
             Instrument::Fra {
                 currency,
                 start_date,
                 tenor,
-                rate: r,
+                rate,
             } => {
                 assert_eq!(currency, Currency::USD);
-                assert_eq!(start_date, Date::from_ymd(2024, 1, 17).unwrap());
+                assert_eq!(start_date, spot());
                 assert_eq!(tenor, Tenor::SixMonths);
-                assert!((r - 0.055).abs() < f64::EPSILON);
+                assert!((rate - 0.055).abs() < f64::EPSILON);
             }
-            _ => panic!("Expected Fra instrument"),
+            _ => panic!("Expected Fra"),
         }
-    }
-
-    #[test]
-    fn test_map_futures() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::Futures, Tenor::ThreeMonths, 0.045);
-        let vd = valuation_date();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
+        // Futures
+        match m
+            .map_to_instrument(&q(RateType::Futures, Tenor::ThreeMonths, 0.045), v)
+            .unwrap()
+        {
             Instrument::Futures {
                 currency,
                 expiry,
                 price,
             } => {
                 assert_eq!(currency, Currency::USD);
-                // Expiry = spot + 3M
                 assert_eq!(expiry, Date::from_ymd(2024, 4, 17).unwrap());
-                // Price = 100 - 4.5% × 100 = 95.5
                 assert!((price - 95.5).abs() < f64::EPSILON);
             }
-            _ => panic!("Expected Futures instrument"),
+            _ => panic!("Expected Futures"),
         }
-    }
-
-    #[test]
-    fn test_map_swap() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::Swap, Tenor::FiveYears, 0.04);
-        let vd = valuation_date();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
+        // Swap
+        match m
+            .map_to_instrument(&q(RateType::Swap, Tenor::FiveYears, 0.04), v)
+            .unwrap()
+        {
             Instrument::ParSwap {
                 currency,
                 start_date,
                 tenor,
-                rate: r,
+                rate,
             } => {
                 assert_eq!(currency, Currency::USD);
-                assert_eq!(start_date, Date::from_ymd(2024, 1, 17).unwrap());
+                assert_eq!(start_date, spot());
                 assert_eq!(tenor, Tenor::FiveYears);
-                assert!((r - 0.04).abs() < f64::EPSILON);
+                assert!((rate - 0.04).abs() < f64::EPSILON);
             }
-            _ => panic!("Expected ParSwap instrument"),
+            _ => panic!("Expected ParSwap"),
         }
-    }
-
-    #[test]
-    fn test_map_ois() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::Ois, Tenor::OneYear, 0.035);
-        let vd = valuation_date();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
+        // OIS
+        match m
+            .map_to_instrument(&q(RateType::Ois, Tenor::OneYear, 0.035), v)
+            .unwrap()
+        {
             Instrument::Ois {
                 currency,
                 start_date,
                 tenor,
-                rate: r,
+                rate,
             } => {
                 assert_eq!(currency, Currency::USD);
-                assert_eq!(start_date, Date::from_ymd(2024, 1, 17).unwrap());
+                assert_eq!(start_date, spot());
                 assert_eq!(tenor, Tenor::OneYear);
-                assert!((r - 0.035).abs() < f64::EPSILON);
+                assert!((rate - 0.035).abs() < f64::EPSILON);
             }
-            _ => panic!("Expected Ois instrument"),
+            _ => panic!("Expected Ois"),
         }
-    }
-
-    #[test]
-    fn test_map_basis_swap() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::BasisSwap, Tenor::TenYears, 0.0025);
-        let vd = valuation_date();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
+        // BasisSwap
+        match m
+            .map_to_instrument(&q(RateType::BasisSwap, Tenor::TenYears, 0.0025), v)
+            .unwrap()
+        {
             Instrument::BasisSwap {
                 currency,
                 start_date,
@@ -488,147 +451,81 @@ mod tests {
                 spread,
             } => {
                 assert_eq!(currency, Currency::USD);
-                assert_eq!(start_date, Date::from_ymd(2024, 1, 17).unwrap());
+                assert_eq!(start_date, spot());
                 assert_eq!(tenor, Tenor::TenYears);
                 assert!((spread - 0.0025).abs() < f64::EPSILON);
             }
-            _ => panic!("Expected BasisSwap instrument"),
+            _ => panic!("Expected BasisSwap"),
         }
+        // Unsupported types
+        assert!(matches!(
+            m.map_to_instrument(&q(RateType::FxSpot, Tenor::TwoWeeks, 1.1), v),
+            Err(MarketQuoteError::MappingFailed {
+                rate_type: RateType::FxSpot,
+                ..
+            })
+        ));
+        assert!(m
+            .map_to_instrument(&q(RateType::FxForward, Tenor::ThreeMonths, 1.1), v)
+            .is_err());
+        assert!(m
+            .map_to_instrument(&q(RateType::Vol, Tenor::OneYear, 0.2), v)
+            .is_err());
     }
 
     #[test]
-    fn test_map_fx_spot_fails() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::FxSpot, Tenor::TwoWeeks, 1.1);
-        let vd = valuation_date();
+    fn test_mapper_edge_cases() {
+        let v = vd();
 
-        let result = mapper.map_to_instrument(&quote, vd);
-        assert!(result.is_err());
-
-        match result {
-            Err(MarketQuoteError::MappingFailed { rate_type, .. }) => {
-                assert_eq!(rate_type, RateType::FxSpot);
-            }
-            _ => panic!("Expected MappingFailed error"),
-        }
-    }
-
-    #[test]
-    fn test_map_fx_forward_fails() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::FxForward, Tenor::ThreeMonths, 1.105);
-        let vd = valuation_date();
-
-        let result = mapper.map_to_instrument(&quote, vd);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_map_vol_fails() {
-        let mapper = StandardInstrumentMapper::new();
-        let quote = test_quote(RateType::Vol, Tenor::OneYear, 0.2);
-        let vd = valuation_date();
-
-        let result = mapper.map_to_instrument(&quote, vd);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_mapper_clone() {
-        let mapper = StandardInstrumentMapper::new().with_settlement_lag(3);
-        let cloned = mapper.clone();
-        assert_eq!(cloned.settlement_lag, 3);
-    }
-
-    #[test]
-    fn test_mapper_debug() {
-        let mapper = StandardInstrumentMapper::new();
-        let debug_str = format!("{:?}", mapper);
-        assert!(debug_str.contains("StandardInstrumentMapper"));
-    }
-
-    #[test]
-    fn test_map_deposit_with_custom_settlement() {
-        let mapper = StandardInstrumentMapper::new().with_settlement_lag(1);
-        let quote = test_quote(RateType::Deposit, Tenor::OneMonth, 0.05);
-        let vd = valuation_date();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
+        // Custom settlement lag
+        let m1 = StandardInstrumentMapper::new().with_settlement_lag(1);
+        match m1
+            .map_to_instrument(&q(RateType::Deposit, Tenor::OneMonth, 0.05), v)
+            .unwrap()
+        {
             Instrument::Deposit { start_date, .. } => {
-                // With 1-day settlement, spot = Jan 16
-                assert_eq!(start_date, Date::from_ymd(2024, 1, 16).unwrap());
+                assert_eq!(start_date, Date::from_ymd(2024, 1, 16).unwrap())
             }
-            _ => panic!("Expected Deposit instrument"),
+            _ => panic!("Expected Deposit"),
         }
-    }
 
-    #[test]
-    fn test_multiple_mappings() {
-        let mapper = StandardInstrumentMapper::new();
-        let vd = valuation_date();
+        // Multiple mappings
+        let m = StandardInstrumentMapper::new();
+        assert!(m
+            .map_to_instrument(&q(RateType::Deposit, Tenor::ThreeMonths, 0.05), v)
+            .is_ok());
+        assert!(m
+            .map_to_instrument(&q(RateType::Swap, Tenor::FiveYears, 0.045), v)
+            .is_ok());
+        assert!(m
+            .map_to_instrument(&q(RateType::Ois, Tenor::OneYear, 0.04), v)
+            .is_ok());
 
-        let deposit = test_quote(RateType::Deposit, Tenor::ThreeMonths, 0.05);
-        let swap = test_quote(RateType::Swap, Tenor::FiveYears, 0.045);
-        let ois = test_quote(RateType::Ois, Tenor::OneYear, 0.04);
-
-        assert!(mapper.map_to_instrument(&deposit, vd).is_ok());
-        assert!(mapper.map_to_instrument(&swap, vd).is_ok());
-        assert!(mapper.map_to_instrument(&ois, vd).is_ok());
-    }
-
-    #[test]
-    fn test_futures_price_conversion() {
-        let mapper = StandardInstrumentMapper::new();
-        let vd = valuation_date();
-
-        // Test various rates
-        let test_cases = [
-            (0.0, 100.0), // 0% → 100
-            (0.01, 99.0), // 1% → 99
-            (0.05, 95.0), // 5% → 95
-            (0.10, 90.0), // 10% → 90
-        ];
-
-        for (rate_val, expected_price) in test_cases {
-            let quote = test_quote(RateType::Futures, Tenor::ThreeMonths, rate_val);
-            let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-            match instrument {
+        // Futures price conversion
+        for (rate_val, expected_price) in [(0.0, 100.0), (0.01, 99.0), (0.05, 95.0), (0.10, 90.0)] {
+            match m
+                .map_to_instrument(&q(RateType::Futures, Tenor::ThreeMonths, rate_val), v)
+                .unwrap()
+            {
                 Instrument::Futures { price, .. } => {
-                    assert!(
-                        (price - expected_price).abs() < f64::EPSILON,
-                        "Rate {rate_val} should give price {expected_price}, got {price}"
-                    );
+                    assert!((price - expected_price).abs() < f64::EPSILON)
                 }
-                _ => panic!("Expected Futures instrument"),
+                _ => panic!("Expected Futures"),
             }
         }
-    }
 
-    #[test]
-    fn test_eur_currency() {
-        let mapper = StandardInstrumentMapper::new();
-        let vd = valuation_date();
-
-        let quote_id = QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap);
-        let quote = MarketQuote::new(
-            quote_id,
+        // EUR currency
+        let eur_q = MarketQuote::new(
+            QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap),
             QuoteType::Mid,
             0.025,
             1700000000000,
             DataSource::Reuters,
         )
         .unwrap();
-
-        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
-
-        match instrument {
-            Instrument::ParSwap { currency, .. } => {
-                assert_eq!(currency, Currency::EUR);
-            }
-            _ => panic!("Expected ParSwap instrument"),
+        match m.map_to_instrument(&eur_q, v).unwrap() {
+            Instrument::ParSwap { currency, .. } => assert_eq!(currency, Currency::EUR),
+            _ => panic!("Expected ParSwap"),
         }
     }
 }

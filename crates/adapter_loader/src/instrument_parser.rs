@@ -1,25 +1,4 @@
 //! Instrument parsing utilities for curve building.
-//!
-//! This module provides functions to parse raw instrument specifications
-//! (type, tenor, rate) into `MarketInstrument` instances for curve calibration.
-//!
-//! # Requirements
-//!
-//! Requires the `curve-builder` feature to be enabled.
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use adapter_loader::{InstrumentSpec, parse_instruments};
-//!
-//! let specs = vec![
-//!     InstrumentSpec::new("deposit", "1M", 0.0430),
-//!     InstrumentSpec::new("fra", "3x6", 0.0405),
-//!     InstrumentSpec::new("ois", "1Y", 0.0358),
-//! ];
-//!
-//! let instruments = parse_instruments(&specs)?;
-//! ```
 
 use pricer_models::market::curves::MarketInstrument;
 
@@ -30,9 +9,6 @@ use crate::vol_surface_loader::{parse_fra_tenor, parse_tenor_string};
 // =============================================================================
 
 /// Raw instrument specification for curve building.
-///
-/// This struct represents the input format for market instruments,
-/// typically loaded from JSON files or API requests.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstrumentSpec {
     /// Instrument type (e.g., "deposit", "ois", "fra", "swap", "future",
@@ -274,16 +250,6 @@ pub fn parse_instruments(
 }
 
 /// Validate instrument rate is within acceptable range.
-///
-/// # Arguments
-///
-/// * `rate` - The rate to validate
-/// * `min_rate` - Minimum acceptable rate (default: -0.10)
-/// * `max_rate` - Maximum acceptable rate (default: 0.50)
-///
-/// # Returns
-///
-/// `Ok(())` if valid, `Err` with details if invalid.
 pub fn validate_rate(rate: f64, min_rate: f64, max_rate: f64) -> Result<(), InstrumentParseError> {
     if rate < min_rate || rate > max_rate {
         return Err(InstrumentParseError::InvalidRate {
@@ -295,16 +261,6 @@ pub fn validate_rate(rate: f64, min_rate: f64, max_rate: f64) -> Result<(), Inst
 }
 
 /// Validate all instrument rates in a collection.
-///
-/// # Arguments
-///
-/// * `specs` - Slice of instrument specifications
-/// * `min_rate` - Minimum acceptable rate
-/// * `max_rate` - Maximum acceptable rate
-///
-/// # Returns
-///
-/// `Ok(())` if all rates are valid, `Err` with details of first invalid rate.
 pub fn validate_rates(
     specs: &[InstrumentSpec],
     min_rate: f64,

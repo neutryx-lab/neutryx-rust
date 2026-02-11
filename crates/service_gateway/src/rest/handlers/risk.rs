@@ -10,32 +10,20 @@ use axum::{extract::State, Json};
 
 #[cfg(feature = "risk")]
 use crate::{
-    error::ServerError,
+    error::{AppJson, ServerError},
     rest::dto::{GreeksRequest, RiskGreeksResponse, ScenarioRequest, ScenarioResponse},
     services::RiskService,
     state::AppState,
 };
 
-/// Compute Greeks for a portfolio
-///
-/// POST /api/v1/risk/greeks
 #[cfg(feature = "risk")]
-pub async fn compute_greeks(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<GreeksRequest>,
-) -> Result<Json<RiskGreeksResponse>, ServerError> {
-    let response = RiskService::compute_greeks(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/v1/risk/greeks
+    pub async fn compute_greeks(GreeksRequest => RiskGreeksResponse) = RiskService::compute_greeks;
 }
 
-/// Run scenario analysis on a portfolio
-///
-/// POST /api/v1/risk/scenarios
 #[cfg(feature = "risk")]
-pub async fn run_scenarios(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<ScenarioRequest>,
-) -> Result<Json<ScenarioResponse>, ServerError> {
-    let response = RiskService::run_scenarios(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/v1/risk/scenarios
+    pub async fn run_scenarios(ScenarioRequest => ScenarioResponse) = RiskService::run_scenarios;
 }

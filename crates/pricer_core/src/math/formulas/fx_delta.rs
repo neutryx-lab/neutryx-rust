@@ -58,7 +58,7 @@ use num_traits::Float;
 
 use super::error::FormulaError;
 use crate::math::{
-    distributions::{norm_cdf, norm_inv_cdf, norm_pdf},
+    normal_dist::{norm_cdf, norm_inv_cdf, norm_pdf},
     numeric::from_f64,
     solvers::{NewtonRaphsonSolver, SolverConfig},
 };
@@ -349,7 +349,7 @@ pub fn strike_to_delta<T: Float>(
             // Δ_call = e^(-rf×T) × N(d1)
             // Δ_put = -e^(-rf×T) × N(-d1) = e^(-rf×T) × (N(d1) - 1)
             let df_foreign = (-foreign_rate * expiry).exp();
-            let nd1 = crate::math::distributions::norm_cdf(d1);
+            let nd1 = crate::math::normal_dist::norm_cdf(d1);
             if is_call {
                 df_foreign * nd1
             } else {
@@ -359,7 +359,7 @@ pub fn strike_to_delta<T: Float>(
         DeltaType::ForwardDelta => {
             // Δ_call = N(d1)
             // Δ_put = N(d1) - 1
-            let nd1 = crate::math::distributions::norm_cdf(d1);
+            let nd1 = crate::math::normal_dist::norm_cdf(d1);
             if is_call {
                 nd1
             } else {

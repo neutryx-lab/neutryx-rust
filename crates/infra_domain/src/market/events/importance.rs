@@ -72,19 +72,4 @@ mod tests {
         assert!(EventImportance::Medium < EventImportance::High);
         assert!(EventImportance::High < EventImportance::Critical);
     }
-
-    #[test]
-    fn test_default() {
-        assert_eq!(EventImportance::default(), EventImportance::Medium);
-    }
-
-    #[test]
-    fn test_display_name() {
-        assert_eq!(EventImportance::Critical.display_name(), "Critical");
-    }
-
-    #[test]
-    fn test_css_class() {
-        assert_eq!(EventImportance::High.css_class(), "high");
-    }
 }

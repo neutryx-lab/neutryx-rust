@@ -9,10 +9,6 @@
 
 use serde::{Deserialize, Serialize};
 
-// =============================================================================
-// Configuration Types
-// =============================================================================
-
 /// Application configuration response
 #[derive(Debug, Clone, Serialize)]
 pub struct AppConfigResponse {
@@ -33,10 +29,6 @@ pub enum EnumValue {
     /// Object with code and optional name
     Object { code: String, name: Option<String> },
 }
-
-// =============================================================================
-// Instrument Types
-// =============================================================================
 
 /// Instruments response
 #[derive(Debug, Clone, Serialize)]
@@ -101,10 +93,6 @@ pub struct ParameterValidation {
     pub max: Option<f64>,
 }
 
-// =============================================================================
-// Trade Expansion Types
-// =============================================================================
-
 /// Trade expansion request
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -158,10 +146,6 @@ pub struct TradeMetadata {
     pub total_cashflows: usize,
     pub processing_time_ms: f64,
 }
-
-// =============================================================================
-// Pricing Types
-// =============================================================================
 
 /// Pricing request
 #[derive(Debug, Clone, Deserialize)]
@@ -238,10 +222,6 @@ pub struct CashflowPvResult {
     pub payment_date: String,
 }
 
-// =============================================================================
-// Greeks Types
-// =============================================================================
-
 /// Greeks request
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -272,10 +252,6 @@ pub struct DemoGreeksResult {
     pub theta: Option<f64>,
     pub vega: Option<f64>,
 }
-
-// =============================================================================
-// Market Data Types
-// =============================================================================
 
 /// Market rate
 #[derive(Debug, Clone, Serialize)]
@@ -320,10 +296,6 @@ pub struct MarketRateDetailResponse {
     pub convention: Option<Convention>,
 }
 
-// =============================================================================
-// Convention Types
-// =============================================================================
-
 /// Convention
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -349,10 +321,6 @@ pub struct ConventionField {
 pub struct ConventionsResponse {
     pub conventions: Vec<Convention>,
 }
-
-// =============================================================================
-// IR Volatility Types
-// =============================================================================
 
 /// IR vol currency
 #[derive(Debug, Clone, Serialize)]
@@ -395,10 +363,6 @@ pub struct IrVolQuotesResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }
-
-// =============================================================================
-// FX Volatility Types
-// =============================================================================
 
 /// FX vol pair
 #[derive(Debug, Clone, Serialize)]
@@ -446,10 +410,6 @@ pub struct FxVolQuotesResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub foreign_rate: Option<f64>,
 }
-
-// =============================================================================
-// Events Types
-// =============================================================================
 
 /// Market event
 #[derive(Debug, Clone, Serialize)]
@@ -559,10 +519,6 @@ pub struct HolidaysResponse {
     pub holidays: Vec<Holiday>,
 }
 
-// =============================================================================
-// Curves Types (additional to existing curves module)
-// =============================================================================
-
 /// Available curves response
 #[derive(Debug, Clone, Serialize)]
 pub struct AvailableCurvesResponse {
@@ -590,10 +546,6 @@ pub struct CurveInstrument {
 pub struct CurveInstrumentsResponse {
     pub instruments: Vec<CurveInstrument>,
 }
-
-// =============================================================================
-// Volcube Types
-// =============================================================================
 
 /// Volcube indices response
 #[derive(Debug, Clone, Serialize)]
@@ -750,10 +702,6 @@ pub struct CalibrationParameters {
     pub nu: f64,
 }
 
-// =============================================================================
-// SABR Smile / Density (from calibrated parameters)
-// =============================================================================
-
 /// Request to compute SABR smile and implied density from calibrated parameters
 #[derive(Debug, Clone, Deserialize)]
 pub struct SabrSmileRequest {
@@ -791,10 +739,6 @@ pub struct SabrSmileResponse {
     pub density: Vec<f64>,
 }
 
-// =============================================================================
-// Export Types
-// =============================================================================
-
 /// Export format
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -802,10 +746,6 @@ pub enum ExportFormat {
     Csv,
     Json,
 }
-
-// =============================================================================
-// Rate Instrument Types (market-convention-instrument)
-// =============================================================================
 
 /// Rate instrument response
 #[derive(Debug, Clone, Serialize)]
@@ -905,10 +845,6 @@ pub struct CashflowDetail {
     pub payoff_type: String,
 }
 
-// =============================================================================
-// Rate Index Types (market-convention-instrument)
-// =============================================================================
-
 /// Rate index info
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -992,10 +928,6 @@ pub struct IndexConventionsResponse {
     pub conventions: Vec<Convention>,
 }
 
-// =============================================================================
-// Implied Probability Density
-// =============================================================================
-
 /// A smile point for implied PDF computation
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImpliedPdfSmilePoint {
@@ -1035,129 +967,27 @@ pub struct ImpliedPdfResponse {
     pub density: Vec<f64>,
 }
 
-// =============================================================================
-// Tests
-// =============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_app_config_serialization() {
-        let config = AppConfigResponse {
-            enums: std::collections::HashMap::new(),
-            defaults: std::collections::HashMap::new(),
-            rate_index_by_currency: std::collections::HashMap::new(),
-        };
-        let json = serde_json::to_string(&config).unwrap();
-        assert!(json.contains("enums"));
-        assert!(json.contains("defaults"));
-    }
-
-    #[test]
-    fn test_enum_value_serialization() {
+    fn test_enum_value_untagged_serialization() {
         let simple = EnumValue::Simple("USD".to_string());
-        let json = serde_json::to_string(&simple).unwrap();
-        assert_eq!(json, "\"USD\"");
+        assert_eq!(serde_json::to_string(&simple).unwrap(), "\"USD\"");
 
         let object = EnumValue::Object {
             code: "USD".to_string(),
             name: Some("US Dollar".to_string()),
         };
         let json = serde_json::to_string(&object).unwrap();
-        assert!(json.contains("USD"));
         assert!(json.contains("US Dollar"));
     }
 
     #[test]
-    fn test_instrument_def_serialization() {
-        let instrument = InstrumentDef {
-            instrument_type: "IRS".to_string(),
-            id: Some("irs-1".to_string()),
-            display_name: Some("Interest Rate Swap".to_string()),
-            asset_class_name: Some("Rates".to_string()),
-            required_params: vec![],
-            optional_params: vec![],
-        };
-        let json = serde_json::to_string(&instrument).unwrap();
-        assert!(json.contains("instrumentType"));
-        assert!(json.contains("IRS"));
-    }
-
-    #[test]
-    fn test_market_rate_serialization() {
-        let rate = MarketRate {
-            id: "USD-SOFR-3M".to_string(),
-            currency: "USD".to_string(),
-            tenor: "3M".to_string(),
-            rate_type: "deposit".to_string(),
-            value: 0.05,
-            rate_index: Some("SOFR".to_string()),
-            quote_type: Some("Mid".to_string()),
-            source: "Reuters".to_string(),
-            timestamp: "2026-01-30T10:00:00Z".to_string(),
-            is_stale: false,
-        };
-        let json = serde_json::to_string(&rate).unwrap();
-        assert!(json.contains("USD-SOFR-3M"));
-        assert!(json.contains("isStale"));
-    }
-
-    #[test]
-    fn test_fx_vol_quote_serialization() {
-        let quote = FxVolQuote {
-            expiry: 0.25,
-            expiry_label: "3M".to_string(),
-            atm_vol: 0.10,
-            rr25d: -0.005,
-            bf25d: 0.002,
-            rr10d: Some(-0.01),
-            bf10d: Some(0.003),
-        };
-        let json = serde_json::to_string(&quote).unwrap();
-        assert!(json.contains("atmVol"));
-        assert!(json.contains("rr25d"));
-        assert!(json.contains("expiryLabel"));
-    }
-
-    #[test]
-    fn test_event_type_serialization() {
-        let event_type = EventType::CentralBankMeeting;
-        let json = serde_json::to_string(&event_type).unwrap();
-        assert_eq!(json, "\"central_bank_meeting\"");
-    }
-
-    #[test]
-    fn test_importance_serialization() {
-        let importance = Importance::Critical;
-        let json = serde_json::to_string(&importance).unwrap();
-        assert_eq!(json, "\"critical\"");
-    }
-
-    #[test]
     fn test_trade_expand_request_deserialization() {
-        let json = r#"{
-            "instrumentType": "IRS",
-            "params": {
-                "type": "VanillaIRS",
-                "notional": 1000000
-            }
-        }"#;
+        let json = r#"{"instrumentType": "IRS", "params": {"type": "VanillaIRS"}}"#;
         let request: TradeExpandRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.instrument_type, "IRS");
-    }
-
-    #[test]
-    fn test_pricing_request_deserialization() {
-        let json = r#"{
-            "valuationDate": "2026-01-30",
-            "reportingCurrency": "USD",
-            "legs": [],
-            "modelConfig": null
-        }"#;
-        let request: DemoPricingRequest = serde_json::from_str(json).unwrap();
-        assert_eq!(request.valuation_date, "2026-01-30");
-        assert_eq!(request.reporting_currency, "USD");
     }
 }

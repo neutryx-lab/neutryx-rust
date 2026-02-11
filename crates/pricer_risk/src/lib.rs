@@ -122,18 +122,18 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-pub mod engine;
+mod engine;
+mod error;
+mod result;
+
 pub mod greeks;
 pub mod portfolio;
 pub mod scenarios;
 
 // Re-export commonly used types
 // Risk Engine facade
-pub use engine::{
-    AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PartialGreeksResult,
-    PerformanceMetrics, PortfolioRiskResult, RiskEngine, RiskEngineConfig, RiskError, RiskResult,
-    ScenarioGreeksResult, ScenarioPortfolioResult,
-};
+pub use engine::{RiskEngine, RiskEngineConfig, ScenarioGreeksResult, ScenarioPortfolioResult};
+pub use error::{PartialGreeksResult, RiskError};
 // AD types (automatic differentiation)
 pub use greeks::ad::{gradient, gradient_with_step, ADMode, Activity};
 pub use greeks::{
@@ -156,6 +156,10 @@ pub use portfolio::{
     CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating,
     ExposureCalculator, NettingSet, NettingSetId, Portfolio, PortfolioBuilder, PortfolioError,
     Trade, TradeBuilder, TradeId,
+};
+pub use result::{
+    AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PerformanceMetrics,
+    PortfolioRiskResult, RiskResult,
 };
 pub use scenarios::{
     AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,

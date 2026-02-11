@@ -1,52 +1,11 @@
 //! Neutryx Server - gRPC/REST API for XVA Pricing
-//!
-//! This is the production integration point for the Neutryx XVA pricing
-//! library.
-//!
-//! # Architecture
-//!
-//! As part of the **S**ervice layer in the A-I-P-S architecture, this crate
-//! provides network interfaces for microservice deployment.
-//!
-//! # Endpoints
-//!
-//! ## REST API v2 (New - uses facade APIs)
-//! - `POST /api/v2/price` - Price a single instrument
-//! - `POST /api/v2/price/batch` - Price a portfolio
-//! - `POST /api/v2/curves/build` - Build a yield curve
-//! - `POST /api/v2/curves/discount-factor` - Get discount factor
-//! - `POST /api/v2/curves/forward-rate` - Get forward rate
-//!
-//! ## REST API v1 (Legacy - placeholder implementations)
-//! - `POST /api/v1/price` - Price a single instrument
-//! - `POST /api/v1/price/batch` - Price a portfolio
-//! - `GET /api/v1/portfolio/graph` - Get Portfolio computation graph
-//! - `GET /api/v1/portfolio/trades` - List Portfolio trades
-//! - `GET /health` - Health check
-//!
-//! ## WebSocket
-//! - `GET /ws` - Real-time graph updates (`select_trades`, `subgraph_update`)
-//!
-//! ## gRPC (Tonic) - Planned
-//! - `PricingService.PriceInstrument` - Price a single instrument
-//! - `PricingService.PricePortfolio` - Price a portfolio (streaming)
-//! - `CalibrationService.Calibrate` - Calibrate model parameters
 
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Result;
+use service_gateway::{rest, AppState, GraphAppState, WsAppState};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-mod config;
-mod error;
-mod rest;
-mod services;
-mod state;
-
-pub use error::ServerError;
-pub use rest::{GraphAppState, WsAppState};
-pub use state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -62,7 +21,7 @@ async fn main() -> Result<()> {
     info!("Starting Neutryx Server...");
 
     // Load configuration from unified settings
-    let config = config::ServerConfig::load()?;
+    let config = service_gateway::config::ServerConfig::load()?;
 
     info!("Configuration loaded");
     info!("  REST enabled: {}", config.rest_enabled);

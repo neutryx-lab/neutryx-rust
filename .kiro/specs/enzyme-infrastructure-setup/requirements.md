@@ -13,7 +13,7 @@ This specification defines the requirements for establishing the foundational En
 
 **Objective:** As a developer, I want to have a properly configured `pricer_kernel` crate within the Cargo workspace, so that Layer 3 AD functionality is structurally isolated and workspace-integrated.
 
-#### Acceptance Criteria 1
+#### Acceptance Criteria
 
 1. The pricer_kernel crate shall exist at `crates/pricer_kernel/` with a valid `Cargo.toml` manifest.
 2. The pricer_kernel crate shall be registered as a workspace member in the root `Cargo.toml`.
@@ -25,7 +25,7 @@ This specification defines the requirements for establishing the foundational En
 
 **Objective:** As a developer, I want the pricer_kernel crate to enforce Rust nightly toolchain usage, so that Enzyme LLVM plugin integration is properly supported.
 
-#### Acceptance Criteria 2
+#### Acceptance Criteria
 
 1. The pricer_kernel crate shall include a `rust-toolchain.toml` file specifying nightly channel.
 2. The rust-toolchain.toml shall pin the nightly version to `nightly-2025-01-15` for reproducibility.
@@ -36,7 +36,7 @@ This specification defines the requirements for establishing the foundational En
 
 **Objective:** As a developer, I want proper LLVM and Enzyme bindings configured, so that automatic differentiation capabilities are available at the LLVM IR level.
 
-#### Acceptance Criteria 3
+#### Acceptance Criteria
 
 1. The pricer_kernel Cargo.toml shall include `llvm-sys` dependency with appropriate LLVM version constraints.
 2. The pricer_kernel crate shall configure Enzyme LLVM plugin path via environment variable `RUSTFLAGS` or build script.
@@ -48,7 +48,7 @@ This specification defines the requirements for establishing the foundational En
 
 **Objective:** As a developer, I want a well-organised module structure for Enzyme bindings, so that autodiff functionality is cleanly encapsulated and extensible.
 
-#### Acceptance Criteria 4
+#### Acceptance Criteria
 
 1. The pricer_kernel crate shall contain an `enzyme/` module directory for autodiff bindings.
 2. The enzyme module shall export a public `autodiff` macro or function for gradient computation.
@@ -59,19 +59,18 @@ This specification defines the requirements for establishing the foundational En
 
 **Objective:** As a developer, I want a verification test demonstrating correct gradient computation, so that Enzyme integration is validated with a simple mathematical proof.
 
-#### Acceptance Criteria 5
+#### Acceptance Criteria
 
 1. The pricer_kernel crate shall include `src/verify_enzyme.rs` containing verification tests.
 2. When computing the gradient of `f(x) = x * x`, the Enzyme autodiff shall return `2 * x`.
 3. The verification test shall assert gradient correctness for at least three distinct input values (e.g., x = 1.0, 2.0, 5.0).
 4. The verification test shall use `approx` crate or equivalent for floating-point comparison with appropriate epsilon tolerance.
-5. When `cargo test -p pricer_kernel` is executed, the gradient verification tests shall pass.
 
 ### Requirement 6: Build Isolation and CI Compatibility
 
 **Objective:** As a developer, I want pricer_kernel builds isolated from stable crates, so that CI pipelines can build stable layers without Enzyme infrastructure.
 
-#### Acceptance Criteria 6
+#### Acceptance Criteria
 
 1. When running `cargo build --workspace --exclude pricer_kernel`, the build shall succeed on stable Rust toolchain.
 2. When running `cargo test --workspace --exclude pricer_kernel`, all tests shall pass without Enzyme dependencies.
@@ -82,7 +81,7 @@ This specification defines the requirements for establishing the foundational En
 
 **Objective:** As a developer, I want clear documentation on Enzyme setup and usage, so that contributors can understand and extend the AD infrastructure.
 
-#### Acceptance Criteria 7
+#### Acceptance Criteria
 
 1. The pricer_kernel crate shall include inline documentation (`///` comments) for all public APIs.
 2. The pricer_kernel `Cargo.toml` shall include a `description` field explaining the crate's purpose.

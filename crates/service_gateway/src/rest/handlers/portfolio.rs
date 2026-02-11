@@ -14,7 +14,7 @@ use axum::{
 
 #[cfg(feature = "risk")]
 use crate::{
-    error::ServerError,
+    error::{AppJson, ServerError},
     rest::dto::{
         AddTradesRequest, AddTradesResponse, CreatePortfolioRequest, CreatePortfolioResponse,
         GetPortfolioResponse, PortfolioGreeksRequest, PortfolioGreeksResponse,
@@ -24,45 +24,24 @@ use crate::{
     state::AppState,
 };
 
-/// Create a new portfolio
-///
-/// POST /api/v1/portfolios
 #[cfg(feature = "risk")]
-pub async fn create_portfolio(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<CreatePortfolioRequest>,
-) -> Result<(StatusCode, Json<CreatePortfolioResponse>), ServerError> {
-    let response = PortfolioService::create_portfolio(&request, &state)?;
-    Ok((StatusCode::CREATED, Json(response)))
+json_created_handler! {
+    /// POST /api/v1/portfolios
+    pub async fn create_portfolio(CreatePortfolioRequest => CreatePortfolioResponse) = PortfolioService::create_portfolio;
 }
 
-/// Get a portfolio by ID
-///
-/// GET /api/v1/portfolios/{id}
 #[cfg(feature = "risk")]
-pub async fn get_portfolio(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-) -> Result<Json<GetPortfolioResponse>, ServerError> {
-    let response = PortfolioService::get_portfolio(&id, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/v1/portfolios/{id}
+    pub async fn get_portfolio(=> GetPortfolioResponse) = PortfolioService::get_portfolio;
 }
 
-/// Add trades to a portfolio
-///
-/// PUT /api/v1/portfolios/{id}/trades
 #[cfg(feature = "risk")]
-pub async fn add_trades(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-    Json(request): Json<AddTradesRequest>,
-) -> Result<Json<AddTradesResponse>, ServerError> {
-    let response = PortfolioService::add_trades(&id, &request, &state)?;
-    Ok(Json(response))
+path_json_handler! {
+    /// PUT /api/v1/portfolios/{id}/trades
+    pub async fn add_trades(AddTradesRequest => AddTradesResponse) = PortfolioService::add_trades;
 }
 
-/// Delete a portfolio
-///
 /// DELETE /api/v1/portfolios/{id}
 #[cfg(feature = "risk")]
 pub async fn delete_portfolio(
@@ -73,27 +52,14 @@ pub async fn delete_portfolio(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Calculate portfolio present value
-///
-/// POST /api/v1/portfolios/{id}/price
 #[cfg(feature = "risk")]
-pub async fn price_portfolio_id(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-) -> Result<Json<PortfolioPriceResponse>, ServerError> {
-    let response = PortfolioService::price_portfolio(&id, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// POST /api/v1/portfolios/{id}/price
+    pub async fn price_portfolio_id(=> PortfolioPriceResponse) = PortfolioService::price_portfolio;
 }
 
-/// Compute portfolio Greeks
-///
-/// POST /api/v1/portfolios/{id}/greeks
 #[cfg(feature = "risk")]
-pub async fn compute_portfolio_greeks(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-    Json(request): Json<PortfolioGreeksRequest>,
-) -> Result<Json<PortfolioGreeksResponse>, ServerError> {
-    let response = PortfolioService::compute_portfolio_greeks(&id, &request, &state)?;
-    Ok(Json(response))
+path_json_handler! {
+    /// POST /api/v1/portfolios/{id}/greeks
+    pub async fn compute_portfolio_greeks(PortfolioGreeksRequest => PortfolioGreeksResponse) = PortfolioService::compute_portfolio_greeks;
 }

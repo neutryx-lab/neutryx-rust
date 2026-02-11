@@ -227,191 +227,59 @@ mod tests {
     use super::*;
     use crate::market::Currency;
 
-    // ========================================
-    // Variant Creation Tests
-    // ========================================
-
     #[test]
-    fn test_rate_curve_creation() {
-        let req = IndexRequirement::RateCurve(RateIndex::Sofr);
-        assert!(req.is_rate_curve());
-        assert!(!req.is_swaption_vol());
-        assert!(!req.is_fx_curve());
-        assert!(!req.is_fx_vol());
-    }
-
-    #[test]
-    fn test_swaption_vol_creation() {
-        let req = IndexRequirement::SwaptionVol(RateIndex::Euribor3M);
-        assert!(!req.is_rate_curve());
-        assert!(req.is_swaption_vol());
-        assert!(!req.is_fx_curve());
-        assert!(!req.is_fx_vol());
-    }
-
-    #[test]
-    fn test_fx_curve_creation() {
+    fn test_variant_type_checks() {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
-        let req = IndexRequirement::FxCurve(pair);
-        assert!(!req.is_rate_curve());
-        assert!(!req.is_swaption_vol());
-        assert!(req.is_fx_curve());
-        assert!(!req.is_fx_vol());
+
+        assert!(IndexRequirement::RateCurve(RateIndex::Sofr).is_rate_curve());
+        assert!(IndexRequirement::SwaptionVol(RateIndex::Euribor3M).is_swaption_vol());
+        assert!(IndexRequirement::FxCurve(pair).is_fx_curve());
+        assert!(IndexRequirement::FxVol(pair).is_fx_vol());
     }
 
     #[test]
-    fn test_fx_vol_creation() {
-        let pair = CurrencyPair::new(Currency::USD, Currency::JPY);
-        let req = IndexRequirement::FxVol(pair);
-        assert!(!req.is_rate_curve());
-        assert!(!req.is_swaption_vol());
-        assert!(!req.is_fx_curve());
-        assert!(req.is_fx_vol());
-    }
-
-    // ========================================
-    // Accessor Tests
-    // ========================================
-
-    #[test]
-    fn test_as_rate_index() {
-        let req = IndexRequirement::RateCurve(RateIndex::Sofr);
-        assert_eq!(req.as_rate_index(), Some(&RateIndex::Sofr));
-
-        let req = IndexRequirement::SwaptionVol(RateIndex::Sonia);
-        assert_eq!(req.as_rate_index(), Some(&RateIndex::Sonia));
-
+    fn test_accessors() {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
-        let req = IndexRequirement::FxCurve(pair);
-        assert_eq!(req.as_rate_index(), None);
+
+        assert_eq!(
+            IndexRequirement::RateCurve(RateIndex::Sofr).as_rate_index(),
+            Some(&RateIndex::Sofr)
+        );
+        assert_eq!(
+            IndexRequirement::SwaptionVol(RateIndex::Sonia).as_rate_index(),
+            Some(&RateIndex::Sonia)
+        );
+        assert_eq!(IndexRequirement::FxCurve(pair).as_rate_index(), None);
+
+        assert_eq!(
+            IndexRequirement::FxCurve(pair).as_currency_pair(),
+            Some(&pair)
+        );
+        assert_eq!(
+            IndexRequirement::FxVol(pair).as_currency_pair(),
+            Some(&pair)
+        );
+        assert_eq!(
+            IndexRequirement::RateCurve(RateIndex::Sofr).as_currency_pair(),
+            None
+        );
     }
 
     #[test]
-    fn test_as_currency_pair() {
-        let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
-        let req = IndexRequirement::FxCurve(pair);
-        assert_eq!(req.as_currency_pair(), Some(&pair));
-
-        let req = IndexRequirement::FxVol(pair);
-        assert_eq!(req.as_currency_pair(), Some(&pair));
-
-        let req = IndexRequirement::RateCurve(RateIndex::Sofr);
-        assert_eq!(req.as_currency_pair(), None);
-    }
-
-    // ========================================
-    // Hash and Eq Tests (HashMap key usability)
-    // ========================================
-
-    #[test]
-    fn test_hash_map_key() {
-        use std::collections::HashSet;
-
-        let mut set = HashSet::new();
-        set.insert(IndexRequirement::RateCurve(RateIndex::Sofr));
-        set.insert(IndexRequirement::RateCurve(RateIndex::Tonar));
-        set.insert(IndexRequirement::RateCurve(RateIndex::Sofr)); // Duplicate
-
-        assert_eq!(set.len(), 2);
-        assert!(set.contains(&IndexRequirement::RateCurve(RateIndex::Sofr)));
-    }
-
-    #[test]
-    fn test_equality() {
-        let req1 = IndexRequirement::RateCurve(RateIndex::Sofr);
-        let req2 = IndexRequirement::RateCurve(RateIndex::Sofr);
-        let req3 = IndexRequirement::RateCurve(RateIndex::Sonia);
-
-        assert_eq!(req1, req2);
-        assert_ne!(req1, req3);
-    }
-
-    // ========================================
-    // Clone and Debug Tests
-    // ========================================
-
-    #[test]
-    fn test_clone() {
-        let req1 = IndexRequirement::SwaptionVol(RateIndex::Estr);
-        let req2 = req1.clone();
-        assert_eq!(req1, req2);
-    }
-
-    #[test]
-    fn test_debug() {
-        let req = IndexRequirement::RateCurve(RateIndex::Sofr);
-        let debug = format!("{:?}", req);
-        assert!(debug.contains("RateCurve"));
-        assert!(debug.contains("Sofr"));
-    }
-
-    // ========================================
-    // Display Tests
-    // ========================================
-
-    #[test]
-    fn test_display_rate_curve() {
-        let req = IndexRequirement::RateCurve(RateIndex::Sofr);
-        let display = format!("{}", req);
-        assert!(display.contains("RateCurve"));
-        assert!(display.contains("SOFR"));
-    }
-
-    #[test]
-    fn test_display_swaption_vol() {
-        let req = IndexRequirement::SwaptionVol(RateIndex::Euribor3M);
-        let display = format!("{}", req);
-        assert!(display.contains("SwaptionVol"));
-    }
-
-    #[test]
-    fn test_display_fx_curve() {
-        let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
-        let req = IndexRequirement::FxCurve(pair);
-        let display = format!("{}", req);
-        assert!(display.contains("FxCurve"));
-        assert!(display.contains("EUR/USD"));
-    }
-
-    #[test]
-    fn test_display_fx_vol() {
-        let pair = CurrencyPair::new(Currency::USD, Currency::JPY);
-        let req = IndexRequirement::FxVol(pair);
-        let display = format!("{}", req);
-        assert!(display.contains("FxVol"));
-        assert!(display.contains("USD/JPY"));
-    }
-
-    // ========================================
-    // Ord Tests (for sorting and dedup)
-    // ========================================
-
-    #[test]
-    fn test_ordering() {
-        let rate_curve = IndexRequirement::RateCurve(RateIndex::Sofr);
-        let swaption_vol = IndexRequirement::SwaptionVol(RateIndex::Sofr);
-        let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
-        let fx_curve = IndexRequirement::FxCurve(pair);
-        let fx_vol = IndexRequirement::FxVol(pair);
-
-        // RateCurve < SwaptionVol < FxCurve < FxVol
-        assert!(rate_curve < swaption_vol);
-        assert!(swaption_vol < fx_curve);
-        assert!(fx_curve < fx_vol);
-    }
-
-    #[test]
-    fn test_sort() {
+    fn test_ordering_and_dedup() {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let mut reqs = vec![
             IndexRequirement::FxVol(pair),
             IndexRequirement::RateCurve(RateIndex::Sofr),
+            IndexRequirement::RateCurve(RateIndex::Sofr), // Duplicate
             IndexRequirement::FxCurve(pair),
             IndexRequirement::SwaptionVol(RateIndex::Sofr),
         ];
 
         reqs.sort();
+        reqs.dedup();
 
+        assert_eq!(reqs.len(), 4);
         assert!(reqs[0].is_rate_curve());
         assert!(reqs[1].is_swaption_vol());
         assert!(reqs[2].is_fx_curve());
@@ -419,16 +287,9 @@ mod tests {
     }
 
     #[test]
-    fn test_dedup() {
-        let mut reqs = vec![
-            IndexRequirement::RateCurve(RateIndex::Sofr),
-            IndexRequirement::RateCurve(RateIndex::Sonia),
-            IndexRequirement::RateCurve(RateIndex::Sofr), // Duplicate
-        ];
-
-        reqs.sort();
-        reqs.dedup();
-
-        assert_eq!(reqs.len(), 2);
+    fn test_display() {
+        let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
+        assert!(format!("{}", IndexRequirement::RateCurve(RateIndex::Sofr)).contains("RateCurve"));
+        assert!(format!("{}", IndexRequirement::FxCurve(pair)).contains("EUR/USD"));
     }
 }

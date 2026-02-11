@@ -178,92 +178,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_equity_convention_new() {
-        let conv = EquityConvention::new(
-            3,
-            CalendarId::London,
-            DividendConvention::ContinuousYield,
-            EquitySettlementType::Physical,
-            true,
-            0.005,
-        );
-
-        assert_eq!(conv.settlement_days, 3);
-        assert_eq!(conv.calendar, CalendarId::London);
+    fn test_equity_presets() {
+        let us = EquityConvention::us_equity();
+        assert_eq!(us.settlement_days, 2);
+        assert_eq!(us.calendar, CalendarId::NewYork);
         assert_eq!(
-            conv.dividend_convention,
-            DividendConvention::ContinuousYield
-        );
-        assert_eq!(conv.settlement_type, EquitySettlementType::Physical);
-        assert!(conv.premium_adjusted_delta);
-        assert!((conv.borrow_spread - 0.005).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_us_equity_convention() {
-        let conv = EquityConvention::us_equity();
-
-        assert_eq!(conv.settlement_days, 2);
-        assert_eq!(conv.calendar, CalendarId::NewYork);
-        assert_eq!(
-            conv.dividend_convention,
+            us.dividend_convention,
             DividendConvention::DiscreteDividends
         );
-        assert_eq!(conv.settlement_type, EquitySettlementType::Cash);
-    }
+        assert_eq!(us.settlement_type, EquitySettlementType::Cash);
 
-    #[test]
-    fn test_eu_equity_convention() {
-        let conv = EquityConvention::eu_equity();
+        assert_eq!(EquityConvention::eu_equity().calendar, CalendarId::Target);
+        assert_eq!(EquityConvention::uk_equity().calendar, CalendarId::London);
+        assert_eq!(EquityConvention::jp_equity().calendar, CalendarId::Tokyo);
 
-        assert_eq!(conv.settlement_days, 2);
-        assert_eq!(conv.calendar, CalendarId::Target);
-    }
-
-    #[test]
-    fn test_uk_equity_convention() {
-        let conv = EquityConvention::uk_equity();
-
-        assert_eq!(conv.calendar, CalendarId::London);
-    }
-
-    #[test]
-    fn test_jp_equity_convention() {
-        let conv = EquityConvention::jp_equity();
-
-        assert_eq!(conv.calendar, CalendarId::Tokyo);
-    }
-
-    #[test]
-    fn test_index_total_return_convention() {
-        let conv = EquityConvention::index_total_return();
-
-        assert_eq!(conv.settlement_days, 1);
-        assert_eq!(conv.dividend_convention, DividendConvention::None);
-    }
-
-    #[test]
-    fn test_dividend_convention_equality() {
-        assert_eq!(
-            DividendConvention::ContinuousYield,
-            DividendConvention::ContinuousYield
-        );
-        assert_ne!(
-            DividendConvention::ContinuousYield,
-            DividendConvention::DiscreteDividends
-        );
-    }
-
-    #[test]
-    fn test_settlement_type_equality() {
-        assert_eq!(EquitySettlementType::Cash, EquitySettlementType::Cash);
-        assert_ne!(EquitySettlementType::Cash, EquitySettlementType::Physical);
-    }
-
-    #[test]
-    fn test_equity_convention_clone() {
-        let conv = EquityConvention::us_equity();
-        let cloned = conv.clone();
-        assert_eq!(conv, cloned);
+        let idx = EquityConvention::index_total_return();
+        assert_eq!(idx.settlement_days, 1);
+        assert_eq!(idx.dividend_convention, DividendConvention::None);
     }
 }

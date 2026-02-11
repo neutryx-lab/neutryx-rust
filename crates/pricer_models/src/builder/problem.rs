@@ -21,6 +21,14 @@ use pricer_core::{
 use super::{CalibrationError, CalibrationInstrument, JumpPillar};
 use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
 
+/// Extracts sorted, deduplicated pillar maturities from instruments.
+fn extract_sorted_pillars<T: Float, I: CalibrationInstrument<T>>(instruments: &[I]) -> Vec<T> {
+    let mut pillars: Vec<T> = instruments.iter().map(|i| i.maturity()).collect();
+    pillars.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
+    pillars
+}
+
 // =============================================================================
 // JacobianMethod
 // =============================================================================
@@ -105,15 +113,6 @@ where
     I: CalibrationInstrument<T> + Clone,
 {
     /// Create a new calibration problem from instruments.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Calibration instruments
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Self)` - Calibration problem
-    /// * `Err(CalibrationError)` - If validation fails
     pub fn new(instruments: Vec<I>) -> Result<Self, CalibrationError> {
         Self::with_config(instruments, CalibrationProblemConfig::default())
     }
@@ -127,16 +126,7 @@ where
             return Err(CalibrationError::no_instruments());
         }
 
-        // Extract and sort pillars (maturities)
-        let mut pillars: Vec<T> = instruments.iter().map(|i| i.maturity()).collect();
-        pillars.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Deduplicate pillars
-        pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
-
-        // Overdetermined systems (instruments > pillars) are allowed:
-        // instruments sharing a maturity contribute extra equations that
-        // the solver handles via least-squares.
+        let pillars = extract_sorted_pillars(&instruments);
 
         Ok(Self {
             instruments,
@@ -148,19 +138,8 @@ where
 
     /// Create a new calibration problem with jump pillars.
     ///
-    /// The parameter vector is extended to include jump parameters:
+    /// The parameter vector is extended to:
     /// `[log(DF_1), ..., log(DF_n), jump_1, ..., jump_m]`
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Calibration instruments
-    /// * `jump_pillars` - Jump pillars for CB meeting dates
-    /// * `config` - Configuration options
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Self)` - Calibration problem with jumps
-    /// * `Err(CalibrationError)` - If validation fails
     pub fn with_jumps(
         instruments: Vec<I>,
         mut jump_pillars: Vec<JumpPillar<T>>,
@@ -170,16 +149,7 @@ where
             return Err(CalibrationError::no_instruments());
         }
 
-        // Extract and sort pillars (maturities)
-        let mut pillars: Vec<T> = instruments.iter().map(|i| i.maturity()).collect();
-        pillars.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Deduplicate pillars
-        pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
-
-        // Overdetermined systems (instruments > pillars) are allowed:
-        // instruments sharing a maturity contribute extra equations that
-        // the solver handles via least-squares.
+        let pillars = extract_sorted_pillars(&instruments);
 
         // Sort jump pillars by time
         jump_pillars.sort_by(|a, b| {
@@ -226,14 +196,6 @@ where
     pub fn total_dimension(&self) -> usize { self.pillars.len() + self.jump_pillars.len() }
 
     /// Build a yield curve from log discount factors.
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - log(DF) at each pillar
-    ///
-    /// # Returns
-    ///
-    /// A `BootstrappedCurve` constructed from the pillar discount factors.
     pub fn build_curve(&self, log_df: &[T]) -> Result<BootstrappedCurve<T>, SolverError> {
         let discount_factors: Vec<T> = log_df.iter().map(|&x| Float::exp(x)).collect();
 
@@ -247,14 +209,6 @@ where
     }
 
     /// Compute residuals (pricing errors) for all instruments.
-    ///
-    /// # Arguments
-    ///
-    /// * `curve` - Yield curve to price against
-    ///
-    /// # Returns
-    ///
-    /// Vector of pricing errors, one per instrument.
     pub fn compute_residuals(
         &self,
         curve: &BootstrappedCurve<T>,
@@ -271,17 +225,8 @@ where
         Ok(residuals)
     }
 
-    /// Compute the Jacobian matrix using finite differences.
-    ///
-    /// J\[i,j\] = ∂F_i/∂x_j where x_j = log(DF_j)
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - Current log discount factors
-    ///
-    /// # Returns
-    ///
-    /// Jacobian matrix as DMatrix.
+    /// Compute the Jacobian matrix J\[i,j\] = dF_i/dx_j using forward
+    /// differences.
     pub fn compute_jacobian_finite_diff(
         &self,
         log_df: &[T],
@@ -352,22 +297,7 @@ where
         Ok(jacobian)
     }
 
-    /// Validate the quality of a Jacobian matrix.
-    ///
-    /// Checks for numerical issues including:
-    /// - NaN values (indicates computation failure)
-    /// - Inf values (indicates overflow)
-    /// - Near-zero diagonal elements (indicates singularity)
-    ///
-    /// # Requirement: 5.3
-    ///
-    /// # Arguments
-    ///
-    /// * `jacobian` - The Jacobian matrix to validate
-    ///
-    /// # Returns
-    ///
-    /// * `JacobianQuality` - Classification of the matrix quality
+    /// Validate Jacobian quality (checks for NaN, Inf, near-zero diagonals).
     pub fn validate_jacobian_quality(
         &self,
         jacobian: &DMatrix<T>,
@@ -405,17 +335,7 @@ where
         JacobianQuality::good()
     }
 
-    /// Validate Jacobian quality and get full diagnostics.
-    ///
-    /// # Requirement: 5.3, 5.5
-    ///
-    /// # Arguments
-    ///
-    /// * `jacobian` - The Jacobian matrix to validate
-    ///
-    /// # Returns
-    ///
-    /// * Tuple of (JacobianQuality, NumericalDiagnostics)
+    /// Validate Jacobian quality and return full diagnostics.
     pub fn validate_jacobian_with_diagnostics(
         &self,
         jacobian: &DMatrix<T>,
@@ -464,41 +384,12 @@ where
     }
 
     /// Extract log discount factors from an extended parameter vector.
-    ///
-    /// # Arguments
-    ///
-    /// * `params` - Extended parameter vector `[log(DF), ..., jumps, ...]`
-    ///
-    /// # Returns
-    ///
-    /// Slice of log discount factors.
     pub fn extract_log_df<'a>(&self, params: &'a [T]) -> &'a [T] { &params[..self.pillars.len()] }
 
     /// Extract jump values from an extended parameter vector.
-    ///
-    /// # Arguments
-    ///
-    /// * `params` - Extended parameter vector `[log(DF), ..., jumps, ...]`
-    ///
-    /// # Returns
-    ///
-    /// Slice of jump values (absolute rate).
     pub fn extract_jumps<'a>(&self, params: &'a [T]) -> &'a [T] { &params[self.pillars.len()..] }
 
-    /// Build a yield curve with jump adjustments applied.
-    ///
-    /// The discount factors are adjusted for jumps by multiplying with
-    /// the cumulative jump effect: DF_adjusted = DF * Π(1 + jump_i)
-    /// for all jumps i where t_jump <= t_pillar.
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - Log discount factors at pillars
-    /// * `jumps` - Jump values in absolute rate
-    ///
-    /// # Returns
-    ///
-    /// A `BootstrappedCurve` with jump-adjusted discount factors.
+    /// Build a yield curve with jump-adjusted discount factors.
     pub fn build_curve_with_jumps(
         &self,
         log_df: &[T],
@@ -544,14 +435,6 @@ where
     }
 
     /// Compute residuals using jump-adjusted curve.
-    ///
-    /// # Arguments
-    ///
-    /// * `params` - Extended parameter vector `[log(DF), ..., jumps, ...]`
-    ///
-    /// # Returns
-    ///
-    /// Vector of pricing errors.
     pub fn compute_residuals_with_jumps(&self, params: &[T]) -> Result<Vec<T>, CalibrationError> {
         let log_df = self.extract_log_df(params);
         let jumps = self.extract_jumps(params);
@@ -572,62 +455,26 @@ where
         Ok(residuals)
     }
 
-    /// Compute the Jacobian matrix including jump parameter derivatives.
-    ///
-    /// The Jacobian is an (n + k) × (m + k) matrix where:
-    /// - n = number of instruments
-    /// - m = number of pillars
-    /// - k = number of jump pillars (regularisation rows)
-    ///
-    /// The first n rows are instrument pricing sensitivities computed via
-    /// finite differences.  The last k rows are jump regularisation terms
-    /// with ∂(jump_j - expected_j)/∂jump_j = 1.
-    ///
-    /// # Arguments
-    ///
-    /// * `params` - Extended parameter vector
-    ///
-    /// # Returns
-    ///
-    /// Extended Jacobian matrix.
+    /// Compute the (n+k) x (m+k) Jacobian including jump parameter derivatives.
     pub fn compute_jacobian_with_jumps(
         &self,
         params: &[T],
     ) -> Result<DMatrix<T>, CalibrationError> {
         let n = self.instruments.len();
-        let m = self.pillars.len();
         let k = self.jump_pillars.len();
         let total_rows = n + k;
-        let total_cols = m + k;
+        let total_cols = self.total_dimension();
         let eps = self.config.jacobian_epsilon;
 
-        // Base residuals (includes regularisation terms)
         let f0 = self.compute_residuals_with_jumps(params)?;
-
-        // Compute Jacobian columns via finite differences
         let mut jacobian = DMatrix::zeros(total_rows, total_cols);
 
-        // Derivatives with respect to log(DF) parameters
-        for j in 0..m {
+        for j in 0..total_cols {
             let mut params_pert = params.to_vec();
             params_pert[j] = params_pert[j] + eps;
-
             let f_pert = self.compute_residuals_with_jumps(&params_pert)?;
-
             for i in 0..total_rows {
                 jacobian[(i, j)] = (f_pert[i] - f0[i]) / eps;
-            }
-        }
-
-        // Derivatives with respect to jump parameters
-        for j in 0..k {
-            let mut params_pert = params.to_vec();
-            params_pert[m + j] = params_pert[m + j] + eps;
-
-            let f_pert = self.compute_residuals_with_jumps(&params_pert)?;
-
-            for i in 0..total_rows {
-                jacobian[(i, m + j)] = (f_pert[i] - f0[i]) / eps;
             }
         }
 
@@ -666,14 +513,6 @@ where
     }
 
     /// Get the realised jump values from a calibrated parameter vector.
-    ///
-    /// # Arguments
-    ///
-    /// * `params` - Calibrated extended parameter vector
-    ///
-    /// # Returns
-    ///
-    /// Vector of JumpPillar with realised values set.
     pub fn get_realised_jumps(&self, params: &[T]) -> Vec<JumpPillar<T>> {
         let jumps = self.extract_jumps(params);
 
@@ -689,14 +528,10 @@ where
     }
 
     // =========================================================================
-    // AD Instability Helper Methods (Task 4.4, Requirement 5.4)
+    // AD Instability Helper Methods
     // =========================================================================
 
-    /// Compute variance between two Jacobian matrices.
-    ///
-    /// Calculates the mean squared difference between corresponding elements.
-    /// Used to detect AD instability by comparing AD Jacobian with finite
-    /// difference.
+    /// Compute mean squared difference between two Jacobian matrices.
     pub fn compute_jacobian_variance(&self, j1: &DMatrix<T>, j2: &DMatrix<T>) -> T {
         let n = j1.nrows();
         let m = j1.ncols();
@@ -727,17 +562,7 @@ where
         }
     }
 
-    /// Check if AD fallback should be triggered based on variance.
-    ///
-    /// # Arguments
-    ///
-    /// * `ad_jacobian` - Jacobian computed via Enzyme AD
-    /// * `fd_jacobian` - Jacobian computed via finite difference
-    /// * `threshold` - Variance threshold (default 1e6)
-    ///
-    /// # Returns
-    ///
-    /// (should_fallback, variance)
+    /// Check if AD fallback should be triggered based on variance threshold.
     pub fn should_fallback_from_ad(
         &self,
         ad_jacobian: &DMatrix<T>,
@@ -750,7 +575,7 @@ where
 }
 
 // =============================================================================
-// CompiledInstrument Integration (Requirement 2, 4)
+// CompiledInstrument Integration
 // =============================================================================
 
 use crate::builder::compile::CompiledInstrument;
@@ -759,26 +584,7 @@ impl<T> CalibrationProblem<T, CompiledInstrument<T>>
 where
     T: Float + RealField + Copy,
 {
-    /// Create a new calibration problem from compiled instruments.
-    ///
-    /// # Requirement 2.1
-    ///
-    /// When `from_compiled()` is called, the Builder shall construct a
-    /// CalibrationProblem from pre-compiled instruments.
-    ///
-    /// # Requirement 2.2
-    ///
-    /// The CalibrationProblem shall hold references to compiled instruments
-    /// and not re-compile during iteration.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Pre-compiled instruments
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Self)` - Calibration problem with compiled instruments
-    /// * `Err(CalibrationError)` - If validation fails
+    /// Create a new calibration problem from pre-compiled instruments.
     pub fn from_compiled(
         instruments: Vec<CompiledInstrument<T>>,
     ) -> Result<Self, CalibrationError> {
@@ -787,16 +593,6 @@ where
 
     /// Create a new calibration problem from compiled instruments with custom
     /// config.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Pre-compiled instruments
-    /// * `config` - Calibration configuration
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Self)` - Calibration problem with compiled instruments
-    /// * `Err(CalibrationError)` - If validation fails
     pub fn from_compiled_with_config(
         instruments: Vec<CompiledInstrument<T>>,
         config: CalibrationProblemConfig<T>,
@@ -805,14 +601,9 @@ where
             return Err(CalibrationError::no_instruments());
         }
 
-        // Extract and sort pillars (maturities)
-        let mut pillars: Vec<T> = instruments.iter().map(|i| i.maturity()).collect();
-        pillars.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let pillars = extract_sorted_pillars(&instruments);
 
-        // Deduplicate pillars
-        pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
-
-        // Log compilation info (Requirement 2.3)
+        // Log compilation info
         #[cfg(feature = "tracing")]
         {
             let total_cashflows: usize = instruments.iter().map(|i| i.num_cashflows()).sum();
@@ -824,10 +615,6 @@ where
             );
         }
 
-        // Overdetermined systems (instruments > pillars) are allowed:
-        // instruments sharing a maturity contribute extra equations that
-        // the solver handles via least-squares.
-
         Ok(Self {
             instruments,
             pillars,
@@ -837,53 +624,22 @@ where
     }
 
     /// Get the total number of cashflows across all compiled instruments.
-    ///
-    /// Useful for logging and diagnostics.
     pub fn total_cashflows(&self) -> usize {
         self.instruments.iter().map(|i| i.num_cashflows()).sum()
     }
 
-    /// Create a calibration problem from market instruments.
-    ///
-    /// # Requirement 2.1
-    ///
-    /// When `from_market_instruments()` is called, the Builder shall compile
-    /// all MarketInstruments to CompiledInstruments.
-    ///
-    /// # Requirement 2.3
-    ///
-    /// When compilation is complete, the System shall log the number of
-    /// instruments, total cashflows, and compile time.
-    ///
-    /// # Requirement 2.4
-    ///
-    /// If a compile error occurs, the Builder shall propagate the error
-    /// without leaving partially compiled state.
-    ///
-    /// # Arguments
-    ///
-    /// * `market_instruments` - Resolved market instruments from infra_domain
-    /// * `valuation_date` - The valuation date for compilation
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(Self)` - Calibration problem with compiled instruments
-    /// * `Err(CompileError)` - If any instrument fails to compile
+    /// Create a calibration problem by compiling market instruments.
     pub fn from_market_instruments(
         market_instruments: &[infra_domain::market::MarketInstrument],
         valuation_date: infra_domain::time::Date,
     ) -> Result<Self, crate::builder::compile::CompileError> {
         use crate::builder::compile::InstrumentCompiler;
 
-        // Create compiler
         let compiler: InstrumentCompiler<T> = InstrumentCompiler::new(valuation_date);
-
-        // Compile all instruments (Requirement 2.4: fail-fast, no partial state)
         let start_time = std::time::Instant::now();
         let compiled = compiler.compile_batch(market_instruments)?;
         let compile_duration = start_time.elapsed();
 
-        // Log compilation info (Requirement 2.3)
         #[cfg(feature = "tracing")]
         {
             let total_cashflows: usize = compiled.iter().map(|i| i.num_cashflows()).sum();
@@ -894,9 +650,8 @@ where
                 "Compiled instruments for calibration"
             );
         }
-        let _ = compile_duration; // Suppress unused warning when tracing is disabled
+        let _ = compile_duration;
 
-        // Create calibration problem
         Self::from_compiled(compiled).map_err(|e| {
             crate::builder::compile::CompileError::InvalidConvention {
                 index: 0,
@@ -959,54 +714,23 @@ where
     T: Float + RealField + Copy,
     I: CalibrationInstrument<T> + Clone,
 {
-    /// Compute Jacobian using Enzyme AD with automatic fallback.
-    ///
-    /// # Requirement 1.4
-    ///
-    /// If Enzyme AD computation fails due to unsupported operations,
-    /// the method falls back to finite differences and logs a warning.
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - Current log discount factors
-    ///
-    /// # Returns
-    ///
-    /// Jacobian matrix, either from Enzyme AD or finite differences.
+    /// Compute Jacobian using Enzyme AD, falling back to finite differences on
+    /// failure.
     pub fn compute_jacobian_enzyme_with_fallback(
         &self,
         log_df: &[T],
     ) -> Result<DMatrix<T>, CalibrationError> {
-        use super::enzyme_jacobian::JacobianResult;
-
-        let start_time = std::time::Instant::now();
-
-        // Try Enzyme AD computation
         match self.try_compute_jacobian_enzyme(log_df) {
-            Ok(jacobian) => {
-                let _elapsed = start_time.elapsed().as_micros() as u64;
-                Ok(jacobian)
-            }
+            Ok(jacobian) => Ok(jacobian),
             Err(e) => {
-                // Log warning about fallback
                 #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    "Enzyme AD Jacobian failed, falling back to finite differences: {}",
-                    e
-                );
-
-                // Fall back to finite differences
-                let jacobian = self.compute_jacobian_finite_diff(log_df)?;
-                let _elapsed = start_time.elapsed().as_micros() as u64;
-                Ok(jacobian)
+                tracing::warn!("Enzyme AD Jacobian failed, falling back to FD: {}", e);
+                self.compute_jacobian_finite_diff(log_df)
             }
         }
     }
 
-    /// Try to compute Jacobian using Enzyme AD.
-    ///
-    /// This method extracts instrument parameters and calls the Enzyme kernels.
-    /// It may fail if the instruments contain unsupported operations.
+    /// Try to compute Jacobian using Enzyme AD kernels.
     fn try_compute_jacobian_enzyme(&self, log_df: &[T]) -> Result<DMatrix<T>, CalibrationError> {
         use super::enzyme_jacobian::kernels;
 
@@ -1049,14 +773,7 @@ where
         Ok(jacobian)
     }
 
-    /// Extract Enzyme-compatible parameters from an instrument.
-    ///
-    /// # Returns
-    ///
-    /// Tuple of (instrument_type_code, parameters_vector)
-    /// - Type 0: Deposit [maturity, market_rate]
-    /// - Type 1: FRA [start_time, end_time, tau, market_rate]
-    /// - Type 2: Swap/OIS [maturity, market_rate, n_cf, cf_time_1, yf_1, ...]
+    /// Extract Enzyme-compatible (type_code, params) from an instrument.
     fn extract_enzyme_params(&self, instrument: &I) -> Result<(u32, Vec<f64>), CalibrationError> {
         let maturity = instrument.maturity().to_f64().unwrap_or(0.0);
         let market_rate = instrument.market_rate().to_f64().unwrap_or(0.0);
@@ -1101,39 +818,27 @@ where
         }
     }
 
-    /// Compute Jacobian with full result metadata.
-    ///
-    /// # Requirement 1.1, 1.4
-    ///
-    /// This method returns a JacobianResult with metadata including:
-    /// - The Jacobian matrix
-    /// - The method actually used
-    /// - Computation time
-    /// - Whether fallback was triggered
+    /// Compute Jacobian with full result metadata (method used, timing,
+    /// fallback).
     pub fn compute_jacobian_enzyme_result(
         &self,
         log_df: &[T],
     ) -> Result<super::enzyme_jacobian::JacobianResult, CalibrationError> {
         use super::enzyme_jacobian::JacobianResult;
-
         let start_time = std::time::Instant::now();
 
-        // Try Enzyme AD computation
-        match self.try_compute_jacobian_enzyme(log_df) {
-            Ok(jacobian) => {
-                let elapsed = start_time.elapsed().as_micros() as u64;
-                // Convert to f64 matrix for JacobianResult
-                let jacobian_f64 = self.convert_matrix_to_f64(&jacobian);
-                Ok(JacobianResult::from_enzyme_ad(jacobian_f64, elapsed))
-            }
-            Err(_) => {
-                // Fall back to finite differences
-                let jacobian = self.compute_jacobian_finite_diff(log_df)?;
-                let elapsed = start_time.elapsed().as_micros() as u64;
-                let jacobian_f64 = self.convert_matrix_to_f64(&jacobian);
-                Ok(JacobianResult::with_fallback(jacobian_f64, elapsed))
-            }
-        }
+        let (jacobian, from_ad) = match self.try_compute_jacobian_enzyme(log_df) {
+            Ok(j) => (j, true),
+            Err(_) => (self.compute_jacobian_finite_diff(log_df)?, false),
+        };
+        let elapsed = start_time.elapsed().as_micros() as u64;
+        let jacobian_f64 = self.convert_matrix_to_f64(&jacobian);
+
+        Ok(if from_ad {
+            JacobianResult::from_enzyme_ad(jacobian_f64, elapsed)
+        } else {
+            JacobianResult::with_fallback(jacobian_f64, elapsed)
+        })
     }
 
     /// Convert a DMatrix<T> to DMatrix<f64>.
@@ -1150,24 +855,11 @@ where
     }
 
     // =========================================================================
-    // AD Instability Auto-Fallback (Task 4.4)
+    // AD Instability Auto-Fallback
     // =========================================================================
 
-    /// Compute Jacobian with stability check and auto-fallback.
-    ///
-    /// # Requirement: 5.4
-    ///
-    /// Compares Enzyme AD Jacobian with finite difference approximation.
-    /// If variance exceeds threshold (1e6), automatically falls back to
-    /// central difference method for improved numerical stability.
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - Log discount factors
-    ///
-    /// # Returns
-    ///
-    /// Tuple of (Jacobian matrix, NumericalDiagnostics)
+    /// Compute Jacobian with AD-vs-FD stability check; falls back to central
+    /// diff if unstable.
     pub fn compute_jacobian_with_stability_check(
         &self,
         log_df: &[T],
@@ -1177,46 +869,29 @@ where
         let variance_threshold: T = from_f64(1e6);
         let mut diagnostics = NumericalDiagnostics::new();
 
-        // Try Enzyme AD computation first
-        let enzyme_result = self.try_compute_jacobian_enzyme(log_df);
-
-        match enzyme_result {
+        match self.try_compute_jacobian_enzyme(log_df) {
             Ok(enzyme_jacobian) => {
-                // Compute finite difference Jacobian for comparison
                 let fd_jacobian = self.compute_jacobian_finite_diff(log_df)?;
-
-                // Calculate variance between AD and FD
                 let variance = self.compute_jacobian_variance(&enzyme_jacobian, &fd_jacobian);
                 diagnostics.ad_variance = Some(variance);
 
                 if variance > variance_threshold {
-                    // AD is unstable, fall back to central difference
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
                         variance = %variance.to_f64().unwrap_or(0.0),
-                        threshold = %variance_threshold.to_f64().unwrap_or(0.0),
-                        "AD Jacobian variance exceeds threshold, falling back to central difference"
+                        "AD variance exceeds threshold, falling back to central diff"
                     );
-
                     diagnostics.ad_fallback_used = true;
-                    let central_jacobian = self.compute_jacobian_central_diff(log_df)?;
-                    Ok((central_jacobian, diagnostics))
+                    Ok((self.compute_jacobian_central_diff(log_df)?, diagnostics))
                 } else {
-                    // AD is stable, use it
                     Ok((enzyme_jacobian, diagnostics))
                 }
             }
-            Err(e) => {
-                // AD failed entirely, fall back to central difference
+            Err(_e) => {
                 #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    error = %e,
-                    "Enzyme AD Jacobian failed, falling back to central difference"
-                );
-
+                tracing::warn!(error = %_e, "Enzyme AD failed, falling back to central diff");
                 diagnostics.ad_fallback_used = true;
-                let central_jacobian = self.compute_jacobian_central_diff(log_df)?;
-                Ok((central_jacobian, diagnostics))
+                Ok((self.compute_jacobian_central_diff(log_df)?, diagnostics))
             }
         }
     }
@@ -1544,7 +1219,7 @@ mod tests {
     }
 
     // =========================================================================
-    // CompiledInstrument Integration Tests (Requirement 2, 4)
+    // CompiledInstrument Integration Tests
     // =========================================================================
 
     use crate::builder::compile::{CompiledInstrument, InstrumentType};
@@ -1689,7 +1364,7 @@ mod tests {
     }
 
     // =========================================================================
-    // from_market_instruments Tests (Requirement 2)
+    // from_market_instruments Tests
     // =========================================================================
 
     use infra_domain::{
@@ -1794,7 +1469,7 @@ mod tests {
     }
 
     // =========================================================================
-    // AD Instability Auto-Fallback Tests (Task 4.4, Requirement 5.4)
+    // AD Instability Auto-Fallback Tests
     // =========================================================================
 
     #[test]

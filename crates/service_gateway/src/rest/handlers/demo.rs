@@ -1,6 +1,7 @@
 //! Demo handlers for the demo_gui frontend
 //!
-//! Thin handlers that delegate business logic to `DemoService`.
+//! Thin handlers that delegate business logic to `DemoService` and
+//! `VolcubeService`.
 
 use std::sync::Arc;
 
@@ -12,129 +13,75 @@ use axum::{
 };
 
 use crate::{
-    error::ServerError,
+    error::{AppJson, ServerError},
     rest::dto::demo::{
         AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
         CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
         DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade,
         ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse,
-        HolidaysResponse, IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
-        IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
-        MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
-        RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse, TradeExpandRequest,
-        VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
-        VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        HolidaysResponse, ImpliedPdfRequest, ImpliedPdfResponse, IndexConventionsResponse,
+        IndexRatesResponse, InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse,
+        MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
+        RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse, SabrSmileRequest,
+        SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
+        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     services::{DemoService, VolcubeService},
     state::AppState,
 };
 
 // =============================================================================
-// Configuration API
+// Configuration & Instruments
 // =============================================================================
 
-/// Get application configuration
-///
-/// GET /api/config
-pub async fn get_config(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<AppConfigResponse>, ServerError> {
-    let response = DemoService::get_config(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/config
+    pub async fn get_config(=> AppConfigResponse) = DemoService::get_config;
+}
+
+get_handler! {
+    /// GET /api/instruments
+    pub async fn get_instruments(=> InstrumentsResponse) = DemoService::get_instruments;
 }
 
 // =============================================================================
-// Instruments API
+// Trade Expansion & Pricing
 // =============================================================================
 
-/// Get available instruments
-///
-/// GET /api/instruments
-pub async fn get_instruments(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<InstrumentsResponse>, ServerError> {
-    let response = DemoService::get_instruments(&state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/trade/expand
+    pub async fn expand_trade(TradeExpandRequest => ExpandedTrade) = DemoService::expand_trade;
+}
+
+json_handler! {
+    /// POST /api/pricer/price
+    pub async fn price_trade(DemoPricingRequest => DemoPricingResult) = DemoService::price_trade;
+}
+
+json_handler! {
+    /// POST /api/pricer/greeks
+    pub async fn calculate_greeks(DemoGreeksRequest => DemoGreeksResult) = DemoService::calculate_greeks;
 }
 
 // =============================================================================
-// Trade Expansion API
+// Market Data
 // =============================================================================
 
-/// Expand a trade into cashflows
-///
-/// POST /api/trade/expand
-pub async fn expand_trade(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<TradeExpandRequest>,
-) -> Result<Json<ExpandedTrade>, ServerError> {
-    let response = DemoService::expand_trade(&request, &state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/market/rates
+    pub async fn get_market_rates(=> MarketRatesResponse) = DemoService::get_market_rates;
 }
 
-// =============================================================================
-// Pricing API
-// =============================================================================
-
-/// Price a trade
-///
-/// POST /api/pricer/price
-pub async fn price_trade(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<DemoPricingRequest>,
-) -> Result<Json<DemoPricingResult>, ServerError> {
-    let response = DemoService::price_trade(&request, &state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/market/config
+    pub async fn get_market_config(=> MarketConfigResponse) = DemoService::get_market_config;
 }
 
-/// Calculate Greeks
-///
-/// POST /api/pricer/greeks
-pub async fn calculate_greeks(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<DemoGreeksRequest>,
-) -> Result<Json<DemoGreeksResult>, ServerError> {
-    let response = DemoService::calculate_greeks(&request, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/market/rates/:rate_id
+    pub async fn get_rate_detail(=> MarketRateDetailResponse) = DemoService::get_rate_detail;
 }
 
-// =============================================================================
-// Market Data API
-// =============================================================================
-
-/// Get market rates
-///
-/// GET /api/market/rates
-pub async fn get_market_rates(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<MarketRatesResponse>, ServerError> {
-    let response = DemoService::get_market_rates(&state)?;
-    Ok(Json(response))
-}
-
-/// Get market config
-///
-/// GET /api/market/config
-pub async fn get_market_config(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<MarketConfigResponse>, ServerError> {
-    let response = DemoService::get_market_config(&state)?;
-    Ok(Json(response))
-}
-
-/// Get rate detail
-///
-/// GET /api/market/rates/:rate_id
-pub async fn get_rate_detail(
-    State(state): State<Arc<AppState>>,
-    Path(rate_id): Path<String>,
-) -> Result<Json<MarketRateDetailResponse>, ServerError> {
-    let response = DemoService::get_rate_detail(&rate_id, &state)?;
-    Ok(Json(response))
-}
-
-/// Refresh market rates
-///
 /// POST /api/market/rates/refresh
 pub async fn refresh_market_rates(
     State(state): State<Arc<AppState>>,
@@ -144,219 +91,121 @@ pub async fn refresh_market_rates(
 }
 
 // =============================================================================
-// Conventions API
+// Conventions
 // =============================================================================
 
-/// Get conventions
-///
-/// GET /api/market/conventions
-pub async fn get_conventions(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<ConventionsResponse>, ServerError> {
-    let response = DemoService::get_conventions(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/market/conventions
+    pub async fn get_conventions(=> ConventionsResponse) = DemoService::get_conventions;
 }
 
-/// Get convention detail
-///
-/// GET /api/market/conventions/:id
-pub async fn get_convention_detail(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-) -> Result<Json<Convention>, ServerError> {
-    let response = DemoService::get_convention_detail(&id, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/market/conventions/:id
+    pub async fn get_convention_detail(=> Convention) = DemoService::get_convention_detail;
 }
 
 // =============================================================================
-// IR Volatility API
+// IR & FX Volatility
 // =============================================================================
 
-/// Get IR vol currencies
-///
-/// GET /api/irvol/currencies
-pub async fn get_ir_vol_currencies(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<IrVolCurrenciesResponse>, ServerError> {
-    let response = VolcubeService::get_ir_vol_currencies(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/irvol/currencies
+    pub async fn get_ir_vol_currencies(=> IrVolCurrenciesResponse) = VolcubeService::get_ir_vol_currencies;
 }
 
-/// Get IR vol quotes for a currency
-///
-/// GET /api/irvol/quotes/:currency
-pub async fn get_ir_vol_quotes(
-    State(state): State<Arc<AppState>>,
-    Path(currency): Path<String>,
-) -> Result<Json<IrVolQuotesResponse>, ServerError> {
-    let response = VolcubeService::get_ir_vol_quotes(&currency, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/irvol/quotes/:currency
+    pub async fn get_ir_vol_quotes(=> IrVolQuotesResponse) = VolcubeService::get_ir_vol_quotes;
 }
 
-// =============================================================================
-// FX Volatility API
-// =============================================================================
-
-/// Get FX vol pairs
-///
-/// GET /api/fxvol/pairs
-pub async fn get_fx_vol_pairs(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<FxVolPairsResponse>, ServerError> {
-    let response = VolcubeService::get_fx_vol_pairs(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/fxvol/pairs
+    pub async fn get_fx_vol_pairs(=> FxVolPairsResponse) = VolcubeService::get_fx_vol_pairs;
 }
 
-/// Get FX vol quotes for a pair
-///
-/// GET /api/fxvol/quotes/:pair
-pub async fn get_fx_vol_quotes(
-    State(state): State<Arc<AppState>>,
-    Path(pair): Path<String>,
-) -> Result<Json<FxVolQuotesResponse>, ServerError> {
-    let response = VolcubeService::get_fx_vol_quotes(&pair, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/fxvol/quotes/:pair
+    pub async fn get_fx_vol_quotes(=> FxVolQuotesResponse) = VolcubeService::get_fx_vol_quotes;
 }
 
 // =============================================================================
-// Events API
+// Events & Holidays
 // =============================================================================
 
-/// Get market events
-///
-/// GET /api/market/events
-pub async fn get_events(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<EventsResponse>, ServerError> {
-    let response = DemoService::get_events(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/market/events
+    pub async fn get_events(=> EventsResponse) = DemoService::get_events;
 }
 
-/// Get event types
-///
-/// GET /api/market/events/types
-pub async fn get_event_types(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<EventTypesResponse>, ServerError> {
-    let response = DemoService::get_event_types(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/market/events/types
+    pub async fn get_event_types(=> EventTypesResponse) = DemoService::get_event_types;
 }
 
-/// Get market holidays
-///
-/// GET /api/market/holidays
-pub async fn get_holidays(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<HolidaysResponse>, ServerError> {
-    let response = DemoService::get_holidays(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/market/holidays
+    pub async fn get_holidays(=> HolidaysResponse) = DemoService::get_holidays;
 }
 
 // =============================================================================
-// Curves API
+// Curves
 // =============================================================================
 
-/// Get available curves
-///
-/// GET /api/curves
-pub async fn get_available_curves(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<AvailableCurvesResponse>, ServerError> {
-    let response = DemoService::get_available_curves(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/curves
+    pub async fn get_available_curves(=> AvailableCurvesResponse) = DemoService::get_available_curves;
 }
 
-/// Get curve indices for bootstrapping
-///
-/// GET /api/curves/indices
-pub async fn get_curve_indices(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<CurveIndicesResponse>, ServerError> {
-    let response = DemoService::get_curve_indices(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/curves/indices
+    pub async fn get_curve_indices(=> CurveIndicesResponse) = DemoService::get_curve_indices;
 }
 
-/// Get instruments for a specific curve index
-///
-/// GET /api/curves/instruments/:index
-pub async fn get_curve_instruments(
-    State(state): State<Arc<AppState>>,
-    Path(index): Path<String>,
-) -> Result<Json<CurveInstrumentsResponse>, ServerError> {
-    let response = DemoService::get_curve_instruments(&index, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/curves/instruments/:index
+    pub async fn get_curve_instruments(=> CurveInstrumentsResponse) = DemoService::get_curve_instruments;
 }
 
 // =============================================================================
-// Volcube API
+// Volcube
 // =============================================================================
 
-/// Get volcube indices (swaption currencies)
-///
-/// GET /api/volcube/indices
-pub async fn get_volcube_indices(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<VolcubeIndicesResponse>, ServerError> {
-    let response = VolcubeService::get_volcube_indices(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/volcube/indices
+    pub async fn get_volcube_indices(=> VolcubeIndicesResponse) = VolcubeService::get_volcube_indices;
 }
 
-/// Get available calibration models
-///
-/// GET /api/volcube/models
-pub async fn get_volcube_models(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<VolcubeModelsResponse>, ServerError> {
-    let response = VolcubeService::get_volcube_models(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/volcube/models
+    pub async fn get_volcube_models(=> VolcubeModelsResponse) = VolcubeService::get_volcube_models;
 }
 
-/// Get swaption instruments for volcube calibration
-///
-/// GET /api/volcube/instruments/:currency
-pub async fn get_volcube_instruments(
-    State(state): State<Arc<AppState>>,
-    Path(currency): Path<String>,
-) -> Result<Json<VolcubeInstrumentsResponse>, ServerError> {
-    let response = VolcubeService::get_volcube_instruments(&currency, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/volcube/instruments/:currency
+    pub async fn get_volcube_instruments(=> VolcubeInstrumentsResponse) = VolcubeService::get_volcube_instruments;
 }
 
-/// Calibrate volcube (swaption vol surface)
-///
-/// POST /api/volcube/calibrate
-pub async fn calibrate_volcube(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<VolcubeCalibrateRequest>,
-) -> Result<Json<VolcubeCalibrateResponse>, ServerError> {
-    let response = VolcubeService::calibrate_volcube(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/volcube/calibrate
+    pub async fn calibrate_volcube(VolcubeCalibrateRequest => VolcubeCalibrateResponse) = VolcubeService::calibrate_volcube;
 }
 
-/// Calibrate FX vol surface
-///
-/// POST /api/fxvol/calibrate
-pub async fn calibrate_fxvol(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<FxVolCalibrateRequest>,
-) -> Result<Json<VolcubeCalibrateResponse>, ServerError> {
-    let response = VolcubeService::calibrate_fxvol(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/fxvol/calibrate
+    pub async fn calibrate_fxvol(FxVolCalibrateRequest => VolcubeCalibrateResponse) = VolcubeService::calibrate_fxvol;
 }
 
 // =============================================================================
-// Export API
+// Export
 // =============================================================================
 
-/// Export market data as CSV
-///
 /// GET /api/market/export/csv
 pub async fn export_market_csv(
     State(state): State<Arc<AppState>>,
 ) -> Result<Response<Body>, ServerError> {
     let data = DemoService::export_market_data(ExportFormat::Csv, &state)?;
 
-    let response = Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/csv; charset=utf-8")
         .header(
@@ -364,20 +213,16 @@ pub async fn export_market_csv(
             "attachment; filename=\"market_rates.csv\"",
         )
         .body(Body::from(data))
-        .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))?;
-
-    Ok(response)
+        .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))
 }
 
-/// Export market data as JSON
-///
 /// GET /api/market/export/json
 pub async fn export_market_json(
     State(state): State<Arc<AppState>>,
 ) -> Result<Response<Body>, ServerError> {
     let data = DemoService::export_market_data(ExportFormat::Json, &state)?;
 
-    let response = Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json; charset=utf-8")
         .header(
@@ -385,104 +230,57 @@ pub async fn export_market_json(
             "attachment; filename=\"market_rates.json\"",
         )
         .body(Body::from(data))
-        .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))?;
-
-    Ok(response)
+        .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))
 }
 
 // =============================================================================
-// Rate Instrument API (market-convention-instrument)
+// Rate Instrument & Cashflows
 // =============================================================================
 
-/// Get instrument details for a rate
-///
-/// GET /api/market/rates/:rate_id/instrument
-pub async fn get_rate_instrument(
-    State(state): State<Arc<AppState>>,
-    Path(rate_id): Path<String>,
-) -> Result<Json<RateInstrumentResponse>, ServerError> {
-    let response = DemoService::get_rate_instrument(&rate_id, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/market/rates/:rate_id/instrument
+    pub async fn get_rate_instrument(=> RateInstrumentResponse) = DemoService::get_rate_instrument;
 }
 
-/// Get cashflows for a rate instrument
-///
-/// GET /api/market/rates/:rate_id/cashflows
-pub async fn get_rate_cashflows(
-    State(state): State<Arc<AppState>>,
-    Path(rate_id): Path<String>,
-) -> Result<Json<RateCashflowsResponse>, ServerError> {
-    let response = DemoService::get_rate_cashflows(&rate_id, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/market/rates/:rate_id/cashflows
+    pub async fn get_rate_cashflows(=> RateCashflowsResponse) = DemoService::get_rate_cashflows;
 }
 
 // =============================================================================
-// Rate Index API (market-convention-instrument)
+// Rate Index
 // =============================================================================
 
-/// Get all rate indices
-///
-/// GET /api/market/indices
-pub async fn get_rate_indices(
-    State(state): State<Arc<AppState>>,
-) -> Result<Json<RateIndicesResponse>, ServerError> {
-    let response = DemoService::get_rate_indices(&state)?;
-    Ok(Json(response))
+get_handler! {
+    /// GET /api/market/indices
+    pub async fn get_rate_indices(=> RateIndicesResponse) = DemoService::get_rate_indices;
 }
 
-/// Get rate index detail
-///
-/// GET /api/market/indices/:code
-pub async fn get_rate_index_detail(
-    State(state): State<Arc<AppState>>,
-    Path(code): Path<String>,
-) -> Result<Json<RateIndexDetailResponse>, ServerError> {
-    let response = DemoService::get_rate_index_detail(&code, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/market/indices/:code
+    pub async fn get_rate_index_detail(=> RateIndexDetailResponse) = DemoService::get_rate_index_detail;
 }
 
-/// Get rates for a rate index
-///
-/// GET /api/market/indices/:code/rates
-pub async fn get_index_rates(
-    State(state): State<Arc<AppState>>,
-    Path(code): Path<String>,
-) -> Result<Json<IndexRatesResponse>, ServerError> {
-    let response = DemoService::get_index_rates(&code, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/market/indices/:code/rates
+    pub async fn get_index_rates(=> IndexRatesResponse) = DemoService::get_index_rates;
 }
 
-/// Get conventions for a rate index
-///
-/// GET /api/market/indices/:code/conventions
-pub async fn get_index_conventions(
-    State(state): State<Arc<AppState>>,
-    Path(code): Path<String>,
-) -> Result<Json<IndexConventionsResponse>, ServerError> {
-    let response = DemoService::get_index_conventions(&code, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/market/indices/:code/conventions
+    pub async fn get_index_conventions(=> IndexConventionsResponse) = DemoService::get_index_conventions;
 }
 
 // =============================================================================
-// Implied PDF API
+// Implied PDF & SABR
 // =============================================================================
 
-/// Compute implied probability density via Breeden-Litzenberger
-///
-/// POST /api/volcube/implied-pdf
-pub async fn compute_implied_pdf(
-    Json(request): Json<crate::rest::dto::demo::ImpliedPdfRequest>,
-) -> Result<Json<crate::rest::dto::demo::ImpliedPdfResponse>, ServerError> {
-    let response = VolcubeService::compute_implied_pdf(&request)?;
-    Ok(Json(response))
+stateless_json_handler! {
+    /// POST /api/volcube/implied-pdf
+    pub async fn compute_implied_pdf(ImpliedPdfRequest => ImpliedPdfResponse) = VolcubeService::compute_implied_pdf;
 }
 
-/// Compute SABR smile and density from calibrated parameters
-///
-/// POST /api/volcube/sabr-smile
-pub async fn compute_sabr_smile(
-    Json(request): Json<crate::rest::dto::demo::SabrSmileRequest>,
-) -> Result<Json<crate::rest::dto::demo::SabrSmileResponse>, ServerError> {
-    let response = VolcubeService::compute_sabr_smile(&request)?;
-    Ok(Json(response))
+stateless_json_handler! {
+    /// POST /api/volcube/sabr-smile
+    pub async fn compute_sabr_smile(SabrSmileRequest => SabrSmileResponse) = VolcubeService::compute_sabr_smile;
 }

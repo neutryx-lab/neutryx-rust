@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-02-09_ — Steering sync: service_gateway re-enabled, ndarray removed, QuoteId migration, AI Fixer CI; 48 completed specs; 4 active specs
+_Updated: 2026-02-10_ — service_cli/service_python consolidated into service_gateway; 48 completed specs; 4 active specs
 
 ---
 
@@ -90,17 +90,14 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Status | Notes |
 |-------|--------|-------|
 | adapter_feeds | 🔶 | Basic quote types only |
-| adapter_fpml | 🔶 | Basic FpML parser skeleton |
-| adapter_loader | 🔶 | CSV loader, CSA terms |
+| adapter_loader | 🔶 | CSV loader, CSA terms, FpML parser (`fpml` feature) |
 
 #### Service Layer (S) - Output
 | Crate | Status | Notes |
 |-------|--------|-------|
-| service_cli | ⏸️ | Temporarily disabled pending pricer_risk refactoring |
-| service_gateway | ✅ | Re-enabled in workspace; REST API + demo endpoints active |
-| service_python | 🔶 | Basic bindings (VanillaOption, Forward, HullWhite) |
+| service_gateway | ✅ | Unified service crate: REST API + CLI (feature `cli`) + Python bindings (feature `python`) |
 
-> **Note**: `service_cli` temporarily excluded from workspace during codebase-simplification. `service_gateway` re-enabled (2026-02).
+> **Note**: `service_cli` and `service_python` consolidated into `service_gateway` via feature-gated modules (2026-02). Old crate directories removed.
 
 ---
 
@@ -177,8 +174,9 @@ Codebase redundancy cleanup performed:
 |------|-------------|--------|
 | ndarray-removal | Removed ndarray dependency, updated imports to infra_domain | ✅ |
 | quoteid-migration | Refactored TickerMapping to use QuoteId instead of RateId | ✅ |
-| ai-fixer-ci | Self-healing CI module (scripts/ai_fixer/, Gemini API) | ✅ |
+| ai-fixer-ci | Self-healing CI module (.github/ai_fixer/, Gemini API) | ✅ |
 | service-gateway-reenable | Re-enabled service_gateway in workspace members | ✅ |
+| consolidate-service-crates | Consolidated service_cli/service_python into service_gateway (feature-gated cli/python) | ✅ |
 
 ### Future Maintenance (Low Priority)
 
@@ -211,7 +209,7 @@ Codebase redundancy cleanup performed:
 ### Temporary Status Notes
 
 - **demo/gui**: Temporarily disabled due to calibration module refactoring. Feature-gated handlers added for calibration-dependent endpoints. Will be re-enabled after `builder/paramsurface` stabilisation.
-- **service_gateway**: Re-enabled in workspace (2026-02). REST API and demo endpoints active.
+- **service_gateway**: Unified service crate (2026-02). REST API, CLI, and Python bindings via feature flags.
 
 ## Recommended Next Steps
 
@@ -225,7 +223,8 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
-| 2026-02-09 | Steering sync: service_gateway re-enabled in workspace, ndarray dependency removed, TickerMapping→QuoteId migration, AI Fixer self-healing CI (scripts/ai_fixer/). 4 active specs unchanged. Total: 48 completed specs |
+| 2026-02-10 | consolidate-service-crates: service_cli and service_python absorbed into service_gateway via feature-gated modules (cli, python). Old crate directories removed. Total: 48 completed specs, 4 active specs |
+| 2026-02-09 | Steering sync: service_gateway re-enabled in workspace, ndarray dependency removed, TickerMapping→QuoteId migration, AI Fixer self-healing CI (.github/ai_fixer/). 4 active specs unchanged. Total: 48 completed specs |
 | 2026-02-04 | Steering sync: Vue 3 frontend migration (Vue + Pinia + Tailwind CSS), CurveDefinition/ConventionTemplate/MarketInstrument patterns, CurveRegistry. 4 active specs unchanged. Total: 48 specs |
 | 2026-02-02 | Steering sync: market-convention-instrument advanced to tasks-generated (ConventionRegistry, EventInstrument, D3.js graph). 4 active specs. Added Convention Registry Pattern to tech.md. Total: 48 specs |
 | 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |

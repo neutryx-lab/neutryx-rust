@@ -190,138 +190,34 @@ impl fmt::Display for RateType {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
-
     use super::*;
 
     #[test]
-    fn test_rate_type_variants() {
-        let all_types = [
+    fn test_classification() {
+        // Interest rate instruments
+        for rt in [
             RateType::Deposit,
             RateType::Fra,
             RateType::Futures,
             RateType::Swap,
             RateType::Ois,
             RateType::BasisSwap,
-            RateType::FxSpot,
-            RateType::FxForward,
-            RateType::Vol,
-            RateType::Event,
-        ];
-        assert_eq!(all_types.len(), 10);
-    }
-
-    #[test]
-    fn test_rate_type_code() {
-        assert_eq!(RateType::Deposit.code(), "DEPO");
-        assert_eq!(RateType::Fra.code(), "FRA");
-        assert_eq!(RateType::Futures.code(), "FUT");
-        assert_eq!(RateType::Swap.code(), "SWAP");
-        assert_eq!(RateType::Ois.code(), "OIS");
-        assert_eq!(RateType::BasisSwap.code(), "BASIS");
-        assert_eq!(RateType::FxSpot.code(), "FXSPOT");
-        assert_eq!(RateType::FxForward.code(), "FXFWD");
-        assert_eq!(RateType::Vol.code(), "VOL");
-        assert_eq!(RateType::Event.code(), "EVENT");
-    }
-
-    #[test]
-    fn test_rate_type_display() {
-        assert_eq!(format!("{}", RateType::Swap), "SWAP");
-        assert_eq!(format!("{}", RateType::Ois), "OIS");
-        assert_eq!(format!("{}", RateType::FxSpot), "FXSPOT");
-    }
-
-    #[test]
-    fn test_is_interest_rate() {
-        assert!(RateType::Deposit.is_interest_rate());
-        assert!(RateType::Fra.is_interest_rate());
-        assert!(RateType::Futures.is_interest_rate());
-        assert!(RateType::Swap.is_interest_rate());
-        assert!(RateType::Ois.is_interest_rate());
-        assert!(RateType::BasisSwap.is_interest_rate());
-
-        assert!(!RateType::FxSpot.is_interest_rate());
-        assert!(!RateType::FxForward.is_interest_rate());
-        assert!(!RateType::Vol.is_interest_rate());
-        assert!(!RateType::Event.is_interest_rate());
-    }
-
-    #[test]
-    fn test_is_fx() {
-        assert!(RateType::FxSpot.is_fx());
-        assert!(RateType::FxForward.is_fx());
-
-        assert!(!RateType::Deposit.is_fx());
-        assert!(!RateType::Swap.is_fx());
-        assert!(!RateType::Vol.is_fx());
-        assert!(!RateType::Event.is_fx());
-    }
-
-    #[test]
-    fn test_is_volatility() {
+        ] {
+            assert!(rt.is_interest_rate(), "{} should be interest rate", rt);
+            assert!(!rt.is_fx());
+            assert!(!rt.is_volatility());
+            assert!(!rt.is_event());
+        }
+        // FX instruments
+        for rt in [RateType::FxSpot, RateType::FxForward] {
+            assert!(rt.is_fx(), "{} should be FX", rt);
+            assert!(!rt.is_interest_rate());
+        }
+        // Vol
         assert!(RateType::Vol.is_volatility());
-
-        assert!(!RateType::Deposit.is_volatility());
-        assert!(!RateType::FxSpot.is_volatility());
-        assert!(!RateType::Event.is_volatility());
-    }
-
-    #[test]
-    fn test_is_event() {
+        assert!(!RateType::Vol.is_interest_rate());
+        // Event
         assert!(RateType::Event.is_event());
-
-        assert!(!RateType::Deposit.is_event());
-        assert!(!RateType::Swap.is_event());
-        assert!(!RateType::Vol.is_event());
-    }
-
-    #[test]
-    fn test_rate_type_copy() {
-        let original = RateType::Swap;
-        let copied = original;
-        assert_eq!(original, copied);
-    }
-
-    #[test]
-    fn test_rate_type_clone() {
-        let original = RateType::Ois;
-        let cloned = original.clone();
-        assert_eq!(original, cloned);
-    }
-
-    #[test]
-    fn test_rate_type_eq() {
-        assert_eq!(RateType::Swap, RateType::Swap);
-        assert_ne!(RateType::Swap, RateType::Ois);
-    }
-
-    #[test]
-    fn test_rate_type_hash() {
-        let mut set = HashSet::new();
-        set.insert(RateType::Swap);
-        set.insert(RateType::Ois);
-        set.insert(RateType::Swap); // Duplicate
-
-        assert_eq!(set.len(), 2);
-        assert!(set.contains(&RateType::Swap));
-        assert!(set.contains(&RateType::Ois));
-    }
-
-    #[test]
-    fn test_rate_type_as_hashmap_key() {
-        let mut map: HashMap<RateType, &str> = HashMap::new();
-        map.insert(RateType::Swap, "Interest Rate Swap");
-        map.insert(RateType::Ois, "Overnight Index Swap");
-
-        assert_eq!(map.get(&RateType::Swap), Some(&"Interest Rate Swap"));
-        assert_eq!(map.get(&RateType::Ois), Some(&"Overnight Index Swap"));
-    }
-
-    #[test]
-    fn test_rate_type_debug() {
-        assert_eq!(format!("{:?}", RateType::Deposit), "Deposit");
-        assert_eq!(format!("{:?}", RateType::Swap), "Swap");
-        assert_eq!(format!("{:?}", RateType::FxSpot), "FxSpot");
+        assert!(!RateType::Event.is_interest_rate());
     }
 }

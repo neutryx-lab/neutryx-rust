@@ -25,7 +25,7 @@ server = "run -p service_gateway --bin neutryx-server"
 # - CI builds should NOT use target-cpu=native for artifact distribution
 #
 # Autodiff (Enzyme) Notes:
-# - -Z autodiff=Enable is set via RUSTFLAGS in CI/scripts, not here
+# - -Z autodiff=Enable is set via RUSTFLAGS in CI, not here
 # - This keeps the config compatible with stable Rust for L1/L2/L4
 
 # ============================================================================
@@ -89,4 +89,3 @@ rustflags = ["-C", "target-cpu=native"]
 # 1. cargo pgo build (instrumented build)
 # 2. Run benchmarks to collect profile data
 # 3. cargo pgo optimize (optimized build)
-# See scripts/pgo_build.sh for details

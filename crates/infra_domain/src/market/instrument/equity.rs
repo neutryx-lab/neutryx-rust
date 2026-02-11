@@ -447,77 +447,67 @@ impl BasketOption {
 mod tests {
     use super::*;
 
-    fn make_test_underlying() -> EquityUnderlying { EquityUnderlying::stock("AAPL") }
+    fn aapl() -> EquityUnderlying { EquityUnderlying::stock("AAPL") }
 
     #[test]
-    fn test_equity_underlying_stock() {
-        let underlying = EquityUnderlying::stock("AAPL");
-        assert!(matches!(underlying, EquityUnderlying::SingleStock { .. }));
-    }
-
-    #[test]
-    fn test_equity_underlying_stock_with_exchange() {
-        let underlying = EquityUnderlying::stock_with_exchange("VOD", "LSE");
-        if let EquityUnderlying::SingleStock { ticker, exchange } = underlying {
+    fn test_equity_underlying_and_types() {
+        assert!(matches!(
+            EquityUnderlying::stock("AAPL"),
+            EquityUnderlying::SingleStock { .. }
+        ));
+        assert!(matches!(
+            EquityUnderlying::index("S&P 500"),
+            EquityUnderlying::Index { .. }
+        ));
+        if let EquityUnderlying::SingleStock { ticker, exchange } =
+            EquityUnderlying::stock_with_exchange("VOD", "LSE")
+        {
             assert_eq!(ticker, "VOD");
             assert_eq!(exchange, Some("LSE".to_string()));
         } else {
             panic!("Expected SingleStock");
         }
+
+        assert_eq!(AveragingType::Arithmetic, AveragingType::Arithmetic);
+        assert_ne!(AveragingType::Arithmetic, AveragingType::Geometric);
+        assert_eq!(LookbackType::FixedStrike, LookbackType::FixedStrike);
+        assert_ne!(LookbackType::FixedStrike, LookbackType::FloatingStrike);
+        assert_eq!(EquityReturnType::Price, EquityReturnType::Price);
+        assert_ne!(EquityReturnType::Price, EquityReturnType::TotalReturn);
     }
 
     #[test]
-    fn test_equity_underlying_index() {
-        let underlying = EquityUnderlying::index("S&P 500");
-        assert!(matches!(underlying, EquityUnderlying::Index { .. }));
-    }
+    fn test_equity_instruments_validation() {
+        let exp = Date::from_ymd(2025, 6, 15).unwrap();
 
-    #[test]
-    fn test_equity_forward_validate_success() {
+        // Forward: valid + negative notional
         let fwd = EquityForward {
-            underlying: make_test_underlying(),
+            underlying: aapl(),
             forward_price: 150.0,
-            settlement_date: Date::from_ymd(2025, 6, 15).unwrap(),
+            settlement_date: exp,
             notional: 100.0,
             currency: Currency::USD,
         };
         assert!(fwd.validate().is_ok());
-    }
+        let mut bad = fwd.clone();
+        bad.notional = -100.0;
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_equity_forward_validate_negative_notional() {
-        let fwd = EquityForward {
-            underlying: make_test_underlying(),
-            forward_price: 150.0,
-            settlement_date: Date::from_ymd(2025, 6, 15).unwrap(),
-            notional: -100.0,
-            currency: Currency::USD,
-        };
-        assert!(fwd.validate().is_err());
-    }
-
-    fn make_test_vanilla_option() -> EquityVanillaOption {
-        EquityVanillaOption {
-            underlying: make_test_underlying(),
+        // Vanilla option
+        let opt = EquityVanillaOption {
+            underlying: aapl(),
             strike: 150.0,
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            expiry: exp,
             option_type: OptionType::Call,
             exercise_style: ExerciseStyle::European,
             notional: 100.0,
             currency: Currency::USD,
-        }
-    }
+        };
+        assert!(opt.validate().is_ok());
 
-    #[test]
-    fn test_equity_vanilla_option_validate_success() {
-        let option = make_test_vanilla_option();
-        assert!(option.validate().is_ok());
-    }
-
-    #[test]
-    fn test_equity_barrier_option_validate_success() {
+        // Barrier option
         let barrier = EquityBarrierOption {
-            vanilla: make_test_vanilla_option(),
+            vanilla: opt.clone(),
             barrier_level: 170.0,
             barrier_type: BarrierType::KnockOut,
             barrier_direction: BarrierDirection::Up,
@@ -525,14 +515,12 @@ mod tests {
             rebate: None,
         };
         assert!(barrier.validate().is_ok());
-    }
 
-    #[test]
-    fn test_asian_option_validate_success() {
+        // Asian option: valid + negative observed
         let asian = AsianOption {
-            underlying: make_test_underlying(),
+            underlying: aapl(),
             strike: 150.0,
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            expiry: exp,
             option_type: OptionType::Call,
             averaging_type: AveragingType::Arithmetic,
             observation_frequency: Frequency::Daily,
@@ -541,30 +529,16 @@ mod tests {
             currency: Currency::USD,
         };
         assert!(asian.validate().is_ok());
-    }
+        let mut bad = asian.clone();
+        bad.observed_values = vec![145.0, -10.0];
+        bad.averaging_type = AveragingType::Geometric;
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_asian_option_validate_negative_observed() {
-        let asian = AsianOption {
-            underlying: make_test_underlying(),
-            strike: 150.0,
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
-            option_type: OptionType::Call,
-            averaging_type: AveragingType::Geometric,
-            observation_frequency: Frequency::Weekly,
-            observed_values: vec![145.0, -10.0],
-            notional: 100.0,
-            currency: Currency::USD,
-        };
-        assert!(asian.validate().is_err());
-    }
-
-    #[test]
-    fn test_lookback_option_validate_success() {
+        // Lookback option: valid + missing strike
         let lookback = LookbackOption {
-            underlying: make_test_underlying(),
+            underlying: aapl(),
             strike: Some(150.0),
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            expiry: exp,
             option_type: OptionType::Call,
             lookback_type: LookbackType::FixedStrike,
             observation_start: Date::from_ymd(2025, 1, 1).unwrap(),
@@ -572,27 +546,13 @@ mod tests {
             currency: Currency::USD,
         };
         assert!(lookback.validate().is_ok());
-    }
+        let mut bad = lookback.clone();
+        bad.strike = None;
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_lookback_option_validate_missing_strike() {
-        let lookback = LookbackOption {
-            underlying: make_test_underlying(),
-            strike: None, // Missing for fixed strike
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
-            option_type: OptionType::Call,
-            lookback_type: LookbackType::FixedStrike,
-            observation_start: Date::from_ymd(2025, 1, 1).unwrap(),
-            notional: 100.0,
-            currency: Currency::USD,
-        };
-        assert!(lookback.validate().is_err());
-    }
-
-    #[test]
-    fn test_equity_swap_validate_success() {
+        // Equity swap: valid + invalid dates
         let swap = EquitySwap {
-            underlying: make_test_underlying(),
+            underlying: aapl(),
             return_type: EquityReturnType::TotalReturn,
             funding_index: "SOFR".to_string(),
             funding_spread: 0.001,
@@ -602,25 +562,12 @@ mod tests {
             currency: Currency::USD,
         };
         assert!(swap.validate().is_ok());
-    }
+        let mut bad = swap.clone();
+        bad.start_date = Date::from_ymd(2026, 1, 1).unwrap();
+        bad.maturity = Date::from_ymd(2025, 1, 1).unwrap();
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_equity_swap_validate_invalid_dates() {
-        let swap = EquitySwap {
-            underlying: make_test_underlying(),
-            return_type: EquityReturnType::Price,
-            funding_index: "SOFR".to_string(),
-            funding_spread: 0.001,
-            start_date: Date::from_ymd(2026, 1, 1).unwrap(),
-            maturity: Date::from_ymd(2025, 1, 1).unwrap(),
-            notional: 1_000_000.0,
-            currency: Currency::USD,
-        };
-        assert!(swap.validate().is_err());
-    }
-
-    #[test]
-    fn test_basket_option_validate_success() {
+        // Basket option: valid + empty + bad weights
         let basket = BasketOption {
             components: vec![
                 BasketComponent {
@@ -633,7 +580,7 @@ mod tests {
                 },
             ],
             strike: 100.0,
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
+            expiry: exp,
             option_type: OptionType::Call,
             exercise_style: ExerciseStyle::European,
             notional: 1000.0,
@@ -641,62 +588,11 @@ mod tests {
             correlation_matrix_ref: Some("CORR001".to_string()),
         };
         assert!(basket.validate().is_ok());
-    }
-
-    #[test]
-    fn test_basket_option_validate_empty_basket() {
-        let basket = BasketOption {
-            components: vec![],
-            strike: 100.0,
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
-            option_type: OptionType::Call,
-            exercise_style: ExerciseStyle::European,
-            notional: 1000.0,
-            currency: Currency::USD,
-            correlation_matrix_ref: None,
-        };
-        assert!(basket.validate().is_err());
-    }
-
-    #[test]
-    fn test_basket_option_validate_weights_not_sum_to_one() {
-        let basket = BasketOption {
-            components: vec![
-                BasketComponent {
-                    underlying: EquityUnderlying::stock("AAPL"),
-                    weight: 0.5,
-                },
-                BasketComponent {
-                    underlying: EquityUnderlying::stock("MSFT"),
-                    weight: 0.3, // Sum = 0.8, not 1.0
-                },
-            ],
-            strike: 100.0,
-            expiry: Date::from_ymd(2025, 6, 15).unwrap(),
-            option_type: OptionType::Call,
-            exercise_style: ExerciseStyle::European,
-            notional: 1000.0,
-            currency: Currency::USD,
-            correlation_matrix_ref: None,
-        };
-        assert!(basket.validate().is_err());
-    }
-
-    #[test]
-    fn test_averaging_type_equality() {
-        assert_eq!(AveragingType::Arithmetic, AveragingType::Arithmetic);
-        assert_ne!(AveragingType::Arithmetic, AveragingType::Geometric);
-    }
-
-    #[test]
-    fn test_lookback_type_equality() {
-        assert_eq!(LookbackType::FixedStrike, LookbackType::FixedStrike);
-        assert_ne!(LookbackType::FixedStrike, LookbackType::FloatingStrike);
-    }
-
-    #[test]
-    fn test_equity_return_type_equality() {
-        assert_eq!(EquityReturnType::Price, EquityReturnType::Price);
-        assert_ne!(EquityReturnType::Price, EquityReturnType::TotalReturn);
+        let mut bad = basket.clone();
+        bad.components = vec![];
+        assert!(bad.validate().is_err());
+        let mut bad = basket.clone();
+        bad.components[1].weight = 0.3;
+        assert!(bad.validate().is_err());
     }
 }

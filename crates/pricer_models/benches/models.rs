@@ -12,7 +12,7 @@ use infra_domain::trade::{
     ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
 };
 use pricer_core::math::{
-    distributions::{norm_cdf, norm_pdf},
+    normal_dist::{norm_cdf, norm_pdf},
     smoothing::smooth_max,
 };
 use pricer_models::stochastic::{GBMModel, GBMParams, StochasticModel};

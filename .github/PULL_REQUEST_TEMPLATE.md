@@ -48,7 +48,6 @@
 ### Adapter Layer
 
 - [ ] adapter_feeds
-- [ ] adapter_fpml
 - [ ] adapter_loader
 
 ## Changes Made

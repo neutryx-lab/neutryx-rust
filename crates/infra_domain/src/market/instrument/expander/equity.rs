@@ -1,9 +1,6 @@
 //! Equity instrument expansion implementations.
-//!
-//! Covers: EquityForward, EquityVanillaOption, EquityBarrierOption,
-//! AsianOption, LookbackOption, EquitySwap, BasketOption.
 
-use super::InstrumentExpander;
+use super::{coupon_swap_trade, settlement_trade, InstrumentExpander};
 use crate::{
     ids::TradeId,
     market::{
@@ -14,7 +11,7 @@ use crate::{
         },
     },
     time::Date,
-    trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
+    trade::{Direction, LegType, TradeType},
 };
 
 impl InstrumentExpander for EquityForward {
@@ -24,26 +21,15 @@ impl InstrumentExpander for EquityForward {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        // Equity forward: pay fixed price, receive equity value at settlement
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
+        Ok(settlement_trade(
+            trade_id,
             self.settlement_date,
-            self.settlement_date,
-            self.settlement_date,
-            0.0,
             self.notional,
-            Payoff::fixed(self.forward_price),
+            self.forward_price,
             self.currency,
-        );
-
-        let leg = Leg::new(
-            vec![settlement_cf],
             Direction::Receiver,
-            LegType::Generic,
-            self.currency,
-        );
-
-        Ok(Trade::new(trade_id, vec![leg], TradeType::FxForward))
+            TradeType::FxForward,
+        ))
     }
 }
 
@@ -54,25 +40,15 @@ impl InstrumentExpander for EquityVanillaOption {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
+        Ok(settlement_trade(
+            trade_id,
             self.expiry,
-            self.expiry,
-            self.expiry,
-            0.0,
             self.notional,
-            Payoff::fixed(self.strike),
+            self.strike,
             self.currency,
-        );
-
-        let leg = Leg::new(
-            vec![settlement_cf],
             Direction::Receiver,
-            LegType::Generic,
-            self.currency,
-        );
-
-        Ok(Trade::new(trade_id, vec![leg], TradeType::Generic))
+            TradeType::Generic,
+        ))
     }
 }
 
@@ -95,25 +71,15 @@ impl InstrumentExpander for AsianOption {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
+        Ok(settlement_trade(
+            trade_id,
             self.expiry,
-            self.expiry,
-            self.expiry,
-            0.0,
             self.notional,
-            Payoff::fixed(self.strike),
+            self.strike,
             self.currency,
-        );
-
-        let leg = Leg::new(
-            vec![settlement_cf],
             Direction::Receiver,
-            LegType::Generic,
-            self.currency,
-        );
-
-        Ok(Trade::new(trade_id, vec![leg], TradeType::Generic))
+            TradeType::Generic,
+        ))
     }
 }
 
@@ -125,25 +91,15 @@ impl InstrumentExpander for LookbackOption {
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
         let strike = self.strike.unwrap_or(0.0);
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
+        Ok(settlement_trade(
+            trade_id,
             self.expiry,
-            self.expiry,
-            self.expiry,
-            0.0,
             self.notional,
-            Payoff::fixed(strike),
+            strike,
             self.currency,
-        );
-
-        let leg = Leg::new(
-            vec![settlement_cf],
             Direction::Receiver,
-            LegType::Generic,
-            self.currency,
-        );
-
-        Ok(Trade::new(trade_id, vec![leg], TradeType::Generic))
+            TradeType::Generic,
+        ))
     }
 }
 
@@ -154,48 +110,16 @@ impl InstrumentExpander for EquitySwap {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        // Equity leg
-        let equity_cf = Cashflow::new(
-            CashflowType::Coupon,
-            self.maturity,
-            self.start_date,
-            self.maturity,
-            1.0,
-            self.notional,
-            Payoff::fixed(0.0), // Equity return
-            self.currency,
-        );
-
-        let equity_leg = Leg::new(
-            vec![equity_cf],
-            Direction::Receiver,
-            LegType::Floating,
-            self.currency,
-        );
-
-        // Funding leg (fixed spread over funding index)
-        let funding_cf = Cashflow::new(
-            CashflowType::Coupon,
-            self.maturity,
-            self.start_date,
-            self.maturity,
-            self.funding_spread,
-            self.notional,
-            Payoff::fixed(self.funding_spread),
-            self.currency,
-        );
-
-        let funding_leg = Leg::new(
-            vec![funding_cf],
-            Direction::Payer,
-            LegType::Floating,
-            self.currency,
-        );
-
-        Ok(Trade::new(
+        Ok(coupon_swap_trade(
             trade_id,
-            vec![equity_leg, funding_leg],
-            TradeType::Swap,
+            self.start_date,
+            self.maturity,
+            self.notional,
+            self.funding_spread,
+            0.0,
+            self.currency,
+            LegType::Floating,
+            LegType::Floating,
         ))
     }
 }
@@ -207,24 +131,16 @@ impl InstrumentExpander for BasketOption {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
+        Ok(settlement_trade(
+            trade_id,
             self.expiry,
-            self.expiry,
-            self.expiry,
-            0.0,
             self.notional,
-            Payoff::fixed(self.strike),
+            self.strike,
             self.currency,
-        );
-
-        let leg = Leg::new(
-            vec![settlement_cf],
             Direction::Receiver,
-            LegType::Generic,
-            self.currency,
-        );
-
-        Ok(Trade::new(trade_id, vec![leg], TradeType::Generic))
+            TradeType::Generic,
+        ))
     }
 }
+
+use crate::trade::Trade;

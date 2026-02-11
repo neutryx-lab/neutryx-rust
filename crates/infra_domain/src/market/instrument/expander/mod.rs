@@ -27,38 +27,153 @@ pub(crate) mod rates;
 mod tests;
 
 use super::{InstrumentDefinition, InstrumentError};
-use crate::{ids::TradeId, market::convention::ConventionSet, time::Date, trade::Trade};
+use crate::{
+    ids::TradeId,
+    market::{convention::ConventionSet, Currency, CurrencyPair},
+    time::Date,
+    trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
+};
 
 /// Trait for expanding instrument definitions into trades with cashflows.
-///
-/// This trait provides the `expand_to_trade` method which converts an
-/// `InstrumentDefinition` into a fully expanded `Trade` with generated
-/// cashflows based on market conventions.
 pub trait InstrumentExpander {
     /// Expands this instrument into a Trade with cashflows.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Unique identifier for the resulting trade
-    /// * `valuation_date` - Date for valuation/pricing
-    /// * `conventions` - Market conventions for cashflow generation
-    ///
-    /// # Returns
-    ///
-    /// A `Trade` containing legs and cashflows, or an error if expansion fails.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if:
-    /// - Required convention is missing (`MissingConvention`)
-    /// - Instrument validation fails (`InvalidParameter`)
-    /// - Cashflow expansion fails (`ExpansionFailed`)
     fn expand_to_trade(
         &self,
         trade_id: impl Into<TradeId>,
         valuation_date: Date,
         conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError>;
+}
+
+// ============================================================================
+// Shared helper functions for common expansion patterns
+// ============================================================================
+
+/// Creates a single-leg settlement trade (options, forwards, etc.).
+pub(super) fn settlement_trade(
+    trade_id: impl Into<TradeId>,
+    date: Date,
+    notional: f64,
+    payoff_value: f64,
+    currency: Currency,
+    direction: Direction,
+    trade_type: TradeType,
+) -> Trade {
+    let cf = Cashflow::new(
+        CashflowType::Settlement,
+        date,
+        date,
+        date,
+        0.0,
+        notional,
+        Payoff::fixed(payoff_value),
+        currency,
+    );
+    let leg = Leg::new(vec![cf], direction, LegType::Generic, currency);
+    Trade::new(trade_id, vec![leg], trade_type)
+}
+
+/// Creates a two-leg FX exchange trade (FX spot, FX forward).
+pub(super) fn fx_exchange_trade(
+    trade_id: impl Into<TradeId>,
+    settlement_date: Date,
+    notional: f64,
+    rate: f64,
+    notional_currency: Currency,
+    currency_pair: &CurrencyPair,
+    trade_type: TradeType,
+) -> Trade {
+    let (receive_amount, receive_currency) = if notional_currency == currency_pair.base {
+        (notional * rate, currency_pair.quote)
+    } else {
+        (notional / rate, currency_pair.base)
+    };
+
+    let pay_cf = Cashflow::new(
+        CashflowType::Principal,
+        settlement_date,
+        settlement_date,
+        settlement_date,
+        0.0,
+        notional,
+        Payoff::fixed(1.0),
+        notional_currency,
+    );
+    let receive_cf = Cashflow::new(
+        CashflowType::Principal,
+        settlement_date,
+        settlement_date,
+        settlement_date,
+        0.0,
+        receive_amount,
+        Payoff::fixed(1.0),
+        receive_currency,
+    );
+
+    let pay_leg = Leg::new(
+        vec![pay_cf],
+        Direction::Payer,
+        LegType::Principal,
+        notional_currency,
+    );
+    let receive_leg = Leg::new(
+        vec![receive_cf],
+        Direction::Receiver,
+        LegType::Principal,
+        receive_currency,
+    );
+    Trade::new(trade_id, vec![pay_leg, receive_leg], trade_type)
+}
+
+/// Creates a two-leg coupon swap trade (CDS, commodity swap, equity swap).
+pub(super) fn coupon_swap_trade(
+    trade_id: impl Into<TradeId>,
+    start_date: Date,
+    maturity: Date,
+    notional: f64,
+    fixed_payoff: f64,
+    floating_payoff: f64,
+    currency: Currency,
+    fixed_leg_type: LegType,
+    floating_leg_type: LegType,
+) -> Trade {
+    let fixed_cf = Cashflow::new(
+        CashflowType::Coupon,
+        maturity,
+        start_date,
+        maturity,
+        1.0,
+        notional,
+        Payoff::fixed(fixed_payoff),
+        currency,
+    );
+    let floating_cf = Cashflow::new(
+        CashflowType::Coupon,
+        maturity,
+        start_date,
+        maturity,
+        1.0,
+        notional,
+        Payoff::fixed(floating_payoff),
+        currency,
+    );
+
+    let fixed_leg = Leg::new(vec![fixed_cf], Direction::Payer, fixed_leg_type, currency);
+    let floating_leg = Leg::new(
+        vec![floating_cf],
+        Direction::Receiver,
+        floating_leg_type,
+        currency,
+    );
+    Trade::new(trade_id, vec![fixed_leg, floating_leg], TradeType::Swap)
+}
+
+macro_rules! dispatch_expand {
+    ($self:expr, $tid:expr, $vd:expr, $conv:expr; $($Variant:ident),+ $(,)?) => {
+        match $self {
+            $(InstrumentDefinition::$Variant(inner) => inner.expand_to_trade($tid, $vd, $conv),)+
+        }
+    };
 }
 
 impl InstrumentExpander for InstrumentDefinition {
@@ -68,118 +183,14 @@ impl InstrumentExpander for InstrumentDefinition {
         valuation_date: Date,
         conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        // Validate first
         self.validate()?;
-
-        match self {
-            // === Rates ===
-            InstrumentDefinition::Deposit(d) => {
-                d.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::Fra(f) => {
-                f.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::Futures(f) => {
-                f.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::InterestRateSwap(s) => {
-                s.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::BasisSwap(b) => {
-                b.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::Ois(o) => {
-                o.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::Swaption(s) => {
-                s.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CapFloor(c) => {
-                c.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::Frn(f) => {
-                f.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CmsSwap(c) => {
-                c.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::InflationSwap(i) => {
-                i.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-
-            // === FX ===
-            InstrumentDefinition::FxSpot(s) => {
-                s.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::FxForward(f) => {
-                f.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::FxVanillaOption(o) => {
-                o.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::FxBarrierOption(b) => {
-                b.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::FxSwap(s) => {
-                s.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CrossCurrencyBasisSwap(x) => {
-                x.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-
-            // === Equity ===
-            InstrumentDefinition::EquityForward(f) => {
-                f.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::EquityVanillaOption(o) => {
-                o.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::EquityBarrierOption(b) => {
-                b.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::AsianOption(a) => {
-                a.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::LookbackOption(l) => {
-                l.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::EquitySwap(s) => {
-                s.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::BasketOption(b) => {
-                b.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-
-            // === Credit ===
-            InstrumentDefinition::Cds(c) => {
-                c.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CdsIndex(i) => {
-                i.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CdsOption(o) => {
-                o.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::NtdBasket(n) => {
-                n.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-
-            // === Commodity ===
-            InstrumentDefinition::CommodityForward(f) => {
-                f.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CommoditySwap(s) => {
-                s.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CommodityVanillaOption(o) => {
-                o.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::CommodityAsianOption(a) => {
-                a.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::SpreadOption(s) => {
-                s.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-        }
+        dispatch_expand!(self, trade_id, valuation_date, conventions;
+            Deposit, Fra, Futures, InterestRateSwap, BasisSwap, Ois,
+            Swaption, CapFloor, Frn, CmsSwap, InflationSwap,
+            FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap, CrossCurrencyBasisSwap,
+            EquityForward, EquityVanillaOption, EquityBarrierOption, AsianOption, LookbackOption, EquitySwap, BasketOption,
+            Cds, CdsIndex, CdsOption, NtdBasket,
+            CommodityForward, CommoditySwap, CommodityVanillaOption, CommodityAsianOption, SpreadOption,
+        )
     }
 }

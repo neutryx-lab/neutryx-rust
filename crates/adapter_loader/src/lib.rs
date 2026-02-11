@@ -39,6 +39,8 @@
 mod csa;
 mod csv_loader;
 mod error;
+#[cfg(feature = "fpml")]
+pub mod fpml;
 #[cfg(feature = "curve-builder")]
 mod instrument_parser;
 mod json_loader;

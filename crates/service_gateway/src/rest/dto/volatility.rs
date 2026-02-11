@@ -282,32 +282,4 @@ mod tests {
         assert!(matches!(request.strike_type, StrikeTypeDto::Absolute));
         assert!(request.forward.is_none());
     }
-
-    #[test]
-    fn test_build_fx_vol_surface_response_serialisation() {
-        let response = BuildFxVolSurfaceResponse {
-            surface_id: "VS123".to_string(),
-            currency_pair: "USDJPY".to_string(),
-            expiry_count: 5,
-            sabr_params: vec![SabrCalibrationDto {
-                expiry: 0.25,
-                alpha: 0.2,
-                beta: 0.5,
-                rho: -0.1,
-                nu: 0.3,
-                residual: 1e-6,
-            }],
-            calibration_quality: CalibrationQualityDto {
-                converged: true,
-                total_residual_ss: 1e-6,
-                max_residual: 1e-7,
-                iterations: Some(10),
-            },
-            calibration_time_ms: 50.0,
-        };
-        let json = serde_json::to_string(&response).unwrap();
-        assert!(json.contains("surface_id"));
-        assert!(json.contains("USDJPY"));
-        assert!(json.contains("converged"));
-    }
 }

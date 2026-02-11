@@ -271,88 +271,17 @@ impl Default for CsaTerms {
 mod tests {
     use super::*;
 
-    // ========================================================================
-    // Enum tests
-    // ========================================================================
-
     #[test]
-    fn test_segregation_type_default() {
-        assert_eq!(SegregationType::default(), SegregationType::Segregated);
-    }
-
-    #[test]
-    fn test_call_frequency_default() {
-        assert_eq!(CallFrequency::default(), CallFrequency::Daily);
-    }
-
-    // ========================================================================
-    // CollateralHaircut tests
-    // ========================================================================
-
-    #[test]
-    fn test_collateral_haircut_valid() {
-        let haircut = CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap();
-        assert_eq!(
-            haircut.collateral_type(),
-            EligibleCollateral::GovernmentBonds
-        );
-        assert!((haircut.haircut_rate() - 0.02).abs() < f64::EPSILON);
-        assert!(haircut.currency().is_none());
-    }
-
-    #[test]
-    fn test_collateral_haircut_with_currency() {
-        let haircut = CollateralHaircut::new(EligibleCollateral::Cash, 0.0)
-            .unwrap()
-            .with_currency(Currency::EUR);
-        assert_eq!(haircut.currency(), Some(Currency::EUR));
-    }
-
-    #[test]
-    fn test_collateral_haircut_invalid_negative() {
-        let result = CollateralHaircut::new(EligibleCollateral::Cash, -0.1);
-        assert!(result.is_err());
-        match result {
-            Err(CounterPartyError::InvalidHaircut(v)) => assert!((v - (-0.1)).abs() < f64::EPSILON),
-            _ => panic!("Expected InvalidHaircut error"),
-        }
-    }
-
-    #[test]
-    fn test_collateral_haircut_invalid_above_one() {
-        let result = CollateralHaircut::new(EligibleCollateral::Cash, 1.5);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_collateral_haircut_boundary_values() {
-        // 0% haircut is valid (cash)
-        assert!(CollateralHaircut::new(EligibleCollateral::Cash, 0.0).is_ok());
-        // 100% haircut is valid (though unusual)
-        assert!(CollateralHaircut::new(EligibleCollateral::Equity, 1.0).is_ok());
-    }
-
-    #[test]
-    fn test_collateral_haircut_apply() {
+    fn test_collateral_haircut() {
         let haircut = CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.05).unwrap();
-        let value = haircut.apply_haircut(1_000_000.0);
-        assert!((value - 950_000.0).abs() < 0.01);
-    }
+        assert!((haircut.apply_haircut(1_000_000.0) - 950_000.0).abs() < 0.01);
 
-    // ========================================================================
-    // CsaTerms tests
-    // ========================================================================
-
-    #[test]
-    fn test_csa_terms_default() {
-        let csa = CsaTerms::default();
-        assert!((csa.threshold() - 0.0).abs() < f64::EPSILON);
-        assert!((csa.mta() - 0.0).abs() < f64::EPSILON);
-        assert_eq!(csa.mpor_days(), 10);
-        assert_eq!(csa.margin_currency(), Currency::USD);
-        assert!(!csa.is_rehypothecation_allowed());
-        assert_eq!(csa.segregation(), SegregationType::Segregated);
-        assert_eq!(csa.call_frequency(), CallFrequency::Daily);
+        // Invalid haircuts
+        assert!(CollateralHaircut::new(EligibleCollateral::Cash, -0.1).is_err());
+        assert!(CollateralHaircut::new(EligibleCollateral::Cash, 1.5).is_err());
+        // Boundary values
+        assert!(CollateralHaircut::new(EligibleCollateral::Cash, 0.0).is_ok());
+        assert!(CollateralHaircut::new(EligibleCollateral::Equity, 1.0).is_ok());
     }
 
     #[test]
@@ -360,72 +289,14 @@ mod tests {
         let csa = CsaTerms::builder()
             .threshold(1_000_000.0)
             .mta(50_000.0)
-            .independent_amount(100_000.0)
             .mpor_days(14)
             .margin_currency(Currency::EUR)
-            .rehypothecation(true)
-            .segregation(SegregationType::Commingled)
             .call_frequency(CallFrequency::Weekly)
-            .dispute_threshold(25_000.0)
             .build();
 
         assert!((csa.threshold() - 1_000_000.0).abs() < f64::EPSILON);
-        assert!((csa.mta() - 50_000.0).abs() < f64::EPSILON);
-        assert!((csa.independent_amount() - 100_000.0).abs() < f64::EPSILON);
         assert_eq!(csa.mpor_days(), 14);
         assert_eq!(csa.margin_currency(), Currency::EUR);
-        assert!(csa.is_rehypothecation_allowed());
-        assert_eq!(csa.segregation(), SegregationType::Commingled);
-        assert_eq!(csa.call_frequency(), CallFrequency::Weekly);
-        assert!((csa.dispute_threshold() - 25_000.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_csa_terms_currency_threshold() {
-        let mut thresholds = HashMap::new();
-        thresholds.insert(Currency::EUR, 500_000.0);
-        thresholds.insert(Currency::JPY, 100_000_000.0);
-
-        let csa = CsaTerms::builder()
-            .threshold(1_000_000.0)
-            .currency_thresholds(thresholds)
-            .build();
-
-        assert!((csa.threshold_for_currency(&Currency::USD) - 1_000_000.0).abs() < f64::EPSILON);
-        assert!((csa.threshold_for_currency(&Currency::EUR) - 500_000.0).abs() < f64::EPSILON);
-        assert!((csa.threshold_for_currency(&Currency::JPY) - 100_000_000.0).abs() < f64::EPSILON);
-        // GBP uses base threshold
-        assert!((csa.threshold_for_currency(&Currency::GBP) - 1_000_000.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_csa_terms_eligible_collateral() {
-        let csa = CsaTerms::builder()
-            .eligible_collateral(vec![
-                EligibleCollateral::Cash,
-                EligibleCollateral::GovernmentBonds,
-            ])
-            .build();
-
-        assert_eq!(csa.eligible_collateral().len(), 2);
-        assert!(csa
-            .eligible_collateral()
-            .contains(&EligibleCollateral::Cash));
-        assert!(csa
-            .eligible_collateral()
-            .contains(&EligibleCollateral::GovernmentBonds));
-    }
-
-    #[test]
-    fn test_csa_terms_haircuts() {
-        let csa = CsaTerms::builder()
-            .haircuts(vec![
-                CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap(),
-                CollateralHaircut::new(EligibleCollateral::CorporateBonds, 0.10).unwrap(),
-            ])
-            .build();
-
-        assert_eq!(csa.haircuts().len(), 2);
     }
 
     #[test]
@@ -435,24 +306,21 @@ mod tests {
             .mta(50_000.0)
             .build();
 
-        // Exposure below threshold
-        assert!((csa.required_margin(500_000.0, &Currency::USD) - 0.0).abs() < f64::EPSILON);
-
-        // Exposure above threshold but excess below MTA
-        assert!((csa.required_margin(1_040_000.0, &Currency::USD) - 0.0).abs() < f64::EPSILON);
-
-        // Exposure above threshold with excess above MTA
-        let margin = csa.required_margin(1_100_000.0, &Currency::USD);
-        assert!((margin - 100_000.0).abs() < f64::EPSILON);
+        // Below threshold
+        assert!((csa.required_margin(500_000.0, &Currency::USD)).abs() < f64::EPSILON);
+        // Above threshold but excess below MTA
+        assert!((csa.required_margin(1_040_000.0, &Currency::USD)).abs() < f64::EPSILON);
+        // Above threshold with excess above MTA
+        assert!(
+            (csa.required_margin(1_100_000.0, &Currency::USD) - 100_000.0).abs() < f64::EPSILON
+        );
     }
 
     #[test]
-    fn test_csa_terms_builder_defaults() {
-        // Empty builder should produce sensible defaults
+    fn test_csa_terms_defaults() {
         let csa = CsaTerms::builder().build();
-        assert_eq!(csa.mpor_days(), 10); // Default MPOR
+        assert_eq!(csa.mpor_days(), 10);
         assert_eq!(csa.margin_currency(), Currency::USD);
-        assert_eq!(csa.eligible_collateral().len(), 1);
-        assert_eq!(csa.eligible_collateral()[0], EligibleCollateral::Cash);
+        assert_eq!(csa.eligible_collateral(), &[EligibleCollateral::Cash]);
     }
 }

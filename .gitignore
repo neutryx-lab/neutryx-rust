@@ -49,5 +49,8 @@ rustup-init.exe
 # Vite cache / temp files
 **/.vite/
 
+# Auto-generated changelog (git-cliff generates on release)
+CHANGELOG.md
+
 # Claude Code local settings
 .claude/settings.local.json

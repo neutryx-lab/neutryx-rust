@@ -80,16 +80,9 @@ name = "models"
 harness = false
 
 [[bench]]
-name = "curve_bootstrap"
-harness = false
-
-[[bench]]
 name = "volcube"
 harness = false
-
-[[bench]]
-name = "indexed_market"
-harness = false
+required-features = ["volcube"]
 
 [[bench]]
 name = "instrument_compile"

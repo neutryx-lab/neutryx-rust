@@ -7,9 +7,18 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[lib]
+name = "service_gateway"
+crate-type = ["cdylib", "rlib"]
+
 [[bin]]
 name = "neutryx-server"
 path = "src/main.rs"
+
+[[bin]]
+name = "neutryx"
+path = "src/cli_main.rs"
+required-features = ["cli"]
 
 [dependencies]
 # Workspace dependencies
@@ -35,6 +44,9 @@ futures-util = { version = "0.3", features = ["sink"] }
 # Serialisation
 serde_json = "1.0"
 
+# Async trait (for custom Axum extractors)
+async-trait = "0.1"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -44,10 +56,15 @@ pricer_core = { path = "../pricer_core" }
 pricer_models = { path = "../pricer_models", features = ["serde", "global-bootstrap"] }
 pricer_pricing = { path = "../pricer_pricing" }
 pricer_risk = { path = "../pricer_risk" }
-adapter_loader = { path = "../adapter_loader", features = ["curve-builder"] }
-adapter_fpml = { path = "../adapter_fpml" }
+adapter_loader = { path = "../adapter_loader", features = ["curve-builder", "fpml"] }
 infra_config = { path = "../infra_config" }
 infra_domain = { path = "../infra_domain", features = ["serde"] }
+
+# CLI (optional, feature-gated)
+clap = { workspace = true, optional = true }
+
+# Python bindings (optional, feature-gated)
+pyo3 = { workspace = true, optional = true }
 
 # Caching
 lru = "0.12"
@@ -72,8 +89,12 @@ models = []
 volatility = []
 # Enable Demo GUI integration
 demo = []
+# Enable CLI (clap-based command line interface)
+cli = ["dep:clap"]
+# Enable Python bindings (PyO3)
+python = ["dep:pyo3"]
 # Full bundle with all services
-full = ["rest", "risk", "models", "volatility", "demo"]
+full = ["rest", "risk", "models", "volatility", "demo", "cli"]
 
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["json"] }

@@ -329,170 +329,75 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_ticker_mapping_new() {
-        let mapping = TickerMapping::new();
-        assert!(mapping.is_empty());
-        assert_eq!(mapping.len(), 0);
-    }
-
-    #[test]
-    fn test_ticker_mapping_with_defaults() {
-        let mapping = TickerMapping::with_defaults();
-
-        // Should have mappings for multiple currencies
-        assert!(!mapping.is_empty());
-
-        // Check some specific defaults
-        assert!(mapping.contains("USD3MD="));
-        assert!(mapping.contains("EUR3MD="));
-        assert!(mapping.contains("USSW5 Curncy"));
-        assert!(mapping.contains("EUSW5 Curncy"));
-    }
-
-    #[test]
-    fn test_ticker_mapping_register() {
-        let mut mapping = TickerMapping::new();
-
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-        mapping.register("TEST_TICKER", quote_id.clone());
-
-        assert!(mapping.contains("TEST_TICKER"));
-        assert_eq!(mapping.lookup("TEST_TICKER"), Some(&quote_id));
-    }
-
-    #[test]
-    fn test_ticker_mapping_lookup_found() {
-        let mapping = TickerMapping::with_defaults();
-
-        let result = mapping.lookup("USD3MD=");
-        assert!(result.is_some());
-
-        let quote_id = result.unwrap();
-        assert_eq!(quote_id.currency, Currency::USD);
-        assert_eq!(quote_id.tenor, Tenor::ThreeMonths);
-        assert_eq!(quote_id.rate_type, RateType::Deposit);
-    }
-
-    #[test]
-    fn test_ticker_mapping_lookup_not_found() {
-        let mapping = TickerMapping::with_defaults();
-
-        let result = mapping.lookup("UNKNOWN_TICKER");
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_ticker_mapping_contains() {
-        let mapping = TickerMapping::with_defaults();
-
-        assert!(mapping.contains("USD3MD="));
-        assert!(!mapping.contains("NONEXISTENT"));
-    }
-
-    #[test]
-    fn test_ticker_mapping_len() {
-        let mut mapping = TickerMapping::new();
-        assert_eq!(mapping.len(), 0);
-
-        mapping.register(
-            "TICK1",
-            QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit),
-        );
-        assert_eq!(mapping.len(), 1);
-
-        mapping.register(
-            "TICK2",
-            QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
-        );
-        assert_eq!(mapping.len(), 2);
-    }
-
-    #[test]
-    fn test_ticker_mapping_is_empty() {
+    fn test_ticker_mapping_operations() {
+        // new + empty + default
         let empty = TickerMapping::new();
         assert!(empty.is_empty());
+        assert_eq!(empty.len(), 0);
+        assert_eq!(TickerMapping::default().len(), 0);
+        assert!(format!("{:?}", empty).contains("TickerMapping"));
 
-        let defaults = TickerMapping::with_defaults();
-        assert!(!defaults.is_empty());
-    }
+        // register + lookup + contains + len
+        let mut m = TickerMapping::new();
+        let q1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        m.register("TEST", q1.clone());
+        assert!(m.contains("TEST"));
+        assert!(!m.contains("NOPE"));
+        assert_eq!(m.lookup("TEST"), Some(&q1));
+        assert!(m.lookup("NOPE").is_none());
+        assert_eq!(m.len(), 1);
 
-    #[test]
-    fn test_ticker_mapping_iter() {
-        let mapping = TickerMapping::with_defaults();
+        m.register(
+            "T2",
+            QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
+        );
+        assert_eq!(m.len(), 2);
 
-        let count = mapping.iter().count();
-        assert_eq!(count, mapping.len());
+        // overwrite
+        let q2 = QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit);
+        m.register("TEST", q2.clone());
+        assert_eq!(m.len(), 2);
+        assert_eq!(m.lookup("TEST"), Some(&q2));
 
-        // Verify all entries are valid
-        for (ticker, quote_id) in mapping.iter() {
-            assert!(!ticker.is_empty());
-            assert!(mapping.contains(ticker));
-            assert_eq!(mapping.lookup(ticker), Some(quote_id));
+        // clone
+        let c = m.clone();
+        assert_eq!(c.len(), m.len());
+        for (t, q) in m.iter() {
+            assert_eq!(c.lookup(t), Some(q));
         }
     }
 
     #[test]
-    fn test_ticker_mapping_overwrite() {
-        let mut mapping = TickerMapping::new();
+    fn test_ticker_mapping_defaults() {
+        let m = TickerMapping::with_defaults();
+        assert!(!m.is_empty());
 
-        let quote_id1 = QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit);
-        let quote_id2 = QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit);
-
-        mapping.register("SAME_TICKER", quote_id1);
-        mapping.register("SAME_TICKER", quote_id2.clone());
-
-        // Should have overwritten
-        assert_eq!(mapping.len(), 1);
-        assert_eq!(mapping.lookup("SAME_TICKER"), Some(&quote_id2));
-    }
-
-    #[test]
-    fn test_ticker_mapping_clone() {
-        let original = TickerMapping::with_defaults();
-        let cloned = original.clone();
-
-        assert_eq!(original.len(), cloned.len());
-
-        for (ticker, quote_id) in original.iter() {
-            assert_eq!(cloned.lookup(ticker), Some(quote_id));
+        // iter consistency
+        assert_eq!(m.iter().count(), m.len());
+        for (t, q) in m.iter() {
+            assert!(!t.is_empty());
+            assert_eq!(m.lookup(t), Some(q));
         }
-    }
 
-    #[test]
-    fn test_ticker_mapping_debug() {
-        let mapping = TickerMapping::new();
-        let debug_str = format!("{:?}", mapping);
-        assert!(debug_str.contains("TickerMapping"));
-    }
+        // specific lookups
+        let q = m.lookup("USD3MD=").unwrap();
+        assert_eq!(q.currency, Currency::USD);
+        assert_eq!(q.tenor, Tenor::ThreeMonths);
+        assert_eq!(q.rate_type, RateType::Deposit);
+        assert!(m.contains("EUR3MD="));
+        assert!(m.contains("USSW5 Curncy"));
+        assert!(m.contains("EUSW5 Curncy"));
 
-    #[test]
-    fn test_ticker_mapping_default() {
-        let mapping = TickerMapping::default();
-        assert!(mapping.is_empty());
-    }
-
-    #[test]
-    fn test_default_mappings_currencies() {
-        let mapping = TickerMapping::with_defaults();
-
-        // USD
-        assert!(mapping.lookup("USD1MD=").is_some());
-        assert!(mapping.lookup("USSW1 Curncy").is_some());
-
-        // EUR
-        assert!(mapping.lookup("EUR1MD=").is_some());
-        assert!(mapping.lookup("EUSW1 Curncy").is_some());
-
-        // GBP
-        assert!(mapping.lookup("GBP1MD=").is_some());
-        assert!(mapping.lookup("BPSW1 Curncy").is_some());
-
-        // JPY
-        assert!(mapping.lookup("JPY1MD=").is_some());
-        assert!(mapping.lookup("JYSW1 Curncy").is_some());
-
-        // CHF
-        assert!(mapping.lookup("CHF1MD=").is_some());
-        assert!(mapping.lookup("SFSW1 Curncy").is_some());
+        // multi-currency defaults
+        for (dep, sw) in [
+            ("USD1MD=", "USSW1 Curncy"),
+            ("EUR1MD=", "EUSW1 Curncy"),
+            ("GBP1MD=", "BPSW1 Curncy"),
+            ("JPY1MD=", "JYSW1 Curncy"),
+            ("CHF1MD=", "SFSW1 Curncy"),
+        ] {
+            assert!(m.lookup(dep).is_some(), "missing {dep}");
+            assert!(m.lookup(sw).is_some(), "missing {sw}");
+        }
     }
 }

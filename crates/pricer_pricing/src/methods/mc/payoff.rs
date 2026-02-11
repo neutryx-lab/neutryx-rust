@@ -18,13 +18,10 @@
 //! All functions use smooth operations only (no `if`, `max`, `min` on floats).
 //! This ensures Enzyme can compute gradients correctly.
 //!
-//! # L1/L2 Integration (Phase 4)
-//!
 //! When the `l1l2-integration` feature is enabled, this module uses
 //! smoothing functions from `pricer_core::math::smoothing` instead of
-//! local implementations. This ensures consistency across the crate hierarchy.
+//! local implementations.
 
-// Phase 4: Conditional import of pricer_core smoothing functions
 #[cfg(feature = "l1l2-integration")]
 use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
 

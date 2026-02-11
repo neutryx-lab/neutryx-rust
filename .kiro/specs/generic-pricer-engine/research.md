@@ -14,6 +14,16 @@
 ## Research Log
 
 ### Topic 1: 既存の3-Stage Rocketパターン分析
+- **Findings**:
+  - Stage 1: 定義（L2 pricer_models）- ModelEnum, InstrumentEnum
+  - Stage 2: リンキング（PricingContext）- Arc参照をバインド
+  - Stage 3: 実行（pure kernel）- HashMap lookupなしの純粋計算
+  - 現行`PricingContext`は`discount_curve`と`adjustment_vol`のみ保持
+- **Findings**:
+  - Stage 1: 定義（L2 pricer_models）- ModelEnum, InstrumentEnum
+  - Stage 2: リンキング（PricingContext）- Arc参照をバインド
+  - Stage 3: 実行（pure kernel）- HashMap lookupなしの純粋計算
+  - 現行`PricingContext`は`discount_curve`と`adjustment_vol`のみ保持
 
 - **Context**: Generic Pricer Engineが既存のアーキテクチャパターンとどう統合すべきかを調査
 - **Sources Consulted**:
@@ -29,6 +39,16 @@
   - 3-stage rocketパターンを維持しつつ、より多くのマーケットデータをサポート
 
 ### Topic 2: Trade/Leg/Cashflow階層構造
+- **Findings**:
+  - `Trade` → `Vec<Leg>` → `Vec<Cashflow>` の階層
+  - 各`Leg`は`Direction`（Payer/Receiver）、`LegType`、`Currency`を保持
+  - 各`Cashflow`は`payment_date`、`notional`、`payoff`、`currency`を保持
+  - `Direction::sign()`でPV符号を決定（Payer: -1.0, Receiver: +1.0）
+- **Findings**:
+  - `Trade` → `Vec<Leg>` → `Vec<Cashflow>` の階層
+  - 各`Leg`は`Direction`（Payer/Receiver）、`LegType`、`Currency`を保持
+  - 各`Cashflow`は`payment_date`、`notional`、`payoff`、`currency`を保持
+  - `Direction::sign()`でPV符号を決定（Payer: -1.0, Receiver: +1.0）
 
 - **Context**: `PricingResult`の階層設計のために既存のトレード構造を分析
 - **Sources Consulted**:
@@ -45,6 +65,16 @@
   - 各レベルで通貨情報を保持し、集計時に換算可能に
 
 ### Topic 3: マーケットデータ統合パターン
+- **Findings**:
+  - `MarketProvider`は`RwLock<HashMap<Currency, Arc<CurveEnum<f64>>>>`でカーブをキャッシュ
+  - `CurveEnum`は`Flat`, `Interpolated`, `Credit`をサポート
+  - `VolSurfaceEnum`は`Flat`, `Interpolated`, `FxSurface`をサポート
+  - FxRateは現在未実装 → `MarketDataError::FxRateNotFound`の追加が必要
+- **Findings**:
+  - `MarketProvider`は`RwLock<HashMap<Currency, Arc<CurveEnum<f64>>>>`でカーブをキャッシュ
+  - `CurveEnum`は`Flat`, `Interpolated`, `Credit`をサポート
+  - `VolSurfaceEnum`は`Flat`, `Interpolated`, `FxSurface`をサポート
+  - FxRateは現在未実装 → `MarketDataError::FxRateNotFound`の追加が必要
 
 - **Context**: MarketProviderの既存パターンとGeneric Pricer Engineの統合方法
 - **Sources Consulted**:
@@ -61,6 +91,16 @@
   - 為替レートは`MarketProvider`に追加するか、別の`FxRateProvider`として分離
 
 ### Topic 4: 日付・時間処理
+- **Findings**:
+  - `DayCounter`列挙型でISDA標準のday count conventionを完全サポート
+  - `DayCounter::year_fraction(start, end)`で年分数を計算
+  - `infra_domain::Date`は`chrono::NaiveDate`のラッパー
+  - Calendarは休日判定、営業日調整（Following, ModifiedFollowing等）をサポート
+- **Findings**:
+  - `DayCounter`列挙型でISDA標準のday count conventionを完全サポート
+  - `DayCounter::year_fraction(start, end)`で年分数を計算
+  - `infra_domain::Date`は`chrono::NaiveDate`のラッパー
+  - Calendarは休日判定、営業日調整（Following, ModifiedFollowing等）をサポート
 
 - **Context**: 日付計算とカレンダー処理の既存実装
 - **Sources Consulted**:
@@ -76,6 +116,16 @@
   - time_to_maturity計算ヘルパーの追加が有用
 
 ### Topic 5: Enzyme AD互換性
+- **Findings**:
+  - 静的ディスパッチ（enum）が必須、`Box<dyn Trait>`は非推奨
+  - `GreeksMode`で`BumpRevalue`、`NumDual`、`EnzymeAAD`を選択可能
+  - `GreeksConfig`はBuilderパターンで構築
+  - スムース近似関数（`smooth_max`, `smooth_indicator`）を使用
+- **Findings**:
+  - 静的ディスパッチ（enum）が必須、`Box<dyn Trait>`は非推奨
+  - `GreeksMode`で`BumpRevalue`、`NumDual`、`EnzymeAAD`を選択可能
+  - `GreeksConfig`はBuilderパターンで構築
+  - スムース近似関数（`smooth_max`, `smooth_indicator`）を使用
 
 - **Context**: Generic Pricer EngineがEnzyme ADと互換性を持つための設計制約
 - **Sources Consulted**:
@@ -95,7 +145,7 @@
 
 ## Architecture Pattern Evaluation
 
-| Option | Description | Strengths | Risks / Limitations | Notes |
+| Option | [Rejected] | - | - |
 |--------|-------------|-----------|---------------------|-------|
 | A: PricingContext拡張 | 既存の`PricingContext`を直接拡張 | 一貫性、既存パターン活用 | 既存コードへの影響、互換性 | 推奨しない |
 | B: GenericPricerEngine新規モジュール | `pricer_pricing/src/generic_pricer/`に独立モジュール作成 | 影響最小、独立開発可能 | 将来の統合作業 | **採用** |

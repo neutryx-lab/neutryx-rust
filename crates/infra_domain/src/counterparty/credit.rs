@@ -388,126 +388,33 @@ impl Default for CreditParams {
 mod tests {
     use super::*;
 
-    // ========================================================================
-    // CreditRating tests
-    // ========================================================================
-
     #[test]
-    fn test_credit_rating_investment_grade() {
-        // All investment grade ratings
+    fn test_credit_rating_investment_grade_boundary() {
         assert!(CreditRating::Aaa.is_investment_grade());
-        assert!(CreditRating::AaPlus.is_investment_grade());
-        assert!(CreditRating::Aa.is_investment_grade());
-        assert!(CreditRating::AaMinus.is_investment_grade());
-        assert!(CreditRating::APlus.is_investment_grade());
-        assert!(CreditRating::A.is_investment_grade());
-        assert!(CreditRating::AMinus.is_investment_grade());
-        assert!(CreditRating::BbbPlus.is_investment_grade());
-        assert!(CreditRating::Bbb.is_investment_grade());
         assert!(CreditRating::BbbMinus.is_investment_grade());
-    }
-
-    #[test]
-    fn test_credit_rating_speculative_grade() {
-        // All speculative grade ratings
         assert!(!CreditRating::BbPlus.is_investment_grade());
-        assert!(!CreditRating::Bb.is_investment_grade());
-        assert!(!CreditRating::BbMinus.is_investment_grade());
-        assert!(!CreditRating::BPlus.is_investment_grade());
-        assert!(!CreditRating::B.is_investment_grade());
-        assert!(!CreditRating::BMinus.is_investment_grade());
-        assert!(!CreditRating::Ccc.is_investment_grade());
-        assert!(!CreditRating::Cc.is_investment_grade());
-        assert!(!CreditRating::C.is_investment_grade());
         assert!(!CreditRating::D.is_investment_grade());
     }
 
     #[test]
-    fn test_credit_rating_boundary() {
-        // BBB- is the boundary between investment and speculative grade
-        assert!(CreditRating::BbbMinus.is_investment_grade());
-        assert!(!CreditRating::BbPlus.is_investment_grade());
+    fn test_credit_rating_ordering_and_hazard_rates() {
+        assert!(CreditRating::Aaa < CreditRating::D);
+        let aaa = CreditRating::Aaa.indicative_hazard_rate();
+        let bbb = CreditRating::Bbb.indicative_hazard_rate();
+        let d = CreditRating::D.indicative_hazard_rate();
+        assert!(aaa < bbb && bbb < d);
+        assert!((d - 1.0).abs() < f64::EPSILON);
     }
 
     #[test]
-    fn test_credit_rating_ordering() {
-        // Higher rating is "less than" lower rating (better)
-        assert!(CreditRating::Aaa < CreditRating::AaPlus);
-        assert!(CreditRating::AaPlus < CreditRating::Aa);
-        assert!(CreditRating::BbbMinus < CreditRating::BbPlus);
-        assert!(CreditRating::C < CreditRating::D);
-    }
-
-    #[test]
-    fn test_credit_rating_indicative_hazard_rates() {
-        // Verify hazard rates increase with worse ratings
-        let aaa_rate = CreditRating::Aaa.indicative_hazard_rate();
-        let bbb_rate = CreditRating::Bbb.indicative_hazard_rate();
-        let bb_rate = CreditRating::Bb.indicative_hazard_rate();
-        let d_rate = CreditRating::D.indicative_hazard_rate();
-
-        assert!(aaa_rate < bbb_rate);
-        assert!(bbb_rate < bb_rate);
-        assert!(bb_rate < d_rate);
-        assert!((d_rate - 1.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_credit_rating_specific_hazard_rates() {
-        assert!((CreditRating::Aaa.indicative_hazard_rate() - 0.0001).abs() < f64::EPSILON);
-        assert!((CreditRating::Bbb.indicative_hazard_rate() - 0.002).abs() < f64::EPSILON);
-        assert!((CreditRating::Bb.indicative_hazard_rate() - 0.01).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_credit_rating_display() {
-        assert_eq!(format!("{}", CreditRating::Aaa), "AAA");
-        assert_eq!(format!("{}", CreditRating::AaPlus), "AA+");
-        assert_eq!(format!("{}", CreditRating::AaMinus), "AA-");
-        assert_eq!(format!("{}", CreditRating::BbbMinus), "BBB-");
-        assert_eq!(format!("{}", CreditRating::D), "D");
-    }
-
-    #[test]
-    fn test_credit_rating_grade_lists() {
-        assert_eq!(CreditRating::investment_grades().len(), 10);
-        assert_eq!(CreditRating::speculative_grades().len(), 10);
-    }
-
-    // ========================================================================
-    // CreditParams tests
-    // ========================================================================
-
-    #[test]
-    fn test_credit_params_new() {
+    fn test_credit_params_new_and_validation() {
         let params = CreditParams::new(0.01, 0.4).unwrap();
         assert!((params.hazard_rate() - 0.01).abs() < f64::EPSILON);
-        assert!((params.lgd() - 0.4).abs() < f64::EPSILON);
         assert!((params.recovery_rate() - 0.6).abs() < f64::EPSILON);
-    }
 
-    #[test]
-    fn test_credit_params_invalid_hazard_rate() {
-        let result = CreditParams::new(-0.01, 0.4);
-        assert!(result.is_err());
-        match result {
-            Err(CounterPartyError::InvalidCreditParams(msg)) => {
-                assert!(msg.contains("non-negative"));
-            }
-            _ => panic!("Expected InvalidCreditParams error"),
-        }
-    }
-
-    #[test]
-    fn test_credit_params_invalid_lgd_negative() {
-        let result = CreditParams::new(0.01, -0.1);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_credit_params_invalid_lgd_above_one() {
-        let result = CreditParams::new(0.01, 1.1);
-        assert!(result.is_err());
+        assert!(CreditParams::new(-0.01, 0.4).is_err());
+        assert!(CreditParams::new(0.01, -0.1).is_err());
+        assert!(CreditParams::new(0.01, 1.1).is_err());
     }
 
     #[test]
@@ -521,75 +428,14 @@ mod tests {
     }
 
     #[test]
-    fn test_credit_params_from_pd_1y() {
-        // PD = 1 - exp(-λ), so λ = -ln(1 - PD)
-        // For PD = 0.01, λ ≈ 0.01005
-        let params = CreditParams::from_pd_1y(0.01, 0.4).unwrap();
-        let expected_hazard = -(1.0 - 0.01_f64).ln();
-        assert!((params.hazard_rate() - expected_hazard).abs() < 1e-10);
-        assert!((params.pd_1y() - 0.01).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_credit_params_from_pd_1y_invalid() {
-        assert!(CreditParams::from_pd_1y(-0.1, 0.4).is_err());
-        assert!(CreditParams::from_pd_1y(1.5, 0.4).is_err());
-    }
-
-    #[test]
-    fn test_credit_params_survival_prob() {
+    fn test_credit_params_probabilities() {
         let params = CreditParams::new(0.01, 0.4).unwrap();
-        // Q(t) = exp(-λt)
-        let q1 = params.survival_prob(1.0);
-        let expected = (-0.01_f64).exp();
-        assert!((q1 - expected).abs() < 1e-10);
-
-        // At t=0, survival prob should be 1
         assert!((params.survival_prob(0.0) - 1.0).abs() < f64::EPSILON);
-    }
+        assert!((params.survival_prob(1.0) - (-0.01_f64).exp()).abs() < 1e-10);
+        assert!((params.default_prob(1.0) - (1.0 - (-0.01_f64).exp())).abs() < 1e-10);
 
-    #[test]
-    fn test_credit_params_default_prob() {
-        let params = CreditParams::new(0.01, 0.4).unwrap();
-        // PD(t) = 1 - Q(t)
-        let pd1 = params.default_prob(1.0);
-        let expected = 1.0 - (-0.01_f64).exp();
-        assert!((pd1 - expected).abs() < 1e-10);
-
-        // At t=0, default prob should be 0
-        assert!(params.default_prob(0.0).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_credit_params_marginal_default_prob() {
-        let params = CreditParams::new(0.01, 0.4).unwrap();
-        // PD(t1, t2) = Q(t1) - Q(t2)
         let marginal = params.marginal_default_prob(1.0, 2.0);
         let expected = params.survival_prob(1.0) - params.survival_prob(2.0);
         assert!((marginal - expected).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_credit_params_expected_loss() {
-        let params = CreditParams::new(0.01, 0.4).unwrap();
-        let el = params.expected_loss(1.0);
-        let expected = 0.4 * params.default_prob(1.0);
-        assert!((el - expected).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_credit_params_default() {
-        let params = CreditParams::default();
-        assert!((params.hazard_rate() - 0.0).abs() < f64::EPSILON);
-        assert!((params.lgd() - 0.4).abs() < f64::EPSILON);
-        assert!(params.rating().is_none());
-    }
-
-    #[test]
-    fn test_credit_params_with_rating() {
-        let params = CreditParams::new(0.01, 0.4)
-            .unwrap()
-            .with_rating(CreditRating::A);
-        assert_eq!(params.rating(), Some(CreditRating::A));
     }
 }

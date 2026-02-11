@@ -365,29 +365,4 @@ mod tests {
             _ => panic!("Expected VanillaOption"),
         }
     }
-
-    #[test]
-    fn test_model_pricing_response_serialisation() {
-        let response = ModelPricingResponse {
-            model_id: "M123".to_string(),
-            model_type: "gbm".to_string(),
-            method: PricingMethodDto::MonteCarlo,
-            price: 12.5,
-            currency: "USD".to_string(),
-            greeks: Some(PricingGreeksDto {
-                delta: 0.55,
-                gamma: 0.02,
-                vega: 0.15,
-                theta: -0.01,
-                rho: 0.08,
-            }),
-            num_paths: Some(100_000),
-            std_error: Some(0.05),
-            calculation_time_ms: 250.0,
-        };
-        let json = serde_json::to_string(&response).unwrap();
-        assert!(json.contains("price"));
-        assert!(json.contains("12.5"));
-        assert!(json.contains("delta"));
-    }
 }

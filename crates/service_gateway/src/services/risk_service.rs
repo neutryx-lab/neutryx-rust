@@ -13,6 +13,7 @@ use crate::{
         RiskGreeksResponse, ScenarioDefinition, ScenarioRequest, ScenarioResponse,
         ScenarioResultDto, ShiftTypeDto,
     },
+    services::helpers,
     state::AppState,
 };
 
@@ -31,16 +32,8 @@ impl RiskService {
     ) -> Result<RiskGreeksResponse, ServerError> {
         let start = Instant::now();
 
-        // Parse portfolio ID
-        let portfolio_id: uuid::Uuid = request
-            .portfolio_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
-
-        // Get portfolio from cache
-        let portfolio_entry = state.portfolio_cache.get(&portfolio_id).ok_or_else(|| {
-            ServerError::NotFound(format!("Portfolio {} not found", request.portfolio_id))
-        })?;
+        let portfolio_entry =
+            helpers::resolve_cached(&state.portfolio_cache, &request.portfolio_id, "Portfolio")?;
 
         // For now, we simulate Greeks calculation since we don't have actual trades
         // In a real implementation, we would use pricer_risk::RiskEngine
@@ -76,16 +69,8 @@ impl RiskService {
     ) -> Result<ScenarioResponse, ServerError> {
         let start = Instant::now();
 
-        // Parse portfolio ID
-        let portfolio_id: uuid::Uuid = request
-            .portfolio_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
-
-        // Get portfolio from cache
-        let portfolio_entry = state.portfolio_cache.get(&portfolio_id).ok_or_else(|| {
-            ServerError::NotFound(format!("Portfolio {} not found", request.portfolio_id))
-        })?;
+        let portfolio_entry =
+            helpers::resolve_cached(&state.portfolio_cache, &request.portfolio_id, "Portfolio")?;
 
         // Validate scenarios
         if request.scenarios.is_empty() {

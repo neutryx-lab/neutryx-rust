@@ -2,7 +2,7 @@
 //!
 //! Covers: Cds, CdsIndex, CdsOption, NtdBasket.
 
-use super::InstrumentExpander;
+use super::{settlement_trade, InstrumentExpander};
 use crate::{
     ids::TradeId,
     market::{
@@ -17,7 +17,7 @@ impl InstrumentExpander for Cds {
     fn expand_to_trade(
         &self,
         trade_id: impl Into<TradeId>,
-        _valuation_date: Date,
+        _vd: Date,
         conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
         let _cds_conv = conventions.get_cds()?;
@@ -33,7 +33,6 @@ impl InstrumentExpander for Cds {
             Payoff::fixed(self.spread),
             self.currency,
         );
-
         let premium_leg = Leg::new(
             vec![premium_cf],
             Direction::Payer,
@@ -52,7 +51,6 @@ impl InstrumentExpander for Cds {
             Payoff::fixed(1.0),
             self.currency,
         );
-
         let protection_leg = Leg::new(
             vec![protection_cf],
             Direction::Receiver,
@@ -72,12 +70,11 @@ impl InstrumentExpander for CdsIndex {
     fn expand_to_trade(
         &self,
         trade_id: impl Into<TradeId>,
-        _valuation_date: Date,
+        _vd: Date,
         conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
         let _cds_conv = conventions.get_cds()?;
 
-        // Similar to single-name CDS but on index
         let premium_cf = Cashflow::new(
             CashflowType::Coupon,
             self.maturity,
@@ -88,7 +85,6 @@ impl InstrumentExpander for CdsIndex {
             Payoff::fixed(self.spread),
             self.currency,
         );
-
         let premium_leg = Leg::new(
             vec![premium_cf],
             Direction::Payer,
@@ -104,28 +100,18 @@ impl InstrumentExpander for CdsOption {
     fn expand_to_trade(
         &self,
         trade_id: impl Into<TradeId>,
-        _valuation_date: Date,
-        _conventions: &ConventionSet,
+        _vd: Date,
+        _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
+        Ok(settlement_trade(
+            trade_id,
             self.exercise_date,
-            self.exercise_date,
-            self.exercise_date,
-            0.0,
             self.notional,
-            Payoff::fixed(self.strike_spread),
+            self.strike_spread,
             self.currency,
-        );
-
-        let leg = Leg::new(
-            vec![settlement_cf],
             Direction::Receiver,
-            LegType::Generic,
-            self.currency,
-        );
-
-        Ok(Trade::new(trade_id, vec![leg], TradeType::Generic))
+            TradeType::Generic,
+        ))
     }
 }
 
@@ -133,10 +119,9 @@ impl InstrumentExpander for NtdBasket {
     fn expand_to_trade(
         &self,
         trade_id: impl Into<TradeId>,
-        _valuation_date: Date,
-        _conventions: &ConventionSet,
+        _vd: Date,
+        _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        // Nth-to-default basket similar to CDS
         let premium_cf = Cashflow::new(
             CashflowType::Coupon,
             self.maturity,
@@ -147,7 +132,6 @@ impl InstrumentExpander for NtdBasket {
             Payoff::fixed(self.spread),
             self.currency,
         );
-
         let premium_leg = Leg::new(
             vec![premium_cf],
             Direction::Payer,

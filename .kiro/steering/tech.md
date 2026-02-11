@@ -5,10 +5,10 @@
 **A-I-P-S Unidirectional Data Flow**: The workspace enforces a strict unidirectional data flow mirroring alphabetical order (**A**dapter → **I**nfra → **P**ricer → **S**ervice). This logical progression guides developers from data ingestion to computation and finally to delivery.
 
 ```text
-A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
+A: Adapter   → adapter_feeds, adapter_loader (incl. fpml feature)
 I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pricer_risk (L4)
-S: Service   → service_gateway (active), service_cli (paused), service_python (paused)
+S: Service   → service_gateway (REST + CLI + Python, feature-gated)
 ```
 
 **Neutryx Facade Crate**: The workspace root (`neutryx` crate) provides a unified entry point for external consumers, re-exporting all underlying crates with intuitive aliases (`master`, `config`, `core`, `models`, `pricing`, `risk`). Feature flags (`minimal`, `analytics`, `full`) control which layers are included.
@@ -46,7 +46,7 @@ S: Service   → service_gateway (active), service_cli (paused), service_python 
 - **Benchmarking**: `criterion` (time-based), `iai-callgrind` (instruction-count for CI reproducibility)
 
 ### Adapter Layer
-- **XML Parsing**: `quick-xml` (FpML parsing in adapter_fpml)
+- **XML Parsing**: `quick-xml` (FpML parsing in adapter_loader, `fpml` feature)
 - **File Formats**: `csv`, `parquet` (data loading in adapter_loader)
 - **Market Data**: WebSocket/REST clients for adapter_feeds
 
@@ -56,8 +56,8 @@ S: Service   → service_gateway (active), service_cli (paused), service_python 
 - **Caching**: `redis` (optional, state management)
 
 ### Service Layer
-- **CLI**: `clap` (argument parsing in service_cli)
-- **Python Bindings**: `pyo3` (service_python)
+- **CLI**: `clap` (feature-gated `cli` in service_gateway)
+- **Python Bindings**: `pyo3` (feature-gated `python` in service_gateway)
 - **gRPC**: `tonic` (service_gateway)
 - **REST**: `axum` (service_gateway)
 - **WebSocket**: `axum` WebSocket, `futures-util` (service_gateway real-time updates)
@@ -187,11 +187,64 @@ docker run -it neutryx-enzyme
 
 ### Self-Healing CI
 
-- **AI Fixer**: Automated CI failure remediation (`scripts/ai_fixer/`, `.github/workflows/ai-fixer.yml`)
+- **AI Fixer**: Automated CI failure remediation (`.github/ai_fixer/`, `.github/workflows/ai-fixer.yml`)
 - **Pattern**: Parses CI error logs → gathers code context → generates fix patches via Gemini API → creates draft PR
 - **Safety**: Confidence scoring, draft-only PRs, human review required
 
+## Lint & Formatting Configuration
+
+### Workspace Lints (Cargo.toml)
+
+```toml
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+float_cmp = "warn"
+suboptimal_flops = "warn"
+doc_markdown = "warn"
+```
+
+All crates inherit via `[lints] workspace = true`.
+
+### clippy.toml
+```toml
+single-char-binding-names-threshold = 10  # Allow math variables (x, y, t, r, v)
+```
+
+### rustfmt.toml
+```toml
+edition = "2021"
+max_width = 100
+use_field_init_shorthand = true
+group_imports = "StdExternalCrate"
+imports_granularity = "Crate"
+```
+
+## Error Type Catalogue
+
+| Error Type | Purpose | Crate |
+|------------|---------|-------|
+| `PricingError` | General pricing failures | pricer_core |
+| `DateError` | Date construction/parsing | pricer_core |
+| `CurrencyError` | Currency parsing | pricer_core |
+| `InterpolationError` | Interpolation domain issues | pricer_core |
+| `SolverError` | Root-finding failures | pricer_core |
+| `CalibrationError` | Model calibration (rich diagnostics: residual_ss, iterations, parameter_values) | pricer_core |
+| `ConfigError` | MC configuration validation | pricer_pricing |
+| `FeedError` | Market data feed issues | adapter_feeds |
+| `FpmlError` | FpML parsing failures | adapter_loader |
+| `LoaderError` | File loading failures | adapter_loader |
+| `GatewayError` | API request handling | service_gateway |
+
+Pattern: `thiserror` with `#[derive(Error, Debug, Clone, PartialEq)]`. Use structured variants with named fields. Propagate via `#[from]`.
+
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-09_ — service_gateway re-enabled, AI Fixer CI, ndarray removed, QuoteId migration
+_Updated: 2026-02-10_ — service_cli/service_python consolidated into service_gateway (feature-gated cli/python modules)
 _Document standards and patterns, not every dependency_

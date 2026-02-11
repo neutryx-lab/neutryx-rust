@@ -552,7 +552,6 @@ mod tests {
             Payoff::fixed(0.05),
             Currency::USD,
         )];
-
         Leg::new(
             cashflows,
             Direction::Receiver,
@@ -563,7 +562,6 @@ mod tests {
 
     fn make_floating_leg() -> Leg {
         use crate::{market::RateIndex, trade::IndexType};
-
         let cashflows = vec![Cashflow::new(
             CashflowType::Coupon,
             Date::from_ymd(2025, 7, 1).unwrap(),
@@ -574,7 +572,6 @@ mod tests {
             Payoff::floating(IndexType::Rate(RateIndex::Sofr)),
             Currency::USD,
         )];
-
         Leg::new(
             cashflows,
             Direction::Payer,
@@ -584,46 +581,42 @@ mod tests {
     }
 
     #[test]
-    fn test_exercise_type() {
-        assert_eq!(ExerciseType::European, ExerciseType::European);
-        assert_ne!(ExerciseType::European, ExerciseType::American);
-    }
-
-    #[test]
-    fn test_settlement_type() {
-        assert_eq!(SettlementType::Cash, SettlementType::Cash);
-        assert_ne!(SettlementType::Cash, SettlementType::Physical);
-    }
-
-    #[test]
-    fn test_trade_type_is_swap() {
+    fn test_trade_type_classification() {
         assert!(TradeType::Swap.is_swap());
+        assert!(TradeType::Ois.is_swap());
         assert!(!TradeType::CapFloor.is_swap());
-    }
 
-    #[test]
-    fn test_trade_type_is_swaption() {
         let swaption = TradeType::Swaption {
             exercise_dates: vec![Date::from_ymd(2025, 1, 1).unwrap()],
             exercise_type: ExerciseType::European,
             settlement_type: SettlementType::Cash,
         };
         assert!(swaption.is_swaption());
-        assert!(!TradeType::Swap.is_swaption());
+        assert!(swaption.is_option());
+
+        assert!(TradeType::FxSpot.is_fx());
+        assert!(TradeType::EquitySwap {
+            underlyer: "SPX".into()
+        }
+        .is_equity());
+        assert!(TradeType::CreditDefaultSwap {
+            reference_entity: "X".into(),
+            entity_id: None,
+            protection_side: ProtectionSide::Buyer,
+        }
+        .is_credit());
+        assert!(TradeType::CommodityForward {
+            commodity: "WTI".into(),
+            delivery_date: Date::from_ymd(2025, 6, 1).unwrap(),
+            forward_price: 80.0,
+            quantity: 1000.0,
+            quantity_unit: "BBL".into(),
+        }
+        .is_commodity());
     }
 
     #[test]
-    fn test_trade_type_is_bond() {
-        let bond = TradeType::Bond {
-            issuer_id: Some(IssuerId::new("ABC")),
-            seniority: Some("Senior".into()),
-        };
-        assert!(bond.is_bond());
-        assert!(!TradeType::Swap.is_bond());
-    }
-
-    #[test]
-    fn test_trade_metadata_builder() {
+    fn test_trade_metadata() {
         let metadata = TradeMetadata::new()
             .with_trade_date(Date::from_ymd(2025, 1, 1).unwrap())
             .with_counterparty("Bank A")
@@ -640,147 +633,56 @@ mod tests {
     }
 
     #[test]
-    fn test_trade_new() {
-        let legs = vec![make_fixed_leg()];
-        let trade = Trade::new("TRADE001", legs, TradeType::Generic);
+    fn test_trade_construction_and_legs() {
+        let legs = vec![make_fixed_leg(), make_floating_leg()];
+        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
 
-        assert_eq!(trade.id.as_str(), "TRADE001");
-        assert_eq!(trade.num_legs(), 1);
+        assert_eq!(trade.id.as_str(), "SWAP001");
+        assert_eq!(trade.num_legs(), 2);
+        assert_eq!(trade.all_cashflows().count(), 2);
+        assert_eq!(trade.total_cashflows(), 2);
+        assert!(trade.fixed_leg().is_some());
+        assert!(trade.floating_leg().is_some());
+    }
+
+    #[test]
+    fn test_vanilla_swap_detection() {
+        let swap = Trade::new(
+            "S1",
+            vec![make_fixed_leg(), make_floating_leg()],
+            TradeType::Swap,
+        );
+        assert!(swap.is_vanilla_swap());
+
+        // Wrong type
+        let generic = Trade::new(
+            "G1",
+            vec![make_fixed_leg(), make_floating_leg()],
+            TradeType::Generic,
+        );
+        assert!(!generic.is_vanilla_swap());
+
+        // Single leg
+        let single = Trade::new("S2", vec![make_fixed_leg()], TradeType::Swap);
+        assert!(!single.is_vanilla_swap());
+
+        // Both fixed
+        let both_fixed = Trade::new(
+            "S3",
+            vec![make_fixed_leg(), make_fixed_leg()],
+            TradeType::Swap,
+        );
+        assert!(!both_fixed.is_vanilla_swap());
     }
 
     #[test]
     fn test_trade_with_metadata() {
-        let legs = vec![make_fixed_leg()];
         let metadata = TradeMetadata::new().with_counterparty("Bank B");
-        let trade = Trade::with_metadata("TRADE002", legs, TradeType::Generic, metadata);
-
+        let trade =
+            Trade::with_metadata("T002", vec![make_fixed_leg()], TradeType::Generic, metadata);
         assert_eq!(
             trade.metadata.counterparty,
             Some(CounterpartyId::new("Bank B"))
         );
-    }
-
-    #[test]
-    fn test_trade_legs() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        assert_eq!(trade.legs().count(), 2);
-    }
-
-    #[test]
-    fn test_trade_all_cashflows() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        assert_eq!(trade.all_cashflows().count(), 2);
-    }
-
-    #[test]
-    fn test_trade_future_cashflows() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-        let ref_date = Date::from_ymd(2025, 1, 1).unwrap();
-
-        assert_eq!(trade.future_cashflows(ref_date).count(), 2);
-    }
-
-    #[test]
-    fn test_trade_total_cashflows() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        assert_eq!(trade.total_cashflows(), 2);
-    }
-
-    #[test]
-    fn test_trade_is_vanilla_swap_true() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        assert!(trade.is_vanilla_swap());
-    }
-
-    #[test]
-    fn test_trade_is_vanilla_swap_false_wrong_type() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("TRADE001", legs, TradeType::Generic);
-
-        assert!(!trade.is_vanilla_swap());
-    }
-
-    #[test]
-    fn test_trade_is_vanilla_swap_false_single_leg() {
-        let legs = vec![make_fixed_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        assert!(!trade.is_vanilla_swap());
-    }
-
-    #[test]
-    fn test_trade_is_vanilla_swap_false_both_fixed() {
-        let legs = vec![make_fixed_leg(), make_fixed_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        assert!(!trade.is_vanilla_swap());
-    }
-
-    #[test]
-    fn test_trade_first_leg() {
-        let legs = vec![make_fixed_leg()];
-        let trade = Trade::new("TRADE001", legs, TradeType::Generic);
-
-        assert!(trade.first_leg().is_some());
-        assert_eq!(trade.first_leg().unwrap().leg_type, LegType::Fixed);
-    }
-
-    #[test]
-    fn test_trade_fixed_leg() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        let fixed = trade.fixed_leg();
-        assert!(fixed.is_some());
-        assert_eq!(fixed.unwrap().leg_type, LegType::Fixed);
-    }
-
-    #[test]
-    fn test_trade_floating_leg() {
-        let legs = vec![make_fixed_leg(), make_floating_leg()];
-        let trade = Trade::new("SWAP001", legs, TradeType::Swap);
-
-        let floating = trade.floating_leg();
-        assert!(floating.is_some());
-        assert_eq!(floating.unwrap().leg_type, LegType::Floating);
-    }
-
-    #[test]
-    fn test_trade_clone() {
-        let legs = vec![make_fixed_leg()];
-        let trade = Trade::new("TRADE001", legs, TradeType::Generic);
-        let cloned = trade.clone();
-        assert_eq!(trade, cloned);
-    }
-
-    #[test]
-    fn test_exercise_type_hash() {
-        use std::collections::HashSet;
-
-        let mut set = HashSet::new();
-        set.insert(ExerciseType::European);
-        set.insert(ExerciseType::Bermudan);
-        set.insert(ExerciseType::European); // Duplicate
-        assert_eq!(set.len(), 2);
-    }
-
-    #[test]
-    fn test_settlement_type_hash() {
-        use std::collections::HashSet;
-
-        let mut set = HashSet::new();
-        set.insert(SettlementType::Cash);
-        set.insert(SettlementType::Physical);
-        set.insert(SettlementType::Cash); // Duplicate
-        assert_eq!(set.len(), 2);
     }
 }

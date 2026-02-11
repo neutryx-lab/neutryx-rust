@@ -16,14 +16,6 @@
 - Rayon並列処理によるバッチプライシングサポート
 - Enzyme AD互換性の維持
 
-### Non-Goals
-
-- 新しい金融商品定義の追加（既存の`InstrumentEnum`拡張は別スコープ）
-- XVA計算の統合（`pricer_risk`の責務）
-- WebSocket/RESTエンドポイントの追加（`service_gateway`の責務）
-
----
-
 ## Architecture
 
 ### Existing Architecture Analysis
@@ -107,18 +99,6 @@ graph TB
 - **New components rationale**: `GenericPricer`トレイト、`PricingResult`階層、`ModelConfig`/`PricerConfig`
 - **Steering compliance**: A-I-P-S依存方向維持、Enzyme互換静的ディスパッチ
 
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Core Language | Rust nightly-2025-01-15 | 全コンポーネント | Enzyme AD必須 |
-| Parallelisation | rayon ^1.10 | バッチプライシング (8.1, 8.2) | 既存依存 |
-| Time | chrono ^0.4 | 日付計算 (7.1-7.5) | 既存依存 |
-| AD Backend | Enzyme LLVM-18 | Greeks計算 (4.2) | feature-gated |
-| Numeric | num-traits ^0.2 | Float trait bound | 既存依存 |
-
----
-
 ## System Flows
 
 ### Single Trade Pricing Flow
@@ -162,26 +142,7 @@ sequenceDiagram
 
 ### Batch Pricing Flow
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant BatchPricer
-    participant ThreadPool as Rayon ThreadPool
-    participant Market as MarketProvider
-    participant Kernel as PricingKernel
-
-    Client->>BatchPricer: price_batch(trades, config)
-    BatchPricer->>Market: preload_all_curves(currencies)
-    Market-->>BatchPricer: Arc-cached curves
-    BatchPricer->>ThreadPool: par_iter(trades)
-    par [Parallel Processing]
-        ThreadPool->>Kernel: price_trade(trade_i)
-        Kernel-->>ThreadPool: PricingResult<T>
-    end
-    ThreadPool-->>BatchPricer: Vec<Result<PricingResult>>
-    BatchPricer->>BatchPricer: aggregate_results()
-    BatchPricer-->>Client: BatchPricingResult
-```
+*[Mermaid diagram omitted]*
 
 **Key Decisions**:
 - マーケットデータは`Arc`で共有、各スレッドはread-onlyアクセス
@@ -268,62 +229,17 @@ sequenceDiagram
 
 #### GenericPricer (Concrete Struct)
 
-| Field | Detail |
-|-------|--------|
-| Intent | Trade/InstrumentEnumに対する統一プライシングAPI |
-| Requirements | 1.1, 1.2, 1.3, 1.4, 1.5, 5.1, 5.2, 6.2 |
-
-**Responsibilities & Constraints**
-- TradeまたはInstrumentEnumを受け取り、`PricingResult`（f64固定）を返す
-- `reporting_currency`を必須引数として受け取り、FX換算を実行
-- マーケットデータ解決（Stage 2）とカーネル実行（Stage 3）の調整
-- `get_greeks()`のみ`T: Float`ジェネリックでEnzyme AD対応
-
-**Dependencies**
-- Inbound: service_cli, service_gateway, pricer_risk — プライシングAPI呼び出し (P0)
-- Outbound: MarketProvider — マーケットデータ取得、FxRate取得 (P0)
-- Outbound: PricingKernel — 実際の計算実行 (P0)
-- External: rayon — 並列処理 (P1)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 
 ```rust
 /// 汎用プライサー（具象構造体）
 /// traitは不要 — 単一実装で十分
 pub struct GenericPricer {
-    market: Arc<MarketProvider>,
-    model_config: ModelConfig,
-    pricer_config: PricerConfig,
-}
-
-impl GenericPricer {
     /// 新しいGenericPricerを作成
-    pub fn new(
-        market: Arc<MarketProvider>,
-        model_config: ModelConfig,
-        pricer_config: PricerConfig,
-    ) -> Self;
-
     /// 評価日時点のPVを計算（報告通貨必須）
     /// reporting_currencyはリスク計算の前提条件
-    pub fn get_pv(
-        &self,
-        trade: &Trade,
-        valuation_date: Date,
-        reporting_currency: Currency,
-    ) -> Result<PricingResult, PricingError>;
-
     /// Greeks計算（Enzyme AD対応、ジェネリック）
-    pub fn get_greeks<T: Float>(
-        &self,
-        trade: &Trade,
-        valuation_date: Date,
-        reporting_currency: Currency,
-        greeks_config: &GreeksConfig,
-    ) -> Result<GreeksResult<T>, GreeksError>;
-}
+    // ... implementation omitted ...
 ```
 
 - Preconditions: `trade`が有効なTrade構造、`valuation_date`が妥当な日付、`reporting_currency`が有効
@@ -340,23 +256,6 @@ impl GenericPricer {
 
 #### ModelConfig
 
-| Field | Detail |
-|-------|--------|
-| Intent | モデルタイプとシミュレーションパラメータの設定 |
-| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6 |
-
-**Responsibilities & Constraints**
-- `StochasticModelEnum`選択とシミュレーションパラメータ（パス数、ステップ数、シード）の保持
-- Builderパターンで構築
-- パラメータ検証（num_paths > 0、num_steps > 0等）
-
-**Dependencies**
-- Inbound: GenericPricer — モデル設定取得 (P0)
-- Outbound: StochasticModelEnum — モデル定義 (P0)
-- Outbound: pricer_models::market::calibration — キャリブレーション結果取得 (P1)
-
-**Contracts**: State [x]
-
 ##### State Management
 
 ```rust
@@ -364,42 +263,12 @@ impl GenericPricer {
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
     /// 使用するモデル（None時はデフォルト選択）
-    pub model: Option<StochasticModelEnum<f64>>,
     /// シミュレーションパス数
-    pub num_paths: usize,
     /// 時間ステップ数
-    pub num_steps: usize,
     /// 乱数シード（再現性確保用）
-    pub seed: Option<u64>,
-}
-
-impl Default for ModelConfig {
-    fn default() -> Self {
-        Self {
-            model: None,
-            num_paths: 10_000,
-            num_steps: 100,
-            seed: None,
-        }
-    }
-}
-
 /// ModelConfig Builder
 #[derive(Debug, Default)]
-pub struct ModelConfigBuilder {
-    model: Option<StochasticModelEnum<f64>>,
-    num_paths: Option<usize>,
-    num_steps: Option<usize>,
-    seed: Option<u64>,
-}
-
-impl ModelConfigBuilder {
-    pub fn model(mut self, model: StochasticModelEnum<f64>) -> Self;
-    pub fn num_paths(mut self, n: usize) -> Self;
-    pub fn num_steps(mut self, n: usize) -> Self;
-    pub fn seed(mut self, seed: u64) -> Self;
-    pub fn build(self) -> Result<ModelConfig, ConfigError>;
-}
+    // ... implementation omitted ...
 ```
 
 - Persistence: メモリ内のみ（永続化なし）
@@ -410,23 +279,6 @@ impl ModelConfigBuilder {
 
 #### PricerConfig
 
-| Field | Detail |
-|-------|--------|
-| Intent | Greeks計算モードと出力設定 |
-| Requirements | 4.1, 4.2, 4.3, 4.4, 4.5, 6.9 |
-
-**Responsibilities & Constraints**
-- GreeksConfig（計算モード、バンプ幅）の保持
-- デフォルト出力通貨の設定
-- スレッドローカルバッファ使用フラグ
-
-**Dependencies**
-- Inbound: GenericPricer — 設定取得 (P0)
-- Outbound: GreeksConfig — Greeks設定 (P0)
-- Outbound: Currency — 通貨定義 (P1)
-
-**Contracts**: State [x]
-
 ##### State Management
 
 ```rust
@@ -434,59 +286,17 @@ impl ModelConfigBuilder {
 #[derive(Debug, Clone)]
 pub struct PricerConfig {
     /// Greeks計算設定
-    pub greeks_config: GreeksConfig,
     /// デフォルト出力通貨
-    pub default_currency: Currency,
     /// スレッドローカルバッファ使用
-    pub use_thread_local_buffers: bool,
-}
-
-impl Default for PricerConfig {
-    fn default() -> Self {
-        Self {
-            greeks_config: GreeksConfig::default(),
-            default_currency: Currency::USD,
-            use_thread_local_buffers: true,
-        }
-    }
-}
-
 /// PricerConfig Builder
 #[derive(Debug, Default)]
 pub struct PricerConfigBuilder {
-    greeks_config: Option<GreeksConfig>,
-    default_currency: Option<Currency>,
-    use_thread_local_buffers: Option<bool>,
-}
-
-impl PricerConfigBuilder {
-    pub fn greeks_config(mut self, config: GreeksConfig) -> Self;
-    pub fn default_currency(mut self, currency: Currency) -> Self;
-    pub fn use_thread_local_buffers(mut self, use_buffers: bool) -> Self;
-    pub fn build(self) -> Result<PricerConfig, ConfigError>;
-}
+    // ... implementation omitted ...
 ```
 
 ---
 
 #### PricingResult
-
-| Field | Detail |
-|-------|--------|
-| Intent | 階層的プライシング結果（Trade → Leg → Cashflow）、f64固定 |
-| Requirements | 1.4, 6.3, 6.5, 6.6, 6.7 |
-
-**Responsibilities & Constraints**
-- Trade/Leg/Cashflow階層に対応したPV内訳の保持
-- **Leg単位で通貨情報を保持**（CurrencyBreakdown廃止、Enzyme AD互換性向上）
-- MCシミュレーション時のパス分布（オプション）
-- **f64固定**（ADはget_greeks()のみ必要、PV結果にはジェネリック不要）
-
-**Dependencies**
-- Inbound: GenericPricer — 結果返却 (P0)
-- Outbound: LegPricingResult — Leg単位結果 (P0)
-
-**Contracts**: State [x]
 
 ##### State Management
 
@@ -496,69 +306,11 @@ impl PricerConfigBuilder {
 #[derive(Debug, Clone)]
 pub struct PricingResult {
     /// 合計PV（報告通貨建て）
-    pub total_pv: f64,
     /// 各Legの結果
-    pub legs: Vec<LegPricingResult>,
     /// パス分布（MC計算時のみ）
-    pub path_distribution: Option<PathDistribution>,
     /// 報告通貨
-    pub reporting_currency: Currency,
-}
-
-impl PricingResult {
     /// Leg単位のPV集計を返す
-    pub fn by_leg(&self) -> &[LegPricingResult];
-
-    /// Cashflow単位のPV詳細を返す
-    pub fn by_cashflow(&self) -> Vec<&CashflowPricingResult>;
-
-    /// パス単位のPV分布を返す（MC計算時のみ）
-    pub fn by_path(&self) -> Option<&PathDistribution>;
-
-    /// 通貨別PV集計（Leg単位から動的に計算）
-    pub fn group_by_currency(&self) -> Vec<(Currency, f64)>;
-}
-
-/// Leg単位プライシング結果
-#[derive(Debug, Clone)]
-pub struct LegPricingResult {
-    /// 報告通貨建てPV
-    pub pv: f64,
-    /// 元通貨建てPV
-    pub pv_original: f64,
-    /// 元通貨
-    pub original_currency: Currency,
-    /// 使用したFXレート
-    pub fx_rate: f64,
-    /// 支払/受取方向
-    pub direction: Direction,
-    /// Cashflow詳細
-    pub cashflows: Vec<CashflowPricingResult>,
-}
-
-/// Cashflow単位プライシング結果
-#[derive(Debug, Clone)]
-pub struct CashflowPricingResult {
-    /// 報告通貨建てPV
-    pub pv: f64,
-    /// 元通貨建てPV
-    pub pv_original: f64,
-    /// 支払日
-    pub payment_date: Date,
-    /// ディスカウントファクター
-    pub discount_factor: f64,
-    /// 元通貨
-    pub original_currency: Currency,
-}
-
-/// パス分布（MC用、f64固定）
-#[derive(Debug, Clone)]
-pub struct PathDistribution {
-    pub mean: f64,
-    pub std_dev: f64,
-    pub percentiles: Vec<(f64, f64)>, // (percentile, value)
-    pub path_count: usize,
-}
+    // ... implementation omitted ...
 ```
 
 **設計根拠**:
@@ -570,63 +322,19 @@ pub struct PathDistribution {
 
 #### BatchPricer
 
-| Field | Detail |
-|-------|--------|
-| Intent | 複数商品の並列バッチプライシング |
-| Requirements | 8.1, 8.2, 8.3, 8.4, 8.5 |
-
-**Responsibilities & Constraints**
-- Rayon並列処理による複数商品同時プライシング
-- Arc-cachedマーケットデータの共有
-- 部分失敗時の継続処理
-- スレッドローカルバッファプールの管理
-
-**Dependencies**
-- Inbound: service_cli, pricer_risk — バッチ呼び出し (P0)
-- Outbound: GenericPricer — 個別プライシング (P0)
-- Outbound: MarketProvider — マーケットデータ共有 (P0)
-- External: rayon — 並列処理 (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 
 ```rust
 /// バッチプライサー
 pub struct BatchPricer<'a> {
-    market: Arc<MarketProvider>,
-    model_config: &'a ModelConfig,
-    pricer_config: &'a PricerConfig,
-}
-
-impl<'a> BatchPricer<'a> {
     /// バッチプライシング実行
-    pub fn price_batch(
-        &self,
-        trades: &[Trade],
-        valuation_date: Date,
-    ) -> BatchPricingResult;
-}
-
 /// バッチプライシング結果
 #[derive(Debug)]
 pub struct BatchPricingResult {
     /// 成功したプライシング結果
-    pub successes: Vec<(TradeId, PricingResult<f64>)>,
     /// 失敗したプライシング
-    pub failures: Vec<(TradeId, PricingError)>,
     /// 処理統計
-    pub stats: BatchStats,
-}
-
-/// バッチ処理統計
-#[derive(Debug)]
-pub struct BatchStats {
-    pub total_count: usize,
-    pub success_count: usize,
-    pub failure_count: usize,
-    pub elapsed_ms: u64,
-}
+    // ... implementation omitted ...
 ```
 
 - Preconditions: `trades`が空でない、`market`が有効
@@ -648,23 +356,7 @@ pub struct BatchStats {
 
 ### Domain Model
 
-```mermaid
-erDiagram
-    Trade ||--o{ Leg : contains
-    Leg ||--o{ Cashflow : contains
-
-    PricingResult ||--o{ LegPricingResult : contains
-    LegPricingResult ||--o{ CashflowPricingResult : contains
-    PricingResult ||--|| CurrencyBreakdown : has
-    PricingResult ||--o| PathDistribution : may_have
-
-    ModelConfig ||--o| StochasticModelEnum : uses
-    PricerConfig ||--|| GreeksConfig : contains
-
-    GenericPricerEngine ||--|| ModelConfig : configured_by
-    GenericPricerEngine ||--|| PricerConfig : configured_by
-    GenericPricerEngine ||--|| MarketProvider : uses
-```
+*[Mermaid diagram omitted]*
 
 **Aggregates**:
 - `PricingResult`: 単一プライシングの結果集約
@@ -714,23 +406,12 @@ Generic Pricer Engineは以下のエラー戦略を採用:
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ConfigError {
     #[error("Invalid model parameter: {0}")]
-    InvalidModelParameter(String),
-
     #[error("Invalid pricer config: {0}")]
-    InvalidPricerConfig(String),
-}
-
 /// MarketDataError拡張（既存に追加）
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum MarketDataError {
-    // ... 既存のvariant ...
-
     #[error("FX rate not found: {base}/{quote}")]
-    FxRateNotFound { base: Currency, quote: Currency },
-
-    #[error("Volatility surface not found: {name}")]
-    SurfaceNotFound { name: String },
-}
+    // ... implementation omitted ...
 ```
 
 ---
@@ -762,29 +443,3 @@ pub enum MarketDataError {
 ---
 
 ## Optional Sections
-
-### Performance & Scalability
-
-**Target Metrics**:
-- 単一商品プライシング: < 1ms（解析解）、< 100ms（MC 10,000パス）
-- バッチプライシング: 線形スケーリング（商品数に対して）
-- 並列効率: 8コアで80%以上
-
-**Scaling Approaches**:
-- 水平: Rayon work-stealingによる自動負荷分散
-- メモリ: Arc-cachedマーケットデータ、スレッドローカルバッファ
-
-**Caching Strategy**:
-- MarketProvider: `RwLock<HashMap<Currency, Arc<CurveEnum>>>`
-- プライシング結果: キャッシュなし（都度計算）
-
----
-
-## Supporting References
-
-詳細な調査結果とアーキテクチャ評価は[research.md](.kiro/specs/generic-pricer-engine/research.md)を参照。
-
-- 3-Stage Rocketパターン分析
-- Trade/Leg/Cashflow階層構造調査
-- Enzyme AD互換性制約
-- 為替レート統合オプション評価

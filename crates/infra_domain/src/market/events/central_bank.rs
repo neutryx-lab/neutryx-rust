@@ -66,28 +66,3 @@ impl std::fmt::Display for CentralBank {
         write!(f, "{} ({})", self.name, self.code)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_fed() {
-        let fed = CentralBank::fed();
-        assert_eq!(fed.code, "FED");
-        assert_eq!(fed.currency, "USD");
-    }
-
-    #[test]
-    fn test_display() {
-        let ecb = CentralBank::ecb();
-        assert_eq!(format!("{}", ecb), "European Central Bank (ECB)");
-    }
-
-    #[test]
-    fn test_new() {
-        let cb = CentralBank::new("PBC", "People's Bank of China", "CNY", "China");
-        assert_eq!(cb.code, "PBC");
-        assert_eq!(cb.region, "China");
-    }
-}

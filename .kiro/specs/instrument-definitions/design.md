@@ -13,11 +13,6 @@
 - smooth_max / smooth_indicator を活用した微分可能ペイオフ
 - T: Float ジェネリクスによる f64/Dual64 両対応
 
-### Non-Goals
-- Monte Carlo パス生成（L3 pricer_kernel の責務）
-- 解析解実装（Phase 2.3 Analytical Models で対応）
-- エキゾチックオプション（将来フェーズで拡張）
-
 ## Architecture
 
 ### Architecture Pattern & Boundary Map
@@ -64,15 +59,6 @@ graph TB
 - **New components rationale**: PayoffType 分離でペイオフロジック再利用
 - **Steering compliance**: static dispatch via enum 原則を遵守
 
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Core | pricer_core | Float trait, smoothing 関数, エラー型 | 依存 |
-| Business Logic | pricer_models | Instrument 定義, Payoff 計算 | 本機能 |
-| Numeric | num-traits | Float trait bounds | 既存依存 |
-| Error | thiserror | InstrumentError 定義 | 既存パターン |
-
 ## Requirements Traceability
 
 | Requirement | Summary | Components | Interfaces | Flows |
@@ -105,83 +91,28 @@ graph TB
 
 #### InstrumentError
 
-| Field | Detail |
-|-------|--------|
-| Intent | 商品操作のエラーハンドリング |
-| Requirements | 8.1, 8.2, 8.3, 8.4, 8.5 |
-
-**Responsibilities & Constraints**
-- 商品構築・ペイオフ計算のエラーを表現
-- PricingError への変換を提供
-
-**Dependencies**
-- Outbound: PricingError — エラー変換 (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum InstrumentError {
     #[error("Invalid strike: K = {strike}")]
-    InvalidStrike { strike: f64 },
-
     #[error("Invalid expiry: T = {expiry}")]
-    InvalidExpiry { expiry: f64 },
-
     #[error("Invalid notional: N = {notional}")]
-    InvalidNotional { notional: f64 },
-
     #[error("Payoff computation error: {message}")]
-    PayoffError { message: String },
-
     #[error("Invalid parameter: {message}")]
-    InvalidParameter { message: String },
-}
-
-impl From<InstrumentError> for PricingError {
-    fn from(err: InstrumentError) -> Self;
-}
+    // ... implementation omitted ...
 ```
 
 #### PayoffType
-
-| Field | Detail |
-|-------|--------|
-| Intent | Call/Put/Digital ペイオフの微分可能実装 |
-| Requirements | 2.1, 2.2, 2.3, 2.4, 2.5, 9.1, 9.2, 9.3, 9.4, 9.5 |
-
-**Responsibilities & Constraints**
-- smooth_max を使用した Call/Put ペイオフ
-- smooth_indicator を使用した Digital ペイオフ
-- epsilon パラメータによる滑らかさ制御
-
-**Dependencies**
-- External: pricer_core::math::smoothing — smooth_max, smooth_indicator (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PayoffType {
-    Call,
-    Put,
-    DigitalCall,
-    DigitalPut,
-}
-
-impl PayoffType {
     /// Evaluate the payoff for given spot and strike.
     ///
     /// Uses smooth approximations for AD compatibility.
-    pub fn evaluate<T: Float>(
-        &self,
-        spot: T,
-        strike: T,
-        epsilon: T,
-    ) -> T;
-}
+    // ... implementation omitted ...
 ```
 - Preconditions: spot > 0, strike > 0, epsilon > 0
 - Postconditions: Returns smooth payoff value
@@ -193,20 +124,6 @@ impl PayoffType {
 - Risks: 極端な epsilon 値で数値不安定
 
 #### InstrumentParams
-
-| Field | Detail |
-|-------|--------|
-| Intent | 共通商品パラメータの集約 |
-| Requirements | 3.1, 3.2, 3.3, 3.4, 3.5 |
-
-**Responsibilities & Constraints**
-- strike, expiry, notional の格納
-- 構築時バリデーション
-
-**Dependencies**
-- External: num_traits::Float (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -230,21 +147,6 @@ impl<T: Float> InstrumentParams<T> {
 
 #### ExerciseStyle
 
-| Field | Detail |
-|-------|--------|
-| Intent | オプション行使スタイル定義 |
-| Requirements | 5.1, 5.2, 5.3, 5.4, 5.5 |
-
-**Responsibilities & Constraints**
-- European/American/Bermudan/Asian の区別
-- Bermudan: 行使日リスト格納
-- Asian: 平均化パラメータ格納
-
-**Dependencies**
-- External: num_traits::Float (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, PartialEq)]
@@ -262,154 +164,37 @@ pub enum ExerciseStyle<T: Float> {
 
 #### VanillaOption
 
-| Field | Detail |
-|-------|--------|
-| Intent | バニラオプションの統合表現 |
-| Requirements | 4.1, 4.2, 4.3, 4.4, 4.5, 10.1, 10.2, 10.3, 10.4, 10.5 |
-
-**Responsibilities & Constraints**
-- InstrumentParams, PayoffType, ExerciseStyle の組み合わせ
-- 微分可能ペイオフ計算
-
-**Dependencies**
-- Inbound: PayoffType — ペイオフ評価 (P0)
-- Inbound: ExerciseStyle — 行使スタイル (P0)
-- Inbound: InstrumentParams — パラメータ (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone)]
 pub struct VanillaOption<T: Float> {
-    params: InstrumentParams<T>,
-    payoff_type: PayoffType,
-    exercise_style: ExerciseStyle<T>,
-    epsilon: T,
-}
-
-impl<T: Float> VanillaOption<T> {
-    pub fn new(
-        params: InstrumentParams<T>,
-        payoff_type: PayoffType,
-        exercise_style: ExerciseStyle<T>,
-        epsilon: T,
-    ) -> Self;
-
-    pub fn payoff(&self, spot: T) -> T;
-    pub fn params(&self) -> &InstrumentParams<T>;
-    pub fn payoff_type(&self) -> PayoffType;
-    pub fn exercise_style(&self) -> &ExerciseStyle<T>;
-}
+    // ... implementation omitted ...
 ```
 
 #### Forward
-
-| Field | Detail |
-|-------|--------|
-| Intent | フォワード契約の定義 |
-| Requirements | 6.1, 6.2, 6.3, 6.4, 6.5 |
-
-**Responsibilities & Constraints**
-- Long/Short ディレクション
-- 線形ペイオフ (smooth 不要)
-
-**Dependencies**
-- External: num_traits::Float (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Direction {
-    Long,
-    Short,
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Forward<T: Float> {
-    strike: T,
-    expiry: T,
-    notional: T,
-    direction: Direction,
-}
-
-impl<T: Float> Forward<T> {
-    pub fn new(
-        strike: T,
-        expiry: T,
-        notional: T,
-        direction: Direction,
-    ) -> Result<Self, InstrumentError>;
-
-    pub fn payoff(&self, spot: T) -> T;
-}
+    // ... implementation omitted ...
 ```
 - Postconditions: Long returns notional * (spot - strike), Short returns notional * (strike - spot)
 
 #### Swap
 
-| Field | Detail |
-|-------|--------|
-| Intent | 金利スワップの基本定義 |
-| Requirements | 7.1, 7.2, 7.3, 7.4, 7.5 |
-
-**Responsibilities & Constraints**
-- 固定レート、名目元本、支払頻度
-- 支払日バリデーション
-
-**Dependencies**
-- External: num_traits::Float (P0)
-- External: Currency (P1)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PaymentFrequency {
-    Annual,
-    SemiAnnual,
-    Quarterly,
-    Monthly,
-}
-
 #[derive(Debug, Clone)]
 pub struct Swap<T: Float> {
-    notional: T,
-    fixed_rate: T,
-    payment_dates: Vec<T>,
-    frequency: PaymentFrequency,
-    currency: Currency,
-}
-
-impl<T: Float> Swap<T> {
-    pub fn new(
-        notional: T,
-        fixed_rate: T,
-        payment_dates: Vec<T>,
-        frequency: PaymentFrequency,
-        currency: Currency,
-    ) -> Result<Self, InstrumentError>;
-}
+    // ... implementation omitted ...
 ```
 
 #### Instrument Enum
-
-| Field | Detail |
-|-------|--------|
-| Intent | 全商品タイプの統一表現 |
-| Requirements | 1.1, 1.2, 1.3, 1.4, 1.5 |
-
-**Responsibilities & Constraints**
-- 静的ディスパッチによる Enzyme 最適化
-- 各バリアントで具体型を保持
-
-**Dependencies**
-- Inbound: VanillaOption, Forward, Swap (P0)
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust

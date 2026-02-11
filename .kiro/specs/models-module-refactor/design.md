@@ -14,12 +14,6 @@
 - 重複排除: `analytical/distributions.rs` を削除し、`pricer_core` を直接参照
 - SABR 整理: 未使用の SDE 実装を削除し、Hagan 公式のみを抽出
 
-### Non-Goals
-- `pricer_core` への新規モジュール追加
-- パフォーマンス最適化
-- 新規モデルの追加
-- `market/` モジュールの構造変更
-
 ---
 
 ## Architecture
@@ -93,15 +87,6 @@ graph TB
 - New components rationale: `sabr_implied_vol.rs` = Hagan 公式の抽出
 - Steering compliance: A-I-P-S アーキテクチャの L1/L2 境界を維持
 
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Language | Rust | 全体 | 既存 |
-| Math Library | `pricer_core::math` | 確率分布関数 | `norm_cdf`, `norm_pdf`, `norm_inv_cdf` |
-| Smoothing | `pricer_core::math::smoothing` | AD 互換演算 | `smooth_log`, `smooth_pow` |
-| Traits | `pricer_core::traits::Float` | ジェネリック浮動小数点 | AD 互換 |
-
 ---
 
 ## Requirements Traceability
@@ -132,10 +117,7 @@ graph TB
 
 #### stochastic/mod.rs
 
-| Field | Detail |
-|-------|--------|
-| Intent | 確率過程モジュールのエントリーポイント |
-| Requirements | 1.1 |
+**Intent**: 確率過程モジュールのエントリーポイント
 
 **Responsibilities & Constraints**
 - `StochasticModel` trait と状態型の公開
@@ -146,8 +128,6 @@ graph TB
 - Inbound: `pricer_pricing`, `pricer_risk` — MC エンジン (P0)
 - Outbound: `pricer_core::traits::Float` — 型制約 (P0)
 
-**Contracts**: Module [ ✓ ]
-
 **Implementation Notes**
 - 既存 `models/mod.rs` を `stochastic/mod.rs` にリネーム
 - `pub mod sabr;` と `pub use sabr::*;` を削除
@@ -157,10 +137,7 @@ graph TB
 
 #### formulas/mod.rs
 
-| Field | Detail |
-|-------|--------|
-| Intent | 閉形式公式モジュールのエントリーポイント |
-| Requirements | 1.2, 2.1 |
+**Intent**: 閉形式公式モジュールのエントリーポイント
 
 **Responsibilities & Constraints**
 - Black-Scholes, Bachelier, Garman-Kohlhagen, SabrImpliedVol の公開
@@ -169,8 +146,6 @@ graph TB
 **Dependencies**
 - Inbound: `market/volcube`, `market/calibration` — IV 計算 (P0)
 - Outbound: `pricer_core::math::distributions` — 正規分布関数 (P0)
-
-**Contracts**: Module [ ✓ ]
 
 ##### Module Interface
 ```rust
@@ -181,15 +156,11 @@ mod black_scholes;
 pub mod garman_kohlhagen;
 mod sabr_implied_vol;
 
-// Re-exports
 pub use bachelier::Bachelier;
 pub use black_scholes::BlackScholes;
 pub use error::AnalyticalError;
 pub use garman_kohlhagen::{fx_call_price, fx_put_price, GarmanKohlhagen, GarmanKohlhagenParams};
 pub use sabr_implied_vol::{SabrImpliedVol, SabrParams, SabrError};
-
-// distributions は再エクスポートしない
-// 使用側で pricer_core::math::distributions を直接参照
 ```
 
 **Implementation Notes**
@@ -200,10 +171,7 @@ pub use sabr_implied_vol::{SabrImpliedVol, SabrParams, SabrError};
 
 #### formulas/sabr_implied_vol.rs
 
-| Field | Detail |
-|-------|--------|
-| Intent | SABR Hagan公式によるインプライドボラティリティ計算 |
-| Requirements | 1.3, 3.2 |
+**Intent**: SABR Hagan公式によるインプライドボラティリティ計算
 
 **Responsibilities & Constraints**
 - `SabrParams<T>`: SABR パラメータ構造体
@@ -216,12 +184,8 @@ pub use sabr_implied_vol::{SabrImpliedVol, SabrParams, SabrError};
 - Outbound: `pricer_core::math::smoothing` — AD 互換演算 (P0)
 - Outbound: `pricer_core::traits::Float` — 型制約 (P0)
 
-**Contracts**: Service [ ✓ ]
-
 ##### Service Interface
 ```rust
-/// SABR パラメータ
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SabrParams<T: Float> {
     pub forward: T,
     pub alpha: T,
@@ -234,65 +198,24 @@ pub struct SabrParams<T: Float> {
 }
 
 impl<T: Float> SabrParams<T> {
-    pub fn new(
-        forward: f64,
-        alpha: f64,
-        nu: f64,
-        rho: f64,
-        beta: f64,
-        maturity: f64,
-    ) -> Result<Self, SabrError>;
-
+    pub fn new(...) -> Result<Self, SabrError>;
     pub fn validate(&self) -> Result<(), SabrError>;
-    pub fn is_normal(&self) -> bool;
-    pub fn is_lognormal(&self) -> bool;
 }
 
-/// SABR インプライドボラティリティ計算
-#[derive(Clone, Debug)]
 pub struct SabrImpliedVol<T: Float> {
     params: SabrParams<T>,
 }
 
 impl<T: Float> SabrImpliedVol<T> {
     pub fn new(params: SabrParams<T>) -> Result<Self, SabrError>;
-    pub fn params(&self) -> &SabrParams<T>;
-
-    /// ATM インプライドボラティリティ
     pub fn atm_vol(&self) -> T;
-
-    /// 任意ストライクのインプライドボラティリティ
     pub fn implied_vol(&self, strike: T) -> Result<T, SabrError>;
-
-    /// フロア付きインプライドボラティリティ
     pub fn implied_vol_with_floor(&self, strike: T, floor: T) -> Result<T, SabrError>;
-}
-
-/// SABR エラー型
-#[derive(Error, Debug, Clone, PartialEq)]
-pub enum SabrError {
-    InvalidForward(f64),
-    InvalidAlpha(f64),
-    InvalidNu(f64),
-    InvalidBeta(f64),
-    InvalidRho(f64),
-    InvalidMaturity(f64),
-    InvalidStrike(f64),
-    NegativeImpliedVol(f64),
-    NumericalInstability(String),
-    NonFinite(String),
 }
 ```
 
-- Preconditions: パラメータが有効範囲内
-- Postconditions: 返却値が正の有限値
-- Invariants: `SabrImpliedVol` は検証済みパラメータのみを保持
-
 **Implementation Notes**
-- 既存 `models/sabr.rs` から以下を抽出:
-  - `SABRParams` → `SabrParams` (命名規則統一)
-  - `SABRModel` の `implied_vol()` 関連メソッド群
-  - `SABRError` → `SabrError`
+- 既存 `models/sabr.rs` から Hagan 公式部分のみを抽出
 - `StochasticModel` 実装は**含めない**
 - テストも同時に移行
 
@@ -302,27 +225,14 @@ pub enum SabrError {
 
 #### lib.rs
 
-| Field | Detail |
-|-------|--------|
-| Intent | 後方互換性のための deprecated re-export |
-| Requirements | 5.1 |
-
-**Responsibilities & Constraints**
-- 旧パス (`models::*`, `analytical::*`) から新パスへの re-export
-- `#[deprecated]` 属性で警告を表示
-
-**Contracts**: API [ ✓ ]
+**Intent**: 後方互換性のための deprecated re-export
 
 ##### Deprecated Re-exports
 ```rust
-// lib.rs
-
 pub mod stochastic;
 pub mod formulas;
 pub mod market;
 pub mod compiler;
-
-// === Backward Compatibility (Deprecated) ===
 
 #[deprecated(since = "0.x.0", note = "Use `pricer_models::stochastic` instead")]
 pub mod models {
@@ -333,7 +243,6 @@ pub mod models {
 pub mod analytical {
     pub use crate::formulas::*;
 
-    // distributions は formulas に含めないため、直接 re-export
     #[deprecated(
         since = "0.x.0",
         note = "Use `pricer_core::math::distributions` directly"
@@ -343,14 +252,9 @@ pub mod analytical {
     }
 }
 
-// SABR 互換 (models 経由で使用していたユーザー向け)
 #[deprecated(since = "0.x.0", note = "Use `pricer_models::formulas::SabrParams` instead")]
 pub use formulas::{SabrParams as SABRParams, SabrImpliedVol as SABRModel, SabrError as SABRError};
 ```
-
-**Implementation Notes**
-- 非推奨警告は cargo build 時に表示
-- 次期メジャーバージョンで deprecated モジュールを削除予定
 
 ---
 
@@ -407,36 +311,3 @@ pub use formulas::{SabrParams as SABRParams, SabrImpliedVol as SABRModel, SabrEr
 ### Regression Tests
 - 全既存テストの通過確認
 - deprecated 警告の発生確認（CI での警告カウント）
-
----
-
-## Migration Strategy
-
-### Phase 1: 並行構造作成
-1. `stochastic/` ディレクトリ作成、`models/` からファイルコピー
-2. `formulas/` ディレクトリ作成、`analytical/` からファイルコピー
-3. `formulas/sabr_implied_vol.rs` を新規作成
-
-### Phase 2: 参照更新
-1. `formulas/` 内の import を `pricer_core::math::distributions` に変更
-2. `market/volcube`, `market/calibration` の SABR 参照を更新
-3. `stochastic/model_enum.rs` から SABR variant を削除
-
-### Phase 3: 旧モジュール削除
-1. `models/` ディレクトリ削除
-2. `analytical/` ディレクトリ削除
-3. `lib.rs` に deprecated re-export を追加
-
-### Phase 4: 検証
-1. `cargo test --all-features`
-2. `cargo clippy --all-features`
-3. `cargo doc` でドキュメントリンク確認
-
-```mermaid
-graph LR
-    P1[Phase 1: 並行構造作成] --> P2[Phase 2: 参照更新]
-    P2 --> P3[Phase 3: 旧モジュール削除]
-    P3 --> P4[Phase 4: 検証]
-```
-
-**Rollback Trigger**: いずれのフェーズでもテスト失敗時は前フェーズにロールバック

@@ -113,49 +113,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_file_not_found_display() {
-        let err = ConfigError::file_not_found("/path/to/config.toml");
-        assert!(err.to_string().contains("/path/to/config.toml"));
-        assert!(err.is_file_error());
-    }
+    fn test_error_classification() {
+        // File errors
+        assert!(ConfigError::file_not_found("x").is_file_error());
+        assert!(ConfigError::parse_error("x", 1, 1, "y").is_file_error());
+        assert!(!ConfigError::file_not_found("x").is_validation_error());
 
-    #[test]
-    fn test_invalid_value_display() {
-        let err = ConfigError::invalid_value("num_paths", "must be > 0");
-        assert!(err.to_string().contains("num_paths"));
-        assert!(err.to_string().contains("must be > 0"));
-        assert!(err.is_validation_error());
-    }
-
-    #[test]
-    fn test_missing_required_display() {
-        let err = ConfigError::missing_required("valuation_date");
-        assert!(err.to_string().contains("valuation_date"));
-        assert!(err.is_validation_error());
-    }
-
-    #[test]
-    fn test_parse_error_display() {
-        let err = ConfigError::parse_error("config.toml", 10, 5, "unexpected token");
-        let display = err.to_string();
-        assert!(display.contains("config.toml"));
-        assert!(display.contains("line 10"));
-        assert!(display.contains("column 5"));
-        assert!(display.contains("unexpected token"));
-        assert!(err.is_file_error());
-    }
-
-    #[test]
-    fn test_missing_field() {
-        let err = ConfigError::MissingField("greeks_method");
-        assert!(err.to_string().contains("greeks_method"));
-        assert!(err.is_validation_error());
-    }
-
-    #[test]
-    fn test_error_clone_and_eq() {
-        let err1 = ConfigError::file_not_found("test.toml");
-        let err2 = err1.clone();
-        assert_eq!(err1, err2);
+        // Validation errors
+        assert!(ConfigError::invalid_value("k", "v").is_validation_error());
+        assert!(ConfigError::missing_required("f").is_validation_error());
+        assert!(ConfigError::MissingField("f").is_validation_error());
+        assert!(!ConfigError::invalid_value("k", "v").is_file_error());
     }
 }

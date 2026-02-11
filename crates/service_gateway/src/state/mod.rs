@@ -7,20 +7,18 @@ mod cache;
 
 use std::sync::Arc;
 
-#[allow(unused_imports)]
-pub use cache::SabrParams;
-// Re-export common cache types (SabrParams used by FxVolEntry in public API)
-pub use cache::{CurveCache, FxVolCache, InstrumentInput};
-// Feature-gated re-exports (public API, may not be used internally)
-#[cfg(feature = "models")]
-#[allow(unused_imports)]
-pub use cache::{ModelCache, ModelEntry, ModelType};
 #[cfg(feature = "risk")]
 #[allow(unused_imports)]
-pub use cache::{PortfolioCache, PortfolioEntry};
+pub use cache::PortfolioEntry;
+#[allow(unused_imports)]
+pub use cache::SabrParams;
+pub use cache::{CurveEntry, FxVolEntry, InstrumentInput, TypedCache};
+#[cfg(feature = "models")]
+#[allow(unused_imports)]
+pub use cache::{ModelEntry, ModelType};
 #[cfg(feature = "volatility")]
 #[allow(unused_imports)]
-pub use cache::{VolSurfaceCache, VolSurfaceEntry, VolSurfaceType};
+pub use cache::{VolSurfaceEntry, VolSurfaceType};
 use pricer_pricing::generic_pricer::{GenericPricer, ModelConfig, PricerConfig};
 
 /// Configuration for `AppState` cache sizes
@@ -60,22 +58,22 @@ impl Default for AppStateConfig {
 /// Application state shared across all handlers
 pub struct AppState {
     /// Cache for bootstrapped curves
-    pub curve_cache: CurveCache,
+    pub curve_cache: TypedCache<CurveEntry>,
     /// Cache for FX volatility surfaces
-    pub fxvol_cache: FxVolCache,
+    pub fxvol_cache: TypedCache<FxVolEntry>,
     /// Pre-configured generic pricer for standalone pricing
     pub pricer: Arc<GenericPricer>,
 
-    // Feature-gated caches (Requirement 11)
+    // Feature-gated caches
     /// Cache for portfolios (risk feature)
     #[cfg(feature = "risk")]
-    pub portfolio_cache: PortfolioCache,
+    pub portfolio_cache: TypedCache<PortfolioEntry>,
     /// Cache for stochastic models (models feature)
     #[cfg(feature = "models")]
-    pub model_cache: ModelCache,
+    pub model_cache: TypedCache<ModelEntry>,
     /// Cache for volatility surfaces/cubes (volatility feature)
     #[cfg(feature = "volatility")]
-    pub vol_surface_cache: VolSurfaceCache,
+    pub vol_surface_cache: TypedCache<VolSurfaceEntry>,
 }
 
 impl AppState {
@@ -97,15 +95,15 @@ impl AppState {
         let pricer = GenericPricer::new_standalone(model_config, pricer_config);
 
         Self {
-            curve_cache: CurveCache::new(config.curve_cache_size),
-            fxvol_cache: FxVolCache::new(config.fxvol_cache_size),
+            curve_cache: TypedCache::new(config.curve_cache_size),
+            fxvol_cache: TypedCache::new(config.fxvol_cache_size),
             pricer: Arc::new(pricer),
             #[cfg(feature = "risk")]
-            portfolio_cache: PortfolioCache::new(config.portfolio_cache_size),
+            portfolio_cache: TypedCache::new(config.portfolio_cache_size),
             #[cfg(feature = "models")]
-            model_cache: ModelCache::new(config.model_cache_size),
+            model_cache: TypedCache::new(config.model_cache_size),
             #[cfg(feature = "volatility")]
-            vol_surface_cache: VolSurfaceCache::new(config.vol_surface_cache_size),
+            vol_surface_cache: TypedCache::new(config.vol_surface_cache_size),
         }
     }
 

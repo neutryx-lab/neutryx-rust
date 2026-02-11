@@ -1,40 +1,4 @@
 //! Market data types and rate infrastructure.
-//!
-//! This module provides comprehensive market data handling including:
-//!
-//! - Currency and rate index definitions
-//! - Market rate quotes with metadata
-//! - Rate validation and bounds checking
-//! - Ticker mapping for external data sources
-//! - Instrument mapping for curve calibration
-//!
-//! # Module Structure
-//!
-//! - [`core`]: Fundamental types (Currency, CurrencyPair, RateType,
-//!   CompoundingMethod)
-//! - [`quote`]: Market quote management (MarketRate, RateId, MarketRateSet)
-//! - [`index`]: Index definitions (RateIndex, FxIndex, SwapIndex)
-//! - [`source`]: Data sources and mapping (DataSource, TickerMapping,
-//!   InstrumentMapper)
-//! - [`definition`]: Curve/surface definitions (CurveDefinition,
-//!   CalibrationModel)
-//! - [`events`]: Economic calendar events
-//! - [`instrument`]: Financial instrument definitions (includes conventions via
-//!   `instrument::convention`)
-//!
-//! # Examples
-//!
-//! ## Basic Usage
-//!
-//! ```
-//! use infra_domain::market::{Currency, RateIndex};
-//!
-//! let usd = Currency::USD;
-//! assert_eq!(usd.code(), "USD");
-//!
-//! let sofr = RateIndex::Sofr;
-//! assert_eq!(sofr.currency(), Currency::USD);
-//! ```
 
 // ============================================================================
 // Organized Submodules
@@ -45,7 +9,7 @@
 pub mod core;
 /// Index definitions (RateIndex, FxIndex, SwapIndex).
 pub mod index;
-/// Market quote management (MarketRate, RateId, MarketRateSet).
+/// Market quote management (MarketQuote, QuoteId, MarketQuoteSet).
 pub mod quote;
 /// Data sources and mapping (DataSource, TickerMapping, InstrumentMapper).
 pub mod source;
@@ -87,14 +51,11 @@ pub use index::{SwapIndex, SwapIndexMetadata};
 pub use instrument::convention;
 // Market instrument (for curve calibration)
 pub use market_instrument::{MarketInstrument, MarketInstrumentError};
-// Quote types (new preferred names)
-pub use quote::{MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType};
-// Quote types (deprecated aliases for backward compatibility)
-#[allow(deprecated)]
-pub use quote::{MarketRate, MarketRateError, MarketRateSet, RateId};
-pub use quote::{QuoteValidator, StandardQuoteValidator, StrikeType, VolQuoteType};
-#[allow(deprecated)]
-pub use quote::{RateValidator, StandardRateValidator};
+// Quote types
+pub use quote::{
+    MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType, QuoteValidator,
+    StandardQuoteValidator, StrikeType, VolQuoteType,
+};
 #[cfg(feature = "serde")]
 pub use registry::DefinitionBundle;
 // Registry

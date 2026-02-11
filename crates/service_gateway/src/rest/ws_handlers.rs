@@ -1,15 +1,4 @@
 //! WebSocket handlers for real-time graph updates.
-//!
-//! Provides WebSocket endpoint for:
-//! - Trade selection events from clients
-//! - Subgraph updates broadcast to clients
-//!
-//! # Requirements Coverage
-//!
-//! - 5.1: `select_trades` event handler
-//! - 5.2: `subgraph_update` broadcast
-//!
-//! Note: This module is only used when `demo` feature is disabled.
 #![allow(dead_code)]
 
 use std::{collections::HashSet, sync::Arc};
@@ -27,10 +16,6 @@ use tokio::sync::broadcast;
 
 use super::graph_handlers::GraphAppState;
 use crate::error::ServerError;
-
-// ============================================================================
-// WebSocket Message Types
-// ============================================================================
 
 /// Client-to-server WebSocket message
 #[derive(Debug, Deserialize)]
@@ -61,22 +46,31 @@ pub enum ServerMessage {
 /// Subgraph data in server message
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphData {
+    /// Graph nodes
     pub nodes: Vec<SubgraphNode>,
+    /// Graph edges (as "links" for D3.js compatibility)
     #[serde(rename = "links")]
     pub edges: Vec<SubgraphEdge>,
+    /// Graph metadata
     pub metadata: SubgraphMetadata,
 }
 
 /// Simplified node for WebSocket message
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphNode {
+    /// Unique node identifier
     pub id: String,
+    /// Node type (e.g. "Input", "Output")
     #[serde(rename = "type")]
     pub node_type: String,
+    /// Human-readable label
     pub label: String,
+    /// Computed value, if available
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
+    /// Grouping category for layout
     pub group: String,
+    /// Trade IDs that share this node
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trade_ids: Vec<String>,
 }
@@ -84,7 +78,9 @@ pub struct SubgraphNode {
 /// Simplified edge for WebSocket message
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphEdge {
+    /// Source node ID
     pub source: String,
+    /// Target node ID
     pub target: String,
 }
 
@@ -92,15 +88,15 @@ pub struct SubgraphEdge {
 #[derive(Debug, Clone, Serialize)]
 #[allow(clippy::struct_field_names)]
 pub struct SubgraphMetadata {
+    /// Total number of nodes
     pub node_count: usize,
+    /// Total number of edges
     pub edge_count: usize,
+    /// Number of selected trades
     pub selected_trade_count: usize,
+    /// Number of nodes shared across trades
     pub shared_node_count: usize,
 }
-
-// ============================================================================
-// WebSocket State
-// ============================================================================
 
 /// Extended app state with WebSocket broadcast channel
 pub struct WsAppState {
@@ -121,31 +117,7 @@ impl WsAppState {
     }
 }
 
-// ============================================================================
-// WebSocket Handlers
-// ============================================================================
-
-/// WebSocket upgrade handler
-///
-/// # Endpoint
-///
-/// `GET /ws`
-///
-/// # Protocol
-///
-/// Client sends JSON messages:
-/// ```json
-/// {"type": "select_trades", "trade_ids": ["T001", "T002"]}
-/// {"type": "get_full_graph"}
-/// {"type": "ping"}
-/// ```
-///
-/// Server responds with:
-/// ```json
-/// {"update_type": "subgraph_update", "data": {...}}
-/// {"update_type": "error", "message": "...", "code": 404}
-/// {"update_type": "pong"}
-/// ```
+/// WebSocket upgrade handler for `GET /ws`.
 pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<WsAppState>>) -> Response {
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
@@ -358,37 +330,38 @@ fn extract_subgraph_for_ws(
 fn create_ws_trade_graph(trade_id: &str) -> pricer_pricing::graph::ComputationGraph {
     use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
+    let mk = |id, nt, label: &str, sens, group| GraphNode {
+        id,
+        node_type: nt,
+        label: label.to_string(),
+        value: None,
+        is_sensitivity_target: sens,
+        group,
+        trade_ids: vec![trade_id.to_string()],
+    };
+
     let mut builder = GraphBuilder::with_capacity(5, 5);
-
-    // Create simplified nodes for WebSocket updates
     let input_id = format!("{trade_id}_input");
-    builder.add_node(GraphNode {
-        id: input_id.clone(),
-        node_type: NodeType::Input,
-        label: "rate".to_string(),
-        value: None,
-        is_sensitivity_target: true,
-        group: NodeGroup::Sensitivity,
-        trade_ids: vec![trade_id.to_string()],
-    });
-
     let output_id = format!("{trade_id}_price");
-    builder.add_node(GraphNode {
-        id: output_id.clone(),
-        node_type: NodeType::Output,
-        label: "price".to_string(),
-        value: None,
-        is_sensitivity_target: false,
-        group: NodeGroup::Output,
-        trade_ids: vec![trade_id.to_string()],
-    });
-
+    builder.add_node(mk(
+        input_id.clone(),
+        NodeType::Input,
+        "rate",
+        true,
+        NodeGroup::Sensitivity,
+    ));
+    builder.add_node(mk(
+        output_id.clone(),
+        NodeType::Output,
+        "price",
+        false,
+        NodeGroup::Output,
+    ));
     builder.add_edge(GraphEdge {
         source: input_id,
         target: output_id,
         weight: None,
     });
-
     builder.build(Some(trade_id.to_string()))
 }
 

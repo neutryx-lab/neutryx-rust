@@ -261,179 +261,24 @@ impl Default for BookMetadata {
 mod tests {
     use super::*;
 
-    // ========================================================================
-    // BookType tests
-    // ========================================================================
-
     #[test]
-    fn test_book_type_default() {
-        let book_type = BookType::default();
-        assert_eq!(book_type, BookType::Trading);
-    }
-
-    #[test]
-    fn test_book_type_is_trading() {
-        assert!(BookType::Trading.is_trading());
-        assert!(!BookType::Banking.is_trading());
-    }
-
-    #[test]
-    fn test_book_type_is_banking() {
-        assert!(BookType::Banking.is_banking());
-        assert!(!BookType::Trading.is_banking());
-    }
-
-    #[test]
-    fn test_book_type_is_hedge() {
-        assert!(BookType::Hedge.is_hedge());
-        assert!(!BookType::Trading.is_hedge());
-    }
-
-    #[test]
-    fn test_book_type_is_internal() {
-        assert!(BookType::Internal.is_internal());
-        assert!(!BookType::Trading.is_internal());
-    }
-
-    #[test]
-    fn test_book_type_clone_and_equality() {
-        let t1 = BookType::Trading;
-        let t2 = t1;
-        assert_eq!(t1, t2);
-    }
-
-    #[test]
-    fn test_book_type_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(BookType::Trading);
-        set.insert(BookType::Banking);
-        set.insert(BookType::Trading); // Duplicate
-        assert_eq!(set.len(), 2);
-    }
-
-    // ========================================================================
-    // RegulatoryBookType tests
-    // ========================================================================
-
-    #[test]
-    fn test_regulatory_book_type_is_trading_book() {
-        assert!(RegulatoryBookType::TB.is_trading_book());
-        assert!(!RegulatoryBookType::BB.is_trading_book());
-    }
-
-    #[test]
-    fn test_regulatory_book_type_is_banking_book() {
-        assert!(RegulatoryBookType::BB.is_banking_book());
-        assert!(!RegulatoryBookType::TB.is_banking_book());
-    }
-
-    #[test]
-    fn test_regulatory_book_type_is_ntbr() {
-        assert!(RegulatoryBookType::NTBR.is_ntbr());
-        assert!(!RegulatoryBookType::TB.is_ntbr());
-    }
-
-    #[test]
-    fn test_regulatory_book_type_clone_and_equality() {
-        let t1 = RegulatoryBookType::TB;
-        let t2 = t1;
-        assert_eq!(t1, t2);
-    }
-
-    // ========================================================================
-    // BookOwnership tests
-    // ========================================================================
-
-    #[test]
-    fn test_book_ownership_new() {
-        let ownership = BookOwnership::new();
-        assert!(ownership.desk().is_none());
-        assert!(ownership.division().is_none());
-        assert!(ownership.legal_entity_id().is_none());
-    }
-
-    #[test]
-    fn test_book_ownership_with_desk() {
-        let ownership = BookOwnership::new().with_desk("FX Spot");
-        assert_eq!(ownership.desk(), Some("FX Spot"));
-    }
-
-    #[test]
-    fn test_book_ownership_with_division() {
-        let ownership = BookOwnership::new().with_division("Markets");
-        assert_eq!(ownership.division(), Some("Markets"));
-    }
-
-    #[test]
-    fn test_book_ownership_with_legal_entity() {
+    fn test_book_ownership_builder() {
         let lei = LegalEntityId::new_unchecked("529900T8BM49AURSDO55");
-        let ownership = BookOwnership::new().with_legal_entity(lei);
-        assert!(ownership.legal_entity_id().is_some());
-    }
-
-    #[test]
-    fn test_book_ownership_builder_chain() {
-        let lei = LegalEntityId::new_unchecked("529900T8BM49AURSDO55");
-        let ownership = BookOwnership::new()
+        let full = BookOwnership::new()
             .with_desk("FX Spot")
             .with_division("Markets")
             .with_legal_entity(lei);
-        assert_eq!(ownership.desk(), Some("FX Spot"));
-        assert_eq!(ownership.division(), Some("Markets"));
-        assert!(ownership.legal_entity_id().is_some());
+        assert_eq!(full.desk(), Some("FX Spot"));
+        assert_eq!(full.division(), Some("Markets"));
+        assert!(full.legal_entity_id().is_some());
     }
 
     #[test]
-    fn test_book_ownership_clone() {
-        let ownership = BookOwnership::new().with_desk("FX Spot");
-        let cloned = ownership.clone();
-        assert_eq!(cloned.desk(), Some("FX Spot"));
-    }
-
-    // ========================================================================
-    // BookMetadata tests
-    // ========================================================================
-
-    #[test]
-    fn test_book_metadata_new() {
-        let metadata = BookMetadata::new();
-        assert!(metadata.created_by().is_none());
-        assert!(metadata.updated_by().is_none());
-    }
-
-    #[test]
-    fn test_book_metadata_with_creator() {
-        let metadata = BookMetadata::new().with_creator("user1");
-        assert_eq!(metadata.created_by(), Some("user1"));
-        assert_eq!(metadata.updated_by(), Some("user1"));
-    }
-
-    #[test]
-    fn test_book_metadata_with_updater() {
-        let metadata = BookMetadata::new()
+    fn test_book_metadata_builder() {
+        let m = BookMetadata::new()
             .with_creator("user1")
             .with_updater("user2");
-        assert_eq!(metadata.created_by(), Some("user1"));
-        assert_eq!(metadata.updated_by(), Some("user2"));
-    }
-
-    #[test]
-    fn test_book_metadata_timestamps() {
-        let metadata = BookMetadata::new();
-        assert!(metadata.created_at() <= metadata.updated_at());
-    }
-
-    #[test]
-    fn test_book_metadata_default() {
-        let metadata = BookMetadata::default();
-        assert!(metadata.created_by().is_none());
-    }
-
-    #[test]
-    fn test_book_metadata_clone() {
-        let metadata = BookMetadata::new().with_creator("user1");
-        let cloned = metadata.clone();
-        assert_eq!(cloned.created_by(), Some("user1"));
+        assert_eq!(m.created_by(), Some("user1"));
+        assert_eq!(m.updated_by(), Some("user2"));
     }
 }

@@ -343,9 +343,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-bench-
 
-      - name: Run pricer_core benchmarks
-        run: cargo bench -p pricer_core --bench core -- --noplot
-
       - name: Run pricer_models benchmarks
         run: cargo bench -p pricer_models --bench models -- --noplot
 
@@ -441,8 +438,8 @@ jobs:
 
       - name: Check regression threshold
         run: |
-          chmod +x scripts/check_iai_regression.sh
-          ./scripts/check_iai_regression.sh --threshold 10 --output github || true
+          chmod +x .github/scripts/check_iai_regression.sh
+          ./.github/scripts/check_iai_regression.sh --threshold 10 --output github || true
 
       - name: Upload Iai benchmark results
         uses: actions/upload-artifact@v4

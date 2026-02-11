@@ -14,15 +14,6 @@
 //!
 //! Part of the **I**nfra layer in the A-I-P-S architecture.
 //! Must not depend on **P**ricer or **S**ervice crates.
-//!
-//! ## Example
-//!
-//! ```rust,ignore
-//! use infra_config::Settings;
-//!
-//! let settings = Settings::load()?;
-//! println!("Thread pool size: {}", settings.engine.thread_pool_size);
-//! ```
 
 mod app_config;
 mod error;

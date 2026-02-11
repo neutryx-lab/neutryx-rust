@@ -41,7 +41,7 @@ pub struct BootstrapConfig {
     /// Convergence tolerance for pricing error.
     pub tolerance: f64,
     /// Interpolation method for the resulting curve.
-    pub interpolation: InterpolationMethod,
+    pub interpolation: BootstrapInterpolation,
     /// Finite difference epsilon for numerical derivative.
     pub fd_epsilon: f64,
 }
@@ -51,7 +51,7 @@ impl Default for BootstrapConfig {
         Self {
             max_iterations: 100,
             tolerance: 1e-10,
-            interpolation: InterpolationMethod::LogLinear,
+            interpolation: BootstrapInterpolation::LogLinear,
             fd_epsilon: 1e-6,
         }
     }
@@ -68,7 +68,7 @@ impl BootstrapConfig {
     }
 
     /// Sets the interpolation method.
-    pub fn with_interpolation(mut self, interpolation: InterpolationMethod) -> Self {
+    pub fn with_interpolation(mut self, interpolation: BootstrapInterpolation) -> Self {
         self.interpolation = interpolation;
         self
     }
@@ -77,30 +77,6 @@ impl BootstrapConfig {
     pub fn with_fd_epsilon(mut self, epsilon: f64) -> Self {
         self.fd_epsilon = epsilon;
         self
-    }
-}
-
-/// Interpolation method for discount factors.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum InterpolationMethod {
-    /// Linear interpolation on discount factors.
-    Linear,
-    /// Log-linear interpolation (linear on log of discount factors).
-    #[default]
-    LogLinear,
-    /// Flat forward interpolation (constant simple forward rate between
-    /// pillars).
-    FlatForward,
-}
-
-impl InterpolationMethod {
-    /// Converts to the curve module's interpolation enum.
-    fn to_bootstrap_interpolation(self) -> BootstrapInterpolation {
-        match self {
-            Self::Linear => BootstrapInterpolation::Linear,
-            Self::LogLinear => BootstrapInterpolation::LogLinear,
-            Self::FlatForward => BootstrapInterpolation::FlatForward,
-        }
     }
 }
 
@@ -242,7 +218,7 @@ impl CurveBootstrapper {
                 let curve = match BootstrappedCurve::new(
                     temp_pillars,
                     temp_dfs,
-                    self.config.interpolation.to_bootstrap_interpolation(),
+                    self.config.interpolation,
                     true, // allow extrapolation
                 ) {
                     Ok(c) => c,
@@ -317,7 +293,7 @@ impl CurveBootstrapper {
         BootstrappedCurve::new(
             result.pillars,
             result.discount_factors,
-            self.config.interpolation.to_bootstrap_interpolation(),
+            self.config.interpolation,
             true,
         )
         .map_err(BootstrapError::InvalidInput)
@@ -402,7 +378,7 @@ impl CurveBootstrapper {
             max_iterations: self.config.max_iterations,
             jacobian_epsilon: self.config.fd_epsilon,
             store_jacobian_inverse: true,
-            interpolation: self.config.interpolation.to_bootstrap_interpolation(),
+            interpolation: self.config.interpolation,
             allow_extrapolation: true,
             damping_factor: None,
             debug_logging: false,
@@ -560,7 +536,7 @@ impl CurveBootstrapper {
         let curve = BootstrappedCurve::new(
             base_result.pillars,
             base_result.discount_factors,
-            self.config.interpolation.to_bootstrap_interpolation(),
+            self.config.interpolation,
             true,
         )
         .map_err(BootstrapError::InvalidInput)?;
@@ -609,7 +585,7 @@ impl CurveBootstrapper {
         let curve = BootstrappedCurve::new(
             result.pillars,
             result.discount_factors,
-            self.config.interpolation.to_bootstrap_interpolation(),
+            self.config.interpolation,
             true,
         )
         .map_err(BootstrapError::InvalidInput)?;
@@ -847,7 +823,7 @@ mod tests {
     #[test]
     fn test_bootstrap_with_custom_config() {
         let config = BootstrapConfig::new(1e-12, 200)
-            .with_interpolation(InterpolationMethod::LogLinear)
+            .with_interpolation(BootstrapInterpolation::LogLinear)
             .with_fd_epsilon(1e-8);
 
         let bootstrapper = CurveBootstrapper::with_config(config);

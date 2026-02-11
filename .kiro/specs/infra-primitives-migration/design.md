@@ -17,12 +17,6 @@
 - マスターデータ型（RateIndex, Frequency, Period, Direction）のinfra_domainへの移動
 - 後方互換性維持による段階的移行パスの提供
 
-### Non-Goals
-- ジェネリック型（`CurrencyPair<T>`, `ExerciseStyle<T>`）の移動（AD互換性のためpricer_coreに残留）
-- 計算ロジックを含む型（`PayoffType`の`evaluate()`等）の移動
-- `time_to_maturity()`等の数学関数の移動（pricer_coreの責務）
-- 新しい基本型の追加（Tenor以外）
-
 ## Architecture
 
 ### Existing Architecture Analysis
@@ -94,15 +88,6 @@ graph TB
 - **New components rationale**: `Tenor`型新規追加（RateIndexの依存先として必要）
 - **Steering compliance**: structure.md、tech.mdの原則を維持
 
-### Technology Stack
-
-| Layer | Choice / Version | Role in Feature | Notes |
-|-------|------------------|-----------------|-------|
-| Core Types | Rust Edition 2021 | 型定義とトレイト実装 | stable互換維持 |
-| Date/Time | chrono | Date型の内部実装 | 既存依存、変更なし |
-| Serialisation | serde (optional) | JSON/TOML変換 | フィーチャーフラグ維持 |
-| Error Handling | thiserror | 構造化エラー型 | 既存パターン継続 |
-
 ## System Flows
 
 ### 型移動とインポート解決フロー
@@ -165,43 +150,13 @@ sequenceDiagram
 
 #### Currency
 
-| Field | Detail |
-|-------|--------|
-| Intent | ISO 4217通貨コードの型安全な表現 |
-| Requirements | 1.1, 12.1-12.3 |
-
-**Responsibilities & Constraints**
-- ISO 4217準拠の通貨コード管理
-- 小数点以下桁数（decimal places）のメタデータ提供
-- `#[non_exhaustive]`で将来の通貨追加に対応
-
-**Dependencies**
-- Inbound: None
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Currency {
-    USD, EUR, GBP, JPY, CHF,
-}
-
-impl Currency {
-    pub fn code(&self) -> &'static str;
-    pub fn decimal_places(&self) -> u8;
-}
-
-impl FromStr for Currency {
-    type Err = CurrencyError;
-    fn from_str(s: &str) -> Result<Self, CurrencyError>;
-}
-
-impl Display for Currency { /* ... */ }
+    // ... implementation omitted ...
 ```
 - Preconditions: None
 - Postconditions: 常に有効なISO 4217コードを返す
@@ -209,44 +164,13 @@ impl Display for Currency { /* ... */ }
 
 #### Date
 
-| Field | Detail |
-|-------|--------|
-| Intent | chrono::NaiveDateの型安全ラッパー |
-| Requirements | 1.2, 5.1-5.3 |
-
-**Responsibilities & Constraints**
-- ISO 8601形式のパースとフォーマット
-- 日付算術（加算、減算）
-- 無効な日付の拒否（Result型）
-
-**Dependencies**
-- Inbound: None
-- Outbound: None
-- External: chrono (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct Date(NaiveDate);
-
-impl Date {
-    pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, DateError>;
-    pub fn today() -> Self;
-    pub fn parse(s: &str) -> Result<Self, DateError>;
-    pub fn into_inner(self) -> NaiveDate;
-    pub fn year(&self) -> i32;
-    pub fn month(&self) -> u32;
-    pub fn day(&self) -> u32;
-}
-
-impl Sub for Date { type Output = i64; }
-impl Add<i64> for Date { type Output = Date; }
-impl FromStr for Date { type Err = DateError; }
-impl Display for Date { /* YYYY-MM-DD */ }
+    // ... implementation omitted ...
 ```
 - Preconditions: `from_ymd`は有効なグレゴリオ暦日付
 - Postconditions: 常に有効な日付を保持
@@ -254,47 +178,14 @@ impl Display for Date { /* YYYY-MM-DD */ }
 
 #### DayCountConvention
 
-| Field | Detail |
-|-------|--------|
-| Intent | 統一された日数計算規約（ISDA準拠） |
-| Requirements | 1.3, 2.1-2.4 |
-
-**Responsibilities & Constraints**
-- 7種類のISDA標準day count conventionをサポート
-- year fraction計算メソッド提供
-- pricer_core版とinfra_domain版の統合
-
-**Dependencies**
-- Inbound: None
-- Outbound: Date (P0)
-- External: chrono (P0)
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum DayCountConvention {
-    Actual360,
     #[default]
-    Actual365Fixed,
-    Actual36525,
-    ActualActualIsda,
-    Thirty360Bond,
-    Thirty360European,
-    ThirtyE360Isda,
-}
-
-impl DayCountConvention {
-    pub fn name(&self) -> &'static str;
-    pub fn year_fraction(&self, start: NaiveDate, end: NaiveDate) -> f64;
-    pub fn year_fraction_dates(&self, start: Date, end: Date) -> f64;
-}
-
-impl FromStr for DayCountConvention { type Err = String; }
-impl Display for DayCountConvention { /* ... */ }
+    // ... implementation omitted ...
 ```
 - Preconditions: `year_fraction`では`start <= end`（そうでなければpanic）
 - Postconditions: 常に有限のf64値を返す
@@ -302,62 +193,16 @@ impl Display for DayCountConvention { /* ... */ }
 
 #### BusinessDayConvention
 
-| Field | Detail |
-|-------|--------|
-| Intent | 営業日調整規約の型安全な表現 |
-| Requirements | 1.4, 5.2 |
-
-**Responsibilities & Constraints**
-- 5種類の営業日調整規約をサポート
-- Calendar型との連携（調整メソッドはCalendarで実装）
-
-**Dependencies**
-- Inbound: None
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BusinessDayConvention {
-    Following,
-    ModifiedFollowing,
-    Preceding,
-    ModifiedPreceding,
-    Unadjusted,
-}
-
-impl BusinessDayConvention {
-    pub fn name(&self) -> &'static str;
-    pub fn code(&self) -> &'static str;
-}
-
-impl FromStr for BusinessDayConvention { type Err = String; }
-impl Display for BusinessDayConvention { /* ... */ }
+    // ... implementation omitted ...
 ```
 
 #### Tenor
-
-| Field | Detail |
-|-------|--------|
-| Intent | 金融期間（3M, 1Y等）の型安全な表現 |
-| Requirements | 13.1-13.4 |
-
-**Responsibilities & Constraints**
-- 標準金融tenorのenum表現
-- 日付算術（tenor加算）
-- RateIndexの依存先として機能
-
-**Dependencies**
-- Inbound: RateIndex (P1)
-- Outbound: Date (P1)
-- External: None
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -365,46 +210,12 @@ impl Display for BusinessDayConvention { /* ... */ }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Tenor {
-    Overnight,  // ON
-    OneWeek,    // 1W
-    TwoWeeks,   // 2W
-    OneMonth,   // 1M
-    TwoMonths,  // 2M
-    ThreeMonths, // 3M
-    SixMonths,  // 6M
-    NineMonths, // 9M
-    OneYear,    // 1Y
-    TwoYears,   // 2Y
-    ThreeYears, // 3Y
-    FiveYears,  // 5Y
-    SevenYears, // 7Y
-    TenYears,   // 10Y
-    FifteenYears, // 15Y
-    TwentyYears, // 20Y
-    ThirtyYears, // 30Y
-}
-
-impl Tenor {
-    pub fn code(&self) -> &'static str;
-    pub fn to_months(&self) -> u32;
-    pub fn to_days(&self) -> u32;  // approximate
-    pub fn add_to_date(&self, date: Date, eom_rule: EndOfMonthRule) -> Date;
-}
-
-impl FromStr for Tenor { type Err = String; }
-impl Display for Tenor { /* e.g., "3M", "1Y" */ }
-
 /// 月末日処理ルール
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum EndOfMonthRule {
     /// 月末日の場合、結果も月末日に調整（例: 1/31 + 1M = 2/28）
     #[default]
-    Adjust,
-    /// 月末日の場合でも、日付をそのまま適用（例: 1/31 + 1M = 2/28、無効なら最終日）
-    Preserve,
-    /// 月末ルールを適用しない（単純に月数を加算、無効なら最終日にフォールバック）
-    None,
-}
+    // ... implementation omitted ...
 ```
 - Preconditions: None
 - Postconditions: `add_to_date`は常に有効な日付を返す
@@ -420,62 +231,16 @@ pub enum EndOfMonthRule {
 
 #### RateIndex
 
-| Field | Detail |
-|-------|--------|
-| Intent | ベンチマーク金利指標のマスターデータ |
-| Requirements | 8.1-8.5 |
-
-**Responsibilities & Constraints**
-- 主要ベンチマーク金利指標の定義
-- 関連メタデータ（通貨、テナー、DCC）の提供
-- Adapterからの参照データとして機能
-
-**Dependencies**
-- Inbound: pricer_models (re-export)
-- Outbound: Currency (P1), Tenor (P1), DayCountConvention (P1)
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum RateIndex {
-    Sofr,       // USD overnight
-    Tonar,      // JPY overnight
-    Euribor3M,  // EUR 3M
-    Euribor6M,  // EUR 6M
-    Sonia,      // GBP overnight
-    Saron,      // CHF overnight
-}
-
-impl RateIndex {
-    pub fn currency(&self) -> Currency;
-    pub fn tenor(&self) -> Tenor;
-    pub fn day_count_convention(&self) -> DayCountConvention;
-    pub fn name(&self) -> &'static str;
-}
+    // ... implementation omitted ...
 ```
 
 #### Frequency
-
-| Field | Detail |
-|-------|--------|
-| Intent | 支払頻度のマスターデータ |
-| Requirements | 9.1-9.4 |
-
-**Responsibilities & Constraints**
-- 標準支払頻度の定義
-- 期間計算メソッドの提供
-
-**Dependencies**
-- Inbound: pricer_models (re-export)
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
 
 ##### Service Interface
 ```rust
@@ -498,22 +263,6 @@ impl Frequency {
 
 #### Period
 
-| Field | Detail |
-|-------|--------|
-| Intent | 単一accrual期間の構造体 |
-| Requirements | 10.1-10.4 |
-
-**Responsibilities & Constraints**
-- 開始日、終了日、支払日の保持
-- 日数・year fraction計算
-
-**Dependencies**
-- Inbound: pricer_models (re-export)
-- Outbound: Date (P0), DayCountConvention (P1)
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -533,183 +282,42 @@ impl Period {
 
 #### TradeDirection / SwapDirection
 
-| Field | Detail |
-|-------|--------|
-| Intent | 汎用取引方向の表現 |
-| Requirements | 11.1-11.4 |
-
-**Responsibilities & Constraints**
-- Long/Shortの汎用方向
-- PayFixed/ReceiveFixedのスワップ方向
-- 相互変換トレイト
-- **Note**: `sign()`等の計算メソッドはinfra_domainには含めない（num_traits依存を避けるため）。pricer_modelsの再エクスポート側で拡張実装を提供
-
-**Dependencies**
-- Inbound: pricer_models (re-export with extension)
-- Outbound: None
-- External: None
-
-**Contracts**: Service [x]
-
 ##### Service Interface (infra_domain)
 ```rust
-// infra_domain: 基本enum定義のみ（計算メソッドなし）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum TradeDirection {
-    Long,
-    Short,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum SwapDirection {
-    PayFixed,
-    ReceiveFixed,
-}
-
-// 相互変換のみ（計算不要）
-impl From<SwapDirection> for TradeDirection { /* PayFixed -> Short, ReceiveFixed -> Long */ }
+    // ... implementation omitted ...
 ```
 
 ##### Extension Interface (pricer_models)
 ```rust
-// pricer_models: 計算メソッドを拡張トレイトで提供
-pub use infra_domain::{TradeDirection, SwapDirection};
-
 pub trait TradeDirectionExt {
-    fn sign<T: num_traits::Float>(&self) -> T;
-}
-
-impl TradeDirectionExt for TradeDirection {
-    fn sign<T: num_traits::Float>(&self) -> T {
-        match self {
-            TradeDirection::Long => T::one(),
-            TradeDirection::Short => -T::one(),
-        }
-    }
-}
-
 pub trait SwapDirectionExt {
-    fn fixed_leg_sign<T: num_traits::Float>(&self) -> T;
-}
-
-impl SwapDirectionExt for SwapDirection {
-    fn fixed_leg_sign<T: num_traits::Float>(&self) -> T {
-        match self {
-            SwapDirection::PayFixed => -T::one(),
-            SwapDirection::ReceiveFixed => T::one(),
-        }
-    }
-}
+    // ... implementation omitted ...
 ```
 
 ### pricer_core Layer (Re-exports)
 
 #### Deprecated Re-exports
 
-| Field | Detail |
-|-------|--------|
-| Intent | 後方互換性のための再エクスポート |
-| Requirements | 3.1-3.5 |
-
-**Implementation Notes**
-- Integration: `pub use infra_domain::{Currency, Date, ...};`を`#[deprecated]`付きで提供
-- Validation: コンパイル時deprecation警告
-- Risks: 移行期間後の削除タイミング決定が必要
-
 ```rust
-// crates/pricer_core/src/types/mod.rs
-
 #[deprecated(since = "0.9.0", note = "Use infra_domain::Currency instead")]
-pub use infra_domain::Currency;
-
 #[deprecated(since = "0.9.0", note = "Use infra_domain::Date instead")]
-pub use infra_domain::Date;
-
 #[deprecated(since = "0.9.0", note = "Use infra_domain::DayCountConvention instead")]
-pub use infra_domain::DayCountConvention;
-
 #[deprecated(since = "0.9.0", note = "Use infra_domain::BusinessDayConvention instead")]
-pub use infra_domain::BusinessDayConvention;
-
 #[deprecated(since = "0.9.0", note = "Use infra_domain::DateError instead")]
-pub use infra_domain::DateError;
-
 #[deprecated(since = "0.9.0", note = "Use infra_domain::CurrencyError instead")]
-pub use infra_domain::CurrencyError;
+    // ... implementation omitted ...
 ```
-
 ## Data Models
 
 ### Domain Model
 
-```mermaid
-classDiagram
-    class Currency {
-        <<enumeration>>
-        USD
-        EUR
-        GBP
-        JPY
-        CHF
-        +code() str
-        +decimal_places() u8
-    }
-
-    class Date {
-        -inner: NaiveDate
-        +from_ymd() Result
-        +today() Date
-        +year() i32
-        +month() u32
-        +day() u32
-    }
-
-    class Tenor {
-        <<enumeration>>
-        Overnight
-        OneMonth
-        ThreeMonths
-        SixMonths
-        OneYear
-        ...
-        +to_months() u32
-        +add_to_date(Date) Date
-    }
-
-    class DayCountConvention {
-        <<enumeration>>
-        Actual360
-        Actual365Fixed
-        ...
-        +year_fraction(Date, Date) f64
-    }
-
-    class RateIndex {
-        <<enumeration>>
-        Sofr
-        Tonar
-        Euribor3M
-        ...
-        +currency() Currency
-        +tenor() Tenor
-        +day_count_convention() DCC
-    }
-
-    class Period {
-        +start: Date
-        +end: Date
-        +payment: Date
-        +year_fraction(DCC) f64
-    }
-
-    RateIndex --> Currency
-    RateIndex --> Tenor
-    RateIndex --> DayCountConvention
-    Period --> Date
-    Period --> DayCountConvention
-```
+*[Mermaid diagram omitted]*
 
 ## Error Handling
 
@@ -726,24 +334,14 @@ classDiagram
 ### Error Types
 
 ```rust
-// infra_domain::error
-
-use thiserror::Error;
-
 #[derive(Debug, Error)]
 pub enum DateError {
     #[error("Invalid date: {year}-{month:02}-{day:02}")]
-    InvalidDate { year: i32, month: u32, day: u32 },
-
     #[error("Failed to parse date: {0}")]
-    ParseError(String),
-}
-
 #[derive(Debug, Error)]
 pub enum CurrencyError {
     #[error("Unknown currency code: {0}")]
-    UnknownCurrency(String),
-}
+    // ... implementation omitted ...
 ```
 
 ## Testing Strategy
@@ -766,34 +364,7 @@ pub enum CurrencyError {
 - `Date`算術の整合性（date + n - n = date）
 - `Tenor::to_months`と`add_to_date`の整合性
 
-## Migration Strategy
-
-```mermaid
-flowchart TD
-    A[Phase 1: 基盤型移動] --> B[Phase 2: マスターデータ型移動]
-    B --> C[Phase 3: 再エクスポート設定]
-    C --> D[Phase 4: 検証とCI更新]
-
-    A1[Currency → infra_domain] --> A
-    A2[Date → infra_domain] --> A
-    A3[DayCountConvention 統合] --> A
-    A4[BusinessDayConvention → infra_domain] --> A
-    A5[DateError, CurrencyError → infra_domain] --> A
-
-    B1[Tenor 新規追加] --> B
-    B2[RateIndex → infra_domain] --> B
-    B3[Frequency → infra_domain] --> B
-    B4[Period → infra_domain] --> B
-    B5[TradeDirection → infra_domain] --> B
-
-    C1[pricer_core deprecated re-exports] --> C
-    C2[pricer_models deprecated re-exports] --> C
-
-    D1[cargo tree 依存検証] --> D
-    D2[全テスト実行] --> D
-    D3[CI check追加] --> D
-```
-
+*[Mermaid diagram omitted]*
 ### Phase Breakdown
 
 1. **Phase 1: 基盤型移動**（最初に実行、他の型の依存先）

@@ -1,26 +1,5 @@
-//! Trade compiler module for IR generation.
-//!
-//! This module provides the infrastructure for compiling hierarchical
-//! `Trade` definitions into `PricingKernel` IR (Intermediate Representation).
-//!
-//! # Architecture
-//!
-//! ```text
-//! Trade (hierarchical)
-//!    ↓
-//! TradeCompiler::compile()
-//!    ↓
-//! PricingKernel (SoA, SIMD-friendly)
-//! ```
-//!
-//! # Key Components
-//!
-//! - [`TradeCompiler`]: Trait for compiling trades to IR
-//! - [`IndexMapper`]: Maps rate indices and currencies to numeric IDs
-//! - [`LinearProductsCompiler`]: Implementation for linear IR products
-//! - [`XCcyCompiler`]: Implementation for cross-currency products
-//! - [`ExoticCompiler`]: Implementation for path-dependent products (barriers,
-//!   Asians)
+//! Trade compiler: transforms hierarchical Trade definitions into PricingKernel
+//! IR.
 
 mod callable;
 mod exotic;

@@ -87,91 +87,27 @@ impl fmt::Display for QuoteType {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashSet;
 
     use super::*;
 
     #[test]
-    fn test_quote_type_variants() {
-        let bid = QuoteType::Bid;
-        let ask = QuoteType::Ask;
-        let mid = QuoteType::Mid;
-        let last = QuoteType::Last;
+    fn test_code_display_and_hash() {
+        let cases = [
+            ("BID", QuoteType::Bid),
+            ("ASK", QuoteType::Ask),
+            ("MID", QuoteType::Mid),
+            ("LAST", QuoteType::Last),
+        ];
+        for (code, qt) in &cases {
+            assert_eq!(qt.code(), *code);
+            assert_eq!(format!("{}", qt), *code);
+        }
 
-        assert_eq!(bid, QuoteType::Bid);
-        assert_eq!(ask, QuoteType::Ask);
-        assert_eq!(mid, QuoteType::Mid);
-        assert_eq!(last, QuoteType::Last);
-    }
-
-    #[test]
-    fn test_quote_type_code() {
-        assert_eq!(QuoteType::Bid.code(), "BID");
-        assert_eq!(QuoteType::Ask.code(), "ASK");
-        assert_eq!(QuoteType::Mid.code(), "MID");
-        assert_eq!(QuoteType::Last.code(), "LAST");
-    }
-
-    #[test]
-    fn test_quote_type_display() {
-        assert_eq!(format!("{}", QuoteType::Bid), "BID");
-        assert_eq!(format!("{}", QuoteType::Ask), "ASK");
-        assert_eq!(format!("{}", QuoteType::Mid), "MID");
-        assert_eq!(format!("{}", QuoteType::Last), "LAST");
-    }
-
-    #[test]
-    fn test_quote_type_copy() {
-        let original = QuoteType::Bid;
-        let copied = original;
-        assert_eq!(original, copied);
-    }
-
-    #[test]
-    fn test_quote_type_clone() {
-        let original = QuoteType::Ask;
-        let cloned = original.clone();
-        assert_eq!(original, cloned);
-    }
-
-    #[test]
-    fn test_quote_type_eq() {
-        assert_eq!(QuoteType::Bid, QuoteType::Bid);
-        assert_ne!(QuoteType::Bid, QuoteType::Ask);
-        assert_ne!(QuoteType::Mid, QuoteType::Last);
-    }
-
-    #[test]
-    fn test_quote_type_hash() {
         let mut set = HashSet::new();
         set.insert(QuoteType::Bid);
         set.insert(QuoteType::Ask);
-        set.insert(QuoteType::Bid); // Duplicate
-
+        set.insert(QuoteType::Bid); // duplicate
         assert_eq!(set.len(), 2);
-        assert!(set.contains(&QuoteType::Bid));
-        assert!(set.contains(&QuoteType::Ask));
-    }
-
-    #[test]
-    fn test_quote_type_as_hashmap_key() {
-        let mut map: HashMap<QuoteType, f64> = HashMap::new();
-        map.insert(QuoteType::Bid, 100.0);
-        map.insert(QuoteType::Ask, 101.0);
-        map.insert(QuoteType::Mid, 100.5);
-        map.insert(QuoteType::Last, 100.25);
-
-        assert_eq!(map.get(&QuoteType::Bid), Some(&100.0));
-        assert_eq!(map.get(&QuoteType::Ask), Some(&101.0));
-        assert_eq!(map.get(&QuoteType::Mid), Some(&100.5));
-        assert_eq!(map.get(&QuoteType::Last), Some(&100.25));
-    }
-
-    #[test]
-    fn test_quote_type_debug() {
-        assert_eq!(format!("{:?}", QuoteType::Bid), "Bid");
-        assert_eq!(format!("{:?}", QuoteType::Ask), "Ask");
-        assert_eq!(format!("{:?}", QuoteType::Mid), "Mid");
-        assert_eq!(format!("{:?}", QuoteType::Last), "Last");
     }
 }

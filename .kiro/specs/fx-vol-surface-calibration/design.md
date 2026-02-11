@@ -12,8 +12,6 @@
 
 ---
 
-## Goals and Non-Goals
-
 ### Goals
 - OIS Instruments → Discount Curves → FX Forward Curve → Vol Surface の依存チェーンを正しく構築
 - EURUSD/USDJPYを含むG10通貨ペアのBF/RRインストルメントサポート
@@ -21,13 +19,6 @@
 - 遅延評価・キャッシュによるパフォーマンス最適化
 - AAD計算グラフのインストルメントまでの拡張
 - Demo WebAppでのインタラクティブな可視化
-
-### Non-Goals
-- 本番WebSocket real-time更新（Phase 2以降）
-- エキゾチックFXオプション（バリアー、ダブルノータッチ等）の直接サポート
-- 複数通貨間のクロスガンマ計算
-
----
 
 ## Requirements Traceability
 
@@ -117,8 +108,6 @@ Vol Surface (Req 3.2)
 
 ---
 
-## Technology Stack
-
 ### Affected Layers
 
 | Layer | Technology | Role |
@@ -170,23 +159,7 @@ sequenceDiagram
 
 ### Vol Surface Calibration Flow
 
-```mermaid
-sequenceDiagram
-    participant Builder as FxVolSurfaceBuilder
-    participant Solver as SequentialBootstrapper
-    participant Sabr as SabrCalibrator
-    participant Surface as CalibratedFxVolSurface
-
-    Builder->>Builder: Group instruments by expiry
-    loop For each expiry
-        Builder->>Solver: Solve ATM vol
-        Builder->>Sabr: Calibrate SABR params
-        Sabr->>Sabr: Minimize BF/RR fitting error
-        Sabr-->>Builder: SabrParameters
-    end
-    Builder->>Surface: Construct with parameters
-    Surface-->>Builder: CalibratedFxVolSurface
-```
+*[Mermaid diagram omitted]*
 
 ---
 
@@ -224,71 +197,12 @@ sequenceDiagram
 ```rust
 /// FX Volatility Instrument variants
 pub enum FxVolInstrument {
-    Atm {
-        currency_pair: CurrencyPair,
-        expiry: NaiveDate,
-        vol: f64,
-        convention: FxVolConvention,
-    },
-    Butterfly {
-        currency_pair: CurrencyPair,
-        expiry: NaiveDate,
-        delta: Delta,
-        vol_spread: f64,
-        convention: FxVolConvention,
-    },
-    RiskReversal {
-        currency_pair: CurrencyPair,
-        expiry: NaiveDate,
-        delta: Delta,
-        vol_spread: f64,
-        convention: FxVolConvention,
-    },
-    DeltaQuoted {
-        currency_pair: CurrencyPair,
-        expiry: NaiveDate,
-        delta: Delta,
-        vol: f64,
-        option_type: OptionType,
-        convention: FxVolConvention,
-    },
-}
-
 /// Delta newtype with validation (0 < delta <= 50)
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Delta(f64);
-
-impl Delta {
-    pub fn new(value: f64) -> Result<Self, FxVolInstrumentError> {
-        if value <= 0.0 || value > 50.0 {
-            return Err(FxVolInstrumentError::InvalidDelta(value));
-        }
-        Ok(Self(value))
-    }
-
-    pub fn value(&self) -> f64 { self.0 }
-}
-
 /// FX Vol Convention specification
 pub struct FxVolConvention {
-    pub delta_type: DeltaType,
-    pub premium_currency: Currency,
-    pub cut_off: CutOffTime,
-    pub calendar: Calendar,
-    pub day_count: DayCountConvention,
-}
-
-impl Default for FxVolConvention {
-    fn default() -> Self {
-        Self {
-            delta_type: DeltaType::SpotDelta,
-            premium_currency: Currency::USD,
-            cut_off: CutOffTime::NewYork10am,
-            calendar: Calendar::NewYork,
-            day_count: DayCountConvention::Act365,
-        }
-    }
-}
+    // ... implementation omitted ...
 ```
 
 **Implementation Notes**:
@@ -311,49 +225,13 @@ impl Default for FxVolConvention {
 ```rust
 /// FX Swap Instrument for forward point bootstrapping
 pub struct FxSwapInstrument {
-    pub currency_pair: CurrencyPair,
-    pub near_date: NaiveDate,
-    pub far_date: NaiveDate,
-    pub spot_rate: f64,
-    pub swap_points: SwapPoints,
-    pub convention: FxSwapConvention,
-}
-
 /// Swap points with scaling factor
 #[derive(Debug, Clone, Copy)]
 pub struct SwapPoints {
-    pub value: f64,
-    pub scaling_factor: f64, // typically 10000 for EURUSD
-}
-
-impl SwapPoints {
-    pub fn to_forward_rate(&self, spot: f64) -> f64 {
-        spot + self.value / self.scaling_factor
-    }
-}
-
 /// Standard FX Swap tenors
 pub enum FxSwapTenor {
-    ON,  // Overnight
-    TN,  // Tom-Next
-    SN,  // Spot-Next
-    W1,  // 1 Week
-    W2,  // 2 Weeks
-    M1, M2, M3, M6, M9,
-    Y1,  // 1 Year
-}
-
 pub struct FxSwapConvention {
-    pub spot_lag: u32,
-    pub settlement_calendar: Calendar,
-    pub business_day_convention: BusinessDayConvention,
-}
-
-impl FxSwapInstrument {
-    pub fn implied_forward_rate(&self) -> f64 {
-        self.swap_points.to_forward_rate(self.spot_rate)
-    }
-}
+    // ... implementation omitted ...
 ```
 
 **Implementation Notes**:
@@ -375,56 +253,14 @@ impl FxSwapInstrument {
 ```rust
 /// Cross-Currency Basis Swap
 pub struct CrossCurrencyBasisSwap {
-    pub domestic_currency: Currency,
-    pub foreign_currency: Currency,
-    pub notional: f64,
-    pub maturity: NaiveDate,
-    pub domestic_leg: XccyLeg,
-    pub foreign_leg: XccyLeg,
-    pub basis_spread: BasisSpread,
-    pub convention: XccyBasisConvention,
-}
-
 /// Basis spread newtype (in basis points)
 #[derive(Debug, Clone, Copy)]
 pub struct BasisSpread(f64);
-
-impl BasisSpread {
-    pub fn from_bps(bps: f64) -> Self { Self(bps) }
-    pub fn as_decimal(&self) -> f64 { self.0 / 10000.0 }
-}
-
 /// XCCY Swap leg
 pub struct XccyLeg {
-    pub currency: Currency,
-    pub rate_index: RateIndex,
-    pub payment_frequency: Frequency,
-    pub day_count: DayCountConvention,
-}
-
 /// XCCY Basis Convention
 pub struct XccyBasisConvention {
-    pub notional_exchange: NotionalExchange,
-    pub mark_to_market: bool,
-    pub spread_leg: SpreadLeg,
-}
-
-pub enum NotionalExchange {
-    Initial,
-    Final,
-    Both,
-    None,
-}
-
-pub enum SpreadLeg {
-    Domestic,
-    Foreign,
-}
-
-/// Standard XCCY tenors
-pub enum XccyTenor {
-    Y2, Y3, Y4, Y5, Y7, Y10, Y15, Y20, Y25, Y30,
-}
+    // ... implementation omitted ...
 ```
 
 **Implementation Notes**:
@@ -447,44 +283,13 @@ pub enum XccyTenor {
 /// FX Forward Curve trait
 pub trait FxCurve<T: Float>: Send + Sync {
     /// Forward rate at expiry T
-    fn forward_rate(&self, expiry: T) -> Result<T, FxCurveError>;
-
     /// Forward points at expiry T
-    fn forward_points(&self, expiry: T) -> Result<T, FxCurveError>;
-
     /// Spot rate
-    fn spot_rate(&self) -> T;
-
     /// Domestic discount factor
-    fn discount_factor_domestic(&self, t: T) -> Result<T, FxCurveError>;
-
     /// Foreign discount factor
-    fn discount_factor_foreign(&self, t: T) -> Result<T, FxCurveError>;
-
     /// Currency pair
-    fn currency_pair(&self) -> CurrencyPair;
-}
-
 /// Calibrated FX Curve implementation
-pub struct CalibratedFxCurve<T: Float> {
-    currency_pair: CurrencyPair,
-    spot_rate: T,
-    forward_points: InterpolatedCurve<T>,
-    domestic_curve: Arc<dyn YieldCurve<T>>,
-    foreign_curve: Arc<dyn YieldCurve<T>>,
-    extrapolation: ExtrapolationPolicy,
-}
-
-impl<T: Float> FxCurve<T> for CalibratedFxCurve<T> {
-    fn forward_rate(&self, expiry: T) -> Result<T, FxCurveError> {
-        let points = self.forward_points.interpolate(expiry)?;
-        Ok(self.spot_rate + points)
-    }
-
-    fn spot_rate(&self) -> T { self.spot_rate }
-
-    // ... other methods
-}
+    // ... implementation omitted ...
 ```
 
 **Implementation Notes**:
@@ -506,59 +311,8 @@ impl<T: Float> FxCurve<T> for CalibratedFxCurve<T> {
 ```rust
 /// FX Forward Curve Builder
 pub struct FxForwardCurveBuilder<T: Float> {
-    currency_pair: CurrencyPair,
-    spot_rate: Option<T>,
-    domestic_curve: Option<Arc<dyn YieldCurve<T>>>,
-    foreign_curve: Option<Arc<dyn YieldCurve<T>>>,
-    fx_swaps: Vec<FxSwapInstrument>,
-    xccy_swaps: Vec<CrossCurrencyBasisSwap>,
-    config: FxCurveConfig,
-}
-
-impl<T: Float> FxForwardCurveBuilder<T> {
-    pub fn new(currency_pair: CurrencyPair) -> Self { ... }
-
-    pub fn with_spot_rate(mut self, spot: T) -> Self { ... }
-
-    pub fn with_domestic_curve(mut self, curve: Arc<dyn YieldCurve<T>>) -> Self { ... }
-
-    pub fn with_foreign_curve(mut self, curve: Arc<dyn YieldCurve<T>>) -> Self { ... }
-
-    pub fn with_fx_swaps(mut self, swaps: Vec<FxSwapInstrument>) -> Self { ... }
-
-    pub fn with_xccy_basis_swaps(mut self, swaps: Vec<CrossCurrencyBasisSwap>) -> Self { ... }
-
-    pub fn build(self) -> Result<CalibratedFxCurve<T>, FxCurveError> {
-        // 1. Validate inputs
-        let domestic = self.domestic_curve.ok_or(FxCurveError::MissingDiscountCurve)?;
-        let foreign = self.foreign_curve.ok_or(FxCurveError::MissingDiscountCurve)?;
-
-        // 2. Bootstrap short-term from FX swaps
-        let short_term_points = self.bootstrap_fx_swaps(&domestic, &foreign)?;
-
-        // 3. Bootstrap long-term from XCCY
-        let long_term_points = self.bootstrap_xccy_swaps(&domestic, &foreign)?;
-
-        // 4. Blend at transition tenor (1Y-2Y)
-        let blended = self.blend_tenor_points(short_term_points, long_term_points)?;
-
-        // 5. Construct curve
-        Ok(CalibratedFxCurve::new(...))
-    }
-
-    fn blend_tenor_points(&self, short: Vec<(T, T)>, long: Vec<(T, T)>) -> Result<...> {
-        // Linear blending in 1Y-2Y transition range
-        // Configured via FxCurveConfig
-    }
-}
-
 pub struct FxCurveConfig {
-    pub transition_start: f64,  // default: 1.0 (1Y)
-    pub transition_end: f64,    // default: 2.0 (2Y)
-    pub interpolation: InterpolationType,
-    pub extrapolation: ExtrapolationPolicy,
-    pub priority: InstrumentPriority,
-}
+    // ... implementation omitted ...
 ```
 
 **Implementation Notes**:
@@ -581,39 +335,11 @@ pub struct FxCurveConfig {
 ```rust
 /// Calibrated FX Vol Surface
 pub struct CalibratedFxVolSurface<T: Float> {
-    currency_pair: CurrencyPair,
-    reference_date: NaiveDate,
-    smiles: BTreeMap<NaiveDate, CalibratedSmile<T>>,
-    fx_curve: Arc<dyn FxCurve<T>>,
-    config: FxVolSurfaceConfig,
-}
-
 /// Per-expiry calibrated smile
 pub struct CalibratedSmile<T: Float> {
-    expiry: NaiveDate,
-    atm_vol: T,
-    sabr_params: Option<SabrParameters<T>>,
-    svi_params: Option<SviParameters<T>>,
-    interpolator_type: InterpolatorType,
-}
-
-impl<T: Float> VolatilitySurface<T> for CalibratedFxVolSurface<T> {
-    fn vol(&self, expiry: f64, strike: f64) -> Result<T, VolSurfaceError> {
-        let smile = self.get_interpolated_smile(expiry)?;
-        smile.vol_at_strike(strike)
-    }
-}
-
-impl<T: Float> CalibratedFxVolSurface<T> {
     /// Delta-space volatility query
-    pub fn vol_by_delta(&self, expiry: f64, delta: f64) -> Result<T, VolSurfaceError> {
-        let smile = self.get_interpolated_smile(expiry)?;
-        smile.vol_at_delta(delta)
-    }
-
     /// Extract single-expiry smile
-    pub fn smile(&self, expiry: f64) -> Result<VolSmile<T>, VolSurfaceError> { ... }
-}
+    // ... implementation omitted ...
 ```
 
 **Implementation Notes**:
@@ -636,66 +362,9 @@ impl<T: Float> CalibratedFxVolSurface<T> {
 ```rust
 /// FX Vol Surface Builder
 pub struct FxVolSurfaceBuilder<T: Float> {
-    currency_pair: CurrencyPair,
-    instruments: Vec<FxVolInstrument>,
-    config: FxVolSurfaceConfig,
-    fx_curve: Option<Arc<dyn FxCurve<T>>>,
-    diagnostics: CalibrationDiagnostics,
-}
-
-impl<T: Float> FxVolSurfaceBuilder<T> {
-    pub fn new(currency_pair: CurrencyPair) -> Self { ... }
-
-    pub fn with_instruments(mut self, instruments: Vec<FxVolInstrument>) -> Self { ... }
-
-    pub fn with_config(mut self, config: FxVolSurfaceConfig) -> Self { ... }
-
-    pub fn with_fx_curve(mut self, curve: Arc<dyn FxCurve<T>>) -> Self { ... }
-
-    pub fn build(self) -> Result<CalibratedFxVolSurface<T>, CalibrationError> {
-        let fx_curve = self.fx_curve.ok_or(CalibrationError::MissingFxCurve)?;
-
-        // Group instruments by expiry
-        let by_expiry = self.group_by_expiry();
-
-        // Calibrate each expiry
-        let mut smiles = BTreeMap::new();
-        for (expiry, instruments) in by_expiry {
-            let smile = self.calibrate_smile(expiry, instruments, &fx_curve)?;
-            smiles.insert(expiry, smile);
-        }
-
-        Ok(CalibratedFxVolSurface::new(
-            self.currency_pair,
-            smiles,
-            fx_curve,
-            self.config,
-        ))
-    }
-
-    fn calibrate_smile(&self, ...) -> Result<CalibratedSmile<T>, CalibrationError> {
-        match self.config.interpolator_type {
-            InterpolatorType::Sabr => self.calibrate_sabr_smile(...),
-            InterpolatorType::SviRaw => self.calibrate_svi_smile(...),
-            InterpolatorType::Flat => self.calibrate_flat_smile(...),
-            _ => todo!(),
-        }
-    }
-}
-
 pub struct FxVolSurfaceConfig {
-    pub interpolator_type: InterpolatorType,
-    pub expiry_interpolation: ExpiryInterpolation,
-    pub extrapolation: ExtrapolationPolicy,
-    pub sabr_config: Option<SabrConfig>,
-}
-
 pub struct CalibrationDiagnostics {
-    pub iterations: usize,
-    pub residual: f64,
-    pub converged: bool,
-    pub per_instrument_errors: Vec<(String, f64)>,
-}
+    // ... implementation omitted ...
 ```
 
 ---
@@ -713,53 +382,12 @@ pub struct CalibrationDiagnostics {
 ```rust
 /// Lazy FX Vol Surface with deferred calibration
 pub struct LazyFxVolSurface<T: Float> {
-    builder: FxVolSurfaceBuilder<T>,
-    cache: Arc<RwLock<Option<CalibratedFxVolSurface<T>>>>,
-    stats: Arc<RwLock<CacheStats>>,
-}
-
-impl<T: Float> LazyFxVolSurface<T> {
-    pub fn new(builder: FxVolSurfaceBuilder<T>) -> Self {
-        Self {
-            builder,
-            cache: Arc::new(RwLock::new(None)),
-            stats: Arc::new(RwLock::new(CacheStats::default())),
-        }
-    }
-
     /// Get or calibrate surface
-    pub fn get_or_calibrate(&self) -> Result<&CalibratedFxVolSurface<T>, CalibrationError> {
-        {
-            let cache = self.cache.read().unwrap();
-            if cache.is_some() {
-                self.stats.write().unwrap().record_hit();
-                return Ok(cache.as_ref().unwrap());
-            }
-        }
-
-        self.stats.write().unwrap().record_miss();
-        let surface = self.builder.clone().build()?;
-        *self.cache.write().unwrap() = Some(surface);
-        Ok(self.cache.read().unwrap().as_ref().unwrap())
-    }
-
     /// Invalidate cache
-    pub fn invalidate(&self) {
-        *self.cache.write().unwrap() = None;
-    }
-
     /// Get cache statistics
-    pub fn stats(&self) -> CacheStats {
-        self.stats.read().unwrap().clone()
-    }
-}
-
 #[derive(Default, Clone)]
 pub struct CacheStats {
-    pub hits: usize,
-    pub misses: usize,
-    pub invalidations: usize,
-}
+    // ... implementation omitted ...
 ```
 
 ---
@@ -777,100 +405,13 @@ pub struct CacheStats {
 ```rust
 /// End-to-end FX Market Builder
 pub struct FxMarketBuilder<T: Float> {
-    currency_pair: CurrencyPair,
-    domestic_ois_instruments: Vec<BootstrapInstrument>,
-    foreign_ois_instruments: Vec<BootstrapInstrument>,
-    fx_instruments: FxInstruments,
-    vol_instruments: Vec<FxVolInstrument>,
-    prebuilt_domestic: Option<Arc<dyn YieldCurve<T>>>,
-    prebuilt_foreign: Option<Arc<dyn YieldCurve<T>>>,
-    config: FxMarketConfig,
-}
-
 pub struct FxInstruments {
-    pub fx_swaps: Vec<FxSwapInstrument>,
-    pub xccy_swaps: Vec<CrossCurrencyBasisSwap>,
-}
-
-impl<T: Float> FxMarketBuilder<T> {
-    pub fn new(currency_pair: CurrencyPair) -> Self { ... }
-
-    pub fn with_domestic_ois_instruments(mut self, instruments: Vec<BootstrapInstrument>) -> Self { ... }
-
-    pub fn with_foreign_ois_instruments(mut self, instruments: Vec<BootstrapInstrument>) -> Self { ... }
-
-    pub fn with_fx_instruments(mut self, instruments: FxInstruments) -> Self { ... }
-
-    pub fn with_vol_instruments(mut self, instruments: Vec<FxVolInstrument>) -> Self { ... }
-
-    pub fn with_prebuilt_domestic_curve(mut self, curve: Arc<dyn YieldCurve<T>>) -> Self { ... }
-
-    pub fn with_prebuilt_foreign_curve(mut self, curve: Arc<dyn YieldCurve<T>>) -> Self { ... }
-
     /// Build complete FX market
-    pub fn build(self) -> Result<FxMarket<T>, FxMarketError> {
-        // 1. Build/use domestic curve
-        let domestic = self.build_or_use_domestic()?;
-
-        // 2. Build/use foreign curve
-        let foreign = self.build_or_use_foreign()?;
-
-        // 3. Build FX curve
-        let fx_curve = FxForwardCurveBuilder::new(self.currency_pair)
-            .with_spot_rate(self.config.spot_rate)
-            .with_domestic_curve(domestic.clone())
-            .with_foreign_curve(foreign.clone())
-            .with_fx_swaps(self.fx_instruments.fx_swaps)
-            .with_xccy_basis_swaps(self.fx_instruments.xccy_swaps)
-            .build()?;
-
-        // 4. Build vol surface (optional)
-        let vol_surface = if !self.vol_instruments.is_empty() {
-            Some(FxVolSurfaceBuilder::new(self.currency_pair)
-                .with_instruments(self.vol_instruments)
-                .with_fx_curve(Arc::new(fx_curve.clone()))
-                .with_config(self.config.vol_config.clone())
-                .build()?)
-        } else {
-            None
-        };
-
-        Ok(FxMarket {
-            currency_pair: self.currency_pair,
-            domestic_curve: domestic,
-            foreign_curve: foreign,
-            fx_curve: Arc::new(fx_curve),
-            vol_surface,
-        })
-    }
-
     /// Partial build: discount curves only
-    pub fn build_discount_curves(self) -> Result<(Arc<dyn YieldCurve<T>>, Arc<dyn YieldCurve<T>>), FxMarketError> { ... }
-
     /// Partial build: FX curve only (requires discount curves)
-    pub fn build_fx_curve(self, domestic: Arc<dyn YieldCurve<T>>, foreign: Arc<dyn YieldCurve<T>>)
-        -> Result<CalibratedFxCurve<T>, FxMarketError> { ... }
-
-    fn build_or_use_domestic(&self) -> Result<Arc<dyn YieldCurve<T>>, FxMarketError> {
-        if let Some(curve) = &self.prebuilt_domestic {
-            return Ok(curve.clone());
-        }
-        // Use CurveEngine to bootstrap
-        let engine = CurveEngine::new(self.config.domestic_curve_config.clone());
-        engine.bootstrap(&self.domestic_ois_instruments)
-            .map(Arc::new)
-            .map_err(FxMarketError::DomesticCurveError)
-    }
-}
-
 /// Complete FX Market result
 pub struct FxMarket<T: Float> {
-    pub currency_pair: CurrencyPair,
-    pub domestic_curve: Arc<dyn YieldCurve<T>>,
-    pub foreign_curve: Arc<dyn YieldCurve<T>>,
-    pub fx_curve: Arc<dyn FxCurve<T>>,
-    pub vol_surface: Option<CalibratedFxVolSurface<T>>,
-}
+    // ... implementation omitted ...
 ```
 
 ---
@@ -879,26 +420,7 @@ pub struct FxMarket<T: Float> {
 
 ### Domain Model
 
-```mermaid
-erDiagram
-    FxMarket ||--|| CurrencyPair : has
-    FxMarket ||--o| CalibratedFxVolSurface : contains
-    FxMarket ||--|| CalibratedFxCurve : contains
-    FxMarket ||--|| YieldCurve : domestic
-    FxMarket ||--|| YieldCurve : foreign
-
-    CalibratedFxCurve ||--o{ ForwardPoint : interpolates
-    CalibratedFxCurve }|--|| YieldCurve : uses_domestic
-    CalibratedFxCurve }|--|| YieldCurve : uses_foreign
-
-    CalibratedFxVolSurface ||--o{ CalibratedSmile : by_expiry
-    CalibratedSmile ||--o| SabrParameters : has
-    CalibratedSmile ||--o| SviParameters : has
-
-    FxVolInstrument }|--|| FxVolConvention : uses
-    FxSwapInstrument }|--|| FxSwapConvention : uses
-    CrossCurrencyBasisSwap }|--|| XccyBasisConvention : uses
-```
+*[Mermaid diagram omitted]*
 
 ### Newtypes (Req 14)
 
@@ -922,65 +444,12 @@ pub struct BasisSpread(f64);   // in basis points
 #[derive(Debug, thiserror::Error)]
 pub enum FxMarketError {
     #[error("Domestic curve error: {0}")]
-    DomesticCurveError(#[from] BootstrapError),
-
     #[error("Foreign curve error: {0}")]
-    ForeignCurveError(#[from] BootstrapError),
-
     #[error("FX curve error: {0}")]
-    FxCurveError(#[from] FxCurveError),
-
     #[error("Vol surface error: {0}")]
-    VolSurfaceError(#[from] CalibrationError),
-
     #[error("Build step failed at: {step}")]
-    PartialBuildFailure {
-        step: String,
-        partial_results: PartialFxMarket,
-    },
-}
-
 /// FX Curve specific errors
-#[derive(Debug, thiserror::Error)]
-pub enum FxCurveError {
-    #[error("Missing discount curve: {currency}")]
-    MissingDiscountCurve { currency: Currency },
-
-    #[error("Invalid swap dates: near {near} >= far {far}")]
-    InvalidSwapDates { near: NaiveDate, far: NaiveDate },
-
-    #[error("Bootstrap failed to converge")]
-    BootstrapNotConverged,
-
-    #[error("Extrapolation beyond bounds: {expiry}")]
-    ExtrapolationError { expiry: f64 },
-}
-
-/// FX Vol Instrument errors
-#[derive(Debug, thiserror::Error)]
-pub enum FxVolInstrumentError {
-    #[error("Invalid delta: {0} (must be 0 < delta <= 50)")]
-    InvalidDelta(f64),
-
-    #[error("Invalid expiry: {0} (must be future date)")]
-    InvalidExpiry(NaiveDate),
-}
-
-/// Calibration errors
-#[derive(Debug, thiserror::Error)]
-pub enum CalibrationError {
-    #[error("Missing FX curve")]
-    MissingFxCurve,
-
-    #[error("Calibration did not converge after {iterations} iterations, residual: {residual}")]
-    NotConverged { iterations: usize, residual: f64 },
-
-    #[error("Numerical instability: {context}")]
-    NumericalInstability { context: String },
-
-    #[error("Incompatible interpolators: {0}")]
-    IncompatibleInterpolators(String),
-}
+    // ... implementation omitted ...
 ```
 
 ---

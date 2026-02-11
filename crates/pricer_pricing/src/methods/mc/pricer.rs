@@ -38,101 +38,46 @@ use crate::methods::path_dependent::{PathDependentPayoff, PathObserver, PathPayo
 
 /// Greek type for selection.
 ///
-/// Specifies which sensitivity to compute alongside the price.
-///
-/// # First-Order Greeks
-///
-/// - `Delta`: ∂V/∂S - Sensitivity to spot price
-/// - `Vega`: ∂V/∂σ - Sensitivity to volatility
-/// - `Theta`: ∂V/∂τ - Sensitivity to time (time decay)
-/// - `Rho`: ∂V/∂r - Sensitivity to interest rate
-///
-/// # Second-Order Greeks
-///
-/// - `Gamma`: ∂²V/∂S² - Convexity with respect to spot
-/// - `Vanna`: ∂²V/∂S∂σ - Cross sensitivity (delta-vol)
-/// - `Volga`: ∂²V/∂σ² - Volatility convexity (also known as vomma)
+/// First-order: Delta (∂V/∂S), Vega (∂V/∂σ), Theta (∂V/∂τ), Rho (∂V/∂r).
+/// Second-order: Gamma (∂²V/∂S²), Vanna (∂²V/∂S∂σ), Volga (∂²V/∂σ²).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Greek {
-    // First-order Greeks
-    /// Delta: ∂V/∂S (sensitivity to spot price)
+    /// ∂V/∂S
     Delta,
-    /// Vega: ∂V/∂σ (sensitivity to volatility)
+    /// ∂V/∂σ
     Vega,
-    /// Theta: ∂V/∂τ (sensitivity to time, time decay)
+    /// ∂V/∂τ
     Theta,
-    /// Rho: ∂V/∂r (sensitivity to interest rate)
+    /// ∂V/∂r
     Rho,
-
-    // Second-order Greeks
-    /// Gamma: ∂²V/∂S² (convexity with respect to spot)
+    /// ∂²V/∂S²
     Gamma,
-    /// Vanna: ∂²V/∂S∂σ (cross sensitivity between spot and volatility)
+    /// ∂²V/∂S∂σ
     Vanna,
-    /// Volga: ∂²V/∂σ² (volatility convexity, also known as vomma)
+    /// ∂²V/∂σ²
     Volga,
 }
 
 /// Pricing result with optional Greeks.
-///
-/// Contains the Monte Carlo price estimate and optionally computed
-/// sensitivities.
-///
-/// # First-Order Greeks
-///
-/// - `delta`: ∂V/∂S - Sensitivity to spot price
-/// - `vega`: ∂V/∂σ - Sensitivity to volatility
-/// - `theta`: ∂V/∂τ - Sensitivity to time (time decay)
-/// - `rho`: ∂V/∂r - Sensitivity to interest rate
-///
-/// # Second-Order Greeks
-///
-/// - `gamma`: ∂²V/∂S² - Convexity with respect to spot
-/// - `vanna`: ∂²V/∂S∂σ - Cross sensitivity (delta-vol)
-/// - `volga`: ∂²V/∂σ² - Volatility convexity
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::PricingResult;
-///
-/// let result = PricingResult {
-///     price: 10.5,
-///     std_error: 0.05,
-///     delta: Some(0.55),
-///     gamma: None,
-///     vega: Some(25.0),
-///     theta: None,
-///     rho: None,
-///     vanna: None,
-///     volga: None,
-/// };
-///
-/// println!("Price: {} +/- {}", result.price, result.std_error * 1.96);
-/// ```
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PricingResult {
-    /// Present value of the instrument.
+    /// Present value.
     pub price: f64,
-    /// Standard error of the price estimate.
+    /// Standard error.
     pub std_error: f64,
-
-    // First-order Greeks
-    /// Delta: ∂V/∂S (sensitivity to spot price).
+    /// ∂V/∂S
     pub delta: Option<f64>,
-    /// Vega: ∂V/∂σ (sensitivity to volatility).
+    /// ∂V/∂σ
     pub vega: Option<f64>,
-    /// Theta: ∂V/∂τ (sensitivity to time, time decay).
+    /// ∂V/∂τ
     pub theta: Option<f64>,
-    /// Rho: ∂V/∂r (sensitivity to interest rate).
+    /// ∂V/∂r
     pub rho: Option<f64>,
-
-    // Second-order Greeks
-    /// Gamma: ∂²V/∂S² (convexity with respect to spot).
+    /// ∂²V/∂S²
     pub gamma: Option<f64>,
-    /// Vanna: ∂²V/∂S∂σ (cross sensitivity between spot and volatility).
+    /// ∂²V/∂S∂σ
     pub vanna: Option<f64>,
-    /// Volga: ∂²V/∂σ² (volatility convexity, also known as vomma).
+    /// ∂²V/∂σ²
     pub volga: Option<f64>,
 }
 
@@ -146,39 +91,7 @@ impl PricingResult {
     pub fn confidence_99(&self) -> f64 { 2.576 * self.std_error }
 }
 
-/// Monte Carlo pricing engine.
-///
-/// Orchestrates path generation, payoff computation, and Greeks calculation
-/// using optional automatic differentiation.
-///
-/// # Workspace Reuse
-///
-/// The pricer maintains an internal workspace that is reused across pricing
-/// calls. This minimises memory allocations for repeated pricing operations.
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::{
-///     MonteCarloPricer, MonteCarloConfig, GbmParams, PayoffParams, Greek,
-/// };
-///
-/// let config = MonteCarloConfig::builder()
-///     .n_paths(10_000)
-///     .n_steps(252)
-///     .seed(42)
-///     .build()
-///     .unwrap();
-///
-/// let mut pricer = MonteCarloPricer::new(config).unwrap();
-///
-/// let gbm = GbmParams::default();
-/// let payoff = PayoffParams::call(100.0);
-/// let discount_factor = 0.95;
-///
-/// let result = pricer.price_european(gbm, payoff, discount_factor);
-/// println!("Price: {} +/- {}", result.price, result.std_error);
-/// ```
+/// Monte Carlo pricing engine with workspace reuse and bump-and-revalue Greeks.
 pub struct MonteCarloPricer {
     config: MonteCarloConfig,
     workspace: PathWorkspace,
@@ -186,16 +99,15 @@ pub struct MonteCarloPricer {
     pub(crate) rng: PricerRng,
 }
 
+/// Pricing mode for unified bump-and-revalue Greeks.
+#[derive(Clone, Copy)]
+enum PricingMode {
+    European(PayoffParams),
+    PathDependent(PathPayoffType<f64>),
+}
+
 impl MonteCarloPricer {
-    /// Creates a new pricer with the given configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Monte Carlo configuration
-    ///
-    /// # Errors
-    ///
-    /// Returns `MonteCarloConfigError` if configuration is invalid.
+    /// Creates a new pricer. Returns error if `config` is invalid.
     pub fn new(config: MonteCarloConfig) -> Result<Self, MonteCarloConfigError> {
         config.validate()?;
 
@@ -210,18 +122,7 @@ impl MonteCarloPricer {
         })
     }
 
-    /// Creates a new pricer with a specific seed.
-    ///
-    /// Convenience constructor that overrides the config seed.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Monte Carlo configuration
-    /// * `seed` - Seed for reproducibility
-    ///
-    /// # Errors
-    ///
-    /// Returns `MonteCarloConfigError` if configuration is invalid.
+    /// Creates a new pricer with a specific seed (overrides config seed).
     pub fn with_seed(config: MonteCarloConfig, seed: u64) -> Result<Self, MonteCarloConfigError> {
         config.validate()?;
 
@@ -241,16 +142,10 @@ impl MonteCarloPricer {
 
     /// Returns the current RNG seed for reproducible finite difference
     /// calculations.
-    ///
-    /// This allows external code to capture the current seed and use
-    /// `reset_with_seed` to ensure consistent random numbers across
-    /// multiple pricings (e.g., for Greeks).
     #[inline]
     pub fn current_seed(&self) -> u64 { self.rng.seed() }
 
-    /// Resets the pricer state for a new simulation.
-    ///
-    /// Resets the workspace and RNG (using original seed).
+    /// Resets the pricer state (workspace + RNG with original seed).
     pub fn reset(&mut self) {
         self.workspace.reset();
         self.rng = PricerRng::from_seed(self.config.seed().unwrap_or(0));
@@ -263,16 +158,6 @@ impl MonteCarloPricer {
     }
 
     /// Prices a European option using Monte Carlo simulation.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters (spot, rate, volatility, maturity)
-    /// * `payoff` - Payoff parameters (strike, type, smoothing)
-    /// * `discount_factor` - Present value discount factor (e.g., exp(-r*T))
-    ///
-    /// # Returns
-    ///
-    /// Price and standard error.
     pub fn price_european(
         &mut self,
         gbm: GbmParams,
@@ -311,23 +196,7 @@ impl MonteCarloPricer {
         }
     }
 
-    /// Prices a European option with selected Greeks.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `payoff` - Payoff parameters
-    /// * `discount_factor` - Discount factor
-    /// * `greeks` - Which Greeks to compute
-    ///
-    /// # Returns
-    ///
-    /// Price and requested Greeks.
-    ///
-    /// # Implementation Note
-    ///
-    /// Phase 3.2 uses bump-and-revalue for Greeks. Phase 4 will integrate
-    /// Enzyme AD for true automatic differentiation.
+    /// Prices a European option with selected Greeks via bump-and-revalue.
     pub fn price_with_greeks(
         &mut self,
         gbm: GbmParams,
@@ -335,320 +204,239 @@ impl MonteCarloPricer {
         discount_factor: f64,
         greeks: &[Greek],
     ) -> PricingResult {
-        // Base price
         let mut result = self.price_european(gbm, payoff, discount_factor);
-
-        // Compute requested Greeks
+        let mode = PricingMode::European(payoff);
         for greek in greeks {
             match greek {
-                // First-order Greeks
-                Greek::Delta => {
-                    result.delta = Some(self.compute_delta(gbm, payoff, discount_factor));
-                }
-                Greek::Vega => {
-                    result.vega = Some(self.compute_vega(gbm, payoff, discount_factor));
-                }
-                Greek::Theta => {
-                    result.theta = Some(self.compute_theta(gbm, payoff, discount_factor));
-                }
-                Greek::Rho => {
-                    result.rho = Some(self.compute_rho(gbm, payoff, discount_factor));
-                }
-                // Second-order Greeks
-                Greek::Gamma => {
-                    result.gamma = Some(self.compute_gamma(gbm, payoff, discount_factor));
-                }
-                Greek::Vanna => {
-                    result.vanna = Some(self.compute_vanna(gbm, payoff, discount_factor));
-                }
-                Greek::Volga => {
-                    result.volga = Some(self.compute_volga(gbm, payoff, discount_factor));
-                }
+                Greek::Delta => result.delta = Some(self.fd_delta(gbm, mode, discount_factor)),
+                Greek::Gamma => result.gamma = Some(self.fd_gamma(gbm, mode, discount_factor)),
+                Greek::Vega => result.vega = Some(self.fd_vega(gbm, mode, discount_factor)),
+                Greek::Theta => result.theta = Some(self.fd_theta(gbm, mode, discount_factor)),
+                Greek::Rho => result.rho = Some(self.fd_rho(gbm, mode)),
+                Greek::Vanna => result.vanna = Some(self.fd_vanna(gbm, mode, discount_factor)),
+                Greek::Volga => result.volga = Some(self.fd_volga(gbm, mode, discount_factor)),
             }
         }
-
         result
     }
 
-    /// Computes Delta using central differences (Phase 3.2 placeholder).
-    ///
-    /// In Phase 4, this will use Enzyme forward-mode AD.
-    fn compute_delta(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
-        // Bump size: 1% of spot or minimum 0.01
-        let bump = (0.01 * gbm.spot).max(0.01);
-
-        // Save RNG state for reproducibility
-        let seed = self.rng.seed();
-
-        // Price at S + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            spot: gbm.spot + bump,
-            ..gbm
-        };
-        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
-
-        // Price at S - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            spot: gbm.spot - bump,
-            ..gbm
-        };
-        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
-
-        // Central difference
-        (price_up - price_down) / (2.0 * bump)
-    }
-
-    /// Computes Gamma using central differences.
-    fn compute_gamma(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
-        let bump = (0.01 * gbm.spot).max(0.01);
-        let seed = self.rng.seed();
-
-        // Price at S
-        self.reset_with_seed(seed);
-        let price_mid = self.price_european(gbm, payoff, discount_factor).price;
-
-        // Price at S + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            spot: gbm.spot + bump,
-            ..gbm
-        };
-        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
-
-        // Price at S - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            spot: gbm.spot - bump,
-            ..gbm
-        };
-        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
-
-        // Second derivative via central differences
-        (price_up - 2.0 * price_mid + price_down) / (bump * bump)
-    }
-
-    /// Computes Vega using central differences.
-    ///
-    /// In Phase 4, this will use Enzyme reverse-mode AD.
-    fn compute_vega(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
-        // Bump size: 1% of vol (absolute)
-        let bump = 0.01;
-        let seed = self.rng.seed();
-
-        // Price at vol + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            volatility: gbm.volatility + bump,
-            ..gbm
-        };
-        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
-
-        // Price at vol - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            volatility: (gbm.volatility - bump).max(0.001),
-            ..gbm
-        };
-        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
-
-        // Central difference (scaled to 1% vol move)
-        (price_up - price_down) / (2.0 * bump)
-    }
-
-    /// Computes Theta using central differences.
-    fn compute_theta(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
-        // Bump size: 1 day = 1/252 years
-        let bump = 1.0 / 252.0;
-        let seed = self.rng.seed();
-
-        // Price at T - bump (shorter maturity)
-        self.reset_with_seed(seed);
-        let gbm_short = GbmParams {
-            maturity: (gbm.maturity - bump).max(0.001),
-            ..gbm
-        };
-        let price_short = self
-            .price_european(gbm_short, payoff, discount_factor)
-            .price;
-
-        // Price at T (original)
-        self.reset_with_seed(seed);
-        let price_orig = self.price_european(gbm, payoff, discount_factor).price;
-
-        // Theta is typically negative (time decay)
-        // dP/dT, scaled to daily
-        -(price_orig - price_short) / bump
-    }
-
-    /// Computes Rho using central differences.
-    fn compute_rho(&mut self, gbm: GbmParams, payoff: PayoffParams, _discount_factor: f64) -> f64 {
-        // Bump size: 1% rate change (absolute)
-        let bump = 0.01;
-        let seed = self.rng.seed();
-
-        // Price at r + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            rate: gbm.rate + bump,
-            ..gbm
-        };
-        let df_up = (-(gbm.rate + bump) * gbm.maturity).exp();
-        let price_up = self.price_european(gbm_up, payoff, df_up).price;
-
-        // Price at r - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            rate: gbm.rate - bump,
-            ..gbm
-        };
-        let df_down = (-(gbm.rate - bump) * gbm.maturity).exp();
-        let price_down = self.price_european(gbm_down, payoff, df_down).price;
-
-        // Central difference (scaled to 1% rate move)
-        (price_up - price_down) / (2.0 * bump)
-    }
-
-    /// Computes Vanna (∂²V/∂S∂σ) using cross-differences.
-    ///
-    /// Vanna is the cross partial derivative of option value with respect to
-    /// spot price and volatility. It measures how delta changes with
-    /// volatility.
-    ///
-    /// Uses the formula: (V(S+h,σ+k) - V(S+h,σ-k) - V(S-h,σ+k) + V(S-h,σ-k)) /
-    /// (4hk)
-    fn compute_vanna(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
-        let spot_bump = (0.01 * gbm.spot).max(0.01);
-        let vol_bump = 0.01;
-        let seed = self.rng.seed();
-
-        // V(S+h, σ+k)
-        self.reset_with_seed(seed);
-        let gbm_up_up = GbmParams {
-            spot: gbm.spot + spot_bump,
-            volatility: gbm.volatility + vol_bump,
-            ..gbm
-        };
-        let price_up_up = self
-            .price_european(gbm_up_up, payoff, discount_factor)
-            .price;
-
-        // V(S+h, σ-k)
-        self.reset_with_seed(seed);
-        let gbm_up_down = GbmParams {
-            spot: gbm.spot + spot_bump,
-            volatility: (gbm.volatility - vol_bump).max(0.001),
-            ..gbm
-        };
-        let price_up_down = self
-            .price_european(gbm_up_down, payoff, discount_factor)
-            .price;
-
-        // V(S-h, σ+k)
-        self.reset_with_seed(seed);
-        let gbm_down_up = GbmParams {
-            spot: gbm.spot - spot_bump,
-            volatility: gbm.volatility + vol_bump,
-            ..gbm
-        };
-        let price_down_up = self
-            .price_european(gbm_down_up, payoff, discount_factor)
-            .price;
-
-        // V(S-h, σ-k)
-        self.reset_with_seed(seed);
-        let gbm_down_down = GbmParams {
-            spot: gbm.spot - spot_bump,
-            volatility: (gbm.volatility - vol_bump).max(0.001),
-            ..gbm
-        };
-        let price_down_down = self
-            .price_european(gbm_down_down, payoff, discount_factor)
-            .price;
-
-        // Cross-difference formula
-        (price_up_up - price_up_down - price_down_up + price_down_down)
-            / (4.0 * spot_bump * vol_bump)
-    }
-
-    /// Computes Volga (∂²V/∂σ²) using three-point formula.
-    ///
-    /// Volga (also known as vomma) is the second derivative of option value
-    /// with respect to volatility. It measures the convexity of vega.
-    ///
-    /// Uses the formula: (V(σ+h) - 2V(σ) + V(σ-h)) / h²
-    fn compute_volga(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
-        let bump = 0.01;
-        let seed = self.rng.seed();
-
-        // V(σ)
-        self.reset_with_seed(seed);
-        let price_mid = self.price_european(gbm, payoff, discount_factor).price;
-
-        // V(σ+h)
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            volatility: gbm.volatility + bump,
-            ..gbm
-        };
-        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
-
-        // V(σ-h)
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            volatility: (gbm.volatility - bump).max(0.001),
-            ..gbm
-        };
-        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
-
-        // Three-point formula for second derivative
-        (price_up - 2.0 * price_mid + price_down) / (bump * bump)
-    }
-
     // ========================================================================
-    // Phase 4: L1/L2 Integration - YieldCurve methods
+    // Bump-and-Revalue Greeks (unified for European and path-dependent)
     // ========================================================================
 
-    /// Prices a European option using Monte Carlo simulation with a YieldCurve.
-    ///
-    /// This method uses the YieldCurve trait from pricer_core to compute
-    /// the discount factor, providing a cleaner integration with the L1 layer.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters (spot, rate, volatility, maturity)
-    /// * `payoff` - Payoff parameters (strike, type, smoothing)
-    /// * `curve` - Yield curve implementing the YieldCurve trait
-    ///
-    /// # Returns
-    ///
-    /// Price and standard error.
+    /// Reprices with the given pricing mode.
+    fn reprice(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
+        match mode {
+            PricingMode::European(p) => self.price_european(gbm, p, df).price,
+            PricingMode::PathDependent(p) => self.price_path_dependent(gbm, p, df).price,
+        }
+    }
+
+    /// Delta: (V(S+h) - V(S-h)) / 2h.
+    fn fd_delta(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
+        let h = (0.01 * gbm.spot).max(0.01);
+        let seed = self.rng.seed();
+        self.reset_with_seed(seed);
+        let up = self.reprice(
+            GbmParams {
+                spot: gbm.spot + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let dn = self.reprice(
+            GbmParams {
+                spot: gbm.spot - h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        (up - dn) / (2.0 * h)
+    }
+
+    /// Gamma: (V(S+h) - 2V(S) + V(S-h)) / h².
+    fn fd_gamma(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
+        let h = (0.01 * gbm.spot).max(0.01);
+        let seed = self.rng.seed();
+        self.reset_with_seed(seed);
+        let mid = self.reprice(gbm, mode, df);
+        self.reset_with_seed(seed);
+        let up = self.reprice(
+            GbmParams {
+                spot: gbm.spot + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let dn = self.reprice(
+            GbmParams {
+                spot: gbm.spot - h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        (up - 2.0 * mid + dn) / (h * h)
+    }
+
+    /// Vega: (V(σ+h) - V(σ-h)) / 2h.
+    fn fd_vega(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
+        let h = 0.01;
+        let seed = self.rng.seed();
+        self.reset_with_seed(seed);
+        let up = self.reprice(
+            GbmParams {
+                volatility: gbm.volatility + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let dn = self.reprice(
+            GbmParams {
+                volatility: (gbm.volatility - h).max(0.001),
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        (up - dn) / (2.0 * h)
+    }
+
+    /// Theta: -(V(T) - V(T-h)) / h, h = 1/252 (one day).
+    fn fd_theta(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
+        let h = 1.0 / 252.0;
+        let seed = self.rng.seed();
+        self.reset_with_seed(seed);
+        let short = self.reprice(
+            GbmParams {
+                maturity: (gbm.maturity - h).max(0.001),
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let orig = self.reprice(gbm, mode, df);
+        -(orig - short) / h
+    }
+
+    /// Rho: (V(r+h) - V(r-h)) / 2h with recalculated discount factors.
+    fn fd_rho(&mut self, gbm: GbmParams, mode: PricingMode) -> f64 {
+        let h = 0.01;
+        let seed = self.rng.seed();
+        self.reset_with_seed(seed);
+        let df_up = (-(gbm.rate + h) * gbm.maturity).exp();
+        let up = self.reprice(
+            GbmParams {
+                rate: gbm.rate + h,
+                ..gbm
+            },
+            mode,
+            df_up,
+        );
+        self.reset_with_seed(seed);
+        let df_dn = (-(gbm.rate - h) * gbm.maturity).exp();
+        let dn = self.reprice(
+            GbmParams {
+                rate: gbm.rate - h,
+                ..gbm
+            },
+            mode,
+            df_dn,
+        );
+        (up - dn) / (2.0 * h)
+    }
+
+    /// Vanna: (V(S+h,σ+k) - V(S+h,σ-k) - V(S-h,σ+k) + V(S-h,σ-k)) / 4hk.
+    fn fd_vanna(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
+        let h = (0.01 * gbm.spot).max(0.01);
+        let k = 0.01;
+        let vol_dn = (gbm.volatility - k).max(0.001);
+        let seed = self.rng.seed();
+        self.reset_with_seed(seed);
+        let uu = self.reprice(
+            GbmParams {
+                spot: gbm.spot + h,
+                volatility: gbm.volatility + k,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let ud = self.reprice(
+            GbmParams {
+                spot: gbm.spot + h,
+                volatility: vol_dn,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let du = self.reprice(
+            GbmParams {
+                spot: gbm.spot - h,
+                volatility: gbm.volatility + k,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let dd = self.reprice(
+            GbmParams {
+                spot: gbm.spot - h,
+                volatility: vol_dn,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        (uu - ud - du + dd) / (4.0 * h * k)
+    }
+
+    /// Volga: (V(σ+h) - 2V(σ) + V(σ-h)) / h².
+    fn fd_volga(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
+        let h = 0.01;
+        let seed = self.rng.seed();
+        self.reset_with_seed(seed);
+        let mid = self.reprice(gbm, mode, df);
+        self.reset_with_seed(seed);
+        let up = self.reprice(
+            GbmParams {
+                volatility: gbm.volatility + h,
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        self.reset_with_seed(seed);
+        let dn = self.reprice(
+            GbmParams {
+                volatility: (gbm.volatility - h).max(0.001),
+                ..gbm
+            },
+            mode,
+            df,
+        );
+        (up - 2.0 * mid + dn) / (h * h)
+    }
+
+    // L1/L2 Integration — YieldCurve methods
+
+    /// Prices a European option with discount factor from a `YieldCurve`.
     ///
     /// # Panics
     ///
     /// Panics if the curve returns an error for the given maturity.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use pricer_pricing::mc::{MonteCarloPricer, MonteCarloConfig, GbmParams, PayoffParams};
-    /// use pricer_models::market::curves::{FlatCurve, YieldCurve};
-    ///
-    /// let config = MonteCarloConfig::builder()
-    ///     .n_paths(10_000)
-    ///     .n_steps(50)
-    ///     .seed(42)
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// let mut pricer = MonteCarloPricer::new(config).unwrap();
-    /// let gbm = GbmParams::default();
-    /// let payoff = PayoffParams::call(100.0);
-    /// let curve = FlatCurve::new(0.05);
-    ///
-    /// let result = pricer.price_european_with_curve(gbm, payoff, &curve);
-    /// ```
     #[cfg(feature = "l1l2-integration")]
     pub fn price_european_with_curve<C>(
         &mut self,
@@ -665,42 +453,8 @@ impl MonteCarloPricer {
         self.price_european(gbm, payoff, discount_factor)
     }
 
-    /// Prices a European option with selected Greeks using a YieldCurve.
-    ///
-    /// This method uses the YieldCurve trait from pricer_core to compute
-    /// the discount factor for both the base price and Greek calculations.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `payoff` - Payoff parameters
-    /// * `curve` - Yield curve implementing the YieldCurve trait
-    /// * `greeks` - Which Greeks to compute
-    ///
-    /// # Returns
-    ///
-    /// Price and requested Greeks.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use pricer_pricing::mc::{MonteCarloPricer, MonteCarloConfig, GbmParams, PayoffParams, Greek};
-    /// use pricer_models::market::curves::{FlatCurve, YieldCurve};
-    ///
-    /// let config = MonteCarloConfig::builder()
-    ///     .n_paths(10_000)
-    ///     .n_steps(50)
-    ///     .seed(42)
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// let mut pricer = MonteCarloPricer::new(config).unwrap();
-    /// let gbm = GbmParams::default();
-    /// let payoff = PayoffParams::call(100.0);
-    /// let curve = FlatCurve::new(0.05);
-    ///
-    /// let result = pricer.price_with_greeks_and_curve(gbm, payoff, &curve, &[Greek::Delta]);
-    /// ```
+    /// Prices a European option with Greeks, discount factor from a
+    /// `YieldCurve`.
     #[cfg(feature = "l1l2-integration")]
     pub fn price_with_greeks_and_curve<C>(
         &mut self,
@@ -718,25 +472,8 @@ impl MonteCarloPricer {
         self.price_with_greeks(gbm, payoff, discount_factor, greeks)
     }
 
-    /// Prices using forward-mode AD for spot sensitivity.
-    ///
-    /// This method uses tangent propagation to compute Delta efficiently
-    /// in a single forward pass.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `payoff` - Payoff parameters
-    /// * `discount_factor` - Discount factor
-    ///
-    /// # Returns
-    ///
-    /// (price, delta) tuple.
-    ///
-    /// # Note
-    ///
-    /// This is the Phase 3.2 implementation using manual tangent propagation.
-    /// Phase 4 will use Enzyme's `#[autodiff_forward]` macro.
+    /// Prices with forward-mode AD for Delta via tangent propagation.
+    /// Returns (price, delta).
     pub fn price_with_delta_ad(
         &mut self,
         gbm: GbmParams,
@@ -801,47 +538,10 @@ impl MonteCarloPricer {
         (price, delta)
     }
 
-    // ========================================================================
-    // Phase 4: Path-Dependent Options Integration
-    // ========================================================================
+    // Path-Dependent Options Integration
 
-    /// Prices a path-dependent option using Monte Carlo simulation.
-    ///
-    /// This method generates GBM paths and uses PathObserver to track
-    /// path statistics (average, max, min, terminal) at each step.
-    /// The payoff is computed using PathPayoffType for static dispatch.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters (spot, rate, volatility, maturity)
-    /// * `payoff` - Path-dependent payoff type (Asian, Barrier, Lookback)
-    /// * `discount_factor` - Present value discount factor
-    ///
-    /// # Returns
-    ///
-    /// Price and standard error.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::{MonteCarloPricer, MonteCarloConfig, GbmParams};
-    /// use pricer_pricing::path_dependent::PathPayoffType;
-    ///
-    /// let config = MonteCarloConfig::builder()
-    ///     .n_paths(10_000)
-    ///     .n_steps(50)
-    ///     .seed(42)
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// let mut pricer = MonteCarloPricer::new(config).unwrap();
-    /// let gbm = GbmParams::default();
-    /// let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
-    /// let df = (-0.05_f64).exp();
-    ///
-    /// let result = pricer.price_path_dependent(gbm, payoff, df);
-    /// println!("Asian Call Price: {:.4}", result.price);
-    /// ```
+    /// Prices a path-dependent option (Asian, Barrier, Lookback) using Monte
+    /// Carlo.
     pub fn price_path_dependent(
         &mut self,
         gbm: GbmParams,
@@ -899,23 +599,8 @@ impl MonteCarloPricer {
         }
     }
 
-    /// Prices a path-dependent option with selected Greeks.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `payoff` - Path-dependent payoff type
-    /// * `discount_factor` - Discount factor
-    /// * `greeks` - Which Greeks to compute
-    ///
-    /// # Returns
-    ///
-    /// Price and requested Greeks.
-    ///
-    /// # Implementation Note
-    ///
-    /// Phase 4 uses bump-and-revalue for Greeks. Future phases will integrate
-    /// Enzyme AD with checkpointing for path-dependent derivatives.
+    /// Prices a path-dependent option with selected Greeks via
+    /// bump-and-revalue.
     pub fn price_path_dependent_with_greeks(
         &mut self,
         gbm: GbmParams,
@@ -923,257 +608,26 @@ impl MonteCarloPricer {
         discount_factor: f64,
         greeks: &[Greek],
     ) -> PricingResult {
-        // Base price
         let mut result = self.price_path_dependent(gbm, payoff, discount_factor);
-
-        // Compute requested Greeks via bump-and-revalue
+        let mode = PricingMode::PathDependent(payoff);
         for greek in greeks {
             match greek {
-                Greek::Delta => {
-                    result.delta =
-                        Some(self.compute_delta_path_dependent(gbm, payoff, discount_factor));
-                }
-                Greek::Gamma => {
-                    result.gamma =
-                        Some(self.compute_gamma_path_dependent(gbm, payoff, discount_factor));
-                }
-                Greek::Vega => {
-                    result.vega =
-                        Some(self.compute_vega_path_dependent(gbm, payoff, discount_factor));
-                }
-                Greek::Theta => {
-                    result.theta =
-                        Some(self.compute_theta_path_dependent(gbm, payoff, discount_factor));
-                }
-                Greek::Rho => {
-                    result.rho =
-                        Some(self.compute_rho_path_dependent(gbm, payoff, discount_factor));
-                }
-                Greek::Vanna | Greek::Volga => {
-                    // Second-order cross Greeks for path-dependent not yet
-                    // implemented Will be added with Enzyme
-                    // AD + checkpointing integration
-                }
+                Greek::Delta => result.delta = Some(self.fd_delta(gbm, mode, discount_factor)),
+                Greek::Gamma => result.gamma = Some(self.fd_gamma(gbm, mode, discount_factor)),
+                Greek::Vega => result.vega = Some(self.fd_vega(gbm, mode, discount_factor)),
+                Greek::Theta => result.theta = Some(self.fd_theta(gbm, mode, discount_factor)),
+                Greek::Rho => result.rho = Some(self.fd_rho(gbm, mode)),
+                Greek::Vanna | Greek::Volga => {} // Not yet implemented for path-dependent
             }
         }
-
         result
-    }
-
-    /// Computes Delta for path-dependent options using central differences.
-    fn compute_delta_path_dependent(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = (0.01 * gbm.spot).max(0.01);
-        let seed = self.rng.seed();
-
-        // Price at S + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            spot: gbm.spot + bump,
-            ..gbm
-        };
-        let price_up = self
-            .price_path_dependent(gbm_up, payoff, discount_factor)
-            .price;
-
-        // Price at S - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            spot: gbm.spot - bump,
-            ..gbm
-        };
-        let price_down = self
-            .price_path_dependent(gbm_down, payoff, discount_factor)
-            .price;
-
-        (price_up - price_down) / (2.0 * bump)
-    }
-
-    /// Computes Gamma for path-dependent options using central differences.
-    fn compute_gamma_path_dependent(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = (0.01 * gbm.spot).max(0.01);
-        let seed = self.rng.seed();
-
-        // Price at S
-        self.reset_with_seed(seed);
-        let price_mid = self
-            .price_path_dependent(gbm, payoff, discount_factor)
-            .price;
-
-        // Price at S + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            spot: gbm.spot + bump,
-            ..gbm
-        };
-        let price_up = self
-            .price_path_dependent(gbm_up, payoff, discount_factor)
-            .price;
-
-        // Price at S - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            spot: gbm.spot - bump,
-            ..gbm
-        };
-        let price_down = self
-            .price_path_dependent(gbm_down, payoff, discount_factor)
-            .price;
-
-        (price_up - 2.0 * price_mid + price_down) / (bump * bump)
-    }
-
-    /// Computes Vega for path-dependent options using central differences.
-    fn compute_vega_path_dependent(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = 0.01;
-        let seed = self.rng.seed();
-
-        // Price at vol + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            volatility: gbm.volatility + bump,
-            ..gbm
-        };
-        let price_up = self
-            .price_path_dependent(gbm_up, payoff, discount_factor)
-            .price;
-
-        // Price at vol - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            volatility: (gbm.volatility - bump).max(0.001),
-            ..gbm
-        };
-        let price_down = self
-            .price_path_dependent(gbm_down, payoff, discount_factor)
-            .price;
-
-        (price_up - price_down) / (2.0 * bump)
-    }
-
-    /// Computes Theta for path-dependent options using forward difference.
-    fn compute_theta_path_dependent(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = 1.0 / 252.0; // 1 day
-        let seed = self.rng.seed();
-
-        // Price at T - bump
-        self.reset_with_seed(seed);
-        let gbm_short = GbmParams {
-            maturity: (gbm.maturity - bump).max(0.001),
-            ..gbm
-        };
-        let price_short = self
-            .price_path_dependent(gbm_short, payoff, discount_factor)
-            .price;
-
-        // Price at T
-        self.reset_with_seed(seed);
-        let price_orig = self
-            .price_path_dependent(gbm, payoff, discount_factor)
-            .price;
-
-        -(price_orig - price_short) / bump
-    }
-
-    /// Computes Rho for path-dependent options using central differences.
-    fn compute_rho_path_dependent(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
-        _discount_factor: f64,
-    ) -> f64 {
-        let bump = 0.01;
-        let seed = self.rng.seed();
-
-        // Price at r + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            rate: gbm.rate + bump,
-            ..gbm
-        };
-        let df_up = (-(gbm.rate + bump) * gbm.maturity).exp();
-        let price_up = self.price_path_dependent(gbm_up, payoff, df_up).price;
-
-        // Price at r - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            rate: gbm.rate - bump,
-            ..gbm
-        };
-        let df_down = (-(gbm.rate - bump) * gbm.maturity).exp();
-        let price_down = self.price_path_dependent(gbm_down, payoff, df_down).price;
-
-        (price_up - price_down) / (2.0 * bump)
     }
 
     // ========================================================================
     // Streaming Mode Methods
     // ========================================================================
 
-    /// Prices a European option using streaming mode.
-    ///
-    /// Streaming mode processes paths step-by-step with O(paths) memory,
-    /// dramatically reducing memory usage for large simulations.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters (spot, rate, volatility, maturity)
-    /// * `payoff` - Payoff parameters (strike, type, smoothing)
-    /// * `discount_factor` - Present value discount factor
-    ///
-    /// # Returns
-    ///
-    /// Price and standard error.
-    ///
-    /// # Memory Usage
-    ///
-    /// Memory is O(paths) regardless of step count, compared to O(paths ×
-    /// steps) for batch mode.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::{
-    ///     MonteCarloPricer, MonteCarloConfig, GbmParams, PayoffParams,
-    ///     PathLayoutConfig, PathLayout, StreamingConfig,
-    /// };
-    ///
-    /// let config = MonteCarloConfig::builder()
-    ///     .n_paths(100_000)
-    ///     .n_steps(252)
-    ///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
-    ///     .streaming(StreamingConfig::enabled())
-    ///     .seed(42)
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// let mut pricer = MonteCarloPricer::new(config).unwrap();
-    /// let gbm = GbmParams::default();
-    /// let payoff = PayoffParams::call(100.0);
-    /// let df = (-0.05_f64).exp();
-    ///
-    /// let result = pricer.price_streaming(gbm, payoff, df);
-    /// println!("Price: {:.4} ± {:.4}", result.price, result.std_error);
-    /// ```
+    /// Prices a European option using streaming mode (O(paths) memory).
     pub fn price_streaming(
         &mut self,
         gbm: GbmParams,
@@ -1203,43 +657,7 @@ impl MonteCarloPricer {
         }
     }
 
-    /// Prices an Asian option using streaming mode.
-    ///
-    /// Uses arithmetic averaging by default. Streaming mode is particularly
-    /// efficient for path-dependent options as it accumulates statistics
-    /// incrementally.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `strike` - Strike price
-    /// * `is_call` - True for call, false for put
-    /// * `discount_factor` - Discount factor
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::{
-    ///     MonteCarloPricer, MonteCarloConfig, GbmParams,
-    ///     PathLayoutConfig, PathLayout, StreamingConfig,
-    /// };
-    ///
-    /// let config = MonteCarloConfig::builder()
-    ///     .n_paths(100_000)
-    ///     .n_steps(252)
-    ///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
-    ///     .streaming(StreamingConfig::enabled())
-    ///     .seed(42)
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// let mut pricer = MonteCarloPricer::new(config).unwrap();
-    /// let gbm = GbmParams::default();
-    /// let df = (-0.05_f64).exp();
-    ///
-    /// let result = pricer.price_asian_streaming(gbm, 100.0, true, df);
-    /// println!("Asian Call Price: {:.4}", result.price);
-    /// ```
+    /// Prices an Asian option (arithmetic average) using streaming mode.
     pub fn price_asian_streaming(
         &mut self,
         gbm: GbmParams,
@@ -1266,19 +684,6 @@ impl MonteCarloPricer {
     }
 
     /// Prices a barrier option using streaming mode.
-    ///
-    /// Streaming is ideal for barrier options as it can monitor the barrier
-    /// condition at each step without storing the full path.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `strike` - Strike price
-    /// * `barrier` - Barrier level
-    /// * `is_up` - True for up barrier, false for down
-    /// * `is_out` - True for knock-out, false for knock-in
-    /// * `is_call` - True for call, false for put
-    /// * `discount_factor` - Discount factor
     pub fn price_barrier_streaming(
         &mut self,
         gbm: GbmParams,
@@ -1309,14 +714,6 @@ impl MonteCarloPricer {
     }
 
     /// Prices a lookback option using streaming mode.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `strike` - Strike price (None for floating strike)
-    /// * `is_call` - True for call, false for put
-    /// * `is_floating` - True for floating strike, false for fixed
-    /// * `discount_factor` - Discount factor
     pub fn price_lookback_streaming(
         &mut self,
         gbm: GbmParams,
@@ -1343,20 +740,7 @@ impl MonteCarloPricer {
         }
     }
 
-    /// Prices using streaming mode with a custom observer.
-    ///
-    /// This method allows using any custom observer that implements
-    /// the [`StreamingObserver`] trait.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `observer` - Custom observer implementing StreamingObserver
-    /// * `discount_factor` - Discount factor
-    ///
-    /// # Type Parameters
-    ///
-    /// * `O` - Observer type implementing StreamingObserver
+    /// Prices using streaming mode with a custom [`StreamingObserver`].
     pub fn price_streaming_with_observer<O>(
         &mut self,
         gbm: GbmParams,
@@ -1570,7 +954,7 @@ mod tests {
 
         // Bump-and-revalue Delta
         pricer.reset_with_seed(42);
-        let delta_bump = pricer.compute_delta(gbm, payoff, df);
+        let delta_bump = pricer.fd_delta(gbm, PricingMode::European(payoff), df);
 
         // Should be within 10% of each other
         assert_relative_eq!(delta_ad, delta_bump, max_relative = 0.1);

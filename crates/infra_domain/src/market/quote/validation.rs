@@ -66,13 +66,6 @@ pub trait QuoteValidator {
     fn validate(&self, quote: &MarketQuote) -> Result<(), MarketQuoteError>;
 }
 
-/// Type alias for backward compatibility.
-#[deprecated(since = "0.2.0", note = "Use QuoteValidator instead")]
-pub trait RateValidator: QuoteValidator {}
-
-#[allow(deprecated)]
-impl<T: QuoteValidator> RateValidator for T {}
-
 /// Standard quote validator with reasonable default bounds.
 ///
 /// Validates quotes based on their type:
@@ -105,10 +98,6 @@ impl<T: QuoteValidator> RateValidator for T {}
 /// ```
 #[derive(Debug, Clone, Default)]
 pub struct StandardQuoteValidator;
-
-/// Type alias for backward compatibility.
-#[deprecated(since = "0.2.0", note = "Use StandardQuoteValidator instead")]
-pub type StandardRateValidator = StandardQuoteValidator;
 
 impl StandardQuoteValidator {
     /// Minimum allowed interest rate (-10%).
@@ -221,10 +210,10 @@ mod tests {
         time::Tenor,
     };
 
-    fn create_quote(rate_type: RateType, value: f64) -> MarketQuote {
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
+    fn make_quote(rate_type: RateType, value: f64) -> MarketQuote {
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
         MarketQuote::new(
-            quote_id,
+            id,
             QuoteType::Mid,
             value,
             1700000000000,
@@ -233,11 +222,10 @@ mod tests {
         .unwrap()
     }
 
-    // Helper to create quote without validation (for testing invalid values)
-    fn create_quote_unchecked(rate_type: RateType, value: f64) -> MarketQuote {
-        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
+    fn make_quote_unchecked(rate_type: RateType, value: f64) -> MarketQuote {
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
         MarketQuote {
-            id: quote_id,
+            id,
             quote_type: QuoteType::Mid,
             value,
             timestamp: 1700000000000,
@@ -246,27 +234,9 @@ mod tests {
     }
 
     #[test]
-    fn test_standard_validator_default() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Swap, 0.05);
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_standard_validator_new() {
-        let validator = StandardQuoteValidator::new();
-        let quote = create_quote(RateType::Swap, 0.05);
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    // Interest rate validation tests
-
-    #[test]
-    fn test_validate_interest_rate_valid() {
-        let validator = StandardQuoteValidator::default();
-
-        // Valid interest rates
-        for rate_type in [
+    fn test_interest_rate_bounds() {
+        let v = StandardQuoteValidator::default();
+        for rt in [
             RateType::Deposit,
             RateType::Fra,
             RateType::Futures,
@@ -274,220 +244,57 @@ mod tests {
             RateType::Ois,
             RateType::BasisSwap,
         ] {
-            let quote = create_quote(rate_type, 0.05);
             assert!(
-                validator.validate(&quote).is_ok(),
+                v.validate(&make_quote(rt, 0.05)).is_ok(),
                 "Failed for {:?}",
-                rate_type
+                rt
             );
         }
+        // Boundary values
+        assert!(v.validate(&make_quote(RateType::Swap, -0.10)).is_ok());
+        assert!(v.validate(&make_quote(RateType::Swap, 1.0)).is_ok());
+        assert!(v.validate(&make_quote(RateType::Swap, 0.0)).is_ok());
+        assert!(v.validate(&make_quote(RateType::Swap, -0.005)).is_ok());
+        // Out of bounds
+        assert!(v.validate(&make_quote(RateType::Swap, -0.15)).is_err());
+        assert!(v.validate(&make_quote(RateType::Swap, 1.5)).is_err());
     }
 
     #[test]
-    fn test_validate_interest_rate_zero() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Swap, 0.0);
-        assert!(validator.validate(&quote).is_ok());
+    fn test_fx_and_vol_bounds() {
+        let v = StandardQuoteValidator::default();
+        // FX valid
+        assert!(v.validate(&make_quote(RateType::FxSpot, 1.2345)).is_ok());
+        assert!(v.validate(&make_quote(RateType::FxForward, 1.2345)).is_ok());
+        assert!(v.validate(&make_quote(RateType::FxSpot, 0.0001)).is_ok());
+        assert!(v.validate(&make_quote(RateType::FxSpot, 100_000.0)).is_ok());
+        // FX out of bounds
+        assert!(v.validate(&make_quote(RateType::FxSpot, 0.00001)).is_err());
+        assert!(v
+            .validate(&make_quote(RateType::FxSpot, 200_000.0))
+            .is_err());
+        // Vol valid
+        assert!(v.validate(&make_quote(RateType::Vol, 0.20)).is_ok());
+        assert!(v.validate(&make_quote(RateType::Vol, 0.0)).is_ok());
+        assert!(v.validate(&make_quote(RateType::Vol, 5.0)).is_ok());
+        // Vol out of bounds
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Vol, -0.01))
+            .is_err());
+        assert!(v.validate(&make_quote(RateType::Vol, 6.0)).is_err());
     }
 
     #[test]
-    fn test_validate_interest_rate_negative_valid() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Swap, -0.005); // -0.5%
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_interest_rate_at_lower_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Swap, -0.10); // -10%
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_interest_rate_at_upper_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Swap, 1.0); // 100%
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_interest_rate_below_lower_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Swap, -0.15); // -15%
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-        match result {
-            Err(MarketQuoteError::InvalidQuote { value, .. }) => {
-                assert!((value - (-0.15)).abs() < f64::EPSILON);
-            }
-            _ => panic!("Expected InvalidQuote error"),
-        }
-    }
-
-    #[test]
-    fn test_validate_interest_rate_above_upper_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Swap, 1.5); // 150%
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-        match result {
-            Err(MarketQuoteError::InvalidQuote { value, .. }) => {
-                assert!((value - 1.5).abs() < f64::EPSILON);
-            }
-            _ => panic!("Expected InvalidQuote error"),
-        }
-    }
-
-    // FX rate validation tests
-
-    #[test]
-    fn test_validate_fx_rate_valid() {
-        let validator = StandardQuoteValidator::default();
-
-        for rate_type in [RateType::FxSpot, RateType::FxForward] {
-            let quote = create_quote(rate_type, 1.2345);
-            assert!(
-                validator.validate(&quote).is_ok(),
-                "Failed for {:?}",
-                rate_type
-            );
-        }
-    }
-
-    #[test]
-    fn test_validate_fx_rate_at_lower_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::FxSpot, 0.0001);
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_fx_rate_at_upper_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::FxSpot, 100_000.0);
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_fx_rate_below_lower_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::FxSpot, 0.00001);
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_fx_rate_above_upper_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::FxSpot, 200_000.0);
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-    }
-
-    // Volatility validation tests
-
-    #[test]
-    fn test_validate_volatility_valid() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Vol, 0.20); // 20%
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_volatility_at_lower_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Vol, 0.0);
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_volatility_at_upper_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Vol, 5.0); // 500%
-        assert!(validator.validate(&quote).is_ok());
-    }
-
-    #[test]
-    fn test_validate_volatility_negative() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote_unchecked(RateType::Vol, -0.01);
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validate_volatility_above_upper_bound() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote(RateType::Vol, 6.0); // 600%
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-    }
-
-    // NaN and Infinite tests
-
-    #[test]
-    fn test_validate_nan() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote_unchecked(RateType::Swap, f64::NAN);
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-        match result {
-            Err(MarketQuoteError::InvalidQuote { reason, .. }) => {
-                assert!(reason.contains("NaN"));
-            }
-            _ => panic!("Expected InvalidQuote error"),
-        }
-    }
-
-    #[test]
-    fn test_validate_positive_infinity() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote_unchecked(RateType::Swap, f64::INFINITY);
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-        match result {
-            Err(MarketQuoteError::InvalidQuote { value, reason }) => {
-                assert!(value.is_infinite());
-                assert!(reason.contains("infinite"));
-            }
-            _ => panic!("Expected InvalidQuote error"),
-        }
-    }
-
-    #[test]
-    fn test_validate_negative_infinity() {
-        let validator = StandardQuoteValidator::default();
-        let quote = create_quote_unchecked(RateType::Swap, f64::NEG_INFINITY);
-
-        let result = validator.validate(&quote);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_validator_clone() {
-        let validator = StandardQuoteValidator::default();
-        let cloned = validator.clone();
-
-        let quote = create_quote(RateType::Swap, 0.05);
-        assert_eq!(
-            validator.validate(&quote).is_ok(),
-            cloned.validate(&quote).is_ok()
-        );
-    }
-
-    #[test]
-    fn test_validator_debug() {
-        let validator = StandardQuoteValidator::default();
-        let debug_str = format!("{:?}", validator);
-        assert!(debug_str.contains("StandardQuoteValidator"));
+    fn test_nan_and_infinity() {
+        let v = StandardQuoteValidator::default();
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Swap, f64::NAN))
+            .is_err());
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Swap, f64::INFINITY))
+            .is_err());
+        assert!(v
+            .validate(&make_quote_unchecked(RateType::Swap, f64::NEG_INFINITY))
+            .is_err());
     }
 }

@@ -10,9 +10,9 @@ use infra_domain::time::parse_tenor_to_years;
 use pricer_models::{
     builder::{
         vol::{SliceCalibrationConfig, VolCubeBuilder},
-        BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation,
+        BootstrapConfig, CurveBootstrapper,
     },
-    market::YieldCurve,
+    market::{BootstrapInterpolation, YieldCurve},
 };
 
 use crate::{
@@ -25,71 +25,71 @@ use crate::{
         VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
         VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
+    services::helpers,
     state::AppState,
 };
+
+/// Extract unique string values from a JSON array field in `vol_surfaces.json`.
+fn extract_vol_surface_strings(section: &str, field: &str) -> Option<Vec<String>> {
+    let path = Path::new("demo/data/config/vol_surfaces.json");
+    let content = std::fs::read_to_string(path).ok()?;
+    let data: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let items = data.get(section)?.as_array()?;
+    let mut seen = std::collections::HashSet::new();
+    Some(
+        items
+            .iter()
+            .filter_map(|item| item.get(field).and_then(|v| v.as_str()).map(String::from))
+            .filter(|v| seen.insert(v.clone()))
+            .collect(),
+    )
+}
+
+/// Extract a string field from a JSON value, returning empty string if absent.
+fn json_str(v: &serde_json::Value, key: &str) -> String {
+    v.get(key)
+        .and_then(|s| s.as_str())
+        .unwrap_or("")
+        .to_string()
+}
+
+/// Parse smile points from a JSON quote's "smile" array.
+fn parse_smile_points(quote: &serde_json::Value) -> Vec<SmilePoint> {
+    quote
+        .get("smile")
+        .and_then(|s| s.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|pt| {
+                    Some(SmilePoint {
+                        strike_offset_bp: pt.get("strikeOffsetBp").and_then(|o| o.as_f64())?,
+                        vol: pt.get("vol").and_then(|v| v.as_f64())?,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
 
 /// Service for volatility cube operations (IR vol, FX vol, implied PDF)
 pub struct VolcubeService;
 
 impl VolcubeService {
-    // =========================================================================
-    // IR Volatility API
-    // =========================================================================
-
     /// Get IR vol currencies
     pub fn get_ir_vol_currencies(
         _state: &Arc<AppState>,
     ) -> Result<IrVolCurrenciesResponse, ServerError> {
-        let vol_path = Path::new("demo/data/config/vol_surfaces.json");
-        if vol_path.exists() {
-            let content = std::fs::read_to_string(vol_path).map_err(|e| {
-                ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}"))
-            })?;
-            let vol_data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-                ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}"))
-            })?;
-
-            if let Some(irvol_items) = vol_data.get("irVol").and_then(|i| i.as_array()) {
-                let currencies: Vec<IrVolCurrency> = irvol_items
-                    .iter()
-                    .filter_map(|item| {
-                        item.get("currency")
-                            .and_then(|c| c.as_str())
-                            .map(|currency| IrVolCurrency {
-                                currency: currency.to_string(),
-                            })
-                    })
-                    .collect();
-
-                // Remove duplicates (keep first occurrence)
-                let mut seen = std::collections::HashSet::new();
-                let unique_currencies: Vec<IrVolCurrency> = currencies
-                    .into_iter()
-                    .filter(|c| seen.insert(c.currency.clone()))
-                    .collect();
-
-                return Ok(IrVolCurrenciesResponse {
-                    currencies: unique_currencies,
-                });
-            }
-        }
-
-        // Fallback to hardcoded list
+        let currencies = extract_vol_surface_strings("irVol", "currency").unwrap_or_else(|| {
+            vec!["USD", "EUR", "JPY", "GBP"]
+                .into_iter()
+                .map(String::from)
+                .collect()
+        });
         Ok(IrVolCurrenciesResponse {
-            currencies: vec![
-                IrVolCurrency {
-                    currency: "USD".to_string(),
-                },
-                IrVolCurrency {
-                    currency: "EUR".to_string(),
-                },
-                IrVolCurrency {
-                    currency: "JPY".to_string(),
-                },
-                IrVolCurrency {
-                    currency: "GBP".to_string(),
-                },
-            ],
+            currencies: currencies
+                .into_iter()
+                .map(|c| IrVolCurrency { currency: c })
+                .collect(),
         })
     }
 
@@ -101,45 +101,26 @@ impl VolcubeService {
         let file_path = format!("demo/data/input/irvol/{}.json", currency.to_lowercase());
         let path = Path::new(&file_path);
 
-        if path.exists() {
-            let content = std::fs::read_to_string(path)
-                .map_err(|e| ServerError::Internal(format!("Failed to read IR vol file: {e}")))?;
-            let data: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| ServerError::Internal(format!("Failed to parse IR vol file: {e}")))?;
-
-            let mut quotes = Vec::new();
-            if let Some(quotes_arr) = data.get("quotes").and_then(|q| q.as_array()) {
-                for quote in quotes_arr {
-                    quotes.push(IrVolQuote {
-                        expiry: quote
-                            .get("expiry")
-                            .and_then(|e| e.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        tenor: quote
-                            .get("tenor")
-                            .and_then(|t| t.as_str())
-                            .unwrap_or("")
-                            .to_string(),
-                        atm_vol: quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
-                        smile: None,
-                    });
-                }
-            }
-
-            return Ok(IrVolQuotesResponse {
-                quotes,
-                vol_type: Some("normal".to_string()),
-                source: Some("Internal".to_string()),
-            });
-        }
-
-        // Return mock data if file not found
-        Ok(IrVolQuotesResponse {
-            quotes: vec![
+        let quotes = if path.exists() {
+            let data: serde_json::Value = helpers::load_json_value(path, "IR vol file")?;
+            data.get("quotes")
+                .and_then(|q| q.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .map(|q| IrVolQuote {
+                            expiry: json_str(q, "expiry"),
+                            tenor: json_str(q, "tenor"),
+                            atm_vol: q.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                            smile: None,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            vec![
                 IrVolQuote {
-                    expiry: "1M".to_string(),
-                    tenor: "1Y".to_string(),
+                    expiry: "1M".into(),
+                    tenor: "1Y".into(),
                     atm_vol: 0.0050,
                     smile: Some(vec![
                         SmilePoint {
@@ -153,58 +134,31 @@ impl VolcubeService {
                     ]),
                 },
                 IrVolQuote {
-                    expiry: "1Y".to_string(),
-                    tenor: "5Y".to_string(),
+                    expiry: "1Y".into(),
+                    tenor: "5Y".into(),
                     atm_vol: 0.0065,
                     smile: None,
                 },
-            ],
+            ]
+        };
+
+        Ok(IrVolQuotesResponse {
+            quotes,
             vol_type: Some("normal".to_string()),
             source: Some("Internal".to_string()),
         })
     }
 
-    // =========================================================================
-    // FX Volatility API
-    // =========================================================================
-
     /// Get FX vol pairs
     pub fn get_fx_vol_pairs(_state: &Arc<AppState>) -> Result<FxVolPairsResponse, ServerError> {
-        let vol_path = Path::new("demo/data/config/vol_surfaces.json");
-        if vol_path.exists() {
-            let content = std::fs::read_to_string(vol_path).map_err(|e| {
-                ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}"))
-            })?;
-            let vol_data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-                ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}"))
-            })?;
-
-            if let Some(fxvol_items) = vol_data.get("fxVol").and_then(|i| i.as_array()) {
-                let pairs: Vec<FxVolPair> = fxvol_items
-                    .iter()
-                    .filter_map(|item| {
-                        item.get("currencyPair")
-                            .and_then(|p| p.as_str())
-                            .map(|pair| FxVolPair {
-                                pair: pair.to_string(),
-                            })
-                    })
-                    .collect();
-
-                return Ok(FxVolPairsResponse { pairs });
-            }
-        }
-
-        // Fallback
+        let pairs = extract_vol_surface_strings("fxVol", "currencyPair").unwrap_or_else(|| {
+            vec!["EURUSD", "USDJPY"]
+                .into_iter()
+                .map(String::from)
+                .collect()
+        });
         Ok(FxVolPairsResponse {
-            pairs: vec![
-                FxVolPair {
-                    pair: "EURUSD".to_string(),
-                },
-                FxVolPair {
-                    pair: "USDJPY".to_string(),
-                },
-            ],
+            pairs: pairs.into_iter().map(|p| FxVolPair { pair: p }).collect(),
         })
     }
 
@@ -223,10 +177,7 @@ impl VolcubeService {
             )));
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read FX vol file: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse FX vol file: {e}")))?;
+        let data: serde_json::Value = helpers::load_json_value(path, "FX vol file")?;
 
         let spot = data.get("spot").and_then(|s| s.as_f64());
         let domestic_rate = data.get("domesticRate").and_then(|r| r.as_f64());
@@ -277,34 +228,13 @@ impl VolcubeService {
         })
     }
 
-    // =========================================================================
-    // Volcube API
-    // =========================================================================
-
     /// Get volcube indices (rate index identifiers)
     pub fn get_volcube_indices(
         _state: &Arc<AppState>,
     ) -> Result<VolcubeIndicesResponse, ServerError> {
-        let vol_path = Path::new("demo/data/config/vol_surfaces.json");
-        let content = std::fs::read_to_string(vol_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-            ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}"))
-        })?;
-
-        let indices: Vec<String> = data
-            .get("irVol")
-            .and_then(|i| i.as_array())
-            .map(|items| {
-                items
-                    .iter()
-                    .filter_map(|item| item.get("rateIndex").and_then(|c| c.as_str()))
-                    .map(String::from)
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        Ok(VolcubeIndicesResponse { indices })
+        Ok(VolcubeIndicesResponse {
+            indices: extract_vol_surface_strings("irVol", "rateIndex").unwrap_or_default(),
+        })
     }
 
     /// Get available volcube calibration models
@@ -324,54 +254,27 @@ impl VolcubeService {
         let vol_path =
             Path::new("demo/data/input/irvol").join(format!("{}.json", currency.to_lowercase()));
 
-        let content = std::fs::read_to_string(&vol_path).map_err(|_| {
-            ServerError::NotFound(format!("Swaption vol data not found for: {}", currency))
-        })?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse vol data: {e}")))?;
+        let data: serde_json::Value = helpers::load_json_value(&vol_path, "swaption vol data")
+            .map_err(|_| {
+                ServerError::NotFound(format!("Swaption vol data not found for: {currency}"))
+            })?;
 
-        let mut instruments = Vec::new();
-
-        if let Some(quotes) = data.get("quotes").and_then(|q| q.as_array()) {
-            for quote in quotes {
-                let expiry = quote
-                    .get("expiry")
-                    .and_then(|e| e.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let tenor = quote
-                    .get("tenor")
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let atm_vol = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0);
-                let smile = quote
-                    .get("smile")
-                    .and_then(|s| s.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|pt| {
-                                let offset = pt.get("strikeOffsetBp").and_then(|o| o.as_f64())?;
-                                let vol = pt.get("vol").and_then(|v| v.as_f64())?;
-                                Some(SmilePoint {
-                                    strike_offset_bp: offset,
-                                    vol,
-                                })
-                            })
-                            .collect::<Vec<_>>()
+        let instruments: Vec<SwaptionInstrument> = data
+            .get("quotes")
+            .and_then(|q| q.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .map(|q| SwaptionInstrument {
+                        expiry: json_str(q, "expiry"),
+                        tenor: json_str(q, "tenor"),
+                        strike: "ATM".to_string(),
+                        atm_vol: q.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                        smile: parse_smile_points(q),
+                        enabled: true,
                     })
-                    .unwrap_or_default();
-
-                instruments.push(SwaptionInstrument {
-                    expiry,
-                    tenor,
-                    strike: "ATM".to_string(),
-                    atm_vol,
-                    smile,
-                    enabled: true,
-                });
-            }
-        }
+                    .collect()
+            })
+            .unwrap_or_default();
 
         // Extract reference date from metadata.lastUpdated
         let reference_date = data
@@ -397,12 +300,10 @@ impl VolcubeService {
         // 1. Load vol data from file
         let vol_path = Path::new("demo/data/input/irvol")
             .join(format!("{}.json", request.index.to_lowercase()));
-
-        let content = std::fs::read_to_string(&vol_path).map_err(|_| {
-            ServerError::NotFound(format!("Vol data not found for: {}", request.index))
-        })?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse vol data: {e}")))?;
+        let data: serde_json::Value =
+            helpers::load_json_value(&vol_path, "vol data").map_err(|_| {
+                ServerError::NotFound(format!("Vol data not found for: {}", request.index))
+            })?;
 
         let quotes = data
             .get("quotes")
@@ -510,44 +411,22 @@ impl VolcubeService {
             // ATM quote
             builder.add_quote(expiry_years, tenor_years, forward, atm_vol, forward);
 
-            // Smile quotes
-            let smile = quote
-                .get("smile")
-                .and_then(|s| s.as_array())
-                .cloned()
-                .unwrap_or_default();
-            for pt in &smile {
-                let offset_bp = pt
-                    .get("strikeOffsetBp")
-                    .and_then(|o| o.as_f64())
-                    .unwrap_or(0.0);
-                let vol_raw = pt.get("vol").and_then(|v| v.as_f64()).unwrap_or(0.0);
-
-                let strike = forward + offset_bp / 10_000.0;
-                let vol = if is_normal_vol {
-                    vol_raw / 100.0
-                } else {
-                    vol_raw
-                };
-
-                builder.add_quote(expiry_years, tenor_years, strike, vol, forward);
+            // Smile quotes + collect per-cell strikes for Jacobian
+            let smile_pts = parse_smile_points(quote);
+            let mut strikes = vec![(forward, "ATM".to_string())];
+            let vol_scale = if is_normal_vol { 0.01 } else { 1.0 };
+            for pt in &smile_pts {
+                let strike = forward + pt.strike_offset_bp / 10_000.0;
+                builder.add_quote(
+                    expiry_years,
+                    tenor_years,
+                    strike,
+                    pt.vol * vol_scale,
+                    forward,
+                );
+                strikes.push((strike, format!("{:+.0}bp", pt.strike_offset_bp)));
             }
-
-            // Collect per-cell strikes for Jacobian computation
-            {
-                let mut strikes = vec![(forward, "ATM".to_string())];
-                for pt in &smile {
-                    let offset_bp = pt
-                        .get("strikeOffsetBp")
-                        .and_then(|o| o.as_f64())
-                        .unwrap_or(0.0);
-                    strikes.push((
-                        forward + offset_bp / 10_000.0,
-                        format!("{:+.0}bp", offset_bp),
-                    ));
-                }
-                cell_quote_strikes.insert(key, (forward, expiry_years, strikes));
-            }
+            cell_quote_strikes.insert(key, (forward, expiry_years, strikes));
 
             cell_keys.push((
                 expiry_str.to_string(),
@@ -658,12 +537,10 @@ impl VolcubeService {
 
         let vol_path = Path::new("demo/data/input/fxvol")
             .join(format!("{}.json", request.pair.to_lowercase()));
-
-        let content = std::fs::read_to_string(&vol_path).map_err(|_| {
-            ServerError::NotFound(format!("FX vol data not found for: {}", request.pair))
-        })?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse FX vol data: {e}")))?;
+        let data: serde_json::Value =
+            helpers::load_json_value(&vol_path, "FX vol data").map_err(|_| {
+                ServerError::NotFound(format!("FX vol data not found for: {}", request.pair))
+            })?;
 
         let quotes = data
             .get("quotes")
@@ -762,10 +639,6 @@ impl VolcubeService {
         })
     }
 
-    // =========================================================================
-    // Implied PDF API
-    // =========================================================================
-
     /// Compute implied probability density via Breeden-Litzenberger (d²C/dk²)
     pub fn compute_implied_pdf(
         request: &ImpliedPdfRequest,
@@ -818,10 +691,6 @@ impl VolcubeService {
 
         Ok(ImpliedPdfResponse { offsets, density })
     }
-
-    // =========================================================================
-    // SABR Smile + Density (from calibrated parameters)
-    // =========================================================================
 
     /// Compute a smooth SABR smile and implied density from calibrated
     /// parameters.
@@ -922,10 +791,6 @@ impl VolcubeService {
         })
     }
 
-    // =========================================================================
-    // FX Forward Computation Helpers
-    // =========================================================================
-
     /// Look up base/quote currencies for an FX pair from config
     fn lookup_fx_pair_currencies(pair: &str) -> (String, String) {
         let config_path = Path::new("demo/data/config/fx_pairs.json");
@@ -989,10 +854,7 @@ impl VolcubeService {
             )));
         }
 
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read rate file: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse rate file: {e}")))?;
+        let data: serde_json::Value = helpers::load_json_value(path, "rate file")?;
 
         let instruments = data
             .get("instruments")
@@ -1032,7 +894,7 @@ impl VolcubeService {
             .map_err(|e| ServerError::Internal(format!("Instrument parsing failed: {e}")))?;
 
         let config =
-            BootstrapConfig::new(1e-10, 100).with_interpolation(BuilderInterpolation::LogLinear);
+            BootstrapConfig::new(1e-10, 100).with_interpolation(BootstrapInterpolation::LogLinear);
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, _) = bootstrapper

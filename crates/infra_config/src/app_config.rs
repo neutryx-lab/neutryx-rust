@@ -23,17 +23,10 @@ use crate::{
 // =============================================================================
 
 /// Registry that exports all enum variant names as JSON.
-///
-/// Uses `strum::VariantNames` to automatically enumerate variants,
-/// ensuring the exported values always match the Rust definitions.
 pub struct EnumRegistry;
 
 impl EnumRegistry {
     /// Returns all exportable enums as a JSON object.
-    ///
-    /// Output format: `{ "enum_name": ["variant1", "variant2", ...] }`
-    ///
-    /// All keys and values are in snake_case to match serde serialisation.
     pub fn to_json() -> serde_json::Value {
         serde_json::json!({
             "pricing_method": PricingMethod::VARIANTS,
@@ -51,15 +44,10 @@ impl EnumRegistry {
 // =============================================================================
 
 /// Registry that exports default values for configuration structures.
-///
-/// Uses the `Default` trait implementations to generate JSON values,
-/// ensuring frontend defaults always match Rust definitions.
 pub struct DefaultsRegistry;
 
 impl DefaultsRegistry {
     /// Returns all default values as a hierarchical JSON object.
-    ///
-    /// Output format: `{ "struct_name": { field: value, ... } }`
     pub fn to_json() -> serde_json::Value {
         serde_json::json!({
             "monte_carlo": MonteCarloParams::default(),
@@ -74,10 +62,6 @@ impl DefaultsRegistry {
 // =============================================================================
 
 /// Mapping from currency codes to their primary rate indices.
-///
-/// Provides default mappings for major currencies (USD→SOFR, EUR→ESTR, etc.)
-/// which can be used by the frontend to suggest appropriate rate indices
-/// when a currency is selected.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CurrencyRateIndexMap {
     mapping: HashMap<String, String>,
@@ -108,8 +92,6 @@ impl CurrencyRateIndexMap {
     pub fn get(&self, currency: &str) -> Option<&String> { self.mapping.get(currency) }
 
     /// Returns the mapping as a JSON object.
-    ///
-    /// Output format: `{ "USD": "SOFR", "EUR": "ESTR", ... }`
     #[must_use]
     pub fn to_json(&self) -> serde_json::Value {
         serde_json::to_value(&self.mapping).unwrap_or_default()
@@ -121,11 +103,6 @@ impl CurrencyRateIndexMap {
 // =============================================================================
 
 /// Unified application configuration for frontend integration.
-///
-/// Combines enum registries, default values, and currency mappings
-/// into a single structure that can be served via `/api/config`.
-///
-/// Field names use camelCase for frontend compatibility.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppConfig {

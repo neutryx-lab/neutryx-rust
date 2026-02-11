@@ -491,61 +491,39 @@ pub enum FxSwapError {
 mod tests {
     use super::*;
 
-    fn make_test_currency_pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
-
-    // CurrencyPair tests are now in market/currency_pair.rs
+    fn pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
 
     #[test]
-    fn test_fx_spot_validate_success() {
+    fn test_fx_instruments_validation() {
+        // FxSpot: valid + negative notional
         let spot = FxSpot {
-            currency_pair: make_test_currency_pair(),
+            currency_pair: pair(),
             spot_rate: 1.1050,
             settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
             notional: 1_000_000.0,
             notional_currency: Currency::EUR,
         };
         assert!(spot.validate().is_ok());
-    }
+        let mut bad = spot.clone();
+        bad.notional = -1_000.0;
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_fx_spot_validate_negative_notional() {
-        let spot = FxSpot {
-            currency_pair: make_test_currency_pair(),
-            spot_rate: 1.1050,
-            settlement_date: Date::from_ymd(2025, 1, 3).unwrap(),
-            notional: -1_000.0,
-            notional_currency: Currency::EUR,
-        };
-        assert!(spot.validate().is_err());
-    }
-
-    #[test]
-    fn test_fx_forward_validate_success() {
+        // FxForward: valid + negative rate
         let fwd = FxForward {
-            currency_pair: make_test_currency_pair(),
+            currency_pair: pair(),
             forward_rate: 1.1100,
             settlement_date: Date::from_ymd(2025, 7, 3).unwrap(),
             notional: 1_000_000.0,
             notional_currency: Currency::EUR,
         };
         assert!(fwd.validate().is_ok());
-    }
+        let mut bad = fwd.clone();
+        bad.forward_rate = -1.1100;
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_fx_forward_validate_negative_rate() {
-        let fwd = FxForward {
-            currency_pair: make_test_currency_pair(),
-            forward_rate: -1.1100,
-            settlement_date: Date::from_ymd(2025, 7, 3).unwrap(),
-            notional: 1_000_000.0,
-            notional_currency: Currency::EUR,
-        };
-        assert!(fwd.validate().is_err());
-    }
-
-    fn make_test_vanilla_option() -> FxVanillaOption {
-        FxVanillaOption {
-            currency_pair: make_test_currency_pair(),
+        // FxVanillaOption: valid + invalid dates
+        let opt = FxVanillaOption {
+            currency_pair: pair(),
             strike: 1.1000,
             expiry: Date::from_ymd(2025, 6, 15).unwrap(),
             delivery_date: Date::from_ymd(2025, 6, 17).unwrap(),
@@ -553,50 +531,33 @@ mod tests {
             exercise_style: ExerciseStyle::European,
             notional: 1_000_000.0,
             notional_currency: Currency::EUR,
-        }
-    }
+        };
+        assert!(opt.validate().is_ok());
+        let mut bad = opt.clone();
+        bad.delivery_date = Date::from_ymd(2025, 6, 14).unwrap();
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_fx_vanilla_option_validate_success() {
-        let option = make_test_vanilla_option();
-        assert!(option.validate().is_ok());
-    }
-
-    #[test]
-    fn test_fx_vanilla_option_validate_invalid_dates() {
-        let mut option = make_test_vanilla_option();
-        option.delivery_date = Date::from_ymd(2025, 6, 14).unwrap(); // before expiry
-        assert!(option.validate().is_err());
-    }
-
-    #[test]
-    fn test_fx_barrier_option_validate_success() {
+        // FxBarrierOption: valid + invalid barrier level
         let barrier = FxBarrierOption {
-            vanilla: make_test_vanilla_option(),
-            barrier_level: 1.1500, // above strike for up-and-out call
+            vanilla: opt.clone(),
+            barrier_level: 1.1500,
             barrier_type: BarrierType::KnockOut,
             barrier_direction: BarrierDirection::Up,
             rebate: Some(0.001),
         };
         assert!(barrier.validate().is_ok());
-    }
-
-    #[test]
-    fn test_fx_barrier_option_validate_invalid_barrier_level() {
-        let barrier = FxBarrierOption {
-            vanilla: make_test_vanilla_option(),
-            barrier_level: 1.0500, // below strike (invalid for up-and-out call)
+        let bad_barrier = FxBarrierOption {
+            vanilla: opt.clone(),
+            barrier_level: 1.0500,
             barrier_type: BarrierType::KnockOut,
             barrier_direction: BarrierDirection::Up,
             rebate: None,
         };
-        assert!(barrier.validate().is_err());
-    }
+        assert!(bad_barrier.validate().is_err());
 
-    #[test]
-    fn test_fx_swap_validate_success() {
+        // FxSwap: valid + invalid dates + swap_points
         let swap = FxSwap {
-            currency_pair: make_test_currency_pair(),
+            currency_pair: pair(),
             near_leg_date: Date::from_ymd(2025, 1, 3).unwrap(),
             far_leg_date: Date::from_ymd(2025, 4, 3).unwrap(),
             near_rate: 1.1050,
@@ -605,119 +566,47 @@ mod tests {
             notional_currency: Currency::EUR,
         };
         assert!(swap.validate().is_ok());
-    }
-
-    #[test]
-    fn test_fx_swap_validate_invalid_dates() {
-        let swap = FxSwap {
-            currency_pair: make_test_currency_pair(),
-            near_leg_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            far_leg_date: Date::from_ymd(2025, 1, 3).unwrap(), // before near leg
-            near_rate: 1.1050,
-            far_rate: 1.1070,
-            notional: 1_000_000.0,
-            notional_currency: Currency::EUR,
-        };
-        assert!(swap.validate().is_err());
-    }
-
-    #[test]
-    fn test_fx_swap_points() {
-        let swap = FxSwap {
-            currency_pair: make_test_currency_pair(),
-            near_leg_date: Date::from_ymd(2025, 1, 3).unwrap(),
-            far_leg_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            near_rate: 1.1050,
-            far_rate: 1.1070,
-            notional: 1_000_000.0,
-            notional_currency: Currency::EUR,
-        };
         assert!((swap.swap_points() - 0.0020).abs() < 1e-10);
+        let mut bad = swap.clone();
+        bad.far_leg_date = Date::from_ymd(2025, 1, 3).unwrap();
+        bad.near_leg_date = Date::from_ymd(2025, 4, 3).unwrap();
+        assert!(bad.validate().is_err());
     }
 
-    // === SwapPoints Tests ===
-
     #[test]
-    fn test_swap_points_new() {
+    fn test_swap_points_and_tenor() {
+        // SwapPoints: new, forward rates, factories, from_rate_difference, display
         let sp = SwapPoints::new(50.0, 10000.0);
         assert!((sp.value() - 50.0).abs() < 1e-10);
         assert!((sp.scaling_factor() - 10000.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_swap_points_to_forward_rate_eurusd() {
-        // EURUSD: scaling factor = 10000
-        let sp = SwapPoints::new(50.0, 10000.0);
-        let spot = 1.1000;
-        let forward = sp.to_forward_rate(spot);
-        // F = S + swap_points / scaling_factor = 1.1000 + 50/10000 = 1.1050
-        assert!((forward - 1.1050).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_swap_points_to_forward_rate_usdjpy() {
-        // USDJPY: scaling factor = 100
-        let sp = SwapPoints::new(-25.0, 100.0);
-        let spot = 150.00;
-        let forward = sp.to_forward_rate(spot);
-        // F = S + swap_points / scaling_factor = 150.00 + (-25)/100 = 149.75
-        assert!((forward - 149.75).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_swap_points_for_eurusd() {
-        let sp = SwapPoints::for_eurusd(50.0);
-        assert!((sp.scaling_factor() - 10000.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_swap_points_for_usdjpy() {
-        let sp = SwapPoints::for_usdjpy(-25.0);
-        assert!((sp.scaling_factor() - 100.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_swap_points_from_rate_difference() {
-        // Given spot and forward, calculate swap points
-        let spot = 1.1000;
-        let forward = 1.1050;
-        let scaling = 10000.0;
-        let sp = SwapPoints::from_rate_difference(spot, forward, scaling);
-        assert!((sp.value() - 50.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_swap_points_display() {
-        let sp = SwapPoints::new(50.0, 10000.0);
+        assert!((sp.to_forward_rate(1.1000) - 1.1050).abs() < 1e-10);
         assert_eq!(sp.to_string(), "50.00 pips");
-    }
 
-    // === FxSwapTenor Tests ===
+        let sp_jpy = SwapPoints::new(-25.0, 100.0);
+        assert!((sp_jpy.to_forward_rate(150.00) - 149.75).abs() < 1e-10);
 
-    #[test]
-    fn test_fx_swap_tenor_names() {
+        assert!((SwapPoints::for_eurusd(50.0).scaling_factor() - 10000.0).abs() < 1e-10);
+        assert!((SwapPoints::for_usdjpy(-25.0).scaling_factor() - 100.0).abs() < 1e-10);
+
+        let from_diff = SwapPoints::from_rate_difference(1.1000, 1.1050, 10000.0);
+        assert!((from_diff.value() - 50.0).abs() < 1e-10);
+
+        // FxSwapTenor names
         assert_eq!(FxSwapTenor::ON.name(), "ON");
         assert_eq!(FxSwapTenor::TN.name(), "TN");
         assert_eq!(FxSwapTenor::SN.name(), "SN");
         assert_eq!(FxSwapTenor::W1.name(), "1W");
         assert_eq!(FxSwapTenor::M3.name(), "3M");
         assert_eq!(FxSwapTenor::Y1.name(), "1Y");
+
+        // FxSwapConvention default
+        assert_eq!(FxSwapConvention::default().spot_lag, 2);
     }
 
-    // === FxSwapConvention Tests ===
-
     #[test]
-    fn test_fx_swap_convention_default() {
-        let conv = FxSwapConvention::default();
-        assert_eq!(conv.spot_lag, 2);
-    }
-
-    // === FxSwapInstrument Tests ===
-
-    #[test]
-    fn test_fx_swap_instrument_implied_forward() {
+    fn test_fx_swap_instrument() {
         let inst = FxSwapInstrument {
-            currency_pair: make_test_currency_pair(),
+            currency_pair: pair(),
             near_date: Date::from_ymd(2025, 1, 3).unwrap(),
             far_date: Date::from_ymd(2025, 4, 3).unwrap(),
             spot_rate: 1.1000,
@@ -725,46 +614,28 @@ mod tests {
             convention: FxSwapConvention::default(),
         };
         assert!((inst.implied_forward_rate() - 1.1050).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_fx_swap_instrument_validate_success() {
-        let inst = FxSwapInstrument {
-            currency_pair: make_test_currency_pair(),
-            near_date: Date::from_ymd(2025, 1, 3).unwrap(),
-            far_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            spot_rate: 1.1000,
-            swap_points: SwapPoints::for_eurusd(50.0),
-            convention: FxSwapConvention::default(),
-        };
         assert!(inst.validate().is_ok());
-    }
 
-    #[test]
-    fn test_fx_swap_instrument_validate_invalid_dates() {
-        let inst = FxSwapInstrument {
-            currency_pair: make_test_currency_pair(),
+        // Invalid dates
+        let bad_dates = FxSwapInstrument {
+            currency_pair: pair(),
             near_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            far_date: Date::from_ymd(2025, 1, 3).unwrap(), // far before near
+            far_date: Date::from_ymd(2025, 1, 3).unwrap(),
             spot_rate: 1.1000,
             swap_points: SwapPoints::for_eurusd(50.0),
             convention: FxSwapConvention::default(),
         };
-        let result = inst.validate();
-        assert!(result.is_err());
-    }
+        assert!(bad_dates.validate().is_err());
 
-    #[test]
-    fn test_fx_swap_instrument_validate_invalid_spot() {
-        let inst = FxSwapInstrument {
-            currency_pair: make_test_currency_pair(),
+        // Invalid spot
+        let bad_spot = FxSwapInstrument {
+            currency_pair: pair(),
             near_date: Date::from_ymd(2025, 1, 3).unwrap(),
             far_date: Date::from_ymd(2025, 4, 3).unwrap(),
-            spot_rate: -1.0, // invalid
+            spot_rate: -1.0,
             swap_points: SwapPoints::for_eurusd(50.0),
             convention: FxSwapConvention::default(),
         };
-        let result = inst.validate();
-        assert!(result.is_err());
+        assert!(bad_spot.validate().is_err());
     }
 }

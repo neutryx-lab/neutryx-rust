@@ -16,8 +16,23 @@ use crate::{
         BuildVolCubeResponse, CalibrationQualityDto, GetImpliedVolRequest, GetImpliedVolResponse,
         SabrCalibrationDto, StrikeTypeDto,
     },
+    services::helpers,
     state::{AppState, SabrParams, VolSurfaceEntry, VolSurfaceType},
 };
+
+/// Convert calibration DTOs to cache params.
+#[cfg(feature = "volatility")]
+fn to_cache_params(sabr: &[SabrCalibrationDto]) -> Vec<SabrParams> {
+    sabr.iter()
+        .map(|p| SabrParams {
+            expiry: p.expiry,
+            alpha: p.alpha,
+            beta: p.beta,
+            rho: p.rho,
+            nu: p.nu,
+        })
+        .collect()
+}
 
 /// Service for volatility surface operations
 #[cfg(feature = "volatility")]
@@ -93,22 +108,10 @@ impl VolatilityService {
 
         let expiry_count = sabr_params.len();
 
-        // Store in cache
-        let cache_params: Vec<SabrParams> = sabr_params
-            .iter()
-            .map(|p| SabrParams {
-                expiry: p.expiry,
-                alpha: p.alpha,
-                beta: p.beta,
-                rho: p.rho,
-                nu: p.nu,
-            })
-            .collect();
-
         let entry = VolSurfaceEntry {
             surface_type: VolSurfaceType::FxSurface,
             underlying: request.currency_pair.clone(),
-            sabr_params: cache_params,
+            sabr_params: to_cache_params(&sabr_params),
             expiry_count,
             residual_ss: Some(total_residual),
             created_at: Utc::now(),
@@ -208,22 +211,10 @@ impl VolatilityService {
         let expiry_count = request.expiries.len();
         let tenor_count = request.tenors.len();
 
-        // Store in cache
-        let cache_params: Vec<SabrParams> = sabr_params
-            .iter()
-            .map(|p| SabrParams {
-                expiry: p.expiry,
-                alpha: p.alpha,
-                beta: p.beta,
-                rho: p.rho,
-                nu: p.nu,
-            })
-            .collect();
-
         let entry = VolSurfaceEntry {
             surface_type: VolSurfaceType::IrCube,
             underlying: request.index.clone(),
-            sabr_params: cache_params,
+            sabr_params: to_cache_params(&sabr_params),
             expiry_count: sabr_params.len(),
             residual_ss: Some(total_residual),
             created_at: Utc::now(),
@@ -255,14 +246,7 @@ impl VolatilityService {
         request: &GetImpliedVolRequest,
         state: &Arc<AppState>,
     ) -> Result<GetImpliedVolResponse, ServerError> {
-        let id: uuid::Uuid = surface_id
-            .parse()
-            .map_err(|_| ServerError::InvalidRequest("Invalid surface_id format".to_string()))?;
-
-        let entry = state
-            .vol_surface_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Surface {} not found", surface_id)))?;
+        let entry = helpers::resolve_cached(&state.vol_surface_cache, surface_id, "Surface")?;
 
         // Convert strike based on type
         let strike = match request.strike_type {

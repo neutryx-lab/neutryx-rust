@@ -5,191 +5,33 @@
 use std::{sync::Arc, time::Instant};
 
 use adapter_loader::{parse_instruments, validate_rates, InstrumentSpec};
-use chrono::{Datelike, Months, NaiveDate};
 use infra_domain::{
-    market::{definition::JumpPillar, RateIndex},
-    time::{parse_tenor_to_years, Date, DayCounter},
+    market::definition::JumpPillar,
+    time::{parse_tenor_to_years, Date},
 };
 use pricer_core::math::formulas::{simple_forward_rate, zero_rate_from_df};
 use pricer_models::{
     builder::{
         BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
-        InterpolationMethod as BuilderInterpolation, JacobianMatrix,
+        JacobianMatrix,
     },
     market::{build_forward_rate_shift_grid, BootstrapInterpolation, YieldCurve},
 };
 
+use super::chart_grid::{
+    generate_chart_grids, overnight_forward_rate, resolve_day_counter, MODEL_DAY_COUNTER,
+};
 #[cfg(test)]
 use crate::rest::dto::CurveInstrumentInput;
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, ChartGridPoint, CurveBuildRequest, CurveBuildResponse, CurvePillar,
-        DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
-        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse, InterpolationMethod,
-        JacobianData,
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
+        DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest, ForwardRateResponse,
+        ForwardSwapRateRequest, ForwardSwapRateResponse, JacobianData,
     },
-    state::{AppState, InstrumentInput},
+    state::{AppState, CurveEntry, InstrumentInput},
 };
-
-// ---------------------------------------------------------------------------
-// Chart grid generation helpers
-// ---------------------------------------------------------------------------
-
-const MONTH_ABBR: [&str; 12] = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-/// Format date for short-term chart axis: "15-Jan"
-fn format_short_term_label(date: NaiveDate) -> String {
-    format!("{}-{}", date.day(), MONTH_ABBR[date.month0() as usize])
-}
-
-/// Format date for long-term chart axis: "Mar-26"
-fn format_long_term_label(date: NaiveDate) -> String {
-    format!(
-        "{}-{:02}",
-        MONTH_ABBR[date.month0() as usize],
-        date.year() % 100
-    )
-}
-
-/// Internal model time axis: ACT/365 Fixed.
-///
-/// All time conversions in this module use this day counter,
-/// ensuring consistency with the `pricer_models` internal basis.
-const MODEL_DAY_COUNTER: DayCounter = DayCounter::Actual365Fixed;
-
-/// Generate short-term grid dates: daily up to 3M, weekly 3M→1Y.
-fn generate_short_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
-    let three_months = ref_date
-        .checked_add_months(Months::new(3))
-        .unwrap_or(ref_date);
-    let one_year = ref_date
-        .checked_add_months(Months::new(12))
-        .unwrap_or(ref_date);
-
-    let mut dates = Vec::new();
-
-    // Daily up to 3M
-    let mut d = ref_date + chrono::Duration::days(1);
-    while d <= three_months {
-        dates.push(d);
-        d += chrono::Duration::days(1);
-    }
-
-    // Weekly from 3M to 1Y
-    d = three_months + chrono::Duration::days(7);
-    while d <= one_year {
-        dates.push(d);
-        d += chrono::Duration::days(7);
-    }
-
-    dates
-}
-
-/// Generate long-term grid dates: quarterly 3M→10Y, semi-annual 10.5Y→20Y,
-/// annual 21Y→30Y.
-fn generate_long_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
-    let mut dates = Vec::new();
-
-    // Quarterly from 3M (q=1) to 10Y (q=40)
-    for q in 1..=40u32 {
-        if let Some(d) = ref_date.checked_add_months(Months::new(q * 3)) {
-            dates.push(d);
-        }
-    }
-
-    // Semi-annual from 10.5Y (h=21) to 20Y (h=40)
-    for h in 21..=40u32 {
-        if let Some(d) = ref_date.checked_add_months(Months::new(h * 6)) {
-            dates.push(d);
-        }
-    }
-
-    // Annual from 21Y to 30Y
-    for y in 21..=30u32 {
-        if let Some(d) = ref_date.checked_add_months(Months::new(y * 12)) {
-            dates.push(d);
-        }
-    }
-
-    dates
-}
-
-/// Build `ChartGridPoint` vec from grid dates.
-///
-/// Time is derived from `(date - ref_date).num_days() / 365.0` at the point of
-/// use, guaranteeing consistency with the internal model basis.
-fn build_chart_grid<C: YieldCurve<f64>>(
-    ref_date: NaiveDate,
-    dates: &[NaiveDate],
-    curve: &C,
-    label_fn: fn(NaiveDate) -> String,
-    day_counter: DayCounter,
-) -> Vec<ChartGridPoint> {
-    dates
-        .iter()
-        .filter_map(|date| {
-            let time = MODEL_DAY_COUNTER.year_fraction_from_days((*date - ref_date).num_days());
-            let df = curve.discount_factor(time).ok()?;
-            let fwd = if time > 0.0 {
-                overnight_forward_rate(curve, ref_date, *date, day_counter)?
-            } else {
-                0.0
-            };
-            Some(ChartGridPoint {
-                date: date.format("%Y-%m-%d").to_string(),
-                time,
-                discount_factor: df,
-                forward_rate: fwd,
-                label: label_fn(*date),
-            })
-        })
-        .collect()
-}
-
-/// Resolve the day count convention from the request index name.
-///
-/// Uses `RateIndex::from_index_name()` to parse compound index names
-/// (e.g., "USD-SOFR", "EUR-EURIBOR-6M") and looks up the `DayCounter`
-/// from the canonical definition in `infra_domain`.
-/// Falls back to ACT/365 Fixed if the index is not recognised.
-fn resolve_day_counter(index: &str) -> DayCounter {
-    RateIndex::from_index_name(index)
-        .map(|ri| ri.day_counter())
-        .unwrap_or(DayCounter::Actual365Fixed)
-}
-
-/// Compute the overnight forward rate at a given date using the proper
-/// day count convention from the index definition.
-///
-/// 1. Query DF at `date` and `date + 1 calendar day` on the curve's ACT/365
-///    Fixed time axis.
-/// 2. Compute accrual fraction δ = `DayCounter::year_fraction(date, date + 1)`.
-/// 3. Forward rate F = (DF₁ / DF₂ − 1) / δ.
-fn overnight_forward_rate<C: YieldCurve<f64>>(
-    curve: &C,
-    ref_date: NaiveDate,
-    date: NaiveDate,
-    day_counter: DayCounter,
-) -> Option<f64> {
-    let d = (date - ref_date).num_days();
-    let next_date = date + chrono::Duration::days(1);
-    let t1 = MODEL_DAY_COUNTER.year_fraction_from_days(d);
-    let t2 = MODEL_DAY_COUNTER.year_fraction_from_days(d + 1);
-    let df1 = if t1 <= 0.0 {
-        1.0
-    } else {
-        curve.discount_factor(t1).ok()?
-    };
-    let df2 = curve.discount_factor(t2).ok()?;
-    let delta = day_counter.year_fraction(Date::from(date), Date::from(next_date));
-    if delta <= 0.0 {
-        return None;
-    }
-    Some((df1 / df2 - 1.0) / delta)
-}
 
 /// Service for building and querying yield curves
 pub struct CurveService;
@@ -265,12 +107,7 @@ impl CurveService {
             })?
         };
 
-        // Convert interpolation method
-        let interpolation = match request.interpolation {
-            InterpolationMethod::LinearDf => BuilderInterpolation::Linear,
-            InterpolationMethod::LogLinearDf => BuilderInterpolation::LogLinear,
-            InterpolationMethod::FlatForward => BuilderInterpolation::FlatForward,
-        };
+        let interpolation = request.interpolation;
 
         // Build the forward-rate-shift grid from jump pillars.
         //
@@ -314,15 +151,10 @@ impl CurveService {
                 (curve, Some(jac), "bootstrapping")
             }
             BootstrapMethod::Global => {
-                let bootstrap_interp = match interpolation {
-                    BuilderInterpolation::Linear => BootstrapInterpolation::Linear,
-                    BuilderInterpolation::LogLinear => BootstrapInterpolation::LogLinear,
-                    BuilderInterpolation::FlatForward => BootstrapInterpolation::FlatForward,
-                };
                 let global_config = GlobalBootstrapConfig::default()
                     .with_tolerance(request.tolerance)
                     .with_max_iterations(request.max_iterations)
-                    .with_interpolation(bootstrap_interp)
+                    .with_interpolation(interpolation)
                     .with_jacobian_inverse(true);
                 let global = GlobalBootstrapper::new(global_config);
 
@@ -460,27 +292,13 @@ impl CurveService {
             .collect();
 
         // Generate pre-computed chart display grids (date-based)
-        let short_term_dates = generate_short_term_dates(reference_date);
-        let long_term_dates = generate_long_term_dates(reference_date);
-        let short_term_grid = build_chart_grid(
-            reference_date,
-            &short_term_dates,
-            &curve,
-            format_short_term_label,
-            day_counter,
-        );
-        let long_term_grid = build_chart_grid(
-            reference_date,
-            &long_term_dates,
-            &curve,
-            format_long_term_label,
-            day_counter,
-        );
+        let (short_term_grid, long_term_grid) =
+            generate_chart_grids(reference_date, &curve, day_counter);
 
-        let interpolation_str = match request.interpolation {
-            InterpolationMethod::LinearDf => "linear_df",
-            InterpolationMethod::LogLinearDf => "log_linear_df",
-            InterpolationMethod::FlatForward => "flat_forward",
+        let interpolation_str = match interpolation {
+            BootstrapInterpolation::Linear => "linear_df",
+            BootstrapInterpolation::LogLinear => "log_linear_df",
+            BootstrapInterpolation::FlatForward => "flat_forward",
         }
         .to_string();
 
@@ -495,7 +313,10 @@ impl CurveService {
             })
             .collect();
 
-        let curve_id = state.curve_cache.add(curve, instrument_inputs);
+        let curve_id = state.curve_cache.add(CurveEntry {
+            curve,
+            instruments: instrument_inputs,
+        });
 
         let elapsed = start.elapsed();
 
@@ -668,45 +489,55 @@ mod tests {
 
     fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
 
-    #[test]
-    fn test_build_simple_curve() {
-        let state = create_test_state();
+    fn inst(itype: &str, tenor: &str, rate: f64) -> CurveInstrumentInput {
+        CurveInstrumentInput {
+            instrument_type: itype.to_string(),
+            tenor: tenor.to_string(),
+            rate,
+            event_date: None,
+            expected_rate_spike: None,
+            end_date: None,
+        }
+    }
 
-        let request = CurveBuildRequest {
+    fn event(date: &str, spike: f64, end: Option<&str>) -> CurveInstrumentInput {
+        CurveInstrumentInput {
+            instrument_type: "event".to_string(),
+            tenor: String::new(),
+            rate: 0.0,
+            event_date: Some(date.to_string()),
+            expected_rate_spike: Some(spike),
+            end_date: end.map(String::from),
+        }
+    }
+
+    fn build_req(
+        ref_date: Option<&str>,
+        instruments: Vec<CurveInstrumentInput>,
+    ) -> CurveBuildRequest {
+        CurveBuildRequest {
             index: "USD-SOFR".to_string(),
             currency: "USD".to_string(),
-            reference_date: None,
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.052,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "2Y".to_string(),
-                    rate: 0.054,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-            ],
-            interpolation: InterpolationMethod::LinearDf,
+            reference_date: ref_date.map(String::from),
+            instruments,
+            interpolation: BootstrapInterpolation::Linear,
             bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
-        };
+        }
+    }
+
+    #[test]
+    fn test_build_simple_curve() {
+        let state = create_test_state();
+        let request = build_req(
+            None,
+            vec![
+                inst("deposit", "1M", 0.05),
+                inst("swap", "1Y", 0.052),
+                inst("swap", "2Y", 0.054),
+            ],
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
 
@@ -715,7 +546,6 @@ mod tests {
         assert!(response.converged);
         assert!(!response.pillars.is_empty());
 
-        // Verify discount factors are decreasing
         for window in response.pillars.windows(2) {
             assert!(window[1].discount_factor <= window[0].discount_factor);
         }
@@ -724,42 +554,14 @@ mod tests {
     #[test]
     fn test_build_curve_with_event() {
         let state = create_test_state();
-
-        let request = CurveBuildRequest {
-            index: "USD-SOFR".to_string(),
-            currency: "USD".to_string(),
-            reference_date: Some("2026-01-29".to_string()),
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "event".to_string(),
-                    tenor: String::new(),
-                    rate: 0.0,
-                    event_date: Some("2026-03-18".to_string()),
-                    expected_rate_spike: Some(-0.0025),
-                    end_date: None, // Permanent jump (CB meeting)
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.052,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
+        let request = build_req(
+            Some("2026-01-29"),
+            vec![
+                inst("deposit", "1M", 0.05),
+                event("2026-03-18", -0.0025, None),
+                inst("swap", "1Y", 0.052),
             ],
-            interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10,
-            max_iterations: 100,
-        };
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
 
@@ -772,50 +574,15 @@ mod tests {
     #[test]
     fn test_build_curve_with_turn_event() {
         let state = create_test_state();
-
-        let request = CurveBuildRequest {
-            index: "USD-SOFR".to_string(),
-            currency: "USD".to_string(),
-            reference_date: Some("2026-01-29".to_string()),
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "event".to_string(),
-                    tenor: String::new(),
-                    rate: 0.0,
-                    event_date: Some("2026-12-31".to_string()),
-                    expected_rate_spike: Some(0.001), // 10bp turn spike
-                    end_date: Some("2027-01-04".to_string()), // Reverts after Jan 4
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.052,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "2Y".to_string(),
-                    rate: 0.054,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
+        let request = build_req(
+            Some("2026-01-29"),
+            vec![
+                inst("deposit", "1M", 0.05),
+                event("2026-12-31", 0.001, Some("2027-01-04")),
+                inst("swap", "1Y", 0.052),
+                inst("swap", "2Y", 0.054),
             ],
-            interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10,
-            max_iterations: 100,
-        };
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);
@@ -864,45 +631,15 @@ mod tests {
 
     #[test]
     fn test_forward_rate_shift_no_spike() {
-        // Verify that a -25bp CB cut produces a smooth ~25bp downward shift,
-        // not a delta-function spike of 25bp * 365 = 91%.
         let state = create_test_state();
-
-        let request = CurveBuildRequest {
-            index: "USD-SOFR".to_string(),
-            currency: "USD".to_string(),
-            reference_date: Some("2026-01-29".to_string()),
-            instruments: vec![
-                CurveInstrumentInput {
-                    instrument_type: "deposit".to_string(),
-                    tenor: "1M".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "event".to_string(),
-                    tenor: String::new(),
-                    rate: 0.0,
-                    event_date: Some("2026-06-01".to_string()),
-                    expected_rate_spike: Some(-0.0025), // -25bp cut
-                    end_date: None,
-                },
-                CurveInstrumentInput {
-                    instrument_type: "swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.05,
-                    event_date: None,
-                    expected_rate_spike: None,
-                    end_date: None,
-                },
+        let request = build_req(
+            Some("2026-01-29"),
+            vec![
+                inst("deposit", "1M", 0.05),
+                event("2026-06-01", -0.0025, None),
+                inst("swap", "1Y", 0.05),
             ],
-            interpolation: InterpolationMethod::LinearDf,
-            bootstrap_method: BootstrapMethod::Bootstrapping,
-            tolerance: 1e-10,
-            max_iterations: 100,
-        };
+        );
 
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);

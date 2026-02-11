@@ -14,7 +14,7 @@ use axum::{
 
 #[cfg(feature = "models")]
 use crate::{
-    error::ServerError,
+    error::{AppJson, ServerError},
     rest::dto::{
         CreateModelRequest, CreateModelResponse, GetModelResponse, ModelPricingRequest,
         ModelPricingResponse,
@@ -23,39 +23,20 @@ use crate::{
     state::AppState,
 };
 
-/// Create a new stochastic model
-///
-/// POST /api/v1/models
 #[cfg(feature = "models")]
-pub async fn create_model(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<CreateModelRequest>,
-) -> Result<(StatusCode, Json<CreateModelResponse>), ServerError> {
-    let response = ModelService::create_model(&request, &state)?;
-    Ok((StatusCode::CREATED, Json(response)))
+json_created_handler! {
+    /// POST /api/v1/models
+    pub async fn create_model(CreateModelRequest => CreateModelResponse) = ModelService::create_model;
 }
 
-/// Get a model by ID
-///
-/// GET /api/v1/models/{id}
 #[cfg(feature = "models")]
-pub async fn get_model(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-) -> Result<Json<GetModelResponse>, ServerError> {
-    let response = ModelService::get_model(&id, &state)?;
-    Ok(Json(response))
+path_handler! {
+    /// GET /api/v1/models/{id}
+    pub async fn get_model(=> GetModelResponse) = ModelService::get_model;
 }
 
-/// Price an instrument using a model
-///
-/// POST /api/v1/models/{id}/price
 #[cfg(feature = "models")]
-pub async fn price_with_model(
-    State(state): State<Arc<AppState>>,
-    Path(id): Path<String>,
-    Json(request): Json<ModelPricingRequest>,
-) -> Result<Json<ModelPricingResponse>, ServerError> {
-    let response = ModelService::price_with_model(&id, &request, &state)?;
-    Ok(Json(response))
+path_json_handler! {
+    /// POST /api/v1/models/{id}/price
+    pub async fn price_with_model(ModelPricingRequest => ModelPricingResponse) = ModelService::price_with_model;
 }

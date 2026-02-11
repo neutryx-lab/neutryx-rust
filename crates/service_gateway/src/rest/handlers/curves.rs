@@ -7,7 +7,7 @@ use std::sync::Arc;
 use axum::{extract::State, Json};
 
 use crate::{
-    error::ServerError,
+    error::{AppJson, ServerError},
     rest::dto::{
         CurveBuildRequest, CurveBuildResponse, DiscountFactorRequest, DiscountFactorResponse,
         ForwardRateRequest, ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse,
@@ -16,46 +16,22 @@ use crate::{
     state::AppState,
 };
 
-/// Build a yield curve from market instruments
-///
-/// POST /api/curves/build
-pub async fn build_curve(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<CurveBuildRequest>,
-) -> Result<Json<CurveBuildResponse>, ServerError> {
-    let response = CurveService::build_curve(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/curves/build
+    pub async fn build_curve(CurveBuildRequest => CurveBuildResponse) = CurveService::build_curve;
 }
 
-/// Get discount factor from a cached curve
-///
-/// POST /api/curves/discount-factor
-pub async fn get_discount_factor(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<DiscountFactorRequest>,
-) -> Result<Json<DiscountFactorResponse>, ServerError> {
-    let response = CurveService::get_discount_factor(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/curves/discount-factor
+    pub async fn get_discount_factor(DiscountFactorRequest => DiscountFactorResponse) = CurveService::get_discount_factor;
 }
 
-/// Get forward rate from a cached curve
-///
-/// POST /api/curves/forward-rate
-pub async fn get_forward_rate(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<ForwardRateRequest>,
-) -> Result<Json<ForwardRateResponse>, ServerError> {
-    let response = CurveService::get_forward_rate(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/curves/forward-rate
+    pub async fn get_forward_rate(ForwardRateRequest => ForwardRateResponse) = CurveService::get_forward_rate;
 }
 
-/// Compute forward swap rate matrix from a cached curve
-///
-/// POST /api/curves/forward-swap-rates
-pub async fn get_forward_swap_rates(
-    State(state): State<Arc<AppState>>,
-    Json(request): Json<ForwardSwapRateRequest>,
-) -> Result<Json<ForwardSwapRateResponse>, ServerError> {
-    let response = CurveService::compute_forward_swap_rates(&request, &state)?;
-    Ok(Json(response))
+json_handler! {
+    /// POST /api/curves/forward-swap-rates
+    pub async fn get_forward_swap_rates(ForwardSwapRateRequest => ForwardSwapRateResponse) = CurveService::compute_forward_swap_rates;
 }

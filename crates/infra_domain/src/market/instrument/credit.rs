@@ -311,109 +311,77 @@ impl NtdBasket {
 mod tests {
     use super::*;
 
-    fn make_test_cds() -> Cds {
-        Cds {
+    #[test]
+    fn test_credit_events_and_types() {
+        assert_eq!(CreditEvent::Bankruptcy.isda_name(), "Bankruptcy");
+        assert_eq!(CreditEvent::FailureToPay.isda_name(), "Failure to Pay");
+        assert_eq!(CreditEvent::Restructuring.isda_name(), "Restructuring");
+        assert_eq!(CreditEvent::Bankruptcy, CreditEvent::Bankruptcy);
+        assert_ne!(CreditEvent::Bankruptcy, CreditEvent::FailureToPay);
+        let mut set = std::collections::HashSet::new();
+        set.insert(CreditEvent::Bankruptcy);
+        set.insert(CreditEvent::FailureToPay);
+        set.insert(CreditEvent::Bankruptcy);
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_cds_and_index_validation() {
+        // CDS: valid + empty ref + negative notional + invalid recovery + invalid dates
+        // + with_na
+        let cds = Cds {
             reference_entity: "ACME Corp".to_string(),
             notional: 10_000_000.0,
-            spread: 0.01, // 100bps
+            spread: 0.01,
             start_date: Date::from_ymd(2025, 1, 20).unwrap(),
             maturity: Date::from_ymd(2030, 1, 20).unwrap(),
             recovery_rate: Some(0.4),
             currency: Currency::USD,
             credit_events: vec![CreditEvent::Bankruptcy, CreditEvent::FailureToPay],
-        }
-    }
-
-    #[test]
-    fn test_credit_event_isda_name() {
-        assert_eq!(CreditEvent::Bankruptcy.isda_name(), "Bankruptcy");
-        assert_eq!(CreditEvent::FailureToPay.isda_name(), "Failure to Pay");
-        assert_eq!(CreditEvent::Restructuring.isda_name(), "Restructuring");
-    }
-
-    #[test]
-    fn test_cds_validate_success() {
-        let cds = make_test_cds();
+        };
         assert!(cds.validate().is_ok());
-    }
+        let mut bad = cds.clone();
+        bad.reference_entity = "".to_string();
+        assert!(bad.validate().is_err());
+        let mut bad = cds.clone();
+        bad.notional = -1000.0;
+        assert!(bad.validate().is_err());
+        let mut bad = cds.clone();
+        bad.recovery_rate = Some(1.5);
+        assert!(bad.validate().is_err());
+        let mut bad = cds.clone();
+        bad.maturity = Date::from_ymd(2024, 1, 1).unwrap();
+        assert!(bad.validate().is_err());
+        let na = cds.clone().with_na_events();
+        assert!(na.credit_events.contains(&CreditEvent::Bankruptcy));
+        assert!(na.credit_events.contains(&CreditEvent::FailureToPay));
 
-    #[test]
-    fn test_cds_validate_empty_reference() {
-        let mut cds = make_test_cds();
-        cds.reference_entity = "".to_string();
-        assert!(cds.validate().is_err());
-    }
-
-    #[test]
-    fn test_cds_validate_negative_notional() {
-        let mut cds = make_test_cds();
-        cds.notional = -1000.0;
-        assert!(cds.validate().is_err());
-    }
-
-    #[test]
-    fn test_cds_validate_invalid_recovery() {
-        let mut cds = make_test_cds();
-        cds.recovery_rate = Some(1.5); // Invalid: > 1
-        assert!(cds.validate().is_err());
-    }
-
-    #[test]
-    fn test_cds_validate_invalid_dates() {
-        let mut cds = make_test_cds();
-        cds.maturity = Date::from_ymd(2024, 1, 1).unwrap(); // Before start
-        assert!(cds.validate().is_err());
-    }
-
-    #[test]
-    fn test_cds_with_na_events() {
-        let cds = make_test_cds().with_na_events();
-        assert!(cds.credit_events.contains(&CreditEvent::Bankruptcy));
-        assert!(cds.credit_events.contains(&CreditEvent::FailureToPay));
-    }
-
-    fn make_test_cds_index() -> CdsIndex {
-        CdsIndex {
+        // CDS Index: valid + full_identifier + empty name + zero constituents
+        let idx = CdsIndex {
             index_name: "CDX.NA.IG".to_string(),
             series: 39,
             version: 1,
             constituent_count: 125,
             notional: 10_000_000.0,
-            spread: 0.006, // 60bps
+            spread: 0.006,
             start_date: Date::from_ymd(2025, 3, 20).unwrap(),
             maturity: Date::from_ymd(2030, 3, 20).unwrap(),
             currency: Currency::USD,
-        }
+        };
+        assert!(idx.validate().is_ok());
+        assert_eq!(idx.full_identifier(), "CDX.NA.IG.39v1");
+        let mut bad = idx.clone();
+        bad.index_name = "".to_string();
+        assert!(bad.validate().is_err());
+        let mut bad = idx.clone();
+        bad.constituent_count = 0;
+        assert!(bad.validate().is_err());
     }
 
     #[test]
-    fn test_cds_index_validate_success() {
-        let index = make_test_cds_index();
-        assert!(index.validate().is_ok());
-    }
-
-    #[test]
-    fn test_cds_index_full_identifier() {
-        let index = make_test_cds_index();
-        assert_eq!(index.full_identifier(), "CDX.NA.IG.39v1");
-    }
-
-    #[test]
-    fn test_cds_index_validate_empty_name() {
-        let mut index = make_test_cds_index();
-        index.index_name = "".to_string();
-        assert!(index.validate().is_err());
-    }
-
-    #[test]
-    fn test_cds_index_validate_zero_constituents() {
-        let mut index = make_test_cds_index();
-        index.constituent_count = 0;
-        assert!(index.validate().is_err());
-    }
-
-    fn make_test_cds_option() -> CdsOption {
-        CdsOption {
+    fn test_credit_options_and_baskets() {
+        // CDS Option: valid + invalid dates
+        let opt = CdsOption {
             reference_entity: "ACME Corp".to_string(),
             strike_spread: 0.01,
             exercise_date: Date::from_ymd(2025, 6, 20).unwrap(),
@@ -421,87 +389,34 @@ mod tests {
             notional: 10_000_000.0,
             currency: Currency::USD,
             is_payer: true,
-        }
-    }
+        };
+        assert!(opt.validate().is_ok());
+        let mut bad = opt.clone();
+        bad.underlying_maturity = Date::from_ymd(2025, 1, 1).unwrap();
+        assert!(bad.validate().is_err());
 
-    #[test]
-    fn test_cds_option_validate_success() {
-        let option = make_test_cds_option();
-        assert!(option.validate().is_ok());
-    }
-
-    #[test]
-    fn test_cds_option_validate_invalid_dates() {
-        let mut option = make_test_cds_option();
-        option.underlying_maturity = Date::from_ymd(2025, 1, 1).unwrap(); // Before exercise
-        assert!(option.validate().is_err());
-    }
-
-    fn make_test_ntd_basket() -> NtdBasket {
-        NtdBasket {
-            constituents: vec![
-                "Company A".to_string(),
-                "Company B".to_string(),
-                "Company C".to_string(),
-                "Company D".to_string(),
-                "Company E".to_string(),
-            ],
-            nth_to_default: 1, // First-to-default
+        // NTD Basket: valid + first_to_default + empty + n_too_large + invalid
+        // correlation
+        let basket = NtdBasket {
+            constituents: vec!["A".into(), "B".into(), "C".into(), "D".into(), "E".into()],
+            nth_to_default: 1,
             notional: 10_000_000.0,
-            spread: 0.015, // 150bps
+            spread: 0.015,
             start_date: Date::from_ymd(2025, 1, 20).unwrap(),
             maturity: Date::from_ymd(2030, 1, 20).unwrap(),
             currency: Currency::USD,
             correlation_parameter: Some(0.3),
-        }
-    }
-
-    #[test]
-    fn test_ntd_basket_validate_success() {
-        let basket = make_test_ntd_basket();
+        };
         assert!(basket.validate().is_ok());
-    }
-
-    #[test]
-    fn test_ntd_basket_is_first_to_default() {
-        let basket = make_test_ntd_basket();
         assert!(basket.is_first_to_default());
-    }
-
-    #[test]
-    fn test_ntd_basket_validate_empty_constituents() {
-        let mut basket = make_test_ntd_basket();
-        basket.constituents = vec![];
-        assert!(basket.validate().is_err());
-    }
-
-    #[test]
-    fn test_ntd_basket_validate_n_too_large() {
-        let mut basket = make_test_ntd_basket();
-        basket.nth_to_default = 10; // More than 5 constituents
-        assert!(basket.validate().is_err());
-    }
-
-    #[test]
-    fn test_ntd_basket_validate_invalid_correlation() {
-        let mut basket = make_test_ntd_basket();
-        basket.correlation_parameter = Some(1.5); // Invalid: > 1
-        assert!(basket.validate().is_err());
-    }
-
-    #[test]
-    fn test_credit_event_equality() {
-        assert_eq!(CreditEvent::Bankruptcy, CreditEvent::Bankruptcy);
-        assert_ne!(CreditEvent::Bankruptcy, CreditEvent::FailureToPay);
-    }
-
-    #[test]
-    fn test_credit_event_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(CreditEvent::Bankruptcy);
-        set.insert(CreditEvent::FailureToPay);
-        set.insert(CreditEvent::Bankruptcy); // Duplicate
-        assert_eq!(set.len(), 2);
+        let mut bad = basket.clone();
+        bad.constituents = vec![];
+        assert!(bad.validate().is_err());
+        let mut bad = basket.clone();
+        bad.nth_to_default = 10;
+        assert!(bad.validate().is_err());
+        let mut bad = basket.clone();
+        bad.correlation_parameter = Some(1.5);
+        assert!(bad.validate().is_err());
     }
 }

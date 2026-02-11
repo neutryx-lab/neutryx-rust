@@ -5,29 +5,19 @@
 use axum::Json;
 
 use crate::{
-    error::ServerError,
+    error::{AppJson, ServerError},
     rest::dto::{
         PortfolioPricingRequest, PortfolioPricingResponse, PricingRequest, PricingResponse,
     },
     services::PricingService,
 };
 
-/// Price a single instrument
-///
-/// POST /api/price
-pub async fn price_instrument(
-    Json(request): Json<PricingRequest>,
-) -> Result<Json<PricingResponse>, ServerError> {
-    let response = PricingService::price_instrument(&request)?;
-    Ok(Json(response))
+stateless_json_handler! {
+    /// POST /api/price
+    pub async fn price_instrument(PricingRequest => PricingResponse) = PricingService::price_instrument;
 }
 
-/// Price a portfolio of instruments
-///
-/// POST /api/price/batch
-pub async fn price_portfolio(
-    Json(request): Json<PortfolioPricingRequest>,
-) -> Result<Json<PortfolioPricingResponse>, ServerError> {
-    let response = PricingService::price_portfolio(&request)?;
-    Ok(Json(response))
+stateless_json_handler! {
+    /// POST /api/price/batch
+    pub async fn price_portfolio(PortfolioPricingRequest => PortfolioPricingResponse) = PricingService::price_portfolio;
 }

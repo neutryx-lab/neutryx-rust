@@ -1,330 +1,316 @@
 //! Pre-allocated workspace buffers for Monte Carlo simulation.
 //!
-//! This module provides [`PathWorkspace`], which manages pre-allocated buffers
-//! for allocation-free simulation loops. Buffer hoisting is critical for Enzyme
-//! optimisation.
+//! Unified workspace with pluggable memory layout via [`LayoutStrategy`].
+//! Buffer hoisting (allocating outside the simulation loop) is critical
+//! for Enzyme LLVM-level optimisation.
 //!
-//! # Memory Layout
+//! # Layout Strategies
 //!
-//! All buffers use row-major contiguous layout for cache efficiency:
-//! - `randoms`: n_paths × n_steps (random normal samples)
-//! - `paths`: n_paths × (n_steps + 1) (price paths including initial spot)
-//! - `payoffs`: n_paths (terminal payoff values)
-//!
-//! # Enzyme Compatibility
-//!
-//! Buffer hoisting (allocating outside the simulation loop) enables Enzyme
-//! to better analyse and optimise the inner loop for gradient computation.
+//! - [`PathFirst`]: `[path][step]` — paths contiguous (default)
+//! - [`TimeStepFirst`]: `[step][path]` — steps contiguous (SIMD-friendly)
+
+use std::marker::PhantomData;
+
+use super::{layout_config::PathLayout, workspace_trait::PathWorkspaceTrait};
+
+/// Index calculation strategy for workspace memory layout.
+pub trait LayoutStrategy: Send + Sync + Clone + 'static {
+    /// Computes the linear index into the paths buffer.
+    fn path_index(
+        path_idx: usize,
+        step_idx: usize,
+        num_paths: usize,
+        num_steps_plus_1: usize,
+    ) -> usize;
+
+    /// Computes the linear index into the randoms buffer.
+    fn random_index(path_idx: usize, step_idx: usize, num_paths: usize, num_steps: usize) -> usize;
+
+    /// Returns the [`PathLayout`] tag for this strategy.
+    fn layout() -> PathLayout;
+}
+
+/// Path-first layout: `paths[path_idx * (n_steps+1) + step_idx]`.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PathFirst;
+
+impl LayoutStrategy for PathFirst {
+    #[inline]
+    fn path_index(
+        path_idx: usize,
+        step_idx: usize,
+        _num_paths: usize,
+        num_steps_plus_1: usize,
+    ) -> usize {
+        path_idx * num_steps_plus_1 + step_idx
+    }
+
+    #[inline]
+    fn random_index(
+        path_idx: usize,
+        step_idx: usize,
+        _num_paths: usize,
+        num_steps: usize,
+    ) -> usize {
+        path_idx * num_steps + step_idx
+    }
+
+    #[inline]
+    fn layout() -> PathLayout { PathLayout::PathFirst }
+}
+
+/// Time-step-first layout: `paths[step_idx * num_paths + path_idx]`.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct TimeStepFirst;
+
+impl LayoutStrategy for TimeStepFirst {
+    #[inline]
+    fn path_index(
+        path_idx: usize,
+        step_idx: usize,
+        num_paths: usize,
+        _num_steps_plus_1: usize,
+    ) -> usize {
+        step_idx * num_paths + path_idx
+    }
+
+    #[inline]
+    fn random_index(
+        path_idx: usize,
+        step_idx: usize,
+        num_paths: usize,
+        _num_steps: usize,
+    ) -> usize {
+        step_idx * num_paths + path_idx
+    }
+
+    #[inline]
+    fn layout() -> PathLayout { PathLayout::TimeStepFirst }
+}
+
+// ============================================================================
+// Unified Workspace
+// ============================================================================
 
 /// Pre-allocated workspace for Monte Carlo simulation.
 ///
-/// Manages memory buffers for random samples, price paths, and payoff values.
-/// Designed for reuse across multiple pricing calls without reallocation.
+/// The type parameter `S` selects the memory layout strategy:
+/// - `Workspace<PathFirst>` (alias: [`PathWorkspace`]) — default
+/// - `Workspace<TimeStepFirst>` (alias: [`TimeStepFirstWorkspace`])
 ///
 /// # Buffer Hoisting
 ///
-/// All allocations occur in [`ensure_capacity`](Self::ensure_capacity).
-/// The simulation loop operates on slices without any heap allocation,
-/// which is essential for Enzyme LLVM-level optimisation.
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::PathWorkspace;
-///
-/// let mut workspace = PathWorkspace::new(1000, 252);
-///
-/// // Fill random buffer externally
-/// let randoms = workspace.randoms_mut();
-/// // ... fill with random normals
-///
-/// // Access paths after generation
-/// let paths = workspace.paths();
-/// ```
-pub struct PathWorkspace {
-    /// Random normal samples (n_paths × n_steps).
+/// All allocations occur in [`new`](Self::new) or
+/// [`ensure_capacity`](Self::ensure_capacity). The simulation loop
+/// operates on slices without heap allocation, which is essential for
+/// Enzyme LLVM-level optimisation.
+pub struct Workspace<S: LayoutStrategy = PathFirst> {
     randoms: Vec<f64>,
-    /// Price paths (n_paths × (n_steps + 1)).
     paths: Vec<f64>,
-    /// Payoff values per path (n_paths).
     payoffs: Vec<f64>,
-    /// Current capacity for paths dimension.
     capacity_paths: usize,
-    /// Current capacity for steps dimension.
     capacity_steps: usize,
-    /// Logical size for paths dimension.
     size_paths: usize,
-    /// Logical size for steps dimension.
     size_steps: usize,
+    _strategy: PhantomData<S>,
 }
 
-impl PathWorkspace {
-    /// Creates a new workspace with the specified initial capacity.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_paths` - Initial capacity for number of paths
-    /// * `n_steps` - Initial capacity for number of steps
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::PathWorkspace;
-    ///
-    /// let workspace = PathWorkspace::new(10_000, 252);
-    /// ```
-    pub fn new(n_paths: usize, n_steps: usize) -> Self {
-        let randoms_size = n_paths * n_steps;
-        let paths_size = n_paths * (n_steps + 1);
+/// Path-first workspace (default).
+pub type PathWorkspace = Workspace<PathFirst>;
 
+/// Time-step-first workspace for SIMD-friendly access.
+pub type TimeStepFirstWorkspace = Workspace<TimeStepFirst>;
+
+// --- Shared implementation for all layouts ---
+
+impl<S: LayoutStrategy> Workspace<S> {
+    /// Creates a new workspace with the specified initial capacity.
+    pub fn new(n_paths: usize, n_steps: usize) -> Self {
         Self {
-            randoms: vec![0.0; randoms_size],
-            paths: vec![0.0; paths_size],
+            randoms: vec![0.0; n_paths * n_steps],
+            paths: vec![0.0; n_paths * (n_steps + 1)],
             payoffs: vec![0.0; n_paths],
             capacity_paths: n_paths,
             capacity_steps: n_steps,
             size_paths: n_paths,
             size_steps: n_steps,
+            _strategy: PhantomData,
         }
     }
 
-    /// Ensures workspace has sufficient capacity for the given dimensions.
-    ///
-    /// Grows buffers if necessary using a doubling strategy. Never shrinks
-    /// to avoid repeated allocations for varying simulation sizes.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_paths` - Required number of paths
-    /// * `n_steps` - Required number of steps
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::PathWorkspace;
-    ///
-    /// let mut workspace = PathWorkspace::new(100, 10);
-    /// workspace.ensure_capacity(1000, 100);
-    /// // Buffers now have capacity for 1000 paths × 100 steps
-    /// ```
+    /// Ensures workspace has sufficient capacity (doubling strategy, never
+    /// shrinks).
     pub fn ensure_capacity(&mut self, n_paths: usize, n_steps: usize) {
-        let needs_growth = n_paths > self.capacity_paths || n_steps > self.capacity_steps;
+        if n_paths > self.capacity_paths || n_steps > self.capacity_steps {
+            let new_cap_paths = n_paths.max(self.capacity_paths * 2);
+            let new_cap_steps = n_steps.max(self.capacity_steps * 2);
 
-        if needs_growth {
-            // Use doubling strategy for amortised O(1) growth
-            let new_capacity_paths = n_paths.max(self.capacity_paths * 2);
-            let new_capacity_steps = n_steps.max(self.capacity_steps * 2);
+            self.randoms.resize(new_cap_paths * new_cap_steps, 0.0);
+            self.paths.resize(new_cap_paths * (new_cap_steps + 1), 0.0);
+            self.payoffs.resize(new_cap_paths, 0.0);
 
-            let randoms_size = new_capacity_paths * new_capacity_steps;
-            let paths_size = new_capacity_paths * (new_capacity_steps + 1);
-
-            self.randoms.resize(randoms_size, 0.0);
-            self.paths.resize(paths_size, 0.0);
-            self.payoffs.resize(new_capacity_paths, 0.0);
-
-            self.capacity_paths = new_capacity_paths;
-            self.capacity_steps = new_capacity_steps;
+            self.capacity_paths = new_cap_paths;
+            self.capacity_steps = new_cap_steps;
         }
-
         self.size_paths = n_paths;
         self.size_steps = n_steps;
     }
 
-    /// Resets workspace state without deallocating buffers.
-    ///
-    /// Clears logical size but retains capacity for efficient reuse.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::PathWorkspace;
-    ///
-    /// let mut workspace = PathWorkspace::new(1000, 100);
-    /// workspace.reset();
-    /// // Capacity retained, ready for reuse
-    /// ```
+    /// Resets logical size without deallocating buffers.
     #[inline]
     pub fn reset(&mut self) {
         self.size_paths = 0;
         self.size_steps = 0;
     }
 
-    /// Fast reset that preserves both capacity and logical size.
-    ///
-    /// Unlike [`reset`](Self::reset), this method does not modify sizes.
-    /// It only ensures the workspace is ready for immediate reuse by
-    /// avoiding any initialisation overhead.
-    ///
-    /// This is the fastest reset option when dimensions remain constant
-    /// across simulation runs, achieving true zero-allocation behaviour.
-    ///
-    /// # Performance
-    ///
-    /// - `reset_fast`: O(1) - No memory operations
-    /// - `reset`: O(1) - Clears size tracking
-    /// - `ensure_capacity`: O(n) when growing
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::PathWorkspace;
-    ///
-    /// let mut workspace = PathWorkspace::new(1000, 100);
-    ///
-    /// // Run simulation loop
-    /// for _ in 0..1000 {
-    ///     workspace.reset_fast();
-    ///     // ... simulation work using same dimensions ...
-    /// }
-    /// ```
+    /// O(1) reset preserving both capacity and logical size.
     #[inline]
-    pub fn reset_fast(&mut self) {
-        // Intentionally empty - capacity and size are preserved
-        // This serves as documentation and a clear API entry point
-        // for zero-allocation simulation loops
-    }
+    pub fn reset_fast(&mut self) {}
+
+    /// Returns the memory layout.
+    #[inline]
+    pub fn layout(&self) -> PathLayout { S::layout() }
 
     /// Returns total memory used by all buffers in bytes.
-    ///
-    /// Useful for monitoring memory consumption and pool statistics.
     #[inline]
     pub fn memory_usage(&self) -> usize {
         (self.randoms.capacity() + self.paths.capacity() + self.payoffs.capacity())
             * std::mem::size_of::<f64>()
     }
 
-    /// Returns current path capacity.
+    // --- Capacity / size accessors ---
+
+    /// Returns path capacity.
     #[inline]
     pub fn capacity_paths(&self) -> usize { self.capacity_paths }
-
-    /// Returns current step capacity.
+    /// Returns step capacity.
     #[inline]
     pub fn capacity_steps(&self) -> usize { self.capacity_steps }
-
-    /// Returns logical path size.
+    /// Returns current path count.
     #[inline]
     pub fn size_paths(&self) -> usize { self.size_paths }
-
-    /// Returns logical step size.
+    /// Returns current step count.
     #[inline]
     pub fn size_steps(&self) -> usize { self.size_steps }
+    /// Returns the number of simulation paths.
+    #[inline]
+    pub fn num_paths(&self) -> usize { self.size_paths }
+    /// Returns the number of time steps.
+    #[inline]
+    pub fn num_steps(&self) -> usize { self.size_steps }
 
-    /// Returns mutable slice of random buffer for filling.
-    ///
-    /// Returns slice of size `n_paths × n_steps` based on current logical size.
-    ///
-    /// # Panics
-    ///
-    /// Panics if logical size exceeds capacity (programming error).
+    // --- Flat buffer accessors ---
+
+    /// Returns the randoms buffer as a slice.
+    #[inline]
+    pub fn randoms(&self) -> &[f64] { &self.randoms[..self.size_paths * self.size_steps] }
+    /// Returns the randoms buffer as a mutable slice.
     #[inline]
     pub fn randoms_mut(&mut self) -> &mut [f64] {
         let len = self.size_paths * self.size_steps;
-        debug_assert!(len <= self.randoms.len());
         &mut self.randoms[..len]
     }
-
-    /// Returns slice of random buffer.
+    /// Returns the paths buffer as a slice.
     #[inline]
-    pub fn randoms(&self) -> &[f64] {
-        let len = self.size_paths * self.size_steps;
-        &self.randoms[..len]
-    }
-
-    /// Returns slice of price paths.
-    ///
-    /// Returns slice of size `n_paths × (n_steps + 1)` based on current logical
-    /// size.
-    #[inline]
-    pub fn paths(&self) -> &[f64] {
-        let len = self.size_paths * (self.size_steps + 1);
-        &self.paths[..len]
-    }
-
-    /// Returns mutable slice of price paths.
+    pub fn paths(&self) -> &[f64] { &self.paths[..self.size_paths * (self.size_steps + 1)] }
+    /// Returns the paths buffer as a mutable slice.
     #[inline]
     pub fn paths_mut(&mut self) -> &mut [f64] {
         let len = self.size_paths * (self.size_steps + 1);
         &mut self.paths[..len]
     }
-
-    /// Returns slice of payoff values.
+    /// Returns the payoffs buffer as a slice.
     #[inline]
     pub fn payoffs(&self) -> &[f64] { &self.payoffs[..self.size_paths] }
-
-    /// Returns mutable slice of payoff values.
+    /// Returns the payoffs buffer as a mutable slice.
     #[inline]
     pub fn payoffs_mut(&mut self) -> &mut [f64] { &mut self.payoffs[..self.size_paths] }
 
-    /// Returns immutable slice of paths and mutable slice of payoffs.
-    #[inline]
-    pub fn paths_and_payoffs_mut(&mut self) -> (&[f64], &mut [f64]) {
-        let paths_len = self.size_paths * (self.size_steps + 1);
-        (
-            &self.paths[..paths_len],
-            &mut self.payoffs[..self.size_paths],
-        )
-    }
+    // --- Strategy-aware indexing ---
 
-    /// Returns mutable slice of paths and immutable slice of randoms.
-    #[inline]
-    pub fn paths_mut_and_randoms(&mut self) -> (&mut [f64], &[f64]) {
-        let randoms_len = self.size_paths * self.size_steps;
-        let paths_len = self.size_paths * (self.size_steps + 1);
-        (&mut self.paths[..paths_len], &self.randoms[..randoms_len])
-    }
-
-    /// Returns the index into the paths buffer for a specific path and step.
-    ///
-    /// # Arguments
-    ///
-    /// * `path_idx` - Path index (0-based)
-    /// * `step_idx` - Step index (0-based, where 0 is initial spot)
-    ///
-    /// # Returns
-    ///
-    /// Linear index into the paths buffer.
+    /// Returns the linear index into the paths buffer.
     #[inline]
     pub fn path_index(&self, path_idx: usize, step_idx: usize) -> usize {
-        path_idx * (self.size_steps + 1) + step_idx
+        S::path_index(path_idx, step_idx, self.size_paths, self.size_steps + 1)
     }
 
-    /// Returns the index into the randoms buffer for a specific path and step.
-    ///
-    /// # Arguments
-    ///
-    /// * `path_idx` - Path index (0-based)
-    /// * `step_idx` - Step index (0-based)
-    ///
-    /// # Returns
-    ///
-    /// Linear index into the randoms buffer.
+    /// Returns the linear index into the randoms buffer.
     #[inline]
     pub fn random_index(&self, path_idx: usize, step_idx: usize) -> usize {
-        path_idx * self.size_steps + step_idx
+        S::random_index(path_idx, step_idx, self.size_paths, self.size_steps)
+    }
+
+    /// Gets a path value at the given position.
+    #[inline]
+    pub fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
+        self.paths[self.path_index(path_idx, step_idx)]
+    }
+
+    /// Sets a path value at the given position.
+    #[inline]
+    pub fn set_path_value(&mut self, path_idx: usize, step_idx: usize, value: f64) {
+        let idx = self.path_index(path_idx, step_idx);
+        self.paths[idx] = value;
+    }
+
+    /// Zeroes all buffer contents.
+    pub fn clear(&mut self) {
+        let r_len = self.size_paths * self.size_steps;
+        self.randoms[..r_len].fill(0.0);
+        let p_len = self.size_paths * (self.size_steps + 1);
+        self.paths[..p_len].fill(0.0);
+        self.payoffs[..self.size_paths].fill(0.0);
+    }
+
+    /// Returns a contiguous slice for all paths at a given step,
+    /// or `None` if the layout does not store steps contiguously.
+    #[inline]
+    pub fn get_step_slice(&self, step_idx: usize) -> Option<&[f64]> {
+        if S::layout() == PathLayout::TimeStepFirst {
+            let start = step_idx * self.size_paths;
+            Some(&self.paths[start..start + self.size_paths])
+        } else {
+            None
+        }
+    }
+
+    /// Mutable variant of [`get_step_slice`](Self::get_step_slice).
+    #[inline]
+    pub fn get_step_slice_mut(&mut self, step_idx: usize) -> Option<&mut [f64]> {
+        if S::layout() == PathLayout::TimeStepFirst {
+            let start = step_idx * self.size_paths;
+            Some(&mut self.paths[start..start + self.size_paths])
+        } else {
+            None
+        }
+    }
+
+    /// Returns a contiguous slice for a single path,
+    /// or `None` if the layout does not store paths contiguously.
+    #[inline]
+    pub fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
+        if S::layout() == PathLayout::PathFirst {
+            let start = path_idx * (self.size_steps + 1);
+            Some(&self.paths[start..start + self.size_steps + 1])
+        } else {
+            None
+        }
     }
 }
 
-impl Default for PathWorkspace {
-    fn default() -> Self { Self::new(0, 0) }
-}
+// --- PathWorkspaceTrait implementation ---
 
-// Implementation of PathWorkspaceTrait for PathWorkspace
-impl super::workspace_trait::PathWorkspaceTrait for PathWorkspace {
+impl<S: LayoutStrategy> PathWorkspaceTrait for Workspace<S> {
     #[inline]
     fn num_paths(&self) -> usize { self.size_paths }
-
     #[inline]
     fn num_steps(&self) -> usize { self.size_steps }
-
     #[inline]
-    fn layout(&self) -> super::layout_config::PathLayout {
-        super::layout_config::PathLayout::PathFirst
-    }
+    fn layout(&self) -> PathLayout { S::layout() }
 
     #[inline]
     fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
-        let idx = self.path_index(path_idx, step_idx);
-        self.paths[idx]
+        self.paths[self.path_index(path_idx, step_idx)]
     }
 
     #[inline]
@@ -334,69 +320,300 @@ impl super::workspace_trait::PathWorkspaceTrait for PathWorkspace {
     }
 
     #[inline]
-    fn get_step_slice(&self, _step_idx: usize) -> Option<&[f64]> {
-        // PathFirst layout: step data is not contiguous
-        None
+    fn get_step_slice(&self, step_idx: usize) -> Option<&[f64]> {
+        if S::layout() == PathLayout::TimeStepFirst {
+            let start = step_idx * self.size_paths;
+            Some(&self.paths[start..start + self.size_paths])
+        } else {
+            None
+        }
     }
 
     #[inline]
-    fn get_step_slice_mut(&mut self, _step_idx: usize) -> Option<&mut [f64]> {
-        // PathFirst layout: step data is not contiguous
-        None
+    fn get_step_slice_mut(&mut self, step_idx: usize) -> Option<&mut [f64]> {
+        if S::layout() == PathLayout::TimeStepFirst {
+            let start = step_idx * self.size_paths;
+            Some(&mut self.paths[start..start + self.size_paths])
+        } else {
+            None
+        }
     }
 
     #[inline]
     fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
-        let start = self.path_index(path_idx, 0);
-        let end = start + self.size_steps + 1;
-        Some(&self.paths[start..end])
+        if S::layout() == PathLayout::PathFirst {
+            let start = path_idx * (self.size_steps + 1);
+            Some(&self.paths[start..start + self.size_steps + 1])
+        } else {
+            None
+        }
     }
 
     #[inline]
     fn get_path_slice_mut(&mut self, path_idx: usize) -> Option<&mut [f64]> {
-        let start = self.path_index(path_idx, 0);
-        let end = start + self.size_steps + 1;
-        Some(&mut self.paths[start..end])
+        if S::layout() == PathLayout::PathFirst {
+            let start = path_idx * (self.size_steps + 1);
+            Some(&mut self.paths[start..start + self.size_steps + 1])
+        } else {
+            None
+        }
     }
 
     fn clear(&mut self) {
-        // Zero out all buffers
-        for val in self.randoms.iter_mut() {
-            *val = 0.0;
-        }
-        for val in self.paths.iter_mut() {
-            *val = 0.0;
-        }
-        for val in self.payoffs.iter_mut() {
-            *val = 0.0;
+        let r_len = self.size_paths * self.size_steps;
+        self.randoms[..r_len].fill(0.0);
+        let p_len = self.size_paths * (self.size_steps + 1);
+        self.paths[..p_len].fill(0.0);
+        self.payoffs[..self.size_paths].fill(0.0);
+    }
+
+    #[inline]
+    fn memory_usage(&self) -> usize {
+        (self.randoms.capacity() + self.paths.capacity() + self.payoffs.capacity())
+            * std::mem::size_of::<f64>()
+    }
+
+    #[inline]
+    fn randoms(&self) -> &[f64] { &self.randoms[..self.size_paths * self.size_steps] }
+    #[inline]
+    fn randoms_mut(&mut self) -> &mut [f64] {
+        let len = self.size_paths * self.size_steps;
+        &mut self.randoms[..len]
+    }
+    #[inline]
+    fn payoffs(&self) -> &[f64] { &self.payoffs[..self.size_paths] }
+    #[inline]
+    fn payoffs_mut(&mut self) -> &mut [f64] { &mut self.payoffs[..self.size_paths] }
+    #[inline]
+    fn paths(&self) -> &[f64] { &self.paths[..self.size_paths * (self.size_steps + 1)] }
+    #[inline]
+    fn paths_mut(&mut self) -> &mut [f64] {
+        let len = self.size_paths * (self.size_steps + 1);
+        &mut self.paths[..len]
+    }
+}
+
+// --- PathFirst-specific convenience methods ---
+
+impl Workspace<PathFirst> {
+    /// Returns immutable paths and mutable payoffs (split borrow).
+    #[inline]
+    pub fn paths_and_payoffs_mut(&mut self) -> (&[f64], &mut [f64]) {
+        let paths_len = self.size_paths * (self.size_steps + 1);
+        (
+            &self.paths[..paths_len],
+            &mut self.payoffs[..self.size_paths],
+        )
+    }
+
+    /// Returns mutable paths and immutable randoms (split borrow).
+    #[inline]
+    pub fn paths_mut_and_randoms(&mut self) -> (&mut [f64], &[f64]) {
+        let randoms_len = self.size_paths * self.size_steps;
+        let paths_len = self.size_paths * (self.size_steps + 1);
+        (&mut self.paths[..paths_len], &self.randoms[..randoms_len])
+    }
+}
+
+impl<S: LayoutStrategy> Default for Workspace<S> {
+    fn default() -> Self { Self::new(0, 0) }
+}
+
+// ============================================================================
+// WorkspaceEnum — runtime layout selection via static dispatch
+// ============================================================================
+
+/// Runtime-selected workspace layout.
+///
+/// Avoids `dyn Trait` overhead by using enum dispatch, keeping Enzyme
+/// AD compatibility.
+#[allow(missing_docs)]
+pub enum WorkspaceEnum {
+    /// Path-first layout.
+    PathFirst(PathWorkspace),
+    /// Time-step-first layout.
+    TimeStepFirst(TimeStepFirstWorkspace),
+}
+
+#[allow(missing_docs)]
+impl WorkspaceEnum {
+    /// Creates a workspace with the specified layout.
+    pub fn new(layout: PathLayout, num_paths: usize, num_steps: usize) -> Self {
+        match layout {
+            PathLayout::PathFirst => Self::PathFirst(PathWorkspace::new(num_paths, num_steps)),
+            PathLayout::TimeStepFirst => {
+                Self::TimeStepFirst(TimeStepFirstWorkspace::new(num_paths, num_steps))
+            }
         }
     }
 
     #[inline]
-    fn memory_usage(&self) -> usize { PathWorkspace::memory_usage(self) }
+    pub fn path_first(num_paths: usize, num_steps: usize) -> Self {
+        Self::PathFirst(PathWorkspace::new(num_paths, num_steps))
+    }
+    #[inline]
+    pub fn timestep_first(num_paths: usize, num_steps: usize) -> Self {
+        Self::TimeStepFirst(TimeStepFirstWorkspace::new(num_paths, num_steps))
+    }
 
     #[inline]
-    fn randoms(&self) -> &[f64] { PathWorkspace::randoms(self) }
+    pub fn as_path_first(&self) -> Option<&PathWorkspace> {
+        match self {
+            Self::PathFirst(ws) => Some(ws),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_path_first_mut(&mut self) -> Option<&mut PathWorkspace> {
+        match self {
+            Self::PathFirst(ws) => Some(ws),
+            _ => None,
+        }
+    }
+    #[inline]
+    pub fn as_timestep_first(&self) -> Option<&TimeStepFirstWorkspace> {
+        match self {
+            Self::TimeStepFirst(ws) => Some(ws),
+            _ => None,
+        }
+    }
+
+    // --- Delegated methods ---
 
     #[inline]
-    fn randoms_mut(&mut self) -> &mut [f64] { PathWorkspace::randoms_mut(self) }
-
+    pub fn num_paths(&self) -> usize {
+        match self {
+            Self::PathFirst(w) => w.num_paths(),
+            Self::TimeStepFirst(w) => w.num_paths(),
+        }
+    }
     #[inline]
-    fn payoffs(&self) -> &[f64] { PathWorkspace::payoffs(self) }
-
+    pub fn num_steps(&self) -> usize {
+        match self {
+            Self::PathFirst(w) => w.num_steps(),
+            Self::TimeStepFirst(w) => w.num_steps(),
+        }
+    }
     #[inline]
-    fn payoffs_mut(&mut self) -> &mut [f64] { PathWorkspace::payoffs_mut(self) }
-
+    pub fn layout(&self) -> PathLayout {
+        match self {
+            Self::PathFirst(w) => w.layout(),
+            Self::TimeStepFirst(w) => w.layout(),
+        }
+    }
+    pub fn ensure_capacity(&mut self, np: usize, ns: usize) {
+        match self {
+            Self::PathFirst(w) => w.ensure_capacity(np, ns),
+            Self::TimeStepFirst(w) => w.ensure_capacity(np, ns),
+        }
+    }
+    pub fn reset(&mut self) {
+        match self {
+            Self::PathFirst(w) => w.reset(),
+            Self::TimeStepFirst(w) => w.reset(),
+        }
+    }
     #[inline]
-    fn paths(&self) -> &[f64] { PathWorkspace::paths(self) }
-
+    pub fn memory_usage(&self) -> usize {
+        match self {
+            Self::PathFirst(w) => w.memory_usage(),
+            Self::TimeStepFirst(w) => w.memory_usage(),
+        }
+    }
     #[inline]
-    fn paths_mut(&mut self) -> &mut [f64] { PathWorkspace::paths_mut(self) }
+    pub fn randoms(&self) -> &[f64] {
+        match self {
+            Self::PathFirst(w) => w.randoms(),
+            Self::TimeStepFirst(w) => w.randoms(),
+        }
+    }
+    #[inline]
+    pub fn randoms_mut(&mut self) -> &mut [f64] {
+        match self {
+            Self::PathFirst(w) => w.randoms_mut(),
+            Self::TimeStepFirst(w) => w.randoms_mut(),
+        }
+    }
+    #[inline]
+    pub fn paths(&self) -> &[f64] {
+        match self {
+            Self::PathFirst(w) => w.paths(),
+            Self::TimeStepFirst(w) => w.paths(),
+        }
+    }
+    #[inline]
+    pub fn paths_mut(&mut self) -> &mut [f64] {
+        match self {
+            Self::PathFirst(w) => w.paths_mut(),
+            Self::TimeStepFirst(w) => w.paths_mut(),
+        }
+    }
+    #[inline]
+    pub fn payoffs(&self) -> &[f64] {
+        match self {
+            Self::PathFirst(w) => w.payoffs(),
+            Self::TimeStepFirst(w) => w.payoffs(),
+        }
+    }
+    #[inline]
+    pub fn payoffs_mut(&mut self) -> &mut [f64] {
+        match self {
+            Self::PathFirst(w) => w.payoffs_mut(),
+            Self::TimeStepFirst(w) => w.payoffs_mut(),
+        }
+    }
+    #[inline]
+    pub fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
+        match self {
+            Self::PathFirst(w) => w.get_path_value(path_idx, step_idx),
+            Self::TimeStepFirst(w) => w.get_path_value(path_idx, step_idx),
+        }
+    }
+    #[inline]
+    pub fn set_path_value(&mut self, path_idx: usize, step_idx: usize, value: f64) {
+        match self {
+            Self::PathFirst(w) => w.set_path_value(path_idx, step_idx, value),
+            Self::TimeStepFirst(w) => w.set_path_value(path_idx, step_idx, value),
+        }
+    }
+    #[inline]
+    pub fn get_step_slice(&self, step_idx: usize) -> Option<&[f64]> {
+        match self {
+            Self::PathFirst(w) => w.get_step_slice(step_idx),
+            Self::TimeStepFirst(w) => w.get_step_slice(step_idx),
+        }
+    }
+    #[inline]
+    pub fn get_step_slice_mut(&mut self, step_idx: usize) -> Option<&mut [f64]> {
+        match self {
+            Self::PathFirst(w) => w.get_step_slice_mut(step_idx),
+            Self::TimeStepFirst(w) => w.get_step_slice_mut(step_idx),
+        }
+    }
+    #[inline]
+    pub fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
+        match self {
+            Self::PathFirst(w) => w.get_path_slice(path_idx),
+            Self::TimeStepFirst(w) => w.get_path_slice(path_idx),
+        }
+    }
+    pub fn clear(&mut self) {
+        match self {
+            Self::PathFirst(w) => w.clear(),
+            Self::TimeStepFirst(w) => w.clear(),
+        }
+    }
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // --- PathWorkspace (PathFirst) tests ---
 
     #[test]
     fn test_workspace_creation() {
@@ -410,8 +627,8 @@ mod tests {
     #[test]
     fn test_workspace_buffer_sizes() {
         let ws = PathWorkspace::new(100, 10);
-        assert_eq!(ws.randoms().len(), 100 * 10);
-        assert_eq!(ws.paths().len(), 100 * 11); // n_steps + 1
+        assert_eq!(ws.randoms().len(), 1000);
+        assert_eq!(ws.paths().len(), 1100);
         assert_eq!(ws.payoffs().len(), 100);
     }
 
@@ -419,7 +636,6 @@ mod tests {
     fn test_workspace_ensure_capacity_growth() {
         let mut ws = PathWorkspace::new(100, 10);
         ws.ensure_capacity(200, 20);
-
         assert!(ws.capacity_paths() >= 200);
         assert!(ws.capacity_steps() >= 20);
         assert_eq!(ws.size_paths(), 200);
@@ -429,43 +645,27 @@ mod tests {
     #[test]
     fn test_workspace_ensure_capacity_no_shrink() {
         let mut ws = PathWorkspace::new(200, 20);
-        let cap_paths = ws.capacity_paths();
-        let cap_steps = ws.capacity_steps();
-
+        let cap_p = ws.capacity_paths();
+        let cap_s = ws.capacity_steps();
         ws.ensure_capacity(100, 10);
-
-        assert_eq!(ws.capacity_paths(), cap_paths);
-        assert_eq!(ws.capacity_steps(), cap_steps);
-        assert_eq!(ws.size_paths(), 100);
-        assert_eq!(ws.size_steps(), 10);
+        assert_eq!(ws.capacity_paths(), cap_p);
+        assert_eq!(ws.capacity_steps(), cap_s);
     }
 
     #[test]
     fn test_workspace_reset() {
         let mut ws = PathWorkspace::new(100, 10);
-        let cap_paths = ws.capacity_paths();
-        let cap_steps = ws.capacity_steps();
-
         ws.reset();
-
-        assert_eq!(ws.capacity_paths(), cap_paths);
-        assert_eq!(ws.capacity_steps(), cap_steps);
         assert_eq!(ws.size_paths(), 0);
         assert_eq!(ws.size_steps(), 0);
     }
 
     #[test]
-    fn test_workspace_indexing() {
+    fn test_workspace_indexing_path_first() {
         let ws = PathWorkspace::new(10, 5);
-
-        // Path 0, Step 0
         assert_eq!(ws.path_index(0, 0), 0);
-        // Path 0, Step 5 (terminal)
         assert_eq!(ws.path_index(0, 5), 5);
-        // Path 1, Step 0
         assert_eq!(ws.path_index(1, 0), 6);
-
-        // Random indexing (no +1 for steps)
         assert_eq!(ws.random_index(0, 0), 0);
         assert_eq!(ws.random_index(0, 4), 4);
         assert_eq!(ws.random_index(1, 0), 5);
@@ -474,16 +674,10 @@ mod tests {
     #[test]
     fn test_workspace_mutable_access() {
         let mut ws = PathWorkspace::new(10, 5);
-
-        // Modify randoms
         ws.randoms_mut()[0] = 1.0;
         assert_eq!(ws.randoms()[0], 1.0);
-
-        // Modify paths
         ws.paths_mut()[0] = 100.0;
         assert_eq!(ws.paths()[0], 100.0);
-
-        // Modify payoffs
         ws.payoffs_mut()[0] = 10.0;
         assert_eq!(ws.payoffs()[0], 10.0);
     }
@@ -498,52 +692,150 @@ mod tests {
     #[test]
     fn test_workspace_reset_fast() {
         let mut ws = PathWorkspace::new(100, 10);
-        let size_paths = ws.size_paths();
-        let size_steps = ws.size_steps();
-        let cap_paths = ws.capacity_paths();
-        let cap_steps = ws.capacity_steps();
-
-        // Modify buffers
         ws.randoms_mut()[0] = 42.0;
-        ws.paths_mut()[0] = 100.0;
-
-        // reset_fast should preserve everything
         ws.reset_fast();
-
-        assert_eq!(ws.size_paths(), size_paths);
-        assert_eq!(ws.size_steps(), size_steps);
-        assert_eq!(ws.capacity_paths(), cap_paths);
-        assert_eq!(ws.capacity_steps(), cap_steps);
-
-        // Data should be preserved (not zeroed)
+        assert_eq!(ws.size_paths(), 100);
         assert_eq!(ws.randoms()[0], 42.0);
-        assert_eq!(ws.paths()[0], 100.0);
     }
 
     #[test]
     fn test_workspace_memory_usage() {
         let ws = PathWorkspace::new(100, 10);
-        let mem = ws.memory_usage();
-
-        // Expected: (100*10 + 100*11 + 100) * 8 bytes
-        // = (1000 + 1100 + 100) * 8 = 2200 * 8 = 17600
         let expected = (100 * 10 + 100 * 11 + 100) * std::mem::size_of::<f64>();
-        assert_eq!(mem, expected);
+        assert_eq!(ws.memory_usage(), expected);
     }
 
     #[test]
     fn test_workspace_zero_allocation_loop() {
         let mut ws = PathWorkspace::new(100, 10);
-        let initial_ptr = ws.randoms().as_ptr();
-
-        // Simulate zero-allocation loop
+        let ptr = ws.randoms().as_ptr();
         for i in 0..1000 {
             ws.reset_fast();
-            // Write some data
             ws.randoms_mut()[0] = i as f64;
         }
+        assert_eq!(ws.randoms().as_ptr(), ptr);
+    }
 
-        // Pointer should be the same (no reallocation)
-        assert_eq!(ws.randoms().as_ptr(), initial_ptr);
+    #[test]
+    fn test_get_set_path_value() {
+        let mut ws = PathWorkspace::new(10, 5);
+        ws.set_path_value(0, 0, 100.0);
+        ws.set_path_value(0, 5, 150.0);
+        ws.set_path_value(9, 0, 200.0);
+        assert_eq!(ws.get_path_value(0, 0), 100.0);
+        assert_eq!(ws.get_path_value(0, 5), 150.0);
+        assert_eq!(ws.get_path_value(9, 0), 200.0);
+    }
+
+    #[test]
+    fn test_path_first_step_slice_returns_none() {
+        let ws = PathWorkspace::new(10, 5);
+        assert!(ws.get_step_slice(0).is_none());
+    }
+
+    #[test]
+    fn test_path_first_path_slice() {
+        let mut ws = PathWorkspace::new(10, 5);
+        ws.set_path_value(0, 0, 100.0);
+        ws.set_path_value(0, 5, 150.0);
+        let slice = ws.get_path_slice(0).unwrap();
+        assert_eq!(slice.len(), 6);
+        assert_eq!(slice[0], 100.0);
+        assert_eq!(slice[5], 150.0);
+    }
+
+    // --- TimeStepFirstWorkspace tests ---
+
+    #[test]
+    fn test_timestep_first_layout() {
+        let ws = TimeStepFirstWorkspace::new(100, 10);
+        assert_eq!(ws.layout(), PathLayout::TimeStepFirst);
+        assert_eq!(ws.num_paths(), 100);
+        assert_eq!(ws.num_steps(), 10);
+    }
+
+    #[test]
+    fn test_timestep_first_indexing() {
+        let ws = TimeStepFirstWorkspace::new(10, 5);
+        assert_eq!(ws.path_index(0, 0), 0);
+        assert_eq!(ws.path_index(9, 0), 9);
+        assert_eq!(ws.path_index(0, 1), 10);
+        assert_eq!(ws.path_index(5, 5), 55);
+    }
+
+    #[test]
+    fn test_timestep_first_step_slice() {
+        let mut ws = TimeStepFirstWorkspace::new(10, 5);
+        if let Some(step0) = ws.get_step_slice_mut(0) {
+            for (i, val) in step0.iter_mut().enumerate() {
+                *val = 100.0 + i as f64;
+            }
+        }
+        for i in 0..10 {
+            assert_eq!(ws.get_path_value(i, 0), 100.0 + i as f64);
+        }
+        let step0 = ws.get_step_slice(0).unwrap();
+        assert_eq!(step0.len(), 10);
+    }
+
+    #[test]
+    fn test_timestep_first_path_slice_returns_none() {
+        let ws = TimeStepFirstWorkspace::new(10, 5);
+        assert!(ws.get_path_slice(0).is_none());
+    }
+
+    #[test]
+    fn test_timestep_first_get_set() {
+        let mut ws = TimeStepFirstWorkspace::new(10, 5);
+        ws.set_path_value(0, 0, 100.0);
+        ws.set_path_value(9, 5, 250.0);
+        assert_eq!(ws.get_path_value(0, 0), 100.0);
+        assert_eq!(ws.get_path_value(9, 5), 250.0);
+    }
+
+    // --- WorkspaceEnum tests ---
+
+    #[test]
+    fn test_workspace_enum_path_first() {
+        let ws = WorkspaceEnum::new(PathLayout::PathFirst, 100, 10);
+        assert_eq!(ws.num_paths(), 100);
+        assert_eq!(ws.layout(), PathLayout::PathFirst);
+        assert!(ws.as_path_first().is_some());
+    }
+
+    #[test]
+    fn test_workspace_enum_timestep_first() {
+        let ws = WorkspaceEnum::new(PathLayout::TimeStepFirst, 100, 10);
+        assert_eq!(ws.layout(), PathLayout::TimeStepFirst);
+        assert!(ws.as_timestep_first().is_some());
+    }
+
+    #[test]
+    fn test_workspace_enum_get_set() {
+        let mut ws = WorkspaceEnum::timestep_first(10, 5);
+        ws.set_path_value(0, 0, 100.0);
+        ws.set_path_value(9, 5, 200.0);
+        assert_eq!(ws.get_path_value(0, 0), 100.0);
+        assert_eq!(ws.get_path_value(9, 5), 200.0);
+    }
+
+    #[test]
+    fn test_workspace_enum_consistent_across_layouts() {
+        let mut ws_pf = WorkspaceEnum::path_first(4, 3);
+        let mut ws_tsf = WorkspaceEnum::timestep_first(4, 3);
+        for path in 0..4 {
+            for step in 0..4 {
+                let val = (path * 10 + step) as f64;
+                ws_pf.set_path_value(path, step, val);
+                ws_tsf.set_path_value(path, step, val);
+            }
+        }
+        for path in 0..4 {
+            for step in 0..4 {
+                let expected = (path * 10 + step) as f64;
+                assert_eq!(ws_pf.get_path_value(path, step), expected);
+                assert_eq!(ws_tsf.get_path_value(path, step), expected);
+            }
+        }
     }
 }

@@ -1,6 +1,10 @@
 //! REST API handlers
 //!
 //! Thin handlers that delegate business logic to services.
+//! Most handlers are generated via macros defined in [`macros`].
+
+#[macro_use]
+mod macros;
 
 mod config;
 mod curves;
