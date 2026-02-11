@@ -1,6 +1,4 @@
 //! Credit convention definitions.
-//!
-//! This module provides types for credit-related conventions including CDS.
 
 use crate::time::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 
@@ -38,30 +36,22 @@ impl CdsConvention {
             recovery_rate,
         }
     }
+}
 
-    /// Returns the ISDA standard CDS convention (North America).
-    #[must_use]
-    pub fn isda_na() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            payment_frequency: Frequency::Quarterly,
-            calendar: CalendarId::NewYork,
-            business_day_convention: BusinessDayConvention::Following,
-            recovery_rate: 0.40, // 40% standard recovery
-        }
-    }
-
-    /// Returns the ISDA standard CDS convention (Europe).
-    #[must_use]
-    pub fn isda_eu() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            payment_frequency: Frequency::Quarterly,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::Following,
-            recovery_rate: 0.40,
-        }
-    }
+super::define_convention_factories! {
+    for CdsConvention;
+    /// Returns the ISDA standard CDS convention (North America, 40% recovery).
+    isda_na => {
+        day_count: DayCounter::Actual360, payment_frequency: Frequency::Quarterly,
+        calendar: CalendarId::NewYork, business_day_convention: BusinessDayConvention::Following,
+        recovery_rate: 0.40,
+    };
+    /// Returns the ISDA standard CDS convention (Europe, 40% recovery).
+    isda_eu => {
+        day_count: DayCounter::Actual360, payment_frequency: Frequency::Quarterly,
+        calendar: CalendarId::Target, business_day_convention: BusinessDayConvention::Following,
+        recovery_rate: 0.40,
+    };
 }
 
 #[cfg(test)]

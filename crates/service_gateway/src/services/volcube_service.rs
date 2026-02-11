@@ -1,7 +1,4 @@
-//! Volatility cube service for IR vol, FX vol, and implied PDF operations
-//!
-//! Extracted from `demo_service` to provide a focused service for
-//! volatility surface calibration and related computations.
+//! Volatility cube service for IR vol, FX vol, and implied PDF operations.
 
 use std::{collections::HashMap, path::Path, sync::Arc};
 
@@ -9,7 +6,7 @@ use adapter_loader::{parse_instruments, InstrumentSpec};
 use infra_domain::time::parse_tenor_to_years;
 use pricer_models::{
     builder::{
-        vol::{SliceCalibrationConfig, VolCubeBuilder},
+        vol::{SliceCalibrationConfig, VolBuilder, VolCubeBuilder},
         BootstrapConfig, CurveBootstrapper,
     },
     market::{BootstrapInterpolation, YieldCurve},
@@ -71,11 +68,11 @@ fn parse_smile_points(quote: &serde_json::Value) -> Vec<SmilePoint> {
         .unwrap_or_default()
 }
 
-/// Service for volatility cube operations (IR vol, FX vol, implied PDF)
+/// Service for volatility cube operations (IR vol, FX vol, implied PDF).
 pub struct VolcubeService;
 
 impl VolcubeService {
-    /// Get IR vol currencies
+    /// Get IR vol currencies.
     pub fn get_ir_vol_currencies(
         _state: &Arc<AppState>,
     ) -> Result<IrVolCurrenciesResponse, ServerError> {
@@ -93,7 +90,7 @@ impl VolcubeService {
         })
     }
 
-    /// Get IR vol quotes for a currency
+    /// Get IR vol quotes for a currency.
     pub fn get_ir_vol_quotes(
         currency: &str,
         _state: &Arc<AppState>,
@@ -149,7 +146,7 @@ impl VolcubeService {
         })
     }
 
-    /// Get FX vol pairs
+    /// Get FX vol pairs.
     pub fn get_fx_vol_pairs(_state: &Arc<AppState>) -> Result<FxVolPairsResponse, ServerError> {
         let pairs = extract_vol_surface_strings("fxVol", "currencyPair").unwrap_or_else(|| {
             vec!["EURUSD", "USDJPY"]
@@ -162,7 +159,7 @@ impl VolcubeService {
         })
     }
 
-    /// Get FX vol quotes for a pair, including computed FX forwards
+    /// Get FX vol quotes for a pair, including computed FX forwards.
     pub fn get_fx_vol_quotes(
         pair: &str,
         _state: &Arc<AppState>,
@@ -183,10 +180,8 @@ impl VolcubeService {
         let domestic_rate = data.get("domesticRate").and_then(|r| r.as_f64());
         let foreign_rate = data.get("foreignRate").and_then(|r| r.as_f64());
 
-        // Look up base/quote currencies from fx_pairs.json
         let (base_ccy, quote_ccy) = Self::lookup_fx_pair_currencies(pair);
 
-        // Build discount curves for both currencies and compute FX forwards
         let forwards = if let Some(spot_val) = spot {
             Self::compute_fx_forwards(&base_ccy, &quote_ccy, spot_val, &data).ok()
         } else {
@@ -228,7 +223,7 @@ impl VolcubeService {
         })
     }
 
-    /// Get volcube indices (rate index identifiers)
+    /// Get volcube indices (rate index identifiers).
     pub fn get_volcube_indices(
         _state: &Arc<AppState>,
     ) -> Result<VolcubeIndicesResponse, ServerError> {
@@ -237,7 +232,7 @@ impl VolcubeService {
         })
     }
 
-    /// Get available volcube calibration models
+    /// Get available volcube calibration models.
     pub fn get_volcube_models(
         _state: &Arc<AppState>,
     ) -> Result<VolcubeModelsResponse, ServerError> {
@@ -246,7 +241,7 @@ impl VolcubeService {
         })
     }
 
-    /// Get swaption instruments for volcube calibration
+    /// Get swaption instruments for volcube calibration.
     pub fn get_volcube_instruments(
         currency: &str,
         _state: &Arc<AppState>,
@@ -276,7 +271,6 @@ impl VolcubeService {
             })
             .unwrap_or_default();
 
-        // Extract reference date from metadata.lastUpdated
         let reference_date = data
             .get("metadata")
             .and_then(|m| m.get("lastUpdated"))
@@ -289,15 +283,13 @@ impl VolcubeService {
         })
     }
 
-    /// Calibrate volcube (swaption vol surface) using real SABR calibration
-    /// via `pricer_models::builder::vol::VolCubeBuilder` (Levenberg-Marquardt).
+    /// Calibrate volcube (swaption vol surface) using real SABR calibration.
     pub fn calibrate_volcube(
         request: &VolcubeCalibrateRequest,
         _state: &Arc<AppState>,
     ) -> Result<VolcubeCalibrateResponse, ServerError> {
         let start = std::time::Instant::now();
 
-        // 1. Load vol data from file
         let vol_path = Path::new("demo/data/input/irvol")
             .join(format!("{}.json", request.index.to_lowercase()));
         let data: serde_json::Value =
@@ -312,24 +304,20 @@ impl VolcubeService {
             .unwrap_or_default();
         let instrument_count = quotes.len();
 
-        // 2. Resolve forward rates from request or use fallback
         let forward_rates = request.forward_rates.clone().unwrap_or_default();
         let default_forward: f64 = 0.04;
 
-        // 3. Determine vol type and build calibration config with initial/fixed params
         let is_normal_vol = data
             .get("metadata")
             .and_then(|m| m.get("volType"))
             .and_then(|v| v.as_str())
             .map_or(false, |v| v == "normal");
 
-        // Resolve user-supplied initial/fixed parameters
         let initial = request.initial_params.as_ref();
         let fixed = request.fixed_params.as_ref();
         let beta_is_fixed = fixed.and_then(|f| f.beta).unwrap_or(true);
         let beta_value = initial.and_then(|p| p.beta);
 
-        // When β is fixed to 0 (or data is normal vol), use Normal SABR (Bachelier)
         let use_normal_sabr =
             is_normal_vol || (beta_is_fixed && beta_value.map_or(false, |b| b.abs() < 1e-12));
 
@@ -339,22 +327,18 @@ impl VolcubeService {
             SliceCalibrationConfig::rates()
         };
 
-        // Apply user-supplied initial parameter guesses
         if let Some(ip) = initial {
             config.initial_alpha = ip.alpha.unwrap_or(config.initial_alpha);
             config.initial_rho = ip.rho.unwrap_or(config.initial_rho);
             config.initial_nu = ip.nu.unwrap_or(config.initial_nu);
         }
 
-        // Apply fixed-beta override: if beta is fixed, set fixed_beta to user value;
-        // if beta is not fixed, set fixed_beta = None so the optimiser calibrates it.
         if beta_is_fixed {
             config.fixed_beta = beta_value.or(config.fixed_beta);
         } else {
             config.fixed_beta = None;
         }
 
-        // Fix alpha/rho/nu by clamping bounds to a tight range around the initial value
         if let Some(fp) = fixed {
             if fp.alpha.unwrap_or(false) {
                 let v = config.initial_alpha;
@@ -372,13 +356,9 @@ impl VolcubeService {
 
         let beta = config.fixed_beta.unwrap_or(0.5);
 
-        // 4. Build VolCubeBuilder with real quotes
         let mut builder = VolCubeBuilder::with_config(config);
 
-        // Track string keys for result lookup
         let mut cell_keys: Vec<(String, String, f64, f64)> = Vec::new();
-        // Per-cell quote strikes for post-calibration Jacobian: (forward, expiry_years,
-        // strikes)
         let mut cell_quote_strikes: HashMap<String, (f64, f64, Vec<(f64, String)>)> =
             HashMap::new();
 
@@ -400,18 +380,14 @@ impl VolcubeService {
             let key = format!("{expiry_str}|{tenor_str}");
             let forward = forward_rates.get(&key).copied().unwrap_or(default_forward);
 
-            // For normal vol: convert from percentage-like units to decimal (0.68 → 0.0068)
-            // For lognormal vol: use as-is
             let atm_vol = if is_normal_vol {
                 atm_vol_raw / 100.0
             } else {
                 atm_vol_raw
             };
 
-            // ATM quote
             builder.add_quote(expiry_years, tenor_years, forward, atm_vol, forward);
 
-            // Smile quotes + collect per-cell strikes for Jacobian
             let smile_pts = parse_smile_points(quote);
             let mut strikes = vec![(forward, "ATM".to_string())];
             let vol_scale = if is_normal_vol { 0.01 } else { 1.0 };
@@ -436,12 +412,10 @@ impl VolcubeService {
             ));
         }
 
-        // 5. Calibrate
         let cube_result = builder
             .calibrate()
             .map_err(|e| ServerError::Internal(format!("SABR calibration failed: {e}")))?;
 
-        // 6. Convert results to response DTOs
         let mut cell_parameters = HashMap::new();
         let mut cell_diagnostics_map = HashMap::new();
         let mut alpha_sum = 0.0_f64;
@@ -480,10 +454,8 @@ impl VolcubeService {
             }
         }
 
-        // 6b. Compute per-cell Jacobian ∂σ_model / ∂θ_k
         let cell_jacobians = compute_cell_jacobians(&cell_parameters, &cell_quote_strikes, beta);
 
-        // 7. Global (average) parameters
         let global_params = if count > 0 {
             CalibrationParameters {
                 alpha: round4(alpha_sum / count as f64),
@@ -528,7 +500,7 @@ impl VolcubeService {
         })
     }
 
-    /// Calibrate FX vol surface
+    /// Calibrate FX vol surface.
     pub fn calibrate_fxvol(
         request: &FxVolCalibrateRequest,
         _state: &Arc<AppState>,
@@ -549,14 +521,12 @@ impl VolcubeService {
             .unwrap_or_default();
         let instrument_count = quotes.len();
 
-        // Resolve user-supplied initial parameters
         let initial = request.initial_params.as_ref();
         let user_alpha = initial.and_then(|p| p.alpha).unwrap_or(0.15);
         let user_beta = initial.and_then(|p| p.beta).unwrap_or(0.5);
         let user_rho = initial.and_then(|p| p.rho).unwrap_or(-0.20);
         let user_nu = initial.and_then(|p| p.nu).unwrap_or(0.35);
 
-        // Compute average ATM vol for relative scaling
         let avg_atm: f64 = if quotes.is_empty() {
             0.10
         } else {
@@ -567,7 +537,6 @@ impl VolcubeService {
             sum / quotes.len() as f64
         };
 
-        // Generate per-tenor mock SABR parameters (scaled from user initial values)
         let mut cell_parameters = HashMap::new();
         let mut cell_diagnostics_map = HashMap::new();
         let mut alpha_sum = 0.0_f64;
@@ -583,12 +552,9 @@ impl VolcubeService {
             let atm_vol = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.10);
             let expiry = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.25);
 
-            // Scale alpha proportionally to ATM vol relative to average
             let alpha = round4(user_alpha * (atm_vol / avg_atm));
             let beta = round4(user_beta);
-            // Rho becomes more negative for longer expiries (time decay of skew)
             let rho = round4((user_rho * (1.0 + 0.15 * expiry.sqrt())).max(-0.99));
-            // Nu decreases for longer expiries (mean-reversion of smile curvature)
             let nu = round4((user_nu * (1.0 - 0.08 * expiry.sqrt())).max(0.05));
 
             alpha_sum += alpha;
@@ -639,7 +605,7 @@ impl VolcubeService {
         })
     }
 
-    /// Compute implied probability density via Breeden-Litzenberger (d²C/dk²)
+    /// Compute implied probability density via Breeden-Litzenberger (d²C/dk²).
     pub fn compute_implied_pdf(
         request: &ImpliedPdfRequest,
     ) -> Result<ImpliedPdfResponse, ServerError> {
@@ -650,17 +616,15 @@ impl VolcubeService {
             ));
         }
 
-        // Build sorted smile points including ATM at k=0
         let mut smile_pts: Vec<(f64, f64)> = vec![(0.0, request.atm_vol)];
         for pt in &request.smile {
             smile_pts.push((pt.strike_offset_bp, pt.vol));
         }
         smile_pts.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        // Remove duplicates at k=0 (keep first = ATM)
         smile_pts.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-12);
 
         let dk_bp = request.step_bp;
-        let dk = dk_bp / 10_000.0; // bp → decimal
+        let dk = dk_bp / 10_000.0;
 
         let range = request.range_bp;
         let n_steps = (2.0 * range / dk_bp).round() as i64;
@@ -672,17 +636,14 @@ impl VolcubeService {
             let k_bp = -range + i as f64 * dk_bp;
             let k = k_bp / 10_000.0;
 
-            // Interpolate smile vol at k-dk, k, k+dk
             let vol_lo = interpolate_smile_vol(&smile_pts, k_bp - dk_bp) / 100.0;
             let vol_mid = interpolate_smile_vol(&smile_pts, k_bp) / 100.0;
             let vol_hi = interpolate_smile_vol(&smile_pts, k_bp + dk_bp) / 100.0;
 
-            // Bachelier call prices (F=0 for strike-offset formulation)
             let c_lo = bachelier_call(k - dk, vol_lo, expiry)?;
             let c_mid = bachelier_call(k, vol_mid, expiry)?;
             let c_hi = bachelier_call(k + dk, vol_hi, expiry)?;
 
-            // Finite difference: d²C/dk²
             let d2c = (c_lo - 2.0 * c_mid + c_hi) / (dk * dk);
 
             offsets.push(k_bp);
@@ -692,12 +653,7 @@ impl VolcubeService {
         Ok(ImpliedPdfResponse { offsets, density })
     }
 
-    /// Compute a smooth SABR smile and implied density from calibrated
-    /// parameters.
-    ///
-    /// Returns `n_points` evenly spaced points in `[-range_bp, +range_bp]`.
-    /// Vols are returned in the same percentage scale as market data
-    /// (i.e. multiply by 100 on the frontend to get bp display).
+    /// Compute a smooth SABR smile and implied density from calibrated.
     pub fn compute_sabr_smile(
         request: &SabrSmileRequest,
     ) -> Result<SabrSmileResponse, ServerError> {
@@ -736,22 +692,16 @@ impl VolcubeService {
         for i in 0..n {
             let offset_bp = -range + i as f64 * step;
             let strike = forward + offset_bp / 10_000.0;
-            // Clamp strike to positive (SABR requires K > 0 for β > 0)
             let strike = strike.max(1e-8);
 
             let model_vol = sabr_implied_vol(&sabr_params, strike).unwrap_or(request.alpha);
 
-            // For β > 0: sabr_implied_vol returns Black vol; convert to normal vol.
-            // For β = 0: sabr_implied_vol already returns normal vol (no conversion).
-            // Approximation: σ_Normal ≈ σ_Black × F^β  (identity when β=0)
             let normal_vol = model_vol * forward.powf(request.beta);
 
             offsets.push(offset_bp);
             vols_decimal.push(normal_vol);
         }
 
-        // Compute density via Breeden-Litzenberger (d²C/dk²) using Bachelier
-        // (requires vols in decimal units)
         let dk_bp = step;
         let dk = dk_bp / 10_000.0;
         let mut density = Vec::with_capacity(n);
@@ -778,10 +728,6 @@ impl VolcubeService {
             density.push(d2c.max(0.0));
         }
 
-        // Convert vols from decimal to percentage format to match market data
-        // (market data stores normal vol as e.g. 0.68 meaning 68bp;
-        //  calibration divides by 100 to get decimal 0.0068;
-        //  we reverse that here so the frontend can compare directly)
         let vols_pct: Vec<f64> = vols_decimal.iter().map(|v| v * 100.0).collect();
 
         Ok(SabrSmileResponse {
@@ -791,7 +737,7 @@ impl VolcubeService {
         })
     }
 
-    /// Look up base/quote currencies for an FX pair from config
+    /// Look up base/quote currencies for an FX pair from config.
     fn lookup_fx_pair_currencies(pair: &str) -> (String, String) {
         let config_path = Path::new("demo/data/config/fx_pairs.json");
         if let Ok(content) = std::fs::read_to_string(config_path) {
@@ -816,12 +762,11 @@ impl VolcubeService {
                 }
             }
         }
-        // Fallback: first 3 chars = base, last 3 = quote
         let pair_upper = pair.to_uppercase();
         (pair_upper[..3].to_string(), pair_upper[3..].to_string())
     }
 
-    /// Look up the rate index name for a currency from currencies.json
+    /// Look up the rate index name for a currency from currencies.json.
     fn lookup_rate_index(currency: &str) -> Option<String> {
         let config_path = Path::new("demo/data/config/currencies.json");
         let content = std::fs::read_to_string(config_path).ok()?;
@@ -841,7 +786,7 @@ impl VolcubeService {
         None
     }
 
-    /// Build a discount curve from a rate data file
+    /// Build a discount curve from a rate data file.
     fn build_discount_curve_for_currency(
         rate_index: &str,
     ) -> Result<Box<dyn YieldCurve<f64>>, ServerError> {
@@ -862,7 +807,6 @@ impl VolcubeService {
             .cloned()
             .unwrap_or_default();
 
-        // Use deposits + OIS only (matching the swaption tab pattern)
         let allowed_types: std::collections::HashSet<&str> =
             ["deposit", "ois"].iter().copied().collect();
 
@@ -904,17 +848,13 @@ impl VolcubeService {
         Ok(Box::new(curve))
     }
 
-    /// Compute FX forward rates for each tenor in the vol quotes
-    ///
-    /// F(T) = Spot × DF_base(T) / DF_quote(T)
-    /// where base = foreign currency, quote = domestic currency
+    /// Compute FX forward rates for each tenor in the vol quotes.
     fn compute_fx_forwards(
         base_ccy: &str,
         quote_ccy: &str,
         spot: f64,
         vol_data: &serde_json::Value,
     ) -> Result<HashMap<String, f64>, ServerError> {
-        // Try to build curves from rate data files
         let base_index = Self::lookup_rate_index(base_ccy);
         let quote_index = Self::lookup_rate_index(quote_ccy);
 
@@ -939,12 +879,10 @@ impl VolcubeService {
                 }
 
                 let fwd = if let (Some(ref bc), Some(ref qc)) = (&base_curve, &quote_curve) {
-                    // Use bootstrapped discount curves
                     let df_base = bc.discount_factor(expiry_years).unwrap_or(1.0);
                     let df_quote = qc.discount_factor(expiry_years).unwrap_or(1.0);
                     spot * df_base / df_quote
                 } else {
-                    // Fallback to simple continuous compounding from fxvol file rates
                     let dom_rate = vol_data
                         .get("domesticRate")
                         .and_then(|r| r.as_f64())
@@ -964,7 +902,7 @@ impl VolcubeService {
     }
 }
 
-/// Bachelier call price with explicit forward
+/// Bachelier call price with explicit forward.
 fn bachelier_call_fwd(forward: f64, strike: f64, vol: f64, expiry: f64) -> f64 {
     use pricer_core::math::formulas::Bachelier;
     if vol <= 0.0 {
@@ -976,7 +914,7 @@ fn bachelier_call_fwd(forward: f64, strike: f64, vol: f64, expiry: f64) -> f64 {
     }
 }
 
-/// Linear interpolation on smile points, flat extrapolation outside range
+/// Linear interpolation on smile points, flat extrapolation outside range.
 fn interpolate_smile_vol(pts: &[(f64, f64)], k_bp: f64) -> f64 {
     if pts.is_empty() {
         return 0.0;
@@ -987,7 +925,6 @@ fn interpolate_smile_vol(pts: &[(f64, f64)], k_bp: f64) -> f64 {
     if k_bp >= pts[pts.len() - 1].0 {
         return pts[pts.len() - 1].1;
     }
-    // Find bracketing interval
     for w in pts.windows(2) {
         if k_bp >= w[0].0 && k_bp <= w[1].0 {
             let t = (k_bp - w[0].0) / (w[1].0 - w[0].0);
@@ -997,11 +934,10 @@ fn interpolate_smile_vol(pts: &[(f64, f64)], k_bp: f64) -> f64 {
     pts[pts.len() - 1].1
 }
 
-/// Compute Bachelier call price with F=0 (strike-offset formulation)
+/// Compute Bachelier call price with F=0 (strike-offset formulation).
 fn bachelier_call(strike: f64, vol: f64, expiry: f64) -> Result<f64, ServerError> {
     use pricer_core::math::formulas::Bachelier;
     if vol <= 0.0 {
-        // Zero vol → intrinsic value
         return Ok(if strike < 0.0 { -strike } else { 0.0 });
     }
     let model = Bachelier::new(0.0_f64, vol)
@@ -1009,11 +945,7 @@ fn bachelier_call(strike: f64, vol: f64, expiry: f64) -> Result<f64, ServerError
     Ok(model.price_call(strike, expiry))
 }
 
-/// Compute per-cell SABR Jacobian `∂σ_model / ∂θ` via central finite
-/// differences.
-///
-/// Returns `∂σ/∂α`, `∂σ/∂ρ`, `∂σ/∂ν` for each strike in the cell.
-/// Vols are in percentage units (×100) to match the market data scale.
+/// Compute per-cell SABR Jacobian `∂σ_model / ∂θ` via central finite.
 fn compute_cell_jacobians(
     cell_parameters: &HashMap<String, CalibrationParameters>,
     cell_quotes: &HashMap<String, (f64, f64, Vec<(f64, String)>)>,
@@ -1039,7 +971,6 @@ fn compute_cell_jacobians(
         let row_labels: Vec<String> = strikes.iter().map(|(_, label)| label.clone()).collect();
         let mut matrix = vec![vec![0.0; 3]; n];
 
-        // Evaluate normal vol at all strikes for given (α, ρ, ν)
         let eval_vols = |a: f64, r: f64, v: f64| -> Vec<f64> {
             strikes
                 .iter()
@@ -1054,21 +985,18 @@ fn compute_cell_jacobians(
                 .collect()
         };
 
-        // ∂σ/∂α
         let up = eval_vols(alpha + eps, rho, nu);
         let dn = eval_vols(alpha - eps, rho, nu);
         for i in 0..n {
             matrix[i][0] = round4((up[i] - dn[i]) / (2.0 * eps) * 100.0);
         }
 
-        // ∂σ/∂ρ
         let up = eval_vols(alpha, rho + eps, nu);
         let dn = eval_vols(alpha, rho - eps, nu);
         for i in 0..n {
             matrix[i][1] = round4((up[i] - dn[i]) / (2.0 * eps) * 100.0);
         }
 
-        // ∂σ/∂ν
         let up = eval_vols(alpha, rho, nu + eps);
         let dn = eval_vols(alpha, rho, nu - eps);
         for i in 0..n {

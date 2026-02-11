@@ -1,6 +1,4 @@
 //! FpML product-specific parsers.
-//!
-//! Each sub-module handles parsing for a specific asset class.
 
 pub mod commodity;
 pub mod credit;

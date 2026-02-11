@@ -9,7 +9,7 @@ use num_traits::Float;
 
 use super::{
     CalibrationError, OrderedFloat, SabrParams, SabrSliceCalibrator, SliceCalibrationConfig,
-    SliceCalibrationDiagnostics, SliceCalibrator, VolQuote,
+    SliceCalibrationDiagnostics, SliceCalibrator, VolBuilder, VolQuote,
 };
 
 // =============================================================================
@@ -89,15 +89,17 @@ impl<T: Float> VolCubeBuilder<T> {
             .push(VolQuote::new(strike, volatility, forward, expiry));
         self
     }
+}
 
-    /// Calibrates all slices and returns the parameter cube.
-    pub fn calibrate(&self) -> Result<VolCubeResult<T>, CalibrationError> {
-        if self.slices.is_empty() {
-            return Err(CalibrationError::InsufficientData {
-                required: 1,
-                provided: 0,
-            });
-        }
+impl<T: Float> VolBuilder<T> for VolCubeBuilder<T> {
+    type Result = VolCubeResult<T>;
+
+    fn config(&self) -> &SliceCalibrationConfig<T> { &self.config }
+
+    fn num_slices(&self) -> usize { self.slices.len() }
+
+    fn calibrate(&self) -> Result<VolCubeResult<T>, CalibrationError> {
+        self.validate()?;
 
         let mut expiries = Vec::new();
         let mut tenors = Vec::new();

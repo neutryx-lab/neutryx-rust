@@ -24,6 +24,10 @@ bon = { workspace = true }
 # Newtype derive utilities
 derive_more = { workspace = true }
 
+# Enum utilities
+strum = { workspace = true }
+strum_macros = { workspace = true }
+
 [features]
 default = []
 serde = ["dep:serde", "dep:serde_json"]

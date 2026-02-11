@@ -1,50 +1,55 @@
 //! Preset scenarios for common stress tests.
-//!
-//! Provides ready-to-use scenarios for typical risk analysis:
-//! - Parallel rate shifts (+1bp, +10bp, +100bp)
-//! - Twist scenarios (steepening/flattening)
-//! - Butterfly scenarios (curvature)
 
 use pricer_core::traits::{risk::ShiftType, Float};
 
 use super::shifts::{BumpScenario, RiskFactorShift, Scenario};
 
 /// Types of preset scenarios.
-///
-/// # Requirements
-///
-/// - Requirements: 10.5
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum PresetScenarioType {
     /// Interest rate +1bp parallel shift
+    #[strum(serialize = "IR +1bp")]
     RateUp1bp,
     /// Interest rate +10bp parallel shift
+    #[strum(serialize = "IR +10bp")]
     RateUp10bp,
     /// Interest rate +100bp parallel shift
+    #[strum(serialize = "IR +100bp")]
     RateUp100bp,
     /// Interest rate -1bp parallel shift
+    #[strum(serialize = "IR -1bp")]
     RateDown1bp,
     /// Interest rate -10bp parallel shift
+    #[strum(serialize = "IR -10bp")]
     RateDown10bp,
     /// Interest rate -100bp parallel shift
+    #[strum(serialize = "IR -100bp")]
     RateDown100bp,
     /// Curve steepening (short rates down, long rates up)
+    #[strum(serialize = "Curve Steepen")]
     CurveSteepen,
     /// Curve flattening (short rates up, long rates down)
+    #[strum(serialize = "Curve Flatten")]
     CurveFlatten,
     /// Butterfly (middle rates spike)
     Butterfly,
     /// Credit spread +50bp
+    #[strum(serialize = "Credit +50bp")]
     CreditWiden50bp,
     /// Credit spread +100bp
+    #[strum(serialize = "Credit +100bp")]
     CreditWiden100bp,
     /// Equity -10%
+    #[strum(serialize = "Equity -10%")]
     EquityDown10Pct,
     /// Equity -20%
+    #[strum(serialize = "Equity -20%")]
     EquityDown20Pct,
     /// FX -10% (base currency weakens)
+    #[strum(serialize = "FX -10%")]
     FxDown10Pct,
     /// Volatility +5 vega points
+    #[strum(serialize = "Vol +5pts")]
     VolUp5Pts,
 }
 
@@ -78,25 +83,7 @@ impl PresetScenarioType {
     }
 
     /// Get human-readable name.
-    pub fn name(&self) -> &'static str {
-        match self {
-            Self::RateUp1bp => "IR +1bp",
-            Self::RateUp10bp => "IR +10bp",
-            Self::RateUp100bp => "IR +100bp",
-            Self::RateDown1bp => "IR -1bp",
-            Self::RateDown10bp => "IR -10bp",
-            Self::RateDown100bp => "IR -100bp",
-            Self::CurveSteepen => "Curve Steepen",
-            Self::CurveFlatten => "Curve Flatten",
-            Self::Butterfly => "Butterfly",
-            Self::CreditWiden50bp => "Credit +50bp",
-            Self::CreditWiden100bp => "Credit +100bp",
-            Self::EquityDown10Pct => "Equity -10%",
-            Self::EquityDown20Pct => "Equity -20%",
-            Self::FxDown10Pct => "FX -10%",
-            Self::VolUp5Pts => "Vol +5pts",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 
     /// Get description.
     pub fn description(&self) -> &'static str {
@@ -121,10 +108,6 @@ impl PresetScenarioType {
 }
 
 /// Generator for preset scenarios.
-///
-/// # Requirements
-///
-/// - Requirements: 10.5
 #[derive(Clone, Debug, Default)]
 pub struct PresetScenario<T: Float> {
     _phantom: std::marker::PhantomData<T>,
@@ -164,7 +147,6 @@ impl<T: Float> PresetScenario<T> {
         self.generate_all(&PresetScenarioType::stress_scenarios())
     }
 
-    /// Create bump scenario for a preset.
     fn create_bumps(&self, preset: PresetScenarioType) -> BumpScenario<T> {
         match preset {
             PresetScenarioType::RateUp1bp => {
@@ -273,10 +255,6 @@ impl<T: Float> PresetScenario<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ================================================================
-    // Task 11.5: Preset scenarios tests (TDD)
-    // ================================================================
 
     #[test]
     fn test_preset_scenario_type_name() {

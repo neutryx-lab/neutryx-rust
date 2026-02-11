@@ -53,7 +53,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Internal dependencies (following A-I-P-S: S depends on P, I, A)
 pricer_core = { path = "../pricer_core" }
-pricer_models = { path = "../pricer_models", features = ["serde", "global-bootstrap"] }
+pricer_models = { path = "../pricer_models" }
 pricer_pricing = { path = "../pricer_pricing" }
 pricer_risk = { path = "../pricer_risk" }
 adapter_loader = { path = "../adapter_loader", features = ["curve-builder", "fpml"] }

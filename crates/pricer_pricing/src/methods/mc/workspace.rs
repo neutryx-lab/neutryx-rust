@@ -1,13 +1,4 @@
 //! Pre-allocated workspace buffers for Monte Carlo simulation.
-//!
-//! Unified workspace with pluggable memory layout via [`LayoutStrategy`].
-//! Buffer hoisting (allocating outside the simulation loop) is critical
-//! for Enzyme LLVM-level optimisation.
-//!
-//! # Layout Strategies
-//!
-//! - [`PathFirst`]: `[path][step]` — paths contiguous (default)
-//! - [`TimeStepFirst`]: `[step][path]` — steps contiguous (SIMD-friendly)
 
 use std::marker::PhantomData;
 
@@ -88,22 +79,7 @@ impl LayoutStrategy for TimeStepFirst {
     fn layout() -> PathLayout { PathLayout::TimeStepFirst }
 }
 
-// ============================================================================
-// Unified Workspace
-// ============================================================================
-
 /// Pre-allocated workspace for Monte Carlo simulation.
-///
-/// The type parameter `S` selects the memory layout strategy:
-/// - `Workspace<PathFirst>` (alias: [`PathWorkspace`]) — default
-/// - `Workspace<TimeStepFirst>` (alias: [`TimeStepFirstWorkspace`])
-///
-/// # Buffer Hoisting
-///
-/// All allocations occur in [`new`](Self::new) or
-/// [`ensure_capacity`](Self::ensure_capacity). The simulation loop
-/// operates on slices without heap allocation, which is essential for
-/// Enzyme LLVM-level optimisation.
 pub struct Workspace<S: LayoutStrategy = PathFirst> {
     randoms: Vec<f64>,
     paths: Vec<f64>,
@@ -121,8 +97,6 @@ pub type PathWorkspace = Workspace<PathFirst>;
 /// Time-step-first workspace for SIMD-friendly access.
 pub type TimeStepFirstWorkspace = Workspace<TimeStepFirst>;
 
-// --- Shared implementation for all layouts ---
-
 impl<S: LayoutStrategy> Workspace<S> {
     /// Creates a new workspace with the specified initial capacity.
     pub fn new(n_paths: usize, n_steps: usize) -> Self {
@@ -139,7 +113,6 @@ impl<S: LayoutStrategy> Workspace<S> {
     }
 
     /// Ensures workspace has sufficient capacity (doubling strategy, never
-    /// shrinks).
     pub fn ensure_capacity(&mut self, n_paths: usize, n_steps: usize) {
         if n_paths > self.capacity_paths || n_steps > self.capacity_steps {
             let new_cap_paths = n_paths.max(self.capacity_paths * 2);
@@ -178,8 +151,6 @@ impl<S: LayoutStrategy> Workspace<S> {
             * std::mem::size_of::<f64>()
     }
 
-    // --- Capacity / size accessors ---
-
     /// Returns path capacity.
     #[inline]
     pub fn capacity_paths(&self) -> usize { self.capacity_paths }
@@ -198,8 +169,6 @@ impl<S: LayoutStrategy> Workspace<S> {
     /// Returns the number of time steps.
     #[inline]
     pub fn num_steps(&self) -> usize { self.size_steps }
-
-    // --- Flat buffer accessors ---
 
     /// Returns the randoms buffer as a slice.
     #[inline]
@@ -225,8 +194,6 @@ impl<S: LayoutStrategy> Workspace<S> {
     /// Returns the payoffs buffer as a mutable slice.
     #[inline]
     pub fn payoffs_mut(&mut self) -> &mut [f64] { &mut self.payoffs[..self.size_paths] }
-
-    // --- Strategy-aware indexing ---
 
     /// Returns the linear index into the paths buffer.
     #[inline]
@@ -263,7 +230,6 @@ impl<S: LayoutStrategy> Workspace<S> {
     }
 
     /// Returns a contiguous slice for all paths at a given step,
-    /// or `None` if the layout does not store steps contiguously.
     #[inline]
     pub fn get_step_slice(&self, step_idx: usize) -> Option<&[f64]> {
         if S::layout() == PathLayout::TimeStepFirst {
@@ -286,7 +252,6 @@ impl<S: LayoutStrategy> Workspace<S> {
     }
 
     /// Returns a contiguous slice for a single path,
-    /// or `None` if the layout does not store paths contiguously.
     #[inline]
     pub fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
         if S::layout() == PathLayout::PathFirst {
@@ -297,8 +262,6 @@ impl<S: LayoutStrategy> Workspace<S> {
         }
     }
 }
-
-// --- PathWorkspaceTrait implementation ---
 
 impl<S: LayoutStrategy> PathWorkspaceTrait for Workspace<S> {
     #[inline]
@@ -393,8 +356,6 @@ impl<S: LayoutStrategy> PathWorkspaceTrait for Workspace<S> {
     }
 }
 
-// --- PathFirst-specific convenience methods ---
-
 impl Workspace<PathFirst> {
     /// Returns immutable paths and mutable payoffs (split borrow).
     #[inline]
@@ -419,14 +380,7 @@ impl<S: LayoutStrategy> Default for Workspace<S> {
     fn default() -> Self { Self::new(0, 0) }
 }
 
-// ============================================================================
-// WorkspaceEnum — runtime layout selection via static dispatch
-// ============================================================================
-
 /// Runtime-selected workspace layout.
-///
-/// Avoids `dyn Trait` overhead by using enum dispatch, keeping Enzyme
-/// AD compatibility.
 #[allow(missing_docs)]
 pub enum WorkspaceEnum {
     /// Path-first layout.
@@ -477,8 +431,6 @@ impl WorkspaceEnum {
             _ => None,
         }
     }
-
-    // --- Delegated methods ---
 
     #[inline]
     pub fn num_paths(&self) -> usize {
@@ -605,15 +557,9 @@ impl WorkspaceEnum {
     }
 }
 
-// ============================================================================
-// Tests
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // --- PathWorkspace (PathFirst) tests ---
 
     #[test]
     fn test_workspace_creation() {
@@ -744,8 +690,6 @@ mod tests {
         assert_eq!(slice[5], 150.0);
     }
 
-    // --- TimeStepFirstWorkspace tests ---
-
     #[test]
     fn test_timestep_first_layout() {
         let ws = TimeStepFirstWorkspace::new(100, 10);
@@ -792,8 +736,6 @@ mod tests {
         assert_eq!(ws.get_path_value(0, 0), 100.0);
         assert_eq!(ws.get_path_value(9, 5), 250.0);
     }
-
-    // --- WorkspaceEnum tests ---
 
     #[test]
     fn test_workspace_enum_path_first() {

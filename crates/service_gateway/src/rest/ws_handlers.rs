@@ -17,97 +17,97 @@ use tokio::sync::broadcast;
 use super::graph_handlers::GraphAppState;
 use crate::error::ServerError;
 
-/// Client-to-server WebSocket message
+/// Client-to-server WebSocket message.
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientMessage {
-    /// Select trades for subgraph extraction
+    /// Select trades for subgraph extraction.
     SelectTrades { trade_ids: Vec<String> },
-    /// Request full portfolio graph
+    /// Request full portfolio graph.
     GetFullGraph,
-    /// Ping/heartbeat
+    /// Ping/heartbeat.
     Ping,
 }
 
-/// Server-to-client WebSocket message
+/// Server-to-client WebSocket message.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "update_type", rename_all = "snake_case")]
 pub enum ServerMessage {
-    /// Subgraph update response
+    /// Subgraph update response.
     SubgraphUpdate { data: SubgraphData },
-    /// Error response
+    /// Error response.
     Error { message: String, code: u16 },
-    /// Pong/heartbeat response
+    /// Pong/heartbeat response.
     Pong,
-    /// Connection acknowledgement
+    /// Connection acknowledgement.
     Connected { session_id: String },
 }
 
-/// Subgraph data in server message
+/// Subgraph data in server message.
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphData {
-    /// Graph nodes
+    /// Graph nodes.
     pub nodes: Vec<SubgraphNode>,
-    /// Graph edges (as "links" for D3.js compatibility)
+    /// Graph edges (as "links" for D3.js compatibility).
     #[serde(rename = "links")]
     pub edges: Vec<SubgraphEdge>,
-    /// Graph metadata
+    /// Graph metadata.
     pub metadata: SubgraphMetadata,
 }
 
-/// Simplified node for WebSocket message
+/// Simplified node for WebSocket message.
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphNode {
-    /// Unique node identifier
+    /// Unique node identifier.
     pub id: String,
-    /// Node type (e.g. "Input", "Output")
+    /// Node type (e.g.
     #[serde(rename = "type")]
     pub node_type: String,
-    /// Human-readable label
+    /// Human-readable label.
     pub label: String,
-    /// Computed value, if available
+    /// Computed value, if available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
-    /// Grouping category for layout
+    /// Grouping category for layout.
     pub group: String,
-    /// Trade IDs that share this node
+    /// Trade IDs that share this node.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trade_ids: Vec<String>,
 }
 
-/// Simplified edge for WebSocket message
+/// Simplified edge for WebSocket message.
 #[derive(Debug, Clone, Serialize)]
 pub struct SubgraphEdge {
-    /// Source node ID
+    /// Source node ID.
     pub source: String,
-    /// Target node ID
+    /// Target node ID.
     pub target: String,
 }
 
-/// Subgraph metadata
+/// Subgraph metadata.
 #[derive(Debug, Clone, Serialize)]
 #[allow(clippy::struct_field_names)]
 pub struct SubgraphMetadata {
-    /// Total number of nodes
+    /// Total number of nodes.
     pub node_count: usize,
-    /// Total number of edges
+    /// Total number of edges.
     pub edge_count: usize,
-    /// Number of selected trades
+    /// Number of selected trades.
     pub selected_trade_count: usize,
-    /// Number of nodes shared across trades
+    /// Number of nodes shared across trades.
     pub shared_node_count: usize,
 }
 
-/// Extended app state with WebSocket broadcast channel
+/// Extended app state with WebSocket broadcast channel.
 pub struct WsAppState {
-    /// Graph application state
+    /// Graph application state.
     pub graph_state: Arc<GraphAppState>,
-    /// Broadcast channel for updates
+    /// Broadcast channel for updates.
     pub broadcast_tx: broadcast::Sender<ServerMessage>,
 }
 
 impl WsAppState {
-    /// Create new WebSocket app state
+    /// Create new WebSocket app state.
     pub fn new(graph_state: Arc<GraphAppState>) -> Self {
         let (broadcast_tx, _) = broadcast::channel(100);
         Self {
@@ -122,15 +122,13 @@ pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<WsAppState
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
-/// Handle WebSocket connection
+/// Handle WebSocket connection.
 async fn handle_socket(socket: WebSocket, state: Arc<WsAppState>) {
     let (mut sender, mut receiver) = socket.split();
     let mut broadcast_rx = state.broadcast_tx.subscribe();
 
-    // Generate session ID
     let session_id = format!("sess_{}", uuid_simple());
 
-    // Send connection acknowledgement
     let connected_msg = ServerMessage::Connected {
         session_id: session_id.clone(),
     };
@@ -138,10 +136,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsAppState>) {
         let _ = sender.send(Message::Text(json)).await;
     }
 
-    // Track selected trades for this session
     let mut selected_trades: HashSet<String> = HashSet::new();
 
-    // Spawn task to forward broadcasts to this client
     let state_clone = state.clone();
     let session_id_clone = session_id.clone();
     let mut send_task = tokio::spawn(async move {
@@ -155,7 +151,6 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsAppState>) {
         tracing::debug!("Send task ended for session {}", session_id_clone);
     });
 
-    // Handle incoming messages
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
             match msg {
@@ -180,14 +175,13 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsAppState>) {
         }
     });
 
-    // Wait for either task to complete
     tokio::select! {
         _ = &mut send_task => recv_task.abort(),
         _ = &mut recv_task => send_task.abort(),
     }
 }
 
-/// Handle client message
+/// Handle client message.
 fn handle_client_message(
     msg: ClientMessage,
     state: &Arc<WsAppState>,
@@ -195,11 +189,9 @@ fn handle_client_message(
 ) {
     match msg {
         ClientMessage::SelectTrades { trade_ids } => {
-            // Update selected trades
             selected_trades.clear();
             selected_trades.extend(trade_ids.iter().cloned());
 
-            // Extract subgraph
             match extract_subgraph_for_ws(&state.graph_state, &trade_ids) {
                 Ok(data) => {
                     let response = ServerMessage::SubgraphUpdate { data };
@@ -216,29 +208,26 @@ fn handle_client_message(
                 }
             }
         }
-        ClientMessage::GetFullGraph => {
-            // Extract full graph
-            match extract_subgraph_for_ws(&state.graph_state, &[]) {
-                Ok(data) => {
-                    let response = ServerMessage::SubgraphUpdate { data };
-                    let _ = state.broadcast_tx.send(response);
-                }
-                Err(e) => {
-                    let response = ServerMessage::Error {
-                        message: e.to_string(),
-                        code: 500,
-                    };
-                    let _ = state.broadcast_tx.send(response);
-                }
+        ClientMessage::GetFullGraph => match extract_subgraph_for_ws(&state.graph_state, &[]) {
+            Ok(data) => {
+                let response = ServerMessage::SubgraphUpdate { data };
+                let _ = state.broadcast_tx.send(response);
             }
-        }
+            Err(e) => {
+                let response = ServerMessage::Error {
+                    message: e.to_string(),
+                    code: 500,
+                };
+                let _ = state.broadcast_tx.send(response);
+            }
+        },
         ClientMessage::Ping => {
             let _ = state.broadcast_tx.send(ServerMessage::Pong);
         }
     }
 }
 
-/// Extract subgraph for WebSocket response
+/// Extract subgraph for WebSocket response.
 fn extract_subgraph_for_ws(
     state: &Arc<GraphAppState>,
     trade_ids: &[String],
@@ -252,24 +241,20 @@ fn extract_subgraph_for_ws(
         .with_timeout(500)
         .with_capacity(5_000, 10_000);
 
-    // Build trade graphs from FpML trades
     let all_trade_ids: Vec<String> = trades.iter().map(|t| t.id.to_string()).collect();
 
     let mut trade_graphs: HashMap<String, pricer_pricing::graph::ComputationGraph> = HashMap::new();
 
     for trade in trades {
         let trade_id = trade.id.to_string();
-        // Create a simplified graph for the trade
         let graph = create_ws_trade_graph(&trade_id);
         trade_graphs.insert(trade_id, graph);
     }
 
-    // Extract full graph
     let full_graph = extractor
         .extract_portfolio_graph(&all_trade_ids, &trade_graphs)
         .map_err(|e| ServerError::Internal(e.to_string()))?;
 
-    // Extract subgraph if trade_ids specified
     let graph = if trade_ids.is_empty() {
         full_graph
     } else {
@@ -283,7 +268,6 @@ fn extract_subgraph_for_ws(
             })?
     };
 
-    // Convert to WebSocket format
     let nodes: Vec<SubgraphNode> = graph
         .nodes
         .iter()
@@ -365,7 +349,7 @@ fn create_ws_trade_graph(trade_id: &str) -> pricer_pricing::graph::ComputationGr
     builder.build(Some(trade_id.to_string()))
 }
 
-/// Simple UUID-like string generator
+/// Simple UUID-like string generator.
 fn uuid_simple() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let now = SystemTime::now()
@@ -374,7 +358,7 @@ fn uuid_simple() -> String {
     format!("{:x}{:04x}", now.as_nanos(), rand_u16())
 }
 
-/// Simple random u16 using timing
+/// Simple random u16 using timing.
 #[allow(clippy::cast_possible_truncation)]
 fn rand_u16() -> u16 {
     use std::time::{SystemTime, UNIX_EPOCH};

@@ -1,24 +1,11 @@
 //! # Graph Extractor Trait and Implementation
-//!
-//! This module provides the `GraphExtractable` trait for extracting computation
-//! graphs from pricing contexts, and `SimpleGraphExtractor` as the default
-//! implementation.
-//!
-//! ## Performance Requirements
-//!
-//! - Extract 10,000 nodes in < 1 second
-//! - Impact on pricing calculation < 5%
-//! - Pre-allocated buffers for memory efficiency
-//!
-//! ## Portfolio Graph Extraction
-//!
-//! The `PortfolioGraphExtractable` trait and `PortfolioGraphExtractor` enable
-//! extraction of computation graphs from multiple trades in a Portfolio,
-//! with shared node deduplication and optimisation.
 
-use std::{
-    collections::{HashMap, VecDeque},
-    time::Instant,
+use std::{collections::HashMap, time::Instant};
+
+use petgraph::{
+    algo::{is_cyclic_directed, toposort},
+    graph::{DiGraph, NodeIndex},
+    visit::EdgeRef,
 };
 
 use super::{
@@ -29,33 +16,24 @@ use super::{
     },
 };
 
-// =============================================================================
-// GraphExtractable Trait
-// =============================================================================
-
 /// Trait for extracting computation graphs from pricing contexts.
 pub trait GraphExtractable {
     /// Extract the computation graph for a specific trade (or all if `None`).
     fn extract_graph(&self, trade_id: Option<&str>) -> Result<ComputationGraph, GraphError>;
 
     /// Extract nodes affected by recent updates (for differential WebSocket
-    /// updates).
     fn extract_affected_nodes(&self, trade_id: &str) -> Result<Vec<GraphNodeUpdate>, GraphError>;
 }
-
-// =============================================================================
-// GraphBuilder
-// =============================================================================
 
 /// Pre-allocated buffer builder for graph construction.
 #[derive(Debug)]
 pub struct GraphBuilder {
-    /// Pre-allocated node buffer
-    nodes: Vec<GraphNode>,
-    /// Pre-allocated edge buffer
+    /// Directed graph storing domain `GraphNode` payloads
+    digraph: DiGraph<GraphNode, ()>,
+    /// Domain edge records (kept for serialisation into `ComputationGraph`)
     edges: Vec<GraphEdge>,
-    /// Node ID to index mapping for fast lookup
-    node_index: HashMap<String, usize>,
+    /// Node ID (String) to petgraph `NodeIndex` mapping for fast lookup
+    node_index: HashMap<String, NodeIndex>,
 }
 
 impl GraphBuilder {
@@ -65,29 +43,37 @@ impl GraphBuilder {
     /// Create a new GraphBuilder with specified capacity.
     pub fn with_capacity(node_capacity: usize, edge_capacity: usize) -> Self {
         Self {
-            nodes: Vec::with_capacity(node_capacity),
+            digraph: DiGraph::with_capacity(node_capacity, edge_capacity),
             edges: Vec::with_capacity(edge_capacity),
             node_index: HashMap::with_capacity(node_capacity),
         }
     }
 
-    /// Add a node to the graph, returning its index.
+    /// Add a node to the graph, returning its index (ordinal position).
     pub fn add_node(&mut self, node: GraphNode) -> usize {
-        let index = self.nodes.len();
-        self.node_index.insert(node.id.clone(), index);
-        self.nodes.push(node);
-        index
+        let id = node.id.clone();
+        let nx = self.digraph.add_node(node);
+        self.node_index.insert(id, nx);
+        nx.index()
     }
 
     /// Add an edge to the graph.
-    pub fn add_edge(&mut self, edge: GraphEdge) { self.edges.push(edge); }
+    pub fn add_edge(&mut self, edge: GraphEdge) {
+        if let (Some(&src), Some(&tgt)) = (
+            self.node_index.get(&edge.source),
+            self.node_index.get(&edge.target),
+        ) {
+            self.digraph.add_edge(src, tgt, ());
+        }
+        self.edges.push(edge);
+    }
 
     /// Check if a node exists by ID.
     pub fn has_node(&self, id: &str) -> bool { self.node_index.contains_key(id) }
 
     /// Get a node by ID.
     pub fn get_node(&self, id: &str) -> Option<&GraphNode> {
-        self.node_index.get(id).map(|&idx| &self.nodes[idx])
+        self.node_index.get(id).map(|&nx| &self.digraph[nx])
     }
 
     /// Get a mutable reference to a node by ID.
@@ -95,11 +81,11 @@ impl GraphBuilder {
         self.node_index
             .get(id)
             .copied()
-            .map(|idx| &mut self.nodes[idx])
+            .map(|nx| &mut self.digraph[nx])
     }
 
     /// Get the number of nodes.
-    pub fn node_count(&self) -> usize { self.nodes.len() }
+    pub fn node_count(&self) -> usize { self.digraph.node_count() }
 
     /// Get the number of edges.
     pub fn edge_count(&self) -> usize { self.edges.len() }
@@ -122,135 +108,59 @@ impl GraphBuilder {
     }
 
     /// Clear the builder for reuse.
-    ///
-    /// This clears all nodes and edges but retains the allocated capacity,
-    /// allowing the builder to be reused efficiently.
     pub fn clear(&mut self) {
-        self.nodes.clear();
+        self.digraph.clear();
         self.edges.clear();
         self.node_index.clear();
     }
 
     /// Calculate the graph depth (longest path from any input to any output).
-    ///
-    /// Uses topological sort and dynamic programming for O(V + E) complexity.
     pub fn calculate_depth(&self) -> usize {
-        if self.nodes.is_empty() {
+        if self.digraph.node_count() == 0 {
             return 0;
         }
 
-        // Build adjacency list and in-degree
-        let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::with_capacity(self.nodes.len());
-        let mut in_degree: HashMap<&str, usize> = HashMap::with_capacity(self.nodes.len());
+        let sorted = match toposort(&self.digraph, None) {
+            Ok(order) => order,
+            Err(_) => return 0,
+        };
 
-        for node in &self.nodes {
-            adjacency.entry(node.id.as_str()).or_default();
-            in_degree.entry(node.id.as_str()).or_insert(0);
-        }
+        let mut distance: HashMap<NodeIndex, usize> =
+            HashMap::with_capacity(self.digraph.node_count());
 
-        for edge in &self.edges {
-            adjacency
-                .entry(edge.source.as_str())
-                .or_default()
-                .push(edge.target.as_str());
-            *in_degree.entry(edge.target.as_str()).or_insert(0) += 1;
-        }
-
-        // Topological sort with distance tracking
-        let mut queue: VecDeque<&str> = VecDeque::with_capacity(self.nodes.len());
-        let mut distance: HashMap<&str, usize> = HashMap::with_capacity(self.nodes.len());
-
-        for (node, &degree) in &in_degree {
-            if degree == 0 {
-                queue.push_back(*node);
-                distance.insert(*node, 0);
-            }
+        for &nx in &sorted {
+            distance.entry(nx).or_insert(0);
         }
 
         let mut max_depth: usize = 0;
 
-        while let Some(current) = queue.pop_front() {
-            let current_dist = *distance.get(current).unwrap_or(&0);
-            max_depth = max_depth.max(current_dist);
-
-            if let Some(neighbours) = adjacency.get(current) {
-                for &neighbour in neighbours {
-                    let new_dist = current_dist + 1;
-                    let old_dist = distance.entry(neighbour).or_insert(0);
-                    if new_dist > *old_dist {
-                        *old_dist = new_dist;
-                    }
-
-                    let degree = in_degree.get_mut(neighbour).unwrap();
-                    *degree -= 1;
-                    if *degree == 0 {
-                        queue.push_back(neighbour);
-                    }
+        for &nx in &sorted {
+            let current_dist = distance[&nx];
+            for edge_ref in self.digraph.edges(nx) {
+                let target = edge_ref.target();
+                let new_dist = current_dist + 1;
+                let entry = distance.entry(target).or_insert(0);
+                if new_dist > *entry {
+                    *entry = new_dist;
                 }
             }
+            max_depth = max_depth.max(current_dist);
         }
 
-        // Depth is max_depth + 1 (counting nodes, not edges)
         max_depth + 1
     }
 
     /// Validate that the graph is a DAG (no cycles).
     pub fn is_dag(&self) -> bool {
-        if self.nodes.is_empty() {
+        if self.digraph.node_count() == 0 {
             return true;
         }
-
-        // Build in-degree map
-        let mut in_degree: HashMap<&str, usize> = HashMap::with_capacity(self.nodes.len());
-
-        for node in &self.nodes {
-            in_degree.entry(node.id.as_str()).or_insert(0);
-        }
-
-        for edge in &self.edges {
-            *in_degree.entry(edge.target.as_str()).or_insert(0) += 1;
-        }
-
-        // Build adjacency list
-        let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::with_capacity(self.nodes.len());
-        for edge in &self.edges {
-            adjacency
-                .entry(edge.source.as_str())
-                .or_default()
-                .push(edge.target.as_str());
-        }
-
-        // Kahn's algorithm for topological sort
-        let mut queue: VecDeque<&str> = VecDeque::new();
-        let mut processed_count = 0;
-
-        for (node, &degree) in &in_degree {
-            if degree == 0 {
-                queue.push_back(*node);
-            }
-        }
-
-        while let Some(current) = queue.pop_front() {
-            processed_count += 1;
-
-            if let Some(neighbours) = adjacency.get(current) {
-                for &neighbour in neighbours {
-                    let degree = in_degree.get_mut(neighbour).unwrap();
-                    *degree -= 1;
-                    if *degree == 0 {
-                        queue.push_back(neighbour);
-                    }
-                }
-            }
-        }
-
-        // If all nodes were processed, graph is a DAG
-        processed_count == self.nodes.len()
+        !is_cyclic_directed(&self.digraph)
     }
 
-    /// Build the final ComputationGraph with calculated metadata.
+    /// Build the final `ComputationGraph` with calculated metadata.
     pub fn build(self, trade_id: Option<String>) -> ComputationGraph {
-        let node_count = self.nodes.len();
+        let node_count = self.digraph.node_count();
         let edge_count = self.edges.len();
         let depth = self.calculate_depth();
         let generated_at = Self::current_timestamp();
@@ -263,16 +173,23 @@ impl GraphBuilder {
             generated_at,
         };
 
+        let nodes: Vec<GraphNode> = self
+            .digraph
+            .raw_nodes()
+            .iter()
+            .map(|n| n.weight.clone())
+            .collect();
+
         ComputationGraph {
-            nodes: self.nodes,
+            nodes,
             edges: self.edges,
             metadata,
         }
     }
 
-    /// Build the final ComputationGraph with a pre-calculated depth.
+    /// Build the final `ComputationGraph` with a pre-calculated depth.
     pub fn build_with_depth(self, trade_id: Option<String>, depth: usize) -> ComputationGraph {
-        let node_count = self.nodes.len();
+        let node_count = self.digraph.node_count();
         let edge_count = self.edges.len();
         let generated_at = Self::current_timestamp();
 
@@ -284,8 +201,15 @@ impl GraphBuilder {
             generated_at,
         };
 
+        let nodes: Vec<GraphNode> = self
+            .digraph
+            .raw_nodes()
+            .iter()
+            .map(|n| n.weight.clone())
+            .collect();
+
         ComputationGraph {
-            nodes: self.nodes,
+            nodes,
             edges: self.edges,
             metadata,
         }
@@ -293,8 +217,6 @@ impl GraphBuilder {
 
     /// Get the current timestamp as Unix epoch seconds with 'Z' suffix.
     pub fn current_timestamp() -> String {
-        // Use a simple format since we don't want to add chrono dependency
-        // In production, this would use chrono::Utc::now().to_rfc3339()
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default();
@@ -305,10 +227,6 @@ impl GraphBuilder {
 impl Default for GraphBuilder {
     fn default() -> Self { Self::new() }
 }
-
-// =============================================================================
-// SimpleGraphExtractor
-// =============================================================================
 
 /// Simple graph extractor for demonstration purposes.
 #[derive(Debug)]
@@ -379,7 +297,6 @@ impl SimpleGraphExtractor {
             .get_mut(trade_id)
             .ok_or_else(|| GraphError::TradeNotFound(trade_id.to_string()))?;
 
-        // Store previous value for delta calculation
         if let Some(old_value) = trade.param_values.get(param_name) {
             self.previous_values
                 .entry(trade_id.to_string())
@@ -403,7 +320,6 @@ impl SimpleGraphExtractor {
             .get_mut(trade_id)
             .ok_or_else(|| GraphError::TradeNotFound(trade_id.to_string()))?;
 
-        // Store previous value for delta calculation
         if let Some(old_value) = trade.computed_values.get(node_id) {
             self.previous_values
                 .entry(trade_id.to_string())
@@ -422,11 +338,6 @@ impl SimpleGraphExtractor {
     pub fn trade_count(&self) -> usize { self.trades.len() }
 
     /// Build a sample graph for a trade.
-    ///
-    /// This simulates the graph structure of a pricing calculation:
-    /// - Input nodes for parameters (spot, vol, rate, etc.)
-    /// - Intermediate computation nodes (operations)
-    /// - Output node for the final price
     fn build_trade_graph(
         &self,
         trade_id: &str,
@@ -434,7 +345,6 @@ impl SimpleGraphExtractor {
         builder: &mut GraphBuilder,
         start_time: Instant,
     ) -> Result<(), GraphError> {
-        // Check timeout
         if start_time.elapsed().as_millis() as u64 > self.timeout_ms {
             return Err(GraphError::Timeout);
         }
@@ -443,7 +353,6 @@ impl SimpleGraphExtractor {
         let param_values = &trade_info.param_values;
         let computed_values = &trade_info.computed_values;
 
-        // Create input nodes for each sensitivity parameter
         let mut input_node_ids: Vec<String> = Vec::with_capacity(params.len());
 
         for param in params {
@@ -464,16 +373,12 @@ impl SimpleGraphExtractor {
             input_node_ids.push(node_id);
         }
 
-        // Check timeout after input nodes
         if start_time.elapsed().as_millis() as u64 > self.timeout_ms {
             return Err(GraphError::Timeout);
         }
 
-        // Create intermediate computation nodes
-        // For a typical pricing calculation, we create a tree-like structure
         let mut intermediate_nodes: Vec<String> = Vec::new();
 
-        // First level: pairwise operations
         for (i, chunk) in input_node_ids.chunks(2).enumerate() {
             let node_id = format!("{}_op_{}", trade_id, i);
             if !builder.has_node(&node_id) {
@@ -502,7 +407,6 @@ impl SimpleGraphExtractor {
                 };
                 builder.add_node(node);
 
-                // Add edges from inputs to this operation
                 for source_id in chunk {
                     let edge = GraphEdge {
                         source: source_id.clone(),
@@ -515,12 +419,10 @@ impl SimpleGraphExtractor {
             intermediate_nodes.push(node_id);
         }
 
-        // Check timeout after intermediate nodes
         if start_time.elapsed().as_millis() as u64 > self.timeout_ms {
             return Err(GraphError::Timeout);
         }
 
-        // Second level: combine intermediate results
         let mut second_level: Vec<String> = Vec::new();
         for (i, chunk) in intermediate_nodes.chunks(2).enumerate() {
             let node_id = format!("{}_combine_{}", trade_id, i);
@@ -562,7 +464,6 @@ impl SimpleGraphExtractor {
             second_level.push(node_id);
         }
 
-        // Create output node
         let output_id = format!("{}_price", trade_id);
         if !builder.has_node(&output_id) {
             let value = computed_values.get(&output_id).copied();
@@ -578,7 +479,6 @@ impl SimpleGraphExtractor {
             };
             builder.add_node(node);
 
-            // Connect final intermediate nodes to output
             let sources = if second_level.is_empty() {
                 &intermediate_nodes
             } else {
@@ -611,7 +511,6 @@ impl GraphExtractable for SimpleGraphExtractor {
 
         match trade_id {
             Some(id) => {
-                // Extract graph for specific trade
                 let trade_info = self
                     .trades
                     .get(id)
@@ -620,7 +519,6 @@ impl GraphExtractable for SimpleGraphExtractor {
                 self.build_trade_graph(id, trade_info, &mut builder, start_time)?;
             }
             None => {
-                // Extract combined graph for all trades
                 if self.trades.is_empty() {
                     return Err(GraphError::ExtractionFailed(
                         "No trades registered".to_string(),
@@ -633,14 +531,12 @@ impl GraphExtractable for SimpleGraphExtractor {
             }
         }
 
-        // Validate DAG
         if !builder.is_dag() {
             return Err(GraphError::ExtractionFailed(
                 "Graph contains cycles".to_string(),
             ));
         }
 
-        // Check final timeout
         if start_time.elapsed().as_millis() as u64 > self.timeout_ms {
             return Err(GraphError::Timeout);
         }
@@ -649,18 +545,15 @@ impl GraphExtractable for SimpleGraphExtractor {
     }
 
     fn extract_affected_nodes(&self, trade_id: &str) -> Result<Vec<GraphNodeUpdate>, GraphError> {
-        // Verify trade exists
         if !self.trades.contains_key(trade_id) {
             return Err(GraphError::TradeNotFound(trade_id.to_string()));
         }
 
         let mut updates: Vec<GraphNodeUpdate> = Vec::new();
 
-        // Get current and previous values
         let trade_info = &self.trades[trade_id];
         let previous = self.previous_values.get(trade_id);
 
-        // Check parameter value changes
         for (param, &value) in &trade_info.param_values {
             let node_id = format!("{}_{}", trade_id, param);
             let delta = previous
@@ -676,7 +569,6 @@ impl GraphExtractable for SimpleGraphExtractor {
             }
         }
 
-        // Check computed value changes
         for (node_id, &value) in &trade_info.computed_values {
             let delta = previous
                 .and_then(|prev| prev.get(node_id))
@@ -695,12 +587,7 @@ impl GraphExtractable for SimpleGraphExtractor {
     }
 }
 
-// =============================================================================
-// PortfolioGraphExtractable Trait
-// =============================================================================
-
 /// Trait for extracting computation graphs from Portfolios with shared node
-/// deduplication.
 pub trait PortfolioGraphExtractable {
     /// Extract the complete computation graph for a Portfolio.
     fn extract_portfolio_graph(
@@ -725,37 +612,7 @@ pub trait PortfolioGraphExtractable {
     ) -> Result<Vec<GraphNodeUpdate>, GraphError>;
 }
 
-// =============================================================================
-// PortfolioGraphExtractor (Task 2.2)
-// =============================================================================
-
 /// Extractor for Portfolio-level computation graphs.
-///
-/// Provides extraction of integrated computation graphs from multiple trades
-/// in a Portfolio, with shared node deduplication and optimisation.
-///
-/// # Features
-///
-/// - Integrates graphs from multiple trades
-/// - Deduplicates shared market data nodes (same label + node_type)
-/// - Tracks trade ownership via `trade_ids` field on each node
-/// - Calculates optimisation ratio (node reduction percentage)
-///
-/// # Performance (Task 2.3)
-///
-/// - Pre-allocated buffers via configurable capacity
-/// - O(n) shared node detection using HashMap
-/// - Timeout protection (default 500ms)
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_pricing::graph::PortfolioGraphExtractor;
-///
-/// let extractor = PortfolioGraphExtractor::new()
-///     .with_timeout(1000)
-///     .with_capacity(5000, 10000);
-/// ```
 #[derive(Debug)]
 pub struct PortfolioGraphExtractor {
     /// Inner extractor for single-trade graphs
@@ -768,10 +625,6 @@ pub struct PortfolioGraphExtractor {
 
 impl PortfolioGraphExtractor {
     /// Create a new PortfolioGraphExtractor with default settings.
-    ///
-    /// Default settings:
-    /// - Timeout: 500ms
-    /// - Capacity: 5,000 nodes, 10,000 edges
     pub fn new() -> Self {
         Self {
             inner: SimpleGraphExtractor::new(),
@@ -805,17 +658,6 @@ impl PortfolioGraphExtractor {
     pub fn capacity(&self) -> (usize, usize) { self.builder_capacity }
 
     /// Merge trade graphs into a single Portfolio graph with shared node
-    /// deduplication.
-    ///
-    /// # Algorithm (Task 2.3)
-    ///
-    /// 1. Build HashMap of (label, node_type) -> node_id for shared node
-    ///    detection
-    /// 2. For each trade graph: a. Check if node exists (same label + type) in
-    ///    merged graph b. If exists: add trade_id to existing node c. If not:
-    ///    add new node with trade_id
-    /// 3. Redirect edges to use deduplicated node IDs
-    /// 4. Calculate optimisation ratio
     fn merge_trade_graphs(
         &self,
         trade_ids: &[String],
@@ -825,40 +667,32 @@ impl PortfolioGraphExtractor {
         let (node_cap, edge_cap) = self.builder_capacity;
         let mut builder = GraphBuilder::with_capacity(node_cap, edge_cap);
 
-        // Track shared nodes: (label, node_type) -> merged_node_id
         let mut shared_node_map: HashMap<(String, NodeType), String> = HashMap::new();
-        // Track node ID mapping: original_node_id -> merged_node_id
         let mut node_id_map: HashMap<String, String> = HashMap::new();
-        // Track total nodes before deduplication
         let mut total_nodes_before_dedup = 0;
 
         for trade_id in trade_ids {
-            // Check timeout
             if start_time.elapsed().as_millis() as u64 > self.timeout_ms {
                 return Err(GraphError::Timeout);
             }
 
             let Some(graph) = trade_graphs.get(trade_id) else {
-                continue; // Skip missing trades
+                continue;
             };
 
             total_nodes_before_dedup += graph.nodes.len();
 
-            // Process nodes
             for node in &graph.nodes {
                 let key = (node.label.clone(), node.node_type);
 
-                // Check if this is a shareable node (Input type with common labels)
                 let is_shareable =
                     matches!(node.node_type, NodeType::Input) && !node.label.starts_with(trade_id);
 
                 if is_shareable {
                     if let Some(existing_id) = shared_node_map.get(&key) {
-                        // Node already exists, add trade_id to it
                         builder.add_trade_id(existing_id, trade_id);
                         node_id_map.insert(node.id.clone(), existing_id.clone());
                     } else {
-                        // New shared node
                         let merged_id = format!("shared_{}", node.label);
                         let mut merged_node = node.clone();
                         merged_node.id.clone_from(&merged_id);
@@ -868,7 +702,6 @@ impl PortfolioGraphExtractor {
                         node_id_map.insert(node.id.clone(), merged_id);
                     }
                 } else {
-                    // Trade-specific node, prefix with trade_id if not already
                     let merged_id = if node.id.starts_with(trade_id) {
                         node.id.clone()
                     } else {
@@ -885,7 +718,6 @@ impl PortfolioGraphExtractor {
                 }
             }
 
-            // Process edges with ID mapping
             for edge in &graph.edges {
                 let source = node_id_map
                     .get(&edge.source)
@@ -896,10 +728,8 @@ impl PortfolioGraphExtractor {
                     .cloned()
                     .unwrap_or_else(|| edge.target.clone());
 
-                // Avoid duplicate edges
                 let edge_key = format!("{}->{}", source, target);
                 if !builder.has_node(&edge_key) {
-                    // Use edge existence check via tracking (simplified)
                     builder.add_edge(GraphEdge {
                         source,
                         target,
@@ -908,16 +738,13 @@ impl PortfolioGraphExtractor {
                 }
             }
 
-            // Clear map for next trade (node_id_map is per-trade)
             node_id_map.clear();
         }
 
-        // Check timeout before building
         if start_time.elapsed().as_millis() as u64 > self.timeout_ms {
             return Err(GraphError::Timeout);
         }
 
-        // Calculate metadata
         let node_count = builder.node_count();
         let edge_count = builder.edge_count();
         let depth = builder.calculate_depth();
@@ -938,7 +765,6 @@ impl PortfolioGraphExtractor {
             optimisation_ratio,
         };
 
-        // Build final graph
         let ComputationGraph { nodes, edges, .. } = builder.build(None);
 
         Ok(PortfolioComputationGraph {
@@ -981,7 +807,6 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
             ));
         }
 
-        // Verify all selected trade IDs exist in the graph
         let all_trade_ids: std::collections::HashSet<&str> = full_graph
             .nodes
             .iter()
@@ -997,7 +822,6 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
         let selected_set: std::collections::HashSet<&str> =
             selected_trade_ids.iter().map(|s| s.as_str()).collect();
 
-        // Filter nodes: keep if any trade_id is in selected set
         let filtered_nodes: Vec<GraphNode> = full_graph
             .nodes
             .iter()
@@ -1009,11 +833,9 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
             .cloned()
             .collect();
 
-        // Build set of retained node IDs
         let retained_ids: std::collections::HashSet<&str> =
             filtered_nodes.iter().map(|n| n.id.as_str()).collect();
 
-        // Filter edges: keep if both endpoints are retained
         let filtered_edges: Vec<GraphEdge> = full_graph
             .edges
             .iter()
@@ -1023,7 +845,6 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
             .cloned()
             .collect();
 
-        // Recalculate metadata
         let shared_nodes: Vec<&GraphNode> = filtered_nodes
             .iter()
             .filter(|n| n.trade_ids.len() > 1)
@@ -1032,7 +853,7 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
         let metadata = PortfolioGraphMetadata {
             node_count: filtered_nodes.len(),
             edge_count: filtered_edges.len(),
-            depth: full_graph.metadata.depth, // Approximate, could recalculate
+            depth: full_graph.metadata.depth,
             generated_at: GraphBuilder::current_timestamp(),
             trade_count: selected_trade_ids.len(),
             shared_node_count: shared_nodes.len(),
@@ -1060,14 +881,12 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
 
         match previous_graph {
             Some(prev) => {
-                // Build lookup for previous values
                 let prev_values: HashMap<&str, Option<f64>> = prev
                     .nodes
                     .iter()
                     .map(|n| (n.id.as_str(), n.value))
                     .collect();
 
-                // Compare current values
                 for node in &current_graph.nodes {
                     let prev_value = prev_values.get(node.id.as_str()).copied().flatten();
                     let curr_value = node.value;
@@ -1092,7 +911,6 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
                 }
             }
             None => {
-                // No previous graph, all nodes with values are updates
                 for node in &current_graph.nodes {
                     if let Some(value) = node.value {
                         updates.push(GraphNodeUpdate {
@@ -1267,7 +1085,6 @@ mod tests {
 
             let graph = extractor.extract_graph(Some("T001")).unwrap();
 
-            // Should have input nodes for each sensitivity parameter
             let input_count = graph
                 .nodes
                 .iter()
@@ -1315,10 +1132,8 @@ mod tests {
 
             let graph = extractor.extract_graph(Some("T001")).unwrap();
 
-            // Build a set of all node IDs
             let node_ids: HashSet<_> = graph.nodes.iter().map(|n| n.id.as_str()).collect();
 
-            // Verify all edges reference valid nodes
             for edge in &graph.edges {
                 assert!(
                     node_ids.contains(edge.source.as_str()),
@@ -1340,7 +1155,6 @@ mod tests {
 
             let graph = extractor.extract_graph(Some("T001")).unwrap();
 
-            // Depth should be at least 2 (input -> output)
             assert!(
                 graph.metadata.depth >= 2,
                 "Expected depth >= 2, got {}",
@@ -1356,7 +1170,6 @@ mod tests {
 
             let graph = extractor.extract_graph(None).unwrap();
 
-            // Should contain nodes from both trades
             let t001_nodes: Vec<_> = graph
                 .nodes
                 .iter()
@@ -1521,7 +1334,6 @@ mod tests {
         #[test]
         fn test_builder_calculate_depth_linear() {
             let mut builder = GraphBuilder::new();
-            // Create linear chain: N1 -> N2 -> N3
             for (i, nt) in [
                 (1, NodeType::Input),
                 (2, NodeType::Add),
@@ -1638,7 +1450,6 @@ mod tests {
                 .with_timeout(5000)
                 .with_capacity(10_000, 20_000);
 
-            // Register 100 trades with 10 parameters each
             for i in 0..100 {
                 let trade_id = format!("T{:04}", i);
                 let params: Vec<String> = (0..10).map(|j| format!("param_{}", j)).collect();
@@ -1653,7 +1464,6 @@ mod tests {
             let graph = result.unwrap();
             assert!(graph.nodes.len() > 0);
 
-            // Should complete within 5 seconds
             assert!(
                 elapsed < Duration::from_secs(5),
                 "Extraction took {:?}",
@@ -1707,7 +1517,6 @@ mod tests {
                 vec![],
             ));
 
-            // Add first trade ID
             let result = builder.add_trade_id("N1", "T001");
             assert!(result.is_some());
 
@@ -1728,7 +1537,6 @@ mod tests {
                 vec![],
             ));
 
-            // Add same trade ID twice
             builder.add_trade_id("N1", "T001");
             builder.add_trade_id("N1", "T001");
 
@@ -1750,7 +1558,6 @@ mod tests {
                 vec![],
             ));
 
-            // Add multiple trade IDs
             builder.add_trade_id("N1", "T001");
             builder.add_trade_id("N1", "T002");
             builder.add_trade_id("N1", "T003");
@@ -1766,7 +1573,6 @@ mod tests {
         fn test_builder_add_trade_id_nonexistent_node() {
             let mut builder = GraphBuilder::new();
 
-            // Try to add trade ID to nonexistent node
             let result = builder.add_trade_id("N999", "T001");
             assert!(result.is_none());
         }
@@ -1784,7 +1590,6 @@ mod tests {
                 vec!["OLD"],
             ));
 
-            // Replace trade IDs
             let trade_ids = vec!["T001".to_string(), "T002".to_string()];
             let result = builder.set_trade_ids("N1", trade_ids);
             assert!(result.is_some());
@@ -1800,7 +1605,6 @@ mod tests {
         fn test_builder_set_trade_ids_nonexistent_node() {
             let mut builder = GraphBuilder::new();
 
-            // Try to set trade IDs on nonexistent node
             let result = builder.set_trade_ids("N999", vec!["T001".to_string()]);
             assert!(result.is_none());
         }
@@ -1910,7 +1714,7 @@ mod tests {
             assert!(result.is_ok());
             let graph = result.unwrap();
             assert_eq!(graph.metadata.trade_count, 1);
-            assert!(graph.nodes.len() >= 3); // 2 inputs + 1 output
+            assert!(graph.nodes.len() >= 3);
         }
 
         #[test]
@@ -1932,7 +1736,6 @@ mod tests {
             assert!(result.is_ok());
             let graph = result.unwrap();
             assert_eq!(graph.metadata.trade_count, 2);
-            // Should have nodes from both trades
             assert!(graph.nodes.len() >= 4);
         }
 
@@ -1953,7 +1756,6 @@ mod tests {
             let trade_ids = vec!["T001".to_string(), "T002".to_string()];
             let mut trade_graphs = HashMap::new();
 
-            // Both trades use "spot" - should be deduplicated
             trade_graphs.insert(
                 "T001".to_string(),
                 sample_trade_graph("T001", &["spot", "vol"]),
@@ -1968,9 +1770,7 @@ mod tests {
             assert!(result.is_ok());
             let graph = result.unwrap();
 
-            // Check that shared nodes exist
             let shared = graph.shared_nodes();
-            // "spot" should be shared between T001 and T002
             assert!(
                 shared.iter().any(|n| n.label == "spot"),
                 "Expected 'spot' to be a shared node"
@@ -1989,7 +1789,6 @@ mod tests {
             assert!(result.is_ok());
             let graph = result.unwrap();
 
-            // All nodes should have trade_ids populated
             for node in &graph.nodes {
                 assert!(
                     !node.trade_ids.is_empty(),
@@ -2075,7 +1874,6 @@ mod tests {
             assert!(result.is_ok());
             let subgraph = result.unwrap();
 
-            // Should only have T001 nodes
             assert_eq!(subgraph.nodes.len(), 2);
             assert!(subgraph
                 .nodes
@@ -2132,7 +1930,6 @@ mod tests {
             assert!(result.is_ok());
             let subgraph = result.unwrap();
 
-            // Should have shared_spot (because T001 uses it) and T001_price
             assert_eq!(subgraph.nodes.len(), 2);
             assert!(subgraph.nodes.iter().any(|n| n.id == "shared_spot"));
             assert!(subgraph.nodes.iter().any(|n| n.id == "T001_price"));
@@ -2157,7 +1954,7 @@ mod tests {
                 1.0,
             );
 
-            let selected = vec!["T999".to_string()]; // Non-existent trade
+            let selected = vec!["T999".to_string()];
             let result = extractor.extract_subgraph(&full_graph, &selected);
 
             assert!(matches!(result, Err(GraphError::TradeNotFound(id)) if id == "T999"));
@@ -2265,7 +2062,6 @@ mod tests {
 
             assert!(result.is_ok());
             let updates = result.unwrap();
-            // No changes, so no updates
             assert!(updates.is_empty());
         }
     }

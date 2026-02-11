@@ -1,7 +1,4 @@
 //! Convention set container for CF expansion.
-//!
-//! This module provides a container that aggregates all convention types
-//! needed for cashflow expansion of financial instruments.
 
 use super::{
     BondConvention, CapFloorConvention, CdsConvention, CommodityConvention, EquityConvention,
@@ -11,26 +8,9 @@ use super::{
 use crate::trade::instrument_def::InstrumentError;
 
 /// Container for market conventions used in CF expansion.
-///
-/// Holds optional references to various convention types.
-/// Use `get_*()` methods to retrieve conventions with proper error handling.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{ConventionSet, SwapConvention};
-///
-/// // Create a convention set using builder pattern
-/// let conventions = ConventionSet::new()
-///     .with_swap(SwapConvention::usd_sofr());
-///
-/// // Or use a standard preset
-/// let usd_conventions = ConventionSet::usd_standard();
-/// ```
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ConventionSet {
-    // === Rates ===
     /// Swap convention.
     pub swap: Option<SwapConvention>,
     /// Swaption convention.
@@ -42,25 +22,20 @@ pub struct ConventionSet {
     /// Inflation swap convention.
     pub inflation_swap: Option<InflationSwapConvention>,
 
-    // === FX ===
     /// FX convention.
     pub fx: Option<FxConvention>,
     /// FX option convention.
     pub fx_option: Option<FxOptionConvention>,
 
-    // === Credit ===
     /// CDS convention.
     pub cds: Option<CdsConvention>,
 
-    // === Equity ===
     /// Equity convention.
     pub equity: Option<EquityConvention>,
 
-    // === Commodity ===
     /// Commodity convention.
     pub commodity: Option<CommodityConvention>,
 
-    // === Bond ===
     /// Bond convention.
     pub bond: Option<BondConvention>,
 }
@@ -69,8 +44,6 @@ impl ConventionSet {
     /// Creates a new empty convention set.
     #[must_use]
     pub fn new() -> Self { Self::default() }
-
-    // ---- Builder methods (Rates) ----
 
     /// Sets the swap convention.
     #[must_use]
@@ -107,8 +80,6 @@ impl ConventionSet {
         self
     }
 
-    // ---- Builder methods (FX) ----
-
     /// Sets the FX convention.
     #[must_use]
     pub fn with_fx(mut self, conv: FxConvention) -> Self {
@@ -123,16 +94,12 @@ impl ConventionSet {
         self
     }
 
-    // ---- Builder methods (Credit) ----
-
     /// Sets the CDS convention.
     #[must_use]
     pub fn with_cds(mut self, conv: CdsConvention) -> Self {
         self.cds = Some(conv);
         self
     }
-
-    // ---- Builder methods (Equity) ----
 
     /// Sets the equity convention.
     #[must_use]
@@ -141,16 +108,12 @@ impl ConventionSet {
         self
     }
 
-    // ---- Builder methods (Commodity) ----
-
     /// Sets the commodity convention.
     #[must_use]
     pub fn with_commodity(mut self, conv: CommodityConvention) -> Self {
         self.commodity = Some(conv);
         self
     }
-
-    // ---- Builder methods (Bond) ----
 
     /// Sets the bond convention.
     #[must_use]
@@ -159,14 +122,7 @@ impl ConventionSet {
         self
     }
 
-    // ---- Getter methods (Rates) ----
-
     /// Returns the swap convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if swap convention is not
-    /// set.
     pub fn get_swap(&self) -> Result<&SwapConvention, InstrumentError> {
         self.swap
             .as_ref()
@@ -174,11 +130,6 @@ impl ConventionSet {
     }
 
     /// Returns the swaption convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if swaption convention is
-    /// not set.
     pub fn get_swaption(&self) -> Result<&SwaptionConvention, InstrumentError> {
         self.swaption
             .as_ref()
@@ -186,11 +137,6 @@ impl ConventionSet {
     }
 
     /// Returns the FRA convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if FRA convention is not
-    /// set.
     pub fn get_fra(&self) -> Result<&FraConvention, InstrumentError> {
         self.fra
             .as_ref()
@@ -198,11 +144,6 @@ impl ConventionSet {
     }
 
     /// Returns the cap/floor convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if cap/floor convention is
-    /// not set.
     pub fn get_cap_floor(&self) -> Result<&CapFloorConvention, InstrumentError> {
         self.cap_floor
             .as_ref()
@@ -210,25 +151,13 @@ impl ConventionSet {
     }
 
     /// Returns the inflation swap convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if inflation swap
-    /// convention is not set.
     pub fn get_inflation_swap(&self) -> Result<&InflationSwapConvention, InstrumentError> {
         self.inflation_swap
             .as_ref()
             .ok_or_else(|| InstrumentError::missing_convention("InflationSwap"))
     }
 
-    // ---- Getter methods (FX) ----
-
     /// Returns the FX convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if FX convention is not
-    /// set.
     pub fn get_fx(&self) -> Result<&FxConvention, InstrumentError> {
         self.fx
             .as_ref()
@@ -236,86 +165,41 @@ impl ConventionSet {
     }
 
     /// Returns the FX option convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if FX option convention is
-    /// not set.
     pub fn get_fx_option(&self) -> Result<&FxOptionConvention, InstrumentError> {
         self.fx_option
             .as_ref()
             .ok_or_else(|| InstrumentError::missing_convention("FxOption"))
     }
 
-    // ---- Getter methods (Credit) ----
-
     /// Returns the CDS convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if CDS convention is not
-    /// set.
     pub fn get_cds(&self) -> Result<&CdsConvention, InstrumentError> {
         self.cds
             .as_ref()
             .ok_or_else(|| InstrumentError::missing_convention("CDS"))
     }
 
-    // ---- Getter methods (Equity) ----
-
     /// Returns the equity convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if equity convention is not
-    /// set.
     pub fn get_equity(&self) -> Result<&EquityConvention, InstrumentError> {
         self.equity
             .as_ref()
             .ok_or_else(|| InstrumentError::missing_convention("Equity"))
     }
 
-    // ---- Getter methods (Commodity) ----
-
     /// Returns the commodity convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if commodity convention is
-    /// not set.
     pub fn get_commodity(&self) -> Result<&CommodityConvention, InstrumentError> {
         self.commodity
             .as_ref()
             .ok_or_else(|| InstrumentError::missing_convention("Commodity"))
     }
 
-    // ---- Getter methods (Bond) ----
-
     /// Returns the bond convention, or an error if not set.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError::MissingConvention` if bond convention is not
-    /// set.
     pub fn get_bond(&self) -> Result<&BondConvention, InstrumentError> {
         self.bond
             .as_ref()
             .ok_or_else(|| InstrumentError::missing_convention("Bond"))
     }
 
-    // ---- Standard presets ----
-
     /// Returns a standard USD market convention set.
-    ///
-    /// Includes:
-    /// - USD SOFR swap convention
-    /// - USD SOFR swaption convention
-    /// - USD FX convention
-    /// - G10 FX option convention
-    /// - North American CDS convention
-    /// - US equity convention
-    /// - US CPI inflation swap convention
-    /// - WTI crude commodity convention
     #[must_use]
     pub fn usd_standard() -> Self {
         Self::new()
@@ -330,15 +214,6 @@ impl ConventionSet {
     }
 
     /// Returns a standard EUR market convention set.
-    ///
-    /// Includes:
-    /// - EUR EURIBOR 6M swap convention
-    /// - EUR EURIBOR swaption convention
-    /// - EUR FX convention
-    /// - EUR/USD FX option convention
-    /// - European CDS convention
-    /// - EU equity convention
-    /// - EUR HICP inflation swap convention
     #[must_use]
     pub fn eur_standard() -> Self {
         Self::new()
@@ -352,14 +227,6 @@ impl ConventionSet {
     }
 
     /// Returns a standard GBP market convention set.
-    ///
-    /// Includes:
-    /// - GBP SONIA swap convention
-    /// - GBP SONIA swaption convention
-    /// - GBP FX convention
-    /// - GBP/USD FX option convention
-    /// - UK equity convention
-    /// - UK RPI inflation swap convention
     #[must_use]
     pub fn gbp_standard() -> Self {
         Self::new()
@@ -372,13 +239,6 @@ impl ConventionSet {
     }
 
     /// Returns a standard JPY market convention set.
-    ///
-    /// Includes:
-    /// - JPY TONAR swap convention
-    /// - JPY TONAR swaption convention
-    /// - JPY FX convention
-    /// - USD/JPY FX option convention
-    /// - JP equity convention
     #[must_use]
     pub fn jpy_standard() -> Self {
         Self::new()

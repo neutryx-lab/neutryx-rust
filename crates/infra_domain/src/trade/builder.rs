@@ -1,36 +1,4 @@
 //! Builder types for trade construction.
-//!
-//! This module provides builder patterns for constructing trades
-//! from schedules, legs, and cashflows.
-//!
-//! Uses `bon::Builder` for fluent construction with compile-time safety.
-//!
-//! # Examples
-//!
-//! ```rust,ignore
-//! use infra_domain::{market::Currency, time::{Date, Period}};
-//! use infra_domain::trade::{LegConfig, Trade, Direction, LegType, TradeType};
-//!
-//! let schedule = vec![
-//!     Date::from_ymd(2024, 1, 15).unwrap(),
-//!     Date::from_ymd(2024, 7, 15).unwrap(),
-//!     Date::from_ymd(2025, 1, 15).unwrap(),
-//! ];
-//!
-//! let fixed_leg = LegConfig::builder()
-//!     .schedule(schedule.clone())
-//!     .notional(1_000_000.0)
-//!     .currency(Currency::USD)
-//!     .direction(Direction::Payer)
-//!     .build()
-//!     .into_fixed_leg(0.05);
-//!
-//! let trade = Trade::builder()
-//!     .id("SWAP001")
-//!     .legs(vec![fixed_leg])
-//!     .trade_type(TradeType::Swap)
-//!     .build();
-//! ```
 
 use bon::Builder;
 
@@ -46,40 +14,7 @@ use crate::{
     time::{Date, DayCounter},
 };
 
-// ============================================================================
-// LegConfig (bon-based, recommended)
-// ============================================================================
-
 /// Configuration for constructing a leg from a schedule.
-///
-/// Uses `bon::Builder` for fluent construction with compile-time safety.
-/// Replaces the legacy `LegBuilder` with a cleaner API.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use infra_domain::{market::Currency, time::{Date, DayCounter}};
-/// use infra_domain::trade::{LegConfig, Direction};
-///
-/// let schedule = vec![
-///     Date::from_ymd(2024, 1, 15).unwrap(),
-///     Date::from_ymd(2024, 7, 15).unwrap(),
-/// ];
-///
-/// let config = LegConfig::builder()
-///     .schedule(schedule)
-///     .notional(1_000_000.0)
-///     .currency(Currency::USD)
-///     .direction(Direction::Payer)
-///     .day_count(DayCounter::Actual360)
-///     .build();
-///
-/// // Validate before conversion
-/// config.validate()?;
-///
-/// // Convert to a fixed leg
-/// let leg = config.into_fixed_leg(0.05);
-/// ```
 #[derive(Debug, Clone, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LegConfig {
@@ -99,12 +34,6 @@ pub struct LegConfig {
 
 impl LegConfig {
     /// Validates the configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns `TradeError::InvalidSchedule` if schedule has fewer than 2
-    /// dates. Returns `TradeError::InvalidNotional` if notional is
-    /// negative.
     pub fn validate(&self) -> Result<(), TradeError> {
         if self.schedule.len() < 2 {
             return Err(TradeError::InvalidSchedule(
@@ -118,10 +47,6 @@ impl LegConfig {
     }
 
     /// Converts to a fixed rate leg.
-    ///
-    /// # Arguments
-    ///
-    /// * `rate` - Fixed rate (as decimal, e.g., 0.05 for 5%)
     #[must_use]
     pub fn into_fixed_leg(self, rate: f64) -> Leg {
         let payoff = Payoff::fixed(rate);
@@ -130,11 +55,6 @@ impl LegConfig {
     }
 
     /// Converts to a floating rate leg.
-    ///
-    /// # Arguments
-    ///
-    /// * `index` - Rate index for the floating leg
-    /// * `spread` - Spread over the index (as decimal)
     #[must_use]
     pub fn into_floating_leg(self, index: RateIndex, spread: f64) -> Leg {
         let payoff = Payoff::floating_with_spread(IndexType::Rate(index), spread);
@@ -186,7 +106,6 @@ mod tests {
 
     #[test]
     fn test_leg_config_validation() {
-        // Valid
         let config = LegConfig::builder()
             .schedule(sample_schedule())
             .notional(1_000_000.0)
@@ -194,7 +113,6 @@ mod tests {
             .build();
         assert!(config.validate().is_ok());
 
-        // Empty schedule
         let config = LegConfig::builder()
             .schedule(vec![])
             .notional(1_000_000.0)
@@ -205,7 +123,6 @@ mod tests {
             Err(TradeError::InvalidSchedule(_))
         ));
 
-        // Negative notional
         let config = LegConfig::builder()
             .schedule(sample_schedule())
             .notional(-1000.0)
@@ -263,7 +180,7 @@ mod tests {
             .build()
             .into_fixed_leg(0.05);
 
-        assert_eq!(leg.direction, Direction::Receiver); // default direction
+        assert_eq!(leg.direction, Direction::Receiver);
         assert!(leg.cashflows().next().unwrap().year_fraction > 0.0);
     }
 

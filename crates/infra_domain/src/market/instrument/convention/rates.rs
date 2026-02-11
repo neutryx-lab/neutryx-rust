@@ -1,41 +1,11 @@
 //! Interest rates convention definitions.
-//!
-//! This module provides types for all interest rate-related conventions:
-//!
-//! - [`DepositConvention`]: Money market deposit conventions
-//! - [`FraConvention`]: Forward Rate Agreement conventions
-//! - [`FuturesConvention`]: Interest rate futures conventions
-//! - [`SwapConvention`], [`SwapLegConvention`]: Interest rate swap conventions
-//! - [`BondConvention`]: Government and corporate bond conventions
-//! - [`CapFloorConvention`]: Interest rate cap/floor conventions
-//! - [`SwaptionConvention`], [`SettlementConvention`]: Swaption conventions
-//! - [`InflationSwapConvention`], [`InflationIndex`],
-//!   [`InflationInterpolation`]: Inflation swap conventions
-//! - [`XCcyBasisConvention`], [`XCcyLegConvention`], [`BasisSpreadLeg`]:
-//!   Cross-currency basis swap conventions
 
 use crate::{
     market::{Currency, RateIndex},
     time::{BusinessDayConvention, CalendarId, DayCounter, Frequency},
 };
 
-// ============================================================================
-// Deposit Conventions
-// ============================================================================
-
 /// Convention for a deposit (money market) instrument.
-///
-/// Represents the market conventions for pricing and settling deposit
-/// instruments.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::DepositConvention;
-///
-/// let conv = DepositConvention::usd();
-/// assert_eq!(conv.spot_lag, 2);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DepositConvention {
@@ -65,123 +35,46 @@ impl DepositConvention {
             spot_lag,
         }
     }
-
-    /// Returns the USD deposit convention.
-    ///
-    /// - Day count: ACT/360
-    /// - Calendar: New York
-    /// - Business day convention: Modified Following
-    /// - Spot lag: T+2
-    #[must_use]
-    pub fn usd() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::NewYork,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            spot_lag: 2,
-        }
-    }
-
-    /// Returns the EUR deposit convention.
-    ///
-    /// - Day count: ACT/360
-    /// - Calendar: TARGET
-    /// - Business day convention: Modified Following
-    /// - Spot lag: T+2
-    #[must_use]
-    pub fn eur() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            spot_lag: 2,
-        }
-    }
-
-    /// Returns the GBP deposit convention.
-    ///
-    /// - Day count: ACT/365 Fixed
-    /// - Calendar: London
-    /// - Business day convention: Modified Following
-    /// - Spot lag: T+0 (same day settlement)
-    #[must_use]
-    pub fn gbp() -> Self {
-        Self {
-            day_count: DayCounter::Actual365Fixed,
-            calendar: CalendarId::London,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            spot_lag: 0,
-        }
-    }
-
-    /// Returns the JPY deposit convention.
-    ///
-    /// - Day count: ACT/365 Fixed
-    /// - Calendar: Tokyo
-    /// - Business day convention: Modified Following
-    /// - Spot lag: T+2
-    #[must_use]
-    pub fn jpy() -> Self {
-        Self {
-            day_count: DayCounter::Actual365Fixed,
-            calendar: CalendarId::Tokyo,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            spot_lag: 2,
-        }
-    }
-
-    /// Returns the CHF deposit convention.
-    ///
-    /// - Day count: ACT/360
-    /// - Calendar: TARGET (commonly used for CHF)
-    /// - Business day convention: Modified Following
-    /// - Spot lag: T+2
-    #[must_use]
-    pub fn chf() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            spot_lag: 2,
-        }
-    }
-
-    /// Returns the AUD deposit convention.
-    ///
-    /// - Day count: ACT/365 Fixed
-    /// - Calendar: WeekendOnly (placeholder for Sydney)
-    /// - Business day convention: Modified Following
-    /// - Spot lag: T+2
-    #[must_use]
-    pub fn aud() -> Self {
-        Self {
-            day_count: DayCounter::Actual365Fixed,
-            calendar: CalendarId::WeekendOnly,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            spot_lag: 2,
-        }
-    }
-
-    /// Returns the CAD deposit convention.
-    ///
-    /// - Day count: ACT/365 Fixed
-    /// - Calendar: WeekendOnly (placeholder for Toronto)
-    /// - Business day convention: Modified Following
-    /// - Spot lag: T+1
-    #[must_use]
-    pub fn cad() -> Self {
-        Self {
-            day_count: DayCounter::Actual365Fixed,
-            calendar: CalendarId::WeekendOnly,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            spot_lag: 1,
-        }
-    }
 }
 
-// ============================================================================
-// FRA Conventions
-// ============================================================================
+super::define_convention_factories! {
+    for DepositConvention;
+    /// Returns the USD deposit convention (ACT/360, NY, ModFol, T+2).
+    usd => {
+        day_count: DayCounter::Actual360, calendar: CalendarId::NewYork,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 2,
+    };
+    /// Returns the EUR deposit convention (ACT/360, TARGET, ModFol, T+2).
+    eur => {
+        day_count: DayCounter::Actual360, calendar: CalendarId::Target,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 2,
+    };
+    /// Returns the GBP deposit convention (ACT/365F, London, ModFol, T+0).
+    gbp => {
+        day_count: DayCounter::Actual365Fixed, calendar: CalendarId::London,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 0,
+    };
+    /// Returns the JPY deposit convention (ACT/365F, Tokyo, ModFol, T+2).
+    jpy => {
+        day_count: DayCounter::Actual365Fixed, calendar: CalendarId::Tokyo,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 2,
+    };
+    /// Returns the CHF deposit convention (ACT/360, TARGET, ModFol, T+2).
+    chf => {
+        day_count: DayCounter::Actual360, calendar: CalendarId::Target,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 2,
+    };
+    /// Returns the AUD deposit convention (ACT/365F, WeekendOnly, ModFol, T+2).
+    aud => {
+        day_count: DayCounter::Actual365Fixed, calendar: CalendarId::WeekendOnly,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 2,
+    };
+    /// Returns the CAD deposit convention (ACT/365F, WeekendOnly, ModFol, T+1).
+    cad => {
+        day_count: DayCounter::Actual365Fixed, calendar: CalendarId::WeekendOnly,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 1,
+    };
+}
 
 /// Convention for a Forward Rate Agreement.
 #[derive(Debug, Clone, PartialEq)]
@@ -213,33 +106,21 @@ impl FraConvention {
             index,
         }
     }
-
-    /// Returns the USD SOFR FRA convention.
-    #[must_use]
-    pub fn usd_sofr() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::NewYork,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            index: RateIndex::Sofr,
-        }
-    }
-
-    /// Returns the EUR EURIBOR 3M FRA convention.
-    #[must_use]
-    pub fn eur_euribor_3m() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            index: RateIndex::Euribor3M,
-        }
-    }
 }
 
-// ============================================================================
-// Futures Conventions
-// ============================================================================
+super::define_convention_factories! {
+    for FraConvention;
+    /// Returns the USD SOFR FRA convention.
+    usd_sofr => {
+        day_count: DayCounter::Actual360, calendar: CalendarId::NewYork,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, index: RateIndex::Sofr,
+    };
+    /// Returns the EUR EURIBOR 3M FRA convention.
+    eur_euribor_3m => {
+        day_count: DayCounter::Actual360, calendar: CalendarId::Target,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing, index: RateIndex::Euribor3M,
+    };
+}
 
 /// Convention for an interest rate future.
 #[derive(Debug, Clone, PartialEq)]
@@ -271,44 +152,26 @@ impl FuturesConvention {
             calendar,
         }
     }
-
-    /// Returns the CME Eurodollar futures convention.
-    #[must_use]
-    pub fn cme_eurodollar() -> Self {
-        Self {
-            contract_size: 1_000_000.0,
-            tick_size: 0.0025, // 0.25 basis points
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::NewYork,
-        }
-    }
-
-    /// Returns the CME SOFR futures convention.
-    #[must_use]
-    pub fn cme_sofr() -> Self {
-        Self {
-            contract_size: 1_000_000.0,
-            tick_size: 0.0025,
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::NewYork,
-        }
-    }
-
-    /// Returns the Eurex EURIBOR futures convention.
-    #[must_use]
-    pub fn eurex_euribor() -> Self {
-        Self {
-            contract_size: 1_000_000.0,
-            tick_size: 0.005, // 0.5 basis points
-            day_count: DayCounter::Actual360,
-            calendar: CalendarId::Target,
-        }
-    }
 }
 
-// ============================================================================
-// Swap Conventions
-// ============================================================================
+super::define_convention_factories! {
+    for FuturesConvention;
+    /// Returns the CME Eurodollar futures convention.
+    cme_eurodollar => {
+        contract_size: 1_000_000.0, tick_size: 0.0025,
+        day_count: DayCounter::Actual360, calendar: CalendarId::NewYork,
+    };
+    /// Returns the CME SOFR futures convention.
+    cme_sofr => {
+        contract_size: 1_000_000.0, tick_size: 0.0025,
+        day_count: DayCounter::Actual360, calendar: CalendarId::NewYork,
+    };
+    /// Returns the Eurex EURIBOR futures convention.
+    eurex_euribor => {
+        contract_size: 1_000_000.0, tick_size: 0.005,
+        day_count: DayCounter::Actual360, calendar: CalendarId::Target,
+    };
+}
 
 /// Convention for a single leg of a swap.
 #[derive(Debug, Clone, PartialEq)]
@@ -378,11 +241,6 @@ impl SwapConvention {
     }
 
     /// Returns the USD SOFR swap convention.
-    ///
-    /// - Fixed leg: Annual, ACT/360, NY calendar, Modified Following
-    /// - Float leg: Annual, ACT/360, NY calendar, Modified Following (SOFR
-    ///   compounded)
-    /// - Spot lag: 2 days
     #[must_use]
     pub fn usd_sofr() -> Self {
         Self {
@@ -406,10 +264,6 @@ impl SwapConvention {
     }
 
     /// Returns the EUR EURIBOR 6M swap convention.
-    ///
-    /// - Fixed leg: Annual, 30/360, TARGET calendar, Modified Following
-    /// - Float leg: Semi-Annual, ACT/360, TARGET calendar, Modified Following
-    /// - Spot lag: 2 days
     #[must_use]
     pub fn eur_euribor_6m() -> Self {
         Self {
@@ -433,10 +287,6 @@ impl SwapConvention {
     }
 
     /// Returns the JPY TONAR swap convention.
-    ///
-    /// - Fixed leg: Annual, ACT/365, Tokyo calendar, Modified Following
-    /// - Float leg: Annual, ACT/365, Tokyo calendar, Modified Following
-    /// - Spot lag: 2 days
     #[must_use]
     pub fn jpy_tonar() -> Self {
         Self {
@@ -460,10 +310,6 @@ impl SwapConvention {
     }
 
     /// Returns the GBP SONIA swap convention.
-    ///
-    /// - Fixed leg: Annual, ACT/365, London calendar, Modified Following
-    /// - Float leg: Annual, ACT/365, London calendar, Modified Following
-    /// - Spot lag: 0 days (same day)
     #[must_use]
     pub fn gbp_sonia() -> Self {
         Self {
@@ -487,11 +333,6 @@ impl SwapConvention {
     }
 
     /// Returns the EUR ESTR swap convention.
-    ///
-    /// - Fixed leg: Annual, ACT/360, TARGET calendar, Modified Following
-    /// - Float leg: Annual, ACT/360, TARGET calendar, Modified Following (ESTR
-    ///   compounded)
-    /// - Spot lag: 2 days
     #[must_use]
     pub fn eur_estr() -> Self {
         Self {
@@ -514,10 +355,6 @@ impl SwapConvention {
         }
     }
 }
-
-// ============================================================================
-// Bond Conventions
-// ============================================================================
 
 /// Convention for a bond.
 #[derive(Debug, Clone, PartialEq)]
@@ -553,59 +390,35 @@ impl BondConvention {
             settlement_days,
         }
     }
-
-    /// Returns the US Treasury bond convention.
-    #[must_use]
-    pub fn us_treasury() -> Self {
-        Self {
-            day_count: DayCounter::ActualActualIsda,
-            coupon_frequency: Frequency::SemiAnnual,
-            calendar: CalendarId::NewYork,
-            business_day_convention: BusinessDayConvention::Following,
-            settlement_days: 1,
-        }
-    }
-
-    /// Returns the UK Gilt convention.
-    #[must_use]
-    pub fn uk_gilt() -> Self {
-        Self {
-            day_count: DayCounter::ActualActualIsda,
-            coupon_frequency: Frequency::SemiAnnual,
-            calendar: CalendarId::London,
-            business_day_convention: BusinessDayConvention::Following,
-            settlement_days: 1,
-        }
-    }
-
-    /// Returns the German Bund convention.
-    #[must_use]
-    pub fn german_bund() -> Self {
-        Self {
-            day_count: DayCounter::ActualActualIsda,
-            coupon_frequency: Frequency::Annual,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::Following,
-            settlement_days: 2,
-        }
-    }
-
-    /// Returns the JGB (Japanese Government Bond) convention.
-    #[must_use]
-    pub fn jgb() -> Self {
-        Self {
-            day_count: DayCounter::Actual365Fixed,
-            coupon_frequency: Frequency::SemiAnnual,
-            calendar: CalendarId::Tokyo,
-            business_day_convention: BusinessDayConvention::Following,
-            settlement_days: 3,
-        }
-    }
 }
 
-// ============================================================================
-// Cap/Floor Conventions
-// ============================================================================
+super::define_convention_factories! {
+    for BondConvention;
+    /// Returns the US Treasury bond convention.
+    us_treasury => {
+        day_count: DayCounter::ActualActualIsda, coupon_frequency: Frequency::SemiAnnual,
+        calendar: CalendarId::NewYork, business_day_convention: BusinessDayConvention::Following,
+        settlement_days: 1,
+    };
+    /// Returns the UK Gilt convention.
+    uk_gilt => {
+        day_count: DayCounter::ActualActualIsda, coupon_frequency: Frequency::SemiAnnual,
+        calendar: CalendarId::London, business_day_convention: BusinessDayConvention::Following,
+        settlement_days: 1,
+    };
+    /// Returns the German Bund convention.
+    german_bund => {
+        day_count: DayCounter::ActualActualIsda, coupon_frequency: Frequency::Annual,
+        calendar: CalendarId::Target, business_day_convention: BusinessDayConvention::Following,
+        settlement_days: 2,
+    };
+    /// Returns the JGB (Japanese Government Bond) convention.
+    jgb => {
+        day_count: DayCounter::Actual365Fixed, coupon_frequency: Frequency::SemiAnnual,
+        calendar: CalendarId::Tokyo, business_day_convention: BusinessDayConvention::Following,
+        settlement_days: 3,
+    };
+}
 
 /// Convention for an interest rate cap or floor.
 #[derive(Debug, Clone, PartialEq)]
@@ -641,53 +454,29 @@ impl CapFloorConvention {
             index,
         }
     }
-
-    /// Returns the USD SOFR cap/floor convention.
-    #[must_use]
-    pub fn usd_sofr() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            payment_frequency: Frequency::Quarterly,
-            calendar: CalendarId::NewYork,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            index: RateIndex::Sofr,
-        }
-    }
-
-    /// Returns the EUR EURIBOR 3M cap/floor convention.
-    #[must_use]
-    pub fn eur_euribor_3m() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            payment_frequency: Frequency::Quarterly,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            index: RateIndex::Euribor3M,
-        }
-    }
-
-    /// Returns the EUR ESTR cap/floor convention.
-    ///
-    /// - Day count: ACT/360
-    /// - Payment frequency: Quarterly
-    /// - Calendar: TARGET
-    /// - Business day convention: Modified Following
-    /// - Index: ESTR
-    #[must_use]
-    pub fn eur_estr() -> Self {
-        Self {
-            day_count: DayCounter::Actual360,
-            payment_frequency: Frequency::Quarterly,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-            index: RateIndex::Estr,
-        }
-    }
 }
 
-// ============================================================================
-// Swaption Conventions
-// ============================================================================
+super::define_convention_factories! {
+    for CapFloorConvention;
+    /// Returns the USD SOFR cap/floor convention.
+    usd_sofr => {
+        day_count: DayCounter::Actual360, payment_frequency: Frequency::Quarterly,
+        calendar: CalendarId::NewYork, business_day_convention: BusinessDayConvention::ModifiedFollowing,
+        index: RateIndex::Sofr,
+    };
+    /// Returns the EUR EURIBOR 3M cap/floor convention.
+    eur_euribor_3m => {
+        day_count: DayCounter::Actual360, payment_frequency: Frequency::Quarterly,
+        calendar: CalendarId::Target, business_day_convention: BusinessDayConvention::ModifiedFollowing,
+        index: RateIndex::Euribor3M,
+    };
+    /// Returns the EUR ESTR cap/floor convention (ACT/360, Quarterly, TARGET, ESTR).
+    eur_estr => {
+        day_count: DayCounter::Actual360, payment_frequency: Frequency::Quarterly,
+        calendar: CalendarId::Target, business_day_convention: BusinessDayConvention::ModifiedFollowing,
+        index: RateIndex::Estr,
+    };
+}
 
 /// Settlement convention for swaption premium and exercise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -700,19 +489,6 @@ pub enum SettlementConvention {
 }
 
 /// Convention for a swaption.
-///
-/// Represents the market conventions for pricing and settling swaptions.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{SwaptionConvention, SettlementConvention};
-/// use infra_domain::market::Currency;
-///
-/// let conv = SwaptionConvention::usd_sofr();
-/// assert_eq!(conv.premium_currency, Currency::USD);
-/// assert_eq!(conv.exercise_settlement, SettlementConvention::Cash);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SwaptionConvention {
@@ -752,12 +528,6 @@ impl SwaptionConvention {
     }
 
     /// Returns the USD SOFR swaption convention.
-    ///
-    /// - Underlying: USD SOFR swap
-    /// - Exercise settlement: Cash
-    /// - Premium currency: USD
-    /// - Premium lag: 2 days
-    /// - Exercise lag: 2 days
     #[must_use]
     pub fn usd_sofr() -> Self {
         Self {
@@ -771,12 +541,6 @@ impl SwaptionConvention {
     }
 
     /// Returns the EUR EURIBOR swaption convention.
-    ///
-    /// - Underlying: EUR EURIBOR 6M swap
-    /// - Exercise settlement: Cash
-    /// - Premium currency: EUR
-    /// - Premium lag: 2 days
-    /// - Exercise lag: 2 days
     #[must_use]
     pub fn eur_euribor() -> Self {
         Self {
@@ -790,12 +554,6 @@ impl SwaptionConvention {
     }
 
     /// Returns the GBP SONIA swaption convention.
-    ///
-    /// - Underlying: GBP SONIA swap
-    /// - Exercise settlement: Cash
-    /// - Premium currency: GBP
-    /// - Premium lag: 0 days
-    /// - Exercise lag: 0 days
     #[must_use]
     pub fn gbp_sonia() -> Self {
         Self {
@@ -809,12 +567,6 @@ impl SwaptionConvention {
     }
 
     /// Returns the JPY TONAR swaption convention.
-    ///
-    /// - Underlying: JPY TONAR swap
-    /// - Exercise settlement: Cash
-    /// - Premium currency: JPY
-    /// - Premium lag: 2 days
-    /// - Exercise lag: 2 days
     #[must_use]
     pub fn jpy_tonar() -> Self {
         Self {
@@ -828,12 +580,6 @@ impl SwaptionConvention {
     }
 
     /// Returns the EUR ESTR swaption convention.
-    ///
-    /// - Underlying: EUR ESTR swap
-    /// - Exercise settlement: Cash
-    /// - Premium currency: EUR
-    /// - Premium lag: 2 days
-    /// - Exercise lag: 2 days
     #[must_use]
     pub fn eur_estr() -> Self {
         Self {
@@ -846,10 +592,6 @@ impl SwaptionConvention {
         }
     }
 }
-
-// ============================================================================
-// Inflation Swap Conventions
-// ============================================================================
 
 /// Interpolation method for inflation index fixings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -910,20 +652,6 @@ impl std::fmt::Display for InflationIndex {
 }
 
 /// Convention for inflation swaps.
-///
-/// Represents the market conventions for pricing and settling inflation swaps.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{
-///     InflationSwapConvention, InflationIndex, InflationInterpolation,
-/// };
-///
-/// let conv = InflationSwapConvention::us_cpi_zc();
-/// assert_eq!(conv.inflation_index, InflationIndex::UsCpi);
-/// assert_eq!(conv.lag_months, 3);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct InflationSwapConvention {
@@ -972,11 +700,6 @@ impl InflationSwapConvention {
     }
 
     /// Returns the US CPI zero-coupon inflation swap convention.
-    ///
-    /// - Index: US CPI (NSA)
-    /// - Lag: 3 months
-    /// - Interpolation: Linear
-    /// - Fixed leg: ACT/ACT, Annual
     #[must_use]
     pub fn us_cpi_zc() -> Self {
         Self {
@@ -992,11 +715,6 @@ impl InflationSwapConvention {
     }
 
     /// Returns the US CPI year-on-year inflation swap convention.
-    ///
-    /// - Index: US CPI (NSA)
-    /// - Lag: 3 months
-    /// - Interpolation: Linear
-    /// - Fixed leg: ACT/ACT, Annual
     #[must_use]
     pub fn us_cpi_yoy() -> Self {
         Self {
@@ -1012,11 +730,6 @@ impl InflationSwapConvention {
     }
 
     /// Returns the UK RPI zero-coupon inflation swap convention.
-    ///
-    /// - Index: UK RPI
-    /// - Lag: 2 months
-    /// - Interpolation: Linear
-    /// - Fixed leg: ACT/ACT, Annual
     #[must_use]
     pub fn uk_rpi_zc() -> Self {
         Self {
@@ -1032,11 +745,6 @@ impl InflationSwapConvention {
     }
 
     /// Returns the EUR HICP zero-coupon inflation swap convention.
-    ///
-    /// - Index: EUR HICP (ex-Tobacco)
-    /// - Lag: 3 months
-    /// - Interpolation: Flat
-    /// - Fixed leg: ACT/ACT, Annual
     #[must_use]
     pub fn eur_hicp_zc() -> Self {
         Self {
@@ -1052,11 +760,6 @@ impl InflationSwapConvention {
     }
 
     /// Returns the French CPI zero-coupon inflation swap convention.
-    ///
-    /// - Index: French CPI (ex-Tobacco)
-    /// - Lag: 3 months
-    /// - Interpolation: Linear
-    /// - Fixed leg: ACT/ACT, Annual
     #[must_use]
     pub fn fr_cpi_zc() -> Self {
         Self {
@@ -1071,10 +774,6 @@ impl InflationSwapConvention {
         }
     }
 }
-
-// ============================================================================
-// Cross-Currency Basis Swap Conventions
-// ============================================================================
 
 /// Convention for a leg of a cross-currency basis swap.
 #[derive(Debug, Clone, PartialEq)]
@@ -1132,19 +831,6 @@ pub enum BasisSpreadLeg {
 }
 
 /// Convention for a cross-currency basis swap.
-///
-/// Represents the market conventions for pricing and settling cross-currency
-/// basis swaps where two floating rate legs in different currencies are
-/// exchanged.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::XCcyBasisConvention;
-///
-/// let conv = XCcyBasisConvention::usd_jpy();
-/// assert_eq!(conv.spot_lag, 2);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct XCcyBasisConvention {
@@ -1180,12 +866,6 @@ impl XCcyBasisConvention {
     }
 
     /// Returns the USD/JPY cross-currency basis swap convention.
-    ///
-    /// - Base leg (USD): SOFR, Quarterly, ACT/360, NY calendar
-    /// - Quote leg (JPY): TONAR, Quarterly, ACT/365, Tokyo calendar
-    /// - Spread on: JPY leg
-    /// - Spot lag: 2 days
-    /// - Notional exchange: Yes
     #[must_use]
     pub fn usd_jpy() -> Self {
         Self {
@@ -1214,12 +894,6 @@ impl XCcyBasisConvention {
     }
 
     /// Returns the EUR/USD cross-currency basis swap convention.
-    ///
-    /// - Base leg (EUR): ESTR, Quarterly, ACT/360, TARGET calendar
-    /// - Quote leg (USD): SOFR, Quarterly, ACT/360, NY calendar
-    /// - Spread on: EUR leg
-    /// - Spot lag: 2 days
-    /// - Notional exchange: Yes
     #[must_use]
     pub fn eur_usd() -> Self {
         Self {
@@ -1248,12 +922,6 @@ impl XCcyBasisConvention {
     }
 
     /// Returns the GBP/USD cross-currency basis swap convention.
-    ///
-    /// - Base leg (GBP): SONIA, Quarterly, ACT/365, London calendar
-    /// - Quote leg (USD): SOFR, Quarterly, ACT/360, NY calendar
-    /// - Spread on: GBP leg
-    /// - Spot lag: 2 days
-    /// - Notional exchange: Yes
     #[must_use]
     pub fn gbp_usd() -> Self {
         Self {
@@ -1282,12 +950,6 @@ impl XCcyBasisConvention {
     }
 
     /// Returns the EUR/JPY cross-currency basis swap convention.
-    ///
-    /// - Base leg (EUR): ESTR, Quarterly, ACT/360, TARGET calendar
-    /// - Quote leg (JPY): TONAR, Quarterly, ACT/365, Tokyo calendar
-    /// - Spread on: EUR leg
-    /// - Spot lag: 2 days
-    /// - Notional exchange: Yes
     #[must_use]
     pub fn eur_jpy() -> Self {
         Self {
@@ -1323,10 +985,6 @@ impl XCcyBasisConvention {
     #[must_use]
     pub fn quote_currency(&self) -> Currency { self.quote_leg.currency }
 }
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {

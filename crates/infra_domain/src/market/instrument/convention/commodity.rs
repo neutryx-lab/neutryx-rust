@@ -1,6 +1,4 @@
 //! Commodity convention definitions.
-//!
-//! This module provides types for representing commodity market conventions.
 
 use crate::time::CalendarId;
 
@@ -35,22 +33,6 @@ pub enum PriceQuotation {
 }
 
 /// Convention for commodity derivatives.
-///
-/// Represents the market conventions for pricing and settling commodity
-/// derivatives.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{
-///     CommodityConvention, DeliveryConvention, PriceQuotation,
-/// };
-/// use infra_domain::time::CalendarId;
-///
-/// let conv = CommodityConvention::wti_crude();
-/// assert_eq!(conv.delivery_convention, DeliveryConvention::Physical);
-/// assert_eq!(conv.price_quotation, PriceQuotation::PerBarrel);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CommodityConvention {
@@ -88,114 +70,46 @@ impl CommodityConvention {
             contract_size,
         }
     }
+}
 
-    /// Returns the WTI Crude Oil convention.
-    ///
-    /// - Delivery: Physical at Cushing, OK
-    /// - Price: Per barrel
-    /// - Calendar: NYMEX
-    /// - Contract size: 1,000 barrels
-    #[must_use]
-    pub fn wti_crude() -> Self {
-        Self {
-            delivery_convention: DeliveryConvention::Physical,
-            price_quotation: PriceQuotation::PerBarrel,
-            pricing_calendar: CalendarId::NewYork,
-            settlement_days: 2,
-            delivery_location: Some("Cushing, OK".to_string()),
-            contract_size: 1000.0,
-        }
-    }
-
-    /// Returns the Brent Crude Oil convention.
-    ///
-    /// - Delivery: Cash (ICE)
-    /// - Price: Per barrel
-    /// - Calendar: ICE
-    /// - Contract size: 1,000 barrels
-    #[must_use]
-    pub fn brent_crude() -> Self {
-        Self {
-            delivery_convention: DeliveryConvention::Cash,
-            price_quotation: PriceQuotation::PerBarrel,
-            pricing_calendar: CalendarId::London,
-            settlement_days: 2,
-            delivery_location: None,
-            contract_size: 1000.0,
-        }
-    }
-
-    /// Returns the Henry Hub Natural Gas convention.
-    ///
-    /// - Delivery: Physical at Henry Hub
-    /// - Price: Per MMBtu
-    /// - Calendar: NYMEX
-    /// - Contract size: 10,000 MMBtu
-    #[must_use]
-    pub fn henry_hub_gas() -> Self {
-        Self {
-            delivery_convention: DeliveryConvention::Physical,
-            price_quotation: PriceQuotation::PerMMBtu,
-            pricing_calendar: CalendarId::NewYork,
-            settlement_days: 2,
-            delivery_location: Some("Henry Hub, LA".to_string()),
-            contract_size: 10000.0,
-        }
-    }
-
-    /// Returns the Gold (COMEX) convention.
-    ///
-    /// - Delivery: Physical
-    /// - Price: Per troy ounce
-    /// - Calendar: COMEX
-    /// - Contract size: 100 troy ounces
-    #[must_use]
-    pub fn comex_gold() -> Self {
-        Self {
-            delivery_convention: DeliveryConvention::Physical,
-            price_quotation: PriceQuotation::PerTroyOunce,
-            pricing_calendar: CalendarId::NewYork,
-            settlement_days: 2,
-            delivery_location: Some("COMEX Warehouse".to_string()),
-            contract_size: 100.0,
-        }
-    }
-
-    /// Returns the LME Copper convention.
-    ///
-    /// - Delivery: Physical
-    /// - Price: Per metric tonne
-    /// - Calendar: LME
-    /// - Contract size: 25 tonnes
-    #[must_use]
-    pub fn lme_copper() -> Self {
-        Self {
-            delivery_convention: DeliveryConvention::Physical,
-            price_quotation: PriceQuotation::PerMetricTonne,
-            pricing_calendar: CalendarId::London,
-            settlement_days: 2,
-            delivery_location: Some("LME Warehouse".to_string()),
-            contract_size: 25.0,
-        }
-    }
-
-    /// Returns the CBOT Corn convention.
-    ///
-    /// - Delivery: Physical
-    /// - Price: Per bushel
-    /// - Calendar: CBOT
-    /// - Contract size: 5,000 bushels
-    #[must_use]
-    pub fn cbot_corn() -> Self {
-        Self {
-            delivery_convention: DeliveryConvention::Physical,
-            price_quotation: PriceQuotation::PerBushel,
-            pricing_calendar: CalendarId::NewYork,
-            settlement_days: 2,
-            delivery_location: Some("Chicago".to_string()),
-            contract_size: 5000.0,
-        }
-    }
+super::define_convention_factories! {
+    for CommodityConvention;
+    /// Returns the WTI Crude Oil convention (Physical, Cushing OK, 1000 bbl).
+    wti_crude => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerBarrel,
+        pricing_calendar: CalendarId::NewYork, settlement_days: 2,
+        delivery_location: Some("Cushing, OK".to_string()), contract_size: 1000.0,
+    };
+    /// Returns the Brent Crude Oil convention (Cash, ICE, 1000 bbl).
+    brent_crude => {
+        delivery_convention: DeliveryConvention::Cash, price_quotation: PriceQuotation::PerBarrel,
+        pricing_calendar: CalendarId::London, settlement_days: 2,
+        delivery_location: None, contract_size: 1000.0,
+    };
+    /// Returns the Henry Hub Natural Gas convention (Physical, 10000 MMBtu).
+    henry_hub_gas => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerMMBtu,
+        pricing_calendar: CalendarId::NewYork, settlement_days: 2,
+        delivery_location: Some("Henry Hub, LA".to_string()), contract_size: 10000.0,
+    };
+    /// Returns the Gold (COMEX) convention (Physical, 100 troy oz).
+    comex_gold => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerTroyOunce,
+        pricing_calendar: CalendarId::NewYork, settlement_days: 2,
+        delivery_location: Some("COMEX Warehouse".to_string()), contract_size: 100.0,
+    };
+    /// Returns the LME Copper convention (Physical, 25 tonnes).
+    lme_copper => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerMetricTonne,
+        pricing_calendar: CalendarId::London, settlement_days: 2,
+        delivery_location: Some("LME Warehouse".to_string()), contract_size: 25.0,
+    };
+    /// Returns the CBOT Corn convention (Physical, 5000 bushels).
+    cbot_corn => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerBushel,
+        pricing_calendar: CalendarId::NewYork, settlement_days: 2,
+        delivery_location: Some("Chicago".to_string()), contract_size: 5000.0,
+    };
 }
 
 #[cfg(test)]

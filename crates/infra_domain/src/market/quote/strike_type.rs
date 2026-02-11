@@ -1,14 +1,9 @@
 //! Strike type definitions.
-//!
-//! This module provides the classification of strike conventions
-//! used in options and volatility surface specifications.
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Strike convention for volatility quotes.
-///
-/// Defines how strike prices are expressed in volatility surfaces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]

@@ -1,35 +1,20 @@
 //! FX fixing index definitions.
-//!
-//! This module provides FX fixing index types used for FX derivatives.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{FxIndex, Currency};
-//! use infra_domain::time::CalendarId;
-//!
-//! let ecb_eurusd = FxIndex::EcbEurUsd;
-//! assert_eq!(ecb_eurusd.base_currency(), Currency::EUR);
-//! assert_eq!(ecb_eurusd.quote_currency(), Currency::USD);
-//! ```
 
 use crate::{market::core::Currency, time::CalendarId};
 
 /// FX fixing source.
-///
-/// Identifies the data provider or central bank publishing the FX fixing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FxFixingSource {
-    /// European Central Bank
+    /// European Central Bank.
     Ecb,
-    /// WM/Refinitiv (formerly WM/Reuters)
+    /// WM/Refinitiv (formerly WM/Reuters).
     WmReuters,
-    /// Bank of Japan
+    /// Bank of Japan.
     Boj,
-    /// Bank of England
+    /// Bank of England.
     Boe,
-    /// Swiss National Bank
+    /// Swiss National Bank.
     Snb,
 }
 
@@ -57,7 +42,7 @@ impl std::fmt::Display for FxFixingSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxIndexMetadata {
-    /// Fixing source (ECB, WM/Reuters, etc.)
+    /// Fixing source (ECB, WM/Reuters, etc.).
     pub source: FxFixingSource,
     /// Number of business days between trade date and fixing.
     pub fixing_lag: u8,
@@ -70,45 +55,29 @@ pub struct FxIndexMetadata {
 }
 
 /// FX fixing index.
-///
-/// Represents standard FX fixing indices used in FX derivatives.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{FxIndex, Currency, FxFixingSource};
-///
-/// let wmr = FxIndex::WmrUsdJpy;
-/// assert_eq!(wmr.base_currency(), Currency::USD);
-/// assert_eq!(wmr.quote_currency(), Currency::JPY);
-/// assert_eq!(wmr.source(), FxFixingSource::WmReuters);
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum FxIndex {
-    // ECB fixings (EUR-based)
-    /// ECB EUR/USD fixing
+    /// ECB EUR/USD fixing.
     EcbEurUsd,
-    /// ECB EUR/GBP fixing
+    /// ECB EUR/GBP fixing.
     EcbEurGbp,
-    /// ECB EUR/JPY fixing
+    /// ECB EUR/JPY fixing.
     EcbEurJpy,
-    /// ECB EUR/CHF fixing
+    /// ECB EUR/CHF fixing.
     EcbEurChf,
 
-    // WM/Reuters fixings (4pm London)
-    /// WM/Reuters USD/JPY fixing
+    /// WM/Reuters USD/JPY fixing.
     WmrUsdJpy,
-    /// WM/Reuters EUR/USD fixing
+    /// WM/Reuters EUR/USD fixing.
     WmrEurUsd,
-    /// WM/Reuters GBP/USD fixing
+    /// WM/Reuters GBP/USD fixing.
     WmrGbpUsd,
-    /// WM/Reuters USD/CHF fixing
+    /// WM/Reuters USD/CHF fixing.
     WmrUsdChf,
 
-    // BOJ fixings
-    /// Bank of Japan USD/JPY fixing
+    /// Bank of Japan USD/JPY fixing.
     BojUsdJpy,
 }
 
@@ -130,15 +99,6 @@ impl FxIndex {
     }
 
     /// Returns the API code for this FX index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::FxIndex;
-    ///
-    /// assert_eq!(FxIndex::EcbEurUsd.api_code(), "ECB-EURUSD");
-    /// assert_eq!(FxIndex::WmrUsdJpy.api_code(), "WMR-USDJPY");
-    /// ```
     #[must_use]
     pub const fn api_code(&self) -> &'static str {
         match self {
@@ -155,15 +115,6 @@ impl FxIndex {
     }
 
     /// Returns the base currency (numerator) of this FX pair.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{FxIndex, Currency};
-    ///
-    /// assert_eq!(FxIndex::EcbEurUsd.base_currency(), Currency::EUR);
-    /// assert_eq!(FxIndex::WmrUsdJpy.base_currency(), Currency::USD);
-    /// ```
     #[must_use]
     pub const fn base_currency(&self) -> Currency {
         match self {
@@ -176,15 +127,6 @@ impl FxIndex {
     }
 
     /// Returns the quote currency (denominator) of this FX pair.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{FxIndex, Currency};
-    ///
-    /// assert_eq!(FxIndex::EcbEurUsd.quote_currency(), Currency::USD);
-    /// assert_eq!(FxIndex::WmrUsdJpy.quote_currency(), Currency::JPY);
-    /// ```
     #[must_use]
     pub const fn quote_currency(&self) -> Currency {
         match self {
@@ -197,15 +139,6 @@ impl FxIndex {
     }
 
     /// Returns the fixing source for this index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{FxIndex, FxFixingSource};
-    ///
-    /// assert_eq!(FxIndex::EcbEurUsd.source(), FxFixingSource::Ecb);
-    /// assert_eq!(FxIndex::WmrUsdJpy.source(), FxFixingSource::WmReuters);
-    /// ```
     #[must_use]
     pub const fn source(&self) -> FxFixingSource {
         match self {
@@ -220,15 +153,6 @@ impl FxIndex {
     }
 
     /// Returns the human-readable name of this FX index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::FxIndex;
-    ///
-    /// assert_eq!(FxIndex::EcbEurUsd.name(), "ECB EUR/USD");
-    /// assert_eq!(FxIndex::WmrUsdJpy.name(), "WMR USD/JPY");
-    /// ```
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
@@ -245,17 +169,6 @@ impl FxIndex {
     }
 
     /// Returns the full metadata for this FX index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{FxIndex, FxFixingSource};
-    /// use infra_domain::time::CalendarId;
-    ///
-    /// let metadata = FxIndex::EcbEurUsd.metadata();
-    /// assert_eq!(metadata.source, FxFixingSource::Ecb);
-    /// assert_eq!(metadata.fixing_time, "14:15");
-    /// ```
     #[must_use]
     pub const fn metadata(&self) -> FxIndexMetadata {
         match self {
@@ -265,7 +178,7 @@ impl FxIndex {
                     fixing_lag: 0,
                     settlement_lag: 2,
                     calendar: CalendarId::Target,
-                    fixing_time: "14:15", // ECB publishes at 14:15 CET
+                    fixing_time: "14:15",
                 }
             }
             Self::WmrUsdJpy | Self::WmrEurUsd | Self::WmrGbpUsd | Self::WmrUsdChf => {
@@ -274,7 +187,7 @@ impl FxIndex {
                     fixing_lag: 0,
                     settlement_lag: 2,
                     calendar: CalendarId::London,
-                    fixing_time: "16:00", // WM/Reuters 4pm London fix
+                    fixing_time: "16:00",
                 }
             }
             Self::BojUsdJpy => FxIndexMetadata {
@@ -282,7 +195,7 @@ impl FxIndex {
                 fixing_lag: 0,
                 settlement_lag: 2,
                 calendar: CalendarId::Tokyo,
-                fixing_time: "09:55", // BOJ publishes around 9:55 JST
+                fixing_time: "09:55",
             },
         }
     }

@@ -1,9 +1,4 @@
 //! CSA (Credit Support Annex) terms and collateral settings.
-//!
-//! This module defines types for CSA contractual terms governing collateral
-//! exchange between counterparties.
-//!
-//! Uses `bon::Builder` for fluent construction with compile-time safety.
 
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
@@ -15,75 +10,47 @@ use bon::Builder;
 use super::CounterPartyError;
 use crate::market::Currency;
 
-// ============================================================================
-// Enums
-// ============================================================================
-
 /// Eligible collateral types for CSA agreements.
-///
-/// Defines the types of assets that can be posted as collateral.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum EligibleCollateral {
-    /// Cash in various currencies
+    /// Cash in various currencies.
     Cash,
-    /// Government bonds (e.g., US Treasuries, Bunds, JGBs)
+    /// Government bonds (e.g., US Treasuries, Bunds, JGBs).
     GovernmentBonds,
-    /// Corporate bonds (investment grade)
+    /// Corporate bonds (investment grade).
     CorporateBonds,
-    /// Equity securities
+    /// Equity securities.
     Equity,
-    /// Gold bullion
+    /// Gold bullion.
     Gold,
 }
 
 /// Collateral segregation type.
-///
-/// Determines how posted collateral is held.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SegregationType {
-    /// Collateral held in segregated account (protected from bankruptcy)
+    /// Collateral held in segregated account (protected from bankruptcy).
     #[default]
     Segregated,
-    /// Collateral commingled with other assets (may be rehypothecated)
+    /// Collateral commingled with other assets (may be rehypothecated).
     Commingled,
 }
 
 /// Margin call frequency.
-///
-/// Defines how often margin calls are made.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CallFrequency {
-    /// Daily margin calls (standard for most CSAs)
+    /// Daily margin calls (standard for most CSAs).
     #[default]
     Daily,
-    /// Weekly margin calls
+    /// Weekly margin calls.
     Weekly,
-    /// Monthly margin calls
+    /// Monthly margin calls.
     Monthly,
 }
 
-// ============================================================================
-// CollateralHaircut
-// ============================================================================
-
 /// Collateral haircut settings.
-///
-/// Defines the haircut (discount) applied to collateral value for a specific
-/// collateral type and optional currency.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{CollateralHaircut, EligibleCollateral};
-/// use infra_domain::market::Currency;
-///
-/// // 2% haircut on government bonds
-/// let haircut = CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap();
-/// assert!((haircut.haircut_rate() - 0.02).abs() < f64::EPSILON);
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CollateralHaircut {
@@ -94,11 +61,6 @@ pub struct CollateralHaircut {
 
 impl CollateralHaircut {
     /// Creates a new collateral haircut.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`CounterPartyError::InvalidHaircut`] if haircut_rate is not in
-    /// [0, 1].
     pub fn new(
         collateral_type: EligibleCollateral,
         haircut_rate: f64,
@@ -132,34 +94,7 @@ impl CollateralHaircut {
     pub fn apply_haircut(&self, value: f64) -> f64 { value * (1.0 - self.haircut_rate) }
 }
 
-// ============================================================================
-// CsaTerms
-// ============================================================================
-
 /// CSA (Credit Support Annex) terms.
-///
-/// Defines the collateral agreement between counterparties, including
-/// thresholds, minimum transfer amounts, margin period of risk, and eligible
-/// collateral.
-///
-/// Uses `bon::Builder` for fluent construction with compile-time safety.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{CsaTerms, EligibleCollateral, CallFrequency};
-/// use infra_domain::market::Currency;
-///
-/// let csa = CsaTerms::builder()
-///     .threshold(1_000_000.0)
-///     .mta(50_000.0)
-///     .mpor_days(10)
-///     .margin_currency(Currency::USD)
-///     .call_frequency(CallFrequency::Daily)
-///     .build();
-///
-/// assert_eq!(csa.threshold(), 1_000_000.0);
-/// ```
 #[derive(Clone, Debug, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CsaTerms {
@@ -172,16 +107,16 @@ pub struct CsaTerms {
     /// Independent Amount (initial margin-like).
     #[builder(default)]
     independent_amount: f64,
-    /// Margin Period of Risk in business days. Defaults to 10.
+    /// Margin Period of Risk in business days.
     #[builder(default = 10)]
     mpor_days: u32,
-    /// Margin currency. Defaults to USD.
+    /// Margin currency.
     #[builder(default = Currency::USD)]
     margin_currency: Currency,
     /// Currency-specific thresholds (overrides base threshold).
     #[builder(default)]
     currency_thresholds: HashMap<Currency, f64>,
-    /// Eligible collateral types. Defaults to Cash only.
+    /// Eligible collateral types.
     #[builder(default = vec![EligibleCollateral::Cash])]
     eligible_collateral: Vec<EligibleCollateral>,
     /// Collateral haircuts.
@@ -206,9 +141,6 @@ impl CsaTerms {
     pub fn threshold(&self) -> f64 { self.threshold }
 
     /// Returns the threshold for a specific currency.
-    ///
-    /// If a currency-specific threshold is set, returns that; otherwise
-    /// returns the base threshold.
     pub fn threshold_for_currency(&self, ccy: &Currency) -> f64 {
         self.currency_thresholds
             .get(ccy)
@@ -250,8 +182,6 @@ impl CsaTerms {
     pub fn dispute_threshold(&self) -> f64 { self.dispute_threshold }
 
     /// Calculates the required margin amount given an exposure.
-    ///
-    /// Takes into account threshold and MTA.
     pub fn required_margin(&self, exposure: f64, currency: &Currency) -> f64 {
         let threshold = self.threshold_for_currency(currency);
         let excess = (exposure - threshold).max(0.0);
@@ -276,10 +206,8 @@ mod tests {
         let haircut = CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.05).unwrap();
         assert!((haircut.apply_haircut(1_000_000.0) - 950_000.0).abs() < 0.01);
 
-        // Invalid haircuts
         assert!(CollateralHaircut::new(EligibleCollateral::Cash, -0.1).is_err());
         assert!(CollateralHaircut::new(EligibleCollateral::Cash, 1.5).is_err());
-        // Boundary values
         assert!(CollateralHaircut::new(EligibleCollateral::Cash, 0.0).is_ok());
         assert!(CollateralHaircut::new(EligibleCollateral::Equity, 1.0).is_ok());
     }
@@ -306,11 +234,8 @@ mod tests {
             .mta(50_000.0)
             .build();
 
-        // Below threshold
         assert!((csa.required_margin(500_000.0, &Currency::USD)).abs() < f64::EPSILON);
-        // Above threshold but excess below MTA
         assert!((csa.required_margin(1_040_000.0, &Currency::USD)).abs() < f64::EPSILON);
-        // Above threshold with excess above MTA
         assert!(
             (csa.required_margin(1_100_000.0, &Currency::USD) - 100_000.0).abs() < f64::EPSILON
         );

@@ -1,7 +1,4 @@
 //! Portfolio-related types.
-//!
-//! This module provides type definitions for portfolios including
-//! scope classifications, metadata, and book mappings.
 
 use chrono::{DateTime, Utc};
 
@@ -11,22 +8,7 @@ use crate::{
     market::Currency,
 };
 
-// ============================================================================
-// PortfolioScope
-// ============================================================================
-
 /// Scope of a portfolio.
-///
-/// Classifies the purpose and usage of a portfolio within the organisation.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::portfolio::PortfolioScope;
-///
-/// let scope = PortfolioScope::Internal;
-/// assert_eq!(scope, PortfolioScope::default());
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -64,23 +46,7 @@ impl PortfolioScope {
     pub fn is_consolidated(&self) -> bool { matches!(self, PortfolioScope::Consolidated) }
 }
 
-// ============================================================================
-// PortfolioMetadata
-// ============================================================================
-
 /// Metadata for a portfolio.
-///
-/// Captures ownership, scope, reporting currency, and audit information.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::portfolio::PortfolioMetadata;
-/// use infra_domain::market::Currency;
-///
-/// let metadata = PortfolioMetadata::new(Currency::USD);
-/// assert_eq!(metadata.reporting_currency(), Currency::USD);
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -146,25 +112,7 @@ impl PortfolioMetadata {
     pub fn updated_at(&self) -> DateTime<Utc> { self.updated_at }
 }
 
-// ============================================================================
-// PortfolioBookMapping
-// ============================================================================
-
 /// Mapping between a portfolio and a book.
-///
-/// Represents the many-to-many relationship between portfolios and books,
-/// with an optional weight for weighted aggregation.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::portfolio::PortfolioBookMapping;
-/// use infra_domain::ids::{PortfolioId, BookId};
-///
-/// let mapping = PortfolioBookMapping::new("P001", "B001");
-/// assert_eq!(mapping.portfolio_id().as_str(), "P001");
-/// assert_eq!(mapping.book_id().as_str(), "B001");
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]

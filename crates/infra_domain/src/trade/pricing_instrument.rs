@@ -1,8 +1,4 @@
 //! Pricing instrument definitions.
-//!
-//! This module provides types for financial instruments used in pricing
-//! and risk calculations. These are distinct from market instruments
-//! used for curve calibration.
 
 use std::fmt;
 
@@ -99,12 +95,6 @@ pub struct InstrumentParams<T> {
 
 impl<T: Copy> InstrumentParams<T> {
     /// Creates new instrument parameters.
-    ///
-    /// # Arguments
-    ///
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiry in years
-    /// * `notional` - Notional amount
     #[must_use]
     pub fn new(strike: T, expiry: T, notional: T) -> Result<Self, &'static str> {
         Ok(Self {
@@ -139,13 +129,6 @@ pub struct VanillaOption<T> {
 
 impl<T: Copy> VanillaOption<T> {
     /// Creates a new vanilla option.
-    ///
-    /// # Arguments
-    ///
-    /// * `params` - Instrument parameters (strike, expiry, notional)
-    /// * `payoff_type` - Call or Put
-    /// * `exercise_style` - European or American
-    /// * `epsilon` - Smoothing parameter for payoff
     #[must_use]
     pub fn new(
         params: InstrumentParams<T>,
@@ -195,8 +178,6 @@ impl<T: Copy> VanillaOption<T> {
 
 impl VanillaOption<f64> {
     /// Computes the payoff at the given spot price.
-    ///
-    /// Uses smooth max for AD compatibility.
     #[must_use]
     pub fn payoff(&self, spot: f64) -> f64 {
         let intrinsic = self.payoff_type.sign() * (spot - self.params.strike);
@@ -216,13 +197,6 @@ pub struct Forward<T> {
 
 impl<T: Copy> Forward<T> {
     /// Creates a new forward contract.
-    ///
-    /// # Arguments
-    ///
-    /// * `strike` - Forward price
-    /// * `expiry` - Time to expiry in years
-    /// * `notional` - Notional amount
-    /// * `direction` - Long or Short
     pub fn new(
         strike: T,
         expiry: T,
@@ -263,9 +237,6 @@ impl Forward<f64> {
 }
 
 /// A pricing instrument for valuation and risk calculations.
-///
-/// This enum represents different types of financial instruments
-/// that can be priced and have Greeks computed.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PricingInstrument<T> {
@@ -350,13 +321,10 @@ impl FxOptionType {
 }
 
 /// Smooth maximum function for AD compatibility.
-///
-/// Approximates max(a, b) using a smooth function.
 #[inline]
 fn smooth_max(a: f64, b: f64, epsilon: f64) -> f64 {
     let diff = a - b;
     if diff.abs() < epsilon * 10.0 {
-        // Use smooth approximation near the transition
         0.5 * (a + b + (diff * diff + epsilon * epsilon).sqrt())
     } else if diff > 0.0 {
         a
@@ -373,12 +341,10 @@ mod tests {
     fn test_vanilla_option_payoffs() {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
 
-        // Call: ITM and OTM
         let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
         assert!((call.payoff(110.0) - 10.0).abs() < 0.01);
         assert!(call.payoff(90.0) < 0.01);
 
-        // Put: ITM and OTM
         let put = VanillaOption::new(params, PayoffType::Put, ExerciseStyle::European, 1e-6);
         assert!((put.payoff(90.0) - 10.0).abs() < 0.01);
         assert!(put.payoff(110.0) < 0.01);

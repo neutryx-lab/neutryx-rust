@@ -1,11 +1,4 @@
 //! PathDependentPayoff trait and observation types.
-//!
-//! This module defines the core trait for path-dependent payoff calculations
-//! and the observation type flags that specify what statistics are needed.
-//!
-//! The `#[enum_dispatch]` attribute is used to auto-generate the trait
-//! implementation for `PathPayoffType`, eliminating boilerplate match
-//! statements.
 
 use enum_dispatch::enum_dispatch;
 use num_traits::Float;
@@ -13,10 +6,6 @@ use num_traits::Float;
 use super::PathObserver;
 
 /// Observation type flags for path-dependent payoffs.
-///
-/// Specifies which path statistics are required for payoff computation.
-/// This allows the simulation engine to optimise by only computing
-/// the necessary statistics.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ObservationType {
     /// Whether arithmetic average is needed (Asian options)
@@ -97,61 +86,12 @@ impl ObservationType {
 }
 
 /// Trait for path-dependent payoff calculations.
-///
-/// This trait provides a unified interface for computing payoffs that
-/// depend on the entire price path, not just the terminal price.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type (e.g., `f64`, `Dual64`)
-///
-/// # Thread Safety
-///
-/// Implementations must be `Send + Sync` for parallel Monte Carlo.
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_pricing::path_dependent::{PathDependentPayoff, PathObserver, ObservationType};
-///
-/// struct AsianCall<T: Float> {
-///     strike: T,
-///     epsilon: T,
-/// }
-///
-/// impl<T: Float> PathDependentPayoff<T> for AsianCall<T> {
-///     fn compute(&self, _path: &[T], observer: &PathObserver<T>) -> T {
-///         let avg = observer.arithmetic_average();
-///         smooth_max(avg - self.strike, T::zero(), self.epsilon)
-///     }
-///
-///     fn required_observations(&self) -> ObservationType {
-///         ObservationType::arithmetic_asian()
-///     }
-///
-///     fn smoothing_epsilon(&self) -> T {
-///         self.epsilon
-///     }
-/// }
-/// ```
 #[enum_dispatch]
 pub trait PathDependentPayoff<T: Float>: Send + Sync {
     /// Computes the payoff from path statistics.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - The full price path (may be empty if not needed)
-    /// * `observer` - Observer containing streaming statistics
-    ///
-    /// # Returns
-    ///
-    /// The payoff value.
     fn compute(&self, path: &[T], observer: &PathObserver<T>) -> T;
 
     /// Returns the observation types required for this payoff.
-    ///
-    /// This allows the simulation engine to optimise by only computing
-    /// the necessary statistics.
     fn required_observations(&self) -> ObservationType;
 
     /// Returns the smoothing epsilon used for smooth approximations.
@@ -232,7 +172,6 @@ mod tests {
         assert!(!obs.needs_terminal);
     }
 
-    // Test that a simple implementation compiles and works
     struct MockPayoff {
         strike: f64,
         epsilon: f64,
@@ -265,7 +204,6 @@ mod tests {
         observer.observe(110.0);
         observer.observe(120.0);
 
-        // Average = 110, Strike = 100, Payoff = 10
         let result = payoff.compute(&[], &observer);
         assert!((result - 10.0).abs() < 1e-10);
     }
@@ -281,7 +219,6 @@ mod tests {
         observer.observe(100.0);
         observer.observe(110.0);
 
-        // Average = 105, Strike = 120, Payoff = 0
         let result = payoff.compute(&[], &observer);
         assert_eq!(result, 0.0);
     }

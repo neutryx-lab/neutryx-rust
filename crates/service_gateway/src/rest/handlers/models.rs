@@ -1,6 +1,4 @@
-//! Model handlers
-//!
-//! Thin handlers delegating to `ModelService`.
+//! Model handlers.
 
 #[cfg(feature = "models")]
 use std::sync::Arc;
@@ -23,20 +21,33 @@ use crate::{
     state::AppState,
 };
 
+/// POST /api/v1/models.
 #[cfg(feature = "models")]
-json_created_handler! {
-    /// POST /api/v1/models
-    pub async fn create_model(CreateModelRequest => CreateModelResponse) = ModelService::create_model;
+pub async fn create_model(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<CreateModelRequest>,
+) -> Result<(StatusCode, Json<CreateModelResponse>), ServerError> {
+    let response = ModelService::create_model(&request, &state)?;
+    Ok((StatusCode::CREATED, Json(response)))
 }
 
+/// GET /api/v1/models/{id}.
 #[cfg(feature = "models")]
-path_handler! {
-    /// GET /api/v1/models/{id}
-    pub async fn get_model(=> GetModelResponse) = ModelService::get_model;
+pub async fn get_model(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<GetModelResponse>, ServerError> {
+    let response = ModelService::get_model(&id, &state)?;
+    Ok(Json(response))
 }
 
+/// POST /api/v1/models/{id}/price.
 #[cfg(feature = "models")]
-path_json_handler! {
-    /// POST /api/v1/models/{id}/price
-    pub async fn price_with_model(ModelPricingRequest => ModelPricingResponse) = ModelService::price_with_model;
+pub async fn price_with_model(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    AppJson(request): AppJson<ModelPricingRequest>,
+) -> Result<Json<ModelPricingResponse>, ServerError> {
+    let response = ModelService::price_with_model(&id, &request, &state)?;
+    Ok(Json(response))
 }

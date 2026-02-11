@@ -1,53 +1,20 @@
 //! Time-related error types.
-//!
-//! This module provides unified error handling for time-related operations.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::time::TimeError;
-//!
-//! let err = TimeError::InvalidDate { year: 2024, month: 2, day: 30 };
-//! assert_eq!(format!("{}", err), "Invalid date: 2024-02-30");
-//! ```
 
 use thiserror::Error;
 
 use crate::error::DateError;
 
 /// Unified error type for time-related operations.
-///
-/// Provides structured error handling for date construction, parsing,
-/// calculations, and calendar operations with descriptive context
-/// for each failure mode.
-///
-/// # Variants
-/// - `InvalidDate`: Invalid date components (e.g., February 30th)
-/// - `ParseError`: Failed to parse date string
-/// - `CalculationError`: Calculation error (e.g., invalid serial number)
-/// - `CalendarError`: Calendar-related error
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::time::TimeError;
-///
-/// let err = TimeError::InvalidDate { year: 2024, month: 2, day: 30 };
-/// assert_eq!(format!("{}", err), "Invalid date: 2024-02-30");
-///
-/// let err = TimeError::CalculationError("Serial number must be >= 1".to_string());
-/// assert!(format!("{}", err).contains("Serial number"));
-/// ```
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum TimeError {
     /// Invalid date components (e.g., February 30th).
     #[error("Invalid date: {year}-{month:02}-{day:02}")]
     InvalidDate {
-        /// Year component
+        /// Year component.
         year: i32,
-        /// Month component (1-12)
+        /// Month component (1-12).
         month: u32,
-        /// Day component (1-31)
+        /// Day component (1-31).
         day: u32,
     },
 
@@ -65,9 +32,6 @@ pub enum TimeError {
 }
 
 /// Convert DateError to TimeError.
-///
-/// This allows seamless interoperability between DateError (from error.rs)
-/// and TimeError (from time module).
 impl From<DateError> for TimeError {
     fn from(err: DateError) -> Self {
         match err {

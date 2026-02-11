@@ -1,26 +1,13 @@
 //! Greeks results aggregated by risk factor.
-//!
-//! This module provides [`GreeksResultByFactor`], a container for holding
-//! Greeks calculations organised by their underlying risk factors.
-//!
-//! # Requirements
-//!
-//! - Requirement 1.1, 1.2: First and second-order Greeks by risk factor.
-//! - Requirement 1.3: Risk factor identification for aggregation.
-//! - Requirement 1.5: AD compatibility with `GreeksResult<T>`.
 
 use std::collections::HashMap;
 
 use pricer_core::traits::Float;
-#[cfg(feature = "serde")]
 use serde::{ser::SerializeMap, Serialize, Serializer};
 
 use super::RiskFactorId;
 use crate::greeks::{GreeksMode, GreeksResult};
 
-/// Custom serializer for HashMap<RiskFactorId, GreeksResult<T>>.
-/// Converts RiskFactorId keys to strings using their Display implementation.
-#[cfg(feature = "serde")]
 fn serialize_by_factor<S, T>(
     map: &HashMap<RiskFactorId, GreeksResult<T>>,
     serializer: S,
@@ -38,77 +25,17 @@ where
 }
 
 /// Greeks calculation results organised by risk factor.
-///
-/// Stores [`GreeksResult`] values keyed by [`RiskFactorId`], enabling
-/// aggregation and analysis of sensitivities across different market
-/// risk drivers.
-///
-/// # Type Parameters
-///
-/// * `T` - A floating-point type implementing `Float`. Enables AD
-///   compatibility.
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_risk::scenarios::{GreeksResultByFactor, RiskFactorId};
-/// use pricer_risk::greeks::{GreeksMode, GreeksResult};
-///
-/// // Create results for different risk factors
-/// let mut results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
-///
-/// results.insert(
-///     RiskFactorId::underlying("SPX"),
-///     GreeksResult::new(100.0, 0.1).with_delta(0.5).with_gamma(0.02)
-/// );
-///
-/// results.insert(
-///     RiskFactorId::curve("USD-OIS"),
-///     GreeksResult::new(0.0, 0.0).with_rho(15.0)
-/// );
-///
-/// // Aggregate to total Greeks
-/// let total = results.total();
-/// assert!(total.delta.is_some());
-/// ```
-///
-/// # Requirements
-///
-/// - Requirement 1.1, 1.2, 1.3, 1.5
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
-#[cfg_attr(
-    feature = "serde",
-    serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize"))
-)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize"))]
 pub struct GreeksResultByFactor<T: Float> {
-    /// Greeks results keyed by risk factor.
-    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_by_factor"))]
+    #[serde(serialize_with = "serialize_by_factor")]
     by_factor: HashMap<RiskFactorId, GreeksResult<T>>,
-
-    /// Computation mode used (AAD or Bump).
     mode: GreeksMode,
-
-    /// Computation time in nanoseconds.
     computation_time_ns: u64,
 }
 
 impl<T: Float> GreeksResultByFactor<T> {
     /// Creates a new empty container with the specified computation mode.
-    ///
-    /// # Arguments
-    ///
-    /// * `mode` - The Greeks computation mode (AAD, Bump, etc.).
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::scenarios::GreeksResultByFactor;
-    /// use pricer_risk::greeks::GreeksMode;
-    ///
-    /// let results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
-    /// assert!(results.is_empty());
-    /// ```
     #[inline]
     pub fn new(mode: GreeksMode) -> Self {
         Self {
@@ -119,11 +46,6 @@ impl<T: Float> GreeksResultByFactor<T> {
     }
 
     /// Creates a new container with pre-allocated capacity.
-    ///
-    /// # Arguments
-    ///
-    /// * `mode` - The Greeks computation mode.
-    /// * `capacity` - Initial capacity for the number of risk factors.
     #[inline]
     pub fn with_capacity(mode: GreeksMode, capacity: usize) -> Self {
         Self {
@@ -134,12 +56,6 @@ impl<T: Float> GreeksResultByFactor<T> {
     }
 
     /// Creates a container from an existing HashMap.
-    ///
-    /// # Arguments
-    ///
-    /// * `by_factor` - HashMap of risk factor to Greeks results.
-    /// * `mode` - The computation mode used.
-    /// * `computation_time_ns` - Time taken for computation in nanoseconds.
     #[inline]
     pub fn from_map(
         by_factor: HashMap<RiskFactorId, GreeksResult<T>>,
@@ -170,15 +86,6 @@ impl<T: Float> GreeksResultByFactor<T> {
     pub fn set_computation_time_ns(&mut self, time_ns: u64) { self.computation_time_ns = time_ns; }
 
     /// Inserts a Greeks result for a risk factor.
-    ///
-    /// # Arguments
-    ///
-    /// * `factor` - The risk factor identifier.
-    /// * `result` - The Greeks calculation result.
-    ///
-    /// # Returns
-    ///
-    /// The previous value if the factor was already present.
     #[inline]
     pub fn insert(
         &mut self,
@@ -189,14 +96,6 @@ impl<T: Float> GreeksResultByFactor<T> {
     }
 
     /// Gets the Greeks result for a specific risk factor.
-    ///
-    /// # Arguments
-    ///
-    /// * `factor` - The risk factor to look up.
-    ///
-    /// # Returns
-    ///
-    /// Reference to the Greeks result if found.
     #[inline]
     pub fn get(&self, factor: &RiskFactorId) -> Option<&GreeksResult<T>> {
         self.by_factor.get(factor)
@@ -239,36 +138,6 @@ impl<T: Float> GreeksResultByFactor<T> {
     pub fn into_map(self) -> HashMap<RiskFactorId, GreeksResult<T>> { self.by_factor }
 
     /// Computes total Greeks by summing across all risk factors.
-    ///
-    /// Aggregates price, delta, gamma, vega, theta, rho, vanna, and volga
-    /// by summing the values from all risk factors. Standard error is
-    /// combined using root-sum-of-squares.
-    ///
-    /// # Returns
-    ///
-    /// A single [`GreeksResult`] representing the portfolio total.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::scenarios::{GreeksResultByFactor, RiskFactorId};
-    /// use pricer_risk::greeks::{GreeksMode, GreeksResult};
-    ///
-    /// let mut results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
-    ///
-    /// results.insert(
-    ///     RiskFactorId::underlying("SPX"),
-    ///     GreeksResult::new(100.0, 0.1).with_delta(0.5)
-    /// );
-    /// results.insert(
-    ///     RiskFactorId::underlying("AAPL"),
-    ///     GreeksResult::new(50.0, 0.05).with_delta(0.3)
-    /// );
-    ///
-    /// let total = results.total();
-    /// assert!((total.price - 150.0).abs() < 1e-10);
-    /// assert!((total.delta.unwrap() - 0.8).abs() < 1e-10);
-    /// ```
     pub fn total(&self) -> GreeksResult<T> {
         if self.by_factor.is_empty() {
             return GreeksResult::default();
@@ -406,10 +275,6 @@ impl<T: Float> Default for GreeksResultByFactor<T> {
 mod tests {
     use super::*;
 
-    // ================================================================
-    // Task 1.2: GreeksResultByFactor tests (TDD)
-    // ================================================================
-
     #[test]
     fn test_greeks_result_by_factor_new() {
         let results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
@@ -513,17 +378,12 @@ mod tests {
 
         let total = results.total();
 
-        // Price: 100 + 50 + 0 = 150
         assert!((total.price - 150.0).abs() < 1e-10);
 
-        // Std error: sqrt(0.1^2 + 0.05^2 + 0^2) = sqrt(0.01 + 0.0025) = sqrt(0.0125)
         let expected_std_error = (0.01_f64 + 0.0025).sqrt();
         assert!((total.std_error - expected_std_error).abs() < 1e-10);
 
-        // Delta: 0.5 + 0.3 = 0.8
         assert!((total.delta.unwrap() - 0.8).abs() < 1e-10);
-
-        // Rho: 15.0
         assert!((total.rho.unwrap() - 15.0).abs() < 1e-10);
     }
 
@@ -734,7 +594,6 @@ mod tests {
 
     #[test]
     fn test_greeks_result_by_factor_ad_compatibility() {
-        // Test that the struct works with f32 as well (AD compatibility)
         let mut results = GreeksResultByFactor::<f32>::new(GreeksMode::BumpRevalue);
 
         results.insert(
@@ -749,10 +608,8 @@ mod tests {
 
     #[test]
     fn test_greeks_result_by_factor_partial_greeks() {
-        // Test aggregation when some factors have Greeks and others don't
         let mut results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
 
-        // Factor 1: has delta and gamma
         results.insert(
             RiskFactorId::underlying("SPX"),
             GreeksResult::new(100.0, 0.1)
@@ -760,13 +617,11 @@ mod tests {
                 .with_gamma(0.02),
         );
 
-        // Factor 2: only has rho
         results.insert(
             RiskFactorId::curve("USD-OIS"),
             GreeksResult::new(0.0, 0.0).with_rho(15.0),
         );
 
-        // Factor 3: only has vega
         results.insert(
             RiskFactorId::vol_surface("SPX-Vol"),
             GreeksResult::new(0.0, 0.0).with_vega(25.0),
@@ -774,19 +629,13 @@ mod tests {
 
         let total = results.total();
 
-        // Only delta from factor 1
         assert!((total.delta.unwrap() - 0.5).abs() < 1e-10);
-        // Only gamma from factor 1
         assert!((total.gamma.unwrap() - 0.02).abs() < 1e-10);
-        // Only rho from factor 2
         assert!((total.rho.unwrap() - 15.0).abs() < 1e-10);
-        // Only vega from factor 3
         assert!((total.vega.unwrap() - 25.0).abs() < 1e-10);
-        // Theta not present in any factor
         assert!(total.theta.is_none());
     }
 
-    #[cfg(feature = "serde")]
     mod serde_tests {
         use super::*;
 

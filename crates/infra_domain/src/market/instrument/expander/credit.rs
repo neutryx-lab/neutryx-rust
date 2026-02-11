@@ -1,6 +1,4 @@
 //! Credit instrument expansion implementations.
-//!
-//! Covers: Cds, CdsIndex, CdsOption, NtdBasket.
 
 use super::{settlement_trade, InstrumentExpander};
 use crate::{
@@ -22,7 +20,6 @@ impl InstrumentExpander for Cds {
     ) -> Result<Trade, InstrumentError> {
         let _cds_conv = conventions.get_cds()?;
 
-        // Premium leg: periodic spread payments
         let premium_cf = Cashflow::new(
             CashflowType::Coupon,
             self.maturity,
@@ -40,7 +37,6 @@ impl InstrumentExpander for Cds {
             self.currency,
         );
 
-        // Protection leg: contingent payment on default
         let protection_cf = Cashflow::new(
             CashflowType::Settlement,
             self.maturity,

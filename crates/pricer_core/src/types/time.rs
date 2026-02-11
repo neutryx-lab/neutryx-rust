@@ -23,7 +23,7 @@
 //! assert!((yf - 0.4986).abs() < 0.001);
 //! ```
 
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 use infra_domain::time::{Date, DayCounter};
 
@@ -48,7 +48,7 @@ use infra_domain::time::{Date, DayCounter};
 /// assert_eq!(act_365.name(), "ACT/365");
 /// ```
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr)]
 pub enum DayCountConvention {
     /// Actual/365 Fixed: actual_days / 365.0
     ///
@@ -56,6 +56,7 @@ pub enum DayCountConvention {
     /// - Most derivatives markets
     /// - UK gilts
     /// - Japanese government bonds
+    #[strum(serialize = "ACT/365")]
     ActualActual365,
 
     /// Actual/360: actual_days / 360.0
@@ -64,6 +65,7 @@ pub enum DayCountConvention {
     /// - Money market instruments
     /// - US Treasury bills
     /// - LIBOR-based instruments
+    #[strum(serialize = "ACT/360")]
     ActualActual360,
 
     /// 30/360 US Bond Basis
@@ -74,6 +76,7 @@ pub enum DayCountConvention {
     /// - Some municipal bonds
     ///
     /// Each month is treated as having 30 days, and the year as 360 days.
+    #[strum(serialize = "30/360")]
     Thirty360,
 }
 
@@ -92,13 +95,7 @@ impl DayCountConvention {
     /// assert_eq!(DayCountConvention::ActualActual360.name(), "ACT/360");
     /// assert_eq!(DayCountConvention::Thirty360.name(), "30/360");
     /// ```
-    pub fn name(&self) -> &'static str {
-        match self {
-            DayCountConvention::ActualActual365 => "ACT/365",
-            DayCountConvention::ActualActual360 => "ACT/360",
-            DayCountConvention::Thirty360 => "30/360",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 
     /// Convert to the underlying `infra_domain::DayCounter`.
     ///
@@ -218,11 +215,6 @@ impl FromStr for DayCountConvention {
     }
 }
 
-impl fmt::Display for DayCountConvention {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
-}
-
-#[cfg(feature = "serde")]
 mod serde_impl {
     use std::str::FromStr;
 
@@ -570,7 +562,6 @@ mod tests {
         assert_eq!(dc, DayCounter::Actual365Fixed);
     }
 
-    #[cfg(feature = "serde")]
     mod serde_tests {
         use super::*;
 

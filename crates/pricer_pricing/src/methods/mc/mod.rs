@@ -15,7 +15,6 @@ pub mod workspace_enum;
 pub mod workspace_timestep_first;
 pub mod workspace_trait;
 
-// Re-exports for convenient access
 pub use aligned_buffer::AlignedPathBuffer;
 pub use config::{AdMode, MonteCarloConfig, MonteCarloConfigBuilder};
 pub use error::{LayoutConfigError, MonteCarloConfigError};

@@ -41,7 +41,11 @@ use pricer_core::traits::{priceable::Differentiable, Float};
 
 use crate::{
     market::curves::{FlatCurve, YieldCurve},
-    stochastic::stochastic::{RatesModel, SingleState, StochasticModel},
+    stochastic::{
+        stochastic::{RatesModel, SingleState, StochasticModel},
+        validation::ParamValidationError,
+    },
+    validate_params,
 };
 
 // ================================================================
@@ -242,10 +246,6 @@ impl<T: Float> HullWhiteParams<T> {
     /// assert!(invalid.is_none());
     /// ```
     pub fn new(mean_reversion: T, volatility: T, initial_curve: FlatCurve<T>) -> Option<Self> {
-        if mean_reversion <= T::zero() || volatility <= T::zero() {
-            return None;
-        }
-
         // Extract initial short rate from curve (instantaneous forward rate at t=0)
         // For a flat curve, this equals the constant rate
         let initial_short_rate = initial_curve
@@ -256,14 +256,16 @@ impl<T: Float> HullWhiteParams<T> {
         let theta_function =
             ThetaFunction::from_flat_curve(mean_reversion, volatility, initial_short_rate);
 
-        Some(Self {
+        let params = Self {
             mean_reversion,
             volatility,
             initial_short_rate,
             initial_curve,
             theta_function,
             current_time: T::zero(),
-        })
+        };
+        params.validate().ok()?;
+        Some(params)
     }
 
     /// Create Hull-White parameters with a custom theta function.
@@ -282,18 +284,24 @@ impl<T: Float> HullWhiteParams<T> {
         initial_short_rate: T,
         theta_function: ThetaFunction<T>,
     ) -> Option<Self> {
-        if mean_reversion <= T::zero() || volatility <= T::zero() {
-            return None;
-        }
-
-        Some(Self {
+        let params = Self {
             mean_reversion,
             volatility,
             initial_short_rate,
             initial_curve: FlatCurve::new(initial_short_rate),
             theta_function,
             current_time: T::zero(),
-        })
+        };
+        params.validate().ok()?;
+        Some(params)
+    }
+
+    /// Validate Hull-White parameters.
+    pub fn validate(&self) -> Result<(), ParamValidationError> {
+        validate_params! {
+            self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
+            positive: [mean_reversion, volatility],
+        }
     }
 
     /// Get the long-term mean rate (approximate).

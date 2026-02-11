@@ -3,21 +3,16 @@
 use pricer_core::types::PricingError;
 use thiserror::Error;
 
-#[cfg(feature = "exotic")]
-use super::correlated::CorrelationError;
-#[cfg(feature = "equity")]
-use super::heston::HestonError;
+use super::{correlated::CorrelationError, heston::HestonError};
 
 /// Unified error type for stochastic model operations.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum ModelError {
     /// Heston model validation error.
-    #[cfg(feature = "equity")]
     #[error("Heston: {0}")]
     Heston(#[from] HestonError),
 
     /// Correlation matrix error.
-    #[cfg(feature = "exotic")]
     #[error("Correlation: {0}")]
     Correlation(#[from] CorrelationError),
 
@@ -43,9 +38,7 @@ impl From<ModelError> for PricingError {
                 model_name,
                 message,
             } => PricingError::ModelFailure(format!("{model_name}: {message}")),
-            #[cfg(feature = "equity")]
             ModelError::Heston(e) => PricingError::ModelFailure(e.to_string()),
-            #[cfg(feature = "exotic")]
             ModelError::Correlation(e) => PricingError::ModelFailure(e.to_string()),
         }
     }
@@ -88,7 +81,6 @@ mod tests {
         assert!(matches!(pricing_err, PricingError::ModelFailure(_)));
     }
 
-    #[cfg(feature = "equity")]
     #[test]
     fn test_heston_error_to_model_error() {
         use super::super::validation::ParamValidationError;
@@ -97,7 +89,6 @@ mod tests {
         assert!(matches!(model_err, ModelError::Heston(_)));
     }
 
-    #[cfg(feature = "equity")]
     #[test]
     fn test_heston_to_pricing_error() {
         use super::super::validation::ParamValidationError;
@@ -107,7 +98,6 @@ mod tests {
         assert!(matches!(pricing_err, PricingError::ModelFailure(_)));
     }
 
-    #[cfg(feature = "exotic")]
     #[test]
     fn test_correlation_error_to_model_error() {
         let corr_err = CorrelationError::NotPositiveDefinite;

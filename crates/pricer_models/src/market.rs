@@ -164,19 +164,15 @@ pub mod curves {
     }
 
     /// Interpolation method for bootstrapped curves.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[serde(rename_all = "snake_case")]
     pub enum BootstrapInterpolation {
         /// Linear interpolation on discount factors.
-        #[cfg_attr(feature = "serde", serde(rename = "linear_df", alias = "linear"))]
+        #[serde(rename = "linear_df", alias = "linear")]
         Linear,
         /// Log-linear interpolation (linear on log of discount factors).
         #[default]
-        #[cfg_attr(
-            feature = "serde",
-            serde(rename = "log_linear_df", alias = "log_linear")
-        )]
+        #[serde(rename = "log_linear_df", alias = "log_linear")]
         LogLinear,
         /// Flat forward interpolation (constant simple forward rate between
         /// pillars).

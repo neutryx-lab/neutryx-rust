@@ -34,6 +34,65 @@ use pricer_core::math::{
 // =============================================================================
 pub use surface::{FxVolBuilder, FxVolResult};
 
+// =============================================================================
+// VolBuilder Trait
+// =============================================================================
+
+/// Trait for volatility surface/cube builders.
+///
+/// Captures the common **configure -> validate -> calibrate** pattern shared by
+/// [`FxVolBuilder`] (2D surface) and [`VolCubeBuilder`] (3D cube).
+///
+/// # Type Parameters
+///
+/// * `T` - Float type (f64 or f32)
+///
+/// # Associated Types
+///
+/// * `Result` - The calibrated result type (e.g. `FxVolResult`,
+///   `VolCubeResult`)
+///
+/// # Pattern
+///
+/// ```text
+/// 1. Configure: new() / with_config() -> set up calibration parameters
+/// 2. Validate:  validate() -> check sufficient data before calibration
+/// 3. Calibrate: calibrate() -> run slice-wise SABR calibration
+/// ```
+pub trait VolBuilder<T: Float> {
+    /// The calibration result type.
+    type Result;
+
+    /// Returns the calibration configuration.
+    fn config(&self) -> &SliceCalibrationConfig<T>;
+
+    /// Returns the number of slices currently loaded.
+    fn num_slices(&self) -> usize;
+
+    /// Validates that the builder has sufficient data for calibration.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CalibrationError::InsufficientData`] if no slices are loaded.
+    fn validate(&self) -> Result<(), CalibrationError> {
+        if self.num_slices() == 0 {
+            return Err(CalibrationError::InsufficientData {
+                required: 1,
+                provided: 0,
+            });
+        }
+        Ok(())
+    }
+
+    /// Calibrates all loaded slices and returns the aggregated result.
+    ///
+    /// This follows the common pattern:
+    /// 1. Validate input data
+    /// 2. Calibrate each slice independently
+    /// 3. Aggregate results
+    fn calibrate(&self) -> Result<Self::Result, CalibrationError>;
+}
+
 use super::error::CalibrationError;
 
 // =============================================================================

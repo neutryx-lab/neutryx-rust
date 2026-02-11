@@ -1,7 +1,4 @@
-//! Generic LRU cache and domain-specific entry types
-//!
-//! `TypedCache<T>` provides a single, thread-safe, UUID-keyed LRU cache
-//! implementation that replaces the previous per-domain cache structs.
+//! Generic LRU cache and domain-specific entry types.
 
 use std::num::NonZeroUsize;
 
@@ -12,14 +9,7 @@ use parking_lot::RwLock;
 use pricer_models::market::curves::BootstrappedCurve;
 use uuid::Uuid;
 
-// ============================================================================
-// Generic cache
-// ============================================================================
-
 /// Thread-safe LRU cache keyed by [`Uuid`].
-///
-/// Entries must be `Clone` so reads can return owned values without
-/// holding the lock beyond the call.
 pub struct TypedCache<T: Clone> {
     inner: RwLock<LruCache<Uuid, T>>,
 }
@@ -43,7 +33,7 @@ impl<T: Clone> TypedCache<T> {
     /// Retrieve a clone of the entry (promotes to MRU).
     pub fn get(&self, id: &Uuid) -> Option<T> { self.inner.write().get(id).cloned() }
 
-    /// Replace an existing entry. Returns `true` if the key was present.
+    /// Replace an existing entry.
     pub fn update(&self, id: &Uuid, entry: T) -> bool {
         let mut cache = self.inner.write();
         if cache.contains(id) {
@@ -77,57 +67,53 @@ impl<T: Clone> Default for TypedCache<T> {
     fn default() -> Self { Self::new(100) }
 }
 
-// ============================================================================
-// Domain entry types
-// ============================================================================
-
-/// Curve cache entry
+/// Curve cache entry.
 #[derive(Debug, Clone)]
 pub struct CurveEntry {
-    /// Bootstrapped yield curve
+    /// Bootstrapped yield curve.
     pub curve: BootstrappedCurve<f64>,
-    /// Market instruments used to build the curve
+    /// Market instruments used to build the curve.
     pub instruments: Vec<InstrumentInput>,
 }
 
-/// Simplified instrument input for caching
+/// Simplified instrument input for caching.
 #[derive(Debug, Clone)]
 pub struct InstrumentInput {
-    /// Instrument type (e.g. "deposit", "swap")
+    /// Instrument type (e.g.
     pub instrument_type: String,
-    /// Tenor string (e.g. "3M", "1Y")
+    /// Tenor string (e.g.
     pub tenor: String,
-    /// Par rate (as decimal)
+    /// Par rate (as decimal).
     pub rate: f64,
 }
 
-/// FX volatility surface cache entry
+/// FX volatility surface cache entry.
 #[derive(Debug, Clone)]
 pub struct FxVolEntry {
-    /// Currency pair (e.g. "USDJPY")
+    /// Currency pair (e.g.
     pub currency_pair: String,
-    /// Surface type (e.g. "SABR")
+    /// Surface type (e.g.
     pub surface_type: String,
-    /// Calibrated SABR parameters per expiry slice
+    /// Calibrated SABR parameters per expiry slice.
     pub calibrated_params: Vec<SabrParams>,
 }
 
-/// SABR parameters for a single expiry slice
+/// SABR parameters for a single expiry slice.
 #[derive(Debug, Clone)]
 pub struct SabrParams {
-    /// Expiry in years
+    /// Expiry in years.
     pub expiry: f64,
-    /// SABR alpha (vol-of-vol initial level)
+    /// SABR alpha (vol-of-vol initial level).
     pub alpha: f64,
-    /// SABR beta (CEV exponent)
+    /// SABR beta (CEV exponent).
     pub beta: f64,
-    /// SABR rho (spot-vol correlation)
+    /// SABR rho (spot-vol correlation).
     pub rho: f64,
-    /// SABR nu (vol-of-vol)
+    /// SABR nu (vol-of-vol).
     pub nu: f64,
 }
 
-/// Portfolio cache entry
+/// Portfolio cache entry.
 #[cfg(feature = "risk")]
 #[derive(Debug, Clone)]
 pub struct PortfolioEntry {
@@ -137,7 +123,7 @@ pub struct PortfolioEntry {
     pub created_at: DateTime<Utc>,
 }
 
-/// Model type enumeration
+/// Model type enumeration.
 #[cfg(feature = "models")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelType {
@@ -148,7 +134,7 @@ pub enum ModelType {
     Sabr,
 }
 
-/// Model cache entry
+/// Model cache entry.
 #[cfg(feature = "models")]
 #[derive(Debug, Clone)]
 pub struct ModelEntry {
@@ -158,7 +144,7 @@ pub struct ModelEntry {
     pub created_at: DateTime<Utc>,
 }
 
-/// Vol surface type enumeration
+/// Vol surface type enumeration.
 #[cfg(feature = "volatility")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VolSurfaceType {
@@ -167,7 +153,7 @@ pub enum VolSurfaceType {
     EquitySurface,
 }
 
-/// Vol surface cache entry
+/// Vol surface cache entry.
 #[cfg(feature = "volatility")]
 #[derive(Debug, Clone)]
 pub struct VolSurfaceEntry {
@@ -178,10 +164,6 @@ pub struct VolSurfaceEntry {
     pub residual_ss: Option<f64>,
     pub created_at: DateTime<Utc>,
 }
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {

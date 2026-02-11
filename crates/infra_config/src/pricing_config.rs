@@ -1,6 +1,4 @@
 //! Pricing configuration structures.
-//!
-//! Provides [`PricingConfig`] for configuration-driven pricing calculations.
 
 use std::path::PathBuf;
 
@@ -16,12 +14,12 @@ use crate::ConfigError;
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum PricingMethod {
-    /// Closed-form analytical solutions (Black-Scholes, etc.)
+    /// Closed-form analytical solutions (Black-Scholes, etc.).
     #[default]
     Analytical,
-    /// Monte Carlo simulation
+    /// Monte Carlo simulation.
     MonteCarlo,
-    /// Tree-based pricing (Binomial/Trinomial)
+    /// Tree-based pricing (Binomial/Trinomial).
     Tree,
 }
 
@@ -128,19 +126,7 @@ impl Default for PricingConfig {
 
 impl PricingConfig {
     /// Validates the configuration and returns errors for invalid values.
-    ///
-    /// # Validation Rules
-    ///
-    /// - `reporting_currency` must not be empty
-    /// - If `pricing_method` is `MonteCarlo`, `monte_carlo` must be provided
-    /// - `monte_carlo.num_paths` must be > 0
-    /// - `monte_carlo.num_steps` must be > 0
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError` with specific validation failure details.
     pub fn validate(&self) -> Result<(), ConfigError> {
-        // Validate reporting currency
         if self.reporting_currency.is_empty() {
             return Err(ConfigError::InvalidValue {
                 key: "reporting_currency".to_string(),
@@ -148,7 +134,6 @@ impl PricingConfig {
             });
         }
 
-        // Validate currency format (ISO 4217: 3 uppercase letters)
         if self.reporting_currency.len() != 3
             || !self
                 .reporting_currency
@@ -164,7 +149,6 @@ impl PricingConfig {
             });
         }
 
-        // Validate Monte Carlo params when method is MonteCarlo
         if self.pricing_method == PricingMethod::MonteCarlo {
             match &self.monte_carlo {
                 Some(mc) => {
@@ -189,7 +173,6 @@ impl PricingConfig {
             }
         }
 
-        // Validate Tree params when method is Tree
         if self.pricing_method == PricingMethod::Tree {
             match &self.tree_params {
                 Some(tree) => {
@@ -212,10 +195,6 @@ impl PricingConfig {
     }
 
     /// Loads configuration from a JSON string.
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError` if parsing fails.
     pub fn from_json(json: &str) -> Result<Self, ConfigError> {
         serde_json::from_str(json).map_err(|e| ConfigError::InvalidValue {
             key: "json".to_string(),
@@ -224,10 +203,6 @@ impl PricingConfig {
     }
 
     /// Loads configuration from a TOML string.
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError` if parsing fails.
     pub fn from_toml(toml_str: &str) -> Result<Self, ConfigError> {
         toml::from_str(toml_str).map_err(|e| ConfigError::InvalidValue {
             key: "toml".to_string(),
@@ -239,10 +214,6 @@ impl PricingConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // RED Phase Tests - These define expected behavior
-    // =========================================================================
 
     #[test]
     fn test_pricing_config_default_creates_valid_config() {
@@ -269,7 +240,7 @@ mod tests {
     #[test]
     fn test_pricing_config_validates_invalid_currency_format() {
         let config = PricingConfig {
-            reporting_currency: "usd".to_string(), // lowercase
+            reporting_currency: "usd".to_string(),
             ..Default::default()
         };
 
@@ -454,7 +425,6 @@ mod tests {
 
     #[test]
     fn test_pricing_method_serde() {
-        // Test serialization
         assert_eq!(
             serde_json::to_string(&PricingMethod::Analytical).unwrap(),
             "\"analytical\""
@@ -464,7 +434,6 @@ mod tests {
             "\"monte_carlo\""
         );
 
-        // Test deserialization
         let analytical: PricingMethod = serde_json::from_str("\"analytical\"").unwrap();
         assert_eq!(analytical, PricingMethod::Analytical);
 
@@ -472,19 +441,13 @@ mod tests {
         assert_eq!(mc, PricingMethod::MonteCarlo);
     }
 
-    // =========================================================================
-    // Task 1.1: Tree Pricing Method Tests (TDD RED → GREEN)
-    // =========================================================================
-
     #[test]
     fn test_pricing_method_tree_serde() {
-        // Test Tree serialization
         assert_eq!(
             serde_json::to_string(&PricingMethod::Tree).unwrap(),
             "\"tree\""
         );
 
-        // Test Tree deserialization
         let tree: PricingMethod = serde_json::from_str("\"tree\"").unwrap();
         assert_eq!(tree, PricingMethod::Tree);
     }
@@ -565,7 +528,6 @@ mod tests {
 
     #[test]
     fn test_tree_type_serde() {
-        // Test serialization
         assert_eq!(
             serde_json::to_string(&TreeType::Binomial).unwrap(),
             "\"binomial\""
@@ -575,7 +537,6 @@ mod tests {
             "\"trinomial\""
         );
 
-        // Test deserialization
         let binomial: TreeType = serde_json::from_str("\"binomial\"").unwrap();
         assert_eq!(binomial, TreeType::Binomial);
 

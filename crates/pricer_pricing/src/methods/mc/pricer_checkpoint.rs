@@ -1,26 +1,4 @@
 //! Checkpoint-integrated Monte Carlo pricing engine.
-//!
-//! This module extends the Monte Carlo pricer with checkpoint support for
-//! memory-efficient automatic differentiation during path-dependent option
-//! pricing.
-//!
-//! # Checkpoint Integration
-//!
-//! During the forward pass:
-//! 1. Simulation state is saved at configured intervals
-//! 2. Checkpoints include RNG state, observer statistics, and current prices
-//!
-//! During the reverse pass (AD):
-//! 1. Checkpoints are restored to avoid storing all intermediate values
-//! 2. Forward computation is replayed from checkpoint to compute adjoints
-//!
-//! # Memory Efficiency
-//!
-//! With checkpoints at interval `k` over `n` steps:
-//! - Without checkpoints: O(n) memory for all intermediate values
-//! - With checkpoints: O(n/k) memory for checkpoints + O(k) for replay
-//!
-//! Optimal checkpoint interval for √n checkpoints gives O(√n) memory.
 
 use pricer_core::math::rng::PricerRng;
 
@@ -37,9 +15,6 @@ use crate::{
 };
 
 /// Configuration for checkpoint-enabled pricing.
-///
-/// Extends the basic Monte Carlo config with checkpoint strategy and memory
-/// budget.
 #[derive(Clone, Debug)]
 pub struct CheckpointPricingConfig {
     /// Base Monte Carlo configuration.
@@ -68,38 +43,6 @@ impl CheckpointPricingConfig {
 }
 
 /// Checkpoint-enabled Monte Carlo pricing engine.
-///
-/// This pricer extends the basic MC engine with checkpoint support for
-/// memory-efficient automatic differentiation.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_pricing::mc::{MonteCarloConfig, GbmParams};
-/// use pricer_pricing::mc::pricer_checkpoint::{CheckpointPricingConfig, CheckpointPricer};
-/// use pricer_pricing::checkpoint::CheckpointStrategy;
-/// use pricer_pricing::path_dependent::PathPayoffType;
-///
-/// let mc_config = MonteCarloConfig::builder()
-///     .n_paths(10_000)
-///     .n_steps(100)
-///     .seed(42)
-///     .build()
-///     .unwrap();
-///
-/// let config = CheckpointPricingConfig::new(
-///     mc_config,
-///     CheckpointStrategy::Uniform { interval: 10 },
-/// );
-///
-/// let mut pricer = CheckpointPricer::new(config).unwrap();
-/// let gbm = GbmParams::default();
-/// let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
-/// let df = (-0.05_f64).exp();
-///
-/// let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
-/// println!("Price: {:.4}", result.price);
-/// ```
 pub struct CheckpointPricer {
     config: CheckpointPricingConfig,
     workspace: CheckpointWorkspace<f64>,
@@ -109,14 +52,6 @@ pub struct CheckpointPricer {
 
 impl CheckpointPricer {
     /// Creates a new checkpoint-enabled pricer.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Checkpoint pricing configuration
-    ///
-    /// # Errors
-    ///
-    /// Returns error if configuration is invalid.
     pub fn new(
         config: CheckpointPricingConfig,
     ) -> Result<Self, crate::methods::mc::MonteCarloConfigError> {
@@ -132,7 +67,6 @@ impl CheckpointPricer {
         let mut checkpoint_manager =
             CheckpointManager::new(config.checkpoint_strategy).with_total_steps(n_steps);
 
-        // Apply memory budget if set
         if let Some(budget) = config.memory_budget {
             checkpoint_manager = checkpoint_manager.with_memory_budget(budget);
         }
@@ -172,21 +106,6 @@ impl CheckpointPricer {
     }
 
     /// Prices a path-dependent option with checkpoint support.
-    ///
-    /// This method:
-    /// 1. Generates GBM paths step-by-step
-    /// 2. Saves checkpoints at configured intervals
-    /// 3. Computes path-dependent payoffs
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `payoff` - Path-dependent payoff type
-    /// * `discount_factor` - Discount factor
-    ///
-    /// # Returns
-    ///
-    /// Pricing result with price and standard error.
     pub fn price_path_dependent_with_checkpoints(
         &mut self,
         gbm: GbmParams,
@@ -196,44 +115,32 @@ impl CheckpointPricer {
         let n_paths = self.config.mc_config.n_paths();
         let n_steps = self.config.mc_config.n_steps();
 
-        // Ensure workspace capacity
         self.workspace.ensure_capacity(n_paths, n_steps);
 
-        // Clear previous checkpoints
         self.checkpoint_manager.clear();
 
-        // Reset observers
         self.workspace.reset_observers();
 
-        // Pre-generate all random numbers
         self.rng.fill_normal(self.workspace.randoms_mut());
 
-        // GBM parameters
         let dt = gbm.maturity / n_steps as f64;
         let drift = (gbm.rate - 0.5 * gbm.volatility * gbm.volatility) * dt;
         let vol_sqrt_dt = gbm.volatility * dt.sqrt();
 
-        // Initialize paths with spot price
         let paths = self.workspace.paths_mut();
         for path_idx in 0..n_paths {
             paths[path_idx * (n_steps + 1)] = gbm.spot;
         }
 
-        // Initialize observers with initial spot
         for path_idx in 0..n_paths {
             self.workspace.observer_mut(path_idx).observe(gbm.spot);
         }
 
-        // Forward pass with checkpointing
         for step in 1..=n_steps {
-            // Check if we should save a checkpoint BEFORE this step
             if self.checkpoint_manager.should_checkpoint(step - 1) {
-                // Save checkpoint state
                 let _ = self.save_checkpoint(step - 1, n_paths, n_steps);
             }
 
-            // Generate this step's prices
-            // First pass: compute new prices using paths_mut and randoms
             {
                 let n_steps_plus_1 = n_steps + 1;
                 for path_idx in 0..n_paths {
@@ -244,13 +151,11 @@ impl CheckpointPricer {
                     let prev_price = self.workspace.paths()[prev_idx];
                     let random = self.workspace.randoms()[rand_idx];
 
-                    // Log-normal GBM: S_t = S_{t-1} * exp(drift + vol * sqrt(dt) * Z)
                     let curr_price = prev_price * (drift + vol_sqrt_dt * random).exp();
                     self.workspace.paths_mut()[curr_idx] = curr_price;
                 }
             }
 
-            // Second pass: observe prices
             {
                 let n_steps_plus_1 = n_steps + 1;
                 for path_idx in 0..n_paths {
@@ -261,7 +166,6 @@ impl CheckpointPricer {
             }
         }
 
-        // Set terminal prices
         {
             let n_steps_plus_1 = n_steps + 1;
             for path_idx in 0..n_paths {
@@ -271,7 +175,6 @@ impl CheckpointPricer {
             }
         }
 
-        // Compute payoffs
         let mut payoff_sum = 0.0;
         let mut payoff_sum_sq = 0.0;
 
@@ -282,7 +185,6 @@ impl CheckpointPricer {
             payoff_sum_sq += payoff_value * payoff_value;
         }
 
-        // Aggregate results
         let mean = payoff_sum / n_paths as f64;
         let variance = (payoff_sum_sq / n_paths as f64) - mean * mean;
         let std_dev = variance.max(0.0).sqrt();
@@ -302,7 +204,6 @@ impl CheckpointPricer {
         n_paths: usize,
         n_steps: usize,
     ) -> CheckpointResult<()> {
-        // Collect current prices
         let paths = self.workspace.paths();
         let mut current_prices = Vec::with_capacity(n_paths);
         for path_idx in 0..n_paths {
@@ -310,32 +211,18 @@ impl CheckpointPricer {
             current_prices.push(paths[idx]);
         }
 
-        // Create observer state (use first observer as representative, or aggregate)
-        // For simplicity, save the first observer's state
         let observer_state = if n_paths > 0 {
             self.workspace.observer(0).snapshot()
         } else {
             PathObserverState::default()
         };
 
-        let state = SimulationState::new(
-            step,
-            self.rng.seed(),
-            0, // RNG calls tracking would require modification
-            observer_state,
-            current_prices,
-        );
+        let state = SimulationState::new(step, self.rng.seed(), 0, observer_state, current_prices);
 
         self.checkpoint_manager.save_state(step, state)
     }
 
     /// Verifies that checkpoint operations produce equivalent results.
-    ///
-    /// This method runs the simulation twice:
-    /// 1. With checkpoints enabled
-    /// 2. Without checkpoints
-    ///
-    /// Returns true if the prices match within tolerance.
     pub fn verify_checkpoint_equivalence(
         &mut self,
         gbm: GbmParams,
@@ -345,11 +232,9 @@ impl CheckpointPricer {
     ) -> bool {
         let seed = self.config.mc_config.seed().unwrap_or(42);
 
-        // Price with checkpoints
         self.reset_with_seed(seed);
         let result_with = self.price_path_dependent_with_checkpoints(gbm, payoff, discount_factor);
 
-        // Price without checkpoints (using None strategy)
         let original_strategy = self.config.checkpoint_strategy;
         self.config.checkpoint_strategy = CheckpointStrategy::None;
         self.checkpoint_manager = CheckpointManager::new(CheckpointStrategy::None)
@@ -359,7 +244,6 @@ impl CheckpointPricer {
         let result_without =
             self.price_path_dependent_with_checkpoints(gbm, payoff, discount_factor);
 
-        // Restore original strategy
         self.config.checkpoint_strategy = original_strategy;
         self.checkpoint_manager = CheckpointManager::new(original_strategy)
             .with_total_steps(self.config.mc_config.n_steps());
@@ -368,17 +252,6 @@ impl CheckpointPricer {
     }
 
     /// Forward pass for gradient computation (placeholder for Enzyme
-    /// integration).
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters
-    /// * `payoff` - Path-dependent payoff type
-    /// * `discount_factor` - Discount factor
-    ///
-    /// # Returns
-    ///
-    /// (price, checkpoint_count) tuple.
     pub fn forward_pass_with_checkpoints(
         &mut self,
         gbm: GbmParams,
@@ -390,23 +263,7 @@ impl CheckpointPricer {
     }
 
     /// Reverse pass placeholder for gradient computation.
-    ///
-    /// The reverse pass will:
-    /// 1. Start from the terminal payoff adjoint
-    /// 2. For each segment between checkpoints (in reverse order):
-    ///    - Restore state from checkpoint
-    ///    - Replay forward computation
-    ///    - Accumulate adjoints using Enzyme
-    ///
-    /// # Returns
-    ///
-    /// Placeholder gradient (0.0 until Enzyme integration).
-    pub fn reverse_pass_placeholder(&self) -> f64 {
-        // Placeholder: actual implementation requires Enzyme #[autodiff]
-        // Reverse pass will restore checkpoints, replay forward, and accumulate
-        // adjoints
-        0.0
-    }
+    pub fn reverse_pass_placeholder(&self) -> f64 { 0.0 }
 }
 
 #[cfg(test)]
@@ -426,10 +283,6 @@ mod tests {
 
         CheckpointPricingConfig::new(mc_config, CheckpointStrategy::Uniform { interval: 10 })
     }
-
-    // ========================================================================
-    // Construction Tests
-    // ========================================================================
 
     #[test]
     fn test_checkpoint_pricer_creation() {
@@ -457,10 +310,6 @@ mod tests {
         let pricer = CheckpointPricer::new(config).unwrap();
         assert!(pricer.config().memory_budget.is_some());
     }
-
-    // ========================================================================
-    // Pricing Tests
-    // ========================================================================
 
     #[test]
     fn test_price_asian_with_checkpoints() {
@@ -490,7 +339,6 @@ mod tests {
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // With interval=10 and n_steps=50, should have checkpoints at 0, 10, 20, 30, 40
         assert!(pricer.checkpoint_count() > 0);
     }
 
@@ -505,13 +353,8 @@ mod tests {
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Memory usage should be positive after checkpointing
         assert!(pricer.checkpoint_memory_usage() > 0);
     }
-
-    // ========================================================================
-    // Equivalence Tests
-    // ========================================================================
 
     #[test]
     fn test_checkpoint_equivalence() {
@@ -568,10 +411,6 @@ mod tests {
         assert!(is_equivalent);
     }
 
-    // ========================================================================
-    // Reproducibility Tests
-    // ========================================================================
-
     #[test]
     fn test_checkpoint_pricing_reproducibility() {
         let config = create_test_config();
@@ -599,18 +438,12 @@ mod tests {
         let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
-        // Price once to create checkpoints
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
         assert!(pricer.checkpoint_count() > 0);
 
-        // Reset should clear checkpoints
         pricer.reset();
         assert_eq!(pricer.checkpoint_count(), 0);
     }
-
-    // ========================================================================
-    // Forward Pass Tests
-    // ========================================================================
 
     #[test]
     fn test_forward_pass_returns_checkpoint_count() {
@@ -626,10 +459,6 @@ mod tests {
         assert!(price > 0.0);
         assert!(checkpoint_count > 0);
     }
-
-    // ========================================================================
-    // Strategy Tests
-    // ========================================================================
 
     #[test]
     fn test_logarithmic_checkpoint_strategy() {
@@ -653,9 +482,6 @@ mod tests {
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
         assert!(result.price > 0.0);
-
-        // Logarithmic strategy should create fewer checkpoints than uniform
-        // for the same number of steps
     }
 
     #[test]
@@ -677,13 +503,8 @@ mod tests {
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // No checkpoints should be created
         assert_eq!(pricer.checkpoint_count(), 0);
     }
-
-    // ========================================================================
-    // Comparison Tests
-    // ========================================================================
 
     #[test]
     fn test_checkpoint_vs_non_checkpoint_same_price() {
@@ -698,7 +519,6 @@ mod tests {
         let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
-        // With checkpoints
         let config_with = CheckpointPricingConfig::new(
             mc_config.clone(),
             CheckpointStrategy::Uniform { interval: 5 },
@@ -706,18 +526,12 @@ mod tests {
         let mut pricer_with = CheckpointPricer::new(config_with).unwrap();
         let result_with = pricer_with.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Without checkpoints
         let config_without = CheckpointPricingConfig::new(mc_config, CheckpointStrategy::None);
         let mut pricer_without = CheckpointPricer::new(config_without).unwrap();
         let result_without = pricer_without.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Prices should be identical (same RNG seed)
         assert_relative_eq!(result_with.price, result_without.price, epsilon = 1e-10);
     }
-
-    // ========================================================================
-    // Different Checkpoint Intervals Tests (Task 12.1)
-    // ========================================================================
 
     #[test]
     fn test_different_uniform_intervals_produce_same_price() {
@@ -732,7 +546,6 @@ mod tests {
         let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
-        // Interval = 5
         let config_5 = CheckpointPricingConfig::new(
             mc_config.clone(),
             CheckpointStrategy::Uniform { interval: 5 },
@@ -740,7 +553,6 @@ mod tests {
         let mut pricer_5 = CheckpointPricer::new(config_5).unwrap();
         let result_5 = pricer_5.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Interval = 10
         let config_10 = CheckpointPricingConfig::new(
             mc_config.clone(),
             CheckpointStrategy::Uniform { interval: 10 },
@@ -748,7 +560,6 @@ mod tests {
         let mut pricer_10 = CheckpointPricer::new(config_10).unwrap();
         let result_10 = pricer_10.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Interval = 20
         let config_20 = CheckpointPricingConfig::new(
             mc_config.clone(),
             CheckpointStrategy::Uniform { interval: 20 },
@@ -756,13 +567,11 @@ mod tests {
         let mut pricer_20 = CheckpointPricer::new(config_20).unwrap();
         let result_20 = pricer_20.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Interval = 50
         let config_50 =
             CheckpointPricingConfig::new(mc_config, CheckpointStrategy::Uniform { interval: 50 });
         let mut pricer_50 = CheckpointPricer::new(config_50).unwrap();
         let result_50 = pricer_50.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // All should produce the same price
         assert_relative_eq!(result_5.price, result_10.price, epsilon = 1e-10);
         assert_relative_eq!(result_10.price, result_20.price, epsilon = 1e-10);
         assert_relative_eq!(result_20.price, result_50.price, epsilon = 1e-10);
@@ -781,12 +590,10 @@ mod tests {
         let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
         let df = 0.95;
 
-        // None strategy
         let config_none = CheckpointPricingConfig::new(mc_config.clone(), CheckpointStrategy::None);
         let mut pricer_none = CheckpointPricer::new(config_none).unwrap();
         let result_none = pricer_none.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Uniform strategy
         let config_uniform = CheckpointPricingConfig::new(
             mc_config.clone(),
             CheckpointStrategy::Uniform { interval: 10 },
@@ -794,7 +601,6 @@ mod tests {
         let mut pricer_uniform = CheckpointPricer::new(config_uniform).unwrap();
         let result_uniform = pricer_uniform.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // Logarithmic strategy
         let config_log = CheckpointPricingConfig::new(
             mc_config,
             CheckpointStrategy::Logarithmic { base_interval: 5 },
@@ -802,7 +608,6 @@ mod tests {
         let mut pricer_log = CheckpointPricer::new(config_log).unwrap();
         let result_log = pricer_log.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        // All should produce the same price
         assert_relative_eq!(result_none.price, result_uniform.price, epsilon = 1e-10);
         assert_relative_eq!(result_uniform.price, result_log.price, epsilon = 1e-10);
     }
@@ -913,8 +718,6 @@ mod tests {
 
     #[test]
     fn test_different_intervals_all_payoff_types() {
-        // Test that different checkpoint intervals produce the same price
-        // for all path-dependent option types
         let mc_config = MonteCarloConfig::builder()
             .n_paths(1000)
             .n_steps(50)
@@ -935,7 +738,6 @@ mod tests {
         ];
 
         for payoff in payoffs {
-            // Interval = 5
             let config_5 = CheckpointPricingConfig::new(
                 mc_config.clone(),
                 CheckpointStrategy::Uniform { interval: 5 },
@@ -943,7 +745,6 @@ mod tests {
             let mut pricer_5 = CheckpointPricer::new(config_5).unwrap();
             let result_5 = pricer_5.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-            // Interval = 25
             let config_25 = CheckpointPricingConfig::new(
                 mc_config.clone(),
                 CheckpointStrategy::Uniform { interval: 25 },
@@ -951,17 +752,11 @@ mod tests {
             let mut pricer_25 = CheckpointPricer::new(config_25).unwrap();
             let result_25 = pricer_25.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-            // All should produce the same price regardless of checkpoint interval
             assert_relative_eq!(result_5.price, result_25.price, epsilon = 1e-10);
         }
     }
 
-    // ========================================================================
-    // Overhead Verification Tests (Task 13.1)
-    // ========================================================================
-
     /// Test that checkpoint memory usage increases with more frequent
-    /// checkpoints.
     #[test]
     fn test_memory_usage_scales_with_checkpoint_frequency() {
         let n_paths = 2000;
@@ -970,7 +765,6 @@ mod tests {
         let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
-        // Frequent checkpoints (interval = 5)
         let mc_config = MonteCarloConfig::builder()
             .n_paths(n_paths)
             .n_steps(n_steps)
@@ -985,14 +779,12 @@ mod tests {
         let _ = pricer_frequent.price_path_dependent_with_checkpoints(gbm, payoff, df);
         let mem_frequent = pricer_frequent.checkpoint_memory_usage();
 
-        // Sparse checkpoints (interval = 50)
         let config_sparse =
             CheckpointPricingConfig::new(mc_config, CheckpointStrategy::Uniform { interval: 50 });
         let mut pricer_sparse = CheckpointPricer::new(config_sparse).unwrap();
         let _ = pricer_sparse.price_path_dependent_with_checkpoints(gbm, payoff, df);
         let mem_sparse = pricer_sparse.checkpoint_memory_usage();
 
-        // Frequent checkpoints should use more memory
         assert!(
             mem_frequent > mem_sparse,
             "Frequent checkpoints ({}) should use more memory than sparse ({})",
@@ -1000,9 +792,6 @@ mod tests {
             mem_sparse
         );
 
-        // Memory should roughly scale with number of checkpoints
-        // interval=5 → ~20 checkpoints, interval=50 → ~2 checkpoints
-        // So memory ratio should be roughly 10x (allow 5x-20x range)
         let ratio = mem_frequent as f64 / mem_sparse as f64;
         assert!(
             ratio > 3.0,
@@ -1026,7 +815,6 @@ mod tests {
         let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
-        // Test various intervals
         for interval in [5, 10, 20, 25, 50] {
             let config = CheckpointPricingConfig::new(
                 mc_config.clone(),
@@ -1038,7 +826,6 @@ mod tests {
             let expected_checkpoints = n_steps / interval;
             let actual_checkpoints = pricer.checkpoint_count();
 
-            // Allow +/- 1 due to boundary conditions
             assert!(
                 (actual_checkpoints as i32 - expected_checkpoints as i32).abs() <= 1,
                 "Interval {}: expected ~{} checkpoints, got {}",

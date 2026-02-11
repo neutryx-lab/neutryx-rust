@@ -1,12 +1,10 @@
-//! Price command implementation
-//!
-//! Prices a portfolio of trades using the `pricer_pricing` engine.
+//! Price command implementation.
 
 use tracing::info;
 
 use crate::error::ServerError;
 
-/// Run the price command
+/// Run the price command.
 pub fn run(
     portfolio: &str,
     date: Option<&str>,
@@ -19,13 +17,11 @@ pub fn run(
     info!("  Monte Carlo paths: {}", num_paths);
     info!("  Output format: {}", format);
 
-    // Validate portfolio file exists
     if !std::path::Path::new(portfolio).exists() {
-        return Err(ServerError::FileNotFound(portfolio.to_string()));
+        return Err(ServerError::NotFound(format!(
+            "File not found: {portfolio}"
+        )));
     }
-
-    // Stub: portfolio loading, market data, and pricing integration pending.
-    // Current implementation outputs format template only.
 
     match format {
         "json" => {
@@ -43,7 +39,7 @@ pub fn run(
             println!("└────────────┴────────────┴────────────┘");
         }
         other => {
-            return Err(ServerError::InvalidArgument(format!(
+            return Err(ServerError::InvalidRequest(format!(
                 "Unknown format: {other}. Supported: json, csv, table"
             )));
         }

@@ -1,8 +1,4 @@
 //! Equity instrument definitions.
-//!
-//! This module provides definitions for equity derivatives including
-//! forwards, vanilla options, barrier options, Asian options,
-//! lookback options, equity swaps, and basket options.
 
 use super::{
     common::{BarrierDirection, BarrierType, ExerciseStyle},
@@ -57,9 +53,6 @@ impl EquityUnderlying {
 }
 
 /// Equity forward contract.
-///
-/// An agreement to buy/sell an equity at a predetermined price
-/// on a future date.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EquityForward {
@@ -93,8 +86,6 @@ impl EquityForward {
 }
 
 /// Equity vanilla option.
-///
-/// A standard option on an equity underlying.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EquityVanillaOption {
@@ -142,8 +133,6 @@ pub enum MonitoringFrequency {
 }
 
 /// Equity barrier option.
-///
-/// An option with a barrier that activates or deactivates the option.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EquityBarrierOption {
@@ -195,9 +184,6 @@ pub enum AveragingType {
 }
 
 /// Asian option (average price option).
-///
-/// An option whose payoff depends on the average price of the underlying
-/// over a specified period.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AsianOption {
@@ -256,9 +242,6 @@ pub enum LookbackType {
 }
 
 /// Lookback option.
-///
-/// An option whose payoff depends on the maximum or minimum price
-/// of the underlying over the option's life.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LookbackOption {
@@ -289,7 +272,6 @@ impl LookbackOption {
             ));
         }
 
-        // Fixed strike lookback must have a strike
         if self.lookback_type == LookbackType::FixedStrike && self.strike.is_none() {
             return Err(InstrumentError::invalid_parameter(
                 "Fixed strike lookback must have a strike",
@@ -325,8 +307,6 @@ pub enum EquityReturnType {
 }
 
 /// Equity swap.
-///
-/// A swap exchanging equity returns for interest payments.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EquitySwap {
@@ -381,8 +361,6 @@ pub struct BasketComponent {
 }
 
 /// Basket option.
-///
-/// An option on a weighted basket of underlying assets.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BasketOption {
@@ -423,7 +401,6 @@ impl BasketOption {
             ));
         }
 
-        // Check weights sum to approximately 1
         let weight_sum: f64 = self.components.iter().map(|c| c.weight).sum();
         if (weight_sum - 1.0).abs() > 0.0001 {
             return Err(InstrumentError::invalid_parameter(
@@ -480,7 +457,6 @@ mod tests {
     fn test_equity_instruments_validation() {
         let exp = Date::from_ymd(2025, 6, 15).unwrap();
 
-        // Forward: valid + negative notional
         let fwd = EquityForward {
             underlying: aapl(),
             forward_price: 150.0,
@@ -493,7 +469,6 @@ mod tests {
         bad.notional = -100.0;
         assert!(bad.validate().is_err());
 
-        // Vanilla option
         let opt = EquityVanillaOption {
             underlying: aapl(),
             strike: 150.0,
@@ -505,7 +480,6 @@ mod tests {
         };
         assert!(opt.validate().is_ok());
 
-        // Barrier option
         let barrier = EquityBarrierOption {
             vanilla: opt.clone(),
             barrier_level: 170.0,
@@ -516,7 +490,6 @@ mod tests {
         };
         assert!(barrier.validate().is_ok());
 
-        // Asian option: valid + negative observed
         let asian = AsianOption {
             underlying: aapl(),
             strike: 150.0,
@@ -534,7 +507,6 @@ mod tests {
         bad.averaging_type = AveragingType::Geometric;
         assert!(bad.validate().is_err());
 
-        // Lookback option: valid + missing strike
         let lookback = LookbackOption {
             underlying: aapl(),
             strike: Some(150.0),
@@ -550,7 +522,6 @@ mod tests {
         bad.strike = None;
         assert!(bad.validate().is_err());
 
-        // Equity swap: valid + invalid dates
         let swap = EquitySwap {
             underlying: aapl(),
             return_type: EquityReturnType::TotalReturn,
@@ -567,7 +538,6 @@ mod tests {
         bad.maturity = Date::from_ymd(2025, 1, 1).unwrap();
         assert!(bad.validate().is_err());
 
-        // Basket option: valid + empty + bad weights
         let basket = BasketOption {
             components: vec![
                 BasketComponent {

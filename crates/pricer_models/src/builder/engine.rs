@@ -315,9 +315,12 @@ where
             iterations = iter + 1;
 
             // Build curve and compute residuals
-            let curve = problem.build_curve(&x).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Failed to build curve: {e}"))
-            })?;
+            let curve =
+                problem
+                    .build_curve(&x)
+                    .map_err(|e| CalibrationError::NumericalInstability {
+                        message: format!("Failed to build curve: {e}"),
+                    })?;
 
             let residuals = problem.compute_residuals(&curve)?;
 
@@ -336,14 +339,14 @@ where
                 if self.config.store_jacobian_inverse {
                     let jacobian = problem.compute_jacobian_finite_diff(&x)?;
                     self.strategy.decompose(&jacobian).map_err(|e| {
-                        CalibrationError::numerical_instability(format!(
-                            "Jacobian decomposition failed: {e}"
-                        ))
+                        CalibrationError::NumericalInstability {
+                            message: format!("Jacobian decomposition failed: {e}"),
+                        }
                     })?;
                     jacobian_inverse = Some(self.strategy.inverse().map_err(|e| {
-                        CalibrationError::numerical_instability(format!(
-                            "Jacobian inverse failed: {e}"
-                        ))
+                        CalibrationError::NumericalInstability {
+                            message: format!("Jacobian inverse failed: {e}"),
+                        }
                     })?);
                 }
 
@@ -355,18 +358,22 @@ where
 
             // Validate structure if strategy requires it
             self.strategy.validate_structure(&jacobian).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Invalid Jacobian structure: {e}"))
+                CalibrationError::NumericalInstability {
+                    message: format!("Invalid Jacobian structure: {e}"),
+                }
             })?;
 
             // Decompose and solve
             self.strategy.decompose(&jacobian).map_err(|e| {
-                CalibrationError::numerical_instability(format!(
-                    "Jacobian decomposition failed: {e}"
-                ))
+                CalibrationError::NumericalInstability {
+                    message: format!("Jacobian decomposition failed: {e}"),
+                }
             })?;
 
             let delta = self.strategy.solve(&residuals).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Linear solve failed: {e}"))
+                CalibrationError::NumericalInstability {
+                    message: format!("Linear solve failed: {e}"),
+                }
             })?;
 
             // Apply damping if configured
@@ -386,9 +393,9 @@ where
                 // Compute final Jacobian inverse
                 if self.config.store_jacobian_inverse {
                     jacobian_inverse = Some(self.strategy.inverse().map_err(|e| {
-                        CalibrationError::numerical_instability(format!(
-                            "Jacobian inverse failed: {e}"
-                        ))
+                        CalibrationError::NumericalInstability {
+                            message: format!("Jacobian inverse failed: {e}"),
+                        }
                     })?);
                 }
 
@@ -397,9 +404,12 @@ where
         }
 
         // Build final curve
-        let curve = problem.build_curve(&x).map_err(|e| {
-            CalibrationError::numerical_instability(format!("Failed to build final curve: {e}"))
-        })?;
+        let curve =
+            problem
+                .build_curve(&x)
+                .map_err(|e| CalibrationError::NumericalInstability {
+                    message: format!("Failed to build final curve: {e}"),
+                })?;
 
         let discount_factors: Vec<T> = x.iter().map(|&log_df| Float::exp(log_df)).collect();
 
@@ -459,14 +469,14 @@ where
                 if self.config.store_jacobian_inverse {
                     let jacobian = problem.compute_jacobian_with_jumps(&params)?;
                     self.strategy.decompose(&jacobian).map_err(|e| {
-                        CalibrationError::numerical_instability(format!(
-                            "Jacobian decomposition failed: {e}"
-                        ))
+                        CalibrationError::NumericalInstability {
+                            message: format!("Jacobian decomposition failed: {e}"),
+                        }
                     })?;
                     jacobian_inverse = Some(self.strategy.inverse().map_err(|e| {
-                        CalibrationError::numerical_instability(format!(
-                            "Jacobian inverse failed: {e}"
-                        ))
+                        CalibrationError::NumericalInstability {
+                            message: format!("Jacobian inverse failed: {e}"),
+                        }
                     })?);
                 }
 
@@ -481,13 +491,15 @@ where
 
             // Decompose and solve
             self.strategy.decompose(&jacobian).map_err(|e| {
-                CalibrationError::numerical_instability(format!(
-                    "Jacobian decomposition failed: {e}"
-                ))
+                CalibrationError::NumericalInstability {
+                    message: format!("Jacobian decomposition failed: {e}"),
+                }
             })?;
 
             let delta = self.strategy.solve(&residuals).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Linear solve failed: {e}"))
+                CalibrationError::NumericalInstability {
+                    message: format!("Linear solve failed: {e}"),
+                }
             })?;
 
             // Apply damping if configured
@@ -506,9 +518,9 @@ where
 
                 if self.config.store_jacobian_inverse {
                     jacobian_inverse = Some(self.strategy.inverse().map_err(|e| {
-                        CalibrationError::numerical_instability(format!(
-                            "Jacobian inverse failed: {e}"
-                        ))
+                        CalibrationError::NumericalInstability {
+                            message: format!("Jacobian inverse failed: {e}"),
+                        }
                     })?);
                 }
 
@@ -521,7 +533,9 @@ where
         let jumps = problem.extract_jumps(&params);
 
         let curve = problem.build_curve_with_jumps(log_df, jumps).map_err(|e| {
-            CalibrationError::numerical_instability(format!("Failed to build final curve: {e}"))
+            CalibrationError::NumericalInstability {
+                message: format!("Failed to build final curve: {e}"),
+            }
         })?;
 
         let discount_factors: Vec<T> = log_df.iter().map(|&ld| Float::exp(ld)).collect();

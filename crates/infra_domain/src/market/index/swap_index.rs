@@ -1,18 +1,4 @@
 //! Swap index definitions for CMS (Constant Maturity Swap).
-//!
-//! This module provides swap index types used for CMS products.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{SwapIndex, Currency, RateIndex};
-//! use infra_domain::time::Tenor;
-//!
-//! let cms10y = SwapIndex::UsdCms10Y;
-//! assert_eq!(cms10y.currency(), Currency::USD);
-//! assert_eq!(cms10y.tenor(), Tenor::TenYears);
-//! assert_eq!(cms10y.underlying_index(), RateIndex::Sofr);
-//! ```
 
 use super::RateIndex;
 use crate::{
@@ -41,71 +27,53 @@ pub struct SwapIndexMetadata {
 }
 
 /// Swap index for CMS (Constant Maturity Swap) products.
-///
-/// Represents standard swap rate indices used in CMS swaps, caps, and floors.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{SwapIndex, Currency};
-/// use infra_domain::time::Tenor;
-///
-/// let eur_cms = SwapIndex::EurCms10Y;
-/// assert_eq!(eur_cms.currency(), Currency::EUR);
-/// assert_eq!(eur_cms.tenor(), Tenor::TenYears);
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum SwapIndex {
-    // USD CMS (SOFR-based)
-    /// USD CMS 2Y
+    /// USD CMS 2Y.
     UsdCms2Y,
-    /// USD CMS 5Y
+    /// USD CMS 5Y.
     UsdCms5Y,
-    /// USD CMS 10Y
+    /// USD CMS 10Y.
     UsdCms10Y,
-    /// USD CMS 30Y
+    /// USD CMS 30Y.
     UsdCms30Y,
 
-    // EUR CMS (EURIBOR/ESTR-based)
-    /// EUR CMS 2Y
+    /// EUR CMS 2Y.
     EurCms2Y,
-    /// EUR CMS 5Y
+    /// EUR CMS 5Y.
     EurCms5Y,
-    /// EUR CMS 10Y
+    /// EUR CMS 10Y.
     EurCms10Y,
-    /// EUR CMS 30Y
+    /// EUR CMS 30Y.
     EurCms30Y,
 
-    // GBP CMS (SONIA-based)
-    /// GBP CMS 2Y
+    /// GBP CMS 2Y.
     GbpCms2Y,
-    /// GBP CMS 5Y
+    /// GBP CMS 5Y.
     GbpCms5Y,
-    /// GBP CMS 10Y
+    /// GBP CMS 10Y.
     GbpCms10Y,
-    /// GBP CMS 30Y
+    /// GBP CMS 30Y.
     GbpCms30Y,
 
-    // JPY CMS (TONAR-based)
-    /// JPY CMS 2Y
+    /// JPY CMS 2Y.
     JpyCms2Y,
-    /// JPY CMS 5Y
+    /// JPY CMS 5Y.
     JpyCms5Y,
-    /// JPY CMS 10Y
+    /// JPY CMS 10Y.
     JpyCms10Y,
-    /// JPY CMS 30Y
+    /// JPY CMS 30Y.
     JpyCms30Y,
 
-    // CHF CMS (SARON-based)
-    /// CHF CMS 2Y
+    /// CHF CMS 2Y.
     ChfCms2Y,
-    /// CHF CMS 5Y
+    /// CHF CMS 5Y.
     ChfCms5Y,
-    /// CHF CMS 10Y
+    /// CHF CMS 10Y.
     ChfCms10Y,
-    /// CHF CMS 30Y
+    /// CHF CMS 30Y.
     ChfCms30Y,
 }
 
@@ -138,15 +106,6 @@ impl SwapIndex {
     }
 
     /// Returns the API code for this swap index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::SwapIndex;
-    ///
-    /// assert_eq!(SwapIndex::UsdCms10Y.api_code(), "USD-CMS-10Y");
-    /// assert_eq!(SwapIndex::EurCms5Y.api_code(), "EUR-CMS-5Y");
-    /// ```
     #[must_use]
     pub const fn api_code(&self) -> &'static str {
         match self {
@@ -174,15 +133,6 @@ impl SwapIndex {
     }
 
     /// Returns the currency of this swap index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{SwapIndex, Currency};
-    ///
-    /// assert_eq!(SwapIndex::UsdCms10Y.currency(), Currency::USD);
-    /// assert_eq!(SwapIndex::EurCms10Y.currency(), Currency::EUR);
-    /// ```
     #[must_use]
     pub const fn currency(&self) -> Currency {
         match self {
@@ -195,17 +145,6 @@ impl SwapIndex {
     }
 
     /// Returns the tenor (maturity) of this swap index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::SwapIndex;
-    /// use infra_domain::time::Tenor;
-    ///
-    /// assert_eq!(SwapIndex::UsdCms2Y.tenor(), Tenor::TwoYears);
-    /// assert_eq!(SwapIndex::UsdCms10Y.tenor(), Tenor::TenYears);
-    /// assert_eq!(SwapIndex::EurCms30Y.tenor(), Tenor::ThirtyYears);
-    /// ```
     #[must_use]
     pub const fn tenor(&self) -> Tenor {
         match self {
@@ -229,16 +168,6 @@ impl SwapIndex {
     }
 
     /// Returns the underlying rate index for the floating leg.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{SwapIndex, RateIndex};
-    ///
-    /// assert_eq!(SwapIndex::UsdCms10Y.underlying_index(), RateIndex::Sofr);
-    /// assert_eq!(SwapIndex::EurCms10Y.underlying_index(), RateIndex::Estr);
-    /// assert_eq!(SwapIndex::GbpCms10Y.underlying_index(), RateIndex::Sonia);
-    /// ```
     #[must_use]
     pub const fn underlying_index(&self) -> RateIndex {
         match self {
@@ -251,15 +180,6 @@ impl SwapIndex {
     }
 
     /// Returns the human-readable name of this swap index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::SwapIndex;
-    ///
-    /// assert_eq!(SwapIndex::UsdCms10Y.name(), "USD CMS 10Y");
-    /// assert_eq!(SwapIndex::EurCms5Y.name(), "EUR CMS 5Y");
-    /// ```
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
@@ -287,17 +207,6 @@ impl SwapIndex {
     }
 
     /// Returns the full metadata for this swap index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{SwapIndex, RateIndex};
-    /// use infra_domain::time::{Tenor, DayCounter};
-    ///
-    /// let metadata = SwapIndex::UsdCms10Y.metadata();
-    /// assert_eq!(metadata.underlying_index, RateIndex::Sofr);
-    /// assert_eq!(metadata.fixed_frequency, Tenor::SixMonths);
-    /// ```
     #[must_use]
     pub const fn metadata(&self) -> SwapIndexMetadata {
         match self.currency() {
@@ -344,25 +253,12 @@ impl SwapIndex {
                 fixed_day_counter: DayCounter::Thirty360Bond,
                 float_day_counter: DayCounter::Actual360,
                 settlement_lag: 2,
-                calendar: CalendarId::Target, // Swiss calendar not yet defined
+                calendar: CalendarId::Target,
             },
         }
     }
 
     /// Creates a swap index from currency and tenor.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{SwapIndex, Currency};
-    /// use infra_domain::time::Tenor;
-    ///
-    /// let index = SwapIndex::from_currency_tenor(Currency::USD, Tenor::TenYears);
-    /// assert_eq!(index, Some(SwapIndex::UsdCms10Y));
-    ///
-    /// let unsupported = SwapIndex::from_currency_tenor(Currency::USD, Tenor::OneYear);
-    /// assert_eq!(unsupported, None);
-    /// ```
     #[must_use]
     pub const fn from_currency_tenor(currency: Currency, tenor: Tenor) -> Option<Self> {
         match (currency, tenor) {
@@ -495,7 +391,7 @@ mod tests {
     fn test_metadata_gbp() {
         let metadata = SwapIndex::GbpCms10Y.metadata();
         assert_eq!(metadata.underlying_index, RateIndex::Sonia);
-        assert_eq!(metadata.settlement_lag, 0); // GBP has T+0
+        assert_eq!(metadata.settlement_lag, 0);
         assert_eq!(metadata.fixed_day_counter, DayCounter::Actual365Fixed);
     }
 

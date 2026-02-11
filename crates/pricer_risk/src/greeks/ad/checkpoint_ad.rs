@@ -1,38 +1,4 @@
 //! Checkpointing integration for path-dependent AD.
-//!
-//! This module provides the integration between Enzyme automatic
-//! differentiation and the checkpointing infrastructure for memory-efficient
-//! Greeks computation on path-dependent options (Asian, Barrier, etc.).
-//!
-//! # Memory Efficiency
-//!
-//! For path-dependent options with N steps, computing Greeks via reverse-mode
-//! AD would normally require O(N) memory to store all intermediate values.
-//! Checkpointing reduces this to O(√N) by:
-//!
-//! 1. Saving state at strategic checkpoints during forward pass
-//! 2. During reverse pass, restoring from nearest checkpoint and recomputing
-//!
-//! # Usage
-//!
-//! ```rust,ignore
-//! use pricer_risk::greeks::ad::checkpoint_ad::{CheckpointedAD, CheckpointADConfig};
-//! use pricer_pricing::checkpoint::CheckpointStrategy;
-//!
-//! let config = CheckpointADConfig::new(252, CheckpointStrategy::binomial_optimal(252, 16));
-//! let mut ad = CheckpointedAD::new(config);
-//!
-//! // Forward pass with checkpointing
-//! for step in 0..252 {
-//!     if ad.should_checkpoint(step) {
-//!         ad.save_forward_state(step, &state);
-//!     }
-//!     // ... simulation step with AD ...
-//! }
-//!
-//! // Reverse pass
-//! let greeks = ad.compute_reverse_pass();
-//! ```
 
 use num_traits::Float;
 use pricer_pricing::checkpoint::{CheckpointManager, CheckpointStrategy};
@@ -42,26 +8,14 @@ use super::{loops::AdjointAccumulator, reverse::ReverseAD};
 /// Configuration for checkpointed AD.
 #[derive(Clone, Debug)]
 pub struct CheckpointADConfig {
-    /// Total number of simulation steps.
     n_steps: usize,
-
-    /// Checkpointing strategy.
     strategy: CheckpointStrategy,
-
-    /// Whether to use smooth payoffs for barrier options.
     use_smooth_payoffs: bool,
-
-    /// Smoothing epsilon for barrier/digital payoffs.
     smooth_epsilon: f64,
 }
 
 impl CheckpointADConfig {
     /// Creates a new checkpoint AD configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_steps` - Total number of simulation steps
-    /// * `strategy` - Checkpointing strategy to use
     #[inline]
     pub fn new(n_steps: usize, strategy: CheckpointStrategy) -> Self {
         Self {
@@ -72,9 +26,8 @@ impl CheckpointADConfig {
         }
     }
 
-    /// Creates configuration with automatic optimal checkpointing.
-    ///
-    /// Uses binomial optimal strategy with approximately √N checkpoints.
+    /// Creates configuration with automatic optimal checkpointing using approx
+    /// sqrt(N) checkpoints.
     #[inline]
     pub fn with_optimal_checkpoints(n_steps: usize) -> Self {
         let strategy = CheckpointStrategy::binomial_optimal(n_steps);
@@ -122,19 +75,15 @@ impl CheckpointADConfig {
 /// State saved at a checkpoint for AD reverse pass.
 #[derive(Clone, Debug)]
 pub struct ADCheckpointState<T: Float> {
-    /// Step index where checkpoint was saved.
+    /// Current simulation step.
     pub step: usize,
-
-    /// Current spot prices for all paths.
+    /// Spot prices at this checkpoint.
     pub spots: Vec<T>,
-
-    /// Running average (for Asian options).
+    /// Running average for Asian options.
     pub running_avg: Option<Vec<T>>,
-
-    /// Barrier status (for barrier options).
+    /// Barrier alive flags per path.
     pub barrier_alive: Option<Vec<bool>>,
-
-    /// Random numbers used from this step onwards.
+    /// Random variates from this step onward.
     pub randoms_from_step: Vec<T>,
 }
 
@@ -174,13 +123,9 @@ impl<T: Float> ADCheckpointState<T> {
 }
 
 /// Checkpointed AD coordinator for path-dependent options.
-///
-/// Manages the integration between checkpointing and automatic differentiation
-/// for memory-efficient Greeks computation.
 #[derive(Debug)]
 pub struct CheckpointedAD<T: Float> {
     config: CheckpointADConfig,
-    /// Checkpoint manager for future Enzyme integration.
     _manager: CheckpointManager<T>,
     adjoint_accumulator: AdjointAccumulator<T>,
     checkpoints: Vec<ADCheckpointState<T>>,
@@ -246,19 +191,11 @@ impl<T: Float> CheckpointedAD<T> {
 }
 
 /// Trait for path-dependent payoffs that support AD.
-///
-/// Implementations must provide methods that are compatible with
-/// Enzyme automatic differentiation.
 pub trait PathDependentAD<T: Float> {
-    /// Computes the payoff value at termination.
-    ///
-    /// This must be a smooth function for AD to work correctly.
+    /// Computes the payoff value at termination (must be smooth for AD).
     fn payoff(&self, terminal_spot: T, path_data: &PathData<T>) -> T;
 
     /// Computes the delta contribution from this path.
-    ///
-    /// For forward-mode AD, this is the tangent of the payoff with respect to
-    /// spot.
     fn delta_contribution(&self, terminal_spot: T, path_data: &PathData<T>) -> T;
 
     /// Returns whether this payoff type requires path history.
@@ -268,22 +205,17 @@ pub trait PathDependentAD<T: Float> {
 /// Path data collected during simulation.
 #[derive(Clone, Debug, Default)]
 pub struct PathData<T: Float> {
-    /// Running sum for average calculation.
+    /// Running sum of observations.
     pub running_sum: T,
-
-    /// Number of observations.
+    /// Number of observations so far.
     pub n_observations: usize,
-
-    /// Maximum spot seen (for lookback).
+    /// Maximum spot observed.
     pub max_spot: T,
-
-    /// Minimum spot seen (for lookback).
+    /// Minimum spot observed.
     pub min_spot: T,
-
     /// Whether barrier has been breached.
     pub barrier_breached: bool,
-
-    /// Step at which barrier was breached (if any).
+    /// Step at which barrier was breached.
     pub breach_step: Option<usize>,
 }
 
@@ -342,28 +274,21 @@ impl<T: Float> PathData<T> {
 /// Result of checkpointed AD computation.
 #[derive(Clone, Debug)]
 pub struct CheckpointedGreeks<T: Float> {
-    /// Computed Delta.
+    /// Delta sensitivity.
     pub delta: T,
-
-    /// Computed Gamma (if available).
+    /// Gamma sensitivity.
     pub gamma: Option<T>,
-
-    /// Computed Vega.
+    /// Vega sensitivity.
     pub vega: T,
-
-    /// Computed Theta.
+    /// Theta sensitivity.
     pub theta: T,
-
-    /// Computed Rho.
+    /// Rho sensitivity.
     pub rho: T,
-
-    /// Number of paths used.
+    /// Number of Monte Carlo paths used.
     pub n_paths: usize,
-
-    /// Peak memory usage estimate (in checkpoints).
+    /// Peak number of checkpoints stored.
     pub peak_checkpoints: usize,
-
-    /// Total recomputation steps (for performance analysis).
+    /// Number of recomputation steps.
     pub recomputation_steps: usize,
 }
 

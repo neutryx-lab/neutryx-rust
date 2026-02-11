@@ -9,21 +9,19 @@ description = "Portfolio risk management and XVA calculations for neutryx-rust"
 
 [features]
 default = []
-serde = ["dep:serde"]
 # Enzyme AD feature for actual Enzyme integration (requires nightly Rust and LLVM 18)
 enzyme-ad = ["dep:llvm-sys"]
-# Global bootstrap integration for IFT-based curve sensitivities
-global-bootstrap = ["pricer_models/global-bootstrap"]
 
 [dependencies]
 infra_config = { path = "../infra_config" }
 infra_domain = { path = "../infra_domain" }
-pricer_core = { path = "../pricer_core", features = ["linalg"] }
+pricer_core = { path = "../pricer_core" }
 pricer_models = { path = "../pricer_models" }
-pricer_pricing = { path = "../pricer_pricing", features = ["l1l2-integration"] }
+pricer_pricing = { path = "../pricer_pricing" }
 rayon.workspace = true
-serde = { workspace = true, optional = true }
+serde.workspace = true
 thiserror.workspace = true
+strum.workspace = true
 # For GreeksResult<T: Float>
 num-traits.workspace = true
 # Linear algebra for ImplicitSolver (AAD curve sensitivities)

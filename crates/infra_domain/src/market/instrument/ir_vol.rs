@@ -1,8 +1,4 @@
 //! Interest rate volatility instrument definitions.
-//!
-//! This module provides definitions for IR volatility instruments including
-//! swaptions and caps/floors. These instruments are used for calibrating
-//! IR volatility surfaces (swaption cubes, cap/floor volatility surfaces).
 
 use super::{
     common::{NotionalSchedule, PayerReceiver, PaymentSchedule},
@@ -13,10 +9,6 @@ use crate::{
     time::{Date, EndOfMonthRule, Frequency, Tenor},
     trade::{ExerciseType, SettlementType},
 };
-
-// ============================================================================
-// Error Types
-// ============================================================================
 
 /// Errors specific to IR Vol instrument operations.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -38,33 +30,7 @@ pub enum IrVolInstrumentError {
     InvalidVolatility(f64),
 }
 
-// ============================================================================
-// Swaption
-// ============================================================================
-
 /// Swaption (option on an interest rate swap).
-///
-/// Represents the right (but not obligation) to enter into an underlying
-/// interest rate swap at a future date.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::instrument::{Swaption, PayerReceiver};
-/// use infra_domain::trade::{ExerciseType, SettlementType};
-/// use infra_domain::{market::Currency, time::{Date, Tenor}};
-///
-/// let swaption = Swaption {
-///     underlying_swap_tenor: Tenor::TenYears,
-///     expiry: Date::from_ymd(2026, 1, 15).unwrap(),
-///     exercise_type: ExerciseType::European,
-///     settlement_type: SettlementType::Cash,
-///     strike: 0.03,
-///     notional: 10_000_000.0,
-///     currency: Currency::USD,
-///     payer_receiver: PayerReceiver::Payer,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Swaption {
@@ -88,10 +54,6 @@ pub struct Swaption {
 
 impl Swaption {
     /// Validates the swaption parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -103,13 +65,11 @@ impl Swaption {
                 "Strike must be non-negative",
             ));
         }
-        // Validate strike is reasonable (not more than 50%)
         if self.strike > 0.5 {
             return Err(InstrumentError::invalid_parameter(
                 "Strike rate exceeds reasonable bounds (>50%)",
             ));
         }
-        // Validate underlying tenor is reasonable for swaption
         if self.underlying_swap_tenor.to_months() == 0 {
             return Err(InstrumentError::invalid_parameter(
                 "Underlying swap tenor must be at least 1 month",
@@ -119,48 +79,19 @@ impl Swaption {
     }
 
     /// Generates the underlying swap schedule.
-    ///
-    /// The schedule represents the payment dates of the underlying swap
-    /// that would begin at the swaption expiry date.
-    ///
-    /// # Arguments
-    /// * `payment_frequency` - Payment frequency for the swap legs (default:
-    ///   Annual)
-    /// * `payment_lag` - Business days between accrual end and payment
-    ///
-    /// # Returns
-    /// A `PaymentSchedule` containing the accrual periods of the underlying
-    /// swap.
-    ///
-    /// # Errors
-    /// Returns `InstrumentError` if the schedule cannot be generated.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,ignore
-    /// use infra_domain::trade::instrument_def::Swaption;
-    /// use infra_domain::time::Frequency;
-    ///
-    /// let swaption = /* ... */;
-    /// let schedule = swaption.generate_underlying_schedule(Frequency::Annual, 2)?;
-    /// ```
     pub fn generate_underlying_schedule(
         &self,
         payment_frequency: Frequency,
         payment_lag: u32,
     ) -> Result<PaymentSchedule, InstrumentError> {
-        // Validate before generating schedule
         self.validate()?;
 
-        // The underlying swap starts at swaption expiry
         let swap_start = self.expiry;
 
-        // Calculate swap end date from tenor
         let swap_end = self
             .underlying_swap_tenor
             .add_to_date(swap_start, EndOfMonthRule::Adjust);
 
-        // Validate the resulting schedule
         if swap_end <= swap_start {
             return Err(InstrumentError::invalid_date(
                 "Underlying swap end date must be after start date",
@@ -197,8 +128,6 @@ impl Swaption {
     pub fn is_payer(&self) -> bool { self.payer_receiver == PayerReceiver::Payer }
 
     /// Returns the expiry tenor code (e.g., "1Y" for 1-year expiry).
-    ///
-    /// This is useful for swaption cube lookups.
     #[must_use]
     pub fn expiry_tenor_code(&self, valuation_date: Date) -> String {
         let years = self.expiry_years(valuation_date);
@@ -227,10 +156,6 @@ impl std::fmt::Display for Swaption {
         )
     }
 }
-
-// ============================================================================
-// Cap/Floor Types
-// ============================================================================
 
 /// Cap or Floor type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -263,32 +188,7 @@ impl std::fmt::Display for CapFloorType {
     }
 }
 
-// ============================================================================
-// CapFloor
-// ============================================================================
-
 /// Interest rate cap or floor.
-///
-/// A cap is a series of call options (caplets) on an interest rate index.
-/// A floor is a series of put options (floorlets) on an interest rate index.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::instrument::{CapFloor, CapFloorType, NotionalSchedule};
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
-///
-/// let cap = CapFloor {
-///     cap_floor_type: CapFloorType::Cap,
-///     strikes: vec![0.03],
-///     index: RateIndex::Sofr,
-///     start_date: Date::from_ymd(2025, 1, 1).unwrap(),
-///     tenor: Tenor::FiveYears,
-///     notional_schedule: NotionalSchedule::constant(10_000_000.0),
-///     payment_frequency: Frequency::Quarterly,
-///     currency: Currency::USD,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CapFloor {
@@ -312,10 +212,6 @@ pub struct CapFloor {
 
 impl CapFloor {
     /// Validates the cap/floor parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.strikes.is_empty() {
             return Err(InstrumentError::invalid_parameter(
@@ -351,7 +247,6 @@ impl CapFloor {
                     "Strike must be non-negative",
                 ));
             }
-            // Validate strike is reasonable (not more than 50%)
             if *strike > 0.5 {
                 return Err(InstrumentError::invalid_parameter(
                     "Strike rate exceeds reasonable bounds (>50%)",
@@ -359,7 +254,6 @@ impl CapFloor {
             }
         }
 
-        // Validate tenor is reasonable
         if self.tenor.to_months() == 0 {
             return Err(InstrumentError::invalid_parameter(
                 "Cap/Floor tenor must be at least 1 month",
@@ -370,40 +264,16 @@ impl CapFloor {
     }
 
     /// Generates the underlying cap/floor payment schedule.
-    ///
-    /// The schedule represents the caplet/floorlet periods from start date
-    /// to the end of the tenor.
-    ///
-    /// # Arguments
-    /// * `payment_lag` - Business days between accrual end and payment
-    ///
-    /// # Returns
-    /// A `PaymentSchedule` containing the accrual periods (caplets/floorlets).
-    ///
-    /// # Errors
-    /// Returns `InstrumentError` if the schedule cannot be generated.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,ignore
-    /// use infra_domain::trade::instrument_def::CapFloor;
-    ///
-    /// let cap = /* ... */;
-    /// let schedule = cap.generate_underlying_schedule(2)?;
-    /// ```
     pub fn generate_underlying_schedule(
         &self,
         payment_lag: u32,
     ) -> Result<PaymentSchedule, InstrumentError> {
-        // Validate before generating schedule
         self.validate()?;
 
-        // Calculate end date from tenor
         let end_date = self
             .tenor
             .add_to_date(self.start_date, EndOfMonthRule::Adjust);
 
-        // Validate the resulting schedule
         if end_date <= self.start_date {
             return Err(InstrumentError::invalid_date(
                 "Cap/Floor end date must be after start date",
@@ -438,7 +308,7 @@ impl CapFloor {
     pub fn primary_strike(&self) -> f64 {
         match self.cap_floor_type {
             CapFloorType::Cap | CapFloorType::Floor => self.strikes.first().copied().unwrap_or(0.0),
-            CapFloorType::Collar => self.strikes.get(1).copied().unwrap_or(0.0), // Cap strike
+            CapFloorType::Collar => self.strikes.get(1).copied().unwrap_or(0.0),
         }
     }
 
@@ -491,16 +361,7 @@ impl std::fmt::Display for CapFloor {
     }
 }
 
-// ============================================================================
-// IR Vol Instrument Enum
-// ============================================================================
-
 /// IR Volatility Instrument variants.
-///
-/// These instruments are used for calibrating IR volatility surfaces.
-/// The standard market convention quotes swaption volatilities in a cube
-/// (expiry x underlying tenor x strike) and cap/floor volatilities in a
-/// surface.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum IrVolInstrument {
@@ -556,30 +417,7 @@ impl std::fmt::Display for IrVolInstrument {
     }
 }
 
-// ============================================================================
-// Builder Pattern
-// ============================================================================
-
 /// Builder for constructing Swaption instances with fluent API.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::instrument::{SwaptionBuilder, PayerReceiver};
-/// use infra_domain::trade::{ExerciseType, SettlementType};
-/// use infra_domain::{market::Currency, time::{Date, Tenor}};
-///
-/// let swaption = SwaptionBuilder::new(
-///         Date::from_ymd(2026, 1, 15).unwrap(),
-///         Tenor::TenYears,
-///     )
-///     .strike(0.03)
-///     .notional(10_000_000.0)
-///     .currency(Currency::USD)
-///     .payer()
-///     .build()
-///     .unwrap();
-/// ```
 #[derive(Debug, Clone)]
 pub struct SwaptionBuilder {
     expiry: Date,
@@ -658,13 +496,6 @@ impl SwaptionBuilder {
     }
 
     /// Builds the Swaption, validating all parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if:
-    /// - Strike is not specified
-    /// - Notional is not specified
-    /// - Validation fails
     pub fn build(self) -> Result<Swaption, InstrumentError> {
         let strike = self
             .strike
@@ -690,23 +521,6 @@ impl SwaptionBuilder {
 }
 
 /// Builder for constructing CapFloor instances with fluent API.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::instrument::{CapFloorBuilder, CapFloorType};
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
-///
-/// let cap = CapFloorBuilder::new(
-///         Date::from_ymd(2025, 1, 1).unwrap(),
-///         Tenor::FiveYears,
-///     )
-///     .cap(0.03)
-///     .index(RateIndex::Sofr)
-///     .notional(10_000_000.0)
-///     .build()
-///     .unwrap();
-/// ```
 #[derive(Debug, Clone)]
 pub struct CapFloorBuilder {
     start_date: Date,
@@ -788,13 +602,6 @@ impl CapFloorBuilder {
     }
 
     /// Builds the CapFloor, validating all parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if:
-    /// - Cap/floor type is not specified
-    /// - Notional is not specified
-    /// - Validation fails
     pub fn build(self) -> Result<CapFloor, InstrumentError> {
         let cap_floor_type = self.cap_floor_type.ok_or_else(|| {
             InstrumentError::invalid_parameter(
@@ -820,10 +627,6 @@ impl CapFloorBuilder {
         Ok(cap_floor)
     }
 }
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -861,7 +664,6 @@ mod tests {
         assert_eq!(s, s.clone());
         assert!(s.is_payer());
 
-        // Validation failures
         assert!(Swaption {
             notional: -100.0,
             ..s.clone()
@@ -881,7 +683,6 @@ mod tests {
         .validate()
         .is_err());
 
-        // Schedule generation
         let schedule = s
             .generate_underlying_schedule(Frequency::Annual, 2)
             .unwrap();
@@ -894,7 +695,6 @@ mod tests {
             20
         );
 
-        // Swap dates
         assert_eq!(s.underlying_swap_start(), s.expiry);
         assert_eq!(
             s.underlying_swap_end(),
@@ -902,7 +702,6 @@ mod tests {
         );
         assert!((s.expiry_years(Date::from_ymd(2025, 1, 15).unwrap()) - 1.0).abs() < 0.01);
 
-        // Display
         let d = format!("{}", s);
         assert!(d.contains("Payer") && d.contains("Swaption") && d.contains("3.00%"));
     }
@@ -914,7 +713,6 @@ mod tests {
         assert_eq!(CapFloorType::Cap, CapFloorType::Cap);
         assert_ne!(CapFloorType::Cap, CapFloorType::Floor);
 
-        // Validation failures
         assert!(CapFloor {
             strikes: vec![],
             ..c.clone()
@@ -940,13 +738,11 @@ mod tests {
         .validate()
         .is_err());
 
-        // Schedule, end date, num caplets, primary strike
         assert_eq!(c.generate_underlying_schedule(2).unwrap().num_periods(), 20);
         assert_eq!(c.end_date(), Date::from_ymd(2030, 1, 1).unwrap());
         assert_eq!(c.num_caplets(), 20);
         assert!((c.primary_strike() - 0.03).abs() < 1e-10);
 
-        // Collar
         let collar = CapFloor {
             cap_floor_type: CapFloorType::Collar,
             strikes: vec![0.02, 0.04],
@@ -962,7 +758,6 @@ mod tests {
         };
         assert!(bad_collar.validate().is_err());
 
-        // Display
         assert!(format!("{}", c).contains("Cap") && format!("{}", c).contains("3.00%"));
     }
 
@@ -1002,7 +797,6 @@ mod tests {
             .unwrap();
         assert!(!r.is_payer());
 
-        // Missing fields
         assert!(
             SwaptionBuilder::new(Date::from_ymd(2026, 1, 15).unwrap(), Tenor::TenYears)
                 .notional(10_000_000.0)
@@ -1052,7 +846,6 @@ mod tests {
             .unwrap();
         assert_eq!(freq.payment_frequency, Frequency::Monthly);
 
-        // Missing fields
         assert!(CapFloorBuilder::new(d, Tenor::FiveYears)
             .notional(10_000_000.0)
             .build()

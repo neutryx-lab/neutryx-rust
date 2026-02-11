@@ -11,7 +11,6 @@ use std::fmt;
 
 use thiserror::Error;
 
-#[cfg(feature = "linalg")]
 use crate::math::linalg::LinearAlgebraError;
 // Import math errors for From implementations
 use crate::math::normal_dist::DistributionError;
@@ -79,8 +78,7 @@ pub enum PricingError {
 /// let err = SolverError::SingularJacobian { min_pivot: 1e-15 };
 /// assert!(format!("{}", err).contains("Singular Jacobian"));
 /// ```
-#[derive(Error, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Error, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SolverError {
     /// Solver failed to converge within maximum iterations.
     #[error("Failed to converge after {iterations} iterations")]
@@ -142,7 +140,6 @@ pub enum SolverError {
 ///
 /// This conversion enables seamless error propagation from linear algebra
 /// operations (matrix decomposition, inversion) to solver error handling.
-#[cfg(feature = "linalg")]
 impl From<LinearAlgebraError> for SolverError {
     fn from(err: LinearAlgebraError) -> Self {
         match err {
@@ -178,8 +175,7 @@ impl From<LinearAlgebraError> for SolverError {
 /// - `NumericalInstability`: Numerical issues during calibration
 /// - `InsufficientData`: Not enough market data for calibration
 /// - `InvalidParameter`: Invalid parameter value during calibration
-#[derive(Error, Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Error, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum CalibrationErrorKind {
     /// Calibration did not converge within iteration limit.
     #[error("calibration did not converge")]
@@ -231,8 +227,7 @@ pub enum CalibrationErrorKind {
 /// let err = CalibrationError::constraint_violation("alpha must be positive");
 /// assert!(format!("{}", err).contains("constraint violation"));
 /// ```
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CalibrationError {
     /// The type of calibration error.
     pub kind: CalibrationErrorKind,
@@ -560,7 +555,6 @@ mod tests {
         assert!(display.contains("5"));
     }
 
-    #[cfg(feature = "linalg")]
     #[test]
     fn test_solver_error_from_linear_algebra_singular() {
         use crate::math::linalg::LinearAlgebraError;
@@ -569,7 +563,6 @@ mod tests {
         assert!(matches!(solver_err, SolverError::SingularJacobian { .. }));
     }
 
-    #[cfg(feature = "linalg")]
     #[test]
     fn test_solver_error_from_linear_algebra_dimension_mismatch() {
         use crate::math::linalg::LinearAlgebraError;
@@ -846,8 +839,7 @@ mod tests {
         let _: &dyn std::error::Error = &err;
     }
 
-    // Serde tests (feature-gated)
-    #[cfg(feature = "serde")]
+    // Serde tests
     mod serde_tests {
         use super::*;
 

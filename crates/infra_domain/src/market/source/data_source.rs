@@ -1,42 +1,8 @@
 //! Data source identification and priority.
-//!
-//! This module provides types for identifying the origin of market data
-//! and defining priority when multiple sources provide the same rate.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{DataSource, SourcePriority};
-//!
-//! let source = DataSource::Bloomberg;
-//! let priority = SourcePriority::default_priority();
-//!
-//! // Bloomberg has higher priority than Reuters
-//! use std::cmp::Ordering;
-//! assert_eq!(priority.compare(DataSource::Bloomberg, DataSource::Reuters), Ordering::Less);
-//! ```
 
 use std::{cmp::Ordering, fmt};
 
 /// Identification of market data sources.
-///
-/// Represents the different providers or origins of market data.
-///
-/// # Variants
-///
-/// - `Reuters`: Reuters/Refinitiv market data
-/// - `Bloomberg`: Bloomberg market data
-/// - `Internal`: Internally computed or sourced data
-/// - `Manual`: Manually entered data
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::DataSource;
-///
-/// let source = DataSource::Bloomberg;
-/// assert_eq!(source.code(), "BBG");
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
@@ -53,17 +19,6 @@ pub enum DataSource {
 
 impl DataSource {
     /// Returns a short code for this data source.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::DataSource;
-    ///
-    /// assert_eq!(DataSource::Reuters.code(), "RTR");
-    /// assert_eq!(DataSource::Bloomberg.code(), "BBG");
-    /// assert_eq!(DataSource::Internal.code(), "INT");
-    /// assert_eq!(DataSource::Manual.code(), "MAN");
-    /// ```
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -75,14 +30,6 @@ impl DataSource {
     }
 
     /// Returns the full name of this data source.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::DataSource;
-    ///
-    /// assert_eq!(DataSource::Bloomberg.name(), "Bloomberg");
-    /// ```
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
@@ -99,30 +46,6 @@ impl fmt::Display for DataSource {
 }
 
 /// Priority ordering for data sources.
-///
-/// Defines the preference order when multiple sources provide the same rate.
-/// Lower index means higher priority.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{DataSource, SourcePriority};
-/// use std::cmp::Ordering;
-///
-/// let priority = SourcePriority::default_priority();
-///
-/// // Bloomberg is preferred over Reuters
-/// assert_eq!(
-///     priority.compare(DataSource::Bloomberg, DataSource::Reuters),
-///     Ordering::Less
-/// );
-///
-/// // Same source compares equal
-/// assert_eq!(
-///     priority.compare(DataSource::Bloomberg, DataSource::Bloomberg),
-///     Ordering::Equal
-/// );
-/// ```
 #[derive(Debug, Clone)]
 pub struct SourcePriority {
     /// Priority order (first = highest priority).
@@ -131,35 +54,10 @@ pub struct SourcePriority {
 
 impl SourcePriority {
     /// Creates a new `SourcePriority` with the given order.
-    ///
-    /// Sources earlier in the list have higher priority.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{DataSource, SourcePriority};
-    ///
-    /// let priority = SourcePriority::new(vec![
-    ///     DataSource::Internal,
-    ///     DataSource::Bloomberg,
-    ///     DataSource::Reuters,
-    ///     DataSource::Manual,
-    /// ]);
-    /// ```
     #[must_use]
     pub fn new(priorities: Vec<DataSource>) -> Self { Self { priorities } }
 
     /// Creates the default priority order.
-    ///
-    /// Default order: Bloomberg > Reuters > Internal > Manual
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{DataSource, SourcePriority};
-    ///
-    /// let priority = SourcePriority::default_priority();
-    /// ```
     #[must_use]
     pub fn default_priority() -> Self {
         Self {
@@ -173,30 +71,6 @@ impl SourcePriority {
     }
 
     /// Compares two data sources by priority.
-    ///
-    /// Returns `Ordering::Less` if `a` has higher priority than `b`,
-    /// `Ordering::Greater` if `b` has higher priority, and
-    /// `Ordering::Equal` if they have the same priority.
-    ///
-    /// Sources not in the priority list are considered lowest priority.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{DataSource, SourcePriority};
-    /// use std::cmp::Ordering;
-    ///
-    /// let priority = SourcePriority::default_priority();
-    ///
-    /// assert_eq!(
-    ///     priority.compare(DataSource::Bloomberg, DataSource::Reuters),
-    ///     Ordering::Less
-    /// );
-    /// assert_eq!(
-    ///     priority.compare(DataSource::Manual, DataSource::Internal),
-    ///     Ordering::Greater
-    /// );
-    /// ```
     #[must_use]
     pub fn compare(&self, a: DataSource, b: DataSource) -> Ordering {
         let pos_a = self.position(a);
@@ -205,8 +79,6 @@ impl SourcePriority {
     }
 
     /// Returns the position of a source in the priority list.
-    ///
-    /// Returns `usize::MAX` if the source is not in the list.
     fn position(&self, source: DataSource) -> usize {
         self.priorities
             .iter()
@@ -215,17 +87,6 @@ impl SourcePriority {
     }
 
     /// Returns true if `a` has higher priority than `b`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{DataSource, SourcePriority};
-    ///
-    /// let priority = SourcePriority::default_priority();
-    ///
-    /// assert!(priority.is_higher_priority(DataSource::Bloomberg, DataSource::Reuters));
-    /// assert!(!priority.is_higher_priority(DataSource::Reuters, DataSource::Bloomberg));
-    /// ```
     #[must_use]
     pub fn is_higher_priority(&self, a: DataSource, b: DataSource) -> bool {
         self.compare(a, b) == Ordering::Less
@@ -245,8 +106,6 @@ mod tests {
     use std::collections::{HashMap, HashSet};
 
     use super::*;
-
-    // DataSource tests
 
     #[test]
     fn test_data_source_variants() {
@@ -306,7 +165,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(DataSource::Bloomberg);
         set.insert(DataSource::Reuters);
-        set.insert(DataSource::Bloomberg); // Duplicate
+        set.insert(DataSource::Bloomberg);
 
         assert_eq!(set.len(), 2);
     }
@@ -326,8 +185,6 @@ mod tests {
         assert_eq!(format!("{:?}", DataSource::Bloomberg), "Bloomberg");
         assert_eq!(format!("{:?}", DataSource::Reuters), "Reuters");
     }
-
-    // SourcePriority tests
 
     #[test]
     fn test_source_priority_new() {
@@ -363,19 +220,16 @@ mod tests {
     fn test_source_priority_compare() {
         let priority = SourcePriority::default_priority();
 
-        // Bloomberg > Reuters (Bloomberg is higher priority)
         assert_eq!(
             priority.compare(DataSource::Bloomberg, DataSource::Reuters),
             Ordering::Less
         );
 
-        // Reuters < Bloomberg (Reuters is lower priority)
         assert_eq!(
             priority.compare(DataSource::Reuters, DataSource::Bloomberg),
             Ordering::Greater
         );
 
-        // Same source = equal
         assert_eq!(
             priority.compare(DataSource::Bloomberg, DataSource::Bloomberg),
             Ordering::Equal
@@ -386,7 +240,6 @@ mod tests {
     fn test_source_priority_compare_all_pairs() {
         let priority = SourcePriority::default_priority();
 
-        // Bloomberg is highest
         assert_eq!(
             priority.compare(DataSource::Bloomberg, DataSource::Reuters),
             Ordering::Less
@@ -400,7 +253,6 @@ mod tests {
             Ordering::Less
         );
 
-        // Reuters is second
         assert_eq!(
             priority.compare(DataSource::Reuters, DataSource::Internal),
             Ordering::Less
@@ -410,7 +262,6 @@ mod tests {
             Ordering::Less
         );
 
-        // Internal is third
         assert_eq!(
             priority.compare(DataSource::Internal, DataSource::Manual),
             Ordering::Less
@@ -438,7 +289,6 @@ mod tests {
             DataSource::Reuters,
         ]);
 
-        // Custom order: Internal > Manual > Bloomberg > Reuters
         assert!(priority.is_higher_priority(DataSource::Internal, DataSource::Manual));
         assert!(priority.is_higher_priority(DataSource::Manual, DataSource::Bloomberg));
         assert!(priority.is_higher_priority(DataSource::Bloomberg, DataSource::Reuters));

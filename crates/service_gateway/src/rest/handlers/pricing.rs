@@ -1,6 +1,4 @@
-//! Pricing handlers
-//!
-//! Thin handlers delegating to `PricingService`.
+//! Pricing handlers.
 
 use axum::Json;
 
@@ -12,12 +10,18 @@ use crate::{
     services::PricingService,
 };
 
-stateless_json_handler! {
-    /// POST /api/price
-    pub async fn price_instrument(PricingRequest => PricingResponse) = PricingService::price_instrument;
+/// POST /api/price.
+pub async fn price_instrument(
+    AppJson(request): AppJson<PricingRequest>,
+) -> Result<Json<PricingResponse>, ServerError> {
+    let response = PricingService::price_instrument(&request)?;
+    Ok(Json(response))
 }
 
-stateless_json_handler! {
-    /// POST /api/price/batch
-    pub async fn price_portfolio(PortfolioPricingRequest => PortfolioPricingResponse) = PricingService::price_portfolio;
+/// POST /api/price/batch.
+pub async fn price_portfolio(
+    AppJson(request): AppJson<PortfolioPricingRequest>,
+) -> Result<Json<PortfolioPricingResponse>, ServerError> {
+    let response = PricingService::price_portfolio(&request)?;
+    Ok(Json(response))
 }

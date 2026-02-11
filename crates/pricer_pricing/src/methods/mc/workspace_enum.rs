@@ -1,27 +1,4 @@
 //! Static dispatch enum for workspace implementations.
-//!
-//! This module provides [`WorkspaceEnum`], which enables compile-time selection
-//! of workspace layout without the overhead of trait objects (`dyn Trait`).
-//!
-//! # Design Rationale
-//!
-//! Using an enum instead of `Box<dyn PathWorkspaceTrait>` provides:
-//! - Zero virtual dispatch overhead in hot paths
-//! - Better compiler optimisation (inlining, loop unrolling)
-//! - Enzyme AD compatibility (no trait object indirection)
-//!
-//! # Usage
-//!
-//! ```rust
-//! use pricer_pricing::mc::{WorkspaceEnum, PathLayout, PathWorkspaceTrait};
-//!
-//! // Create workspace based on layout configuration
-//! let workspace = WorkspaceEnum::new(PathLayout::TimeStepFirst, 1000, 100);
-//!
-//! assert_eq!(workspace.num_paths(), 1000);
-//! assert_eq!(workspace.num_steps(), 100);
-//! assert_eq!(workspace.layout(), PathLayout::TimeStepFirst);
-//! ```
 
 use enum_dispatch::enum_dispatch;
 
@@ -31,34 +8,6 @@ use super::{
 };
 
 /// Static dispatch enum for workspace implementations.
-///
-/// Avoids `dyn Trait` overhead by using an enum with exhaustive match.
-/// Each variant holds the concrete workspace type, enabling the compiler
-/// to inline method calls in hot paths.
-///
-/// # Performance
-///
-/// Match-based dispatch is typically faster than virtual dispatch because:
-/// - No pointer indirection for vtable lookup
-/// - Compiler can inline matched branches
-/// - Better branch prediction due to local comparison
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::{WorkspaceEnum, PathLayout, PathWorkspaceTrait};
-///
-/// // Create PathFirst workspace (default)
-/// let mut ws = WorkspaceEnum::path_first(100, 10);
-/// assert_eq!(ws.layout(), PathLayout::PathFirst);
-///
-/// // Create TimeStepFirst workspace
-/// let mut ws = WorkspaceEnum::timestep_first(100, 10);
-/// assert_eq!(ws.layout(), PathLayout::TimeStepFirst);
-/// ```
-///
-/// Uses `enum_dispatch` to automatically implement `PathWorkspaceTrait`
-/// by forwarding method calls to the inner variant types.
 #[enum_dispatch(PathWorkspaceTrait)]
 pub enum WorkspaceEnum {
     /// Traditional path-first layout: `[path][step]`
@@ -69,20 +18,6 @@ pub enum WorkspaceEnum {
 
 impl WorkspaceEnum {
     /// Creates a workspace with the specified layout.
-    ///
-    /// # Arguments
-    ///
-    /// * `layout` - Memory layout mode
-    /// * `num_paths` - Number of simulation paths
-    /// * `num_steps` - Number of time steps
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::{WorkspaceEnum, PathLayout};
-    ///
-    /// let ws = WorkspaceEnum::new(PathLayout::TimeStepFirst, 1000, 100);
-    /// ```
     pub fn new(layout: PathLayout, num_paths: usize, num_steps: usize) -> Self {
         match layout {
             PathLayout::PathFirst => Self::PathFirst(PathWorkspace::new(num_paths, num_steps)),
@@ -93,34 +28,18 @@ impl WorkspaceEnum {
     }
 
     /// Creates a PathFirst workspace.
-    ///
-    /// # Arguments
-    ///
-    /// * `num_paths` - Number of simulation paths
-    /// * `num_steps` - Number of time steps
     #[inline]
     pub fn path_first(num_paths: usize, num_steps: usize) -> Self {
         Self::PathFirst(PathWorkspace::new(num_paths, num_steps))
     }
 
     /// Creates a TimeStepFirst workspace.
-    ///
-    /// # Arguments
-    ///
-    /// * `num_paths` - Number of simulation paths
-    /// * `num_steps` - Number of time steps
     #[inline]
     pub fn timestep_first(num_paths: usize, num_steps: usize) -> Self {
         Self::TimeStepFirst(TimeStepFirstWorkspace::new(num_paths, num_steps))
     }
 
     /// Creates a TimeStepFirst workspace with custom alignment.
-    ///
-    /// # Arguments
-    ///
-    /// * `num_paths` - Number of simulation paths
-    /// * `num_steps` - Number of time steps
-    /// * `alignment` - Alignment in bytes (must be power of 2)
     #[inline]
     pub fn timestep_first_aligned(num_paths: usize, num_steps: usize, alignment: usize) -> Self {
         Self::TimeStepFirst(TimeStepFirstWorkspace::with_alignment(
@@ -147,7 +66,6 @@ impl WorkspaceEnum {
     }
 
     /// Returns a reference to the inner TimeStepFirstWorkspace if
-    /// TimeStepFirst.
     #[inline]
     pub fn as_timestep_first(&self) -> Option<&TimeStepFirstWorkspace> {
         match self {
@@ -157,7 +75,6 @@ impl WorkspaceEnum {
     }
 
     /// Returns a mutable reference to the inner TimeStepFirstWorkspace if
-    /// TimeStepFirst.
     #[inline]
     pub fn as_timestep_first_mut(&mut self) -> Option<&mut TimeStepFirstWorkspace> {
         match self {
@@ -167,8 +84,6 @@ impl WorkspaceEnum {
     }
 
     /// Ensures the workspace has sufficient capacity.
-    ///
-    /// Delegates to the inner workspace's ensure_capacity method.
     pub fn ensure_capacity(&mut self, num_paths: usize, num_steps: usize) {
         match self {
             Self::PathFirst(ws) => ws.ensure_capacity(num_paths, num_steps),
@@ -193,10 +108,6 @@ impl WorkspaceEnum {
         }
     }
 }
-
-// NOTE: `impl PathWorkspaceTrait for WorkspaceEnum` is now auto-generated
-// by the `#[enum_dispatch(PathWorkspaceTrait)]` attribute on the enum
-// definition. This eliminates ~130 lines of boilerplate match statements.
 
 #[cfg(test)]
 mod tests {
@@ -269,7 +180,6 @@ mod tests {
     #[test]
     fn test_workspace_enum_step_slice_path_first() {
         let ws = WorkspaceEnum::path_first(10, 5);
-        // PathFirst doesn't support step slices
         assert!(ws.get_step_slice(0).is_none());
     }
 
@@ -277,7 +187,6 @@ mod tests {
     fn test_workspace_enum_step_slice_timestep_first() {
         let mut ws = WorkspaceEnum::timestep_first(10, 5);
 
-        // TimeStepFirst supports step slices
         if let Some(step0) = ws.get_step_slice_mut(0) {
             for (i, val) in step0.iter_mut().enumerate() {
                 *val = i as f64;
@@ -294,7 +203,6 @@ mod tests {
     fn test_workspace_enum_path_slice_path_first() {
         let mut ws = WorkspaceEnum::path_first(10, 5);
 
-        // PathFirst supports path slices
         ws.set_path_value(0, 0, 100.0);
         ws.set_path_value(0, 5, 150.0);
 
@@ -307,7 +215,6 @@ mod tests {
     #[test]
     fn test_workspace_enum_path_slice_timestep_first() {
         let ws = WorkspaceEnum::timestep_first(10, 5);
-        // TimeStepFirst doesn't support path slices
         assert!(ws.get_path_slice(0).is_none());
     }
 
@@ -326,7 +233,6 @@ mod tests {
         let ws_pf = WorkspaceEnum::path_first(100, 10);
         let ws_tsf = WorkspaceEnum::timestep_first(100, 10);
 
-        // Both should have similar memory usage
         let mem_pf = ws_pf.memory_usage();
         let mem_tsf = ws_tsf.memory_usage();
 
@@ -361,18 +267,13 @@ mod tests {
         ws.set_path_value(0, 0, 100.0);
 
         ws.reset();
-
-        // After reset, PathWorkspace clears logical size
-        // Note: This tests the delegation, not the specific reset behaviour
     }
 
     #[test]
     fn test_workspace_enum_consistent_values_across_layouts() {
-        // Test that both layouts produce consistent get/set behaviour
         let mut ws_pf = WorkspaceEnum::path_first(4, 3);
         let mut ws_tsf = WorkspaceEnum::timestep_first(4, 3);
 
-        // Set same values in both
         for path in 0..4 {
             for step in 0..4 {
                 let val = (path * 10 + step) as f64;
@@ -381,7 +282,6 @@ mod tests {
             }
         }
 
-        // Verify both return same values
         for path in 0..4 {
             for step in 0..4 {
                 let expected = (path * 10 + step) as f64;

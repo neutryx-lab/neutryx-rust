@@ -1,23 +1,8 @@
 //! CounterParty module errors.
-//!
-//! This module defines structured error types for the counterparty module,
-//! covering validation failures for IDs, credit parameters, and margin terms.
 
 use thiserror::Error;
 
 /// CounterParty module errors.
-///
-/// Provides structured error handling for counterparty-related operations
-/// including validation of IDs, LEIs, credit parameters, and margin terms.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::CounterPartyError;
-///
-/// let err = CounterPartyError::InvalidLei("ABC".to_string());
-/// assert!(err.to_string().contains("20 alphanumeric"));
-/// ```
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum CounterPartyError {
     /// Invalid CounterParty ID.
@@ -40,8 +25,7 @@ pub enum CounterPartyError {
     #[error("Invalid credit rating: {0}")]
     InvalidRating(String),
 
-    /// Invalid credit parameters (e.g., negative hazard rate, LGD out of
-    /// range).
+    /// Invalid credit parameters (e.g., negative hazard rate, LGD out of.
     #[error("Invalid credit parameters: {0}")]
     InvalidCreditParams(String),
 
@@ -63,7 +47,6 @@ pub enum CounterPartyError {
     },
 }
 
-// Integration with MasterDataError
 impl From<CounterPartyError> for crate::error::MasterDataError {
     fn from(e: CounterPartyError) -> Self {
         crate::error::MasterDataError::CounterParty(e.to_string())

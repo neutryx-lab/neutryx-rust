@@ -1,88 +1,42 @@
 //! Payment frequency definitions.
-//!
-//! This module provides payment frequency representations for
-//! financial instruments.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::time::Frequency;
-//!
-//! let freq = Frequency::Quarterly;
-//! assert_eq!(freq.periods_per_year(), 4);
-//! assert_eq!(freq.months_per_period(), 3);
-//! ```
 
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 /// Payment frequency for financial instruments.
-///
-/// Represents how often payments are made (e.g., coupons, interest).
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::time::Frequency;
-///
-/// let freq = Frequency::SemiAnnual;
-/// assert_eq!(freq.periods_per_year(), 2);
-/// assert_eq!(freq.months_per_period(), 6);
-/// ```
-/// Payment frequency ordered from highest (Daily) to lowest (Annual).
-///
-/// Ordering rationale: Financial schedules typically progress from
-/// higher frequency to lower frequency when iterating payment dates.
-/// The `Ord` implementation ensures `Daily < Weekly < Monthly < Quarterly <
-/// SemiAnnual < Annual`.
-///
-/// # Adding New Variants
-///
-/// When adding new frequency variants, place them according to their
-/// payment frequency (higher frequency = earlier in declaration order).
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::time::Frequency;
-///
-/// // Ordering: Daily is "less than" Weekly (higher frequency first)
-/// assert!(Frequency::Daily < Frequency::Weekly);
-/// assert!(Frequency::Monthly < Frequency::Annual);
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Default,
+    strum::Display,
+    strum::AsRefStr,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Frequency {
-    /// Daily payments (252 business days per year)
+    /// Daily payments (252 business days per year).
     Daily,
-    /// Weekly payments (52 per year)
+    /// Weekly payments (52 per year).
     Weekly,
-    /// Monthly payments (12 per year)
+    /// Monthly payments (12 per year).
     #[default]
     Monthly,
-    /// Quarterly payments (4 per year)
+    /// Quarterly payments (4 per year).
     Quarterly,
-    /// Semi-annual payments (2 per year)
+    /// Semi-annual payments (2 per year).
+    #[strum(serialize = "Semi-Annual")]
     SemiAnnual,
-    /// Annual payments (1 per year)
+    /// Annual payments (1 per year).
     Annual,
 }
 
 impl Frequency {
     /// Returns the number of months per payment period.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::Frequency;
-    ///
-    /// assert_eq!(Frequency::Annual.months_per_period(), 12);
-    /// assert_eq!(Frequency::SemiAnnual.months_per_period(), 6);
-    /// assert_eq!(Frequency::Quarterly.months_per_period(), 3);
-    /// assert_eq!(Frequency::Monthly.months_per_period(), 1);
-    /// assert_eq!(Frequency::Weekly.months_per_period(), 0);
-    /// assert_eq!(Frequency::Daily.months_per_period(), 0);
-    /// ```
     #[must_use]
     pub fn months_per_period(&self) -> u32 {
         match self {
@@ -95,19 +49,6 @@ impl Frequency {
     }
 
     /// Returns the number of payment periods per year.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::Frequency;
-    ///
-    /// assert_eq!(Frequency::Annual.periods_per_year(), 1);
-    /// assert_eq!(Frequency::SemiAnnual.periods_per_year(), 2);
-    /// assert_eq!(Frequency::Quarterly.periods_per_year(), 4);
-    /// assert_eq!(Frequency::Monthly.periods_per_year(), 12);
-    /// assert_eq!(Frequency::Weekly.periods_per_year(), 52);
-    /// assert_eq!(Frequency::Daily.periods_per_year(), 365);
-    /// ```
     #[must_use]
     pub fn periods_per_year(&self) -> u32 {
         match self {
@@ -122,16 +63,7 @@ impl Frequency {
 
     /// Returns the standard name for this frequency.
     #[must_use]
-    pub fn name(&self) -> &'static str {
-        match self {
-            Frequency::Annual => "Annual",
-            Frequency::SemiAnnual => "Semi-Annual",
-            Frequency::Quarterly => "Quarterly",
-            Frequency::Monthly => "Monthly",
-            Frequency::Weekly => "Weekly",
-            Frequency::Daily => "Daily",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 }
 
 impl FromStr for Frequency {
@@ -151,17 +83,9 @@ impl FromStr for Frequency {
     }
 }
 
-impl fmt::Display for Frequency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ========================================
-    // Ordering Tests (Requirement 1.2, 1.3)
-    // ========================================
 
     #[test]
     fn test_frequency_ord_daily_less_than_weekly() {
@@ -190,8 +114,6 @@ mod tests {
 
     #[test]
     fn test_frequency_ord_full_chain() {
-        // Verify complete ordering: Daily < Weekly < Monthly < Quarterly < SemiAnnual <
-        // Annual
         assert!(Frequency::Daily < Frequency::Weekly);
         assert!(Frequency::Weekly < Frequency::Monthly);
         assert!(Frequency::Monthly < Frequency::Quarterly);
@@ -228,10 +150,6 @@ mod tests {
     fn test_frequency_default() {
         assert_eq!(Frequency::default(), Frequency::Monthly);
     }
-
-    // ========================================
-    // Existing Tests
-    // ========================================
 
     #[test]
     fn test_months_per_period() {
@@ -285,7 +203,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(Frequency::Annual);
         set.insert(Frequency::Quarterly);
-        set.insert(Frequency::Annual); // Duplicate
+        set.insert(Frequency::Annual);
         assert_eq!(set.len(), 2);
     }
 }

@@ -15,15 +15,10 @@ mod error;
 mod grid;
 mod instrument;
 
-#[cfg(feature = "global-bootstrap")]
 mod engine;
-#[cfg(feature = "global-bootstrap")]
 pub mod enzyme_jacobian;
-#[cfg(feature = "global-bootstrap")]
 mod jump;
-#[cfg(feature = "global-bootstrap")]
 mod matrix;
-#[cfg(feature = "global-bootstrap")]
 mod problem;
 
 // =============================================================================
@@ -56,32 +51,24 @@ pub use compile::{CompileError, CompiledInstrument, InstrumentCompiler, Instrume
 pub use construction::{
     ConstructionConfig, ConstructionError, ConstructionResult, CurveConstructionEngine,
 };
-pub use curve::{BootstrapConfig, CurveBootstrapper, JacobianMatrix};
-#[cfg(feature = "global-bootstrap")]
-pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
-#[cfg(feature = "global-bootstrap")]
+pub use curve::{
+    BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapResult,
+    GlobalBootstrapper, JacobianMatrix,
+};
 pub use engine::{
     CalibrationEngine, CalibrationEngineConfig, CalibrationResult, GlobalCalibrationEngine,
     SequentialCalibrationEngine,
 };
-#[cfg(feature = "global-bootstrap")]
 pub use enzyme_jacobian::JacobianResult;
-#[cfg(feature = "global-bootstrap")]
 pub use error::{
     apply_tikhonov_regularisation, estimate_condition_number, should_apply_regularisation,
-    validate_jacobian_dmatrix,
-};
-pub use error::{
-    validate_jacobian_matrix, CalibrationError, IftError, JacobianQuality, NumericalDiagnostics,
-    RegularisationType,
+    validate_jacobian_dmatrix, validate_jacobian_matrix, CalibrationError, IftError,
+    JacobianQuality, NumericalDiagnostics, RegularisationType,
 };
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
-#[cfg(feature = "global-bootstrap")]
 pub use jump::{JumpConfig, JumpPillar};
-#[cfg(feature = "global-bootstrap")]
-pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
-#[cfg(feature = "global-bootstrap")]
+pub use matrix::{CalibrationMatrix, InterpolationMatrix};
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
 // =============================================================================
 // Public Re-exports: Vol Calibration
@@ -89,7 +76,7 @@ pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
 pub use vol::{
     DeltaVol, DeltaVolSlice, FxVolBuilder, FxVolResult, OrderedFloat, SabrBounds, SabrParams,
     SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrationDiagnostics,
-    SliceCalibrationResult, SliceCalibrator, VolCubeBuilder, VolCubeResult, VolQuote,
+    SliceCalibrationResult, SliceCalibrator, VolBuilder, VolCubeBuilder, VolCubeResult, VolQuote,
 };
 
 // =============================================================================
@@ -162,22 +149,6 @@ pub enum BootstrapError {
         /// Maximum allowed maturity.
         max_maturity: f64,
     },
-}
-
-impl BootstrapError {
-    /// Creates a convergence failure error.
-    pub fn convergence_failure(maturity: f64, residual: f64, iterations: usize) -> Self {
-        Self::ConvergenceFailure {
-            maturity,
-            residual,
-            iterations,
-        }
-    }
-
-    /// Creates an insufficient data error.
-    pub fn insufficient_data(required: usize, provided: usize) -> Self {
-        Self::InsufficientData { required, provided }
-    }
 }
 
 /// Result of a successful bootstrap operation.

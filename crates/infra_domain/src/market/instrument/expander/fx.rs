@@ -1,7 +1,4 @@
 //! FX instrument expansion implementations.
-//!
-//! Covers: FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap,
-//! CrossCurrencyBasisSwap.
 
 use super::{
     fx_exchange_trade, rates::generate_payment_dates, settlement_trade, InstrumentExpander,
@@ -113,7 +110,6 @@ impl InstrumentExpander for FxSwap {
                 )
             };
 
-        // Near leg: pay notional_currency, receive other_currency
         let near_pay_cf = Cashflow::new(
             CashflowType::Principal,
             self.near_leg_date,
@@ -135,7 +131,6 @@ impl InstrumentExpander for FxSwap {
             other_currency,
         );
 
-        // Far leg: receive notional_currency, pay other_currency
         let far_receive_cf = Cashflow::new(
             CashflowType::Principal,
             self.far_leg_date,

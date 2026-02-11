@@ -1,32 +1,26 @@
-//! Check command implementation
-//!
-//! Validates system configuration and dependencies.
+//! Check command implementation.
 
 use tracing::info;
 
-/// Run the check command
+/// Run the check command.
 pub fn run() {
     info!("Checking system configuration...\n");
 
     println!("Neutryx System Check");
     println!("====================\n");
 
-    // Check Rust version
     println!("Rust Toolchain:");
     println!("  Version: {}", env!("CARGO_PKG_VERSION"));
     println!("  Edition: 2021");
     println!();
 
-    // Check for Enzyme (nightly feature)
     println!("Enzyme AD:");
     #[cfg_attr(not(feature = "enzyme-ad"), allow(dead_code))]
     {
-        // enzyme-ad is not a feature of this crate; always report disabled
         println!("  Status: ✗ Disabled (pricer_pricing not built with Enzyme)");
     }
     println!();
 
-    // Check thread pool
     let num_cpus = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1);
@@ -34,7 +28,6 @@ pub fn run() {
     println!("  CPU cores: {num_cpus}");
     println!();
 
-    // Check available modules (A-I-P-S architecture)
     println!("Available Modules (A-I-P-S Architecture):");
     println!();
     println!("  [A] Adapter Layer:");

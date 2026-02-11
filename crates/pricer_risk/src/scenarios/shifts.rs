@@ -1,9 +1,4 @@
 //! Risk factor shifts and bump scenarios.
-//!
-//! Provides infrastructure for defining market data shocks:
-//! - `RiskFactorShift`: Individual factor shift specification
-//! - `BumpScenario`: Collection of coordinated shifts
-//! - `Scenario`: Named scenario with description
 
 use pricer_core::traits::{
     risk::{RiskFactorType, ShiftType},
@@ -11,19 +6,10 @@ use pricer_core::traits::{
 };
 
 /// Specification for shifting a single risk factor.
-///
-/// Combines a factor type, identifier pattern, and shift specification.
-///
-/// # Requirements
-///
-/// - Requirements: 10.2
 #[derive(Clone, Debug)]
 pub struct RiskFactorShift<T: Float> {
-    /// Type of risk factor being shifted
     factor_type: RiskFactorType,
-    /// Identifier pattern (e.g., "USD.OIS.*" for all USD OIS tenors)
     identifier_pattern: String,
-    /// The shift to apply
     shift: ShiftType<T>,
 }
 
@@ -88,8 +74,6 @@ impl<T: Float> RiskFactorShift<T> {
     pub fn shift(&self) -> &ShiftType<T> { &self.shift }
 
     /// Check if an identifier matches the pattern.
-    ///
-    /// Supports simple glob patterns with `*` wildcard.
     pub fn matches(&self, identifier: &str) -> bool {
         if self.identifier_pattern == "*" {
             return true;
@@ -103,15 +87,8 @@ impl<T: Float> RiskFactorShift<T> {
 }
 
 /// A collection of risk factor shifts forming a bump scenario.
-///
-/// Used to define coordinated shifts across multiple factors.
-///
-/// # Requirements
-///
-/// - Requirements: 10.2
 #[derive(Clone, Debug)]
 pub struct BumpScenario<T: Float> {
-    /// List of factor shifts
     shifts: Vec<RiskFactorShift<T>>,
 }
 
@@ -159,17 +136,10 @@ impl<T: Float> Default for BumpScenario<T> {
 }
 
 /// A named scenario with description and bump specification.
-///
-/// # Requirements
-///
-/// - Requirements: 10.4
 #[derive(Clone, Debug)]
 pub struct Scenario<T: Float> {
-    /// Scenario name
     name: String,
-    /// Scenario description
     description: String,
-    /// The bump scenario specification
     bumps: BumpScenario<T>,
 }
 
@@ -210,10 +180,6 @@ impl<T: Float> Scenario<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ================================================================
-    // Task 11.2: RiskFactorShift and BumpScenario tests (TDD)
-    // ================================================================
 
     #[test]
     fn test_risk_factor_shift_new() {
@@ -330,7 +296,7 @@ mod tests {
         let scenario = Scenario::named("IR +100bp", bumps);
 
         assert_eq!(scenario.name(), "IR +100bp");
-        assert_eq!(scenario.description(), "IR +100bp"); // Same as name
+        assert_eq!(scenario.description(), "IR +100bp");
     }
 
     #[test]
@@ -342,7 +308,6 @@ mod tests {
         assert_eq!(cloned.len(), scenario.len());
     }
 
-    // Test: f32 compatibility
     #[test]
     fn test_risk_factor_shift_f32() {
         let shift = RiskFactorShift::rate_parallel("USD.*", 0.0001_f32);

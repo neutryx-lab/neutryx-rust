@@ -1,10 +1,9 @@
 <script setup lang="ts">
 /**
- * PricerView — Orchestrator
+ * PricerView — Orchestrator (Vuetify Material UI)
  *
- * Composes sub-components via wrapper panels for configuration,
- * results, cashflow display, and summary. All logic is delegated
- * to composables and the Pinia store.
+ * Flexible table-based pricer layout using Vuetify v-data-table,
+ * v-card, v-expansion-panels, and Material Design components.
  */
 import { onMounted } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
@@ -23,7 +22,6 @@ const { expandCashflows } = usePricer();
 
 onMounted(async () => {
   await loadInstruments();
-  // Auto-expand after IRS auto-selection
   if (store.selectedInstrumentId && store.instruments.length > 0) {
     expandCashflows();
   }
@@ -36,38 +34,27 @@ onMounted(async () => {
     <PricerSummaryBar />
 
     <!-- API Not Available Fallback -->
-    <div v-if="!store.apiAvailable" class="glass-card p-8 text-center">
-      <i class="fas fa-info-circle text-4xl text-[var(--text-muted)] mb-4"></i>
-      <p class="text-[var(--text-muted)]">
-        Pricer API is not available in this build configuration.
-      </p>
-    </div>
+    <v-alert v-if="!store.apiAvailable" type="info" variant="tonal" class="mb-6">
+      Pricer API is not available in this build configuration.
+    </v-alert>
 
-    <!-- Main Layout: 3-column grid -->
+    <!-- Main Layout -->
     <template v-else>
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel: Config + Results (1/3) -->
-        <div class="space-y-6">
-          <PricerConfigPanel />
-          <PricerResultsPanel />
-          <PricerHistory />
-        </div>
+      <v-row>
+        <!-- Left Panel: Config + Results (4 cols) -->
+        <v-col cols="12" lg="4">
+          <div class="d-flex flex-column" style="gap: 16px">
+            <PricerConfigPanel />
+            <PricerResultsPanel />
+            <PricerHistory />
+          </div>
+        </v-col>
 
-        <!-- Right Panel: Cashflows (2/3) -->
-        <div class="lg:col-span-2">
+        <!-- Right Panel: Cashflows (8 cols) -->
+        <v-col cols="12" lg="8">
           <CashflowTable />
-        </div>
-      </div>
+        </v-col>
+      </v-row>
     </template>
   </div>
 </template>
-
-<style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-</style>

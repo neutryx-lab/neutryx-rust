@@ -1,14 +1,9 @@
 //! Central bank definitions.
-//!
-//! This module provides central bank identification used for
-//! monetary policy events and economic calendar tracking.
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Central bank identifier.
-///
-/// Represents a central bank that issues monetary policy decisions.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]

@@ -1,7 +1,4 @@
 //! Portfolio definition and builder.
-//!
-//! This module provides the PortfolioDefinition struct representing a portfolio
-//! and its builder for fluent construction with validation using `bon`.
 
 use std::collections::HashSet;
 
@@ -14,35 +11,7 @@ use crate::{
     market::Currency,
 };
 
-// ============================================================================
-// PortfolioDefinition
-// ============================================================================
-
 /// A portfolio definition.
-///
-/// Represents a logical grouping of books for risk management and
-/// regulatory reporting purposes. Supports hierarchical portfolios
-/// through parent-child relationships.
-///
-/// Uses `bon::Builder` for fluent construction with compile-time safety.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::portfolio::{PortfolioDefinition, PortfolioScope};
-/// use infra_domain::market::Currency;
-///
-/// let portfolio = PortfolioDefinition::builder()
-///     .portfolio_id("P001")
-///     .name("Main Portfolio")
-///     .reporting_currency(Currency::USD)
-///     .description("Primary trading portfolio")
-///     .scope(PortfolioScope::Regulatory)
-///     .build();
-///
-/// assert_eq!(portfolio.portfolio_id().as_str(), "P001");
-/// assert_eq!(portfolio.name(), "Main Portfolio");
-/// ```
 #[derive(Clone, Debug, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -124,11 +93,6 @@ impl PortfolioDefinition {
     }
 
     /// Validates book references against a known set of book IDs.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PortfolioError::InvalidBookReference`] if a book ID is not
-    /// found.
     pub fn validate_books(&self, known_book_ids: &HashSet<BookId>) -> Result<(), PortfolioError> {
         for book_id in &self.book_ids {
             if !known_book_ids.contains(book_id) {
@@ -139,10 +103,6 @@ impl PortfolioDefinition {
     }
 
     /// Validates hierarchy to detect circular references.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`PortfolioError::CircularReference`] if a cycle is detected.
     pub fn validate_hierarchy<F>(&self, get_parent: F) -> Result<(), PortfolioError>
     where
         F: Fn(&PortfolioId) -> Option<PortfolioId>,
@@ -170,10 +130,6 @@ impl PortfolioDefinition {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ========================================================================
-    // PortfolioDefinition tests
-    // ========================================================================
 
     #[test]
     fn test_portfolio_builder_minimal() {
@@ -315,10 +271,6 @@ mod tests {
         assert_eq!(cloned.portfolio_id().as_str(), "P001");
         assert_eq!(cloned.description(), Some("Test desc"));
     }
-
-    // ========================================================================
-    // Validation tests
-    // ========================================================================
 
     #[test]
     fn test_portfolio_validate_books_success() {

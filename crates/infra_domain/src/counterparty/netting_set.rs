@@ -1,7 +1,4 @@
 //! NettingSet definitions.
-//!
-//! This module defines the NettingSet entity for grouping trades for netting
-//! purposes, and related types.
 
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
@@ -12,20 +9,16 @@ use super::{
 };
 use crate::{ids::BookId, time::Date};
 
-// ============================================================================
-// NettingType
-// ============================================================================
-
 /// Netting type classification.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum NettingType {
-    /// Bilateral (OTC) - direct with counterparty
+    /// Bilateral (OTC) - direct with counterparty.
     #[default]
     Bilateral,
-    /// Cleared via CCP as a clearing member
+    /// Cleared via CCP as a clearing member.
     ClearedCcp,
-    /// Cleared via CCP as a client of a clearing member
+    /// Cleared via CCP as a client of a clearing member.
     ClearedClient,
 }
 
@@ -47,31 +40,7 @@ impl std::fmt::Display for NettingType {
     }
 }
 
-// ============================================================================
-// NettingSet
-// ============================================================================
-
 /// NettingSet entity.
-///
-/// Represents a collection of trades that can be legally netted against each
-/// other in the event of default. Each netting set belongs to a single
-/// counterparty and may have associated CSA and margin terms.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{NettingSet, NettingType, CsaTerms, MarginTerms};
-///
-/// let ns = NettingSet::builder("NS001", "CP001")
-///     .netting_type(NettingType::Bilateral)
-///     .closeout_netting(true)
-///     .csa_terms(CsaTerms::builder().threshold(1_000_000.0).build())
-///     .build()
-///     .unwrap();
-///
-/// assert_eq!(ns.id().as_str(), "NS001");
-/// assert!(ns.has_closeout_netting());
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(clippy::struct_field_names)]
@@ -85,7 +54,6 @@ pub struct NettingSet {
     margin_terms: Option<MarginTerms>,
     ccp_id: Option<CcpId>,
     /// Book IDs allowed for cross-book netting within this set.
-    /// If empty, all books are allowed (single-book netting assumed).
     book_ids: Vec<BookId>,
 }
 
@@ -125,8 +93,7 @@ impl NettingSet {
     /// Returns the book IDs allowed for cross-book netting.
     pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
 
-    /// Returns true if cross-book netting is enabled (multiple books
-    /// specified).
+    /// Returns true if cross-book netting is enabled (multiple books.
     pub fn allows_cross_book_netting(&self) -> bool { self.book_ids.len() > 1 }
 
     /// Returns true if the specified book is allowed in this netting set.
@@ -151,10 +118,6 @@ impl NettingSet {
 
 /// Type-safe NettingSet identifier (re-exported from ids module).
 pub use super::ids::NettingSetId;
-
-// ============================================================================
-// NettingSetBuilder
-// ============================================================================
 
 /// Builder for [`NettingSet`].
 pub struct NettingSetBuilder {
@@ -237,10 +200,6 @@ impl NettingSetBuilder {
     }
 
     /// Builds the NettingSet.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`CounterPartyError`] if validation fails.
     pub fn build(self) -> Result<NettingSet, CounterPartyError> {
         Ok(NettingSet {
             netting_set_id: self.netting_set_id,
@@ -256,14 +215,7 @@ impl NettingSetBuilder {
     }
 }
 
-// ============================================================================
-// CrossBookNettingAgreement
-// ============================================================================
-
 /// Cross-book netting agreement.
-///
-/// Defines an explicit agreement that allows netting of trades across
-/// multiple books.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CrossBookNettingAgreement {
@@ -309,8 +261,7 @@ impl CrossBookNettingAgreement {
     /// Returns true if the specified book is included in this agreement.
     pub fn is_book_eligible(&self, book_id: &BookId) -> bool { self.book_ids.contains(book_id) }
 
-    /// Returns true if the specified product is eligible for cross-book
-    /// netting.
+    /// Returns true if the specified product is eligible for cross-book.
     pub fn is_product_eligible(&self, product: &str) -> bool {
         self.eligible_products.is_empty() || self.eligible_products.iter().any(|p| p == product)
     }
@@ -318,10 +269,6 @@ impl CrossBookNettingAgreement {
     /// Returns the number of books in this agreement.
     pub fn book_count(&self) -> usize { self.book_ids.len() }
 }
-
-// ============================================================================
-// CrossBookNettingAgreementBuilder
-// ============================================================================
 
 /// Builder for [`CrossBookNettingAgreement`].
 pub struct CrossBookNettingAgreementBuilder {
@@ -403,10 +350,6 @@ impl CrossBookNettingAgreementBuilder {
     }
 
     /// Builds the CrossBookNettingAgreement.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if fewer than 2 books are specified.
     pub fn build(self) -> Result<CrossBookNettingAgreement, CounterPartyError> {
         if self.book_ids.len() < 2 {
             return Err(CounterPartyError::InvalidNettingSetId(format!(
@@ -488,11 +431,9 @@ mod tests {
 
     #[test]
     fn test_netting_set_mpor_days() {
-        // Bilateral without CSA: default 10
         let ns = NettingSet::builder("NS001", "CP001").build().unwrap();
         assert_eq!(ns.mpor_days(), 10);
 
-        // Bilateral with CSA: use CSA MPOR
         let csa = CsaTerms::builder().mpor_days(14).build();
         let ns = NettingSet::builder("NS002", "CP001")
             .csa_terms(csa)
@@ -506,7 +447,7 @@ mod tests {
         let ns = NettingSet::builder("NS001", "CP001")
             .add_book("B001")
             .add_book("B002")
-            .add_book("B001") // Duplicate
+            .add_book("B001")
             .build()
             .unwrap();
 

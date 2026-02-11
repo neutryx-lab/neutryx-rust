@@ -19,7 +19,13 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::stochastic::stochastic::{EquityModel, SingleState, StochasticModel};
+use crate::{
+    stochastic::{
+        stochastic::{EquityModel, SingleState, StochasticModel},
+        validation::{ParamValidationError, DEFAULT_SMOOTHING_EPSILON},
+    },
+    validate_params,
+};
 
 /// GBM model parameters.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -45,15 +51,23 @@ impl<T: Float> GBMParams<T> {
     /// # Returns
     /// `Some(GBMParams)` if valid, `None` otherwise
     pub fn new(spot: T, rate: T, volatility: T) -> Option<Self> {
-        if spot <= T::zero() || volatility < T::zero() {
-            return None;
-        }
-        Some(Self {
+        let params = Self {
             spot,
             rate,
             volatility,
-            smoothing_epsilon: T::from(1e-8).unwrap_or(T::zero()),
-        })
+            smoothing_epsilon: T::from(DEFAULT_SMOOTHING_EPSILON).unwrap_or(T::zero()),
+        };
+        params.validate().ok()?;
+        Some(params)
+    }
+
+    /// Validate GBM parameters.
+    pub fn validate(&self) -> Result<(), ParamValidationError> {
+        validate_params! {
+            self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
+            positive: [spot],
+            non_negative: [volatility],
+        }
     }
 
     /// Create parameters with custom smoothing epsilon.
@@ -69,7 +83,7 @@ impl<T: Float> Default for GBMParams<T> {
             spot: T::from(100.0).unwrap_or(T::one()),
             rate: T::from(0.05).unwrap_or(T::zero()),
             volatility: T::from(0.2).unwrap_or(T::zero()),
-            smoothing_epsilon: T::from(1e-8).unwrap_or(T::zero()),
+            smoothing_epsilon: T::from(DEFAULT_SMOOTHING_EPSILON).unwrap_or(T::zero()),
         }
     }
 }

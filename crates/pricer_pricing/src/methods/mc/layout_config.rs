@@ -1,82 +1,19 @@
 //! Memory layout configuration for Monte Carlo simulation.
-//!
-//! This module provides configuration types for controlling memory layout
-//! and streaming behaviour in Monte Carlo simulations.
-//!
-//! # Layout Modes
-//!
-//! - [`PathLayout::PathFirst`]: Traditional `[path][step]` layout (default)
-//! - [`PathLayout::TimeStepFirst`]: Optimised `[step][path]` layout for cache
-//!   efficiency
-//!
-//! # Streaming Mode
-//!
-//! When enabled, streaming mode processes paths step-by-step, reducing memory
-//! usage from O(paths × steps) to O(paths).
 
 use super::error::LayoutConfigError;
 
 /// Memory layout mode for path storage.
-///
-/// Determines the order of dimensions in the path buffer, affecting
-/// cache locality and vectorisation efficiency.
-///
-/// # Cache Behaviour
-///
-/// - `PathFirst`: Efficient for path-wise operations (each path contiguous)
-/// - `TimeStepFirst`: Efficient for step-wise operations (all paths at step t
-///   contiguous)
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::PathLayout;
-///
-/// let layout = PathLayout::default();
-/// assert_eq!(layout, PathLayout::PathFirst);
-///
-/// let optimised = PathLayout::TimeStepFirst;
-/// ```
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum PathLayout {
     /// Path-first layout: `[path_idx][step_idx]`
-    ///
-    /// Traditional layout where each path is contiguous in memory.
-    /// Default for backward compatibility.
     #[default]
     PathFirst,
 
     /// Time-step-first layout: `[step_idx][path_idx]`
-    ///
-    /// Optimised layout where all path values at a given time step
-    /// are contiguous, enabling efficient SIMD vectorisation.
     TimeStepFirst,
 }
 
 /// Configuration for path memory layout.
-///
-/// Specifies the memory layout mode and alignment requirements for
-/// path buffers in Monte Carlo simulation.
-///
-/// # Default Configuration
-///
-/// - Layout: `PathFirst` (backward compatible)
-/// - Alignment: 64 bytes (AVX-512 cache line)
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::{PathLayoutConfig, PathLayout};
-///
-/// // Default configuration
-/// let config = PathLayoutConfig::default();
-/// assert_eq!(config.layout(), PathLayout::PathFirst);
-/// assert_eq!(config.alignment(), 64);
-///
-/// // Optimised configuration
-/// let config = PathLayoutConfig::new(PathLayout::TimeStepFirst, 64);
-/// assert_eq!(config.layout(), PathLayout::TimeStepFirst);
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PathLayoutConfig {
     /// Memory layout mode.
@@ -90,36 +27,10 @@ impl PathLayoutConfig {
     pub const DEFAULT_ALIGNMENT: usize = 64;
 
     /// Creates a new layout configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `layout` - Memory layout mode
-    /// * `alignment` - Alignment in bytes (must be power of 2)
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::{PathLayoutConfig, PathLayout};
-    ///
-    /// let config = PathLayoutConfig::new(PathLayout::TimeStepFirst, 64);
-    /// ```
     #[inline]
     pub const fn new(layout: PathLayout, alignment: usize) -> Self { Self { layout, alignment } }
 
     /// Creates a configuration with default alignment.
-    ///
-    /// # Arguments
-    ///
-    /// * `layout` - Memory layout mode
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::{PathLayoutConfig, PathLayout};
-    ///
-    /// let config = PathLayoutConfig::with_layout(PathLayout::TimeStepFirst);
-    /// assert_eq!(config.alignment(), 64);
-    /// ```
     #[inline]
     pub const fn with_layout(layout: PathLayout) -> Self {
         Self {
@@ -137,23 +48,6 @@ impl PathLayoutConfig {
     pub const fn alignment(&self) -> usize { self.alignment }
 
     /// Validates the configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns `LayoutConfigError::InvalidAlignment` if alignment is not
-    /// a power of 2 or is zero.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::{PathLayoutConfig, PathLayout};
-    ///
-    /// let valid = PathLayoutConfig::new(PathLayout::PathFirst, 64);
-    /// assert!(valid.validate().is_ok());
-    ///
-    /// let invalid = PathLayoutConfig::new(PathLayout::PathFirst, 7);
-    /// assert!(invalid.validate().is_err());
-    /// ```
     pub fn validate(&self) -> Result<(), LayoutConfigError> {
         if self.alignment == 0 || !self.alignment.is_power_of_two() {
             return Err(LayoutConfigError::InvalidAlignment(self.alignment));
@@ -172,34 +66,6 @@ impl Default for PathLayoutConfig {
 }
 
 /// Configuration for streaming mode processing.
-///
-/// When enabled, streaming mode processes simulation step-by-step,
-/// dramatically reducing memory usage for large simulations.
-///
-/// # Memory Reduction
-///
-/// - Batch mode: O(paths × steps) memory
-/// - Streaming mode: O(paths) memory (constant in steps)
-///
-/// # Default Configuration
-///
-/// - Enabled: `false` (batch mode for backward compatibility)
-/// - Buffer steps: `2` (current and previous step)
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::StreamingConfig;
-///
-/// // Default (disabled)
-/// let config = StreamingConfig::default();
-/// assert!(!config.is_enabled());
-///
-/// // Enabled streaming
-/// let config = StreamingConfig::enabled();
-/// assert!(config.is_enabled());
-/// assert_eq!(config.buffer_steps(), 2);
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct StreamingConfig {
     /// Whether streaming mode is enabled.
@@ -213,20 +79,6 @@ impl StreamingConfig {
     pub const MIN_BUFFER_STEPS: usize = 2;
 
     /// Creates a new streaming configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `enabled` - Whether streaming mode is enabled
-    /// * `buffer_steps` - Number of step buffers (minimum 2)
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::StreamingConfig;
-    ///
-    /// let config = StreamingConfig::new(true, 2);
-    /// assert!(config.is_enabled());
-    /// ```
     #[inline]
     pub const fn new(enabled: bool, buffer_steps: usize) -> Self {
         Self {
@@ -236,16 +88,6 @@ impl StreamingConfig {
     }
 
     /// Creates an enabled streaming configuration with default buffer steps.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::StreamingConfig;
-    ///
-    /// let config = StreamingConfig::enabled();
-    /// assert!(config.is_enabled());
-    /// assert_eq!(config.buffer_steps(), 2);
-    /// ```
     #[inline]
     pub const fn enabled() -> Self {
         Self {
@@ -255,15 +97,6 @@ impl StreamingConfig {
     }
 
     /// Creates a disabled streaming configuration.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::StreamingConfig;
-    ///
-    /// let config = StreamingConfig::disabled();
-    /// assert!(!config.is_enabled());
-    /// ```
     #[inline]
     pub const fn disabled() -> Self {
         Self {
@@ -281,22 +114,6 @@ impl StreamingConfig {
     pub const fn buffer_steps(&self) -> usize { self.buffer_steps }
 
     /// Validates the configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns `LayoutConfigError::InvalidBufferSteps` if buffer_steps < 2.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::StreamingConfig;
-    ///
-    /// let valid = StreamingConfig::new(true, 2);
-    /// assert!(valid.validate().is_ok());
-    ///
-    /// let invalid = StreamingConfig::new(true, 1);
-    /// assert!(invalid.validate().is_err());
-    /// ```
     pub fn validate(&self) -> Result<(), LayoutConfigError> {
         if self.buffer_steps < Self::MIN_BUFFER_STEPS {
             return Err(LayoutConfigError::InvalidBufferSteps(self.buffer_steps));
@@ -317,8 +134,6 @@ impl Default for StreamingConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ========== PathLayout Tests ==========
 
     #[test]
     fn test_path_layout_default() {
@@ -357,8 +172,6 @@ mod tests {
         set.insert(PathLayout::TimeStepFirst);
         assert_eq!(set.len(), 2);
     }
-
-    // ========== PathLayoutConfig Tests ==========
 
     #[test]
     fn test_path_layout_config_default() {
@@ -414,8 +227,6 @@ mod tests {
         let cloned = config;
         assert_eq!(config, cloned);
     }
-
-    // ========== StreamingConfig Tests ==========
 
     #[test]
     fn test_streaming_config_default() {

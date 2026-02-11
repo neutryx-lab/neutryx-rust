@@ -1,125 +1,36 @@
 //! Risk factor identification for sensitivity analysis.
-//!
-//! This module provides [`RiskFactorId`], an enum for uniquely identifying
-//! risk factors such as underlying assets, yield curves, and volatility
-//! surfaces.
-//!
-//! # Requirements
-//!
-//! - Requirement 1.3: Risk factor identification for Greeks aggregation.
 
 use std::fmt;
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier for a risk factor.
-///
-/// Used to categorise and aggregate Greeks by their underlying risk drivers.
-/// Each variant represents a different type of market risk factor.
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_risk::scenarios::RiskFactorId;
-///
-/// let underlying = RiskFactorId::Underlying("SPX".to_string());
-/// let curve = RiskFactorId::Curve("USD-OIS".to_string());
-/// let vol = RiskFactorId::VolSurface("SPX-Vol".to_string());
-///
-/// // Display formatting
-/// assert_eq!(format!("{}", underlying), "Underlying:SPX");
-/// assert_eq!(format!("{}", curve), "Curve:USD-OIS");
-/// assert_eq!(format!("{}", vol), "VolSurface:SPX-Vol");
-/// ```
-///
-/// # Requirements
-///
-/// - Requirement 1.3: Risk factor identification for Greeks aggregation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum RiskFactorId {
     /// Underlying asset identifier (e.g., "USDJPY", "SPX").
-    ///
-    /// Represents spot price risk factors such as equity indices,
-    /// FX rates, or commodity prices.
     Underlying(String),
 
     /// Yield curve identifier (e.g., "USD-OIS", "JPY-LIBOR").
-    ///
-    /// Represents interest rate risk factors from discount or
-    /// projection curves.
     Curve(String),
 
     /// Volatility surface identifier (e.g., "SPX-Vol", "USDJPY-Vol").
-    ///
-    /// Represents implied volatility risk factors from option markets.
     VolSurface(String),
 }
 
 impl RiskFactorId {
     /// Creates a new underlying risk factor.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The underlying asset name (e.g., "SPX", "USDJPY").
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::scenarios::RiskFactorId;
-    ///
-    /// let factor = RiskFactorId::underlying("SPX");
-    /// assert_eq!(factor, RiskFactorId::Underlying("SPX".to_string()));
-    /// ```
     #[inline]
     pub fn underlying(name: impl Into<String>) -> Self { Self::Underlying(name.into()) }
 
     /// Creates a new curve risk factor.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The curve name (e.g., "USD-OIS", "EUR-EURIBOR").
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::scenarios::RiskFactorId;
-    ///
-    /// let factor = RiskFactorId::curve("USD-OIS");
-    /// assert_eq!(factor, RiskFactorId::Curve("USD-OIS".to_string()));
-    /// ```
     #[inline]
     pub fn curve(name: impl Into<String>) -> Self { Self::Curve(name.into()) }
 
     /// Creates a new volatility surface risk factor.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The volatility surface name (e.g., "SPX-Vol").
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::scenarios::RiskFactorId;
-    ///
-    /// let factor = RiskFactorId::vol_surface("SPX-Vol");
-    /// assert_eq!(factor, RiskFactorId::VolSurface("SPX-Vol".to_string()));
-    /// ```
     #[inline]
     pub fn vol_surface(name: impl Into<String>) -> Self { Self::VolSurface(name.into()) }
 
     /// Returns the risk factor type as a string.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::scenarios::RiskFactorId;
-    ///
-    /// assert_eq!(RiskFactorId::underlying("SPX").factor_type(), "Underlying");
-    /// assert_eq!(RiskFactorId::curve("USD-OIS").factor_type(), "Curve");
-    /// assert_eq!(RiskFactorId::vol_surface("SPX-Vol").factor_type(), "VolSurface");
-    /// ```
     #[inline]
     pub fn factor_type(&self) -> &'static str {
         match self {
@@ -130,15 +41,6 @@ impl RiskFactorId {
     }
 
     /// Returns the risk factor name (identifier string).
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::scenarios::RiskFactorId;
-    ///
-    /// assert_eq!(RiskFactorId::underlying("SPX").name(), "SPX");
-    /// assert_eq!(RiskFactorId::curve("USD-OIS").name(), "USD-OIS");
-    /// ```
     #[inline]
     pub fn name(&self) -> &str {
         match self {
@@ -174,10 +76,6 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
-
-    // ================================================================
-    // Task 1.1: RiskFactorId tests (TDD - RED phase first)
-    // ================================================================
 
     #[test]
     fn test_risk_factor_id_underlying_construction() {
@@ -217,7 +115,6 @@ mod tests {
 
     #[test]
     fn test_risk_factor_id_hash_no_collision() {
-        // Test that different factors have different hashes (no collision)
         let mut set = HashSet::new();
 
         let factors = vec![
@@ -241,11 +138,11 @@ mod tests {
         let f1 = RiskFactorId::underlying("SPX");
         let f2 = RiskFactorId::underlying("SPX");
         let f3 = RiskFactorId::underlying("AAPL");
-        let f4 = RiskFactorId::curve("SPX"); // Same name, different type
+        let f4 = RiskFactorId::curve("SPX");
 
         assert_eq!(f1, f2);
         assert_ne!(f1, f3);
-        assert_ne!(f1, f4); // Type matters
+        assert_ne!(f1, f4);
     }
 
     #[test]
@@ -315,7 +212,6 @@ mod tests {
         assert!(debug_str.contains("SPX"));
     }
 
-    #[cfg(feature = "serde")]
     mod serde_tests {
         use super::*;
 

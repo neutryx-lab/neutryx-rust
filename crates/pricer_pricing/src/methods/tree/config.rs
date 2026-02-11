@@ -49,10 +49,6 @@ impl TreeConfig {
     pub fn builder() -> TreeConfigBuilder { TreeConfigBuilder::default() }
 
     /// Validates the configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError` if `num_steps` is zero.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.num_steps == 0 {
             return Err(ConfigError::InvalidModelParameter {
@@ -105,11 +101,6 @@ impl TreeConfigBuilder {
     }
 
     /// Builds the TreeConfig.
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError` if required fields are missing or validation
-    /// fails.
     pub fn build(self) -> Result<TreeConfig, ConfigError> {
         let config = TreeConfig {
             num_steps: self.num_steps.unwrap_or(100),

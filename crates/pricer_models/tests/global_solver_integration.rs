@@ -875,10 +875,10 @@ fn test_jacobian_quality_validation_integration() {
     use pricer_models::builder::{JacobianQuality, NumericalDiagnostics};
 
     // Test NumericalDiagnostics can be created and populated
-    let mut diagnostics = NumericalDiagnostics::<f64>::new();
+    let mut diagnostics = NumericalDiagnostics::<f64>::default();
     diagnostics.jacobian_quality = JacobianQuality::Good;
-    diagnostics.push_residual(1e-3);
-    diagnostics.push_residual(1e-10);
+    diagnostics.residual_history.push(1e-3);
+    diagnostics.residual_history.push(1e-10);
 
     // Verify diagnostics work correctly
     assert_eq!(diagnostics.jacobian_quality, JacobianQuality::Good);
@@ -973,11 +973,11 @@ fn test_tikhonov_regularisation_integration() {
 fn test_numerical_diagnostics_summary_integration() {
     use pricer_models::builder::{JacobianQuality, NumericalDiagnostics, RegularisationType};
 
-    let mut diagnostics = NumericalDiagnostics::<f64>::new();
+    let mut diagnostics = NumericalDiagnostics::<f64>::default();
     diagnostics.condition_number = Some(1e8);
-    diagnostics.push_residual(1e-3);
-    diagnostics.push_residual(1e-6);
-    diagnostics.push_residual(1e-10);
+    diagnostics.residual_history.push(1e-3);
+    diagnostics.residual_history.push(1e-6);
+    diagnostics.residual_history.push(1e-10);
     diagnostics.jacobian_quality = JacobianQuality::Good;
     diagnostics.regularisation_applied = RegularisationType::None;
 

@@ -170,7 +170,7 @@ pub mod kernels {
         let mut left = 0;
         let mut right = n - 1;
         while right - left > 1 {
-            let mid = (left + right) / 2;
+            let mid = usize::midpoint(left, right);
             if pillar_times[mid] <= time {
                 left = mid;
             } else {
@@ -499,7 +499,7 @@ pub mod kernels {
         let mut left = 0;
         let mut right = n - 1;
         while right - left > 1 {
-            let mid = (left + right) / 2;
+            let mid = usize::midpoint(left, right);
             if pillar_times[mid] <= time {
                 left = mid;
             } else {

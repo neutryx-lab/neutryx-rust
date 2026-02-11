@@ -1,7 +1,4 @@
 //! Portfolio builder for constructing validated portfolios.
-//!
-//! This module provides a builder pattern for creating portfolios
-//! with validation of references between entities.
 
 use std::collections::{HashMap, HashSet};
 
@@ -14,57 +11,7 @@ use super::{
     Portfolio,
 };
 
-/// Builder for constructing portfolios with validation.
-///
-/// The builder collects trades, counterparties, and netting sets,
-/// then validates all references on `build()`.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::{
-///     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
-///     NettingSet, NettingSetId, CreditParams,
-/// };
-/// use infra_domain::market::Currency;
-/// use infra_domain::trade::{
-///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
-/// };
-///
-/// // Create entities
-/// let credit = CreditParams::new(0.02, 0.4).unwrap();
-/// let counterparty = Counterparty::new(CounterpartyId::new("CP001"), credit);
-///
-/// let mut netting_set = NettingSet::new(
-///     NettingSetId::new("NS001"),
-///     CounterpartyId::new("CP001"),
-/// );
-///
-/// let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
-/// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-/// let instrument = PricingInstrument::Vanilla(call);
-///
-/// let trade = Trade::new(
-///     TradeId::new("T001"),
-///     instrument,
-///     Currency::USD,
-///     CounterpartyId::new("CP001"),
-///     NettingSetId::new("NS001"),
-///     1_000_000.0,
-/// );
-///
-/// netting_set.add_trade(TradeId::new("T001"));
-///
-/// // Build portfolio
-/// let portfolio = PortfolioBuilder::new()
-///     .add_counterparty(counterparty)
-///     .add_netting_set(netting_set)
-///     .add_trade(trade)
-///     .build()
-///     .unwrap();
-///
-/// assert_eq!(portfolio.trade_count(), 1);
-/// ```
+/// Builder for constructing portfolios with reference validation on build().
 #[derive(Default)]
 pub struct PortfolioBuilder {
     trades: Vec<Trade>,
@@ -116,22 +63,9 @@ impl PortfolioBuilder {
         self
     }
 
-    /// Builds and validates the portfolio.
-    ///
-    /// # Validation
-    ///
-    /// - No duplicate trade IDs
-    /// - No duplicate counterparty IDs
-    /// - No duplicate netting set IDs
-    /// - All trades reference valid counterparties
-    /// - All trades reference valid netting sets
-    /// - All netting sets reference valid counterparties
-    ///
-    /// # Errors
-    ///
-    /// Returns `PortfolioError` if validation fails.
+    /// Builds and validates the portfolio, checking for duplicate IDs and valid
+    /// references.
     pub fn build(self) -> Result<Portfolio, PortfolioError> {
-        // Check for duplicate trade IDs
         let mut trade_ids = HashSet::new();
         for trade in &self.trades {
             if !trade_ids.insert(trade.id().clone()) {
@@ -139,7 +73,6 @@ impl PortfolioBuilder {
             }
         }
 
-        // Check for duplicate counterparty IDs
         let mut cp_ids = HashSet::new();
         for cp in &self.counterparties {
             if !cp_ids.insert(cp.id().clone()) {
@@ -147,7 +80,6 @@ impl PortfolioBuilder {
             }
         }
 
-        // Check for duplicate netting set IDs
         let mut ns_ids = HashSet::new();
         for ns in &self.netting_sets {
             if !ns_ids.insert(ns.id().clone()) {
@@ -155,7 +87,6 @@ impl PortfolioBuilder {
             }
         }
 
-        // Validate trade → counterparty references
         for trade in &self.trades {
             if !cp_ids.contains(trade.counterparty_id()) {
                 return Err(PortfolioError::UnknownCounterpartyReference(
@@ -165,7 +96,6 @@ impl PortfolioBuilder {
             }
         }
 
-        // Validate trade → netting set references
         for trade in &self.trades {
             if !ns_ids.contains(trade.netting_set_id()) {
                 return Err(PortfolioError::UnknownNettingSetReference(
@@ -175,7 +105,6 @@ impl PortfolioBuilder {
             }
         }
 
-        // Validate netting set → counterparty references
         for ns in &self.netting_sets {
             if !cp_ids.contains(ns.counterparty_id()) {
                 return Err(PortfolioError::NettingSetUnknownCounterparty(
@@ -185,7 +114,6 @@ impl PortfolioBuilder {
             }
         }
 
-        // Build HashMaps
         let trades: HashMap<TradeId, Trade> = self
             .trades
             .into_iter()
@@ -292,7 +220,7 @@ mod tests {
         let counterparty = create_test_counterparty("CP001");
         let netting_set = create_test_netting_set("NS001", "CP001");
         let trade1 = create_test_trade("T001", "CP001", "NS001");
-        let trade2 = create_test_trade("T001", "CP001", "NS001"); // Duplicate
+        let trade2 = create_test_trade("T001", "CP001", "NS001");
 
         let result = PortfolioBuilder::new()
             .add_counterparty(counterparty)
@@ -307,7 +235,7 @@ mod tests {
     #[test]
     fn test_builder_duplicate_counterparty_id() {
         let cp1 = create_test_counterparty("CP001");
-        let cp2 = create_test_counterparty("CP001"); // Duplicate
+        let cp2 = create_test_counterparty("CP001");
 
         let result = PortfolioBuilder::new()
             .add_counterparty(cp1)
@@ -324,7 +252,7 @@ mod tests {
     fn test_builder_duplicate_netting_set_id() {
         let counterparty = create_test_counterparty("CP001");
         let ns1 = create_test_netting_set("NS001", "CP001");
-        let ns2 = create_test_netting_set("NS001", "CP001"); // Duplicate
+        let ns2 = create_test_netting_set("NS001", "CP001");
 
         let result = PortfolioBuilder::new()
             .add_counterparty(counterparty)
@@ -342,7 +270,7 @@ mod tests {
     fn test_builder_unknown_counterparty_reference() {
         let counterparty = create_test_counterparty("CP001");
         let netting_set = create_test_netting_set("NS001", "CP001");
-        let trade = create_test_trade("T001", "CP999", "NS001"); // Unknown CP
+        let trade = create_test_trade("T001", "CP999", "NS001");
 
         let result = PortfolioBuilder::new()
             .add_counterparty(counterparty)
@@ -360,7 +288,7 @@ mod tests {
     fn test_builder_unknown_netting_set_reference() {
         let counterparty = create_test_counterparty("CP001");
         let netting_set = create_test_netting_set("NS001", "CP001");
-        let trade = create_test_trade("T001", "CP001", "NS999"); // Unknown NS
+        let trade = create_test_trade("T001", "CP001", "NS999");
 
         let result = PortfolioBuilder::new()
             .add_counterparty(counterparty)
@@ -377,7 +305,7 @@ mod tests {
     #[test]
     fn test_builder_netting_set_unknown_counterparty() {
         let counterparty = create_test_counterparty("CP001");
-        let netting_set = create_test_netting_set("NS001", "CP999"); // Unknown CP
+        let netting_set = create_test_netting_set("NS001", "CP999");
 
         let result = PortfolioBuilder::new()
             .add_counterparty(counterparty)

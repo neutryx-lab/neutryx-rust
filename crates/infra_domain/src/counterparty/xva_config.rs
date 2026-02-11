@@ -1,7 +1,4 @@
 //! XVA calculation configuration types (stub for future XVA integration).
-//!
-//! Provides enum types for XVA configuration. Full configuration structures
-//! will be added when the XVA engine is integrated.
 
 /// XVA calculation aggregation level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]

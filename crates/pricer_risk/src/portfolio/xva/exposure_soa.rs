@@ -1,39 +1,18 @@
 //! Structure of Arrays for exposure profiles.
-//!
-//! Provides storage for exposure profiles across time and scenarios.
 
 use crate::portfolio::NettingSetId;
 
-/// SoA representation of exposure profiles.
-///
-/// Stores exposure values across time and netting sets for
-/// efficient XVA calculations.
-///
-/// # Memory Layout
-///
-/// ```text
-/// time_grid:       [t0, t1, t2, ..., tn]
-/// exposures[ns0]:  [e00, e01, e02, ..., e0n]
-/// exposures[ns1]:  [e10, e11, e12, ..., e1n]
-/// ...
-/// ```
+/// SoA representation of exposure profiles for efficient XVA calculations
+/// across time and netting sets.
 #[derive(Debug, Clone)]
 pub struct ExposureSoA {
-    /// Time grid shared across all netting sets
     time_grid: Vec<f64>,
-    /// Exposure profiles indexed by [netting_set_idx][time_idx]
     exposures: Vec<Vec<f64>>,
-    /// Netting set IDs for reference
     netting_set_ids: Vec<NettingSetId>,
 }
 
 impl ExposureSoA {
-    /// Creates a new exposure SoA with the given time grid.
-    ///
-    /// # Arguments
-    ///
-    /// * `time_grid` - Time points in years
-    /// * `netting_set_ids` - IDs of netting sets to track
+    /// Creates a new exposure SoA with the given time grid and netting set IDs.
     pub fn new(time_grid: Vec<f64>, netting_set_ids: Vec<NettingSetId>) -> Self {
         let n_times = time_grid.len();
         let n_sets = netting_set_ids.len();
@@ -71,14 +50,6 @@ impl ExposureSoA {
     pub fn netting_set_ids(&self) -> &[NettingSetId] { &self.netting_set_ids }
 
     /// Gets the exposure profile for a netting set by index.
-    ///
-    /// # Arguments
-    ///
-    /// * `ns_idx` - Netting set index
-    ///
-    /// # Returns
-    ///
-    /// Slice of exposure values across time.
     #[inline]
     pub fn exposure_profile(&self, ns_idx: usize) -> &[f64] { &self.exposures[ns_idx] }
 
@@ -89,12 +60,6 @@ impl ExposureSoA {
     }
 
     /// Sets the exposure value at a specific time for a netting set.
-    ///
-    /// # Arguments
-    ///
-    /// * `ns_idx` - Netting set index
-    /// * `time_idx` - Time index
-    /// * `value` - Exposure value
     #[inline]
     pub fn set_exposure(&mut self, ns_idx: usize, time_idx: usize, value: f64) {
         self.exposures[ns_idx][time_idx] = value;
@@ -107,14 +72,6 @@ impl ExposureSoA {
     }
 
     /// Returns exposures at a specific time for all netting sets.
-    ///
-    /// # Arguments
-    ///
-    /// * `time_idx` - Time index
-    ///
-    /// # Returns
-    ///
-    /// Vector of exposures for each netting set at that time.
     pub fn exposures_at_time(&self, time_idx: usize) -> Vec<f64> {
         self.exposures.iter().map(|e| e[time_idx]).collect()
     }
@@ -155,12 +112,9 @@ mod tests {
         let ns_ids = vec![NettingSetId::new("NS001"), NettingSetId::new("NS002")];
         let mut soa = ExposureSoA::new(time_grid, ns_ids);
 
-        // Set some exposure values
-        // NS001: increasing exposure
         for (t, &val) in [0.0, 10.0, 20.0, 15.0, 5.0].iter().enumerate() {
             soa.set_exposure(0, t, val);
         }
-        // NS002: different pattern
         for (t, &val) in [5.0, 8.0, 12.0, 10.0, 3.0].iter().enumerate() {
             soa.set_exposure(1, t, val);
         }
@@ -198,7 +152,7 @@ mod tests {
     #[test]
     fn test_exposures_at_time() {
         let soa = create_test_exposure_soa();
-        let exposures = soa.exposures_at_time(2); // t=0.5
+        let exposures = soa.exposures_at_time(2);
         assert_eq!(exposures, vec![20.0, 12.0]);
     }
 
@@ -206,7 +160,7 @@ mod tests {
     fn test_peak_exposures() {
         let soa = create_test_exposure_soa();
         let peaks = soa.peak_exposures();
-        assert_eq!(peaks, vec![20.0, 12.0]); // Max for each NS
+        assert_eq!(peaks, vec![20.0, 12.0]);
     }
 
     #[test]

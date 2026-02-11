@@ -1,7 +1,4 @@
 //! Market event definitions.
-//!
-//! This module provides the core market event structure used for
-//! economic calendar tracking and event-driven analysis.
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -9,9 +6,6 @@ use serde::{Deserialize, Serialize};
 use super::{CentralBank, EventImportance, EventType};
 
 /// A market event.
-///
-/// Represents a scheduled or historical market event such as
-/// central bank meetings, economic data releases, or holidays.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -59,9 +53,6 @@ pub struct MarketEvent {
     #[cfg_attr(feature = "serde", serde(default))]
     pub tags: Vec<String>,
     /// Expected jump size in basis points for CB meeting events.
-    ///
-    /// Positive value indicates rate hike expectation.
-    /// Range: -100.0 to +100.0 bps.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -156,19 +147,12 @@ impl MarketEvent {
     }
 
     /// Set the expected jump size in basis points for CB meeting events.
-    ///
-    /// # Arguments
-    ///
-    /// * `bps` - Expected jump size in basis points (-100 to +100). Positive
-    ///   indicates rate hike, negative indicates rate cut.
     pub fn with_expected_jump_bps(mut self, bps: f64) -> Self {
         self.expected_jump_bps = Some(bps);
         self
     }
 
     /// Get the expected jump size in basis points.
-    ///
-    /// Returns `None` if not set, or the expected jump in bps.
     pub fn expected_jump_bps(&self) -> Option<f64> { self.expected_jump_bps }
 
     /// Check if this event has an expected jump defined.
@@ -201,7 +185,6 @@ mod tests {
 
     #[test]
     fn test_market_event() {
-        // new + basic fields
         let e = MarketEvent::new(
             "EVT001",
             EventType::CentralBankMeeting,
@@ -214,7 +197,6 @@ mod tests {
         assert_eq!(e.event_type, EventType::CentralBankMeeting);
         assert!(e.is_high_impact());
 
-        // builder pattern
         let e2 = MarketEvent::new(
             "EVT002",
             EventType::EconomicRelease,
@@ -232,7 +214,6 @@ mod tests {
         assert!(e2.is_economic_release());
         assert!(!e2.is_central_bank_event());
 
-        // display
         let e3 = MarketEvent::new(
             "EVT003",
             EventType::Holiday,
@@ -244,14 +225,12 @@ mod tests {
         let d = format!("{}", e3);
         assert!(d.contains("2024-12-25") && d.contains("Christmas Day"));
 
-        // expected jump bps
         assert!(e.expected_jump_bps().is_none());
         assert!(!e.has_expected_jump());
         let ej = e.with_expected_jump_bps(25.0);
         assert_eq!(ej.expected_jump_bps(), Some(25.0));
         assert!(ej.has_expected_jump());
 
-        // negative jump (rate cut)
         let cut = MarketEvent::new(
             "ECB",
             EventType::CentralBankMeeting,
@@ -263,7 +242,6 @@ mod tests {
         .with_expected_jump_bps(-25.0);
         assert_eq!(cut.expected_jump_bps(), Some(-25.0));
 
-        // zero jump
         let zero = MarketEvent::new(
             "BOJ",
             EventType::CentralBankMeeting,

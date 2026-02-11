@@ -1,6 +1,4 @@
 //! Risk configuration structures.
-//!
-//! Provides [`RiskConfig`] for configuration-driven risk/Greeks calculations.
 
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +12,6 @@ use crate::ConfigError;
 #[strum(serialize_all = "snake_case")]
 pub enum GreeksMethod {
     /// Automatic Differentiation (Enzyme-based AAD).
-    /// Requires `enzyme-ad` feature to be enabled.
     Aad,
     /// Bump-and-Revalue (finite difference approximation).
     #[default]
@@ -69,11 +66,6 @@ impl GreekType {
 }
 
 /// Bump sizes for finite difference calculations.
-///
-/// Default values follow market conventions:
-/// - Rate: 1bp (0.0001)
-/// - Vol: 1% (0.01)
-/// - Spot: 1% (0.01)
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub struct BumpSizes {
     /// Rate bump size (default: 1bp = 0.0001).
@@ -87,17 +79,11 @@ pub struct BumpSizes {
     pub spot: f64,
 }
 
-fn default_rate_bump() -> f64 {
-    0.0001 // 1bp
-}
+fn default_rate_bump() -> f64 { 0.0001 }
 
-fn default_vol_bump() -> f64 {
-    0.01 // 1%
-}
+fn default_vol_bump() -> f64 { 0.01 }
 
-fn default_spot_bump() -> f64 {
-    0.01 // 1%
-}
+fn default_spot_bump() -> f64 { 0.01 }
 
 impl Default for BumpSizes {
     fn default() -> Self {
@@ -186,23 +172,6 @@ pub enum ShiftType {
 }
 
 /// Configuration for risk/Greeks calculations.
-///
-/// This structure defines all parameters needed for risk calculations,
-/// supporting both TOML and JSON configuration formats.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_config::{RiskConfig, GreeksMethod, GreekType};
-///
-/// let config = RiskConfig {
-///     greeks_method: GreeksMethod::Bump,
-///     target_greeks: vec![GreekType::Delta, GreekType::Gamma, GreekType::Vega],
-///     ..Default::default()
-/// };
-///
-/// assert!(config.validate().is_ok());
-/// ```
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct RiskConfig {
     /// Greeks calculation method.
@@ -240,18 +209,7 @@ impl Default for RiskConfig {
 
 impl RiskConfig {
     /// Validates the configuration.
-    ///
-    /// # Validation Rules
-    ///
-    /// - `target_greeks` must not be empty
-    /// - `bump_sizes` must be within valid ranges
-    /// - If AAD method is selected, enzyme-ad feature should be available
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError` with specific validation failure details.
     pub fn validate(&self) -> Result<(), ConfigError> {
-        // Validate target_greeks is not empty
         if self.target_greeks.is_empty() {
             return Err(ConfigError::InvalidValue {
                 key: "target_greeks".to_string(),
@@ -259,12 +217,7 @@ impl RiskConfig {
             });
         }
 
-        // Validate bump sizes
         self.bump_sizes.validate()?;
-
-        // Note: AAD availability check is done at runtime in RiskEngine,
-        // not at config validation time, to allow config to be valid
-        // even when enzyme-ad feature is not available.
 
         Ok(())
     }
@@ -295,10 +248,6 @@ impl RiskConfig {
 mod tests {
     use super::*;
 
-    // =========================================================================
-    // GreeksMethod Tests
-    // =========================================================================
-
     #[test]
     fn test_greeks_method_default_is_bump() {
         assert_eq!(GreeksMethod::default(), GreeksMethod::Bump);
@@ -318,10 +267,6 @@ mod tests {
         let aad: GreeksMethod = serde_json::from_str("\"aad\"").unwrap();
         assert_eq!(aad, GreeksMethod::Aad);
     }
-
-    // =========================================================================
-    // GreekType Tests
-    // =========================================================================
 
     #[test]
     fn test_greek_type_is_second_order() {
@@ -355,10 +300,6 @@ mod tests {
         let delta: GreekType = serde_json::from_str("\"delta\"").unwrap();
         assert_eq!(delta, GreekType::Delta);
     }
-
-    // =========================================================================
-    // BumpSizes Tests
-    // =========================================================================
 
     #[test]
     fn test_bump_sizes_default() {
@@ -417,10 +358,6 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("spot"));
     }
 
-    // =========================================================================
-    // SecondOrderMode Tests
-    // =========================================================================
-
     #[test]
     fn test_second_order_mode_default_is_parallel() {
         assert_eq!(SecondOrderMode::default(), SecondOrderMode::Parallel);
@@ -437,10 +374,6 @@ mod tests {
             "\"serial\""
         );
     }
-
-    // =========================================================================
-    // RiskConfig Tests
-    // =========================================================================
 
     #[test]
     fn test_risk_config_default_creates_valid_config() {

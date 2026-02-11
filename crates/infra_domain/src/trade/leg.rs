@@ -1,7 +1,4 @@
 //! Leg types for financial instruments.
-//!
-//! This module provides types for representing legs (streams of cashflows)
-//! in financial instruments.
 
 use super::cashflow::Cashflow;
 use crate::{market::Currency, time::Date};
@@ -20,9 +17,6 @@ pub enum Direction {
 
 impl Direction {
     /// Returns the sign for NPV calculation.
-    ///
-    /// - Payer returns -1.0 (paying out)
-    /// - Receiver returns +1.0 (receiving)
     #[must_use]
     pub fn sign(&self) -> f64 {
         match self {
@@ -76,8 +70,6 @@ impl LegType {
 }
 
 /// A leg (stream of cashflows) in a financial instrument.
-///
-/// Represents one side of a swap or similar instrument.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Leg {
@@ -130,8 +122,6 @@ impl Leg {
     pub fn is_empty(&self) -> bool { self.cashflows.is_empty() }
 
     /// Returns the total notional of the leg.
-    ///
-    /// If the leg has varying notionals, returns the first cashflow's notional.
     #[must_use]
     pub fn notional(&self) -> f64 { self.cashflows.first().map_or(0.0, |cf| cf.notional) }
 
@@ -258,7 +248,6 @@ mod tests {
         let leg = make_test_leg();
         let ref_date = Date::from_ymd(2025, 3, 1).unwrap();
 
-        // 2025-07-01 and 2026-01-01 are in the future
         let future_count = leg.future_cashflows(ref_date).count();
         assert_eq!(future_count, 2);
     }
@@ -355,7 +344,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(Direction::Payer);
         set.insert(Direction::Receiver);
-        set.insert(Direction::Payer); // Duplicate
+        set.insert(Direction::Payer);
         assert_eq!(set.len(), 2);
     }
 
@@ -366,7 +355,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(LegType::Fixed);
         set.insert(LegType::Floating);
-        set.insert(LegType::Fixed); // Duplicate
+        set.insert(LegType::Fixed);
         assert_eq!(set.len(), 2);
     }
 }

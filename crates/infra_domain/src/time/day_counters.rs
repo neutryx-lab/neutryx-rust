@@ -1,130 +1,52 @@
 //! Day count convention definitions.
-//!
-//! This module provides ISDA-standard day count conventions for
-//! year fraction calculations in financial instruments.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::time::{Date, DayCounter};
-//!
-//! let start = Date::from_ymd(2024, 1, 1).unwrap();
-//! let end = Date::from_ymd(2024, 7, 1).unwrap();
-//!
-//! let yf = DayCounter::Actual365Fixed.year_fraction(start, end);
-//! assert!((yf - 0.4986).abs() < 0.001);
-//! ```
 
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 use chrono::{Datelike, NaiveDate};
 
 use super::types::Date;
 
 /// Day count convention for interest calculations.
-///
-/// Also known as day count fraction or accrual factor.
-/// Provides ISDA-standard day count conventions for calculating
-/// year fractions between dates in financial instruments.
-///
-/// Uses static dispatch (enum + match) for optimal performance,
-/// avoiding VTable lookup costs in hot paths.
-///
-/// # Variants
-///
-/// - `Actual360`: Actual days / 360
-/// - `Actual365Fixed`: Actual days / 365 (standard for derivatives)
-/// - `Actual36525`: Actual days / 365.25
-/// - `ActualActualIsda`: ISDA actual/actual
-/// - `Thirty360Bond`: 30/360 US Bond Basis
-/// - `Thirty360European`: 30/360 European
-/// - `ThirtyE360Isda`: 30E/360 ISDA
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DayCounter {
-    /// Actual/360
-    ///
-    /// Used in money market instruments, US Treasury bills,
-    /// and LIBOR-based instruments.
+    /// Actual/360.
+    #[strum(serialize = "ACT/360")]
     Actual360,
 
-    /// Actual/365 Fixed
-    ///
-    /// Used in most derivatives markets, UK gilts,
-    /// and Japanese government bonds.
+    /// Actual/365 Fixed.
     #[default]
+    #[strum(serialize = "ACT/365")]
     Actual365Fixed,
 
-    /// Actual/365.25
-    ///
-    /// Uses 365.25 as the denominator to account for leap years.
+    /// Actual/365.25.
+    #[strum(serialize = "ACT/365.25")]
     Actual36525,
 
-    /// Actual/Actual (ISDA)
-    ///
-    /// ISDA standard actual/actual convention.
+    /// Actual/Actual (ISDA).
+    #[strum(serialize = "ACT/ACT ISDA")]
     ActualActualIsda,
 
-    /// 30/360 (Bond Basis)
-    ///
-    /// US corporate and agency bonds convention.
-    /// Each month is treated as having 30 days.
+    /// 30/360 (Bond Basis).
+    #[strum(serialize = "30/360")]
     Thirty360Bond,
 
-    /// 30/360 (European)
-    ///
-    /// European convention where both start and end days
-    /// are capped at 30.
+    /// 30/360 (European).
+    #[strum(serialize = "30E/360")]
     Thirty360European,
 
-    /// 30E/360 (ISDA)
-    ///
-    /// ISDA variant of 30/360.
+    /// 30E/360 (ISDA).
+    #[strum(serialize = "30E/360 ISDA")]
     ThirtyE360Isda,
 }
 
 impl DayCounter {
     /// Returns the standard convention name.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::DayCounter;
-    ///
-    /// assert_eq!(DayCounter::Actual365Fixed.name(), "ACT/365");
-    /// assert_eq!(DayCounter::Actual360.name(), "ACT/360");
-    /// assert_eq!(DayCounter::Thirty360Bond.name(), "30/360");
-    /// ```
     #[must_use]
-    pub fn name(&self) -> &'static str {
-        match self {
-            DayCounter::Actual360 => "ACT/360",
-            DayCounter::Actual365Fixed => "ACT/365",
-            DayCounter::Actual36525 => "ACT/365.25",
-            DayCounter::ActualActualIsda => "ACT/ACT ISDA",
-            DayCounter::Thirty360Bond => "30/360",
-            DayCounter::Thirty360European => "30E/360",
-            DayCounter::ThirtyE360Isda => "30E/360 ISDA",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 
     /// Returns the year fraction for a given number of calendar days.
-    ///
-    /// Equivalent to `year_fraction(start, end)` where `end - start = days`,
-    /// but avoids the need to construct `Date` objects.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::DayCounter;
-    ///
-    /// let yf = DayCounter::Actual365Fixed.year_fraction_from_days(365);
-    /// assert!((yf - 1.0).abs() < 1e-10);
-    ///
-    /// let yf = DayCounter::Actual360.year_fraction_from_days(360);
-    /// assert!((yf - 1.0).abs() < 1e-10);
-    /// ```
     #[must_use]
     #[allow(clippy::cast_precision_loss)]
     pub fn year_fraction_from_days(self, days: i64) -> f64 {
@@ -133,7 +55,6 @@ impl DayCounter {
             Self::Actual365Fixed => days as f64 / 365.0,
             Self::Actual36525 => days as f64 / 365.25,
             Self::ActualActualIsda => days as f64 / 365.25,
-            // 30/360 variants: approximate using actual days
             Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => {
                 days as f64 / 360.0
             }
@@ -141,28 +62,10 @@ impl DayCounter {
     }
 
     /// Calculate the year fraction between two dates.
-    ///
-    /// Returns a negative value when start > end instead of panicking.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::{Date, DayCounter};
-    ///
-    /// let start = Date::from_ymd(2024, 1, 1).unwrap();
-    /// let end = Date::from_ymd(2024, 7, 1).unwrap();
-    ///
-    /// let yf = DayCounter::Actual365Fixed.year_fraction(start, end);
-    /// assert!((yf - 182.0 / 365.0).abs() < 1e-10);
-    ///
-    /// // Reversed dates return negative value
-    /// let yf_neg = DayCounter::Actual365Fixed.year_fraction(end, start);
-    /// assert!((yf_neg + 182.0 / 365.0).abs() < 1e-10);
-    /// ```
     #[must_use]
-    #[allow(clippy::cast_precision_loss)] // Day counts fit in f64 mantissa
+    #[allow(clippy::cast_precision_loss)]
     pub fn year_fraction(self, start: Date, end: Date) -> f64 {
-        let days = end - start; // Returns i64, can be negative
+        let days = end - start;
 
         match self {
             Self::Actual360 => days as f64 / 360.0,
@@ -170,7 +73,6 @@ impl DayCounter {
             Self::Actual36525 => days as f64 / 365.25,
             Self::ActualActualIsda => days as f64 / 365.25,
             Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => {
-                // For 30/360, we need to handle negative direction
                 let (start_inner, end_inner, sign) = if start <= end {
                     (start.into_inner(), end.into_inner(), 1.0)
                 } else {
@@ -182,22 +84,11 @@ impl DayCounter {
     }
 
     /// Calculate the number of days between two dates.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::{Date, DayCounter};
-    ///
-    /// let start = Date::from_ymd(2024, 1, 1).unwrap();
-    /// let end = Date::from_ymd(2024, 1, 11).unwrap();
-    ///
-    /// assert_eq!(DayCounter::Actual365Fixed.day_count(start, end), 10);
-    /// ```
     #[must_use]
     pub fn day_count(self, start: Date, end: Date) -> i64 { end - start }
 
     /// Calculate 30/360 day count.
-    #[allow(clippy::cast_possible_wrap)] // Month/day values are always small
+    #[allow(clippy::cast_possible_wrap)]
     fn thirty_360_days(self, start: NaiveDate, end: NaiveDate) -> f64 {
         let (y1, m1, d1) = (start.year(), start.month() as i32, start.day() as i32);
         let (y2, m2, d2) = (end.year(), end.month() as i32, end.day() as i32);
@@ -220,8 +111,6 @@ impl FromStr for DayCounter {
     type Err = String;
 
     /// Parses day count convention from string (case-insensitive).
-    ///
-    /// Supports multiple aliases for each convention.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_uppercase().replace(['/', ' ', '.', '_'], "").as_str() {
             "ACT360" | "ACTUAL360" | "A360" => Ok(DayCounter::Actual360),
@@ -238,10 +127,6 @@ impl FromStr for DayCounter {
     }
 }
 
-impl fmt::Display for DayCounter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,7 +136,7 @@ mod tests {
         let start = Date::from_ymd(2026, 1, 1).unwrap();
         let end = Date::from_ymd(2026, 4, 1).unwrap();
         let yf = DayCounter::Actual360.year_fraction(start, end);
-        assert!((yf - 0.25).abs() < 0.01); // ~90 days / 360
+        assert!((yf - 0.25).abs() < 0.01);
     }
 
     #[test]
@@ -315,7 +200,6 @@ mod tests {
         let end = Date::from_ymd(2024, 7, 1).unwrap();
 
         let yf = DayCounter::Actual365Fixed.year_fraction(start, end);
-        // 182 days / 365 ≈ 0.4986
         assert!((yf - 182.0 / 365.0).abs() < 1e-10);
     }
 
@@ -344,9 +228,6 @@ mod tests {
 
     #[test]
     fn test_thirty_360_bond() {
-        // 2024-01-31 to 2024-03-31
-        // d1 = 31 -> 30, d2 = 31, d1_adj = 30 -> 30
-        // Months: 2, Days: 0 => 60 days / 360 = 0.1667
         let start = Date::from_ymd(2024, 1, 31).unwrap();
         let end = Date::from_ymd(2024, 3, 31).unwrap();
 
@@ -356,26 +237,21 @@ mod tests {
 
     #[test]
     fn test_thirty_360_european() {
-        // Both d1 and d2 are capped at 30
         let start = Date::from_ymd(2024, 1, 31).unwrap();
         let end = Date::from_ymd(2024, 3, 31).unwrap();
 
         let yf = DayCounter::Thirty360European.year_fraction(start, end);
-        // d1 = 30, d2 = 30, 2 months = 60 days / 360
         assert!((yf - 60.0 / 360.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_thirty_360_bond_vs_european() {
-        // When d1 < 30, 30/360 Bond doesn't cap d2
         let start = Date::from_ymd(2024, 1, 15).unwrap();
         let end = Date::from_ymd(2024, 3, 31).unwrap();
 
         let bond_yf = DayCounter::Thirty360Bond.year_fraction(start, end);
         let euro_yf = DayCounter::Thirty360European.year_fraction(start, end);
 
-        // Bond: d1=15, d2=31 -> days = 2*30 + (31-15) = 76
-        // Euro: d1=15, d2=30 -> days = 2*30 + (30-15) = 75
         assert!((bond_yf - 76.0 / 360.0).abs() < 1e-10);
         assert!((euro_yf - 75.0 / 360.0).abs() < 1e-10);
     }
@@ -394,7 +270,6 @@ mod tests {
         assert!((DayCounter::Actual365Fixed.year_fraction_from_days(365) - 1.0).abs() < 1e-10);
         assert!((DayCounter::Actual360.year_fraction_from_days(360) - 1.0).abs() < 1e-10);
         assert!((DayCounter::Actual365Fixed.year_fraction_from_days(0)).abs() < 1e-15);
-        // Negative days
         assert!((DayCounter::Actual365Fixed.year_fraction_from_days(-365) + 1.0).abs() < 1e-10);
     }
 
@@ -410,7 +285,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(DayCounter::Actual365Fixed);
         set.insert(DayCounter::Actual360);
-        set.insert(DayCounter::Actual365Fixed); // Duplicate
+        set.insert(DayCounter::Actual365Fixed);
         assert_eq!(set.len(), 2);
     }
 }

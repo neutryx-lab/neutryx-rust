@@ -2,35 +2,29 @@
 import { usePricerStore } from '@/stores/pricer';
 
 const store = usePricerStore();
+
+const iconMap: Record<string, string> = {
+  'fa-calendar': 'mdi-calendar',
+  'fa-file-contract': 'mdi-file-document-outline',
+  'fa-dollar-sign': 'mdi-currency-usd',
+  'fa-chart-line': 'mdi-chart-line',
+};
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    <div v-for="stat in store.summaryStats" :key="stat.label" class="glass-card p-4">
-      <div class="flex items-start justify-between">
-        <div>
-          <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
-          <p class="text-2xl font-semibold text-[var(--text-primary)] truncate">
-            {{ stat.value }}
-          </p>
-        </div>
-        <div
-          class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-          :style="{ backgroundColor: `${stat.color}1a` }"
-        >
-          <i :class="['fas', stat.icon]" :style="{ color: stat.color }"></i>
-        </div>
-      </div>
-    </div>
-  </div>
+  <v-row class="mb-4">
+    <v-col v-for="stat in store.summaryStats" :key="stat.label" cols="6" md="3">
+      <v-card>
+        <v-card-text class="d-flex align-center justify-space-between">
+          <div>
+            <div class="text-caption text-medium-emphasis">{{ stat.label }}</div>
+            <div class="text-h6 font-weight-bold text-truncate">{{ stat.value }}</div>
+          </div>
+          <v-avatar :color="stat.color" size="40" variant="tonal">
+            <v-icon :icon="iconMap[stat.icon] || 'mdi-information'" />
+          </v-avatar>
+        </v-card-text>
+      </v-card>
+    </v-col>
+  </v-row>
 </template>
-
-<style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-</style>

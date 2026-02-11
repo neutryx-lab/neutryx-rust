@@ -1,20 +1,13 @@
 //! Foreign exchange instrument definitions.
-//!
-//! This module provides definitions for FX derivatives including
-//! spots, forwards, vanilla options, barrier options, and FX swaps.
 
 use super::{
     common::{BarrierDirection, BarrierType, ExerciseStyle},
     error::InstrumentError,
 };
-// Re-export CurrencyPair from market module
 pub use crate::market::CurrencyPair;
 use crate::{market::Currency, time::Date, trade::OptionType};
 
 /// FX spot transaction.
-///
-/// An immediate exchange of currencies at the current spot rate,
-/// typically settling T+2.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxSpot {
@@ -48,9 +41,6 @@ impl FxSpot {
 }
 
 /// FX forward transaction.
-///
-/// An agreement to exchange currencies at a predetermined rate
-/// on a future date.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxForward {
@@ -84,9 +74,6 @@ impl FxForward {
 }
 
 /// FX vanilla option.
-///
-/// A standard European or American option to exchange currencies
-/// at a predetermined strike rate.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxVanillaOption {
@@ -131,9 +118,6 @@ impl FxVanillaOption {
 }
 
 /// FX barrier option.
-///
-/// An option with a barrier that, if breached, either activates
-/// (knock-in) or deactivates (knock-out) the option.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxBarrierOption {
@@ -168,7 +152,6 @@ impl FxBarrierOption {
             }
         }
 
-        // Validate barrier vs strike consistency
         match (self.barrier_direction, self.vanilla.option_type) {
             (BarrierDirection::Up, OptionType::Call) => {
                 if self.barrier_level <= self.vanilla.strike {
@@ -192,9 +175,6 @@ impl FxBarrierOption {
 }
 
 /// FX swap (short-term swap).
-///
-/// A combination of a spot and forward transaction,
-/// exchanging currencies on the near leg and reversing on the far leg.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxSwap {
@@ -238,31 +218,7 @@ impl FxSwap {
     pub fn swap_points(&self) -> f64 { self.far_rate - self.near_rate }
 }
 
-// ============================================================================
-// FX Swap Calibration Instruments
-// ============================================================================
-
 /// Swap points with scaling factor for forward rate calculation.
-///
-/// Swap points represent the difference between forward and spot rates,
-/// typically quoted in "pips" with a scaling factor that varies by currency
-/// pair.
-///
-/// # Scaling Factors by Currency Pair
-///
-/// - **EURUSD, GBPUSD, etc.**: 10000 (4 decimal places)
-/// - **USDJPY, EURJPY**: 100 (2 decimal places)
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::trade::instrument_def::SwapPoints;
-///
-/// // EURUSD swap points: 50 pips = 0.0050
-/// let sp = SwapPoints::for_eurusd(50.0);
-/// let forward = sp.to_forward_rate(1.1000);
-/// assert!((forward - 1.1050).abs() < 1e-10);
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SwapPoints {
@@ -291,9 +247,6 @@ impl SwapPoints {
     pub fn for_usdjpy(value: f64) -> Self { Self::new(value, 100.0) }
 
     /// Creates swap points from rate difference.
-    ///
-    /// Calculates the swap points value given spot, forward, and scaling
-    /// factor.
     #[must_use]
     pub fn from_rate_difference(spot: f64, forward: f64, scaling_factor: f64) -> Self {
         let value = (forward - spot) * scaling_factor;
@@ -311,8 +264,6 @@ impl SwapPoints {
     pub fn scaling_factor(&self) -> f64 { self.scaling_factor }
 
     /// Converts to forward rate given spot rate.
-    ///
-    /// Formula: F = S + swap_points / scaling_factor
     #[inline]
     #[must_use]
     pub fn to_forward_rate(&self, spot: f64) -> f64 { spot + self.value / self.scaling_factor }
@@ -406,31 +357,6 @@ impl FxSwapConvention {
 }
 
 /// FX Swap Instrument for forward point bootstrapping.
-///
-/// This structure is designed for calibration purposes, storing swap points
-/// rather than outright rates, with associated conventions.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::trade::instrument_def::{
-///     FxSwapInstrument, SwapPoints, FxSwapConvention, CurrencyPair,
-/// };
-/// use infra_domain::{market::Currency, time::Date};
-///
-/// let inst = FxSwapInstrument {
-///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
-///     near_date: Date::from_ymd(2025, 1, 3).unwrap(),
-///     far_date: Date::from_ymd(2025, 4, 3).unwrap(),
-///     spot_rate: 1.1000,
-///     swap_points: SwapPoints::for_eurusd(50.0),
-///     convention: FxSwapConvention::default(),
-/// };
-///
-/// // Get implied forward rate
-/// let forward = inst.implied_forward_rate();
-/// assert!((forward - 1.1050).abs() < 1e-10);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxSwapInstrument {
@@ -450,8 +376,6 @@ pub struct FxSwapInstrument {
 
 impl FxSwapInstrument {
     /// Returns the implied forward rate.
-    ///
-    /// Formula: F = S + swap_points / scaling_factor
     #[must_use]
     pub fn implied_forward_rate(&self) -> f64 { self.swap_points.to_forward_rate(self.spot_rate) }
 
@@ -495,7 +419,6 @@ mod tests {
 
     #[test]
     fn test_fx_instruments_validation() {
-        // FxSpot: valid + negative notional
         let spot = FxSpot {
             currency_pair: pair(),
             spot_rate: 1.1050,
@@ -508,7 +431,6 @@ mod tests {
         bad.notional = -1_000.0;
         assert!(bad.validate().is_err());
 
-        // FxForward: valid + negative rate
         let fwd = FxForward {
             currency_pair: pair(),
             forward_rate: 1.1100,
@@ -521,7 +443,6 @@ mod tests {
         bad.forward_rate = -1.1100;
         assert!(bad.validate().is_err());
 
-        // FxVanillaOption: valid + invalid dates
         let opt = FxVanillaOption {
             currency_pair: pair(),
             strike: 1.1000,
@@ -537,7 +458,6 @@ mod tests {
         bad.delivery_date = Date::from_ymd(2025, 6, 14).unwrap();
         assert!(bad.validate().is_err());
 
-        // FxBarrierOption: valid + invalid barrier level
         let barrier = FxBarrierOption {
             vanilla: opt.clone(),
             barrier_level: 1.1500,
@@ -555,7 +475,6 @@ mod tests {
         };
         assert!(bad_barrier.validate().is_err());
 
-        // FxSwap: valid + invalid dates + swap_points
         let swap = FxSwap {
             currency_pair: pair(),
             near_leg_date: Date::from_ymd(2025, 1, 3).unwrap(),
@@ -575,7 +494,6 @@ mod tests {
 
     #[test]
     fn test_swap_points_and_tenor() {
-        // SwapPoints: new, forward rates, factories, from_rate_difference, display
         let sp = SwapPoints::new(50.0, 10000.0);
         assert!((sp.value() - 50.0).abs() < 1e-10);
         assert!((sp.scaling_factor() - 10000.0).abs() < 1e-10);
@@ -591,7 +509,6 @@ mod tests {
         let from_diff = SwapPoints::from_rate_difference(1.1000, 1.1050, 10000.0);
         assert!((from_diff.value() - 50.0).abs() < 1e-10);
 
-        // FxSwapTenor names
         assert_eq!(FxSwapTenor::ON.name(), "ON");
         assert_eq!(FxSwapTenor::TN.name(), "TN");
         assert_eq!(FxSwapTenor::SN.name(), "SN");
@@ -599,7 +516,6 @@ mod tests {
         assert_eq!(FxSwapTenor::M3.name(), "3M");
         assert_eq!(FxSwapTenor::Y1.name(), "1Y");
 
-        // FxSwapConvention default
         assert_eq!(FxSwapConvention::default().spot_lag, 2);
     }
 
@@ -616,7 +532,6 @@ mod tests {
         assert!((inst.implied_forward_rate() - 1.1050).abs() < 1e-10);
         assert!(inst.validate().is_ok());
 
-        // Invalid dates
         let bad_dates = FxSwapInstrument {
             currency_pair: pair(),
             near_date: Date::from_ymd(2025, 4, 3).unwrap(),
@@ -627,7 +542,6 @@ mod tests {
         };
         assert!(bad_dates.validate().is_err());
 
-        // Invalid spot
         let bad_spot = FxSwapInstrument {
             currency_pair: pair(),
             near_date: Date::from_ymd(2025, 1, 3).unwrap(),

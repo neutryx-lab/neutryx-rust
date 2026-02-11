@@ -324,6 +324,117 @@ pub fn validate_finite(context: &'static str, value: f64) -> Result<(), Computat
 }
 
 // =============================================================================
+// Default smoothing epsilon
+// =============================================================================
+
+/// Default smoothing epsilon value used across stochastic models.
+///
+/// This constant consolidates the `1e-8` epsilon value used in GBM, Heston,
+/// and other models for smooth approximations (AD compatibility).
+pub const DEFAULT_SMOOTHING_EPSILON: f64 = 1e-8;
+
+// =============================================================================
+// validate_params! macro
+// =============================================================================
+
+/// Macro to generate a `validate()` method body for stochastic model
+/// parameters.
+///
+/// Eliminates repetitive sequences of `validate_positive`,
+/// `validate_correlation`, etc. calls across model parameter types.
+///
+/// # Syntax
+///
+/// ```ignore
+/// validate_params! {
+///     self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
+///     positive: [spot, v0, theta, kappa, xi, maturity, psi_c, smoothing_epsilon],
+///     correlation: [rho],
+/// }
+/// ```
+///
+/// # Supported rules
+///
+/// - `positive`: calls `validate_positive` for each field
+/// - `non_negative`: calls `validate_non_negative` for each field
+/// - `correlation`: calls `validate_correlation` for each field (closed [-1,
+///   1])
+/// - `strict_correlation`: calls `validate_strict_correlation` for each field
+///   (open (-1, 1))
+/// - `unit_interval`: calls `validate_unit_interval` for each field ([0, 1])
+///
+/// # Example
+///
+/// ```ignore
+/// use crate::stochastic::validation::{validate_params, ParamValidationError};
+///
+/// impl<T: Float> HestonParams<T> {
+///     pub fn validate(&self) -> Result<(), ParamValidationError> {
+///         validate_params! {
+///             self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
+///             positive: [spot, v0, theta, kappa, xi, maturity, psi_c, smoothing_epsilon],
+///             correlation: [rho],
+///         }
+///     }
+/// }
+/// ```
+/// Internal helper: dispatch a single validation rule.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __validate_rule {
+    (positive, $conv:expr, $self:expr, $field:ident) => {
+        $crate::stochastic::validation::validate_positive(stringify!($field), $conv($self.$field))?;
+    };
+    (non_negative, $conv:expr, $self:expr, $field:ident) => {
+        $crate::stochastic::validation::validate_non_negative(
+            stringify!($field),
+            $conv($self.$field),
+        )?;
+    };
+    (correlation, $conv:expr, $self:expr, $field:ident) => {
+        $crate::stochastic::validation::validate_correlation(
+            stringify!($field),
+            $conv($self.$field),
+        )?;
+    };
+    (strict_correlation, $conv:expr, $self:expr, $field:ident) => {
+        $crate::stochastic::validation::validate_strict_correlation(
+            stringify!($field),
+            $conv($self.$field),
+        )?;
+    };
+    (unit_interval, $conv:expr, $self:expr, $field:ident) => {
+        $crate::stochastic::validation::validate_unit_interval(
+            stringify!($field),
+            $conv($self.$field),
+        )?;
+    };
+}
+
+#[doc(hidden)]
+pub use __validate_rule;
+
+/// Macro to generate parameter validation from declarative rules.
+///
+/// See [`validate_params`] module-level docs for syntax and examples.
+#[macro_export]
+macro_rules! validate_params {
+    (
+        self_val = $self:expr, f64_conv = $conv:expr,
+        $($rule:ident : [$($field:ident),* $(,)?]),* $(,)?
+    ) => {{
+        let __conv = $conv;
+        $($(
+            $crate::__validate_rule!($rule, __conv, $self, $field);
+        )*)*
+        Ok(())
+    }};
+}
+
+// Re-export the macro at crate level for use in submodules
+pub use validate_params;
+
+// =============================================================================
 // Tests
 // =============================================================================
 

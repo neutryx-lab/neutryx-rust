@@ -1,16 +1,10 @@
 //! Instrument-specific error types.
-//!
-//! This module provides structured error handling for instrument definitions,
-//! validation, and cashflow expansion.
 
 use thiserror::Error;
 
 use crate::trade::TradeError;
 
 /// Errors that can occur during instrument operations.
-///
-/// Provides structured error handling for instrument definition construction,
-/// validation, and CF expansion.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum InstrumentError {
     /// Invalid instrument parameter.

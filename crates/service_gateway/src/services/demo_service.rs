@@ -1,6 +1,4 @@
-//! Demo service wrapping data loading and demo-specific operations
-//!
-//! Provides endpoints for the demo_gui frontend.
+//! Demo service wrapping data loading and demo-specific operations.
 
 use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 
@@ -26,11 +24,10 @@ use crate::{
     state::AppState,
 };
 
-/// Demo service providing API endpoints for demo_gui
+/// Demo service providing API endpoints for demo_gui.
 pub struct DemoService;
 
-/// Create a `MarketRate` with common defaults (quote_type="Mid",
-/// source="Internal").
+/// Create a `MarketRate` with common defaults (quote_type="Mid",.
 fn make_market_rate(
     id: String,
     currency: String,
@@ -79,22 +76,18 @@ fn load_and_collect<T>(
 }
 
 impl DemoService {
-    /// Get application configuration
+    /// Get application configuration.
     pub fn get_config(_state: &Arc<AppState>) -> Result<AppConfigResponse, ServerError> {
-        // Load currencies from config
         let currencies_path = Path::new("demo/data/config/currencies.json");
         let currencies_data: serde_json::Value =
             helpers::load_json_value(currencies_path, "currencies.json")?;
 
-        // Load rate indices from config
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
         let rate_indices_data: serde_json::Value =
             helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
 
-        // Build enums
         let mut enums: HashMap<String, Vec<EnumValue>> = HashMap::new();
 
-        // Add currencies
         if let Some(currencies) = currencies_data.get("currencies").and_then(|c| c.as_array()) {
             let currency_values: Vec<EnumValue> = currencies
                 .iter()
@@ -107,7 +100,6 @@ impl DemoService {
             enums.insert("currencies".to_string(), currency_values);
         }
 
-        // Add rate indices
         if let Some(rate_indices) = rate_indices_data
             .get("rateIndices")
             .and_then(|i| i.as_array())
@@ -119,7 +111,6 @@ impl DemoService {
             enums.insert("rateIndices".to_string(), index_values);
         }
 
-        // Build rate_index_by_currency from currencies.json
         let mut rate_index_by_currency: HashMap<String, String> = HashMap::new();
         if let Some(currencies) = currencies_data.get("currencies").and_then(|c| c.as_array()) {
             for currency in currencies {
@@ -132,7 +123,6 @@ impl DemoService {
             }
         }
 
-        // Build defaults
         let defaults: HashMap<String, serde_json::Value> = [
             ("currency".to_string(), serde_json::json!("USD")),
             ("notional".to_string(), serde_json::json!(1_000_000)),
@@ -148,9 +138,8 @@ impl DemoService {
         })
     }
 
-    /// Get available instruments
+    /// Get available instruments.
     pub fn get_instruments(_state: &Arc<AppState>) -> Result<InstrumentsResponse, ServerError> {
-        // Return hardcoded instrument definitions
         let instruments = vec![
             InstrumentDef {
                 instrument_type: "IRS".to_string(),
@@ -283,14 +272,13 @@ impl DemoService {
         Ok(InstrumentsResponse { instruments })
     }
 
-    /// Expand a trade request into cashflows
+    /// Expand a trade request into cashflows.
     pub fn expand_trade(
         request: &TradeExpandRequest,
         _state: &Arc<AppState>,
     ) -> Result<ExpandedTrade, ServerError> {
         let start = Instant::now();
 
-        // Generate mock expanded trade based on instrument type
         let (legs, trade_type) = match request.instrument_type.as_str() {
             "IRS" => {
                 let fixed_leg = TradeLeg {
@@ -391,7 +379,7 @@ impl DemoService {
         })
     }
 
-    /// Price a trade using `GenericPricer`
+    /// Price a trade using `GenericPricer`.
     pub fn price_trade(
         request: &DemoPricingRequest,
         state: &Arc<AppState>,
@@ -441,7 +429,7 @@ impl DemoService {
         })
     }
 
-    /// Calculate Greeks via bump-and-revalue using `GenericPricer`
+    /// Calculate Greeks via bump-and-revalue using `GenericPricer`.
     pub fn calculate_greeks(
         request: &DemoGreeksRequest,
         state: &Arc<AppState>,
@@ -450,14 +438,12 @@ impl DemoService {
         let valuation_date = parse_simple_date(&request.valuation_date)?;
         let reporting_ccy = DefaultCurrency::new(&request.reporting_currency);
 
-        // Base PV
         let base_pv = state
             .pricer
             .get_pv_simple(simple_legs.clone(), valuation_date, reporting_ccy)
             .map_err(|e| ServerError::Internal(format!("Base pricing failed: {e}")))?
             .total_pv;
 
-        // Delta (DV01): bump cashflow amounts by ±rate_bump_bp/10000
         let rate_bump = request.bump_sizes.rate_bump_bp / 10000.0;
         let legs_up = bump_cashflow_amounts(&simple_legs, rate_bump);
         let legs_down = bump_cashflow_amounts(&simple_legs, -rate_bump);
@@ -476,7 +462,6 @@ impl DemoService {
         let delta = (pv_up - pv_down) / 2.0;
         let gamma = Some(pv_up - 2.0 * base_pv + pv_down);
 
-        // Theta: shift valuation date forward by 1 day
         let theta_date = SimpleDate::from_days(valuation_date.days() + 1);
         let theta_pv = state
             .pricer
@@ -485,7 +470,6 @@ impl DemoService {
             .total_pv;
         let theta = Some(theta_pv - base_pv);
 
-        // Vega: bump amounts by ±vol_bump_pct/100
         let vol_bump = request.bump_sizes.vol_bump_pct / 100.0;
         let legs_vol_up = bump_cashflow_amounts(&simple_legs, vol_bump);
         let pv_vol_up = state
@@ -504,7 +488,7 @@ impl DemoService {
         })
     }
 
-    /// Get market rates
+    /// Get market rates.
     pub fn get_market_rates(_state: &Arc<AppState>) -> Result<MarketRatesResponse, ServerError> {
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
         let data: serde_json::Value = helpers::load_json_value(rates_path, "market_quotes.json")?;
@@ -512,7 +496,6 @@ impl DemoService {
         let mut rates = Vec::new();
         let timestamp = chrono::Utc::now().to_rfc3339();
 
-        // Load IR rates from market_quotes.json
         if let Some(rates_by_currency) = data.get("rates").and_then(|r| r.as_object()) {
             for (currency, rate_types) in rates_by_currency {
                 if let Some(rate_types_obj) = rate_types.as_object() {
@@ -541,7 +524,6 @@ impl DemoService {
             }
         }
 
-        // Load individual curve files (usd-sofr.json, eur-estr.json, jpy-tona.json)
         let curve_files = ["usd-sofr.json", "eur-estr.json", "jpy-tona.json"];
         for file in &curve_files {
             let curve_path = Path::new("demo/data/input/rates").join(file);
@@ -570,7 +552,6 @@ impl DemoService {
                             let id =
                                 format!("{}-{}-{}-{}", currency, index_name, instr_type, tenor);
 
-                            // Skip if we already have this rate (from market_quotes.json)
                             if rates.iter().any(|r| {
                                 r.currency == currency
                                     && r.tenor == tenor
@@ -594,7 +575,6 @@ impl DemoService {
             }
         }
 
-        // Load FX spot rates
         let fx_path = Path::new("demo/data/input/fx/fx_spots.json");
         if let Ok(fx_content) = std::fs::read_to_string(fx_path) {
             if let Ok(fx_data) = serde_json::from_str::<serde_json::Value>(&fx_content) {
@@ -618,7 +598,6 @@ impl DemoService {
             }
         }
 
-        // Load FX forward points
         let fx_fwd_path = Path::new("demo/data/input/fx/fx_forwards.json");
         if let Ok(fx_fwd_content) = std::fs::read_to_string(fx_fwd_path) {
             if let Ok(fx_fwd_data) = serde_json::from_str::<serde_json::Value>(&fx_fwd_content) {
@@ -647,7 +626,6 @@ impl DemoService {
             }
         }
 
-        // Load cross-currency basis swaps
         let xccy_path = Path::new("demo/data/input/fx/xccy_basis.json");
         if let Ok(xccy_content) = std::fs::read_to_string(xccy_path) {
             if let Ok(xccy_data) = serde_json::from_str::<serde_json::Value>(&xccy_content) {
@@ -684,7 +662,7 @@ impl DemoService {
         })
     }
 
-    /// Get market config
+    /// Get market config.
     pub fn get_market_config(_state: &Arc<AppState>) -> Result<MarketConfigResponse, ServerError> {
         Ok(MarketConfigResponse {
             tenor_order: vec![
@@ -706,7 +684,7 @@ impl DemoService {
         })
     }
 
-    /// Get rate detail
+    /// Get rate detail.
     pub fn get_rate_detail(
         rate_id: &str,
         state: &Arc<AppState>,
@@ -718,10 +696,8 @@ impl DemoService {
             .find(|r| r.id == rate_id)
             .ok_or_else(|| ServerError::NotFound(format!("Rate {} not found", rate_id)))?;
 
-        // Build instrument description based on rate type
         let instrument = Self::build_instrument_description(&rate);
 
-        // Find matching convention
         let convention = Self::find_convention_for_rate(&rate, state);
 
         Ok(MarketRateDetailResponse {
@@ -731,7 +707,7 @@ impl DemoService {
         })
     }
 
-    /// Build instrument description for a rate
+    /// Build instrument description for a rate.
     fn build_instrument_description(rate: &MarketRate) -> Option<serde_json::Value> {
         let description = match rate.rate_type.as_str() {
             "deposit" => serde_json::json!({
@@ -853,11 +829,10 @@ impl DemoService {
         Some(description)
     }
 
-    /// Find matching convention for a rate
+    /// Find matching convention for a rate.
     fn find_convention_for_rate(rate: &MarketRate, state: &Arc<AppState>) -> Option<Convention> {
         let conventions_result = Self::get_conventions(state).ok()?;
 
-        // Try to find exact match first
         let convention_id = match rate.rate_type.as_str() {
             "deposit" => Some(format!("{}-DEPO", rate.currency)),
             "ois" => Some(format!(
@@ -869,18 +844,14 @@ impl DemoService {
                 let index = rate.rate_index.as_deref().unwrap_or("SWAP");
                 Some(format!("{}-{}-SWAP", rate.currency, index))
             }
-            "fra" | "future" => {
-                // FRA and futures use the same OIS convention for the underlying index
-                Some(format!(
-                    "{}-{}-OIS",
-                    rate.currency,
-                    rate.rate_index.as_deref().unwrap_or("OIS")
-                ))
-            }
+            "fra" | "future" => Some(format!(
+                "{}-{}-OIS",
+                rate.currency,
+                rate.rate_index.as_deref().unwrap_or("OIS")
+            )),
             "fxspot" => Some("FX-SPOT".to_string()),
             "fxforward" => Some("FX-SPOT".to_string()),
             "xccybasis" => {
-                // Extract pair from rate_index (e.g., "ESTR/SOFR" -> XCCY-EURUSD)
                 let pair = rate
                     .id
                     .strip_prefix("XCCY-")
@@ -893,13 +864,11 @@ impl DemoService {
         };
 
         if let Some(id) = convention_id {
-            // Try exact match
             if let Some(conv) = conventions_result.conventions.iter().find(|c| c.id == id) {
                 return Some(conv.clone());
             }
         }
 
-        // Try currency match with default
         conventions_result.conventions.into_iter().find(|c| {
             c.currency == rate.currency
                 && c.convention_type.to_lowercase().contains(&rate.rate_type)
@@ -907,13 +876,10 @@ impl DemoService {
         })
     }
 
-    /// Refresh market rates (mock - just returns success)
-    pub fn refresh_market_rates(_state: &Arc<AppState>) -> Result<(), ServerError> {
-        // In a real implementation, this would refresh from data sources
-        Ok(())
-    }
+    /// Refresh market rates (mock - just returns success).
+    pub fn refresh_market_rates(_state: &Arc<AppState>) -> Result<(), ServerError> { Ok(()) }
 
-    /// Get conventions
+    /// Get conventions.
     pub fn get_conventions(_state: &Arc<AppState>) -> Result<ConventionsResponse, ServerError> {
         let conv_path = Path::new("demo/data/input/conventions/conventions.json");
         let data: serde_json::Value = helpers::load_json_value(conv_path, "conventions.json")?;
@@ -934,7 +900,6 @@ impl DemoService {
                     .to_string();
                 let is_default = conv.get("is_default").and_then(|d| d.as_bool());
 
-                // Convert fields object to ConventionField vec
                 let fields = conv.get("fields").and_then(|f| f.as_object()).map(|obj| {
                     obj.iter()
                         .map(|(key, value)| ConventionField {
@@ -975,13 +940,12 @@ impl DemoService {
             }
         }
 
-        // Sort conventions by id for consistency
         conventions.sort_by(|a, b| a.id.cmp(&b.id));
 
         Ok(ConventionsResponse { conventions })
     }
 
-    /// Get convention detail
+    /// Get convention detail.
     pub fn get_convention_detail(
         id: &str,
         state: &Arc<AppState>,
@@ -994,11 +958,10 @@ impl DemoService {
             .ok_or_else(|| ServerError::NotFound(format!("Convention {} not found", id)))
     }
 
-    /// Get market events
+    /// Get market events.
     pub fn get_events(_state: &Arc<AppState>) -> Result<EventsResponse, ServerError> {
         let mut events = Vec::new();
 
-        // Helper to parse event type from string
         fn parse_event_type(s: &str) -> EventType {
             match s {
                 "central_bank_meeting" => EventType::CentralBankMeeting,
@@ -1011,7 +974,6 @@ impl DemoService {
             }
         }
 
-        // Helper to parse event from JSON value
         fn parse_event(event: &serde_json::Value) -> Option<MarketEvent> {
             let id = event.get("id")?.as_str()?.to_string();
             let date = event.get("date")?.as_str()?.to_string();
@@ -1078,7 +1040,6 @@ impl DemoService {
                     .get("actual")
                     .and_then(|a| a.as_str())
                     .map(String::from),
-                // Map expectedRateBp (for central bank meetings) to expected_spike_bp
                 expected_spike_bp: event.get("expectedRateBp").and_then(|v| v.as_f64()),
             })
         }
@@ -1099,7 +1060,6 @@ impl DemoService {
             parse_turn_event,
         ));
 
-        // Helper to parse turn event from JSON value
         fn parse_turn_event(turn: &serde_json::Value) -> Option<MarketEvent> {
             let id = turn.get("id")?.as_str()?.to_string();
             let date = turn.get("date")?.as_str()?.to_string();
@@ -1112,7 +1072,6 @@ impl DemoService {
                 .unwrap_or("")
                 .to_string();
 
-            // Generate title based on turn type
             let title = match turn_type {
                 "turn_of_year" => format!("{} Year-End Turn", currency),
                 "turn_of_quarter" => format!("{} Quarter-End Turn", currency),
@@ -1120,7 +1079,6 @@ impl DemoService {
                 _ => format!("{} Turn", currency),
             };
 
-            // Set event type based on turn type
             let event_type = match turn_type {
                 "turn_of_year" => EventType::TurnOfYear,
                 "turn_of_quarter" => EventType::TurnOfQuarter,
@@ -1128,14 +1086,12 @@ impl DemoService {
                 _ => EventType::Turn,
             };
 
-            // Set importance based on turn type
             let importance = match turn_type {
                 "turn_of_year" => Importance::Critical,
                 "turn_of_quarter" => Importance::High,
                 _ => Importance::Medium,
             };
 
-            // Build description with spike information
             let bid_spike = turn.get("bidSpikeBp").and_then(|b| b.as_f64());
             let ask_spike = turn.get("askSpikeBp").and_then(|a| a.as_f64());
             let historical_avg = turn.get("historicalAvgBp").and_then(|h| h.as_f64());
@@ -1172,13 +1128,12 @@ impl DemoService {
             })
         }
 
-        // Sort events by date
         events.sort_by(|a, b| a.date.cmp(&b.date));
 
         Ok(EventsResponse { events })
     }
 
-    /// Get event types
+    /// Get event types.
     pub fn get_event_types(_state: &Arc<AppState>) -> Result<EventTypesResponse, ServerError> {
         Ok(EventTypesResponse {
             types: vec![
@@ -1196,11 +1151,10 @@ impl DemoService {
         })
     }
 
-    /// Get market holidays
+    /// Get market holidays.
     pub fn get_holidays(_state: &Arc<AppState>) -> Result<HolidaysResponse, ServerError> {
         let mut holidays = Vec::new();
 
-        // Helper to parse holiday from JSON value
         fn parse_holiday(event: &serde_json::Value) -> Option<Holiday> {
             let id = event.get("id")?.as_str()?.to_string();
             let date = event.get("date")?.as_str()?.to_string();
@@ -1224,7 +1178,6 @@ impl DemoService {
                 .and_then(|s| s.as_str())
                 .map(String::from);
 
-            // Determine holiday type from tags or default to "bank"
             let holiday_type = event
                 .get("tags")
                 .and_then(|t| t.as_array())
@@ -1256,17 +1209,15 @@ impl DemoService {
             "events",
             parse_holiday,
         ));
-        // Sort holidays by date
         holidays.sort_by(|a, b| a.date.cmp(&b.date));
 
         Ok(HolidaysResponse { holidays })
     }
 
-    /// Get available curves
+    /// Get available curves.
     pub fn get_available_curves(
         state: &Arc<AppState>,
     ) -> Result<AvailableCurvesResponse, ServerError> {
-        // Return curves from cache
         let curves: Vec<String> = state
             .curve_cache
             .list_ids()
@@ -1277,9 +1228,8 @@ impl DemoService {
         Ok(AvailableCurvesResponse { curves })
     }
 
-    /// Get curve indices for bootstrapping
+    /// Get curve indices for bootstrapping.
     pub fn get_curve_indices(_state: &Arc<AppState>) -> Result<CurveIndicesResponse, ServerError> {
-        // Load from rate_indices.json
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
         let data: serde_json::Value =
             helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
@@ -1299,16 +1249,14 @@ impl DemoService {
         Ok(CurveIndicesResponse { indices })
     }
 
-    /// Get instruments for a specific curve index
+    /// Get instruments for a specific curve index.
     pub fn get_curve_instruments(
         index: &str,
         _state: &Arc<AppState>,
     ) -> Result<CurveInstrumentsResponse, ServerError> {
-        // Load market quotes and filter by index
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
         let data: serde_json::Value = helpers::load_json_value(rates_path, "market_quotes.json")?;
 
-        // Map index to currency
         let currency = match index {
             "SOFR" => "USD",
             "ESTR" => "EUR",
@@ -1325,7 +1273,6 @@ impl DemoService {
                     if let Some(quotes_arr) = quotes.as_array() {
                         for quote in quotes_arr {
                             let quote_index = quote.get("index").and_then(|i| i.as_str());
-                            // Filter by index if specified in quote, or include all if no index
                             if quote_index.is_none() || quote_index == Some(index) {
                                 let tenor = quote
                                     .get("tenor")
@@ -1351,7 +1298,7 @@ impl DemoService {
         Ok(CurveInstrumentsResponse { instruments })
     }
 
-    /// Export market data
+    /// Export market data.
     pub fn export_market_data(
         format: ExportFormat,
         state: &Arc<AppState>,
@@ -1392,16 +1339,13 @@ impl DemoService {
     ) -> Result<RateInstrumentResponse, ServerError> {
         let start = Instant::now();
 
-        // Get the rate detail
         let rate_detail = Self::get_rate_detail(rate_id, state)?;
         let rate = &rate_detail.rate;
 
-        // Calculate dates from tenor
         let valuation_date = chrono::Utc::now().date_naive();
         let (effective_date, maturity_date) =
             Self::calculate_dates_from_tenor(&rate.tenor, &rate.currency, valuation_date);
 
-        // Build convention detail from the rate's convention
         let convention = rate_detail.convention.map(|conv| {
             let mut day_count = None;
             let mut frequency = None;
@@ -1442,7 +1386,6 @@ impl DemoService {
             }
         });
 
-        // Map rate type to instrument type
         let instrument_type = match rate.rate_type.as_str() {
             "deposit" => "Money Market Deposit",
             "ois" => "Overnight Index Swap",
@@ -1464,7 +1407,7 @@ impl DemoService {
             convention,
             effective_date: effective_date.to_string(),
             maturity_date: maturity_date.to_string(),
-            notional: 1_000_000.0, // Default notional
+            notional: 1_000_000.0,
             processing_time_ms: elapsed.as_secs_f64() * 1000.0,
         })
     }
@@ -1476,16 +1419,13 @@ impl DemoService {
     ) -> Result<RateCashflowsResponse, ServerError> {
         let start = Instant::now();
 
-        // Get the rate detail
         let rate_detail = Self::get_rate_detail(rate_id, state)?;
         let rate = &rate_detail.rate;
 
-        // Calculate dates from tenor
         let valuation_date = chrono::Utc::now().date_naive();
         let (effective_date, maturity_date) =
             Self::calculate_dates_from_tenor(&rate.tenor, &rate.currency, valuation_date);
 
-        // Helper to build a single-cashflow leg
         let yf = Self::calculate_year_fraction(effective_date, maturity_date, &rate.currency);
         let mk_cf =
             |pay_date: chrono::NaiveDate, r: Option<f64>, spread: Option<f64>, payoff: &str| {
@@ -1552,17 +1492,15 @@ impl DemoService {
         })
     }
 
-    /// Calculate dates from tenor
+    /// Calculate dates from tenor.
     fn calculate_dates_from_tenor(
         tenor: &str,
         currency: &str,
         valuation_date: chrono::NaiveDate,
     ) -> (chrono::NaiveDate, chrono::NaiveDate) {
-        // Spot lag: T+2 for most currencies, T+0 for GBP
         let spot_lag = if currency == "GBP" { 0 } else { 2 };
         let effective_date = valuation_date + chrono::Duration::days(spot_lag);
 
-        // Parse tenor and calculate maturity
         let t = tenor.to_uppercase();
         let maturity_date = match t.as_str() {
             "ON" | "O/N" | "TN" | "T/N" => effective_date + chrono::Duration::days(1),
@@ -1587,7 +1525,7 @@ impl DemoService {
         (effective_date, maturity_date)
     }
 
-    /// Add months to a date
+    /// Add months to a date.
     fn add_months(date: chrono::NaiveDate, months: i32) -> chrono::NaiveDate {
         use chrono::Datelike;
 
@@ -1596,7 +1534,6 @@ impl DemoService {
         let new_month = (total_months % 12) as u32 + 1;
         let new_year = date.year() + years_to_add;
 
-        // Handle end-of-month
         let max_day = match new_month {
             2 => {
                 if new_year % 4 == 0 && (new_year % 100 != 0 || new_year % 400 == 0) {
@@ -1613,14 +1550,13 @@ impl DemoService {
         chrono::NaiveDate::from_ymd_opt(new_year, new_month, new_day).unwrap_or(date)
     }
 
-    /// Calculate year fraction
+    /// Calculate year fraction.
     fn calculate_year_fraction(
         start: chrono::NaiveDate,
         end: chrono::NaiveDate,
         currency: &str,
     ) -> f64 {
         let days = (end - start).num_days() as f64;
-        // ACT/360 for USD, EUR; ACT/365F for GBP, JPY
         let year_basis = if currency == "GBP" || currency == "JPY" {
             365.0
         } else {
@@ -1629,9 +1565,8 @@ impl DemoService {
         days / year_basis
     }
 
-    /// Get all rate indices
+    /// Get all rate indices.
     pub fn get_rate_indices(state: &Arc<AppState>) -> Result<RateIndicesResponse, ServerError> {
-        // Load from rate_indices.json
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
         let data: serde_json::Value =
             helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
@@ -1639,7 +1574,6 @@ impl DemoService {
         let mut indices = Vec::new();
 
         if let Some(rate_items) = data.get("rateIndices").and_then(|i| i.as_array()) {
-            // Get market rates to count associations
             let rates_response = Self::get_market_rates(state).ok();
             let conventions_response = Self::get_conventions(state).ok();
 
@@ -1665,7 +1599,6 @@ impl DemoService {
                     .map(String::from);
                 let is_overnight = tenor == "O/N" || tenor == "ON";
 
-                // Count associated rates
                 let associated_rates_count = rates_response
                     .as_ref()
                     .map(|r| {
@@ -1679,7 +1612,6 @@ impl DemoService {
                     })
                     .unwrap_or(0);
 
-                // Count associated conventions
                 let associated_conventions_count = conventions_response
                     .as_ref()
                     .map(|c| {
@@ -1690,7 +1622,6 @@ impl DemoService {
                     })
                     .unwrap_or(0);
 
-                // Build display name
                 let name = format!("{} ({})", index_code, currency);
 
                 indices.push(RateIndexInfo {
@@ -1709,17 +1640,15 @@ impl DemoService {
         Ok(RateIndicesResponse { indices })
     }
 
-    /// Get rate index detail
+    /// Get rate index detail.
     pub fn get_rate_index_detail(
         code: &str,
         state: &Arc<AppState>,
     ) -> Result<RateIndexDetailResponse, ServerError> {
-        // Load from rate_indices.json
         let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
         let data: serde_json::Value =
             helpers::load_json_value(rate_indices_path, "rate_indices.json")?;
 
-        // Find the index
         let rate_items = data
             .get("rateIndices")
             .and_then(|i| i.as_array())
@@ -1747,7 +1676,6 @@ impl DemoService {
             .to_string();
         let name = format!("{} ({})", code, currency);
 
-        // Build metadata from conventions field
         let conventions = item.get("conventions");
         let metadata = Some(RateIndexMetadata {
             fixing_lag: conventions
@@ -1768,7 +1696,6 @@ impl DemoService {
                 .map(String::from),
         });
 
-        // Get associated rates
         let rates_response = Self::get_market_rates(state)?;
         let associated_rates: Vec<String> = rates_response
             .rates
@@ -1777,7 +1704,6 @@ impl DemoService {
             .map(|r| r.id.clone())
             .collect();
 
-        // Get associated conventions
         let conventions_response = Self::get_conventions(state)?;
         let associated_conventions: Vec<String> = conventions_response
             .conventions
@@ -1797,15 +1723,13 @@ impl DemoService {
         })
     }
 
-    /// Get rates for a rate index
+    /// Get rates for a rate index.
     pub fn get_index_rates(
         code: &str,
         state: &Arc<AppState>,
     ) -> Result<IndexRatesResponse, ServerError> {
-        // First, get the index to find its currency
         let index_detail = Self::get_rate_index_detail(code, state)?;
 
-        // Get all rates and filter by index
         let rates_response = Self::get_market_rates(state)?;
         let rates: Vec<MarketRate> = rates_response
             .rates
@@ -1818,15 +1742,13 @@ impl DemoService {
         Ok(IndexRatesResponse { rates })
     }
 
-    /// Get conventions for a rate index
+    /// Get conventions for a rate index.
     pub fn get_index_conventions(
         code: &str,
         state: &Arc<AppState>,
     ) -> Result<IndexConventionsResponse, ServerError> {
-        // First, get the index to find its currency
         let index_detail = Self::get_rate_index_detail(code, state)?;
 
-        // Get all conventions and filter by currency
         let conventions_response = Self::get_conventions(state)?;
         let conventions: Vec<Convention> = conventions_response
             .conventions
@@ -1929,14 +1851,12 @@ fn bump_cashflow_amounts(legs: &[SimpleLeg], bump_fraction: f64) -> Vec<SimpleLe
 mod tests {
     use super::*;
 
-    fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
-
-    /// Check if demo data files are available
+    /// Check if demo data files are available.
     fn demo_data_available() -> bool { Path::new("demo/data/config/rate_indices.json").exists() }
 
     #[test]
     fn test_get_instruments() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_instruments(&state);
         assert!(result.is_ok());
         let instruments = result.unwrap();
@@ -1945,7 +1865,7 @@ mod tests {
 
     #[test]
     fn test_get_fx_vol_pairs() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = crate::services::VolcubeService::get_fx_vol_pairs(&state);
         assert!(result.is_ok());
         let pairs = result.unwrap();
@@ -1954,7 +1874,7 @@ mod tests {
 
     #[test]
     fn test_get_ir_vol_currencies() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = crate::services::VolcubeService::get_ir_vol_currencies(&state);
         assert!(result.is_ok());
         let currencies = result.unwrap();
@@ -1967,7 +1887,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_conventions(&state);
         assert!(result.is_ok());
         let conventions = result.unwrap();
@@ -1976,7 +1896,7 @@ mod tests {
 
     #[test]
     fn test_get_market_config() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_market_config(&state);
         assert!(result.is_ok());
         let config = result.unwrap();
@@ -1989,7 +1909,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_events(&state);
         assert!(result.is_ok());
         let events = result.unwrap();
@@ -1998,7 +1918,7 @@ mod tests {
 
     #[test]
     fn test_get_event_types() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_event_types(&state);
         assert!(result.is_ok());
         let types = result.unwrap();
@@ -2011,13 +1931,12 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_indices(&state);
         assert!(result.is_ok());
         let response = result.unwrap();
         assert!(!response.indices.is_empty());
 
-        // Check that SOFR index exists
         let sofr = response.indices.iter().find(|i| i.code == "SOFR");
         assert!(sofr.is_some());
         let sofr = sofr.unwrap();
@@ -2031,7 +1950,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_index_detail("SOFR", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2046,7 +1965,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_index_detail("NONEXISTENT", &state);
         assert!(result.is_err());
     }
@@ -2057,11 +1976,10 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_index_rates("SOFR", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
-        // Should have some rates associated
         assert!(!response.rates.is_empty());
     }
 
@@ -2071,11 +1989,10 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_index_conventions("SOFR", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
-        // Should have some conventions associated
         assert!(!response.conventions.is_empty());
     }
 
@@ -2085,24 +2002,20 @@ mod tests {
 
         let valuation_date = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
 
-        // Test overnight tenor
         let (eff, mat) = DemoService::calculate_dates_from_tenor("ON", "USD", valuation_date);
-        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 17).unwrap()); // T+2
-        assert_eq!(mat, NaiveDate::from_ymd_opt(2025, 1, 18).unwrap()); // T+3
+        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 17).unwrap());
+        assert_eq!(mat, NaiveDate::from_ymd_opt(2025, 1, 18).unwrap());
 
-        // Test 1M tenor
         let (eff, mat) = DemoService::calculate_dates_from_tenor("1M", "USD", valuation_date);
         assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 17).unwrap());
         assert_eq!(mat, NaiveDate::from_ymd_opt(2025, 2, 17).unwrap());
 
-        // Test 1Y tenor
         let (eff, mat) = DemoService::calculate_dates_from_tenor("1Y", "USD", valuation_date);
         assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 17).unwrap());
         assert_eq!(mat, NaiveDate::from_ymd_opt(2026, 1, 17).unwrap());
 
-        // Test GBP with T+0 spot lag
         let (eff, _) = DemoService::calculate_dates_from_tenor("1M", "GBP", valuation_date);
-        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 15).unwrap()); // T+0
+        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 15).unwrap());
     }
 
     #[test]
@@ -2121,11 +2034,10 @@ mod tests {
             NaiveDate::from_ymd_opt(2026, 1, 15).unwrap()
         );
 
-        // End of month handling
         let date_eom = NaiveDate::from_ymd_opt(2025, 1, 31).unwrap();
         assert_eq!(
             DemoService::add_months(date_eom, 1),
-            NaiveDate::from_ymd_opt(2025, 2, 28).unwrap() // Feb has 28 days in 2025
+            NaiveDate::from_ymd_opt(2025, 2, 28).unwrap()
         );
     }
 
@@ -2136,11 +2048,9 @@ mod tests {
         let start = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
         let end = NaiveDate::from_ymd_opt(2025, 7, 1).unwrap();
 
-        // USD uses ACT/360
         let yf_usd = DemoService::calculate_year_fraction(start, end, "USD");
         assert!((yf_usd - 181.0 / 360.0).abs() < 1e-10);
 
-        // GBP uses ACT/365F
         let yf_gbp = DemoService::calculate_year_fraction(start, end, "GBP");
         assert!((yf_gbp - 181.0 / 365.0).abs() < 1e-10);
     }
@@ -2151,7 +2061,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_instrument("USD_SWAP_5Y", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2168,7 +2078,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_instrument("USD_DEPOSIT_3M", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2182,7 +2092,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_instrument("NONEXISTENT_RATE", &state);
         assert!(result.is_err());
     }
@@ -2193,21 +2103,18 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_cashflows("USD_SWAP_5Y", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
         assert_eq!(response.rate_id, "USD_SWAP_5Y");
-        // Swap should have 2 legs (fixed and floating)
         assert_eq!(response.legs.len(), 2);
 
-        // Check leg properties
         let has_fixed = response.legs.iter().any(|l| l.leg_type == "Fixed");
         let has_floating = response.legs.iter().any(|l| l.leg_type == "Floating");
         assert!(has_fixed, "Should have fixed leg");
         assert!(has_floating, "Should have floating leg");
 
-        // Each leg should have cashflows
         for leg in &response.legs {
             assert!(!leg.cashflows.is_empty(), "Leg should have cashflows");
         }
@@ -2219,13 +2126,11 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_cashflows("USD_DEPOSIT_3M", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
-        // Deposit should have 1 leg
         assert_eq!(response.legs.len(), 1);
-        // Deposit leg should have 1 cashflow
         assert_eq!(response.legs[0].cashflows.len(), 1);
     }
 
@@ -2235,7 +2140,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_cashflows("NONEXISTENT_RATE", &state);
         assert!(result.is_err());
     }

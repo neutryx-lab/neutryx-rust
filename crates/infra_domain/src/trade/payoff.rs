@@ -1,7 +1,4 @@
 //! Payoff definitions for cashflow calculations.
-//!
-//! This module provides types for representing payoff formulas
-//! used in financial instruments.
 
 use super::index::IndexType;
 
@@ -50,23 +47,16 @@ impl OptionType {
 }
 
 /// Payoff formula for a cashflow.
-///
-/// Defines how the cashflow amount is calculated based on
-/// market observations.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Payoff {
     /// Fixed rate payment.
-    ///
-    /// Amount = notional * rate * year_fraction
     Fixed {
         /// Fixed rate (as decimal, e.g., 0.05 for 5%).
         rate: f64,
     },
 
     /// Linear (floating) rate payment.
-    ///
-    /// Amount = notional * (index_rate + spread) * year_fraction
     Linear {
         /// Index to observe.
         index: IndexType,
@@ -77,9 +67,6 @@ pub enum Payoff {
     },
 
     /// Vanilla option (Cap/Floor).
-    ///
-    /// Amount = notional * max(0, omega * (index_rate - strike)) *
-    /// year_fraction where omega = +1 for Call (Cap), -1 for Put (Floor)
     VanillaOption {
         /// Index to observe.
         index: IndexType,
@@ -90,9 +77,6 @@ pub enum Payoff {
     },
 
     /// Digital option.
-    ///
-    /// Amount = notional * payout if index_rate > strike (Call) or < strike
-    /// (Put)
     Digital {
         /// Index to observe.
         index: IndexType,
@@ -151,8 +135,6 @@ impl Payoff {
     }
 
     /// Returns the index required for this payoff, if any.
-    ///
-    /// Returns `None` for fixed payoffs.
     #[must_use]
     pub fn required_index(&self) -> Option<&IndexType> {
         match self {
@@ -315,7 +297,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(OptionType::Call);
         set.insert(OptionType::Put);
-        set.insert(OptionType::Call); // Duplicate
+        set.insert(OptionType::Call);
         assert_eq!(set.len(), 2);
     }
 }

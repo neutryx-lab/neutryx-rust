@@ -114,12 +114,10 @@ mod tests {
 
     #[test]
     fn test_error_classification() {
-        // File errors
         assert!(ConfigError::file_not_found("x").is_file_error());
         assert!(ConfigError::parse_error("x", 1, 1, "y").is_file_error());
         assert!(!ConfigError::file_not_found("x").is_validation_error());
 
-        // Validation errors
         assert!(ConfigError::invalid_value("k", "v").is_validation_error());
         assert!(ConfigError::missing_required("f").is_validation_error());
         assert!(ConfigError::MissingField("f").is_validation_error());

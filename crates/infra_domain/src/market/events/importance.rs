@@ -1,14 +1,9 @@
 //! Event importance level definitions.
-//!
-//! This module provides importance classification for market events,
-//! indicating their potential impact on market conditions.
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Importance level of a market event.
-///
-/// Indicates the expected market impact of an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]

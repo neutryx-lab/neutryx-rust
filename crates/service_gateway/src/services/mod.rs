@@ -1,14 +1,10 @@
-//! Service wrappers for facade APIs
-//!
-//! These services wrap the pricer_* facade APIs and provide
-//! convenient methods for use by REST handlers.
+//! Service wrappers for facade APIs.
 
 mod chart_grid;
 mod curve_service;
 pub mod helpers;
 mod pricing_service;
 
-// Feature-gated services
 #[cfg(feature = "demo")]
 mod demo_service;
 #[cfg(feature = "models")]
@@ -23,7 +19,6 @@ mod volatility_service;
 mod volcube_service;
 
 pub use curve_service::CurveService;
-// Feature-gated re-exports
 #[cfg(feature = "demo")]
 pub use demo_service::DemoService;
 #[cfg(feature = "models")]

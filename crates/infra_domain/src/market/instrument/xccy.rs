@@ -1,7 +1,4 @@
 //! Cross-currency basis swap instrument definitions.
-//!
-//! This module provides definitions for cross-currency basis swaps (XCCY),
-//! used for constructing medium to long-term FX forward curves.
 
 use derive_more::{Add, Sub};
 
@@ -10,32 +7,7 @@ use crate::{
     time::{Date, Frequency},
 };
 
-// ============================================================================
-// BasisSpread Newtype
-// ============================================================================
-
 /// Basis spread in basis points for XCCY swaps.
-///
-/// The basis spread is quoted in basis points (bps) and applied to one leg
-/// of the cross-currency swap (typically the foreign leg).
-///
-/// Supports arithmetic operations: `+` and `-` for combining spreads.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::trade::instrument_def::BasisSpread;
-///
-/// // -15 bps basis spread
-/// let spread = BasisSpread::from_bps(-15.0);
-/// assert!((spread.as_decimal() - (-0.0015)).abs() < 1e-10);
-///
-/// // Arithmetic operations
-/// let s1 = BasisSpread::from_bps(10.0);
-/// let s2 = BasisSpread::from_bps(5.0);
-/// let combined = s1 + s2; // 15 bps
-/// assert!((combined.bps() - 15.0).abs() < 1e-10);
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Add, Sub)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BasisSpread(f64);
@@ -69,10 +41,6 @@ impl std::fmt::Display for BasisSpread {
         write!(f, "{:.1} bps", self.0)
     }
 }
-
-// ============================================================================
-// XCCY Swap Components
-// ============================================================================
 
 /// Notional exchange type for XCCY swaps.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -230,38 +198,7 @@ impl std::fmt::Display for XccyTenor {
     }
 }
 
-// ============================================================================
-// CrossCurrencyBasisSwap
-// ============================================================================
-
 /// Cross-currency basis swap instrument.
-///
-/// A XCCY basis swap exchanges floating rate payments in two different
-/// currencies, with the basis spread applied to one leg. Used for
-/// constructing long-term FX forward curves (2Y-30Y).
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::trade::instrument_def::{
-///     CrossCurrencyBasisSwap, BasisSpread, XccyLeg, XccyBasisConvention,
-/// };
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency}};
-///
-/// let xccy = CrossCurrencyBasisSwap {
-///     domestic_currency: Currency::USD,
-///     foreign_currency: Currency::EUR,
-///     notional: 10_000_000.0,
-///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-///     maturity: Date::from_ymd(2030, 1, 15).unwrap(),
-///     domestic_leg: XccyLeg::new(Currency::USD, RateIndex::Sofr, Frequency::Quarterly),
-///     foreign_leg: XccyLeg::new(Currency::EUR, RateIndex::Euribor3M, Frequency::Quarterly),
-///     basis_spread: BasisSpread::from_bps(-15.0),
-///     convention: XccyBasisConvention::default(),
-/// };
-///
-/// assert!(xccy.validate().is_ok());
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CrossCurrencyBasisSwap {
@@ -288,12 +225,10 @@ pub struct CrossCurrencyBasisSwap {
 impl CrossCurrencyBasisSwap {
     /// Validates the XCCY swap parameters.
     pub fn validate(&self) -> Result<(), XccySwapError> {
-        // Validate notional
         if self.notional <= 0.0 {
             return Err(XccySwapError::InvalidNotional(self.notional));
         }
 
-        // Validate dates
         if self.maturity <= self.start_date {
             return Err(XccySwapError::InvalidDates {
                 start: self.start_date,
@@ -301,7 +236,6 @@ impl CrossCurrencyBasisSwap {
             });
         }
 
-        // Validate leg currencies match
         if self.domestic_leg.currency != self.domestic_currency {
             return Err(XccySwapError::CurrencyMismatch {
                 leg: "domestic".to_string(),
@@ -318,7 +252,6 @@ impl CrossCurrencyBasisSwap {
             });
         }
 
-        // Validate currencies are different
         if self.domestic_currency == self.foreign_currency {
             return Err(XccySwapError::SameCurrency(self.domestic_currency));
         }
@@ -346,10 +279,6 @@ impl std::fmt::Display for CrossCurrencyBasisSwap {
         )
     }
 }
-
-// ============================================================================
-// Error Types
-// ============================================================================
 
 /// Errors specific to XCCY swap operations.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -383,10 +312,6 @@ pub enum XccySwapError {
     SameCurrency(Currency),
 }
 
-// ============================================================================
-// Tests
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -401,7 +326,6 @@ mod tests {
         assert!((BasisSpread::zero().bps()).abs() < 1e-10);
         assert!((BasisSpread::default().bps()).abs() < 1e-10);
 
-        // Arithmetic
         assert!(
             ((BasisSpread::from_bps(10.0) + BasisSpread::from_bps(5.0)).bps() - 15.0).abs() < 1e-10
         );
@@ -414,11 +338,9 @@ mod tests {
         );
         assert!(((BasisSpread::from_bps(10.0) + BasisSpread::zero()).bps() - 10.0).abs() < 1e-10);
 
-        // Commutativity
         let (a, b) = (BasisSpread::from_bps(10.0), BasisSpread::from_bps(5.0));
         assert!(((a + b).bps() - (b + a).bps()).abs() < 1e-10);
 
-        // XccyTenor
         assert_eq!(XccyTenor::Y2.years(), 2);
         assert_eq!(XccyTenor::Y5.years(), 5);
         assert_eq!(XccyTenor::Y10.years(), 10);
@@ -427,7 +349,6 @@ mod tests {
         assert_eq!(XccyTenor::Y10.name(), "10Y");
         assert_eq!(XccyTenor::Y5.to_string(), "5Y");
 
-        // Convention
         let def = XccyBasisConvention::default();
         assert_eq!(def.notional_exchange, NotionalExchange::Both);
         assert!(!def.mark_to_market);
@@ -455,7 +376,6 @@ mod tests {
         assert!(display.contains("XCCY"));
         assert!(display.contains("-15.0 bps"));
 
-        // Invalid notional
         let mut bad = xccy.clone();
         bad.notional = -1_000_000.0;
         assert!(matches!(
@@ -463,7 +383,6 @@ mod tests {
             Err(XccySwapError::InvalidNotional(_))
         ));
 
-        // Invalid dates
         let mut bad = xccy.clone();
         bad.maturity = Date::from_ymd(2024, 1, 15).unwrap();
         assert!(matches!(
@@ -471,7 +390,6 @@ mod tests {
             Err(XccySwapError::InvalidDates { .. })
         ));
 
-        // Currency mismatch domestic
         let mut bad = xccy.clone();
         bad.domestic_leg.currency = Currency::GBP;
         assert!(matches!(
@@ -479,7 +397,6 @@ mod tests {
             Err(XccySwapError::CurrencyMismatch { .. })
         ));
 
-        // Currency mismatch foreign
         let mut bad = xccy.clone();
         bad.foreign_leg.currency = Currency::GBP;
         assert!(matches!(
@@ -487,7 +404,6 @@ mod tests {
             Err(XccySwapError::CurrencyMismatch { .. })
         ));
 
-        // Same currency
         let mut bad = xccy.clone();
         bad.foreign_currency = Currency::USD;
         bad.foreign_leg.currency = Currency::USD;
@@ -498,10 +414,6 @@ mod tests {
     }
 }
 
-// ============================================================================
-// Property-Based Tests
-// ============================================================================
-
 #[cfg(test)]
 mod proptests {
     use proptest::prelude::*;
@@ -509,7 +421,7 @@ mod proptests {
     use super::*;
 
     proptest! {
-        /// Tests that BasisSpread addition is commutative: a + b == b + a
+        /// Tests that BasisSpread addition is commutative: a + b == b + a.
         #[test]
         fn test_basis_spread_add_commutativity(a in -1000.0..1000.0f64, b in -1000.0..1000.0f64) {
             let bs_a = BasisSpread::from_bps(a);
@@ -519,7 +431,7 @@ mod proptests {
             prop_assert!((result1.bps() - result2.bps()).abs() < 1e-10);
         }
 
-        /// Tests that BasisSpread addition is associative: (a + b) + c == a + (b + c)
+        /// Tests that BasisSpread addition is associative: (a + b) + c == a + (b + c).
         #[test]
         fn test_basis_spread_add_associativity(
             a in -1000.0..1000.0f64,
@@ -531,11 +443,10 @@ mod proptests {
             let bs_c = BasisSpread::from_bps(c);
             let lhs = (bs_a + bs_b) + bs_c;
             let rhs = bs_a + (bs_b + bs_c);
-            // Note: f64 precision limits require approx comparison
             prop_assert!((lhs.bps() - rhs.bps()).abs() < 1e-10);
         }
 
-        /// Tests that zero is the identity element for addition: a + 0 == a
+        /// Tests that zero is the identity element for addition: a + 0 == a.
         #[test]
         fn test_basis_spread_add_identity(a in -1000.0..1000.0f64) {
             let bs_a = BasisSpread::from_bps(a);
@@ -544,7 +455,7 @@ mod proptests {
             prop_assert!((result.bps() - a).abs() < 1e-10);
         }
 
-        /// Tests that subtraction is the inverse of addition: (a + b) - b == a
+        /// Tests that subtraction is the inverse of addition: (a + b) - b == a.
         #[test]
         fn test_basis_spread_add_sub_inverse(a in -1000.0..1000.0f64, b in -1000.0..1000.0f64) {
             let bs_a = BasisSpread::from_bps(a);
@@ -553,7 +464,7 @@ mod proptests {
             prop_assert!((result.bps() - a).abs() < 1e-10);
         }
 
-        /// Tests that Display formatting is correct for any value
+        /// Tests that Display formatting is correct for any value.
         #[test]
         fn test_basis_spread_display_format(a in -1000.0..1000.0f64) {
             let bs = BasisSpread::from_bps(a);

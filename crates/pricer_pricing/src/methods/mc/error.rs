@@ -1,16 +1,8 @@
 //! Error types for Monte Carlo pricing kernel.
-//!
-//! This module defines structured error types for configuration validation
-//! and runtime errors in the Monte Carlo simulation engine.
 
 use thiserror::Error;
 
 /// Configuration error for Monte Carlo pricer.
-///
-/// These errors occur during construction when invalid parameters are provided.
-///
-/// Note: Named `MonteCarloConfigError` to avoid collision with
-/// `infra_config::ConfigError` which handles system-wide configuration errors.
 #[derive(Error, Clone, Debug, PartialEq, Eq)]
 pub enum MonteCarloConfigError {
     /// Path count outside valid range [1, 10_000_000].
@@ -33,9 +25,6 @@ pub enum MonteCarloConfigError {
 }
 
 /// Error type for layout and streaming configuration.
-///
-/// These errors occur when invalid layout or streaming parameters are
-/// specified.
 #[derive(Error, Clone, Debug, PartialEq, Eq)]
 pub enum LayoutConfigError {
     /// Streaming mode requires TimeStepFirst layout.

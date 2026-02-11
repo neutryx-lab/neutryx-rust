@@ -1,30 +1,11 @@
 //! Trade-Book assignment types.
-//!
-//! This module provides types for tracking trade-to-book assignments
-//! and maintaining assignment history for audit purposes.
 
 use crate::{
     ids::{BookId, TradeId},
     time::Date,
 };
 
-// ============================================================================
-// BookTransferReason
-// ============================================================================
-
 /// Reason for a trade's book assignment or transfer.
-///
-/// Tracks why a trade was assigned to a particular book, supporting
-/// audit trail and regulatory reporting requirements.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::trade::BookTransferReason;
-///
-/// let reason = BookTransferReason::NewTrade;
-/// assert_eq!(reason, BookTransferReason::default());
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -64,31 +45,7 @@ impl BookTransferReason {
     }
 }
 
-// ============================================================================
-// TradeBookAssignment
-// ============================================================================
-
 /// Record of a trade's book assignment.
-///
-/// Tracks the assignment of a trade to a book with effective date,
-/// reason, and optional previous book for audit trail.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::trade::TradeBookAssignment;
-/// use infra_domain::time::Date;
-///
-/// let assignment = TradeBookAssignment::new_trade(
-///     "TRADE001",
-///     "BOOK001",
-///     Date::from_ymd(2025, 1, 15).unwrap(),
-/// );
-///
-/// assert_eq!(assignment.trade_id().as_str(), "TRADE001");
-/// assert_eq!(assignment.book_id().as_str(), "BOOK001");
-/// assert!(assignment.is_initial_assignment());
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -102,12 +59,6 @@ pub struct TradeBookAssignment {
 
 impl TradeBookAssignment {
     /// Creates a new trade book assignment for a new trade.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - The trade being assigned
-    /// * `book_id` - The book to assign the trade to
-    /// * `effective_date` - When the assignment takes effect
     #[must_use]
     pub fn new_trade(
         trade_id: impl Into<TradeId>,
@@ -124,14 +75,6 @@ impl TradeBookAssignment {
     }
 
     /// Creates a new assignment record for a book transfer.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - The trade being transferred
-    /// * `from_book` - The previous book
-    /// * `to_book` - The new book
-    /// * `effective_date` - When the transfer takes effect
-    /// * `reason` - Why the transfer is occurring
     #[must_use]
     pub fn transfer(
         trade_id: impl Into<TradeId>,

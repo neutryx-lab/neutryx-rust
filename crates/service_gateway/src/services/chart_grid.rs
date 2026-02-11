@@ -14,17 +14,14 @@ const MONTH_ABBR: [&str; 12] = [
 ];
 
 /// Internal model time axis: ACT/365 Fixed.
-///
-/// All time conversions in this module use this day counter,
-/// ensuring consistency with the `pricer_models` internal basis.
 pub(crate) const MODEL_DAY_COUNTER: DayCounter = DayCounter::Actual365Fixed;
 
-/// Format date for short-term chart axis: "15-Jan"
+/// Format date for short-term chart axis: "15-Jan".
 fn format_short_term_label(date: NaiveDate) -> String {
     format!("{}-{}", date.day(), MONTH_ABBR[date.month0() as usize])
 }
 
-/// Format date for long-term chart axis: "Mar-26"
+/// Format date for long-term chart axis: "Mar-26".
 fn format_long_term_label(date: NaiveDate) -> String {
     format!(
         "{}-{:02}",
@@ -34,8 +31,6 @@ fn format_long_term_label(date: NaiveDate) -> String {
 }
 
 /// Resolve the day count convention from the request index name.
-///
-/// Falls back to ACT/365 Fixed if the index is not recognised.
 pub(crate) fn resolve_day_counter(index: &str) -> DayCounter {
     RateIndex::from_index_name(index)
         .map(|ri| ri.day_counter())
@@ -43,8 +38,6 @@ pub(crate) fn resolve_day_counter(index: &str) -> DayCounter {
 }
 
 /// Compute the overnight forward rate at a given date.
-///
-/// Forward rate F = (DF₁ / DF₂ − 1) / δ where δ uses the index day counter.
 pub(crate) fn overnight_forward_rate<C: YieldCurve<f64>>(
     curve: &C,
     ref_date: NaiveDate,
@@ -79,14 +72,12 @@ fn generate_short_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
 
     let mut dates = Vec::new();
 
-    // Daily up to 3M
     let mut d = ref_date + chrono::Duration::days(1);
     while d <= three_months {
         dates.push(d);
         d += chrono::Duration::days(1);
     }
 
-    // Weekly from 3M to 1Y
     d = three_months + chrono::Duration::days(7);
     while d <= one_year {
         dates.push(d);
@@ -96,26 +87,22 @@ fn generate_short_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
     dates
 }
 
-/// Generate long-term grid dates: quarterly 3M→10Y, semi-annual 10.5Y→20Y,
-/// annual 21Y→30Y.
+/// Generate long-term grid dates: quarterly 3M→10Y, semi-annual 10.5Y→20Y,.
 fn generate_long_term_dates(ref_date: NaiveDate) -> Vec<NaiveDate> {
     let mut dates = Vec::new();
 
-    // Quarterly from 3M (q=1) to 10Y (q=40)
     for q in 1..=40u32 {
         if let Some(d) = ref_date.checked_add_months(Months::new(q * 3)) {
             dates.push(d);
         }
     }
 
-    // Semi-annual from 10.5Y (h=21) to 20Y (h=40)
     for h in 21..=40u32 {
         if let Some(d) = ref_date.checked_add_months(Months::new(h * 6)) {
             dates.push(d);
         }
     }
 
-    // Annual from 21Y to 30Y
     for y in 21..=30u32 {
         if let Some(d) = ref_date.checked_add_months(Months::new(y * 12)) {
             dates.push(d);

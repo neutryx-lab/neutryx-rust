@@ -4,10 +4,7 @@ mod config;
 mod error;
 mod result;
 
-/// Automatic differentiation for Greeks calculation.
-///
-/// This module provides Enzyme LLVM-level automatic differentiation
-/// for high-performance gradient computation.
+/// Automatic differentiation for Greeks calculation via Enzyme LLVM-level AD.
 pub mod ad;
 
 pub use config::{GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksMode};

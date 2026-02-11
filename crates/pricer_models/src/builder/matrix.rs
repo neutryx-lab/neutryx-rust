@@ -42,60 +42,33 @@ use super::grid::CalibrationGrid;
 /// ```
 #[derive(Debug, Clone)]
 pub struct CalibrationMatrix<T: Float + RealField + Copy> {
-    /// The underlying matrix (N instruments × M grid points).
-    matrix: DMatrix<T>,
-    /// Number of rows (instruments).
-    num_rows: usize,
-    /// Number of columns (grid points).
-    num_cols: usize,
+    /// The underlying matrix (N instruments x M grid points).
+    pub inner: DMatrix<T>,
 }
 
 impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
-    /// Create a new calibration matrix from a DMatrix.
-    pub fn from_matrix(matrix: DMatrix<T>, num_rows: usize, num_cols: usize) -> Self {
-        Self {
-            matrix,
-            num_rows,
-            num_cols,
-        }
-    }
-
     /// Create a zero calibration matrix.
     pub fn zeros(num_rows: usize, num_cols: usize) -> Self {
         Self {
-            matrix: DMatrix::zeros(num_rows, num_cols),
-            num_rows,
-            num_cols,
+            inner: DMatrix::zeros(num_rows, num_cols),
         }
     }
 
-    /// Get the underlying matrix.
-    pub fn matrix(&self) -> &DMatrix<T> { &self.matrix }
-
-    /// Get a mutable reference to the underlying matrix.
-    pub fn matrix_mut(&mut self) -> &mut DMatrix<T> { &mut self.matrix }
-
-    /// Set a value at (row, col).
+    /// Set a value at (row, col), silently ignoring out-of-bounds.
     pub fn set(&mut self, row: usize, col: usize, value: T) {
-        if row < self.num_rows && col < self.num_cols {
-            self.matrix[(row, col)] = value;
+        if row < self.inner.nrows() && col < self.inner.ncols() {
+            self.inner[(row, col)] = value;
         }
     }
 
     /// Get a value at (row, col).
     pub fn get(&self, row: usize, col: usize) -> Option<T> {
-        if row < self.num_rows && col < self.num_cols {
-            Some(self.matrix[(row, col)])
+        if row < self.inner.nrows() && col < self.inner.ncols() {
+            Some(self.inner[(row, col)])
         } else {
             None
         }
     }
-
-    /// Get the number of rows.
-    pub fn num_rows(&self) -> usize { self.num_rows }
-
-    /// Get the number of columns.
-    pub fn num_cols(&self) -> usize { self.num_cols }
 
     /// Check if a specific value is non-zero.
     pub fn is_nonzero(&self, row: usize, col: usize) -> bool {
@@ -103,59 +76,6 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
             .map(|v| Float::abs(v) > from_f64(1e-15))
             .unwrap_or(false)
     }
-
-    /// Get all values in a row.
-    pub fn get_row(&self, row: usize) -> Option<Vec<T>> {
-        if row < self.num_rows {
-            Some((0..self.num_cols).map(|j| self.matrix[(row, j)]).collect())
-        } else {
-            None
-        }
-    }
-
-    /// Get all values in a column.
-    pub fn get_col(&self, col: usize) -> Option<Vec<T>> {
-        if col < self.num_cols {
-            Some((0..self.num_rows).map(|i| self.matrix[(i, col)]).collect())
-        } else {
-            None
-        }
-    }
-}
-
-// =============================================================================
-// Convenience Methods for Curve Calibration
-// =============================================================================
-
-impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
-    /// Set a cashflow value (convenience method for curve calibration).
-    pub fn set_cashflow(&mut self, instrument_idx: usize, date_idx: usize, value: T) {
-        self.set(instrument_idx, date_idx, value);
-    }
-
-    /// Get a cashflow value (convenience method for curve calibration).
-    pub fn get_cashflow(&self, instrument_idx: usize, date_idx: usize) -> Option<T> {
-        self.get(instrument_idx, date_idx)
-    }
-
-    /// Get the number of instruments (alias for `num_rows()`).
-    pub fn num_instruments(&self) -> usize { self.num_rows }
-
-    /// Get the number of dates (alias for `num_cols()`).
-    pub fn num_dates(&self) -> usize { self.num_cols }
-
-    /// Check if a cashflow exists (alias for `is_nonzero()`).
-    pub fn has_cashflow(&self, instrument_idx: usize, date_idx: usize) -> bool {
-        self.is_nonzero(instrument_idx, date_idx)
-    }
-
-    /// Get all cashflows for an instrument (alias for `get_row()`).
-    pub fn get_instrument_cashflows(&self, instrument_idx: usize) -> Option<Vec<T>> {
-        self.get_row(instrument_idx)
-    }
-
-    /// Get all cashflows at a date (alias for `get_col()`).
-    pub fn get_date_cashflows(&self, date_idx: usize) -> Option<Vec<T>> { self.get_col(date_idx) }
 }
 
 // =============================================================================
@@ -174,12 +94,8 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
 /// - where w = (t - t_k) / (t_{k+1} - t_k)
 #[derive(Debug, Clone)]
 pub struct InterpolationMatrix<T: Float + RealField + Copy> {
-    /// The underlying matrix (M grid points × P pillars).
-    matrix: DMatrix<T>,
-    /// Number of grid points.
-    num_points: usize,
-    /// Number of pillars.
-    num_pillars: usize,
+    /// The underlying matrix (M grid points x P pillars).
+    pub inner: DMatrix<T>,
 }
 
 impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
@@ -203,9 +119,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
 
         if num_pillars == 0 || num_points == 0 {
             return Self {
-                matrix: DMatrix::zeros(num_points, num_pillars),
-                num_points,
-                num_pillars,
+                inner: DMatrix::zeros(num_points, num_pillars),
             };
         }
 
@@ -222,11 +136,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
             }
         }
 
-        Self {
-            matrix,
-            num_points,
-            num_pillars,
-        }
+        Self { inner: matrix }
     }
 
     /// Find the pillar interval containing a point.
@@ -254,34 +164,16 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         }
     }
 
-    /// Get the underlying matrix.
-    pub fn matrix(&self) -> &DMatrix<T> { &self.matrix }
-
-    /// Get the number of grid points.
-    pub fn num_points(&self) -> usize { self.num_points }
-
-    /// Alias for `num_points()` - backward compatibility.
-    pub fn num_dates(&self) -> usize { self.num_points }
-
-    /// Get the number of pillars.
-    pub fn num_pillars(&self) -> usize { self.num_pillars }
-
     /// Interpolate values from pillar values.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillar_values` - Values at each pillar
-    ///
-    /// # Returns
-    ///
-    /// Interpolated values at each grid point.
     pub fn interpolate(&self, pillar_values: &[T]) -> Vec<T> {
-        let mut result = Vec::with_capacity(self.num_points);
+        let nrows = self.inner.nrows();
+        let ncols = self.inner.ncols();
+        let mut result = Vec::with_capacity(nrows);
 
-        for j in 0..self.num_points {
+        for j in 0..nrows {
             let mut value = T::zero();
-            for k in 0..self.num_pillars {
-                value = value + self.matrix[(j, k)] * pillar_values[k];
+            for k in 0..ncols {
+                value = value + self.inner[(j, k)] * pillar_values[k];
             }
             result.push(value);
         }
@@ -289,73 +181,24 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         result
     }
 
-    /// Alias for `interpolate()` - backward compatibility with log DF.
-    pub fn interpolate_log_df(&self, log_df_pillars: &[T]) -> Vec<T> {
-        self.interpolate(log_df_pillars)
-    }
-
     /// Interpolate and exponentiate (for discount factors).
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df_pillars` - log(DF) at each pillar
-    ///
-    /// # Returns
-    ///
-    /// DF at each grid point.
     pub fn interpolate_df(&self, log_df_pillars: &[T]) -> Vec<T> {
-        self.interpolate_log_df(log_df_pillars)
+        self.interpolate(log_df_pillars)
             .into_iter()
             .map(Float::exp)
             .collect()
     }
 
-    // =========================================================================
-    // Requirement 4: Vector Product Methods for Efficient DF Computation
-    // =========================================================================
-
     /// Compute all cashflow DFs from pillar DFs using vector product.
     ///
-    /// # Requirement 4.1
-    ///
-    /// When `apply()` is called, the System shall compute all cashflow date
-    /// DFs from pillar DFs using vector multiplication.
-    ///
-    /// # Requirement 4.3
-    ///
-    /// The apply operation shall use contiguous memory layout suitable for
-    /// SIMD optimisation.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillar_dfs` - Discount factors at pillar dates as DVector
-    ///
-    /// # Returns
-    ///
-    /// Interpolated discount factors at all cashflow dates as DVector.
-    pub fn apply(&self, pillar_dfs: &DVector<T>) -> DVector<T> {
-        // Use matrix-vector multiplication for efficiency
-        // Result: cashflow_dfs = W * pillar_dfs
-        &self.matrix * pillar_dfs
-    }
+    /// # Requirement 4.1, 4.3
+    pub fn apply(&self, pillar_dfs: &DVector<T>) -> DVector<T> { &self.inner * pillar_dfs }
 
     /// Compute all cashflow DFs using log-linear interpolation.
     ///
     /// # Requirement 4.5
-    ///
-    /// When log-linear interpolation is specified, the System shall compute
-    /// interpolation coefficients in log(DF) space.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillar_log_dfs` - log(DF) at pillar dates as DVector
-    ///
-    /// # Returns
-    ///
-    /// Discount factors at all cashflow dates as DVector (not log(DF)).
     pub fn apply_log_linear(&self, pillar_log_dfs: &DVector<T>) -> DVector<T> {
-        // Interpolate in log space, then exponentiate
-        let log_result = &self.matrix * pillar_log_dfs;
+        let log_result = &self.inner * pillar_log_dfs;
         log_result.map(|x| Float::exp(x))
     }
 }
@@ -439,7 +282,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         grid_points: &[T],
     ) -> Vec<T> {
         // First, get smooth interpolated values
-        let smooth_log_df = self.interpolate_log_df(log_df_pillars);
+        let smooth_log_df = self.interpolate(log_df_pillars);
 
         if jumps.is_empty() {
             return smooth_log_df;
@@ -506,36 +349,6 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
 }
 
 // =============================================================================
-// CalibrationMatrixBuilder
-// =============================================================================
-
-/// Builder for constructing calibration matrices.
-#[derive(Debug, Clone)]
-pub struct CalibrationMatrixBuilder<T: Float> {
-    /// Tolerance for point matching.
-    tolerance: T,
-}
-
-impl<T: Float> CalibrationMatrixBuilder<T> {
-    /// Create a new builder with default settings.
-    pub fn new() -> Self {
-        Self {
-            tolerance: T::from(1e-10).unwrap(),
-        }
-    }
-
-    /// Set the point matching tolerance.
-    pub fn with_tolerance(mut self, tolerance: T) -> Self {
-        self.tolerance = tolerance;
-        self
-    }
-}
-
-impl<T: Float> Default for CalibrationMatrixBuilder<T> {
-    fn default() -> Self { Self::new() }
-}
-
-// =============================================================================
 // Tests
 // =============================================================================
 
@@ -549,8 +362,8 @@ mod tests {
     fn test_calibration_matrix_zeros() {
         let matrix: CalibrationMatrix<f64> = CalibrationMatrix::zeros(3, 5);
 
-        assert_eq!(matrix.num_rows(), 3);
-        assert_eq!(matrix.num_cols(), 5);
+        assert_eq!(matrix.inner.nrows(), 3);
+        assert_eq!(matrix.inner.ncols(), 5);
         assert_relative_eq!(matrix.get(0, 0).unwrap(), 0.0, epsilon = 1e-15);
     }
 
@@ -579,33 +392,18 @@ mod tests {
     }
 
     #[test]
-    fn test_calibration_matrix_get_row() {
-        let mut matrix: CalibrationMatrix<f64> = CalibrationMatrix::zeros(2, 3);
-
-        matrix.set(0, 0, 1.0);
-        matrix.set(0, 1, 2.0);
-        matrix.set(0, 2, 3.0);
-
-        let row = matrix.get_row(0).unwrap();
-        assert_eq!(row.len(), 3);
-        assert_relative_eq!(row[0], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(row[1], 2.0, epsilon = 1e-10);
-        assert_relative_eq!(row[2], 3.0, epsilon = 1e-10);
-    }
-
-    #[test]
     fn test_interpolation_matrix_single_pillar() {
         let pillars = vec![1.0];
         let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![0.5, 1.0, 1.5]);
 
         let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
 
-        assert_eq!(interp.num_points(), 3);
-        assert_eq!(interp.num_pillars(), 1);
+        assert_eq!(interp.inner.nrows(), 3);
+        assert_eq!(interp.inner.ncols(), 1);
 
-        assert_relative_eq!(interp.matrix()[(0, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(1, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(2, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(1, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(2, 0)], 1.0, epsilon = 1e-10);
     }
 
     #[test]
@@ -615,20 +413,20 @@ mod tests {
 
         let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
 
-        assert_eq!(interp.num_points(), 3);
-        assert_eq!(interp.num_pillars(), 2);
+        assert_eq!(interp.inner.nrows(), 3);
+        assert_eq!(interp.inner.ncols(), 2);
 
         // t=1.0: maps to pillar 0 only
-        assert_relative_eq!(interp.matrix()[(0, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(0, 1)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 1)], 0.0, epsilon = 1e-10);
 
         // t=1.5: interpolates between pillars 0 and 1
-        assert_relative_eq!(interp.matrix()[(1, 0)], 0.5, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(1, 1)], 0.5, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(1, 0)], 0.5, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(1, 1)], 0.5, epsilon = 1e-10);
 
         // t=2.0: maps to pillar 1 only
-        assert_relative_eq!(interp.matrix()[(2, 0)], 0.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(2, 1)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(2, 0)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(2, 1)], 1.0, epsilon = 1e-10);
     }
 
     #[test]
@@ -668,31 +466,12 @@ mod tests {
         let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
 
         // t=0.5: before first pillar (extrapolate flat)
-        assert_relative_eq!(interp.matrix()[(0, 0)], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(0, 1)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 0)], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(0, 1)], 0.0, epsilon = 1e-10);
 
         // t=3.0: after last pillar (extrapolate flat)
-        assert_relative_eq!(interp.matrix()[(3, 0)], 0.0, epsilon = 1e-10);
-        assert_relative_eq!(interp.matrix()[(3, 1)], 1.0, epsilon = 1e-10);
-    }
-
-    #[test]
-    fn test_calibration_matrix_builder() {
-        let builder: CalibrationMatrixBuilder<f64> =
-            CalibrationMatrixBuilder::new().with_tolerance(1e-8);
-
-        assert!(builder.tolerance > 0.0);
-    }
-
-    #[test]
-    fn test_cashflow_convenience_methods() {
-        let mut matrix: CalibrationMatrix<f64> = CalibrationMatrix::zeros(2, 3);
-
-        matrix.set_cashflow(0, 1, 100.0);
-        assert_relative_eq!(matrix.get_cashflow(0, 1).unwrap(), 100.0, epsilon = 1e-10);
-        assert_eq!(matrix.num_instruments(), 2);
-        assert_eq!(matrix.num_dates(), 3);
-        assert!(matrix.has_cashflow(0, 1));
+        assert_relative_eq!(interp.inner[(3, 0)], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(interp.inner[(3, 1)], 1.0, epsilon = 1e-10);
     }
 
     // =========================================================================
@@ -720,9 +499,9 @@ mod tests {
         let interp = InterpolationMatrix::with_jump_pillars(&pillars, &jump_times, &grid);
 
         // Should have 5 grid points
-        assert_eq!(interp.num_points(), 5);
+        assert_eq!(interp.inner.nrows(), 5);
         // Should have 5 "pillars" (3 regular + 2 jump times)
-        assert_eq!(interp.num_pillars(), 5);
+        assert_eq!(interp.inner.ncols(), 5);
     }
 
     #[test]
@@ -888,9 +667,8 @@ mod tests {
 
         // The matrix should be column-major (nalgebra default)
         // This is suitable for SIMD operations on columns
-        let matrix = interp.matrix();
-        assert_eq!(matrix.nrows(), 6);
-        assert_eq!(matrix.ncols(), 4);
+        assert_eq!(interp.inner.nrows(), 6);
+        assert_eq!(interp.inner.ncols(), 4);
 
         // Matrix-vector multiplication should work efficiently
         let pillar_dfs = DVector::from_vec(vec![0.97, 0.94, 0.85, 0.75]);

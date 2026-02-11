@@ -1,7 +1,4 @@
 //! Netting set structures with collateral agreements.
-//!
-//! This module provides netting set definitions for grouping trades
-//! and managing collateral agreements.
 
 use infra_domain::market::Currency;
 
@@ -10,70 +7,29 @@ use super::{
     ids::{CounterpartyId, NettingSetId, TradeId},
 };
 
-/// Collateral agreement parameters.
-///
-/// Defines the terms of a Credit Support Annex (CSA) or similar
-/// collateral arrangement between counterparties.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::CollateralAgreement;
-/// use infra_domain::market::Currency;
-///
-/// let csa = CollateralAgreement::new(
-///     1_000_000.0,  // threshold
-///     500_000.0,    // minimum transfer amount
-///     0.0,          // independent amount
-///     Currency::USD,
-///     CollateralAgreement::bilateral_mpor(),
-/// ).unwrap();
-/// ```
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Collateral agreement parameters defining CSA or similar collateral
+/// arrangement terms.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CollateralAgreement {
-    /// Threshold amount below which no collateral is required
     threshold: f64,
-    /// Minimum transfer amount
     mta: f64,
-    /// Independent amount (positive = we post, negative = we receive)
     independent_amount: f64,
-    /// Collateral currency
     currency: Currency,
-    /// Margin period of risk in years
     mpor: f64,
 }
 
 impl CollateralAgreement {
-    /// Standard bilateral margin period of risk (10 business days).
-    ///
-    /// Assumes 252 business days per year.
+    /// Standard bilateral margin period of risk (10 business days, assuming 252
+    /// days/year).
     #[inline]
     pub fn bilateral_mpor() -> f64 { 10.0 / 252.0 }
 
-    /// Standard cleared margin period of risk (5 business days).
-    ///
-    /// Assumes 252 business days per year.
+    /// Standard cleared margin period of risk (5 business days, assuming 252
+    /// days/year).
     #[inline]
     pub fn cleared_mpor() -> f64 { 5.0 / 252.0 }
 
-    /// Creates a new collateral agreement.
-    ///
-    /// # Arguments
-    ///
-    /// * `threshold` - Threshold amount (must be non-negative)
-    /// * `mta` - Minimum transfer amount (must be non-negative)
-    /// * `independent_amount` - Independent amount (can be positive or
-    ///   negative)
-    /// * `currency` - Collateral currency
-    /// * `mpor` - Margin period of risk in years (must be positive)
-    ///
-    /// # Errors
-    ///
-    /// Returns `PortfolioError::InvalidCollateralAgreement` if:
-    /// - Threshold is negative
-    /// - MTA is negative
-    /// - MPoR is not positive
+    /// Creates a new collateral agreement with validation.
     pub fn new(
         threshold: f64,
         mta: f64,
@@ -107,11 +63,6 @@ impl CollateralAgreement {
     }
 
     /// Creates a zero-threshold (fully collateralised) agreement.
-    ///
-    /// # Arguments
-    ///
-    /// * `currency` - Collateral currency
-    /// * `mpor` - Margin period of risk in years
     pub fn zero_threshold(currency: Currency, mpor: f64) -> Result<Self, PortfolioError> {
         Self::new(0.0, 0.0, 0.0, currency, mpor)
     }
@@ -141,46 +92,16 @@ impl CollateralAgreement {
     #[inline]
     pub fn mpor_days(&self) -> f64 { self.mpor * 252.0 }
 
-    /// Computes the collateralised exposure given an uncollateralised exposure.
-    ///
-    /// The collateralised exposure accounts for threshold and independent
-    /// amount: CE = max(E - Threshold - IA, 0)
-    ///
-    /// # Arguments
-    ///
-    /// * `exposure` - Uncollateralised exposure
-    ///
-    /// # Returns
-    ///
-    /// Collateralised exposure (always non-negative).
+    /// Computes the collateralised exposure: CE = max(E - Threshold - IA, 0).
     #[inline]
     pub fn collateralised_exposure(&self, exposure: f64) -> f64 {
         (exposure - self.threshold - self.independent_amount).max(0.0)
     }
 }
 
-/// Netting set grouping trades for exposure aggregation.
-///
-/// A netting set represents a collection of trades with the same counterparty
-/// that can be legally netted in the event of default.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::{NettingSet, NettingSetId, CounterpartyId, TradeId};
-///
-/// let mut ns = NettingSet::new(
-///     NettingSetId::new("NS001"),
-///     CounterpartyId::new("CP001"),
-/// );
-///
-/// ns.add_trade(TradeId::new("T001"));
-/// ns.add_trade(TradeId::new("T002"));
-///
-/// assert_eq!(ns.trade_count(), 2);
-/// ```
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// Netting set grouping trades for exposure aggregation under a single
+/// counterparty.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct NettingSet {
     id: NettingSetId,
     counterparty_id: CounterpartyId,
@@ -252,30 +173,15 @@ impl NettingSet {
     pub fn is_empty(&self) -> bool { self.trade_ids.is_empty() }
 
     /// Adds a trade to the netting set.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Trade ID to add
     pub fn add_trade(&mut self, trade_id: TradeId) { self.trade_ids.push(trade_id); }
 
     /// Adds multiple trades to the netting set.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_ids` - Iterator of trade IDs to add
     pub fn add_trades(&mut self, trade_ids: impl IntoIterator<Item = TradeId>) {
         self.trade_ids.extend(trade_ids);
     }
 
-    /// Removes a trade from the netting set.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Trade ID to remove
-    ///
-    /// # Returns
-    ///
-    /// `true` if the trade was found and removed, `false` otherwise.
+    /// Removes a trade from the netting set, returning true if found and
+    /// removed.
     pub fn remove_trade(&mut self, trade_id: &TradeId) -> bool {
         if let Some(pos) = self.trade_ids.iter().position(|id| id == trade_id) {
             self.trade_ids.remove(pos);
@@ -374,21 +280,16 @@ mod tests {
     #[test]
     fn test_collateralised_exposure() {
         let csa = CollateralAgreement::new(
-            1_000_000.0, // threshold
+            1_000_000.0,
             0.0,
-            100_000.0, // we post IA
+            100_000.0,
             Currency::USD,
             CollateralAgreement::bilateral_mpor(),
         )
         .unwrap();
 
-        // Exposure below threshold + IA: no collateralised exposure
         assert_eq!(csa.collateralised_exposure(500_000.0), 0.0);
-
-        // Exposure above threshold + IA
         assert_eq!(csa.collateralised_exposure(2_000_000.0), 900_000.0);
-
-        // Negative exposure: no collateralised exposure
         assert_eq!(csa.collateralised_exposure(-500_000.0), 0.0);
     }
 
@@ -456,7 +357,6 @@ mod tests {
         assert_eq!(ns.trade_count(), 1);
         assert!(!ns.contains_trade(&TradeId::new("T001")));
 
-        // Remove non-existent trade
         assert!(!ns.remove_trade(&TradeId::new("T999")));
     }
 

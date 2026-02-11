@@ -1,34 +1,9 @@
 //! Pricing result types for Generic Pricer Engine.
-//!
-//! This module provides the hierarchical pricing result structure:
-//! - [`PricingResult`]: Trade-level result
-//! - [`LegPricingResult`]: Leg-level result
-//! - [`CashflowPricingResult`]: Cashflow-level result
-//! - [`PathDistribution`]: Monte Carlo path distribution
-//!
-//! # Design Decisions
-//!
-//! - **f64 fixed**: AD is only needed for `get_greeks()`, not for PV results
-//! - **Leg-level currency**: Each leg tracks `original_currency` and `fx_rate`
-//! - **No CurrencyBreakdown**: `HashMap<Currency, T>` is not Enzyme AD
-//!   compatible
-//! - **Dynamic aggregation**: `group_by_currency()` aggregates from leg data on
-//!   demand
 
-// Re-export infra_domain types when l1l2-integration is enabled
-#[cfg(feature = "l1l2-integration")]
 pub use infra_domain::trade::Direction;
-#[cfg(feature = "l1l2-integration")]
 use infra_domain::{market::Currency, time::Date};
 
-// ============================================================================
-// Standalone types (always available for demo/testing without full L1/L2)
-// ============================================================================
-
 /// Direction of a leg (standalone version).
-///
-/// Always available regardless of l1l2-integration feature.
-/// Use this for standalone pricing without full market data integration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SimpleDirection {
     /// Payer: pays this leg's cashflows (negative NPV contribution).
@@ -48,9 +23,6 @@ impl SimpleDirection {
 }
 
 /// Simple date representation (days since 2000-01-01).
-///
-/// Always available regardless of l1l2-integration feature.
-/// Use this for standalone pricing without full market data integration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SimpleDate(pub i32);
 
@@ -62,28 +34,13 @@ impl SimpleDate {
     pub fn days(&self) -> i32 { self.0 }
 
     /// Creates a date from year, month, day (simple calculation).
-    /// Note: This is a simplified calculation for testing purposes.
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Option<Self> {
-        // Simplified days calculation from 2000-01-01
         let days = (year - 2000) * 365 + (month as i32 - 1) * 30 + day as i32;
         Some(SimpleDate(days))
     }
 }
 
-// Type aliases for backward compatibility when l1l2-integration is NOT enabled
-#[cfg(not(feature = "l1l2-integration"))]
-pub use super::config::DefaultCurrency as Currency;
-/// Date type alias for standalone mode (uses SimpleDate).
-#[cfg(not(feature = "l1l2-integration"))]
-pub type Date = SimpleDate;
-/// Direction type alias for standalone mode (uses SimpleDirection).
-#[cfg(not(feature = "l1l2-integration"))]
-pub type Direction = SimpleDirection;
-
 /// Cashflow-level pricing result.
-///
-/// Contains the PV contribution from a single cashflow, with both
-/// reporting currency and original currency values.
 #[derive(Debug, Clone)]
 pub struct CashflowPricingResult {
     /// PV in reporting currency.
@@ -122,9 +79,6 @@ impl CashflowPricingResult {
 }
 
 /// Leg-level pricing result.
-///
-/// Contains the aggregate PV from all cashflows in a leg, with currency
-/// conversion information.
 #[derive(Debug, Clone)]
 pub struct LegPricingResult {
     /// PV in reporting currency.
@@ -171,8 +125,6 @@ impl LegPricingResult {
 }
 
 /// Monte Carlo path distribution statistics.
-///
-/// Contains summary statistics from MC simulation paths.
 #[derive(Debug, Clone)]
 pub struct PathDistribution {
     /// Mean PV across all paths.
@@ -182,7 +134,6 @@ pub struct PathDistribution {
     pub std_dev: f64,
 
     /// Percentile values (percentile, value) pairs.
-    /// Common percentiles: 1%, 5%, 25%, 50%, 75%, 95%, 99%.
     pub percentiles: Vec<(f64, f64)>,
 
     /// Number of paths in the simulation.
@@ -217,9 +168,6 @@ impl PathDistribution {
 }
 
 /// Trade-level pricing result.
-///
-/// Contains the total PV and detailed breakdown by leg and cashflow.
-/// All values are in f64 (AD is only needed for Greeks).
 #[derive(Debug, Clone)]
 pub struct PricingResult {
     /// Total PV in reporting currency.
@@ -276,9 +224,6 @@ impl PricingResult {
     pub fn by_path(&self) -> Option<&PathDistribution> { self.path_distribution.as_ref() }
 
     /// Groups PV by original currency (aggregated from legs).
-    ///
-    /// Returns a vector of (currency, pv_original) pairs.
-    #[cfg(feature = "l1l2-integration")]
     pub fn group_by_currency(&self) -> Vec<(Currency, f64)> {
         use std::collections::HashMap;
 
@@ -293,24 +238,6 @@ impl PricingResult {
         result
     }
 
-    /// Groups leg PVs by original currency.
-    ///
-    /// Returns a vector of (currency, pv) pairs where pv is the sum of all
-    /// leg PVs in that currency (in original currency terms, before FX
-    /// conversion).
-    #[cfg(not(feature = "l1l2-integration"))]
-    pub fn group_by_currency(&self) -> Vec<(Currency, f64)> {
-        use std::collections::HashMap;
-
-        let mut currency_pv: HashMap<Currency, f64> = HashMap::new();
-        for leg in &self.legs {
-            *currency_pv.entry(leg.original_currency).or_insert(0.0) +=
-                leg.pv_original * leg.direction.sign();
-        }
-
-        currency_pv.into_iter().collect()
-    }
-
     /// Returns the total number of legs.
     pub fn leg_count(&self) -> usize { self.legs.len() }
 
@@ -322,30 +249,11 @@ impl PricingResult {
 mod tests {
     use super::*;
 
-    fn sample_date() -> Date {
-        #[cfg(feature = "l1l2-integration")]
-        {
-            Date::from_ymd(2025, 6, 15).unwrap()
-        }
-        #[cfg(not(feature = "l1l2-integration"))]
-        {
-            Date::from_ymd(2025, 6, 15).unwrap()
-        }
-    }
-
-    // =========================================================================
-    // CashflowPricingResult Tests (Task 3.1)
-    // =========================================================================
+    fn sample_date() -> Date { Date::from_ymd(2025, 6, 15).unwrap() }
 
     #[test]
     fn test_cashflow_pricing_result_creation() {
-        let cf = CashflowPricingResult::new(
-            100.0,         // pv
-            95.0,          // pv_original
-            sample_date(), // payment_date
-            0.95,          // discount_factor
-            Currency::USD, // original_currency
-        );
+        let cf = CashflowPricingResult::new(100.0, 95.0, sample_date(), 0.95, Currency::USD);
 
         assert!((cf.pv - 100.0).abs() < 1e-10);
         assert!((cf.pv_original - 95.0).abs() < 1e-10);
@@ -360,10 +268,6 @@ mod tests {
         assert!((cf1.pv - cf2.pv).abs() < 1e-10);
     }
 
-    // =========================================================================
-    // LegPricingResult Tests (Task 3.2)
-    // =========================================================================
-
     #[test]
     fn test_leg_pricing_result_creation() {
         let cashflows = vec![
@@ -372,11 +276,11 @@ mod tests {
         ];
 
         let leg = LegPricingResult::new(
-            100.0,               // pv
-            95.0,                // pv_original
-            Currency::USD,       // original_currency
-            1.0,                 // fx_rate
-            Direction::Receiver, // direction
+            100.0,
+            95.0,
+            Currency::USD,
+            1.0,
+            Direction::Receiver,
             cashflows,
         );
 
@@ -396,10 +300,6 @@ mod tests {
             LegPricingResult::new(100.0, 95.0, Currency::USD, 1.0, Direction::Payer, vec![]);
         assert!((leg_payer.direction.sign() - (-1.0)).abs() < 1e-10);
     }
-
-    // =========================================================================
-    // PathDistribution Tests (Task 3.3)
-    // =========================================================================
 
     #[test]
     fn test_path_distribution_creation() {
@@ -426,7 +326,7 @@ mod tests {
 
         assert_eq!(dist.percentile(50.0), Some(100.0));
         assert_eq!(dist.percentile(2.5), Some(-45.0));
-        assert_eq!(dist.percentile(10.0), None); // Not available
+        assert_eq!(dist.percentile(10.0), None);
     }
 
     #[test]
@@ -439,10 +339,6 @@ mod tests {
         assert!((lower - (-45.0)).abs() < 1e-10);
         assert!((upper - 245.0).abs() < 1e-10);
     }
-
-    // =========================================================================
-    // PricingResult Tests (Task 3.4)
-    // =========================================================================
 
     #[test]
     fn test_pricing_result_creation() {
@@ -542,10 +438,8 @@ mod tests {
 
         let by_currency = result.group_by_currency();
 
-        // Should have 2 currencies
         assert_eq!(by_currency.len(), 2);
 
-        // USD: 95 + 50 = 145 (both receiver)
         let usd_pv = by_currency
             .iter()
             .find(|(c, _)| *c == Currency::USD)
@@ -553,7 +447,6 @@ mod tests {
         assert!(usd_pv.is_some());
         assert!((usd_pv.unwrap() - 145.0).abs() < 1e-10);
 
-        // EUR: -76 (payer)
         let eur_pv = by_currency
             .iter()
             .find(|(c, _)| *c == Currency::EUR)
@@ -578,19 +471,5 @@ mod tests {
 
         assert!((result1.total_pv - result2.total_pv).abs() < 1e-10);
         assert_eq!(result1.leg_count(), result2.leg_count());
-    }
-
-    // =========================================================================
-    // Simple Date Tests (without l1l2-integration)
-    // =========================================================================
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_date_creation() {
-        let date = Date::from_days(9315); // Arbitrary day count
-        assert_eq!(date.days(), 9315);
-
-        let date2 = Date::from_ymd(2025, 6, 15).unwrap();
-        assert!(date2.days() > 0);
     }
 }

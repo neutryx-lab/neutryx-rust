@@ -1,17 +1,4 @@
 //! Unified pricing result types.
-//!
-//! This module provides the unified pricing result structure that all
-//! pricing methods (Discount, Monte Carlo, Tree) return.
-//!
-//! # Design
-//!
-//! - [`UnifiedPricingResult`]: Unified result structure for all methods
-//! - [`UnifiedGreeks`]: Greeks computed from pricing
-//! - [`PricingMetadata`]: Method-specific metadata
-//!
-//! The naming "Unified" distinguishes from the existing
-//! `generic_pricer::PricingResult` which is Trade-centric with legs and
-//! cashflows.
 
 use infra_config::PricingMethod;
 
@@ -49,8 +36,6 @@ pub enum TreeTypeMetadata {
 }
 
 /// Greeks computed from pricing.
-///
-/// All fields are optional since not all methods compute all Greeks.
 #[derive(Debug, Clone, Default)]
 pub struct UnifiedGreeks {
     /// Delta: first derivative with respect to spot.
@@ -103,10 +88,6 @@ impl UnifiedGreeks {
 }
 
 /// Unified pricing result structure.
-///
-/// This is the standard result type returned by all pricing methods.
-/// It provides a consistent interface regardless of whether the pricing
-/// was done analytically, via Monte Carlo, or via Tree methods.
 #[derive(Debug, Clone)]
 pub struct UnifiedPricingResult {
     /// Present value (option price or PV).

@@ -1,7 +1,4 @@
 //! Aggregation hierarchy types (stub for future XVA integration).
-//!
-//! Provides enum types for hierarchical aggregation of exposure and XVA
-//! calculations. Full aggregation engine will be added when XVA is integrated.
 
 /// Aggregation hierarchy level.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]

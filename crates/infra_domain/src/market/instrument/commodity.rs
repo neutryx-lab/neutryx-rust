@@ -1,7 +1,4 @@
 //! Commodity instrument definitions.
-//!
-//! This module provides definitions for commodity derivatives including
-//! forwards, swaps, vanilla options, Asian options, and spread options.
 
 use super::{common::ExerciseStyle, error::InstrumentError};
 use crate::{
@@ -125,9 +122,6 @@ pub enum QuantityUnit {
 }
 
 /// Commodity forward contract.
-///
-/// An agreement to buy/sell a commodity at a predetermined price
-/// on a future delivery date.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CommodityForward {
@@ -174,8 +168,6 @@ impl CommodityForward {
 }
 
 /// Commodity swap.
-///
-/// A swap exchanging a fixed price for a floating commodity price index.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CommoditySwap {
@@ -227,8 +219,6 @@ impl CommoditySwap {
 }
 
 /// Commodity vanilla option.
-///
-/// A standard option on a commodity.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CommodityVanillaOption {
@@ -270,8 +260,6 @@ impl CommodityVanillaOption {
 }
 
 /// Commodity Asian option.
-///
-/// An option whose payoff depends on the average commodity price.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CommodityAsianOption {
@@ -325,8 +313,6 @@ impl CommodityAsianOption {
 }
 
 /// Spread option (on two commodities).
-///
-/// An option on the price differential between two commodities.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SpreadOption {
@@ -356,7 +342,6 @@ impl SpreadOption {
                 "Quantity must be positive",
             ));
         }
-        // Note: spread strike can be negative (e.g., crack spread)
         Ok(())
     }
 }
@@ -389,7 +374,6 @@ mod tests {
 
     #[test]
     fn test_commodity_instruments_validation() {
-        // Forward: valid + negative qty + empty location + notional_value
         let fwd = CommodityForward {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
             delivery_location: "Cushing, OK".to_string(),
@@ -408,7 +392,6 @@ mod tests {
         bad.delivery_location = "".to_string();
         assert!(bad.validate().is_err());
 
-        // Swap: valid + invalid dates + empty index
         let swap = CommoditySwap {
             commodity: CommodityType::Energy(EnergyType::NaturalGas),
             fixed_price: 3.50,
@@ -428,7 +411,6 @@ mod tests {
         bad.floating_index = "".to_string();
         assert!(bad.validate().is_err());
 
-        // Vanilla option: valid + negative qty
         let opt = CommodityVanillaOption {
             commodity: CommodityType::Metals(MetalType::Gold),
             strike: 2000.0,
@@ -445,7 +427,6 @@ mod tests {
         bad.quantity = -10.0;
         assert!(bad.validate().is_err());
 
-        // Asian option: valid + invalid averaging + expiry before averaging
         let asian = CommodityAsianOption {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
             strike: 70.0,
@@ -466,7 +447,6 @@ mod tests {
         bad.expiry = Date::from_ymd(2025, 11, 1).unwrap();
         assert!(bad.validate().is_err());
 
-        // Spread option: valid + negative qty + negative strike allowed
         let spread = SpreadOption {
             commodity_1: CommodityType::Energy(EnergyType::CrudeOil),
             commodity_2: CommodityType::Energy(EnergyType::HeatingOil),

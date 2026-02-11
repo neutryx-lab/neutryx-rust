@@ -1,6 +1,4 @@
 //! Equity convention definitions.
-//!
-//! This module provides types for representing equity market conventions.
 
 use crate::time::CalendarId;
 
@@ -29,22 +27,6 @@ pub enum EquitySettlementType {
 }
 
 /// Convention for equity derivatives.
-///
-/// Represents the market conventions for pricing and settling equity
-/// derivatives.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{
-///     EquityConvention, DividendConvention, EquitySettlementType,
-/// };
-/// use infra_domain::time::CalendarId;
-///
-/// let conv = EquityConvention::us_equity();
-/// assert_eq!(conv.settlement_days, 2);
-/// assert_eq!(conv.dividend_convention, DividendConvention::DiscreteDividends);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EquityConvention {
@@ -82,95 +64,45 @@ impl EquityConvention {
             borrow_spread,
         }
     }
+}
 
-    /// Returns the standard US equity convention.
-    ///
-    /// - Settlement: T+2
-    /// - Calendar: New York
-    /// - Dividends: Discrete
-    /// - Settlement type: Cash
-    #[must_use]
-    pub fn us_equity() -> Self {
-        Self {
-            settlement_days: 2,
-            calendar: CalendarId::NewYork,
-            dividend_convention: DividendConvention::DiscreteDividends,
-            settlement_type: EquitySettlementType::Cash,
-            premium_adjusted_delta: false,
-            borrow_spread: 0.0,
-        }
-    }
-
-    /// Returns the standard European equity convention.
-    ///
-    /// - Settlement: T+2
-    /// - Calendar: TARGET
-    /// - Dividends: Discrete
-    /// - Settlement type: Cash
-    #[must_use]
-    pub fn eu_equity() -> Self {
-        Self {
-            settlement_days: 2,
-            calendar: CalendarId::Target,
-            dividend_convention: DividendConvention::DiscreteDividends,
-            settlement_type: EquitySettlementType::Cash,
-            premium_adjusted_delta: false,
-            borrow_spread: 0.0,
-        }
-    }
-
-    /// Returns the standard UK equity convention.
-    ///
-    /// - Settlement: T+2
-    /// - Calendar: London
-    /// - Dividends: Discrete
-    /// - Settlement type: Cash
-    #[must_use]
-    pub fn uk_equity() -> Self {
-        Self {
-            settlement_days: 2,
-            calendar: CalendarId::London,
-            dividend_convention: DividendConvention::DiscreteDividends,
-            settlement_type: EquitySettlementType::Cash,
-            premium_adjusted_delta: false,
-            borrow_spread: 0.0,
-        }
-    }
-
-    /// Returns the standard Japanese equity convention.
-    ///
-    /// - Settlement: T+2
-    /// - Calendar: Tokyo
-    /// - Dividends: Discrete
-    /// - Settlement type: Cash
-    #[must_use]
-    pub fn jp_equity() -> Self {
-        Self {
-            settlement_days: 2,
-            calendar: CalendarId::Tokyo,
-            dividend_convention: DividendConvention::DiscreteDividends,
-            settlement_type: EquitySettlementType::Cash,
-            premium_adjusted_delta: false,
-            borrow_spread: 0.0,
-        }
-    }
-
-    /// Returns the equity index convention (no dividends in index total
-    /// return).
-    ///
-    /// - Settlement: T+1
-    /// - Dividends: None (total return index)
-    #[must_use]
-    pub fn index_total_return() -> Self {
-        Self {
-            settlement_days: 1,
-            calendar: CalendarId::NewYork,
-            dividend_convention: DividendConvention::None,
-            settlement_type: EquitySettlementType::Cash,
-            premium_adjusted_delta: false,
-            borrow_spread: 0.0,
-        }
-    }
+super::define_convention_factories! {
+    for EquityConvention;
+    /// Returns the standard US equity convention (T+2, NY, Discrete, Cash).
+    us_equity => {
+        settlement_days: 2, calendar: CalendarId::NewYork,
+        dividend_convention: DividendConvention::DiscreteDividends,
+        settlement_type: EquitySettlementType::Cash,
+        premium_adjusted_delta: false, borrow_spread: 0.0,
+    };
+    /// Returns the standard European equity convention (T+2, TARGET, Discrete, Cash).
+    eu_equity => {
+        settlement_days: 2, calendar: CalendarId::Target,
+        dividend_convention: DividendConvention::DiscreteDividends,
+        settlement_type: EquitySettlementType::Cash,
+        premium_adjusted_delta: false, borrow_spread: 0.0,
+    };
+    /// Returns the standard UK equity convention (T+2, London, Discrete, Cash).
+    uk_equity => {
+        settlement_days: 2, calendar: CalendarId::London,
+        dividend_convention: DividendConvention::DiscreteDividends,
+        settlement_type: EquitySettlementType::Cash,
+        premium_adjusted_delta: false, borrow_spread: 0.0,
+    };
+    /// Returns the standard Japanese equity convention (T+2, Tokyo, Discrete, Cash).
+    jp_equity => {
+        settlement_days: 2, calendar: CalendarId::Tokyo,
+        dividend_convention: DividendConvention::DiscreteDividends,
+        settlement_type: EquitySettlementType::Cash,
+        premium_adjusted_delta: false, borrow_spread: 0.0,
+    };
+    /// Returns the equity index convention (T+1, total return, no dividends).
+    index_total_return => {
+        settlement_days: 1, calendar: CalendarId::NewYork,
+        dividend_convention: DividendConvention::None,
+        settlement_type: EquitySettlementType::Cash,
+        premium_adjusted_delta: false, borrow_spread: 0.0,
+    };
 }
 
 #[cfg(test)]

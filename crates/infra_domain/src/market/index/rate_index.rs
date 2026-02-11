@@ -1,23 +1,4 @@
 //! Benchmark rate index definitions.
-//!
-//! This module provides rate index types for financial instruments.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{RateIndex, Currency, IndexMetadata, CompoundingMethod};
-//! use infra_domain::time::{DayCounter, Tenor, CalendarId};
-//!
-//! let sofr = RateIndex::Sofr;
-//! assert_eq!(sofr.currency(), Currency::USD);
-//! assert_eq!(sofr.tenor(), Tenor::Overnight);
-//! assert_eq!(sofr.day_counter(), DayCounter::Actual360);
-//!
-//! // Access full metadata
-//! let metadata = sofr.metadata();
-//! assert_eq!(metadata.compounding_method, CompoundingMethod::Compounded);
-//! assert!(sofr.is_overnight());
-//! ```
 
 use crate::{
     market::core::{CompoundingMethod, Currency},
@@ -25,20 +6,6 @@ use crate::{
 };
 
 /// Metadata for a rate index.
-///
-/// Contains all the market conventions associated with a benchmark rate index.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{RateIndex, IndexMetadata, CompoundingMethod};
-/// use infra_domain::time::{DayCounter, CalendarId};
-///
-/// let metadata = RateIndex::Sofr.metadata();
-/// assert_eq!(metadata.compounding_method, CompoundingMethod::Compounded);
-/// assert_eq!(metadata.fixing_lag, 0);
-/// assert_eq!(metadata.settlement_lag, 2);
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IndexMetadata {
@@ -55,51 +22,28 @@ pub struct IndexMetadata {
 }
 
 /// Benchmark rate index.
-///
-/// Represents standard benchmark interest rate indices used in financial
-/// markets.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{RateIndex, Currency};
-///
-/// let euribor = RateIndex::Euribor3M;
-/// assert_eq!(euribor.currency(), Currency::EUR);
-/// assert_eq!(euribor.name(), "EURIBOR 3M");
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum RateIndex {
-    /// Secured Overnight Financing Rate (USD)
+    /// Secured Overnight Financing Rate (USD).
     Sofr,
-    /// Tokyo Overnight Average Rate (JPY)
+    /// Tokyo Overnight Average Rate (JPY).
     Tonar,
-    /// Euro Short-Term Rate (EUR overnight)
+    /// Euro Short-Term Rate (EUR overnight).
     Estr,
-    /// Euro Interbank Offered Rate 3 Month
+    /// Euro Interbank Offered Rate 3 Month.
     Euribor3M,
-    /// Euro Interbank Offered Rate 6 Month
+    /// Euro Interbank Offered Rate 6 Month.
     Euribor6M,
-    /// Sterling Overnight Index Average (GBP)
+    /// Sterling Overnight Index Average (GBP).
     Sonia,
-    /// Swiss Average Rate Overnight (CHF)
+    /// Swiss Average Rate Overnight (CHF).
     Saron,
 }
 
 impl RateIndex {
     /// Returns all supported rate indices.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// let indices = RateIndex::all();
-    /// assert_eq!(indices.len(), 7);
-    /// assert!(indices.contains(&RateIndex::Sofr));
-    /// ```
     #[must_use]
     pub const fn all() -> [RateIndex; 7] {
         [
@@ -114,16 +58,6 @@ impl RateIndex {
     }
 
     /// Returns all rate index codes for API validation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// let codes = RateIndex::all_codes();
-    /// assert!(codes.contains(&"SOFR"));
-    /// assert!(codes.contains(&"EURIBOR3M"));
-    /// ```
     #[must_use]
     pub const fn all_codes() -> [&'static str; 7] {
         [
@@ -138,15 +72,6 @@ impl RateIndex {
     }
 
     /// Returns the API code for this rate index (no spaces, suitable for JSON).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// assert_eq!(RateIndex::Sofr.api_code(), "SOFR");
-    /// assert_eq!(RateIndex::Euribor3M.api_code(), "EURIBOR3M");
-    /// ```
     #[must_use]
     pub const fn api_code(&self) -> &'static str {
         match self {
@@ -161,15 +86,6 @@ impl RateIndex {
     }
 
     /// Returns the default rate index for a given currency.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{RateIndex, Currency};
-    ///
-    /// assert_eq!(RateIndex::default_for_currency(Currency::USD), RateIndex::Sofr);
-    /// assert_eq!(RateIndex::default_for_currency(Currency::EUR), RateIndex::Euribor3M);
-    /// ```
     #[must_use]
     pub const fn default_for_currency(currency: Currency) -> Self {
         match currency {
@@ -182,16 +98,6 @@ impl RateIndex {
     }
 
     /// Returns the currency associated with this rate index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{RateIndex, Currency};
-    ///
-    /// assert_eq!(RateIndex::Sofr.currency(), Currency::USD);
-    /// assert_eq!(RateIndex::Tonar.currency(), Currency::JPY);
-    /// assert_eq!(RateIndex::Sonia.currency(), Currency::GBP);
-    /// ```
     #[must_use]
     pub const fn currency(&self) -> Currency {
         match self {
@@ -204,17 +110,6 @@ impl RateIndex {
     }
 
     /// Returns the standard fixing tenor for this rate index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    /// use infra_domain::time::Tenor;
-    ///
-    /// assert_eq!(RateIndex::Sofr.tenor(), Tenor::Overnight);
-    /// assert_eq!(RateIndex::Euribor3M.tenor(), Tenor::ThreeMonths);
-    /// assert_eq!(RateIndex::Euribor6M.tenor(), Tenor::SixMonths);
-    /// ```
     #[must_use]
     pub const fn tenor(&self) -> Tenor {
         match self {
@@ -225,40 +120,18 @@ impl RateIndex {
     }
 
     /// Returns the day count convention for this rate index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    /// use infra_domain::time::DayCounter;
-    ///
-    /// assert_eq!(RateIndex::Sofr.day_counter(), DayCounter::Actual360);
-    /// assert_eq!(RateIndex::Sonia.day_counter(), DayCounter::Actual365Fixed);
-    /// ```
     #[must_use]
     pub const fn day_counter(&self) -> DayCounter {
         match self {
-            // USD, EUR, CHF use ACT/360
             Self::Sofr | Self::Estr | Self::Euribor3M | Self::Euribor6M | Self::Saron => {
                 DayCounter::Actual360
             }
-            // GBP uses ACT/365
             Self::Sonia => DayCounter::Actual365Fixed,
-            // JPY uses ACT/365
             Self::Tonar => DayCounter::Actual365Fixed,
         }
     }
 
     /// Returns the human-readable name of this rate index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// assert_eq!(RateIndex::Sofr.name(), "SOFR");
-    /// assert_eq!(RateIndex::Euribor3M.name(), "EURIBOR 3M");
-    /// ```
     #[must_use]
     pub const fn name(&self) -> &'static str {
         match self {
@@ -273,15 +146,6 @@ impl RateIndex {
     }
 
     /// Returns the short code for this rate index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// assert_eq!(RateIndex::Sofr.code(), "SOFR");
-    /// assert_eq!(RateIndex::Euribor3M.code(), "EUR3M");
-    /// ```
     #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
@@ -296,17 +160,6 @@ impl RateIndex {
     }
 
     /// Returns the full metadata for this rate index.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{RateIndex, IndexMetadata, CompoundingMethod};
-    /// use infra_domain::time::{DayCounter, CalendarId};
-    ///
-    /// let metadata = RateIndex::Sofr.metadata();
-    /// assert_eq!(metadata.compounding_method, CompoundingMethod::Compounded);
-    /// assert_eq!(metadata.day_counter, DayCounter::Actual360);
-    /// ```
     #[must_use]
     pub const fn metadata(&self) -> IndexMetadata {
         match self {
@@ -343,7 +196,7 @@ impl RateIndex {
                 fixing_lag: 0,
                 settlement_lag: 2,
                 day_counter: DayCounter::Actual360,
-                calendar: CalendarId::Target, // Swiss calendar not yet defined
+                calendar: CalendarId::Target,
             },
             Self::Euribor3M | Self::Euribor6M => IndexMetadata {
                 compounding_method: CompoundingMethod::Simple,
@@ -355,33 +208,15 @@ impl RateIndex {
         }
     }
 
-    /// Parses a rate index from a compound index name (e.g., "USD-SOFR",
-    /// "EUR-EURIBOR-6M").
-    ///
-    /// Falls back to standard `FromStr` parsing first, then tries substring
-    /// matching for compound names commonly used in curve building APIs.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// assert_eq!(RateIndex::from_index_name("USD-SOFR"), Some(RateIndex::Sofr));
-    /// assert_eq!(RateIndex::from_index_name("SOFR"), Some(RateIndex::Sofr));
-    /// assert_eq!(RateIndex::from_index_name("EUR-EURIBOR-6M"), Some(RateIndex::Euribor6M));
-    /// assert_eq!(RateIndex::from_index_name("GBP-SONIA"), Some(RateIndex::Sonia));
-    /// assert_eq!(RateIndex::from_index_name("UNKNOWN"), None);
-    /// ```
+    /// Parses a rate index from a compound index name (e.g., "USD-SOFR",.
     #[must_use]
     pub fn from_index_name(s: &str) -> Option<Self> {
         let upper = s.to_uppercase();
 
-        // Try direct parse first (handles "SOFR", "ESTR", etc.)
         if let Ok(idx) = upper.parse::<RateIndex>() {
             return Some(idx);
         }
 
-        // Substring matching for compound names (e.g., "USD-SOFR")
         if upper.contains("SOFR") {
             return Some(Self::Sofr);
         }
@@ -407,16 +242,6 @@ impl RateIndex {
     }
 
     /// Returns true if this is an overnight index (RFR).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// assert!(RateIndex::Sofr.is_overnight());
-    /// assert!(RateIndex::Sonia.is_overnight());
-    /// assert!(!RateIndex::Euribor3M.is_overnight());
-    /// ```
     #[must_use]
     pub const fn is_overnight(&self) -> bool {
         matches!(
@@ -426,15 +251,6 @@ impl RateIndex {
     }
 
     /// Returns true if this is a term index (IBOR-style).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// assert!(!RateIndex::Sofr.is_term_index());
-    /// assert!(RateIndex::Euribor3M.is_term_index());
-    /// ```
     #[must_use]
     pub const fn is_term_index(&self) -> bool { !self.is_overnight() }
 }
@@ -567,13 +383,9 @@ mod tests {
         set.insert(RateIndex::Sofr);
         set.insert(RateIndex::Tonar);
         set.insert(RateIndex::Estr);
-        set.insert(RateIndex::Sofr); // Duplicate
+        set.insert(RateIndex::Sofr);
         assert_eq!(set.len(), 3);
     }
-
-    // ========================================
-    // IndexMetadata Tests
-    // ========================================
 
     #[test]
     fn test_metadata_sofr() {
@@ -590,7 +402,7 @@ mod tests {
         let metadata = RateIndex::Sonia.metadata();
         assert_eq!(metadata.compounding_method, CompoundingMethod::Compounded);
         assert_eq!(metadata.fixing_lag, 0);
-        assert_eq!(metadata.settlement_lag, 0); // SONIA has T+0 settlement
+        assert_eq!(metadata.settlement_lag, 0);
         assert_eq!(metadata.day_counter, DayCounter::Actual365Fixed);
         assert_eq!(metadata.calendar, CalendarId::London);
     }
@@ -599,7 +411,7 @@ mod tests {
     fn test_metadata_euribor() {
         let metadata = RateIndex::Euribor3M.metadata();
         assert_eq!(metadata.compounding_method, CompoundingMethod::Simple);
-        assert_eq!(metadata.fixing_lag, 2); // IBOR has T-2 fixing
+        assert_eq!(metadata.fixing_lag, 2);
         assert_eq!(metadata.settlement_lag, 2);
         assert_eq!(metadata.day_counter, DayCounter::Actual360);
         assert_eq!(metadata.calendar, CalendarId::Target);
@@ -613,10 +425,6 @@ mod tests {
         assert_eq!(metadata.day_counter, DayCounter::Actual360);
         assert_eq!(metadata.calendar, CalendarId::Target);
     }
-
-    // ========================================
-    // is_overnight / is_term_index Tests
-    // ========================================
 
     #[test]
     fn test_is_overnight() {
@@ -639,10 +447,6 @@ mod tests {
         assert!(RateIndex::Euribor3M.is_term_index());
         assert!(RateIndex::Euribor6M.is_term_index());
     }
-
-    // ========================================
-    // from_index_name Tests
-    // ========================================
 
     #[test]
     fn test_from_index_name_compound() {

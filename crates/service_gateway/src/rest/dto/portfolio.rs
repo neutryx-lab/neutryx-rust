@@ -1,149 +1,135 @@
-//! Portfolio-related DTOs for CRUD and aggregation operations
-//!
-//! Request/Response types for `PortfolioService` endpoints.
+//! Portfolio-related DTOs for CRUD and aggregation operations.
 
 use serde::{Deserialize, Serialize};
 
-// ============================================================================
-// Common Types
-// ============================================================================
-
-/// Counterparty information
+/// Counterparty information.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CounterpartyDto {
-    /// Unique counterparty identifier
+    /// Unique counterparty identifier.
     pub id: String,
-    /// Counterparty name
+    /// Counterparty name.
     pub name: String,
-    /// Credit rating (optional)
+    /// Credit rating (optional).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub credit_rating: Option<String>,
 }
 
-/// Netting set information
+/// Netting set information.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NettingSetDto {
-    /// Unique netting set identifier
+    /// Unique netting set identifier.
     pub id: String,
-    /// Associated counterparty ID
+    /// Associated counterparty ID.
     pub counterparty_id: String,
-    /// Netting set name
+    /// Netting set name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 }
 
-/// Trade representation for API
+/// Trade representation for API.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TradeDto {
-    /// Unique trade identifier
+    /// Unique trade identifier.
     pub trade_id: String,
-    /// Trade type (e.g., "irs", "fx\_forward", "equity\_option")
+    /// Trade type (e.g., "irs", "fx\_forward", "equity\_option").
     pub trade_type: String,
-    /// Counterparty ID
+    /// Counterparty ID.
     pub counterparty_id: String,
-    /// Netting set ID
+    /// Netting set ID.
     pub netting_set_id: String,
-    /// Notional amount
+    /// Notional amount.
     pub notional: f64,
-    /// Currency
+    /// Currency.
     pub currency: String,
-    /// Maturity date (ISO 8601 format)
+    /// Maturity date (ISO 8601 format).
     pub maturity_date: String,
-    /// Additional trade parameters (JSON object)
+    /// Additional trade parameters (JSON object).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parameters: Option<serde_json::Value>,
 }
 
-// ============================================================================
-// Portfolio CRUD DTOs
-// ============================================================================
-
-/// Request to create a new portfolio
+/// Request to create a new portfolio.
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)] // Fields accessed via serde deserialization
+#[allow(dead_code)]
 pub struct CreatePortfolioRequest {
-    /// Portfolio name (optional)
+    /// Portfolio name (optional).
     #[serde(default)]
     pub name: Option<String>,
-    /// Counterparties in the portfolio
+    /// Counterparties in the portfolio.
     #[serde(default)]
     pub counterparties: Vec<CounterpartyDto>,
-    /// Netting sets in the portfolio
+    /// Netting sets in the portfolio.
     #[serde(default)]
     pub netting_sets: Vec<NettingSetDto>,
-    /// Initial trades to add
+    /// Initial trades to add.
     #[serde(default)]
     pub trades: Vec<TradeDto>,
 }
 
-/// Response for portfolio creation
+/// Response for portfolio creation.
 #[derive(Debug, Clone, Serialize)]
 pub struct CreatePortfolioResponse {
-    /// Generated portfolio ID
+    /// Generated portfolio ID.
     pub portfolio_id: String,
-    /// Number of trades added
+    /// Number of trades added.
     pub trade_count: usize,
-    /// Number of counterparties
+    /// Number of counterparties.
     pub counterparty_count: usize,
-    /// Number of netting sets
+    /// Number of netting sets.
     pub netting_set_count: usize,
 }
 
-/// Response for portfolio retrieval
+/// Response for portfolio retrieval.
 #[derive(Debug, Clone, Serialize)]
 pub struct GetPortfolioResponse {
-    /// Portfolio ID
+    /// Portfolio ID.
     pub portfolio_id: String,
-    /// Portfolio name
+    /// Portfolio name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// Number of trades
+    /// Number of trades.
     pub trade_count: usize,
-    /// Number of counterparties
+    /// Number of counterparties.
     pub counterparty_count: usize,
-    /// Number of netting sets
+    /// Number of netting sets.
     pub netting_set_count: usize,
-    /// Creation timestamp (ISO 8601)
+    /// Creation timestamp (ISO 8601).
     pub created_at: String,
-    /// List of trades (optional, for detailed view)
+    /// List of trades (optional, for detailed view).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trades: Option<Vec<TradeDto>>,
 }
 
-/// Request to add trades to a portfolio
+/// Request to add trades to a portfolio.
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)] // Fields accessed via serde deserialization
+#[allow(dead_code)]
 pub struct AddTradesRequest {
-    /// Trades to add
+    /// Trades to add.
     pub trades: Vec<TradeDto>,
 }
 
-/// Response for adding trades
+/// Response for adding trades.
 #[derive(Debug, Clone, Serialize)]
 pub struct AddTradesResponse {
-    /// Portfolio ID
+    /// Portfolio ID.
     pub portfolio_id: String,
-    /// Number of trades added
+    /// Number of trades added.
     pub trades_added: usize,
-    /// Total trade count after addition
+    /// Total trade count after addition.
     pub total_trade_count: usize,
 }
 
-// ============================================================================
-// Portfolio Aggregation DTOs
-// ============================================================================
-
-/// Request for portfolio Greeks calculation
+/// Request for portfolio Greeks calculation.
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)] // Fields accessed via serde deserialization
+#[allow(dead_code)]
 pub struct PortfolioGreeksRequest {
-    /// Greek types to calculate (defaults to all first-order)
+    /// Greek types to calculate (defaults to all first-order).
     #[serde(default = "default_greek_types")]
     pub greek_types: Vec<String>,
-    /// Group by counterparty
+    /// Group by counterparty.
     #[serde(default)]
     pub group_by_counterparty: bool,
-    /// Group by netting set
+    /// Group by netting set.
     #[serde(default)]
     pub group_by_netting_set: bool,
 }
@@ -158,102 +144,102 @@ fn default_greek_types() -> Vec<String> {
     ]
 }
 
-/// Greeks for a group (counterparty or netting set)
+/// Greeks for a group (counterparty or netting set).
 #[derive(Debug, Clone, Serialize)]
 pub struct GroupGreeksDto {
-    /// Group identifier
+    /// Group identifier.
     pub group_id: String,
-    /// Group name
+    /// Group name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub group_name: Option<String>,
-    /// Number of trades in group
+    /// Number of trades in group.
     pub trade_count: usize,
-    /// Total delta
+    /// Total delta.
     pub delta: f64,
-    /// Total gamma
+    /// Total gamma.
     pub gamma: f64,
-    /// Total vega
+    /// Total vega.
     pub vega: f64,
-    /// Total theta
+    /// Total theta.
     pub theta: f64,
-    /// Total rho
+    /// Total rho.
     pub rho: f64,
 }
 
-/// Trade calculation error
+/// Trade calculation error.
 #[derive(Debug, Clone, Serialize)]
 pub struct TradeErrorDto {
-    /// Trade ID that failed
+    /// Trade ID that failed.
     pub trade_id: String,
-    /// Error message
+    /// Error message.
     pub error: String,
 }
 
-/// Response for portfolio Greeks calculation
+/// Response for portfolio Greeks calculation.
 #[derive(Debug, Clone, Serialize)]
 pub struct PortfolioGreeksResponse {
-    /// Portfolio ID
+    /// Portfolio ID.
     pub portfolio_id: String,
-    /// Total portfolio delta
+    /// Total portfolio delta.
     pub total_delta: f64,
-    /// Total portfolio gamma
+    /// Total portfolio gamma.
     pub total_gamma: f64,
-    /// Total portfolio vega
+    /// Total portfolio vega.
     pub total_vega: f64,
-    /// Total portfolio theta
+    /// Total portfolio theta.
     pub total_theta: f64,
-    /// Total portfolio rho
+    /// Total portfolio rho.
     pub total_rho: f64,
-    /// Greeks grouped by counterparty
+    /// Greeks grouped by counterparty.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub by_counterparty: Option<Vec<GroupGreeksDto>>,
-    /// Greeks grouped by netting set
+    /// Greeks grouped by netting set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub by_netting_set: Option<Vec<GroupGreeksDto>>,
-    /// Number of trades successfully processed
+    /// Number of trades successfully processed.
     pub success_count: usize,
-    /// Number of trades that failed
+    /// Number of trades that failed.
     pub failure_count: usize,
-    /// Details of failed trades
+    /// Details of failed trades.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<TradeErrorDto>,
-    /// Calculation time in milliseconds
+    /// Calculation time in milliseconds.
     pub calculation_time_ms: f64,
 }
 
-/// Response for portfolio pricing
+/// Response for portfolio pricing.
 #[derive(Debug, Clone, Serialize)]
 pub struct PortfolioPriceResponse {
-    /// Portfolio ID
+    /// Portfolio ID.
     pub portfolio_id: String,
-    /// Total portfolio present value
+    /// Total portfolio present value.
     pub total_pv: f64,
-    /// Currency of the total PV
+    /// Currency of the total PV.
     pub currency: String,
-    /// PV breakdown by trade
+    /// PV breakdown by trade.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trade_pvs: Option<Vec<TradePvDto>>,
-    /// Number of trades successfully priced
+    /// Number of trades successfully priced.
     pub success_count: usize,
-    /// Number of trades that failed
+    /// Number of trades that failed.
     pub failure_count: usize,
-    /// Details of failed trades
+    /// Details of failed trades.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<TradeErrorDto>,
-    /// Calculation time in milliseconds
+    /// Calculation time in milliseconds.
     pub calculation_time_ms: f64,
 }
 
-/// Individual trade PV
+/// Individual trade PV.
 #[derive(Debug, Clone, Serialize)]
 pub struct TradePvDto {
-    /// Trade ID
+    /// Trade ID.
     pub trade_id: String,
-    /// Trade type
+    /// Trade type.
     pub trade_type: String,
-    /// Present value
+    /// Present value.
     pub pv: f64,
-    /// Currency
+    /// Currency.
     pub currency: String,
 }
 

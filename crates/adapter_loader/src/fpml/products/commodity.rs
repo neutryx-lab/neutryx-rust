@@ -1,20 +1,15 @@
 //! Commodity product parsers.
-//!
-//! Handles parsing for:
-//! - Commodity Swap (commoditySwap)
-//! - Commodity Option (commodityOption)
-//! - Commodity Forward (commodityForward)
 
 use infra_domain::{
-    market::Currency,
     time::Date,
-    trade::{
-        Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeMetadata, TradeType,
-    },
+    trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
 };
 
 use crate::fpml::{
-    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    common::{
+        build_metadata, parse_currency, parse_trade_header, xml_date, xml_decimal, xml_text,
+        XmlNavigator,
+    },
     error::FpmlError,
 };
 
@@ -22,58 +17,30 @@ use crate::fpml::{
 pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Parse trade header (includes counterparty resolution)
     let header = parse_trade_header(xml)?;
 
-    // Extract commoditySwap section
     let swap_section = nav
         .extract_section("commoditySwap")
         .ok_or_else(|| FpmlError::MissingElement("commoditySwap".to_string()))?;
 
     let swap_nav = XmlNavigator::new(&swap_section);
 
-    // Parse effective and termination dates
-    let effective_date = swap_nav
-        .find_text("unadjustedDate")
-        .map(|d| parse_date(&d))
-        .transpose()?
-        .unwrap_or_else(|| Date::from_ymd(2024, 1, 1).unwrap());
+    let effective_date = xml_date!(
+        swap_nav,
+        "unadjustedDate",
+        Date::from_ymd(2024, 1, 1).unwrap()
+    );
 
-    // Parse fixed leg
     let fixed_section = swap_nav.extract_section("fixedLeg").unwrap_or_default();
     let fixed_nav = XmlNavigator::new(&fixed_section);
 
-    let fixed_price = fixed_nav
-        .find_text("price")
-        .map(|p| parse_decimal(&p))
-        .transpose()?
-        .unwrap_or(0.0);
+    let fixed_price = xml_decimal!(fixed_nav, "price", 0.0);
+    let price_currency = xml_text!(fixed_nav, "priceCurrency", "USD");
+    let price_unit = xml_text!(fixed_nav, "priceUnit", "BBL");
+    let quantity = xml_decimal!(fixed_nav, "quantity", 0.0);
+    let quantity_unit = xml_text!(fixed_nav, "quantityUnit", "BBL");
+    let total_quantity = xml_decimal!(fixed_nav, "totalNotionalQuantity", quantity);
 
-    let price_currency = fixed_nav
-        .find_text("priceCurrency")
-        .unwrap_or_else(|| "USD".to_string());
-
-    let price_unit = fixed_nav
-        .find_text("priceUnit")
-        .unwrap_or_else(|| "BBL".to_string());
-
-    let quantity = fixed_nav
-        .find_text("quantity")
-        .map(|q| parse_decimal(&q))
-        .transpose()?
-        .unwrap_or(0.0);
-
-    let quantity_unit = fixed_nav
-        .find_text("quantityUnit")
-        .unwrap_or_else(|| "BBL".to_string());
-
-    let total_quantity = fixed_nav
-        .find_text("totalNotionalQuantity")
-        .map(|q| parse_decimal(&q))
-        .transpose()?
-        .unwrap_or(quantity);
-
-    // Parse floating leg for commodity reference
     let floating_section = swap_nav.extract_section("floatingLeg").unwrap_or_default();
     let floating_nav = XmlNavigator::new(&floating_section);
 
@@ -84,7 +51,6 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     let currency = parse_currency(&price_currency);
 
-    // Create fixed leg
     let fixed_notional = fixed_price * total_quantity;
     let fixed_cf = Cashflow::new(
         CashflowType::Coupon,
@@ -99,7 +65,6 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     let fixed_leg = Leg::new(vec![fixed_cf], Direction::Payer, LegType::Fixed, currency);
 
-    // Create floating leg
     let floating_cf = Cashflow::new(
         CashflowType::Coupon,
         effective_date,
@@ -107,7 +72,7 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
         effective_date,
         1.0,
         total_quantity,
-        Payoff::fixed(1.0), // Commodity index reference
+        Payoff::fixed(1.0),
         currency,
     );
 
@@ -126,16 +91,7 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
         quantity_unit,
     };
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -143,18 +99,6 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
         .trade_type(trade_type)
         .metadata(metadata)
         .build())
-}
-
-/// Parse currency string to Currency enum.
-fn parse_currency(s: &str) -> Currency {
-    match s.to_uppercase().as_str() {
-        "USD" => Currency::USD,
-        "EUR" => Currency::EUR,
-        "GBP" => Currency::GBP,
-        "JPY" => Currency::JPY,
-        "CHF" => Currency::CHF,
-        _ => Currency::USD,
-    }
 }
 
 #[cfg(test)]

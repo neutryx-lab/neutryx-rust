@@ -1,48 +1,7 @@
 //! Funding Valuation Adjustment (FVA) calculation.
-//!
-//! FVA represents the cost/benefit of funding positive/negative exposure.
-//!
-//! # Formulas
-//!
-//! FCA = ∫₀ᵀ EE(t) × s_borrow × df(t) dt
-//! FBA = ∫₀ᵀ ENE(t) × s_lend × df(t) dt
-//! FVA = FCA - FBA
-//!
-//! Where:
-//! - EE(t) = Expected Exposure (funding cost on positive exposure)
-//! - ENE(t) = Expected Negative Exposure (funding benefit)
-//! - s_borrow = Borrowing spread
-//! - s_lend = Lending spread
-//! - df(t) = Discount factor
 
-/// Computes Funding Cost Adjustment (FCA).
-///
-/// FCA represents the cost of funding positive exposure.
-///
-/// # Arguments
-///
-/// * `ee` - Expected Exposure profile
-/// * `time_grid` - Time points in years
-/// * `funding_spread` - Borrowing spread (annualised decimal)
-/// * `discount_factors` - Risk-free discount factors at each time point
-///
-/// # Returns
-///
-/// FCA value (always non-negative).
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::compute_fca;
-///
-/// let ee = vec![0.0, 100.0, 150.0, 100.0, 50.0];
-/// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
-/// let funding_spread = 0.005; // 50bp
-/// let df = vec![1.0, 0.99, 0.98, 0.97, 0.96];
-///
-/// let fca = compute_fca(&ee, &time_grid, funding_spread, &df);
-/// assert!(fca > 0.0);
-/// ```
+/// Computes Funding Cost Adjustment (FCA): the cost of funding positive
+/// exposure via trapezoidal integration.
 pub fn compute_fca(
     ee: &[f64],
     time_grid: &[f64],
@@ -69,20 +28,8 @@ pub fn compute_fca(
     fca.max(0.0)
 }
 
-/// Computes Funding Benefit Adjustment (FBA).
-///
-/// FBA represents the benefit of investing negative exposure.
-///
-/// # Arguments
-///
-/// * `ene` - Expected Negative Exposure profile
-/// * `time_grid` - Time points in years
-/// * `lending_spread` - Lending spread (annualised decimal)
-/// * `discount_factors` - Risk-free discount factors at each time point
-///
-/// # Returns
-///
-/// FBA value (always non-negative).
+/// Computes Funding Benefit Adjustment (FBA): the benefit of investing negative
+/// exposure via trapezoidal integration.
 pub fn compute_fba(
     ene: &[f64],
     time_grid: &[f64],
@@ -109,23 +56,7 @@ pub fn compute_fba(
     fba.max(0.0)
 }
 
-/// Computes combined FVA (FCA - FBA).
-///
-/// Positive FVA = net funding cost
-/// Negative FVA = net funding benefit
-///
-/// # Arguments
-///
-/// * `ee` - Expected Exposure profile
-/// * `ene` - Expected Negative Exposure profile
-/// * `time_grid` - Time points
-/// * `spread_borrow` - Borrowing spread
-/// * `spread_lend` - Lending spread
-/// * `discount_factors` - Discount factors
-///
-/// # Returns
-///
-/// Tuple of (FCA, FBA, FVA).
+/// Computes combined FVA = FCA - FBA, returning (FCA, FBA, FVA).
 pub fn compute_fva(
     ee: &[f64],
     ene: &[f64],
@@ -214,7 +145,6 @@ mod tests {
 
     #[test]
     fn test_fva_net_cost() {
-        // More positive exposure than negative → net funding cost
         let ee = vec![0.0, 100.0, 100.0, 100.0, 100.0];
         let ene = vec![0.0, 30.0, 30.0, 30.0, 30.0];
         let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
@@ -224,13 +154,12 @@ mod tests {
 
         assert!(fca > 0.0);
         assert!(fba > 0.0);
-        assert!(fva > 0.0); // Net cost
+        assert!(fva > 0.0);
         assert_relative_eq!(fva, fca - fba, epsilon = 1e-10);
     }
 
     #[test]
     fn test_fva_net_benefit() {
-        // More negative exposure than positive → net funding benefit
         let ee = vec![0.0, 30.0, 30.0, 30.0, 30.0];
         let ene = vec![0.0, 100.0, 100.0, 100.0, 100.0];
         let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
@@ -238,7 +167,7 @@ mod tests {
 
         let (_fca, _fba, fva) = compute_fva(&ee, &ene, &time_grid, 0.005, 0.005, &df);
 
-        assert!(fva < 0.0); // Net benefit
+        assert!(fva < 0.0);
     }
 
     #[test]
@@ -248,7 +177,6 @@ mod tests {
         let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
         let df = create_flat_df(0.05, &time_grid);
 
-        // With symmetric spreads and equal EE/ENE, FVA should be ~0
         let (fca, fba, fva) = compute_fva(&ee, &ene, &time_grid, 0.005, 0.005, &df);
 
         assert_relative_eq!(fva, 0.0, epsilon = 1e-10);
@@ -265,7 +193,7 @@ mod tests {
 
     #[test]
     fn test_fca_non_negative() {
-        let ee = vec![0.0, -10.0, -20.0]; // Negative EE (unusual)
+        let ee = vec![0.0, -10.0, -20.0];
         let time_grid = vec![0.0, 0.5, 1.0];
         let df = vec![1.0, 0.98, 0.96];
 

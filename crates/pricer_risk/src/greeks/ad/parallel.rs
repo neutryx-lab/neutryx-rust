@@ -1,63 +1,4 @@
 //! Parallel adjoint aggregation for Monte Carlo Greeks computation.
-//!
-//! This module provides thread-safe mechanisms for aggregating adjoint values
-//! during parallel Monte Carlo simulations. When computing Greeks via AD,
-//! each thread accumulates its own adjoint contributions, which are then
-//! reduced to produce the final gradient values.
-//!
-//! # Architecture
-//!
-//! ```text
-//! ┌─────────────────────────────────────────────────────────────┐
-//! │                     Parallel Path Generation                 │
-//! │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
-//! │  │ Thread 1│  │ Thread 2│  │ Thread 3│  │ Thread N│        │
-//! │  │ Accum 1 │  │ Accum 2 │  │ Accum 3 │  │ Accum N │        │
-//! │  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘        │
-//! │       │            │            │            │               │
-//! │       └────────────┴─────┬──────┴────────────┘               │
-//! │                          ▼                                   │
-//! │                   ┌────────────┐                             │
-//! │                   │   Reduce   │                             │
-//! │                   └─────┬──────┘                             │
-//! │                         ▼                                    │
-//! │                  Final Greeks                                │
-//! └─────────────────────────────────────────────────────────────┘
-//! ```
-//!
-//! # Example
-//!
-//! ```rust
-//! use pricer_risk::greeks::ad::parallel::{ParallelGreeksComputer, ParallelGreeksConfig};
-//! use pricer_risk::greeks::ad::loops::AdjointAccumulator;
-//! use rayon::prelude::*;
-//!
-//! // Create parallel computer
-//! let config = ParallelGreeksConfig::default();
-//! let computer = ParallelGreeksComputer::new(config);
-//!
-//! // Parallel computation with reduction
-//! let n_paths = 10_000usize;
-//! let chunk_size = n_paths / rayon::current_num_threads();
-//!
-//! let total: AdjointAccumulator<f64> = (0..n_paths)
-//!     .into_par_iter()
-//!     .fold(
-//!         || AdjointAccumulator::new(),
-//!         |mut acc, _path_idx| {
-//!             // Simulate path and compute adjoint
-//!             acc.add_delta(0.5);
-//!             acc
-//!         },
-//!     )
-//!     .reduce(
-//!         || AdjointAccumulator::new(),
-//!         |mut a, b| { a.merge(&b); a },
-//!     );
-//!
-//! // Average over paths
-//! let (avg_delta, _, _, _, _) = total.averaged();
-//! ```
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -69,13 +10,11 @@ use super::loops::AdjointAccumulator;
 /// Configuration for parallel Greeks computation.
 #[derive(Clone, Copy, Debug)]
 pub struct ParallelGreeksConfig {
-    /// Minimum paths per thread before parallelisation kicks in.
+    /// Minimum paths per thread.
     pub min_paths_per_thread: usize,
-
-    /// Whether to use thread-local accumulators.
+    /// Whether to use thread-local storage.
     pub use_thread_local: bool,
-
-    /// Chunk size for parallel iteration (0 = auto).
+    /// Chunk size for parallel iteration.
     pub chunk_size: usize,
 }
 
@@ -84,7 +23,7 @@ impl Default for ParallelGreeksConfig {
         Self {
             min_paths_per_thread: 100,
             use_thread_local: true,
-            chunk_size: 0, // Auto-select
+            chunk_size: 0,
         }
     }
 }
@@ -119,7 +58,6 @@ impl ParallelGreeksConfig {
         if self.chunk_size > 0 {
             self.chunk_size
         } else {
-            // Auto: divide evenly across threads
             let n_threads = rayon::current_num_threads();
             n_paths.div_ceil(n_threads)
         }
@@ -127,11 +65,6 @@ impl ParallelGreeksConfig {
 }
 
 /// Parallel Greeks computer using thread-local accumulators.
-///
-/// This struct orchestrates parallel computation of Greeks by:
-/// 1. Distributing paths across threads
-/// 2. Each thread maintains a local AdjointAccumulator
-/// 3. Accumulators are reduced to produce final Greeks
 #[derive(Debug)]
 pub struct ParallelGreeksComputer {
     config: ParallelGreeksConfig,
@@ -174,16 +107,6 @@ impl ParallelGreeksComputer {
     pub fn reset(&self) { self.paths_processed.store(0, Ordering::Relaxed); }
 
     /// Computes Greeks in parallel using the provided path function.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_paths` - Total number of paths to simulate
-    /// * `path_fn` - Function that simulates a single path and returns Greeks
-    ///   contributions
-    ///
-    /// # Returns
-    ///
-    /// Aggregated `AdjointAccumulator` with summed Greeks.
     pub fn compute_parallel<F>(&self, n_paths: usize, path_fn: F) -> AdjointAccumulator<f64>
     where
         F: Fn(usize) -> AdjointAccumulator<f64> + Send + Sync,
@@ -191,11 +114,9 @@ impl ParallelGreeksComputer {
         self.paths_processed.store(0, Ordering::Relaxed);
 
         if !self.config.should_parallelise(n_paths) {
-            // Sequential fallback for small path counts
             return self.compute_sequential(n_paths, path_fn);
         }
 
-        // Parallel computation with fold-reduce pattern
         let result = (0..n_paths)
             .into_par_iter()
             .fold(AdjointAccumulator::new, |mut acc, path_idx| {
@@ -212,7 +133,6 @@ impl ParallelGreeksComputer {
         result
     }
 
-    /// Computes Greeks sequentially (fallback for small path counts).
     fn compute_sequential<F>(&self, n_paths: usize, path_fn: F) -> AdjointAccumulator<f64>
     where
         F: Fn(usize) -> AdjointAccumulator<f64>,
@@ -228,10 +148,8 @@ impl ParallelGreeksComputer {
         accumulator
     }
 
-    /// Computes Greeks in parallel with chunked processing.
-    ///
-    /// This is more efficient for very large path counts as it reduces
-    /// the overhead of creating many small tasks.
+    /// Computes Greeks in parallel with chunked processing for large path
+    /// counts.
     pub fn compute_parallel_chunked<F>(&self, n_paths: usize, path_fn: F) -> AdjointAccumulator<f64>
     where
         F: Fn(usize) -> AdjointAccumulator<f64> + Send + Sync,
@@ -258,24 +176,22 @@ impl ParallelGreeksComputer {
     }
 }
 
-/// Result of parallel Greeks computation.
-///
-/// Contains averaged Greeks and computation statistics.
+/// Result of parallel Greeks computation with averaged values and statistics.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ParallelGreeksResult<T: Float> {
-    /// Averaged Delta.
+    /// Delta sensitivity.
     pub delta: T,
-    /// Averaged Gamma.
+    /// Gamma sensitivity.
     pub gamma: T,
-    /// Averaged Vega.
+    /// Vega sensitivity.
     pub vega: T,
-    /// Averaged Theta.
+    /// Theta sensitivity.
     pub theta: T,
-    /// Averaged Rho.
+    /// Rho sensitivity.
     pub rho: T,
     /// Number of paths used.
     pub n_paths: usize,
-    /// Standard error estimate for Delta.
+    /// Standard error of the delta estimate.
     pub delta_std_error: T,
 }
 
@@ -293,15 +209,12 @@ impl<T: Float> ParallelGreeksResult<T> {
             theta,
             rho,
             n_paths: acc.count(),
-            delta_std_error: T::zero(), // Would need variance tracking for this
+            delta_std_error: T::zero(),
         }
     }
 }
 
-/// Thread-safe Greeks aggregator using atomic operations.
-///
-/// For simple aggregation where lock-free performance is critical.
-/// Uses atomic floats (represented as u64 bits) for thread-safe updates.
+/// Thread-safe Greeks aggregator using atomic operations (CAS-based).
 #[derive(Debug)]
 pub struct AtomicGreeksAggregator {
     delta_bits: AtomicUsize,
@@ -389,7 +302,6 @@ impl AtomicGreeksAggregator {
         self.count.store(0, Ordering::Relaxed);
     }
 
-    /// Atomic addition using compare-and-swap loop.
     #[inline]
     fn atomic_add(&self, atomic: &AtomicUsize, value: f64) {
         let mut current = atomic.load(Ordering::Relaxed);
@@ -422,8 +334,6 @@ mod tests {
     fn test_parallel_greeks_config_should_parallelise() {
         let config = ParallelGreeksConfig::with_min_paths(100);
 
-        // With 1 thread, need at least 100 paths
-        // This test depends on rayon thread count, so we test the logic
         let n_threads = rayon::current_num_threads();
         let threshold = 100 * n_threads;
 
@@ -455,7 +365,6 @@ mod tests {
             acc
         });
 
-        // Sum of 0..1000 = 999 * 1000 / 2 = 499500
         let expected_sum = (999 * 1000) / 2;
         assert_eq!(result.count(), 1000);
         assert!((result.delta() - expected_sum as f64).abs() < 1e-6);
@@ -528,7 +437,6 @@ mod tests {
 
         let (avg_delta, _, _, _, _) = agg.averaged();
 
-        // Average of 0..100 = 49.5
         assert!((avg_delta - 49.5).abs() < 1e-10);
     }
 

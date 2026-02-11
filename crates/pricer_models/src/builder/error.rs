@@ -18,80 +18,6 @@ use pricer_core::math::numeric::from_f64;
 use thiserror::Error;
 
 // =============================================================================
-// IFT Sensitivity Error
-// =============================================================================
-
-/// Errors that can occur during IFT (Implicit Function Theorem) sensitivity
-/// computation.
-///
-/// IFT-based sensitivities require a cached Jacobian inverse from calibration.
-/// These errors indicate when IFT computation cannot proceed.
-///
-/// # Requirement: 3.4
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum IftError {
-    /// Jacobian inverse is not cached.
-    ///
-    /// IFT sensitivity requires J⁻¹ to be stored during calibration.
-    /// Recalibrate with `store_jacobian_inverse=true`.
-    #[error("Jacobian逆行列がキャッシュされていません。store_jacobian_inverse=trueで再キャリブレーションしてください")]
-    NoJacobianInverse,
-
-    /// Input vector dimension does not match expected size.
-    ///
-    /// The ∂F/∂m vector must have length equal to the number of instruments.
-    #[error("次元不整合: 期待値 {expected}、実際値 {got}")]
-    DimensionMismatch {
-        /// Expected dimension (number of instruments/pillars)
-        expected: usize,
-        /// Actual dimension provided
-        got: usize,
-    },
-
-    /// Batch input matrix has wrong dimensions.
-    ///
-    /// For batch sensitivity, the matrix must have n_instruments rows.
-    #[error("バッチ入力の次元不整合: 行数 {expected}、実際値 {got}")]
-    BatchDimensionMismatch {
-        /// Expected number of rows (n_instruments)
-        expected: usize,
-        /// Actual number of rows provided
-        got: usize,
-    },
-
-    /// Numerical error during IFT computation.
-    ///
-    /// Matrix-vector multiplication or other numerical operation failed.
-    #[error("IFT計算中の数値エラー: {message}")]
-    NumericalError {
-        /// Description of the numerical issue
-        message: String,
-    },
-}
-
-impl IftError {
-    /// Create a no Jacobian inverse error.
-    pub fn no_jacobian_inverse() -> Self { IftError::NoJacobianInverse }
-
-    /// Create a dimension mismatch error.
-    pub fn dimension_mismatch(expected: usize, got: usize) -> Self {
-        IftError::DimensionMismatch { expected, got }
-    }
-
-    /// Create a batch dimension mismatch error.
-    pub fn batch_dimension_mismatch(expected: usize, got: usize) -> Self {
-        IftError::BatchDimensionMismatch { expected, got }
-    }
-
-    /// Create a numerical error.
-    pub fn numerical_error(message: impl Into<String>) -> Self {
-        IftError::NumericalError {
-            message: message.into(),
-        }
-    }
-}
-
-// =============================================================================
 // Numerical Diagnostics (Requirement 5.5)
 // =============================================================================
 
@@ -123,15 +49,6 @@ pub enum JacobianQuality {
 }
 
 impl JacobianQuality {
-    /// Create a Good quality result.
-    pub fn good() -> Self { JacobianQuality::Good }
-
-    /// Create a Warning quality result.
-    pub fn warning(reason: &'static str) -> Self { JacobianQuality::Warning { reason } }
-
-    /// Create a Poor quality result.
-    pub fn poor(reason: &'static str) -> Self { JacobianQuality::Poor { reason } }
-
     /// Check if the quality is acceptable (Good or Warning).
     pub fn is_acceptable(&self) -> bool { !matches!(self, JacobianQuality::Poor { .. }) }
 
@@ -184,14 +101,6 @@ pub enum RegularisationType<T: Float> {
 }
 
 impl<T: Float> RegularisationType<T> {
-    /// Create Tikhonov regularisation with the given damping factor.
-    pub fn tikhonov(damping: T) -> Self { RegularisationType::Tikhonov { damping } }
-
-    /// Create Levenberg-Marquardt regularisation with the given lambda.
-    pub fn levenberg_marquardt(lambda: T) -> Self {
-        RegularisationType::LevenbergMarquardt { lambda }
-    }
-
     /// Check if any regularisation is applied.
     pub fn is_regularised(&self) -> bool { !matches!(self, RegularisationType::None) }
 
@@ -276,48 +185,6 @@ impl<T: Float> Default for NumericalDiagnostics<T> {
 }
 
 impl<T: Float> NumericalDiagnostics<T> {
-    /// Create new empty diagnostics.
-    pub fn new() -> Self { Self::default() }
-
-    /// Create diagnostics with a condition number.
-    pub fn with_condition_number(mut self, cond: T) -> Self {
-        self.condition_number = Some(cond);
-        self
-    }
-
-    /// Add a residual value to the history.
-    pub fn push_residual(&mut self, residual: T) { self.residual_history.push(residual); }
-
-    /// Set the regularisation type.
-    pub fn with_regularisation(mut self, reg: RegularisationType<T>) -> Self {
-        self.regularisation_applied = reg;
-        self
-    }
-
-    /// Set the Jacobian quality.
-    pub fn with_jacobian_quality(mut self, quality: JacobianQuality) -> Self {
-        self.jacobian_quality = quality;
-        self
-    }
-
-    /// Record that AD fallback was used.
-    pub fn mark_ad_fallback(&mut self) { self.ad_fallback_used = true; }
-
-    /// Set the AD variance.
-    pub fn with_ad_variance(mut self, variance: T) -> Self {
-        self.ad_variance = Some(variance);
-        self
-    }
-
-    /// Increment NaN counter.
-    pub fn record_nan(&mut self) { self.nan_count += 1; }
-
-    /// Increment Inf counter.
-    pub fn record_inf(&mut self) { self.inf_count += 1; }
-
-    /// Increment near-zero diagonal counter.
-    pub fn record_near_zero_diagonal(&mut self) { self.near_zero_diagonal_count += 1; }
-
     /// Check if there were any numerical issues.
     pub fn has_issues(&self) -> bool {
         self.nan_count > 0
@@ -413,15 +280,15 @@ pub fn validate_jacobian_matrix<T: Float>(
     ncols: usize,
     zero_threshold: T,
 ) -> (JacobianQuality, NumericalDiagnostics<T>) {
-    let mut diagnostics = NumericalDiagnostics::new();
+    let mut diagnostics = NumericalDiagnostics::default();
 
     // Check for NaN and Inf
     for &val in jacobian {
         if val.is_nan() {
-            diagnostics.record_nan();
+            diagnostics.nan_count += 1;
         }
         if val.is_infinite() {
-            diagnostics.record_inf();
+            diagnostics.inf_count += 1;
         }
     }
 
@@ -432,7 +299,7 @@ pub fn validate_jacobian_matrix<T: Float>(
             if idx < jacobian.len() {
                 let diag_val = jacobian[idx];
                 if diag_val.abs() < zero_threshold {
-                    diagnostics.record_near_zero_diagonal();
+                    diagnostics.near_zero_diagonal_count += 1;
                 }
             }
         }
@@ -440,13 +307,19 @@ pub fn validate_jacobian_matrix<T: Float>(
 
     // Determine quality
     let quality = if diagnostics.nan_count > 0 {
-        JacobianQuality::poor("NaN detected in Jacobian")
+        JacobianQuality::Poor {
+            reason: "NaN detected in Jacobian",
+        }
     } else if diagnostics.inf_count > 0 {
-        JacobianQuality::poor("Inf detected in Jacobian")
+        JacobianQuality::Poor {
+            reason: "Inf detected in Jacobian",
+        }
     } else if diagnostics.near_zero_diagonal_count > 0 {
-        JacobianQuality::warning("Near-zero diagonal element detected")
+        JacobianQuality::Warning {
+            reason: "Near-zero diagonal element detected",
+        }
     } else {
-        JacobianQuality::good()
+        JacobianQuality::Good
     };
 
     diagnostics.jacobian_quality = quality;
@@ -457,7 +330,6 @@ pub fn validate_jacobian_matrix<T: Float>(
 /// Validate a Jacobian DMatrix for numerical quality.
 ///
 /// # Requirement: 5.3
-#[cfg(feature = "global-bootstrap")]
 pub fn validate_jacobian_dmatrix<T>(
     jacobian: &pricer_core::math::linalg::DMatrix<T>,
     zero_threshold: T,
@@ -468,15 +340,15 @@ where
     let nrows = jacobian.nrows();
     let ncols = jacobian.ncols();
 
-    let mut diagnostics = NumericalDiagnostics::new();
+    let mut diagnostics = NumericalDiagnostics::default();
 
     // Check for NaN and Inf
     for &val in jacobian.iter() {
         if val.is_nan() {
-            diagnostics.record_nan();
+            diagnostics.nan_count += 1;
         }
         if val.is_infinite() {
-            diagnostics.record_inf();
+            diagnostics.inf_count += 1;
         }
     }
 
@@ -485,20 +357,26 @@ where
         for i in 0..nrows {
             let diag_val = jacobian[(i, i)];
             if Float::abs(diag_val) < zero_threshold {
-                diagnostics.record_near_zero_diagonal();
+                diagnostics.near_zero_diagonal_count += 1;
             }
         }
     }
 
     // Determine quality
     let quality = if diagnostics.nan_count > 0 {
-        JacobianQuality::poor("NaN detected in Jacobian")
+        JacobianQuality::Poor {
+            reason: "NaN detected in Jacobian",
+        }
     } else if diagnostics.inf_count > 0 {
-        JacobianQuality::poor("Inf detected in Jacobian")
+        JacobianQuality::Poor {
+            reason: "Inf detected in Jacobian",
+        }
     } else if diagnostics.near_zero_diagonal_count > 0 {
-        JacobianQuality::warning("Near-zero diagonal element detected")
+        JacobianQuality::Warning {
+            reason: "Near-zero diagonal element detected",
+        }
     } else {
-        JacobianQuality::good()
+        JacobianQuality::Good
     };
 
     diagnostics.jacobian_quality = quality;
@@ -508,11 +386,10 @@ where
 
 /// Estimate condition number using row-sum norm heuristic.
 ///
-/// This is a cheap O(n²) estimate, not the true condition number
+/// This is a cheap O(n^2) estimate, not the true condition number
 /// (which would require SVD).
 ///
 /// # Requirement: 5.1
-#[cfg(feature = "global-bootstrap")]
 pub fn estimate_condition_number<T>(jacobian: &pricer_core::math::linalg::DMatrix<T>) -> Option<T>
 where
     T: Float + pricer_core::math::linalg::RealField,
@@ -550,7 +427,6 @@ where
 /// Adds λI to the matrix to improve conditioning.
 ///
 /// # Requirement: 5.2
-#[cfg(feature = "global-bootstrap")]
 pub fn apply_tikhonov_regularisation<T>(
     matrix: &mut pricer_core::math::linalg::DMatrix<T>,
     damping: T,
@@ -583,6 +459,62 @@ pub fn should_apply_regularisation<T: Float>(
         None
     }
 }
+
+// =============================================================================
+// IFT Sensitivity Error (Requirement 3.4) -- Consolidated
+// =============================================================================
+
+/// Errors that can occur during IFT (Implicit Function Theorem) sensitivity
+/// computation.
+///
+/// IFT-based sensitivities require a cached Jacobian inverse from calibration.
+/// These errors indicate when IFT computation cannot proceed.
+///
+/// # Requirement: 3.4
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+pub enum IftError {
+    /// Jacobian inverse is not cached.
+    ///
+    /// IFT sensitivity requires J^-1 to be stored during calibration.
+    /// Recalibrate with `store_jacobian_inverse=true`.
+    #[error("Jacobian逆行列がキャッシュされていません。store_jacobian_inverse=trueで再キャリブレーションしてください")]
+    NoJacobianInverse,
+
+    /// Input vector dimension does not match expected size.
+    ///
+    /// The dF/dm vector must have length equal to the number of instruments.
+    #[error("次元不整合: 期待値 {expected}、実際値 {got}")]
+    DimensionMismatch {
+        /// Expected dimension (number of instruments/pillars)
+        expected: usize,
+        /// Actual dimension provided
+        got: usize,
+    },
+
+    /// Batch input matrix has wrong dimensions.
+    ///
+    /// For batch sensitivity, the matrix must have n_instruments rows.
+    #[error("バッチ入力の次元不整合: 行数 {expected}、実際値 {got}")]
+    BatchDimensionMismatch {
+        /// Expected number of rows (n_instruments)
+        expected: usize,
+        /// Actual number of rows provided
+        got: usize,
+    },
+
+    /// Numerical error during IFT computation.
+    ///
+    /// Matrix-vector multiplication or other numerical operation failed.
+    #[error("IFT計算中の数値エラー: {message}")]
+    NumericalError {
+        /// Description of the numerical issue
+        message: String,
+    },
+}
+
+// =============================================================================
+// Calibration Error (Requirement 6.1)
+// =============================================================================
 
 /// Calibration error type.
 ///
@@ -783,133 +715,6 @@ pub enum CalibrationError {
 }
 
 impl CalibrationError {
-    /// Create a convergence failure error.
-    pub fn convergence_failure(iterations: usize, residual: f64) -> Self {
-        CalibrationError::ConvergenceFailure {
-            iterations,
-            residual,
-        }
-    }
-
-    /// Create a bounds violation error.
-    pub fn bounds_violation(param_name: &str, value: f64, lower: f64, upper: f64) -> Self {
-        CalibrationError::BoundsViolation {
-            param_name: param_name.to_string(),
-            value,
-            lower,
-            upper,
-        }
-    }
-
-    /// Create an insufficient data error.
-    pub fn insufficient_data(required: usize, provided: usize) -> Self {
-        CalibrationError::InsufficientData { required, provided }
-    }
-
-    /// Create a numerical instability error.
-    pub fn numerical_instability(message: impl Into<String>) -> Self {
-        CalibrationError::NumericalInstability {
-            message: message.into(),
-        }
-    }
-
-    /// Create an invalid market data error.
-    pub fn invalid_market_data(message: impl Into<String>) -> Self {
-        CalibrationError::InvalidMarketData {
-            message: message.into(),
-        }
-    }
-
-    /// Create a model-specific error.
-    pub fn model_error(model_name: &str, message: impl Into<String>) -> Self {
-        CalibrationError::ModelError {
-            model_name: model_name.to_string(),
-            message: message.into(),
-        }
-    }
-
-    /// Create an arbitrage violation error.
-    pub fn arbitrage_violation(message: impl Into<String>) -> Self {
-        CalibrationError::ArbitrageViolation {
-            message: message.into(),
-        }
-    }
-
-    /// Create a gradient error.
-    pub fn gradient_error(message: impl Into<String>) -> Self {
-        CalibrationError::GradientError {
-            message: message.into(),
-        }
-    }
-
-    /// Create a no instruments error.
-    pub fn no_instruments() -> Self { CalibrationError::NoInstruments }
-
-    /// Create a singular Jacobian error.
-    pub fn singular_jacobian(condition_number: f64) -> Self {
-        CalibrationError::SingularJacobian { condition_number }
-    }
-
-    /// Create a divergence error.
-    pub fn divergence(iteration: usize, residual: f64) -> Self {
-        CalibrationError::Divergence {
-            iteration,
-            residual,
-        }
-    }
-
-    /// Create an instrument evaluation failed error.
-    pub fn instrument_evaluation_failed(
-        instrument_index: usize,
-        message: impl Into<String>,
-    ) -> Self {
-        CalibrationError::InstrumentEvaluationFailed {
-            instrument_index,
-            message: message.into(),
-        }
-    }
-
-    /// Create a dimension mismatch error.
-    pub fn dimension_mismatch(instruments: usize, parameters: usize) -> Self {
-        CalibrationError::DimensionMismatch {
-            instruments,
-            parameters,
-        }
-    }
-
-    /// Create a solver error.
-    pub fn solver_error(message: impl Into<String>) -> Self {
-        CalibrationError::SolverError {
-            message: message.into(),
-        }
-    }
-
-    /// Create a jump calibration failed error.
-    pub fn jump_calibration_failed(
-        message: impl Into<String>,
-        residual: f64,
-        iterations: usize,
-    ) -> Self {
-        CalibrationError::JumpCalibrationFailed {
-            message: message.into(),
-            residual,
-            iterations,
-        }
-    }
-
-    /// Create an invalid jump parameter error.
-    pub fn invalid_jump_parameter(
-        date: impl Into<String>,
-        value: f64,
-        reason: impl Into<String>,
-    ) -> Self {
-        CalibrationError::InvalidJumpParameter {
-            date: date.into(),
-            value,
-            reason: reason.into(),
-        }
-    }
-
     /// Check if this is a recoverable error.
     ///
     /// Recoverable errors might succeed with different initial parameters
@@ -941,31 +746,33 @@ impl From<super::BootstrapError> for CalibrationError {
                 CalibrationError::InsufficientData { required, provided }
             }
             BootstrapError::NegativeRate { maturity, rate } => {
-                CalibrationError::numerical_instability(format!(
-                    "Negative rate {rate} at maturity {maturity}"
-                ))
+                CalibrationError::NumericalInstability {
+                    message: format!("Negative rate {rate} at maturity {maturity}"),
+                }
             }
             BootstrapError::ArbitrageDetected { maturity } => {
-                CalibrationError::arbitrage_violation(format!(
-                    "Arbitrage detected at maturity {maturity}"
-                ))
+                CalibrationError::ArbitrageViolation {
+                    message: format!("Arbitrage detected at maturity {maturity}"),
+                }
             }
-            BootstrapError::DuplicateMaturity { maturity } => {
-                CalibrationError::invalid_market_data(format!("Duplicate maturity: {maturity}"))
+            BootstrapError::DuplicateMaturity { maturity } => CalibrationError::InvalidMarketData {
+                message: format!("Duplicate maturity: {maturity}"),
+            },
+            BootstrapError::Solver(solver_err) => CalibrationError::NumericalInstability {
+                message: solver_err.to_string(),
+            },
+            BootstrapError::MarketData(mkt_err) => CalibrationError::InvalidMarketData {
+                message: mkt_err.to_string(),
+            },
+            BootstrapError::InvalidInput(msg) => {
+                CalibrationError::InvalidMarketData { message: msg }
             }
-            BootstrapError::Solver(solver_err) => {
-                CalibrationError::numerical_instability(solver_err.to_string())
-            }
-            BootstrapError::MarketData(mkt_err) => {
-                CalibrationError::invalid_market_data(mkt_err.to_string())
-            }
-            BootstrapError::InvalidInput(msg) => CalibrationError::invalid_market_data(msg),
             BootstrapError::InvalidMaturity {
                 maturity,
                 max_maturity,
-            } => CalibrationError::invalid_market_data(format!(
-                "Invalid maturity {maturity} (max: {max_maturity})"
-            )),
+            } => CalibrationError::InvalidMarketData {
+                message: format!("Invalid maturity {maturity} (max: {max_maturity})"),
+            },
         }
     }
 }
@@ -1065,7 +872,7 @@ mod tests {
 
     #[test]
     fn test_ift_error_no_jacobian_inverse() {
-        let err = IftError::no_jacobian_inverse();
+        let err = IftError::NoJacobianInverse;
         let msg = format!("{err}");
         assert!(msg.contains("Jacobian"));
         assert!(msg.contains("store_jacobian_inverse"));
@@ -1074,7 +881,10 @@ mod tests {
 
     #[test]
     fn test_ift_error_dimension_mismatch() {
-        let err = IftError::dimension_mismatch(10, 5);
+        let err = IftError::DimensionMismatch {
+            expected: 10,
+            got: 5,
+        };
         let msg = format!("{err}");
         assert!(msg.contains("10"));
         assert!(msg.contains("5"));
@@ -1088,7 +898,10 @@ mod tests {
 
     #[test]
     fn test_ift_error_batch_dimension_mismatch() {
-        let err = IftError::batch_dimension_mismatch(20, 15);
+        let err = IftError::BatchDimensionMismatch {
+            expected: 20,
+            got: 15,
+        };
         let msg = format!("{err}");
         assert!(msg.contains("20"));
         assert!(msg.contains("15"));
@@ -1102,7 +915,9 @@ mod tests {
 
     #[test]
     fn test_ift_error_numerical_error() {
-        let err = IftError::numerical_error("NaN detected");
+        let err = IftError::NumericalError {
+            message: "NaN detected".to_string(),
+        };
         let msg = format!("{err}");
         assert!(msg.contains("NaN"));
         assert!(msg.contains("数値エラー"));
@@ -1116,16 +931,28 @@ mod tests {
     #[test]
     fn test_ift_error_equality() {
         // IftError derives PartialEq and Eq
-        let err1 = IftError::no_jacobian_inverse();
-        let err2 = IftError::no_jacobian_inverse();
+        let err1 = IftError::NoJacobianInverse;
+        let err2 = IftError::NoJacobianInverse;
         assert_eq!(err1, err2);
 
-        let err3 = IftError::dimension_mismatch(10, 5);
-        let err4 = IftError::dimension_mismatch(10, 5);
+        let err3 = IftError::DimensionMismatch {
+            expected: 10,
+            got: 5,
+        };
+        let err4 = IftError::DimensionMismatch {
+            expected: 10,
+            got: 5,
+        };
         assert_eq!(err3, err4);
 
-        let err5 = IftError::dimension_mismatch(10, 5);
-        let err6 = IftError::dimension_mismatch(10, 6);
+        let err5 = IftError::DimensionMismatch {
+            expected: 10,
+            got: 5,
+        };
+        let err6 = IftError::DimensionMismatch {
+            expected: 10,
+            got: 6,
+        };
         assert_ne!(err5, err6);
     }
 
@@ -1135,7 +962,10 @@ mod tests {
 
     #[test]
     fn test_convergence_failure_error() {
-        let err = CalibrationError::convergence_failure(1000, 1e-4);
+        let err = CalibrationError::ConvergenceFailure {
+            iterations: 1000,
+            residual: 1e-4,
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("1000"));
         assert!(msg.contains("収束"));
@@ -1143,7 +973,12 @@ mod tests {
 
     #[test]
     fn test_bounds_violation_error() {
-        let err = CalibrationError::bounds_violation("alpha", 1.5, 0.0, 1.0);
+        let err = CalibrationError::BoundsViolation {
+            param_name: "alpha".to_string(),
+            value: 1.5,
+            lower: 0.0,
+            upper: 1.0,
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("alpha"));
         assert!(msg.contains("1.5"));
@@ -1151,7 +986,10 @@ mod tests {
 
     #[test]
     fn test_insufficient_data_error() {
-        let err = CalibrationError::insufficient_data(5, 3);
+        let err = CalibrationError::InsufficientData {
+            required: 5,
+            provided: 3,
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("5"));
         assert!(msg.contains("3"));
@@ -1159,15 +997,30 @@ mod tests {
 
     #[test]
     fn test_is_recoverable() {
-        assert!(CalibrationError::convergence_failure(100, 0.1).is_recoverable());
-        assert!(CalibrationError::numerical_instability("NaN").is_recoverable());
-        assert!(!CalibrationError::insufficient_data(5, 3).is_recoverable());
+        assert!((CalibrationError::ConvergenceFailure {
+            iterations: 100,
+            residual: 0.1,
+        })
+        .is_recoverable());
+        assert!((CalibrationError::NumericalInstability {
+            message: "NaN".to_string(),
+        })
+        .is_recoverable());
+        assert!(!(CalibrationError::InsufficientData {
+            required: 5,
+            provided: 3,
+        })
+        .is_recoverable());
     }
 
     #[test]
     fn test_from_bootstrap_convergence() {
         use super::super::BootstrapError;
-        let bootstrap_err = BootstrapError::convergence_failure(5.0, 0.001, 100);
+        let bootstrap_err = BootstrapError::ConvergenceFailure {
+            maturity: 5.0,
+            residual: 0.001,
+            iterations: 100,
+        };
         let calib_err: CalibrationError = bootstrap_err.into();
         assert!(matches!(
             calib_err,
@@ -1178,7 +1031,10 @@ mod tests {
     #[test]
     fn test_from_bootstrap_insufficient_data() {
         use super::super::BootstrapError;
-        let bootstrap_err = BootstrapError::insufficient_data(10, 3);
+        let bootstrap_err = BootstrapError::InsufficientData {
+            required: 10,
+            provided: 3,
+        };
         let calib_err: CalibrationError = bootstrap_err.into();
         assert!(matches!(
             calib_err,
@@ -1189,7 +1045,10 @@ mod tests {
     #[test]
     fn test_calibration_to_pricing_error() {
         use pricer_core::types::PricingError;
-        let calib_err = CalibrationError::convergence_failure(100, 0.01);
+        let calib_err = CalibrationError::ConvergenceFailure {
+            iterations: 100,
+            residual: 0.01,
+        };
         let pricing_err: PricingError = calib_err.into();
         assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
     }
@@ -1197,7 +1056,9 @@ mod tests {
     #[test]
     fn test_calibration_to_pricing_invalid_data() {
         use pricer_core::types::PricingError;
-        let calib_err = CalibrationError::invalid_market_data("negative price");
+        let calib_err = CalibrationError::InvalidMarketData {
+            message: "negative price".to_string(),
+        };
         let pricing_err: PricingError = calib_err.into();
         assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
     }
@@ -1206,7 +1067,7 @@ mod tests {
 
     #[test]
     fn test_no_instruments_error() {
-        let err = CalibrationError::no_instruments();
+        let err = CalibrationError::NoInstruments;
         let msg = format!("{}", err);
         assert!(msg.contains("商品"));
         assert!(matches!(err, CalibrationError::NoInstruments));
@@ -1214,7 +1075,9 @@ mod tests {
 
     #[test]
     fn test_singular_jacobian_error() {
-        let err = CalibrationError::singular_jacobian(1e16);
+        let err = CalibrationError::SingularJacobian {
+            condition_number: 1e16,
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("Jacobian"));
         assert!(msg.contains("1.00e16") || msg.contains("1e16"));
@@ -1227,7 +1090,10 @@ mod tests {
 
     #[test]
     fn test_divergence_error() {
-        let err = CalibrationError::divergence(50, 1.5e3);
+        let err = CalibrationError::Divergence {
+            iteration: 50,
+            residual: 1.5e3,
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("発散"));
         assert!(msg.contains("50"));
@@ -1245,7 +1111,10 @@ mod tests {
 
     #[test]
     fn test_instrument_evaluation_failed_error() {
-        let err = CalibrationError::instrument_evaluation_failed(3, "discount factor is NaN");
+        let err = CalibrationError::InstrumentEvaluationFailed {
+            instrument_index: 3,
+            message: "discount factor is NaN".to_string(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("3"));
         assert!(msg.contains("評価"));
@@ -1264,7 +1133,10 @@ mod tests {
 
     #[test]
     fn test_dimension_mismatch_error() {
-        let err = CalibrationError::dimension_mismatch(5, 3);
+        let err = CalibrationError::DimensionMismatch {
+            instruments: 5,
+            parameters: 3,
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("5"));
         assert!(msg.contains("3"));
@@ -1283,26 +1155,35 @@ mod tests {
 
     #[test]
     fn test_no_instruments_is_not_recoverable() {
-        assert!(!CalibrationError::no_instruments().is_recoverable());
+        assert!(!CalibrationError::NoInstruments.is_recoverable());
     }
 
     #[test]
     fn test_singular_jacobian_is_recoverable() {
-        // Singular Jacobian might be recoverable with damping
-        assert!(!CalibrationError::singular_jacobian(1e16).is_recoverable());
+        assert!(!(CalibrationError::SingularJacobian {
+            condition_number: 1e16,
+        })
+        .is_recoverable());
     }
 
     #[test]
     fn test_divergence_is_recoverable() {
-        // Divergence might be recoverable with different initial values
-        assert!(!CalibrationError::divergence(10, 100.0).is_recoverable());
+        assert!(!(CalibrationError::Divergence {
+            iteration: 10,
+            residual: 100.0,
+        })
+        .is_recoverable());
     }
 
     // --- Tests for jump calibration errors (Requirement 6.4) ---
 
     #[test]
     fn test_jump_calibration_failed_error() {
-        let err = CalibrationError::jump_calibration_failed("convergence failure", 1.5e-3, 50);
+        let err = CalibrationError::JumpCalibrationFailed {
+            message: "convergence failure".to_string(),
+            residual: 1.5e-3,
+            iterations: 50,
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("ジャンプ"));
         assert!(msg.contains("50"));
@@ -1323,7 +1204,11 @@ mod tests {
 
     #[test]
     fn test_invalid_jump_parameter_error() {
-        let err = CalibrationError::invalid_jump_parameter("0.5Y", 150.0, "exceeds ±100bps limit");
+        let err = CalibrationError::InvalidJumpParameter {
+            date: "0.5Y".to_string(),
+            value: 150.0,
+            reason: "exceeds ±100bps limit".to_string(),
+        };
         let msg = format!("{}", err);
         assert!(msg.contains("0.5Y"));
         assert!(msg.contains("150"));
@@ -1344,24 +1229,33 @@ mod tests {
 
     #[test]
     fn test_jump_calibration_failed_is_recoverable() {
-        // Jump calibration failure is recoverable (can fallback to non-jump)
-        assert!(CalibrationError::jump_calibration_failed("test", 0.01, 10).is_recoverable());
+        assert!((CalibrationError::JumpCalibrationFailed {
+            message: "test".to_string(),
+            residual: 0.01,
+            iterations: 10,
+        })
+        .is_recoverable());
     }
 
     #[test]
     fn test_invalid_jump_parameter_is_not_recoverable() {
-        // Invalid jump parameter is not recoverable
-        assert!(
-            !CalibrationError::invalid_jump_parameter("0.5Y", 150.0, "out of range")
-                .is_recoverable()
-        );
+        assert!(!(CalibrationError::InvalidJumpParameter {
+            date: "0.5Y".to_string(),
+            value: 150.0,
+            reason: "out of range".to_string(),
+        })
+        .is_recoverable());
     }
 
     #[test]
     fn test_jump_calibration_to_pricing_error() {
         use pricer_core::types::PricingError;
 
-        let err = CalibrationError::jump_calibration_failed("test failure", 0.01, 25);
+        let err = CalibrationError::JumpCalibrationFailed {
+            message: "test failure".to_string(),
+            residual: 0.01,
+            iterations: 25,
+        };
         let pricing_err: PricingError = err.into();
         assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
         if let PricingError::NumericalInstability(msg) = pricing_err {
@@ -1373,7 +1267,11 @@ mod tests {
     fn test_invalid_jump_to_pricing_error() {
         use pricer_core::types::PricingError;
 
-        let err = CalibrationError::invalid_jump_parameter("2024-06-01", -120.0, "too large");
+        let err = CalibrationError::InvalidJumpParameter {
+            date: "2024-06-01".to_string(),
+            value: -120.0,
+            reason: "too large".to_string(),
+        };
         let pricing_err: PricingError = err.into();
         assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
         if let PricingError::InvalidInput(msg) = pricing_err {
@@ -1387,7 +1285,7 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_good() {
-        let quality = JacobianQuality::good();
+        let quality = JacobianQuality::Good;
         assert!(quality.is_good());
         assert!(quality.is_acceptable());
         assert!(quality.reason().is_none());
@@ -1396,7 +1294,9 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_warning() {
-        let quality = JacobianQuality::warning("near-zero diagonal");
+        let quality = JacobianQuality::Warning {
+            reason: "near-zero diagonal",
+        };
         assert!(!quality.is_good());
         assert!(quality.is_acceptable());
         assert_eq!(quality.reason(), Some("near-zero diagonal"));
@@ -1405,7 +1305,9 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_poor() {
-        let quality = JacobianQuality::poor("NaN detected");
+        let quality = JacobianQuality::Poor {
+            reason: "NaN detected",
+        };
         assert!(!quality.is_good());
         assert!(!quality.is_acceptable());
         assert_eq!(quality.reason(), Some("NaN detected"));
@@ -1414,12 +1316,15 @@ mod tests {
 
     #[test]
     fn test_jacobian_quality_equality() {
-        assert_eq!(JacobianQuality::good(), JacobianQuality::good());
+        assert_eq!(JacobianQuality::Good, JacobianQuality::Good);
         assert_eq!(
-            JacobianQuality::warning("test"),
-            JacobianQuality::warning("test")
+            JacobianQuality::Warning { reason: "test" },
+            JacobianQuality::Warning { reason: "test" }
         );
-        assert_ne!(JacobianQuality::good(), JacobianQuality::poor("NaN"));
+        assert_ne!(
+            JacobianQuality::Good,
+            JacobianQuality::Poor { reason: "NaN" }
+        );
     }
 
     // =========================================================================
@@ -1436,7 +1341,7 @@ mod tests {
 
     #[test]
     fn test_regularisation_tikhonov() {
-        let reg: RegularisationType<f64> = RegularisationType::tikhonov(1e-6);
+        let reg: RegularisationType<f64> = RegularisationType::Tikhonov { damping: 1e-6 };
         assert!(reg.is_regularised());
         assert!((reg.damping().unwrap() - 1e-6).abs() < 1e-15);
         assert!(format!("{reg}").contains("Tikhonov"));
@@ -1444,7 +1349,7 @@ mod tests {
 
     #[test]
     fn test_regularisation_levenberg_marquardt() {
-        let reg: RegularisationType<f64> = RegularisationType::levenberg_marquardt(0.01);
+        let reg: RegularisationType<f64> = RegularisationType::LevenbergMarquardt { lambda: 0.01 };
         assert!(reg.is_regularised());
         assert!((reg.damping().unwrap() - 0.01).abs() < 1e-15);
         assert!(format!("{reg}").contains("LM"));
@@ -1463,7 +1368,7 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_default() {
-        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
+        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
         assert!(diag.condition_number.is_none());
         assert!(diag.residual_history.is_empty());
         assert!(!diag.has_issues());
@@ -1473,18 +1378,18 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_with_condition_number() {
-        let diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_condition_number(1e8);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.condition_number = Some(1e8);
         assert!(diag.condition_number.is_some());
         assert!((diag.condition_number.unwrap() - 1e8).abs() < 1.0);
     }
 
     #[test]
     fn test_numerical_diagnostics_residual_history() {
-        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
-        diag.push_residual(1.0);
-        diag.push_residual(0.1);
-        diag.push_residual(0.01);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.residual_history.push(1.0);
+        diag.residual_history.push(0.1);
+        diag.residual_history.push(0.01);
 
         assert_eq!(diag.iteration_count(), 3);
         assert!((diag.final_residual().unwrap() - 0.01).abs() < 1e-15);
@@ -1492,49 +1397,50 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_issues() {
-        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
         assert!(!diag.has_issues());
 
-        diag.record_nan();
+        diag.nan_count += 1;
         assert!(diag.has_issues());
         assert_eq!(diag.nan_count, 1);
 
-        diag.record_inf();
+        diag.inf_count += 1;
         assert_eq!(diag.inf_count, 1);
 
-        diag.record_near_zero_diagonal();
+        diag.near_zero_diagonal_count += 1;
         assert_eq!(diag.near_zero_diagonal_count, 1);
     }
 
     #[test]
     fn test_numerical_diagnostics_ill_conditioned() {
-        let diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_condition_number(1e12);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.condition_number = Some(1e12);
         assert!(diag.is_ill_conditioned(1e10));
         assert!(!diag.is_ill_conditioned(1e14));
     }
 
     #[test]
     fn test_numerical_diagnostics_ad_fallback() {
-        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
         assert!(!diag.ad_fallback_used);
-        diag.mark_ad_fallback();
+        diag.ad_fallback_used = true;
         assert!(diag.ad_fallback_used);
     }
 
     #[test]
     fn test_numerical_diagnostics_ad_unstable() {
-        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new().with_ad_variance(1e7);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.ad_variance = Some(1e7);
         assert!(diag.is_ad_unstable(1e6));
         assert!(!diag.is_ad_unstable(1e8));
     }
 
     #[test]
     fn test_numerical_diagnostics_summary() {
-        let mut diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_condition_number(1e8);
-        diag.push_residual(0.001);
-        diag.record_nan();
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.condition_number = Some(1e8);
+        diag.residual_history.push(0.001);
+        diag.nan_count += 1;
 
         let summary = diag.summary();
         assert!(summary.contains("Iterations: 1"));
@@ -1543,8 +1449,8 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_with_regularisation() {
-        let diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_regularisation(RegularisationType::tikhonov(1e-6));
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.regularisation_applied = RegularisationType::Tikhonov { damping: 1e-6 };
         assert!(diag.was_regularised());
         let summary = diag.summary();
         assert!(summary.contains("Tikhonov"));

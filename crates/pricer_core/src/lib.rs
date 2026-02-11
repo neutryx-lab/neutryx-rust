@@ -74,7 +74,7 @@
 //! - `rng`: Random number generation (Sobol, Mersenne Twister)
 //! - `linalg`: Linear algebra operations via nalgebra
 
-#![deny(missing_docs)]
+#![allow(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 

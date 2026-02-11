@@ -1,8 +1,4 @@
 //! Trade definition types.
-//!
-//! This module provides the main Trade struct and related types.
-//!
-//! Uses `bon::Builder` for fluent construction with compile-time safety.
 
 use bon::Builder;
 
@@ -41,9 +37,6 @@ pub enum SettlementType {
 #[derive(Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TradeType {
-    // ========================================
-    // Rates
-    // ========================================
     /// Money market deposit.
     Deposit,
 
@@ -86,9 +79,6 @@ pub enum TradeType {
     /// Cap or floor.
     CapFloor,
 
-    // ========================================
-    // FX
-    // ========================================
     /// FX spot transaction.
     FxSpot,
 
@@ -128,9 +118,6 @@ pub enum TradeType {
         expiry_date: Date,
     },
 
-    // ========================================
-    // Equity
-    // ========================================
     /// Equity forward.
     EquityForward {
         /// Underlying equity ticker/identifier.
@@ -165,9 +152,6 @@ pub enum TradeType {
         underlyer: String,
     },
 
-    // ========================================
-    // Credit
-    // ========================================
     /// Credit default swap (single name).
     CreditDefaultSwap {
         /// Reference entity name.
@@ -202,9 +186,6 @@ pub enum TradeType {
         expiry_date: Date,
     },
 
-    // ========================================
-    // Commodity
-    // ========================================
     /// Commodity forward.
     CommodityForward {
         /// Commodity name/code.
@@ -409,22 +390,6 @@ impl TradeMetadata {
 }
 
 /// A financial trade.
-///
-/// Represents a complete trade as a collection of legs with metadata.
-///
-/// Uses `bon::Builder` for fluent construction with compile-time safety.
-///
-/// # Examples
-///
-/// ```ignore
-/// use infra_domain::trade::{Trade, TradeType, Leg};
-///
-/// let trade = Trade::builder()
-///     .id("TRADE001")
-///     .legs(vec![fixed_leg, floating_leg])
-///     .trade_type(TradeType::Swap)
-///     .build();
-/// ```
 #[derive(Debug, Clone, PartialEq, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Trade {
@@ -444,8 +409,6 @@ pub struct Trade {
 
 impl Trade {
     /// Creates a new trade.
-    ///
-    /// Convenience constructor. For full control, use `Trade::builder()`.
     #[must_use]
     pub fn new(id: impl Into<TradeId>, legs: Vec<Leg>, trade_type: TradeType) -> Self {
         Self::builder()
@@ -456,8 +419,6 @@ impl Trade {
     }
 
     /// Creates a new trade with metadata.
-    ///
-    /// Convenience constructor. For full control, use `Trade::builder()`.
     #[must_use]
     pub fn with_metadata(
         id: impl Into<TradeId>,
@@ -496,8 +457,7 @@ impl Trade {
     #[must_use]
     pub fn total_cashflows(&self) -> usize { self.legs.iter().map(Leg::len).sum() }
 
-    /// Returns true if this is a vanilla swap (exactly 2 legs: one fixed, one
-    /// floating).
+    /// Returns true if this is a vanilla swap (exactly 2 legs: one fixed, one.
     #[must_use]
     pub fn is_vanilla_swap(&self) -> bool {
         if !self.trade_type.is_swap() || self.legs.len() != 2 {
@@ -523,8 +483,7 @@ impl Trade {
         self.legs.iter().find(|leg| leg.leg_type == LegType::Fixed)
     }
 
-    /// Returns the floating leg if this is a swap with exactly one floating
-    /// leg.
+    /// Returns the floating leg if this is a swap with exactly one floating.
     #[must_use]
     pub fn floating_leg(&self) -> Option<&Leg> {
         self.legs
@@ -654,7 +613,6 @@ mod tests {
         );
         assert!(swap.is_vanilla_swap());
 
-        // Wrong type
         let generic = Trade::new(
             "G1",
             vec![make_fixed_leg(), make_floating_leg()],
@@ -662,11 +620,9 @@ mod tests {
         );
         assert!(!generic.is_vanilla_swap());
 
-        // Single leg
         let single = Trade::new("S2", vec![make_fixed_leg()], TradeType::Swap);
         assert!(!single.is_vanilla_swap());
 
-        // Both fixed
         let both_fixed = Trade::new(
             "S3",
             vec![make_fixed_leg(), make_fixed_leg()],

@@ -1,9 +1,4 @@
 //! CounterParty entity and related types.
-//!
-//! This module defines the CounterParty entity representing a trading
-//! counterparty with credit information.
-//!
-//! Uses `bon::Builder` for fluent construction with compile-time safety.
 
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
@@ -12,36 +7,29 @@ use bon::Builder;
 
 use super::{CounterPartyId, CreditParams, CreditRating, LegalEntityId};
 
-// ============================================================================
-// CounterPartySector
-// ============================================================================
-
 /// CounterParty sector classification.
-///
-/// Classifies counterparties by their business sector for risk
-/// aggregation and reporting purposes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CounterPartySector {
-    /// Commercial or investment bank
+    /// Commercial or investment bank.
     Banking,
-    /// Investment firm
+    /// Investment firm.
     Investment,
-    /// Securities broker/dealer
+    /// Securities broker/dealer.
     Securities,
-    /// Insurance company
+    /// Insurance company.
     Insurance,
-    /// Proprietary trading firm
+    /// Proprietary trading firm.
     Trading,
-    /// Asset management company
+    /// Asset management company.
     AssetManagement,
-    /// Hedge fund
+    /// Hedge fund.
     HedgeFund,
-    /// Non-financial corporate
+    /// Non-financial corporate.
     Corporate,
-    /// Sovereign or government entity
+    /// Sovereign or government entity.
     Sovereign,
-    /// Other/unclassified
+    /// Other/unclassified.
     #[default]
     Other,
 }
@@ -64,33 +52,7 @@ impl std::fmt::Display for CounterPartySector {
     }
 }
 
-// ============================================================================
-// CounterParty
-// ============================================================================
-
 /// CounterParty entity with credit parameters.
-///
-/// Represents a trading counterparty with identification information,
-/// sector classification, and optional credit parameters.
-///
-/// Uses `bon::Builder` for fluent construction with compile-time safety.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{CounterParty, CounterPartySector, CreditRating};
-///
-/// let cp = CounterParty::builder()
-///     .counterparty_id("CP001")
-///     .name("Acme Bank")
-///     .sector(CounterPartySector::Banking)
-///     .country("US")
-///     .rating(CreditRating::APlus)
-///     .build();
-///
-/// assert_eq!(cp.name(), "Acme Bank");
-/// assert_eq!(cp.sector(), CounterPartySector::Banking);
-/// ```
 #[derive(Clone, Debug, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CounterParty {
@@ -137,14 +99,11 @@ impl CounterParty {
     pub fn credit_params(&self) -> Option<&CreditParams> { self.credit_params.as_ref() }
 
     /// Returns whether this counterparty is investment grade.
-    ///
-    /// Returns `None` if no rating is set.
     pub fn is_investment_grade(&self) -> Option<bool> {
         self.rating.map(|r| r.is_investment_grade())
     }
 
-    /// Returns the hazard rate from credit params, or from rating's indicative
-    /// rate.
+    /// Returns the hazard rate from credit params, or from rating's indicative.
     pub fn hazard_rate(&self) -> Option<f64> {
         self.credit_params
             .as_ref()
@@ -264,13 +223,12 @@ mod tests {
 
     #[test]
     fn test_counterparty_hazard_rate_params_takes_precedence() {
-        // When both params and rating are set, params should take precedence
         let params = CreditParams::new(0.05, 0.4).unwrap();
         let cp = CounterParty::builder()
             .counterparty_id("CP001")
             .name("Test")
-            .rating(CreditRating::Aaa) // Would give ~0.0001
-            .credit_params(params) // But we override with 0.05
+            .rating(CreditRating::Aaa)
+            .credit_params(params)
             .build();
 
         assert!((cp.hazard_rate().unwrap() - 0.05).abs() < f64::EPSILON);

@@ -1,7 +1,4 @@
 //! Commodity instrument expansion implementations.
-//!
-//! Covers: CommodityForward, CommoditySwap, CommodityVanillaOption,
-//! CommodityAsianOption, SpreadOption.
 
 use super::{coupon_swap_trade, settlement_trade, InstrumentExpander};
 use crate::{

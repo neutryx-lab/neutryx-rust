@@ -1,34 +1,4 @@
 //! Verification tests for Enzyme AD implementation.
-//!
-//! This module provides comprehensive comparison between different AD methods:
-//!
-//! - Enzyme AD (or finite difference fallback)
-//! - Bump-and-revalue finite differences
-//! - Black-Scholes analytical Greeks (for European options)
-//!
-//! # Verification Strategy
-//!
-//! All methods should produce Greeks within specified tolerances:
-//!
-//! | Comparison | Tolerance |
-//! |------------|-----------|
-//! | Enzyme vs FD | 1e-4 |
-//! | Enzyme vs Analytical | 1e-3 |
-//! | FD vs Analytical | 1e-3 |
-//!
-//! # Usage
-//!
-//! ```rust,no_run
-//! use pricer_risk::greeks::ad::verification::{
-//!     VerificationConfig, VerificationResult, verify_european_greeks,
-//! };
-//!
-//! let config = VerificationConfig::default();
-//! let result = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 1.0, true, config);
-//!
-//! // Check that all verifications passed (may vary due to MC variance)
-//! println!("All passed: {}", result.all_passed());
-//! ```
 
 use pricer_pricing::methods::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 
@@ -37,19 +7,15 @@ use super::enzyme_greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
 /// Configuration for verification tests.
 #[derive(Clone, Debug)]
 pub struct VerificationConfig {
-    /// Tolerance for Enzyme vs finite difference comparison.
+    /// Tolerance for Enzyme vs finite-difference comparison.
     pub enzyme_fd_tolerance: f64,
-
-    /// Tolerance for comparison against analytical Greeks.
+    /// Tolerance for analytical comparison.
     pub analytical_tolerance: f64,
-
     /// Number of Monte Carlo paths.
     pub n_paths: usize,
-
-    /// Random seed for reproducibility.
+    /// Random seed.
     pub seed: u64,
-
-    /// Whether to enable verbose output.
+    /// Whether to print verbose output.
     pub verbose: bool,
 }
 
@@ -57,7 +23,7 @@ impl Default for VerificationConfig {
     fn default() -> Self {
         Self {
             enzyme_fd_tolerance: 1e-4,
-            analytical_tolerance: 5e-2, // MC has inherent variance
+            analytical_tolerance: 5e-2,
             n_paths: 100_000,
             seed: 42,
             verbose: false,
@@ -101,22 +67,17 @@ impl VerificationConfig {
 /// Result of a single Greek verification.
 #[derive(Clone, Debug)]
 pub struct GreekVerification {
-    /// Name of the Greek being verified.
+    /// Greek name.
     pub name: &'static str,
-
-    /// Value from Enzyme/AD method.
+    /// Value from Enzyme AD.
     pub enzyme_value: f64,
-
     /// Value from finite differences.
     pub fd_value: f64,
-
-    /// Value from analytical formula (if available).
+    /// Analytical reference value.
     pub analytical_value: Option<f64>,
-
     /// Whether Enzyme vs FD comparison passed.
     pub enzyme_fd_passed: bool,
-
-    /// Whether Enzyme vs analytical comparison passed.
+    /// Whether analytical comparison passed.
     pub analytical_passed: Option<bool>,
 }
 
@@ -156,29 +117,27 @@ impl GreekVerification {
 pub struct VerificationResult {
     /// Spot price used.
     pub spot: f64,
-    /// Strike price used.
+    /// Strike price.
     pub strike: f64,
-    /// Risk-free rate used.
+    /// Risk-free rate.
     pub rate: f64,
-    /// Volatility used.
+    /// Volatility.
     pub volatility: f64,
-    /// Time to maturity used.
+    /// Time to maturity.
     pub maturity: f64,
-    /// Whether this is a call option.
+    /// Whether the option is a call.
     pub is_call: bool,
-
     /// Enzyme Greeks result.
     pub enzyme_result: EnzymeGreeksResult,
-
-    /// Delta verification result.
+    /// Delta verification.
     pub delta: GreekVerification,
-    /// Gamma verification result.
+    /// Gamma verification.
     pub gamma: GreekVerification,
-    /// Vega verification result.
+    /// Vega verification.
     pub vega: GreekVerification,
-    /// Theta verification result.
+    /// Theta verification.
     pub theta: GreekVerification,
-    /// Rho verification result.
+    /// Rho verification.
     pub rho: GreekVerification,
 }
 
@@ -231,7 +190,6 @@ impl VerificationResult {
     }
 }
 
-/// Compute relative error between two values.
 #[inline]
 fn relative_error(a: f64, b: f64) -> f64 {
     let max_abs = a.abs().max(b.abs());
@@ -246,12 +204,9 @@ fn relative_error(a: f64, b: f64) -> f64 {
 pub mod analytical {
     #![allow(unused_imports)]
 
-    /// Standard normal CDF approximation using Abramowitz-Stegun polynomial.
-    ///
-    /// Maximum absolute error: 7.5e-8
+    /// Standard normal CDF approximation (Abramowitz-Stegun, max error 7.5e-8).
     #[inline]
     pub fn norm_cdf(x: f64) -> f64 {
-        // Handle edge cases
         if x < -8.0 {
             return 0.0;
         }
@@ -259,7 +214,6 @@ pub mod analytical {
             return 1.0;
         }
 
-        // Constants for Abramowitz-Stegun approximation (7.1.26)
         const A1: f64 = 0.254829592;
         const A2: f64 = -0.284496736;
         const A3: f64 = 1.421413741;
@@ -280,7 +234,7 @@ pub mod analytical {
     /// Standard normal PDF.
     #[inline]
     pub fn norm_pdf(x: f64) -> f64 {
-        const INV_SQRT_2PI: f64 = 0.3989422804014327; // 1 / sqrt(2 * PI)
+        const INV_SQRT_2PI: f64 = 0.3989422804014327;
         INV_SQRT_2PI * (-0.5 * x * x).exp()
     }
 
@@ -390,7 +344,6 @@ pub fn verify_european_greeks(
     is_call: bool,
     config: VerificationConfig,
 ) -> VerificationResult {
-    // Create MC pricer
     let mc_config = MonteCarloConfig::builder()
         .n_paths(config.n_paths)
         .n_steps(1)
@@ -400,7 +353,6 @@ pub fn verify_european_greeks(
 
     let mut pricer = MonteCarloPricer::new(mc_config).expect("Failed to create pricer");
 
-    // Set up parameters
     let gbm = GbmParams::new(spot, rate, volatility, maturity);
     let payoff = if is_call {
         PayoffParams::call(strike)
@@ -409,14 +361,11 @@ pub fn verify_european_greeks(
     };
     let df = (-rate * maturity).exp();
 
-    // Compute Enzyme/AD Greeks
     let enzyme_result = pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::Auto);
 
-    // Compute FD Greeks (force finite difference mode)
     pricer.reset_with_seed(config.seed);
     let fd_result = pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::FiniteDifference);
 
-    // Compute analytical Greeks
     let (ana_delta, ana_gamma, ana_vega, ana_theta, ana_rho) = if is_call {
         (
             analytical::call_delta(spot, strike, rate, volatility, maturity),
@@ -435,7 +384,6 @@ pub fn verify_european_greeks(
         )
     };
 
-    // Create verification results
     let delta = GreekVerification::new(
         "Delta",
         enzyme_result.delta,
@@ -501,31 +449,24 @@ pub fn verify_european_greeks(
 pub fn run_verification_suite(config: VerificationConfig) -> Vec<VerificationResult> {
     let mut results = Vec::new();
 
-    // Standard parameters
     let standard = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 1.0, true, config.clone());
     results.push(standard);
 
-    // ITM call
     let itm_call = verify_european_greeks(120.0, 100.0, 0.05, 0.2, 1.0, true, config.clone());
     results.push(itm_call);
 
-    // OTM call
     let otm_call = verify_european_greeks(80.0, 100.0, 0.05, 0.2, 1.0, true, config.clone());
     results.push(otm_call);
 
-    // ATM put
     let atm_put = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 1.0, false, config.clone());
     results.push(atm_put);
 
-    // High volatility
     let high_vol = verify_european_greeks(100.0, 100.0, 0.05, 0.4, 1.0, true, config.clone());
     results.push(high_vol);
 
-    // Short maturity
     let short_mat = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 0.25, true, config.clone());
     results.push(short_mat);
 
-    // Long maturity
     let long_mat = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 2.0, true, config.clone());
     results.push(long_mat);
 
@@ -543,8 +484,7 @@ mod tests {
             .with_n_paths(50_000)
             .with_seed(12345)
             .with_enzyme_fd_tolerance(1e-4)
-            .with_analytical_tolerance(0.1) // MC variance requires wider
-                                            // tolerance
+            .with_analytical_tolerance(0.1)
     }
 
     #[test]
@@ -557,43 +497,36 @@ mod tests {
     #[test]
     fn test_relative_error() {
         assert!(relative_error(1.0, 1.0) < 1e-10);
-        // relative_error(1.0, 1.01) = |1.0 - 1.01| / max(1.0, 1.01) = 0.01 / 1.01 ≈
-        // 0.0099
         assert!(relative_error(1.0, 1.01) < 0.02);
         assert!(relative_error(0.0, 0.0) < 1e-10);
     }
 
     #[test]
     fn test_analytical_call_delta_atm() {
-        // ATM call delta should be around 0.5-0.7
         let delta = analytical::call_delta(100.0, 100.0, 0.05, 0.2, 1.0);
         assert!(delta > 0.5 && delta < 0.7);
     }
 
     #[test]
     fn test_analytical_put_delta_atm() {
-        // ATM put delta should be around -0.5 to -0.3
         let delta = analytical::put_delta(100.0, 100.0, 0.05, 0.2, 1.0);
         assert!(delta > -0.5 && delta < -0.3);
     }
 
     #[test]
     fn test_analytical_gamma_positive() {
-        // Gamma should always be positive
         let gamma = analytical::gamma(100.0, 100.0, 0.05, 0.2, 1.0);
         assert!(gamma > 0.0);
     }
 
     #[test]
     fn test_analytical_vega_positive() {
-        // Vega should be positive for long options
         let vega = analytical::vega(100.0, 100.0, 0.05, 0.2, 1.0);
         assert!(vega > 0.0);
     }
 
     #[test]
     fn test_analytical_put_call_parity_delta() {
-        // Put delta = Call delta - 1
         let call_delta = analytical::call_delta(100.0, 100.0, 0.05, 0.2, 1.0);
         let put_delta = analytical::put_delta(100.0, 100.0, 0.05, 0.2, 1.0);
         assert_relative_eq!(put_delta, call_delta - 1.0, epsilon = 1e-10);
@@ -612,7 +545,6 @@ mod tests {
     fn test_greek_verification_failed() {
         let greek = GreekVerification::new("Delta", 0.55, 0.60, Some(0.55), 1e-4, 1e-3);
 
-        // Enzyme vs FD should fail (0.55 vs 0.60 is 9% error)
         assert!(!greek.enzyme_fd_passed);
     }
 
@@ -621,21 +553,18 @@ mod tests {
         let config = verification_config();
         let result = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 1.0, true, config);
 
-        // Enzyme should match FD (both using same underlying implementation)
         assert!(
             result.delta.enzyme_fd_passed,
             "Delta enzyme vs FD failed: {} vs {}",
             result.delta.enzyme_value, result.delta.fd_value
         );
 
-        // Price should be reasonable
         assert!(
             result.enzyme_result.price > 5.0 && result.enzyme_result.price < 20.0,
             "Price out of range: {}",
             result.enzyme_result.price
         );
 
-        // Delta should be in expected range
         assert!(
             result.delta.enzyme_value > 0.4 && result.delta.enzyme_value < 0.8,
             "Delta out of range: {}",
@@ -648,14 +577,12 @@ mod tests {
         let config = verification_config();
         let result = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 1.0, false, config);
 
-        // Put delta should be negative
         assert!(
             result.delta.enzyme_value < 0.0,
             "Put delta should be negative: {}",
             result.delta.enzyme_value
         );
 
-        // Gamma should be positive
         assert!(
             result.gamma.enzyme_value > 0.0,
             "Gamma should be positive: {}",
@@ -668,7 +595,6 @@ mod tests {
         let config = verification_config();
         let result = verify_european_greeks(120.0, 100.0, 0.05, 0.2, 1.0, true, config);
 
-        // ITM call delta should be high (close to 1)
         assert!(
             result.delta.enzyme_value > 0.7,
             "ITM call delta should be > 0.7: {}",
@@ -681,7 +607,6 @@ mod tests {
         let config = verification_config();
         let result = verify_european_greeks(80.0, 100.0, 0.05, 0.2, 1.0, true, config);
 
-        // OTM call delta should be low
         assert!(
             result.delta.enzyme_value < 0.5,
             "OTM call delta should be < 0.5: {}",
@@ -703,10 +628,8 @@ mod tests {
         let config = verification_config();
         let results = run_verification_suite(config);
 
-        // Should have multiple test cases
         assert!(results.len() >= 5);
 
-        // Check that we have variety
         let has_call = results.iter().any(|r| r.is_call);
         let has_put = results.iter().any(|r| !r.is_call);
 
@@ -716,14 +639,11 @@ mod tests {
 
     #[test]
     fn test_enzyme_fd_consistency() {
-        // The key test: Enzyme and FD should produce same results
-        // (since without enzyme-ad feature, both use FD)
         let config = verification_config();
         let result = verify_european_greeks(100.0, 100.0, 0.05, 0.2, 1.0, true, config);
 
         #[cfg(not(feature = "enzyme-ad"))]
         {
-            // Without Enzyme, both methods should be identical
             assert_relative_eq!(
                 result.delta.enzyme_value,
                 result.delta.fd_value,
@@ -744,7 +664,6 @@ mod tests {
 
     #[test]
     fn test_analytical_vs_mc_delta() {
-        // MC Delta should be reasonably close to analytical
         let config = VerificationConfig::new()
             .with_n_paths(100_000)
             .with_seed(42);
@@ -754,7 +673,6 @@ mod tests {
         let ana_delta = result.delta.analytical_value.unwrap();
         let mc_delta = result.delta.enzyme_value;
 
-        // Should be within 10% (MC variance)
         let error = (mc_delta - ana_delta).abs() / ana_delta;
         assert!(
             error < 0.1,

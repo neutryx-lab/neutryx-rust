@@ -1,6 +1,4 @@
-//! Volatility handlers
-//!
-//! Thin handlers delegating to `VolatilityService`.
+//! Volatility handlers.
 
 #[cfg(feature = "volatility")]
 use std::sync::Arc;
@@ -23,20 +21,33 @@ use crate::{
     state::AppState,
 };
 
+/// POST /api/v1/volatility/fx-surface.
 #[cfg(feature = "volatility")]
-json_created_handler! {
-    /// POST /api/v1/volatility/fx-surface
-    pub async fn build_fx_vol_surface(BuildFxVolSurfaceRequest => BuildFxVolSurfaceResponse) = VolatilityService::build_fx_vol_surface;
+pub async fn build_fx_vol_surface(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<BuildFxVolSurfaceRequest>,
+) -> Result<(StatusCode, Json<BuildFxVolSurfaceResponse>), ServerError> {
+    let response = VolatilityService::build_fx_vol_surface(&request, &state)?;
+    Ok((StatusCode::CREATED, Json(response)))
 }
 
+/// POST /api/v1/volatility/cube.
 #[cfg(feature = "volatility")]
-json_created_handler! {
-    /// POST /api/v1/volatility/cube
-    pub async fn build_vol_cube(BuildVolCubeRequest => BuildVolCubeResponse) = VolatilityService::build_vol_cube;
+pub async fn build_vol_cube(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<BuildVolCubeRequest>,
+) -> Result<(StatusCode, Json<BuildVolCubeResponse>), ServerError> {
+    let response = VolatilityService::build_vol_cube(&request, &state)?;
+    Ok((StatusCode::CREATED, Json(response)))
 }
 
+/// POST /api/v1/volatility/{id}/implied-vol.
 #[cfg(feature = "volatility")]
-path_json_handler! {
-    /// POST /api/v1/volatility/{id}/implied-vol
-    pub async fn get_implied_vol(GetImpliedVolRequest => GetImpliedVolResponse) = VolatilityService::get_implied_vol;
+pub async fn get_implied_vol(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    AppJson(request): AppJson<GetImpliedVolRequest>,
+) -> Result<Json<GetImpliedVolResponse>, ServerError> {
+    let response = VolatilityService::get_implied_vol(&id, &request, &state)?;
+    Ok(Json(response))
 }

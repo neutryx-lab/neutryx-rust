@@ -1,52 +1,4 @@
 //! Ticker mapping loader for external data sources.
-//!
-//! This module provides loading of ticker mappings from JSON and CSV files,
-//! converting external data provider tickers (Bloomberg, Reuters) to internal
-//! [`QuoteId`] identifiers.
-//!
-//! # JSON Format
-//!
-//! ```json
-//! [
-//!   {
-//!     "ticker": "USD3MD=",
-//!     "currency": "USD",
-//!     "tenor": "3M",
-//!     "rate_type": "Deposit"
-//!   },
-//!   {
-//!     "ticker": "USSW5 Curncy",
-//!     "currency": "USD",
-//!     "tenor": "5Y",
-//!     "rate_type": "Swap"
-//!   }
-//! ]
-//! ```
-//!
-//! # CSV Format
-//!
-//! ```csv
-//! ticker,currency,tenor,rate_type
-//! USD3MD=,USD,3M,Deposit
-//! USSW5 Curncy,USD,5Y,Swap
-//! ```
-//!
-//! # Examples
-//!
-//! ```rust,ignore
-//! use adapter_loader::TickerMappingLoader;
-//!
-//! // Load from JSON
-//! let mapping = TickerMappingLoader::load_json("tickers.json")?;
-//!
-//! // Load from CSV
-//! let mapping = TickerMappingLoader::load_csv("tickers.csv")?;
-//!
-//! // Lookup a rate
-//! if let Some(quote_id) = mapping.lookup("USD3MD=") {
-//!     println!("Found: {}", quote_id);
-//! }
-//! ```
 
 use std::{fs::File, io::BufReader, path::Path};
 
@@ -59,17 +11,15 @@ use serde::Deserialize;
 use crate::{error::LoaderError, JsonLoader};
 
 /// A single ticker mapping entry for deserialisation.
-///
-/// This struct represents one row in a ticker mapping file (JSON or CSV).
 #[derive(Debug, Clone, Deserialize)]
 pub struct TickerMappingEntry {
-    /// External ticker string (e.g., "USD3MD=", "USSW5 Curncy")
+    /// External ticker string (e.g., "USD3MD=", "USSW5 Curncy").
     pub ticker: String,
-    /// Currency code
+    /// Currency code.
     pub currency: Currency,
-    /// Tenor (e.g., "3M", "5Y")
+    /// Tenor (e.g., "3M", "5Y").
     pub tenor: Tenor,
-    /// Rate type
+    /// Rate type.
     pub rate_type: RateType,
 }
 
@@ -80,66 +30,16 @@ impl TickerMappingEntry {
 }
 
 /// Loader for ticker mapping files.
-///
-/// Loads ticker mappings from JSON or CSV files and converts them to
-/// [`TickerMapping`] instances.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use adapter_loader::TickerMappingLoader;
-///
-/// // Load from JSON file
-/// let mapping = TickerMappingLoader::load_json("config/tickers.json")?;
-///
-/// // Load from CSV file
-/// let mapping = TickerMappingLoader::load_csv("config/tickers.csv")?;
-///
-/// // Merge with defaults
-/// let mapping = TickerMappingLoader::load_json_with_defaults("config/custom_tickers.json")?;
-/// ```
 pub struct TickerMappingLoader;
 
 impl TickerMappingLoader {
     /// Loads ticker mappings from a JSON file.
-    ///
-    /// The JSON file should contain an array of ticker mapping entries.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the JSON file
-    ///
-    /// # Returns
-    ///
-    /// A [`TickerMapping`] containing all entries from the file.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LoaderError`] if the file cannot be read or parsed.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// let mapping = TickerMappingLoader::load_json("tickers.json")?;
-    /// assert!(mapping.contains("USD3MD="));
-    /// ```
     pub fn load_json<P: AsRef<Path>>(path: P) -> Result<TickerMapping, LoaderError> {
         let entries: Vec<TickerMappingEntry> = JsonLoader::load(path)?;
         Ok(Self::entries_to_mapping(entries))
     }
 
     /// Loads ticker mappings from a JSON file and merges with defaults.
-    ///
-    /// Default mappings are loaded first, then custom mappings are added
-    /// (overwriting any duplicates).
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the JSON file with custom mappings
-    ///
-    /// # Returns
-    ///
-    /// A [`TickerMapping`] containing default mappings plus custom entries.
     pub fn load_json_with_defaults<P: AsRef<Path>>(path: P) -> Result<TickerMapping, LoaderError> {
         let mut mapping = TickerMapping::with_defaults();
         let entries: Vec<TickerMappingEntry> = JsonLoader::load(path)?;
@@ -152,27 +52,6 @@ impl TickerMappingLoader {
     }
 
     /// Loads ticker mappings from a CSV file.
-    ///
-    /// The CSV file should have columns: `ticker`, `currency`, `tenor`,
-    /// `rate_type`.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the CSV file
-    ///
-    /// # Returns
-    ///
-    /// A [`TickerMapping`] containing all entries from the file.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LoaderError`] if the file cannot be read or parsed.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// let mapping = TickerMappingLoader::load_csv("tickers.csv")?;
-    /// ```
     pub fn load_csv<P: AsRef<Path>>(path: P) -> Result<TickerMapping, LoaderError> {
         let path = path.as_ref();
         if !path.exists() {
@@ -193,14 +72,6 @@ impl TickerMappingLoader {
     }
 
     /// Loads ticker mappings from a CSV file and merges with defaults.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the CSV file with custom mappings
-    ///
-    /// # Returns
-    ///
-    /// A [`TickerMapping`] containing default mappings plus custom entries.
     pub fn load_csv_with_defaults<P: AsRef<Path>>(path: P) -> Result<TickerMapping, LoaderError> {
         let path = path.as_ref();
         if !path.exists() {
@@ -221,14 +92,6 @@ impl TickerMappingLoader {
     }
 
     /// Loads ticker mappings from multiple JSON files matching a glob pattern.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - Glob pattern (e.g., "config/tickers/*.json")
-    ///
-    /// # Returns
-    ///
-    /// A [`TickerMapping`] containing entries from all matching files.
     pub fn load_json_glob(pattern: &str) -> Result<TickerMapping, LoaderError> {
         let results = JsonLoader::load_glob::<Vec<TickerMappingEntry>>(pattern)?;
         let mut mapping = TickerMapping::new();
@@ -313,11 +176,9 @@ mod tests {
 
         let mapping = TickerMappingLoader::load_json_with_defaults(file.path()).unwrap();
 
-        // Should have defaults
         assert!(mapping.contains("USD3MD="));
         assert!(mapping.contains("EUR3MD="));
 
-        // Plus custom
         assert!(mapping.contains("CUSTOM_TICKER"));
 
         let quote_id = mapping.lookup("CUSTOM_TICKER").unwrap();
@@ -352,10 +213,8 @@ mod tests {
 
         let mapping = TickerMappingLoader::load_csv_with_defaults(file.path()).unwrap();
 
-        // Should have defaults
         assert!(mapping.contains("USD3MD="));
 
-        // Plus custom
         assert!(mapping.contains("JYSW10 Curncy"));
     }
 
@@ -413,7 +272,6 @@ mod tests {
 
         let mapping = TickerMappingLoader::load_json(file.path()).unwrap();
 
-        // Should only have one entry (last one wins)
         assert_eq!(mapping.len(), 1);
 
         let quote_id = mapping.lookup("DUPLICATE").unwrap();

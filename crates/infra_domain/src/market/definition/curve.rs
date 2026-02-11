@@ -1,25 +1,4 @@
 //! Curve definition for yield curve construction.
-//!
-//! This module provides [`CurveDefinition`] which defines the recipe for
-//! building a yield curve. It references `InstrumentDefinition`s by ID
-//! to specify which instruments to use for calibration.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::definition::CurveDefinition;
-//!
-//! let curve = CurveDefinition::new(
-//!     "USD-SOFR-Discount",
-//!     "USD-SOFR",
-//!     vec![
-//!         "USD-Depo-ON".to_string(),
-//!         "USD-Depo-1M".to_string(),
-//!         "USD-OIS-1Y".to_string(),
-//!         "USD-OIS-5Y".to_string(),
-//!     ],
-//! );
-//! ```
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -29,42 +8,7 @@ use crate::{
     time::Date,
 };
 
-// =============================================================================
-// JumpPillar
-// =============================================================================
-
 /// A jump pillar representing a rate discontinuity at a specific date.
-///
-/// Jump pillars capture expected rate changes at known event dates (e.g.,
-/// central bank meetings). They are used in curve construction to model jumps
-/// that would otherwise cause interpolation artifacts.
-///
-/// # Fields
-///
-/// - `jump_date` - The date when the jump occurs
-/// - `expected_jump_bps` - Expected jump magnitude in basis points
-/// - `event_reference` - Optional reference to the source EventInstrument
-/// - `confidence` - Probability that the jump will occur (0.0 to 1.0)
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::definition::JumpPillar;
-/// use infra_domain::time::Date;
-///
-/// // Create a jump pillar for an expected FOMC rate hike
-/// let jump = JumpPillar::new(
-///     Date::from_ymd(2024, 3, 20).unwrap(),
-///     25.0,
-///     0.90,
-/// )
-/// .with_event_reference("FOMC-2024-03-20");
-///
-/// assert_eq!(jump.jump_date(), Date::from_ymd(2024, 3, 20).unwrap());
-/// assert_eq!(jump.expected_jump_bps(), 25.0);
-/// assert_eq!(jump.confidence(), 0.90);
-/// assert_eq!(jump.event_reference(), Some("FOMC-2024-03-20"));
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -73,8 +17,6 @@ pub struct JumpPillar {
     jump_date: Date,
 
     /// Expected jump magnitude in basis points.
-    ///
-    /// Positive values indicate rate increases, negative values indicate cuts.
     expected_jump_bps: f64,
 
     /// Optional reference to the source event (e.g., EventInstrument ID).
@@ -88,10 +30,6 @@ pub struct JumpPillar {
     confidence: f64,
 
     /// End date for turn events (when the temporary spike reverts).
-    ///
-    /// For permanent jumps (e.g., central bank meetings), this is `None`.
-    /// For turn events, the spike applies from `jump_date` to `end_date`,
-    /// after which the forward rate reverts to its pre-spike level.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -101,26 +39,6 @@ pub struct JumpPillar {
 
 impl JumpPillar {
     /// Creates a new jump pillar.
-    ///
-    /// # Arguments
-    ///
-    /// * `jump_date` - The date when the jump occurs
-    /// * `expected_jump_bps` - Expected jump magnitude in basis points
-    /// * `confidence` - Probability of the jump occurring (clamped to [0.0,
-    ///   1.0])
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::time::Date;
-    ///
-    /// let jump = JumpPillar::new(
-    ///     Date::from_ymd(2024, 6, 12).unwrap(),
-    ///     -25.0,  // Expected 25bp cut
-    ///     0.75,
-    /// );
-    /// ```
     #[must_use]
     pub fn new(jump_date: Date, expected_jump_bps: f64, confidence: f64) -> Self {
         Self {
@@ -133,26 +51,6 @@ impl JumpPillar {
     }
 
     /// Sets the event reference ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `ref_id` - Reference ID string (e.g., EventInstrument identifier)
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::time::Date;
-    ///
-    /// let jump = JumpPillar::new(
-    ///     Date::from_ymd(2024, 3, 20).unwrap(),
-    ///     25.0,
-    ///     0.85,
-    /// )
-    /// .with_event_reference("FOMC-2024-03");
-    ///
-    /// assert_eq!(jump.event_reference(), Some("FOMC-2024-03"));
-    /// ```
     #[must_use]
     pub fn with_event_reference(mut self, ref_id: impl Into<String>) -> Self {
         self.event_reference = Some(ref_id.into());
@@ -160,34 +58,6 @@ impl JumpPillar {
     }
 
     /// Creates a jump pillar from an EventInstrument.
-    ///
-    /// Converts the event's expected spread and confidence into a JumpPillar.
-    ///
-    /// # Arguments
-    ///
-    /// * `event` - The EventInstrument to convert from
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::market::{EventInstrument, RateIndex};
-    /// use infra_domain::market::events::EventType;
-    /// use infra_domain::time::Date;
-    ///
-    /// let event = EventInstrument::new(
-    ///     Date::from_ymd(2024, 3, 20).unwrap(),
-    ///     EventType::CentralBankMeeting,
-    ///     25.0,
-    ///     0.85,
-    ///     RateIndex::Sofr,
-    /// );
-    ///
-    /// let jump = JumpPillar::from_event_instrument(&event);
-    /// assert_eq!(jump.jump_date(), event.event_date());
-    /// assert_eq!(jump.expected_jump_bps(), event.expected_spread());
-    /// assert_eq!(jump.confidence(), event.confidence());
-    /// ```
     #[must_use]
     pub fn from_event_instrument(event: &EventInstrument) -> Self {
         Self {
@@ -200,31 +70,6 @@ impl JumpPillar {
     }
 
     /// Creates a jump pillar from an EventInstrument with a reference ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `event` - The EventInstrument to convert from
-    /// * `ref_id` - Reference ID to associate with this jump
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::market::{EventInstrument, RateIndex};
-    /// use infra_domain::market::events::EventType;
-    /// use infra_domain::time::Date;
-    ///
-    /// let event = EventInstrument::new(
-    ///     Date::from_ymd(2024, 3, 20).unwrap(),
-    ///     EventType::CentralBankMeeting,
-    ///     25.0,
-    ///     0.85,
-    ///     RateIndex::Sofr,
-    /// );
-    ///
-    /// let jump = JumpPillar::from_event_instrument_with_ref(&event, "FOMC-2024-03");
-    /// assert_eq!(jump.event_reference(), Some("FOMC-2024-03"));
-    /// ```
     #[must_use]
     pub fn from_event_instrument_with_ref(
         event: &EventInstrument,
@@ -250,65 +95,14 @@ impl JumpPillar {
     pub fn event_reference(&self) -> Option<&str> { self.event_reference.as_deref() }
 
     /// Returns the confidence-weighted jump in basis points.
-    ///
-    /// This is the expected jump multiplied by the confidence level,
-    /// representing the probability-weighted expected impact.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::time::Date;
-    ///
-    /// let jump = JumpPillar::new(
-    ///     Date::from_ymd(2024, 3, 20).unwrap(),
-    ///     50.0,
-    ///     0.60,
-    /// );
-    ///
-    /// // 50bp * 60% = 30bp weighted jump
-    /// assert!((jump.weighted_jump_bps() - 30.0).abs() < 1e-10);
-    /// ```
     #[must_use]
     pub fn weighted_jump_bps(&self) -> f64 { self.expected_jump_bps * self.confidence }
 
     /// Converts the expected jump from basis points to decimal rate.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::time::Date;
-    ///
-    /// let jump = JumpPillar::new(
-    ///     Date::from_ymd(2024, 3, 20).unwrap(),
-    ///     25.0,  // 25bp
-    ///     1.0,
-    /// );
-    ///
-    /// // 25bp = 0.0025
-    /// assert!((jump.expected_jump_rate() - 0.0025).abs() < 1e-10);
-    /// ```
     #[must_use]
     pub fn expected_jump_rate(&self) -> f64 { self.expected_jump_bps / 10_000.0 }
 
     /// Converts the weighted jump from basis points to decimal rate.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::time::Date;
-    ///
-    /// let jump = JumpPillar::new(
-    ///     Date::from_ymd(2024, 3, 20).unwrap(),
-    ///     50.0,  // 50bp
-    ///     0.60,  // 60% confidence
-    /// );
-    ///
-    /// // 50bp * 60% = 30bp = 0.003
-    /// assert!((jump.weighted_jump_rate() - 0.003).abs() < 1e-10);
-    /// ```
     #[must_use]
     pub fn weighted_jump_rate(&self) -> f64 { self.weighted_jump_bps() / 10_000.0 }
 
@@ -358,48 +152,7 @@ impl std::fmt::Display for JumpPillar {
     }
 }
 
-// =============================================================================
-// JumpPillarBuilder
-// =============================================================================
-
 /// Builder for creating JumpPillars from EventInstruments.
-///
-/// Provides filtering capabilities to select relevant events for curve
-/// construction based on rate index, date range, and confidence threshold.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::definition::JumpPillarBuilder;
-/// use infra_domain::market::{EventInstrument, RateIndex};
-/// use infra_domain::market::events::EventType;
-/// use infra_domain::time::Date;
-///
-/// let events = vec![
-///     EventInstrument::new(
-///         Date::from_ymd(2024, 3, 20).unwrap(),
-///         EventType::CentralBankMeeting,
-///         25.0,
-///         0.85,
-///         RateIndex::Sofr,
-///     ),
-///     EventInstrument::new(
-///         Date::from_ymd(2024, 6, 12).unwrap(),
-///         EventType::CentralBankMeeting,
-///         -25.0,
-///         0.70,
-///         RateIndex::Estr,
-///     ),
-/// ];
-///
-/// // Build pillars for SOFR only
-/// let pillars = JumpPillarBuilder::new(events)
-///     .with_rate_index(RateIndex::Sofr)
-///     .with_min_confidence(0.5)
-///     .build();
-///
-/// assert_eq!(pillars.len(), 1);
-/// ```
 #[derive(Debug, Clone)]
 pub struct JumpPillarBuilder {
     events: Vec<EventInstrument>,
@@ -410,21 +163,6 @@ pub struct JumpPillarBuilder {
 
 impl JumpPillarBuilder {
     /// Creates a new builder with the given events.
-    ///
-    /// # Arguments
-    ///
-    /// * `events` - List of EventInstruments to process
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillarBuilder;
-    /// use infra_domain::market::EventInstrument;
-    ///
-    /// let builder = JumpPillarBuilder::new(vec![]);
-    /// let pillars = builder.build();
-    /// assert!(pillars.is_empty());
-    /// ```
     #[must_use]
     pub fn new(events: Vec<EventInstrument>) -> Self {
         Self {
@@ -436,20 +174,6 @@ impl JumpPillarBuilder {
     }
 
     /// Filters events to only include those matching the specified rate index.
-    ///
-    /// # Arguments
-    ///
-    /// * `index` - The rate index to filter by
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillarBuilder;
-    /// use infra_domain::market::RateIndex;
-    ///
-    /// let builder = JumpPillarBuilder::new(vec![])
-    ///     .with_rate_index(RateIndex::Sofr);
-    /// ```
     #[must_use]
     pub fn with_rate_index(mut self, index: RateIndex) -> Self {
         self.rate_index_filter = Some(index);
@@ -457,47 +181,13 @@ impl JumpPillarBuilder {
     }
 
     /// Filters events to only include those within the specified date range.
-    ///
-    /// Both start and end dates are inclusive.
-    ///
-    /// # Arguments
-    ///
-    /// * `start` - Start date of the range (inclusive)
-    /// * `end` - End date of the range (inclusive)
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillarBuilder;
-    /// use infra_domain::time::Date;
-    ///
-    /// let builder = JumpPillarBuilder::new(vec![])
-    ///     .with_date_range(
-    ///         Date::from_ymd(2024, 1, 1).unwrap(),
-    ///         Date::from_ymd(2024, 12, 31).unwrap(),
-    ///     );
-    /// ```
     #[must_use]
     pub fn with_date_range(mut self, start: Date, end: Date) -> Self {
         self.date_range = Some((start, end));
         self
     }
 
-    /// Filters events to only include those with confidence at or above the
-    /// threshold.
-    ///
-    /// # Arguments
-    ///
-    /// * `threshold` - Minimum confidence level (0.0 to 1.0)
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillarBuilder;
-    ///
-    /// let builder = JumpPillarBuilder::new(vec![])
-    ///     .with_min_confidence(0.7);
-    /// ```
+    /// Filters events to only include those with confidence at or above the.
     #[must_use]
     pub fn with_min_confidence(mut self, threshold: f64) -> Self {
         self.min_confidence = threshold.clamp(0.0, 1.0);
@@ -505,59 +195,18 @@ impl JumpPillarBuilder {
     }
 
     /// Builds the filtered and sorted list of JumpPillars.
-    ///
-    /// Applies all configured filters and returns JumpPillars sorted by
-    /// jump_date in ascending order.
-    ///
-    /// # Returns
-    ///
-    /// A vector of JumpPillar sorted by date (ascending).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::JumpPillarBuilder;
-    /// use infra_domain::market::{EventInstrument, RateIndex};
-    /// use infra_domain::market::events::EventType;
-    /// use infra_domain::time::Date;
-    ///
-    /// let events = vec![
-    ///     EventInstrument::new(
-    ///         Date::from_ymd(2024, 6, 12).unwrap(),
-    ///         EventType::CentralBankMeeting,
-    ///         25.0,
-    ///         0.90,
-    ///         RateIndex::Sofr,
-    ///     ),
-    ///     EventInstrument::new(
-    ///         Date::from_ymd(2024, 3, 20).unwrap(),
-    ///         EventType::CentralBankMeeting,
-    ///         25.0,
-    ///         0.80,
-    ///         RateIndex::Sofr,
-    ///     ),
-    /// ];
-    ///
-    /// let pillars = JumpPillarBuilder::new(events).build();
-    ///
-    /// // Results are sorted by date
-    /// assert_eq!(pillars.len(), 2);
-    /// assert!(pillars[0].jump_date() < pillars[1].jump_date());
-    /// ```
     #[must_use]
     pub fn build(self) -> Vec<JumpPillar> {
         let mut pillars: Vec<JumpPillar> = self
             .events
             .iter()
             .filter(|event| {
-                // Rate index filter
                 if let Some(index) = self.rate_index_filter {
                     if event.rate_index() != index {
                         return false;
                     }
                 }
 
-                // Date range filter
                 if let Some((start, end)) = self.date_range {
                     let date = event.event_date();
                     if date < start || date > end {
@@ -565,7 +214,6 @@ impl JumpPillarBuilder {
                     }
                 }
 
-                // Confidence threshold filter
                 if event.confidence() < self.min_confidence {
                     return false;
                 }
@@ -575,56 +223,42 @@ impl JumpPillarBuilder {
             .map(JumpPillar::from_event_instrument)
             .collect();
 
-        // Sort by jump_date ascending
         pillars.sort_by_key(|a| a.jump_date());
 
         pillars
     }
 }
 
-// =============================================================================
-// CurveDefinition
-// =============================================================================
-
 /// Curve definition - the recipe for building a yield curve.
-///
-/// References `InstrumentDefinition`s and `RateIndexDefinition` by their
-/// IDs to specify which instruments and index to use for curve construction.
-///
-/// # Jump Pillars
-///
-/// Jump pillars can be added to model rate discontinuities at specific dates
-/// (e.g., central bank meetings). When present, the curve builder will apply
-/// discrete jumps at these dates during interpolation.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct CurveDefinition {
-    /// Curve name (e.g., "USD-SOFR-Discount")
+    /// Curve name (e.g., "USD-SOFR-Discount").
     pub name: String,
 
-    /// Reference to RateIndexDefinition.id (e.g., "USD-SOFR")
+    /// Reference to RateIndexDefinition.id (e.g., "USD-SOFR").
     pub rate_index: String,
 
-    /// List of InstrumentDefinition.id references
+    /// List of InstrumentDefinition.id references.
     pub instruments: Vec<String>,
 
-    /// Jump pillars for rate discontinuities (e.g., central bank meetings)
+    /// Jump pillars for rate discontinuities (e.g., central bank meetings).
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Vec::is_empty")
     )]
     pub jump_pillars: Vec<JumpPillar>,
 
-    /// Calibration method
+    /// Calibration method.
     #[cfg_attr(feature = "serde", serde(default))]
     pub calibration_method: CalibrationMethod,
 
-    /// Interpolation method for the resulting curve
+    /// Interpolation method for the resulting curve.
     #[cfg_attr(feature = "serde", serde(default))]
     pub interpolation: InterpolationMethod,
 
-    /// Whether to allow extrapolation beyond the last pillar
+    /// Whether to allow extrapolation beyond the last pillar.
     #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub allow_extrapolation: bool,
 }
@@ -637,10 +271,10 @@ fn default_true() -> bool { true }
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum CalibrationMethod {
-    /// Sequential bootstrapping (pillar-by-pillar)
+    /// Sequential bootstrapping (pillar-by-pillar).
     #[default]
     Sequential,
-    /// Global calibration (all pillars simultaneously)
+    /// Global calibration (all pillars simultaneously).
     Global,
 }
 
@@ -649,50 +283,49 @@ pub enum CalibrationMethod {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum InterpolationMethod {
-    /// Linear interpolation on discount factors
+    /// Linear interpolation on discount factors.
     Linear,
-    /// Log-linear interpolation (default, preserves no-arbitrage)
+    /// Log-linear interpolation (default, preserves no-arbitrage).
     #[default]
     LogLinear,
-    /// Flat forward interpolation (constant simple forward rate between
-    /// pillars)
+    /// Flat forward interpolation (constant simple forward rate between.
     FlatForward,
 }
 
 /// Error type for curve definition validation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CurveDefError {
-    /// Missing required field
+    /// Missing required field.
     MissingField(&'static str),
-    /// No instruments specified
+    /// No instruments specified.
     NoInstruments,
-    /// Unknown rate index reference
+    /// Unknown rate index reference.
     UnknownRateIndex(String),
-    /// Unknown instrument reference
+    /// Unknown instrument reference.
     UnknownInstrument(String),
-    /// Duplicate instrument in the list
+    /// Duplicate instrument in the list.
     DuplicateInstrument(String),
-    /// Duplicate jump pillar date
+    /// Duplicate jump pillar date.
     DuplicateJumpDate(Date),
-    /// Invalid confidence value for jump pillar
+    /// Invalid confidence value for jump pillar.
     InvalidConfidence {
-        /// The date of the problematic jump pillar
+        /// The date of the problematic jump pillar.
         date: Date,
-        /// The invalid confidence value
+        /// The invalid confidence value.
         value: f64,
     },
-    /// Jump would cause negative discount factor
+    /// Jump would cause negative discount factor.
     JumpWouldCauseNegativeDF {
-        /// The date of the problematic jump pillar
+        /// The date of the problematic jump pillar.
         date: Date,
-        /// The jump size in basis points
+        /// The jump size in basis points.
         jump_bps: f64,
     },
-    /// Invalid end date for turn pillar (end_date must be after jump_date)
+    /// Invalid end date for turn pillar (end_date must be after jump_date).
     InvalidEndDate {
-        /// The jump date
+        /// The jump date.
         jump_date: Date,
-        /// The invalid end date
+        /// The invalid end date.
         end_date: Date,
     },
 }
@@ -738,12 +371,6 @@ impl std::error::Error for CurveDefError {}
 
 impl CurveDefinition {
     /// Creates a new curve definition.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Curve name
-    /// * `rate_index` - Reference to RateIndexDefinition ID
-    /// * `instruments` - List of InstrumentDefinition IDs
     #[must_use]
     pub fn new(
         name: impl Into<String>,
@@ -790,26 +417,6 @@ impl CurveDefinition {
     }
 
     /// Sets the jump pillars for rate discontinuities.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - List of JumpPillar definitions
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::{CurveDefinition, JumpPillar};
-    /// use infra_domain::time::Date;
-    ///
-    /// let pillars = vec![
-    ///     JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85),
-    /// ];
-    ///
-    /// let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
-    ///     .with_jump_pillars(pillars);
-    ///
-    /// assert!(curve.has_jumps());
-    /// ```
     #[must_use]
     pub fn with_jump_pillars(mut self, pillars: Vec<JumpPillar>) -> Self {
         self.jump_pillars = pillars;
@@ -817,26 +424,6 @@ impl CurveDefinition {
     }
 
     /// Adds a single jump pillar to the definition.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillar` - The JumpPillar to add
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::{CurveDefinition, JumpPillar};
-    /// use infra_domain::time::Date;
-    ///
-    /// let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
-    ///     .with_jump_pillar(JumpPillar::new(
-    ///         Date::from_ymd(2024, 3, 20).unwrap(),
-    ///         25.0,
-    ///         0.85,
-    ///     ));
-    ///
-    /// assert_eq!(curve.jump_pillar_count(), 1);
-    /// ```
     #[must_use]
     pub fn with_jump_pillar(mut self, pillar: JumpPillar) -> Self {
         self.jump_pillars.push(pillar);
@@ -852,13 +439,6 @@ impl CurveDefinition {
     pub fn has_jumps(&self) -> bool { !self.jump_pillars.is_empty() }
 
     /// Validates the curve definition (basic validation only).
-    ///
-    /// For full validation including reference checking, use
-    /// `DefinitionRegistry::register_curve`.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails.
     pub fn validate(&self) -> Result<(), CurveDefError> {
         if self.name.is_empty() {
             return Err(CurveDefError::MissingField("name"));
@@ -872,7 +452,6 @@ impl CurveDefinition {
             return Err(CurveDefError::NoInstruments);
         }
 
-        // Check for duplicate instruments
         let mut seen = std::collections::HashSet::new();
         for inst_id in &self.instruments {
             if !seen.insert(inst_id) {
@@ -880,18 +459,12 @@ impl CurveDefinition {
             }
         }
 
-        // Validate jump pillars
         self.validate_jump_pillars()?;
 
         Ok(())
     }
 
     /// Validates the jump pillars.
-    ///
-    /// Checks for:
-    /// - Duplicate dates
-    /// - Invalid confidence values (outside [0.0, 1.0])
-    /// - Jumps that would cause negative discount factors
     fn validate_jump_pillars(&self) -> Result<(), CurveDefError> {
         if self.jump_pillars.is_empty() {
             return Ok(());
@@ -900,13 +473,10 @@ impl CurveDefinition {
         let mut seen_dates = std::collections::HashSet::new();
 
         for pillar in &self.jump_pillars {
-            // Check for duplicate dates
             if !seen_dates.insert(pillar.jump_date()) {
                 return Err(CurveDefError::DuplicateJumpDate(pillar.jump_date()));
             }
 
-            // Confidence is clamped in JumpPillar::new, but check if the raw value
-            // was provided outside the valid range (for extra safety)
             let confidence = pillar.confidence();
             if !(0.0..=1.0).contains(&confidence) {
                 return Err(CurveDefError::InvalidConfidence {
@@ -915,8 +485,6 @@ impl CurveDefinition {
                 });
             }
 
-            // Check for extreme jumps that would cause negative discount factors
-            // A jump of more than ~10000 bps (100%) would be problematic
             let jump_bps = pillar.expected_jump_bps();
             if jump_bps.abs() > 10000.0 {
                 return Err(CurveDefError::JumpWouldCauseNegativeDF {
@@ -925,7 +493,6 @@ impl CurveDefinition {
                 });
             }
 
-            // Validate end_date for turn pillars
             if let Some(end_date) = pillar.end_date() {
                 if end_date <= pillar.jump_date() {
                     return Err(CurveDefError::InvalidEndDate {
@@ -974,10 +541,6 @@ mod tests {
 
     fn test_date() -> Date { Date::from_ymd(2024, 3, 20).unwrap() }
 
-    // =========================================================================
-    // JumpPillar Tests
-    // =========================================================================
-
     #[test]
     fn test_new_jump_pillar() {
         let jump = JumpPillar::new(test_date(), 25.0, 0.85);
@@ -997,15 +560,12 @@ mod tests {
 
     #[test]
     fn test_confidence_clamping() {
-        // Confidence > 1.0 clamped to 1.0
         let high = JumpPillar::new(test_date(), 25.0, 1.5);
         assert_eq!(high.confidence(), 1.0);
 
-        // Confidence < 0.0 clamped to 0.0
         let low = JumpPillar::new(test_date(), 25.0, -0.5);
         assert_eq!(low.confidence(), 0.0);
 
-        // Valid confidence unchanged
         let valid = JumpPillar::new(test_date(), 25.0, 0.75);
         assert_eq!(valid.confidence(), 0.75);
     }
@@ -1046,21 +606,18 @@ mod tests {
     #[test]
     fn test_weighted_jump_bps() {
         let jump = JumpPillar::new(test_date(), 50.0, 0.60);
-        // 50 * 0.6 = 30
         assert!((jump.weighted_jump_bps() - 30.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_expected_jump_rate() {
         let jump = JumpPillar::new(test_date(), 25.0, 1.0);
-        // 25bp = 0.0025
         assert!((jump.expected_jump_rate() - 0.0025).abs() < 1e-10);
     }
 
     #[test]
     fn test_weighted_jump_rate() {
         let jump = JumpPillar::new(test_date(), 50.0, 0.60);
-        // 50bp * 60% = 30bp = 0.003
         assert!((jump.weighted_jump_rate() - 0.003).abs() < 1e-10);
     }
 
@@ -1196,7 +753,6 @@ mod tests {
 
         let json = serde_json::to_string(&jump).unwrap();
 
-        // event_reference should be skipped when None
         assert!(!json.contains("eventReference"));
 
         let parsed: JumpPillar = serde_json::from_str(&json).unwrap();
@@ -1222,7 +778,6 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_jump_pillar_serde_defaults() {
-        // eventReference should default to None
         let json = r#"{
             "jumpDate": "2024-03-20",
             "expectedJumpBps": 25.0,
@@ -1232,10 +787,6 @@ mod tests {
         let jump: JumpPillar = serde_json::from_str(json).unwrap();
         assert!(jump.event_reference().is_none());
     }
-
-    // =========================================================================
-    // JumpPillarBuilder Tests
-    // =========================================================================
 
     fn make_event(date: Date, spread: f64, confidence: f64, index: RateIndex) -> EventInstrument {
         EventInstrument::new(
@@ -1303,7 +854,6 @@ mod tests {
             .build();
 
         assert_eq!(pillars.len(), 2);
-        // Verify all are SOFR (by checking they are not the ESTR one)
         assert_eq!(pillars[0].jump_date(), Date::from_ymd(2024, 3, 20).unwrap());
         assert_eq!(pillars[1].jump_date(), Date::from_ymd(2024, 9, 18).unwrap());
     }
@@ -1401,13 +951,13 @@ mod tests {
                 25.0,
                 0.50,
                 RateIndex::Sofr,
-            ), // Low confidence
+            ),
             make_event(
                 Date::from_ymd(2024, 6, 12).unwrap(),
                 25.0,
                 0.70,
                 RateIndex::Estr,
-            ), // Wrong index
+            ),
             make_event(
                 Date::from_ymd(2024, 9, 18).unwrap(),
                 25.0,
@@ -1419,7 +969,7 @@ mod tests {
                 25.0,
                 0.85,
                 RateIndex::Sofr,
-            ), // Outside range
+            ),
         ];
 
         let pillars = JumpPillarBuilder::new(events)
@@ -1462,7 +1012,6 @@ mod tests {
         let pillars = JumpPillarBuilder::new(events).build();
 
         assert_eq!(pillars.len(), 3);
-        // Verify ascending order
         assert!(pillars[0].jump_date() < pillars[1].jump_date());
         assert!(pillars[1].jump_date() < pillars[2].jump_date());
     }
@@ -1492,22 +1041,16 @@ mod tests {
             RateIndex::Sofr,
         )];
 
-        // Confidence below 0 should be clamped
         let pillars = JumpPillarBuilder::new(events.clone())
             .with_min_confidence(-0.5)
             .build();
         assert_eq!(pillars.len(), 1);
 
-        // Confidence above 1 should be clamped
         let pillars = JumpPillarBuilder::new(events)
             .with_min_confidence(1.5)
             .build();
-        assert_eq!(pillars.len(), 0); // 0.50 < 1.0
+        assert_eq!(pillars.len(), 0);
     }
-
-    // =========================================================================
-    // CurveDefinition Tests
-    // =========================================================================
 
     #[test]
     fn test_curve_definition_new() {
@@ -1660,17 +1203,11 @@ mod tests {
         }"#;
 
         let curve: CurveDefinition = serde_json::from_str(json).unwrap();
-        // Defaults should be applied
         assert_eq!(curve.calibration_method, CalibrationMethod::Sequential);
         assert_eq!(curve.interpolation, InterpolationMethod::LogLinear);
         assert!(curve.allow_extrapolation);
-        // jump_pillars should default to empty
         assert!(curve.jump_pillars.is_empty());
     }
-
-    // =========================================================================
-    // CurveDefinition + JumpPillar Integration Tests
-    // =========================================================================
 
     #[test]
     fn test_with_jump_pillars() {
@@ -1730,7 +1267,7 @@ mod tests {
                 0.85,
             ))
             .with_jump_pillar(JumpPillar::new(
-                Date::from_ymd(2024, 3, 20).unwrap(), // Duplicate date
+                Date::from_ymd(2024, 3, 20).unwrap(),
                 -25.0,
                 0.70,
             ));
@@ -1744,7 +1281,7 @@ mod tests {
     #[test]
     fn test_validate_invalid_end_date() {
         let jump_date = Date::from_ymd(2024, 12, 31).unwrap();
-        let end_date = Date::from_ymd(2024, 12, 30).unwrap(); // Before jump_date
+        let end_date = Date::from_ymd(2024, 12, 30).unwrap();
         let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
             .with_jump_pillar(JumpPillar::new(jump_date, 12.5, 1.0).with_end_date(end_date));
 
@@ -1769,7 +1306,7 @@ mod tests {
         let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
             .with_jump_pillar(JumpPillar::new(
                 Date::from_ymd(2024, 3, 20).unwrap(),
-                20000.0, // 200% - too extreme
+                20000.0,
                 0.85,
             ));
 
@@ -1802,14 +1339,12 @@ mod tests {
         let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()]);
 
         let json = serde_json::to_string(&curve).unwrap();
-        // jump_pillars should not appear in JSON when empty
         assert!(!json.contains("jumpPillars"));
     }
 
     #[cfg(feature = "serde")]
     #[test]
     fn test_serde_backward_compatibility() {
-        // Old JSON without jumpPillars should deserialize correctly
         let json = r#"{
             "name": "USD-SOFR",
             "rateIndex": "USD-SOFR",

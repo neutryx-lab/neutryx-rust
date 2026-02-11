@@ -1,87 +1,31 @@
 //! Greeks calculation result type.
-//!
-//! Provides [`GreeksResult<T>`], a generic struct for holding Greeks
-//! calculations that is compatible with automatic differentiation via the
-//! `Float` trait bound.
 
 use num_traits::Float;
 
-/// Converts an f64 value to type T.
-///
-/// This is a local utility to avoid depending on pricer_pricing::numeric.
 #[inline]
 fn from_f64<T: Float>(value: f64) -> T { T::from(value).unwrap_or_else(|| T::zero()) }
 
-/// Greeks calculation result with optional sensitivities.
-///
-/// A generic struct that holds the price, standard error, and optional Greeks
-/// from a pricing calculation. The generic parameter `T` allows this struct
-/// to work with both `f64` for production and AD-compatible types like
-/// `Dual<f64>` for automatic differentiation.
-///
-/// # Type Parameters
-///
-/// * `T` - A floating-point type implementing `num_traits::Float`. This enables
-///   compatibility with automatic differentiation libraries.
-///
-/// # First-Order Greeks
-///
-/// - `delta`: ∂V/∂S - Sensitivity to spot price
-/// - `vega`: ∂V/∂σ - Sensitivity to volatility
-/// - `theta`: ∂V/∂τ - Sensitivity to time (time decay)
-/// - `rho`: ∂V/∂r - Sensitivity to interest rate
-///
-/// # Second-Order Greeks
-///
-/// - `gamma`: ∂²V/∂S² - Convexity with respect to spot
-/// - `vanna`: ∂²V/∂S∂σ - Cross sensitivity (delta-vol)
-/// - `volga`: ∂²V/∂σ² - Volatility convexity
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_risk::greeks::GreeksResult;
-///
-/// // Create a result with first-order Greeks
-/// let result = GreeksResult {
-///     price: 10.5,
-///     std_error: 0.05,
-///     delta: Some(0.55),
-///     gamma: None,
-///     vega: Some(25.0),
-///     theta: Some(-0.05),
-///     rho: Some(15.0),
-///     vanna: None,
-///     volga: None,
-/// };
-///
-/// // Access confidence intervals
-/// let ci_95 = result.confidence_95();
-/// println!("Price: {} +/- {}", result.price, ci_95);
-/// ```
+/// Greeks calculation result with optional sensitivities, generic over Float
+/// for AD compatibility.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GreeksResult<T: Float> {
-    /// Present value of the instrument.
+    /// Calculated price.
     pub price: T,
-    /// Standard error of the Monte Carlo estimate.
+    /// Standard error of the price estimate.
     pub std_error: T,
-
-    // First-order Greeks
-    /// Delta: ∂V/∂S (sensitivity to spot price).
+    /// Delta sensitivity.
     pub delta: Option<T>,
-    /// Vega: ∂V/∂σ (sensitivity to volatility).
+    /// Vega sensitivity.
     pub vega: Option<T>,
-    /// Theta: ∂V/∂τ (sensitivity to time, time decay).
+    /// Theta sensitivity.
     pub theta: Option<T>,
-    /// Rho: ∂V/∂r (sensitivity to interest rate).
+    /// Rho sensitivity.
     pub rho: Option<T>,
-
-    // Second-order Greeks
-    /// Gamma: ∂²V/∂S² (convexity with respect to spot).
+    /// Gamma sensitivity.
     pub gamma: Option<T>,
-    /// Vanna: ∂²V/∂S∂σ (cross sensitivity between spot and volatility).
+    /// Vanna (cross-gamma) sensitivity.
     pub vanna: Option<T>,
-    /// Volga: ∂²V/∂σ² (volatility convexity, also known as vomma).
+    /// Volga (vol-of-vol) sensitivity.
     pub volga: Option<T>,
 }
 
@@ -102,63 +46,16 @@ impl<T: Float> Default for GreeksResult<T> {
 }
 
 impl<T: Float> GreeksResult<T> {
-    /// Returns the 95% confidence interval half-width.
-    ///
-    /// For a Monte Carlo estimate, the 95% confidence interval is
-    /// approximately ±1.96 × standard error.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::greeks::GreeksResult;
-    ///
-    /// let result = GreeksResult::<f64> {
-    ///     price: 10.0,
-    ///     std_error: 0.1,
-    ///     ..Default::default()
-    /// };
-    ///
-    /// let ci = result.confidence_95();
-    /// println!("Price: {:.2} +/- {:.4}", result.price, ci);
-    /// ```
+    /// Returns the 95% confidence interval half-width (1.96 * std_error).
     #[inline]
     pub fn confidence_95(&self) -> T { from_f64::<T>(1.96) * self.std_error }
 
-    /// Returns the 99% confidence interval half-width.
-    ///
-    /// For a Monte Carlo estimate, the 99% confidence interval is
-    /// approximately ±2.576 × standard error.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::greeks::GreeksResult;
-    ///
-    /// let result = GreeksResult::<f64> {
-    ///     price: 10.0,
-    ///     std_error: 0.1,
-    ///     ..Default::default()
-    /// };
-    ///
-    /// let ci = result.confidence_99();
-    /// println!("Price: {:.2} +/- {:.4}", result.price, ci);
-    /// ```
+    /// Returns the 99% confidence interval half-width (2.576 * std_error).
     #[inline]
     pub fn confidence_99(&self) -> T { from_f64::<T>(2.576) * self.std_error }
 
-    /// Creates a new result with only price and standard error.
-    ///
-    /// All Greeks are set to `None`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use pricer_risk::greeks::GreeksResult;
-    ///
-    /// let result = GreeksResult::new(10.5, 0.05);
-    /// assert_eq!(result.price, 10.5);
-    /// assert!(result.delta.is_none());
-    /// ```
+    /// Creates a new result with only price and standard error (all Greeks
+    /// None).
     #[inline]
     pub fn new(price: T, std_error: T) -> Self {
         Self {
@@ -230,8 +127,6 @@ impl<T: Float> GreeksResult<T> {
     }
 }
 
-// Serde support (optional feature)
-#[cfg(feature = "serde")]
 mod serde_impl {
     use serde::{Deserialize, Serialize};
 

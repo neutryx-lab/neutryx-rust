@@ -1,30 +1,19 @@
 //! Volatility quote type definitions.
-//!
-//! This module provides the classification of volatility quoting conventions
-//! used in options and swaption markets.
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Volatility quote type for options and swaptions.
-///
-/// Defines how volatility is expressed in market quotes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum VolQuoteType {
     /// Normal (Bachelier) volatility in basis points.
-    ///
-    /// Used primarily for rates markets, especially when rates can be negative.
     #[default]
     Normal,
     /// Lognormal (Black) volatility in percentage.
-    ///
-    /// Traditional Black-Scholes implied volatility.
     Lognormal,
     /// Shifted Lognormal volatility.
-    ///
-    /// Lognormal volatility with a shift parameter to handle negative rates.
     ShiftedLognormal,
 }
 

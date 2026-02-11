@@ -1,9 +1,4 @@
 //! Interest rate instrument definitions.
-//!
-//! This module provides definitions for interest rate derivatives including
-//! FRNs, CMS swaps, inflation swaps, OIS, deposits, FRAs, futures, and swaps.
-//!
-//! Note: Swaptions and Caps/Floors are defined in the `ir_vol` module.
 
 use super::{
     common::{NotionalSchedule, PayerReceiver},
@@ -14,13 +9,7 @@ use crate::{
     time::{Date, EndOfMonthRule, Frequency, Tenor},
 };
 
-// ============================================================================
-// Floating Rate Note (FRN)
-// ============================================================================
-
 /// Floating rate note (FRN).
-///
-/// A bond with coupon payments linked to a floating rate index.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Frn {
@@ -42,10 +31,6 @@ pub struct Frn {
 
 impl Frn {
     /// Validates the FRN parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.maturity <= self.start_date {
             return Err(InstrumentError::invalid_date(
@@ -56,13 +41,7 @@ impl Frn {
     }
 }
 
-// ============================================================================
-// CMS Swap
-// ============================================================================
-
 /// Constant Maturity Swap (CMS) swap.
-///
-/// A swap where one leg pays a rate linked to a constant maturity swap rate.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CmsSwap {
@@ -84,10 +63,6 @@ pub struct CmsSwap {
 
 impl CmsSwap {
     /// Validates the CMS swap parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -97,10 +72,6 @@ impl CmsSwap {
         Ok(())
     }
 }
-
-// ============================================================================
-// Inflation Swap
-// ============================================================================
 
 /// Inflation swap type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -113,8 +84,6 @@ pub enum SwapType {
 }
 
 /// Inflation swap.
-///
-/// A swap where one leg pays based on an inflation index (e.g., CPI).
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct InflationSwap {
@@ -138,10 +107,6 @@ pub struct InflationSwap {
 
 impl InflationSwap {
     /// Validates the inflation swap parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.maturity <= self.start_date {
             return Err(InstrumentError::invalid_date(
@@ -162,45 +127,7 @@ impl InflationSwap {
     }
 }
 
-// ============================================================================
-// Overnight Index Swap (OIS)
-// ============================================================================
-
 /// Overnight Index Swap (OIS).
-///
-/// An interest rate swap where the floating leg pays an overnight rate
-/// compounded over the accrual period. Common overnight indices include
-/// SOFR (USD), ESTR (EUR), SONIA (GBP), and TONA (JPY).
-///
-/// # Daily Compounding
-///
-/// For an OIS floating leg, the interest is calculated using daily compounding:
-///
-/// ```text
-/// Compounded Rate = ∏(1 + ri × di) - 1
-/// ```
-///
-/// where:
-/// - `ri` is the overnight rate for day `i`
-/// - `di` is the day count fraction for day `i`
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use infra_domain::trade::instrument_def::{Ois, PayerReceiver};
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency}};
-///
-/// let ois = Ois {
-///     rate_index: RateIndex::Sofr,
-///     fixed_rate: 0.04,
-///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-///     end_date: Date::from_ymd(2030, 1, 15).unwrap(),
-///     notional: 10_000_000.0,
-///     currency: Currency::USD,
-///     payer_receiver: PayerReceiver::Payer,
-///     payment_frequency: Frequency::Annual,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Ois {
@@ -224,10 +151,6 @@ pub struct Ois {
 
 impl Ois {
     /// Validates the OIS parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -251,28 +174,7 @@ impl Ois {
     pub fn tenor_years(&self) -> f64 { (self.end_date - self.start_date) as f64 / 365.0 }
 }
 
-// ============================================================================
-// Simple Money Market Instruments
-// ============================================================================
-
 /// Deposit (money market deposit).
-///
-/// A simple fixed-rate deposit instrument with a single payment at maturity.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use infra_domain::trade::instrument_def::Deposit;
-/// use infra_domain::{market::Currency, time::{Date, Tenor}};
-///
-/// let deposit = Deposit {
-///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-///     tenor: Tenor::ThreeMonths,
-///     rate: 0.045,
-///     notional: 10_000_000.0,
-///     currency: Currency::USD,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Deposit {
@@ -290,10 +192,6 @@ pub struct Deposit {
 
 impl Deposit {
     /// Validates the deposit parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -321,26 +219,6 @@ impl Deposit {
 }
 
 /// Forward Rate Agreement (FRA).
-///
-/// A contract to exchange a fixed rate for a floating rate over a future
-/// period.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use infra_domain::trade::instrument_def::Fra;
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Tenor}};
-///
-/// let fra = Fra {
-///     fixing_date: Date::from_ymd(2025, 3, 15).unwrap(),
-///     start_date: Date::from_ymd(2025, 3, 17).unwrap(),
-///     tenor: Tenor::ThreeMonths,
-///     strike: 0.04,
-///     notional: 10_000_000.0,
-///     currency: Currency::USD,
-///     rate_index: RateIndex::Sofr,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Fra {
@@ -362,10 +240,6 @@ pub struct Fra {
 
 impl Fra {
     /// Validates the FRA parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -398,24 +272,6 @@ impl Fra {
 }
 
 /// Interest Rate Futures contract.
-///
-/// A standardised exchange-traded contract on short-term interest rates.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use infra_domain::trade::instrument_def::Futures;
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Tenor}};
-///
-/// let futures = Futures {
-///     expiry_date: Date::from_ymd(2025, 6, 18).unwrap(),
-///     underlying_tenor: Tenor::ThreeMonths,
-///     price: 95.50,
-///     notional: 1_000_000.0,
-///     currency: Currency::USD,
-///     rate_index: RateIndex::Sofr,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Futures {
@@ -435,10 +291,6 @@ pub struct Futures {
 
 impl Futures {
     /// Validates the futures parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -471,34 +323,7 @@ impl Futures {
     }
 }
 
-// ============================================================================
-// Interest Rate Swaps
-// ============================================================================
-
 /// Interest Rate Swap (IRS).
-///
-/// A standard fixed-for-floating interest rate swap where one party pays
-/// a fixed rate and receives a floating rate (or vice versa).
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use infra_domain::trade::instrument_def::{InterestRateSwap, PayerReceiver};
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
-///
-/// let irs = InterestRateSwap {
-///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-///     tenor: Tenor::FiveYears,
-///     fixed_rate: 0.04,
-///     spread: 0.0,
-///     notional: 10_000_000.0,
-///     currency: Currency::USD,
-///     payer_receiver: PayerReceiver::Payer,
-///     fixed_frequency: Frequency::SemiAnnual,
-///     float_frequency: Frequency::Quarterly,
-///     rate_index: RateIndex::Sofr,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct InterestRateSwap {
@@ -526,10 +351,6 @@ pub struct InterestRateSwap {
 
 impl InterestRateSwap {
     /// Validates the IRS parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -566,30 +387,6 @@ impl InterestRateSwap {
 }
 
 /// Basis Swap.
-///
-/// A swap where both legs are floating, typically referencing different
-/// rate indices or tenors (e.g., 3M SOFR vs 6M SOFR, or SOFR vs Fed Funds).
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use infra_domain::trade::instrument_def::{BasisSwap, PayerReceiver};
-/// use infra_domain::{market::{Currency, RateIndex}, time::{Date, Frequency, Tenor}};
-///
-/// let basis = BasisSwap {
-///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
-///     tenor: Tenor::FiveYears,
-///     notional: 10_000_000.0,
-///     currency: Currency::USD,
-///     payer_receiver: PayerReceiver::Payer,
-///     leg1_index: RateIndex::Sofr,
-///     leg1_spread: 0.0,
-///     leg1_frequency: Frequency::Quarterly,
-///     leg2_index: RateIndex::Estr,
-///     leg2_spread: 0.001,
-///     leg2_frequency: Frequency::Quarterly,
-/// };
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BasisSwap {
@@ -619,10 +416,6 @@ pub struct BasisSwap {
 
 impl BasisSwap {
     /// Validates the basis swap parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.notional <= 0.0 {
             return Err(InstrumentError::invalid_parameter(
@@ -655,7 +448,6 @@ mod tests {
 
     #[test]
     fn test_rates_vanilla_instruments() {
-        // Deposit: valid + end_date
         let deposit = Deposit {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
             tenor: Tenor::ThreeMonths,
@@ -666,7 +458,6 @@ mod tests {
         assert!(deposit.validate().is_ok());
         assert_eq!(deposit.end_date(), Date::from_ymd(2025, 4, 15).unwrap());
 
-        // FRA: valid
         let fra = Fra {
             fixing_date: Date::from_ymd(2025, 3, 15).unwrap(),
             start_date: Date::from_ymd(2025, 3, 17).unwrap(),
@@ -678,7 +469,6 @@ mod tests {
         };
         assert!(fra.validate().is_ok());
 
-        // FRA: invalid (start before fixing)
         let bad_fra = Fra {
             fixing_date: Date::from_ymd(2025, 3, 20).unwrap(),
             start_date: Date::from_ymd(2025, 3, 15).unwrap(),
@@ -690,7 +480,6 @@ mod tests {
         };
         assert!(bad_fra.validate().is_err());
 
-        // Futures: valid + implied_rate
         let futures = Futures {
             expiry_date: Date::from_ymd(2025, 6, 18).unwrap(),
             underlying_tenor: Tenor::ThreeMonths,
@@ -702,7 +491,6 @@ mod tests {
         assert!(futures.validate().is_ok());
         assert!((futures.implied_rate() - 0.045).abs() < 1e-10);
 
-        // Futures: invalid price
         let bad_futures = Futures {
             expiry_date: Date::from_ymd(2025, 6, 18).unwrap(),
             underlying_tenor: Tenor::ThreeMonths,
@@ -716,7 +504,6 @@ mod tests {
 
     #[test]
     fn test_rates_swap_instruments() {
-        // IRS: valid + payer + end_date
         let irs = InterestRateSwap {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
             tenor: Tenor::FiveYears,
@@ -733,7 +520,6 @@ mod tests {
         assert!(irs.is_payer());
         assert_eq!(irs.end_date(), Date::from_ymd(2030, 1, 15).unwrap());
 
-        // OIS: valid + payer
         let ois = Ois {
             rate_index: RateIndex::Sofr,
             fixed_rate: 0.04,
@@ -747,7 +533,6 @@ mod tests {
         assert!(ois.validate().is_ok());
         assert!(ois.is_payer());
 
-        // OIS: invalid dates
         let bad_ois = Ois {
             rate_index: RateIndex::Sofr,
             fixed_rate: 0.04,
@@ -760,7 +545,6 @@ mod tests {
         };
         assert!(bad_ois.validate().is_err());
 
-        // BasisSwap: valid
         let basis = BasisSwap {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
             tenor: Tenor::FiveYears,
@@ -776,7 +560,6 @@ mod tests {
         };
         assert!(basis.validate().is_ok());
 
-        // BasisSwap: invalid tenor (Overnight)
         let bad_basis = BasisSwap {
             start_date: Date::from_ymd(2025, 1, 15).unwrap(),
             tenor: Tenor::Overnight,
@@ -795,7 +578,6 @@ mod tests {
 
     #[test]
     fn test_rates_exotic_instruments() {
-        // FRN: valid
         let frn = Frn {
             coupon_index: RateIndex::Sofr,
             spread: 0.001,
@@ -807,7 +589,6 @@ mod tests {
         };
         assert!(frn.validate().is_ok());
 
-        // FRN: invalid dates
         let bad_frn = Frn {
             coupon_index: RateIndex::Sofr,
             spread: 0.001,
@@ -819,7 +600,6 @@ mod tests {
         };
         assert!(bad_frn.validate().is_err());
 
-        // CMS: valid
         let cms = CmsSwap {
             cms_tenor: Tenor::TenYears,
             convexity_adjustment: Some(0.001),
@@ -831,7 +611,6 @@ mod tests {
         };
         assert!(cms.validate().is_ok());
 
-        // CMS: negative notional
         let bad_cms = CmsSwap {
             cms_tenor: Tenor::TenYears,
             convexity_adjustment: None,
@@ -843,7 +622,6 @@ mod tests {
         };
         assert!(bad_cms.validate().is_err());
 
-        // Inflation: valid
         let infl = InflationSwap {
             inflation_index: "CPI".to_string(),
             lag_months: 3,
@@ -856,7 +634,6 @@ mod tests {
         };
         assert!(infl.validate().is_ok());
 
-        // Inflation: invalid dates
         let bad_infl = InflationSwap {
             inflation_index: "CPI".to_string(),
             lag_months: 3,
@@ -869,7 +646,6 @@ mod tests {
         };
         assert!(bad_infl.validate().is_err());
 
-        // Inflation: empty index
         let empty_idx = InflationSwap {
             inflation_index: "".to_string(),
             lag_months: 3,
@@ -882,7 +658,6 @@ mod tests {
         };
         assert!(empty_idx.validate().is_err());
 
-        // SwapType equality
         assert_eq!(SwapType::ZeroCoupon, SwapType::ZeroCoupon);
         assert_ne!(SwapType::ZeroCoupon, SwapType::YearOnYear);
     }

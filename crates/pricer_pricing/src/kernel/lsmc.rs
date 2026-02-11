@@ -1,43 +1,12 @@
 //! Longstaff-Schwartz Monte Carlo (LSMC) regression for callable products.
-//!
-//! This module provides regression functionality for optimal exercise
-//! determination in American/Bermudan option pricing.
-//!
-//! # Algorithm
-//!
-//! At each exercise date, we regress the continuation value against
-//! basis functions of the state variables:
-//!
-//! ```text
-//! E[V_{t+1} | X_t] ≈ Σᵢ αᵢ φᵢ(X_t)
-//! ```
-//!
-//! where:
-//! - `V_{t+1}` is the discounted future option value
-//! - `X_t` is the state variable (e.g., short rate)
-//! - `φᵢ` are basis functions
-//! - `αᵢ` are regression coefficients
-//!
-//! # Example
-//!
-//! ```ignore
-//! use pricer_pricing::kernel::lsmc::{LSMCRegressor, BasisFunction};
-//!
-//! let regressor = LSMCRegressor::new(BasisFunction::Laguerre(3));
-//! let result = regressor.fit(&exercise_state, &future_values);
-//! ```
 
 /// Basis function type for LSMC regression.
-///
-/// Determines which polynomial basis is used for regression.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BasisFunction {
     /// Laguerre polynomials (standard in LSMC).
-    /// The parameter is the degree (number of terms).
     Laguerre(usize),
 
-    /// Simple power basis (1, x, x², ...).
-    /// The parameter is the maximum power.
+    /// Simple power basis (1, x, x^2, ...).
     Powers(usize),
 }
 
@@ -60,11 +29,9 @@ impl Default for BasisFunction {
 pub struct RegressionResult {
     /// Regression coefficients.
     pub coefficients: Vec<f64>,
-
     /// R-squared goodness of fit.
     pub r_squared: f64,
-
-    /// Number of paths used in regression (in-the-money paths).
+    /// Number of paths used in regression.
     pub num_samples: usize,
 }
 
@@ -106,12 +73,8 @@ impl RegressionResult {
 }
 
 /// LSMC regressor for continuation value estimation.
-///
-/// Implements the Longstaff-Schwartz algorithm for determining
-/// optimal exercise in American/Bermudan options.
 #[derive(Clone, Debug)]
 pub struct LSMCRegressor {
-    /// Basis function type.
     basis: BasisFunction,
 }
 
@@ -121,10 +84,6 @@ impl Default for LSMCRegressor {
 
 impl LSMCRegressor {
     /// Creates a new LSMC regressor.
-    ///
-    /// # Arguments
-    ///
-    /// * `basis` - Basis function type for regression
     #[must_use]
     pub const fn new(basis: BasisFunction) -> Self { Self { basis } }
 
@@ -133,17 +92,6 @@ impl LSMCRegressor {
     pub const fn basis(&self) -> BasisFunction { self.basis }
 
     /// Fits regression to estimate continuation values.
-    ///
-    /// # Arguments
-    ///
-    /// * `state_variables` - State variable values (e.g., short rates) for each
-    ///   path
-    /// * `future_values` - Discounted future option values for each path
-    /// * `in_the_money` - Optional filter for in-the-money paths only
-    ///
-    /// # Returns
-    ///
-    /// `RegressionResult` containing fitted coefficients.
     pub fn fit(
         &self,
         state_variables: &[f64],
@@ -157,7 +105,6 @@ impl LSMCRegressor {
             "State variables and future values must have same length"
         );
 
-        // Filter for in-the-money paths if mask provided
         let (x_filtered, y_filtered): (Vec<f64>, Vec<f64>) = if let Some(itm) = in_the_money {
             assert_eq!(
                 itm.len(),
@@ -177,26 +124,21 @@ impl LSMCRegressor {
 
         let num_samples = x_filtered.len();
 
-        // Need at least as many samples as basis functions
         if num_samples < self.basis.num_terms() + 1 {
             return RegressionResult::empty();
         }
 
-        // Build design matrix X and target vector Y
         let num_terms = self.basis.num_terms();
         let x_matrix = self.build_design_matrix(&x_filtered);
         let y_vec = &y_filtered;
 
-        // Solve normal equations: (X'X)β = X'Y
         let coefficients = self.solve_normal_equations(&x_matrix, y_vec, num_terms);
 
-        // Calculate R-squared
         let r_squared = self.calculate_r_squared(&x_filtered, &y_filtered, &coefficients);
 
         RegressionResult::new(coefficients, r_squared, num_samples)
     }
 
-    /// Builds the design matrix of basis function values.
     fn build_design_matrix(&self, x_values: &[f64]) -> Vec<Vec<f64>> {
         x_values
             .iter()
@@ -213,12 +155,6 @@ impl LSMCRegressor {
         }
     }
 
-    /// Evaluates Laguerre polynomial basis.
-    ///
-    /// L_0(x) = 1
-    /// L_1(x) = 1 - x
-    /// L_2(x) = 1 - 2x + x²/2
-    /// L_n(x) = ((2n-1-x)L_{n-1} - (n-1)L_{n-2}) / n
     fn laguerre_basis(x: f64, n: usize) -> Vec<f64> {
         let mut result = Vec::with_capacity(n);
 
@@ -226,13 +162,13 @@ impl LSMCRegressor {
             return result;
         }
 
-        result.push(1.0); // L_0
+        result.push(1.0);
 
         if n == 1 {
             return result;
         }
 
-        result.push(1.0 - x); // L_1
+        result.push(1.0 - x);
 
         for i in 2..n {
             let l_prev = result[i - 1];
@@ -244,103 +180,55 @@ impl LSMCRegressor {
         result
     }
 
-    /// Evaluates power basis (1, x, x², ...).
     fn power_basis(x: f64, n: usize) -> Vec<f64> { (0..n).map(|i| x.powi(i as i32)).collect() }
 
-    /// Solves normal equations using Cholesky decomposition.
     fn solve_normal_equations(
         &self,
         x_matrix: &[Vec<f64>],
         y_vec: &[f64],
         num_terms: usize,
     ) -> Vec<f64> {
-        let _n = x_matrix.len();
+        use nalgebra::{DMatrix, DVector};
 
-        // Compute X'X (symmetric)
-        let mut xtx = vec![vec![0.0; num_terms]; num_terms];
+        let mut xtx = DMatrix::zeros(num_terms, num_terms);
         for row in x_matrix {
             for i in 0..num_terms {
                 for j in 0..num_terms {
-                    xtx[i][j] += row[i] * row[j];
+                    xtx[(i, j)] += row[i] * row[j];
                 }
             }
         }
 
-        // Compute X'Y
-        let mut xty = vec![0.0; num_terms];
+        let mut xty = DVector::zeros(num_terms);
         for (row, &y) in x_matrix.iter().zip(y_vec.iter()) {
             for i in 0..num_terms {
                 xty[i] += row[i] * y;
             }
         }
 
-        // Add regularisation (ridge) for numerical stability
         let ridge = 1e-10;
         for i in 0..num_terms {
-            xtx[i][i] += ridge;
+            xtx[(i, i)] += ridge;
         }
 
-        // Solve using Cholesky decomposition
-        self.solve_cholesky(&xtx, &xty)
+        match nalgebra::Cholesky::new(xtx) {
+            Some(chol) => {
+                let solution = chol.solve(&xty);
+                solution.iter().copied().collect()
+            }
+            None => {
+                vec![0.0; num_terms]
+            }
+        }
     }
 
-    /// Solves Ax = b using Cholesky decomposition.
-    fn solve_cholesky(&self, a: &[Vec<f64>], b: &[f64]) -> Vec<f64> {
-        let n = b.len();
-
-        // Cholesky decomposition: A = LL'
-        let mut l = vec![vec![0.0; n]; n];
-        for i in 0..n {
-            for j in 0..=i {
-                let mut sum = a[i][j];
-                for k in 0..j {
-                    sum -= l[i][k] * l[j][k];
-                }
-                if i == j {
-                    if sum <= 0.0 {
-                        // Matrix not positive definite, use fallback
-                        return vec![0.0; n];
-                    }
-                    l[i][j] = sum.sqrt();
-                } else {
-                    l[i][j] = sum / l[j][j];
-                }
-            }
-        }
-
-        // Forward substitution: Ly = b
-        let mut y = vec![0.0; n];
-        for i in 0..n {
-            let mut sum = b[i];
-            for j in 0..i {
-                sum -= l[i][j] * y[j];
-            }
-            y[i] = sum / l[i][i];
-        }
-
-        // Backward substitution: L'x = y
-        let mut x = vec![0.0; n];
-        for i in (0..n).rev() {
-            let mut sum = y[i];
-            for j in (i + 1)..n {
-                sum -= l[j][i] * x[j];
-            }
-            x[i] = sum / l[i][i];
-        }
-
-        x
-    }
-
-    /// Calculates R-squared goodness of fit.
     fn calculate_r_squared(&self, x_values: &[f64], y_values: &[f64], coefficients: &[f64]) -> f64 {
         if x_values.is_empty() || coefficients.is_empty() {
             return 0.0;
         }
 
-        // Calculate mean of Y
         let y_mean = y_values.iter().sum::<f64>() / y_values.len() as f64;
 
-        // Calculate SS_tot and SS_res
         let mut ss_tot = 0.0;
         let mut ss_res = 0.0;
 
@@ -364,18 +252,6 @@ impl LSMCRegressor {
     }
 
     /// Determines optimal exercise decisions.
-    ///
-    /// Compares continuation value (from regression) with intrinsic value.
-    ///
-    /// # Arguments
-    ///
-    /// * `state_variables` - Current state for each path
-    /// * `intrinsic_values` - Exercise value for each path
-    /// * `regression_result` - Fitted regression coefficients
-    ///
-    /// # Returns
-    ///
-    /// Vector of booleans: true if exercise is optimal.
     #[must_use]
     pub fn determine_exercise(
         &self,
@@ -398,10 +274,6 @@ impl LSMCRegressor {
 mod tests {
     use super::*;
 
-    // =========================================================================
-    // BasisFunction Tests
-    // =========================================================================
-
     #[test]
     fn test_basis_function_num_terms() {
         assert_eq!(BasisFunction::Laguerre(3).num_terms(), 3);
@@ -413,10 +285,6 @@ mod tests {
         let default = BasisFunction::default();
         assert_eq!(default, BasisFunction::Laguerre(3));
     }
-
-    // =========================================================================
-    // RegressionResult Tests
-    // =========================================================================
 
     #[test]
     fn test_regression_result_new() {
@@ -436,15 +304,10 @@ mod tests {
 
     #[test]
     fn test_regression_result_predict() {
-        // Linear: y = 1 + 2x
         let result = RegressionResult::new(vec![1.0, 2.0], 1.0, 10);
         let prediction = result.predict(0.5, BasisFunction::Powers(2));
-        assert!((prediction - 2.0).abs() < 1e-10); // 1 + 2*0.5 = 2
+        assert!((prediction - 2.0).abs() < 1e-10);
     }
-
-    // =========================================================================
-    // LSMCRegressor Tests
-    // =========================================================================
 
     #[test]
     fn test_lsmc_regressor_new() {
@@ -462,10 +325,10 @@ mod tests {
     fn test_power_basis_evaluation() {
         let basis = LSMCRegressor::evaluate_basis(2.0, BasisFunction::Powers(4));
         assert_eq!(basis.len(), 4);
-        assert!((basis[0] - 1.0).abs() < 1e-10); // x^0 = 1
-        assert!((basis[1] - 2.0).abs() < 1e-10); // x^1 = 2
-        assert!((basis[2] - 4.0).abs() < 1e-10); // x^2 = 4
-        assert!((basis[3] - 8.0).abs() < 1e-10); // x^3 = 8
+        assert!((basis[0] - 1.0).abs() < 1e-10);
+        assert!((basis[1] - 2.0).abs() < 1e-10);
+        assert!((basis[2] - 4.0).abs() < 1e-10);
+        assert!((basis[3] - 8.0).abs() < 1e-10);
     }
 
     #[test]
@@ -474,13 +337,8 @@ mod tests {
         let basis = LSMCRegressor::evaluate_basis(x, BasisFunction::Laguerre(3));
         assert_eq!(basis.len(), 3);
 
-        // L_0(x) = 1
         assert!((basis[0] - 1.0).abs() < 1e-10);
-
-        // L_1(x) = 1 - x = 0.5
         assert!((basis[1] - 0.5).abs() < 1e-10);
-
-        // L_2(x) = 1 - 2x + x²/2 = 1 - 1 + 0.125 = 0.125
         assert!((basis[2] - 0.125).abs() < 1e-10);
     }
 
@@ -488,17 +346,14 @@ mod tests {
     fn test_fit_linear_regression() {
         let regressor = LSMCRegressor::new(BasisFunction::Powers(2));
 
-        // Data: y = 1 + 2x (exactly linear)
         let x: Vec<f64> = (0..100).map(|i| i as f64 / 100.0).collect();
         let y: Vec<f64> = x.iter().map(|&xi| 1.0 + 2.0 * xi).collect();
 
         let result = regressor.fit(&x, &y, None);
 
         assert!(!result.coefficients.is_empty());
-        // Should recover coefficients close to [1, 2]
         assert!((result.coefficients[0] - 1.0).abs() < 0.01);
         assert!((result.coefficients[1] - 2.0).abs() < 0.01);
-        // R-squared should be very close to 1
         assert!(result.r_squared > 0.99);
     }
 
@@ -506,7 +361,6 @@ mod tests {
     fn test_fit_with_noise() {
         let regressor = LSMCRegressor::new(BasisFunction::Powers(2));
 
-        // Data: y = 1 + 2x + noise
         let x: Vec<f64> = (0..100).map(|i| i as f64 / 100.0).collect();
         let y: Vec<f64> = x
             .iter()
@@ -517,10 +371,8 @@ mod tests {
         let result = regressor.fit(&x, &y, None);
 
         assert!(!result.coefficients.is_empty());
-        // Should approximately recover coefficients
         assert!((result.coefficients[0] - 1.0).abs() < 0.1);
         assert!((result.coefficients[1] - 2.0).abs() < 0.1);
-        // R-squared should be high but not perfect
         assert!(result.r_squared > 0.9);
     }
 
@@ -530,7 +382,7 @@ mod tests {
 
         let x: Vec<f64> = vec![0.1, 0.2, 0.3, 0.4, 0.5];
         let y: Vec<f64> = vec![1.2, 1.4, 1.6, 1.8, 2.0];
-        let itm = vec![true, true, true, false, false]; // Only use first 3
+        let itm = vec![true, true, true, false, false];
 
         let result = regressor.fit(&x, &y, Some(&itm));
 
@@ -541,13 +393,11 @@ mod tests {
     fn test_fit_insufficient_samples() {
         let regressor = LSMCRegressor::new(BasisFunction::Powers(5));
 
-        // Only 3 samples, but need 5+ for degree-5 polynomial
         let x = vec![0.1, 0.2, 0.3];
         let y = vec![1.0, 2.0, 3.0];
 
         let result = regressor.fit(&x, &y, None);
 
-        // Should return empty result
         assert!(result.coefficients.is_empty());
     }
 
@@ -555,26 +405,20 @@ mod tests {
     fn test_determine_exercise() {
         let regressor = LSMCRegressor::new(BasisFunction::Powers(2));
 
-        // Regression result: continuation value = 1 + x
         let regression = RegressionResult::new(vec![1.0, 1.0], 1.0, 100);
 
         let states = vec![0.0, 0.5, 1.0];
-        let intrinsic = vec![0.5, 2.0, 1.5]; // > or < continuation
-
-        // Continuation values: 1, 1.5, 2
-        // Intrinsic: 0.5, 2.0, 1.5
-        // Exercise if intrinsic > continuation AND intrinsic > 0
+        let intrinsic = vec![0.5, 2.0, 1.5];
 
         let decisions = regressor.determine_exercise(&states, &intrinsic, &regression);
 
-        assert!(!decisions[0]); // 0.5 < 1.0 → don't exercise
-        assert!(decisions[1]); // 2.0 > 1.5 → exercise
-        assert!(!decisions[2]); // 1.5 < 2.0 → don't exercise
+        assert!(!decisions[0]);
+        assert!(decisions[1]);
+        assert!(!decisions[2]);
     }
 
     #[test]
     fn test_laguerre_vs_powers() {
-        // Both should work for simple polynomial data
         let x: Vec<f64> = (0..50).map(|i| i as f64 / 50.0).collect();
         let y: Vec<f64> = x.iter().map(|&xi| 1.0 + xi + 0.5 * xi * xi).collect();
 
@@ -584,7 +428,6 @@ mod tests {
         let lag_result = laguerre_reg.fit(&x, &y, None);
         let pow_result = powers_reg.fit(&x, &y, None);
 
-        // Both should have good fit
         assert!(lag_result.r_squared > 0.9);
         assert!(pow_result.r_squared > 0.9);
     }

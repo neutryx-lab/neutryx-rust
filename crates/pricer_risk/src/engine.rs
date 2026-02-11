@@ -1,23 +1,4 @@
 //! Risk engine facade.
-//!
-//! Provides [`RiskEngine`] as the unified entry point for risk calculations,
-//! scenario analysis, and portfolio operations.
-//!
-//! # Overview
-//!
-//! The `RiskEngine` serves as the **single facade** for all risk-related
-//! computations:
-//!
-//! - **Greeks calculation**: Single trade and portfolio-level Greeks
-//! - **Scenario analysis**: Stress testing and P&L computation
-//! - **Portfolio operations**: Pricing, aggregation, XVA
-//!
-//! # Requirements
-//!
-//! - Requirement 5.1: RiskEngine facade
-//! - Requirement 5.2: compute_greeks() method
-//! - Requirement 5.3: AAD/Bump mode selection
-//! - Requirement 5.4: Risk factor identification
 
 use std::{collections::HashMap, time::Instant};
 
@@ -37,13 +18,13 @@ use crate::{
 /// Configuration for the RiskEngine.
 #[derive(Debug, Clone)]
 pub struct RiskEngineConfig {
-    /// Base risk configuration.
+    /// Risk configuration.
     pub risk_config: RiskConfig,
-    /// Parallel threshold (number of trades to trigger parallel processing).
+    /// Minimum trade count for parallel execution.
     pub parallel_threshold: usize,
     /// Batch size for parallel processing.
     pub batch_size: usize,
-    /// Continue processing on individual trade failures.
+    /// Whether to continue processing on individual trade errors.
     pub continue_on_error: bool,
 }
 
@@ -86,42 +67,11 @@ impl RiskEngineConfig {
     }
 }
 
-/// Risk calculation engine facade.
-///
-/// Provides unified access to all risk operations:
-/// - **Greeks computation**: AAD (Enzyme) or Bump-and-Revalue
-/// - **Scenario analysis**: Stress testing and P&L computation
-/// - **Portfolio operations**: Pricing, aggregation by netting set
-///
-/// # Architecture
-///
-/// `RiskEngine` follows the **Facade pattern**, internally delegating to:
-/// - `ScenarioEngine` for scenario execution
-/// - `Portfolio` methods for portfolio-level operations
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use pricer_risk::{RiskEngine, RiskEngineConfig, Portfolio};
-/// use infra_config::RiskConfig;
-///
-/// let config = RiskEngineConfig::new(RiskConfig::default());
-/// let engine = RiskEngine::new(config);
-///
-/// // Greeks calculation
-/// let result = engine.compute_greeks("T001", || Ok(greeks_result))?;
-///
-/// // Scenario analysis
-/// engine.add_scenario(scenario);
-/// let scenario_results = engine.run_all_scenarios(&portfolio, base_pricer)?;
-///
-/// // Portfolio pricing
-/// let prices = engine.price_portfolio(&portfolio, |trade| price_fn(trade));
-/// ```
+/// Risk calculation engine facade providing unified access to Greeks,
+/// scenarios, and portfolio operations.
 #[derive(Debug, Clone)]
 pub struct RiskEngine {
     config: RiskEngineConfig,
-    /// Internal scenario engine for stress testing.
     scenario_engine: ScenarioEngine<f64>,
 }
 
@@ -144,25 +94,19 @@ impl RiskEngine {
     /// Returns the active Greeks calculation method.
     pub fn greeks_method(&self) -> GreeksMethod { self.config.risk_config.greeks_method }
 
-    /// Checks if AAD is available.
-    ///
     /// Returns true if the `enzyme-ad` feature is enabled.
     #[cfg(feature = "enzyme-ad")]
     pub fn is_aad_available() -> bool { true }
 
-    /// Checks if AAD is available.
-    ///
     /// Returns false when `enzyme-ad` feature is not enabled.
     #[cfg(not(feature = "enzyme-ad"))]
     pub fn is_aad_available() -> bool { false }
 
-    /// Converts RiskConfig's GreeksMethod to GreeksMode.
     #[allow(dead_code)]
     fn to_greeks_mode(&self) -> Result<GreeksMode, RiskError> {
         match self.config.risk_config.greeks_method {
             GreeksMethod::Aad => {
                 if Self::is_aad_available() {
-                    // When enzyme-ad is available, use it
                     #[cfg(feature = "enzyme-ad")]
                     {
                         Ok(GreeksMode::EnzymeAAD)
@@ -179,7 +123,6 @@ impl RiskEngine {
         }
     }
 
-    /// Creates GreeksConfig from RiskConfig.
     #[allow(dead_code)]
     fn create_greeks_config(&self) -> Result<GreeksConfig, RiskError> {
         let mode = self.to_greeks_mode()?;
@@ -187,7 +130,6 @@ impl RiskEngine {
 
         let mut builder = GreeksConfig::builder().mode(mode);
 
-        // Apply bump sizes
         builder = builder
             .spot_bump_relative(bump_sizes.spot)
             .vol_bump_absolute(bump_sizes.vol)
@@ -198,14 +140,10 @@ impl RiskEngine {
             .map_err(|e| RiskError::Config(e.to_string()))
     }
 
-    /// Determines whether to use parallel processing.
     fn should_parallelize(&self, n_trades: usize) -> bool {
         n_trades >= self.config.parallel_threshold
     }
 
-    /// Computes Greeks for a trade using the internal pricing function.
-    ///
-    /// This is a placeholder that will be connected to actual pricing.
     fn compute_trade_greeks_internal<F>(
         &self,
         trade_id: &str,
@@ -230,33 +168,11 @@ impl RiskEngine {
         })
     }
 
-    /// Computes Greeks for a single trade.
-    ///
-    /// This method accepts a closure that performs the actual pricing,
-    /// allowing flexibility in how trades are priced.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Trade identifier
-    /// * `pricing_fn` - Closure that computes the Greeks
-    ///
-    /// # Returns
-    ///
-    /// `RiskResult` containing computed Greeks and metrics.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// let result = engine.compute_greeks("T001", || {
-    ///     // Your pricing logic here
-    ///     Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5))
-    /// })?;
-    /// ```
+    /// Computes Greeks for a single trade using the provided pricing closure.
     pub fn compute_greeks<F>(&self, trade_id: &str, pricing_fn: F) -> Result<RiskResult, RiskError>
     where
         F: Fn() -> Result<GreeksResult<f64>, RiskError>,
     {
-        // Validate AAD availability if requested
         if self.config.risk_config.greeks_method == GreeksMethod::Aad && !Self::is_aad_available() {
             return Err(RiskError::AadNotAvailable);
         }
@@ -264,18 +180,8 @@ impl RiskEngine {
         self.compute_trade_greeks_internal(trade_id, pricing_fn)
     }
 
-    /// Computes Greeks for a portfolio of trades.
-    ///
-    /// Automatically selects sequential or parallel processing based on
-    /// portfolio size and configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `trades` - Iterator of (trade_id, pricing_fn) pairs
-    ///
-    /// # Returns
-    ///
-    /// `PortfolioRiskResult` containing individual results and aggregations.
+    /// Computes Greeks for a portfolio, auto-selecting sequential or parallel
+    /// processing.
     pub fn compute_portfolio_greeks<'a, I, F>(
         &self,
         trades: I,
@@ -284,7 +190,6 @@ impl RiskEngine {
         I: IntoIterator<Item = (&'a str, F)>,
         F: Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync,
     {
-        // Validate AAD availability if requested
         if self.config.risk_config.greeks_method == GreeksMethod::Aad && !Self::is_aad_available() {
             return Err(RiskError::AadNotAvailable);
         }
@@ -302,7 +207,6 @@ impl RiskEngine {
         }
     }
 
-    /// Computes portfolio Greeks sequentially.
     fn compute_portfolio_greeks_sequential<F>(
         &self,
         trades: Vec<(&str, F)>,
@@ -333,7 +237,6 @@ impl RiskEngine {
         ))
     }
 
-    /// Computes portfolio Greeks in parallel.
     fn compute_portfolio_greeks_parallel<F>(
         &self,
         trades: Vec<(&str, F)>,
@@ -390,35 +293,7 @@ impl RiskEngine {
     /// Returns the second-order calculation mode.
     pub fn second_order_mode(&self) -> SecondOrderMode { self.config.risk_config.second_order_mode }
 
-    // =========================================================================
-    // Task 7.10: CSA Conditions Support
-    // =========================================================================
-
     /// Applies CSA (Credit Support Annex) conditions to an exposure value.
-    ///
-    /// This method adjusts the raw exposure based on collateral agreement
-    /// terms:
-    /// - Threshold: Amount below which no collateral is required
-    /// - Independent Amount: Pre-agreed collateral amount
-    ///
-    /// # Arguments
-    ///
-    /// * `exposure` - Raw uncollateralized exposure
-    /// * `collateral` - Collateral agreement parameters
-    ///
-    /// # Returns
-    ///
-    /// Collateralized exposure after applying CSA terms.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// use pricer_risk::portfolio::CollateralAgreement;
-    ///
-    /// let csa = CollateralAgreement::new(1_000_000.0, 0.0, 0.0, Currency::USD, 0.04)?;
-    /// let collateralised_exp = engine.apply_csa_adjustment(2_500_000.0, &csa);
-    /// assert_eq!(collateralised_exp, 1_500_000.0); // 2.5M - 1M threshold
-    /// ```
     pub fn apply_csa_adjustment(
         &self,
         exposure: f64,
@@ -428,15 +303,6 @@ impl RiskEngine {
     }
 
     /// Applies CSA conditions to a portfolio of exposures by netting set.
-    ///
-    /// # Arguments
-    ///
-    /// * `exposures` - Map of netting set ID to raw exposure
-    /// * `netting_sets` - Netting sets with collateral agreements
-    ///
-    /// # Returns
-    ///
-    /// Map of netting set ID to collateralized exposure.
     pub fn apply_csa_to_portfolio(
         &self,
         exposures: &std::collections::HashMap<String, f64>,
@@ -459,24 +325,7 @@ impl RiskEngine {
         collateralised
     }
 
-    // =========================================================================
-    // Task 7.11: Scenario-Based Greeks
-    // =========================================================================
-
     /// Computes Greeks under a specified scenario.
-    ///
-    /// This method applies market shifts from a scenario before computing
-    /// Greeks, allowing stress testing and scenario analysis.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Trade identifier
-    /// * `scenario` - Market scenario to apply
-    /// * `pricing_fn` - Closure that computes Greeks under the scenario
-    ///
-    /// # Returns
-    ///
-    /// `RiskResult` with Greeks computed under the scenario.
     pub fn compute_greeks_with_scenario<F>(
         &self,
         trade_id: &str,
@@ -495,18 +344,6 @@ impl RiskEngine {
     }
 
     /// Computes Greeks for multiple scenarios.
-    ///
-    /// This is useful for stress testing where Greeks need to be computed
-    /// under various market conditions.
-    ///
-    /// # Arguments
-    ///
-    /// * `trade_id` - Trade identifier
-    /// * `scenarios` - Vector of (scenario_name, pricing_fn) pairs
-    ///
-    /// # Returns
-    ///
-    /// Vector of `ScenarioGreeksResult` for each scenario.
     pub fn compute_greeks_multi_scenario<'a, I, F>(
         &self,
         trade_id: &str,
@@ -528,18 +365,6 @@ impl RiskEngine {
     }
 
     /// Computes scenario-based portfolio Greeks.
-    ///
-    /// Applies a scenario to an entire portfolio and computes Greeks for each
-    /// trade.
-    ///
-    /// # Arguments
-    ///
-    /// * `scenario_name` - Name of the scenario
-    /// * `trades` - Iterator of (trade_id, pricing_fn) pairs
-    ///
-    /// # Returns
-    ///
-    /// `ScenarioPortfolioResult` with aggregated Greeks under the scenario.
     pub fn compute_portfolio_greeks_with_scenario<'a, I, F>(
         &self,
         scenario_name: &str,
@@ -557,28 +382,7 @@ impl RiskEngine {
         })
     }
 
-    // =========================================================================
-    // Scenario Engine Delegation (Facade Pattern)
-    // =========================================================================
-
     /// Adds a scenario to the internal scenario engine.
-    ///
-    /// # Arguments
-    ///
-    /// * `scenario` - The scenario to register
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// use pricer_risk::{RiskEngine, scenarios::{Scenario, BumpScenario, RiskFactorShift}};
-    ///
-    /// let mut engine = RiskEngine::with_defaults();
-    /// let scenario = Scenario::named(
-    ///     "IR +100bp",
-    ///     BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.01)),
-    /// );
-    /// engine.add_scenario(scenario);
-    /// ```
     pub fn add_scenario(&mut self, scenario: Scenario<f64>) {
         self.scenario_engine.add_scenario(scenario);
     }
@@ -595,17 +399,6 @@ impl RiskEngine {
     pub fn scenarios(&self) -> &[Scenario<f64>] { self.scenario_engine.scenarios() }
 
     /// Executes a single scenario against a portfolio.
-    ///
-    /// # Arguments
-    ///
-    /// * `scenario` - The scenario to execute
-    /// * `base_value` - The base portfolio value (before stress)
-    /// * `pricer` - Function that returns the stressed value given scenario
-    ///   name
-    ///
-    /// # Returns
-    ///
-    /// `ScenarioResult` with P&L breakdown.
     pub fn run_scenario<F>(
         &mut self,
         scenario: &Scenario<f64>,
@@ -620,29 +413,6 @@ impl RiskEngine {
     }
 
     /// Executes all registered scenarios against a portfolio.
-    ///
-    /// # Arguments
-    ///
-    /// * `base_value` - The base portfolio value
-    /// * `pricer` - Function that returns the stressed value given scenario
-    ///   name
-    ///
-    /// # Returns
-    ///
-    /// Vector of `ScenarioResult` for all scenarios.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// let results = engine.run_all_scenarios(1_000_000.0, |scenario_name| {
-    ///     // Apply scenario and reprice portfolio
-    ///     match scenario_name {
-    ///         "IR +100bp" => 950_000.0,
-    ///         "IR -100bp" => 1_050_000.0,
-    ///         _ => 1_000_000.0,
-    ///     }
-    /// });
-    /// ```
     pub fn run_all_scenarios<F>(&mut self, base_value: f64, pricer: F) -> Vec<ScenarioResult<f64>>
     where
         F: Fn(&str) -> f64,
@@ -664,33 +434,7 @@ impl RiskEngine {
     /// Clears all scenarios and results.
     pub fn clear_scenarios(&mut self) { self.scenario_engine.clear(); }
 
-    // =========================================================================
-    // Portfolio Operations (Delegation)
-    // =========================================================================
-
     /// Prices all trades in a portfolio using the provided pricing function.
-    ///
-    /// Leverages Rayon for parallel execution when portfolio size exceeds
-    /// the parallel threshold.
-    ///
-    /// # Arguments
-    ///
-    /// * `portfolio` - The portfolio to price
-    /// * `pricer_fn` - Function that takes a trade reference and returns a
-    ///   price
-    ///
-    /// # Returns
-    ///
-    /// HashMap mapping trade IDs to prices.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// let prices = engine.price_portfolio(&portfolio, |trade| {
-    ///     // Monte Carlo or analytical pricing
-    ///     mc_pricer.price(trade.instrument())
-    /// });
-    /// ```
     pub fn price_portfolio<F>(&self, portfolio: &Portfolio, pricer_fn: F) -> HashMap<TradeId, f64>
     where
         F: Fn(&Trade) -> f64 + Sync,
@@ -700,16 +444,6 @@ impl RiskEngine {
 
     /// Aggregates values by netting set using the provided aggregation
     /// function.
-    ///
-    /// # Arguments
-    ///
-    /// * `portfolio` - The portfolio to aggregate
-    /// * `agg_fn` - Function that takes a slice of trades and returns an
-    ///   aggregated value
-    ///
-    /// # Returns
-    ///
-    /// HashMap mapping netting set IDs to aggregated values.
     pub fn aggregate_by_netting_set<F>(
         &self,
         portfolio: &Portfolio,
@@ -722,16 +456,6 @@ impl RiskEngine {
     }
 
     /// Computes total portfolio value using the provided pricing function.
-    ///
-    /// # Arguments
-    ///
-    /// * `portfolio` - The portfolio to price
-    /// * `pricer_fn` - Function that takes a trade reference and returns a
-    ///   price
-    ///
-    /// # Returns
-    ///
-    /// Total portfolio value (sum of all trade prices).
     pub fn total_portfolio_value<F>(&self, portfolio: &Portfolio, pricer_fn: F) -> f64
     where
         F: Fn(&Trade) -> f64 + Sync,
@@ -740,9 +464,6 @@ impl RiskEngine {
     }
 
     /// Returns a mutable reference to the internal scenario engine.
-    ///
-    /// Use this for advanced scenario operations not exposed through
-    /// the facade methods.
     pub fn scenario_engine_mut(&mut self) -> &mut ScenarioEngine<f64> { &mut self.scenario_engine }
 
     /// Returns a reference to the internal scenario engine.
@@ -750,12 +471,11 @@ impl RiskEngine {
 }
 
 /// Result of Greeks calculation under a specific scenario.
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ScenarioGreeksResult {
-    /// Name of the scenario applied.
+    /// Scenario name.
     pub scenario_name: String,
-    /// Greeks result under this scenario.
+    /// Risk result under this scenario.
     pub result: RiskResult,
 }
 
@@ -771,12 +491,11 @@ impl ScenarioGreeksResult {
 }
 
 /// Result of portfolio Greeks calculation under a specific scenario.
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ScenarioPortfolioResult {
-    /// Name of the scenario applied.
+    /// Scenario name.
     pub scenario_name: String,
-    /// Portfolio result under this scenario.
+    /// Portfolio risk result under this scenario.
     pub result: PortfolioRiskResult,
 }
 
@@ -796,10 +515,6 @@ mod tests {
     use infra_config::GreekType;
 
     use super::*;
-
-    // =========================================================================
-    // RiskEngineConfig Tests
-    // =========================================================================
 
     #[test]
     fn test_risk_engine_config_default() {
@@ -833,10 +548,6 @@ mod tests {
         assert_eq!(config.batch_size, 1);
     }
 
-    // =========================================================================
-    // RiskEngine Tests
-    // =========================================================================
-
     #[test]
     fn test_risk_engine_new() {
         let engine = RiskEngine::with_defaults();
@@ -845,7 +556,6 @@ mod tests {
 
     #[test]
     fn test_risk_engine_is_aad_available() {
-        // Without enzyme-ad feature, should return false
         #[cfg(not(feature = "enzyme-ad"))]
         assert!(!RiskEngine::is_aad_available());
 
@@ -1035,10 +745,6 @@ mod tests {
         assert_eq!(engine.second_order_mode(), SecondOrderMode::Serial);
     }
 
-    // =========================================================================
-    // Task 7.10: CSA Conditions Tests
-    // =========================================================================
-
     #[test]
     fn test_apply_csa_adjustment_below_threshold() {
         use infra_domain::market::Currency;
@@ -1047,7 +753,7 @@ mod tests {
 
         let engine = RiskEngine::with_defaults();
         let csa = CollateralAgreement::new(
-            1_000_000.0, // threshold
+            1_000_000.0,
             0.0,
             0.0,
             Currency::USD,
@@ -1055,7 +761,6 @@ mod tests {
         )
         .unwrap();
 
-        // Exposure below threshold: should return 0
         let result = engine.apply_csa_adjustment(500_000.0, &csa);
         assert_eq!(result, 0.0);
     }
@@ -1068,7 +773,7 @@ mod tests {
 
         let engine = RiskEngine::with_defaults();
         let csa = CollateralAgreement::new(
-            1_000_000.0, // threshold
+            1_000_000.0,
             0.0,
             0.0,
             Currency::USD,
@@ -1076,7 +781,6 @@ mod tests {
         )
         .unwrap();
 
-        // Exposure above threshold: 2.5M - 1M = 1.5M
         let result = engine.apply_csa_adjustment(2_500_000.0, &csa);
         assert!((result - 1_500_000.0).abs() < 1e-10);
     }
@@ -1089,15 +793,14 @@ mod tests {
 
         let engine = RiskEngine::with_defaults();
         let csa = CollateralAgreement::new(
-            1_000_000.0, // threshold
+            1_000_000.0,
             0.0,
-            200_000.0, // independent amount (we post)
+            200_000.0,
             Currency::USD,
             CollateralAgreement::bilateral_mpor(),
         )
         .unwrap();
 
-        // CE = max(E - Threshold - IA, 0) = max(2.5M - 1M - 0.2M, 0) = 1.3M
         let result = engine.apply_csa_adjustment(2_500_000.0, &csa);
         assert!((result - 1_300_000.0).abs() < 1e-10);
     }
@@ -1112,7 +815,6 @@ mod tests {
 
         let engine = RiskEngine::with_defaults();
 
-        // Create netting sets - one with CSA, one without
         let csa = CollateralAgreement::new(
             500_000.0,
             0.0,
@@ -1138,15 +840,9 @@ mod tests {
 
         let result = engine.apply_csa_to_portfolio(&exposures, &netting_sets);
 
-        // NS001: 1M - 500K threshold = 500K collateralised exposure
         assert!((result.get("NS001").unwrap() - 500_000.0).abs() < 1e-10);
-        // NS002: no CSA, so exposure remains unchanged
         assert!((result.get("NS002").unwrap() - 500_000.0).abs() < 1e-10);
     }
-
-    // =========================================================================
-    // Task 7.11: Scenario-Based Greeks Tests
-    // =========================================================================
 
     #[test]
     fn test_compute_greeks_with_scenario() {

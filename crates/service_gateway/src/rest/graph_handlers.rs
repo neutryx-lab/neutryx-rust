@@ -1,7 +1,4 @@
 //! Portfolio graph REST API handlers.
-//!
-//! Provides endpoints for Portfolio-level computation graph extraction
-//! with shared node deduplication and subgraph filtering.
 #![allow(dead_code)]
 
 use std::{
@@ -26,161 +23,159 @@ use tokio::sync::RwLock;
 
 use crate::error::ServerError;
 
-/// Query parameters for `/api/v1/portfolio/graph`
+/// Query parameters for `/api/v1/portfolio/graph`.
 #[derive(Debug, Deserialize)]
 pub struct GraphQueryParams {
-    /// Comma-separated trade IDs for subgraph extraction
-    /// Example: `?trade_ids=T001,T002,T003`
+    /// Comma-separated trade IDs for subgraph extraction.
     pub trade_ids: Option<String>,
 }
 
-/// Portfolio computation graph response
+/// Portfolio computation graph response.
 #[derive(Serialize)]
 pub struct PortfolioGraphResponse {
-    /// Graph nodes
+    /// Graph nodes.
     pub nodes: Vec<GraphNodeDto>,
-    /// Graph edges (as "links" for D3.js compatibility)
+    /// Graph edges (as "links" for D3.js compatibility).
     #[serde(rename = "links")]
     pub edges: Vec<GraphEdgeDto>,
-    /// Graph metadata
+    /// Graph metadata.
     pub metadata: PortfolioGraphMetadataDto,
 }
 
-/// Graph node DTO
+/// Graph node DTO.
 #[derive(Serialize)]
 pub struct GraphNodeDto {
-    /// Unique node identifier
+    /// Unique node identifier.
     pub id: String,
-    /// Node type (e.g. "Input", "Output", "Mul")
+    /// Node type (e.g.
     #[serde(rename = "type")]
     pub node_type: String,
-    /// Human-readable label
+    /// Human-readable label.
     pub label: String,
-    /// Computed value, if available
+    /// Computed value, if available.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<f64>,
-    /// Whether this node is a sensitivity (Greek) target
+    /// Whether this node is a sensitivity (Greek) target.
     pub is_sensitivity_target: bool,
-    /// Grouping category for layout (e.g. "Sensitivity", "Output")
+    /// Grouping category for layout (e.g.
     pub group: String,
-    /// Trade IDs that share this node
+    /// Trade IDs that share this node.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub trade_ids: Vec<String>,
 }
 
-/// Graph edge DTO
+/// Graph edge DTO.
 #[derive(Serialize)]
 pub struct GraphEdgeDto {
-    /// Source node ID
+    /// Source node ID.
     pub source: String,
-    /// Target node ID
+    /// Target node ID.
     pub target: String,
-    /// Edge weight (optional)
+    /// Edge weight (optional).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weight: Option<f64>,
 }
 
-/// Portfolio graph metadata DTO
+/// Portfolio graph metadata DTO.
 #[derive(Serialize)]
 pub struct PortfolioGraphMetadataDto {
-    /// Total number of nodes
+    /// Total number of nodes.
     pub node_count: usize,
-    /// Total number of edges
+    /// Total number of edges.
     pub edge_count: usize,
-    /// Maximum graph depth
+    /// Maximum graph depth.
     pub depth: usize,
-    /// ISO 8601 timestamp of graph generation
+    /// ISO 8601 timestamp of graph generation.
     pub generated_at: String,
-    /// Number of trades in the portfolio
+    /// Number of trades in the portfolio.
     pub trade_count: usize,
-    /// Number of nodes shared across trades
+    /// Number of nodes shared across trades.
     pub shared_node_count: usize,
-    /// Ratio of shared to total nodes (deduplication efficiency)
+    /// Ratio of shared to total nodes (deduplication efficiency).
     pub optimisation_ratio: f64,
-    /// True when node count exceeds 10 000
+    /// True when node count exceeds 10 000.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub large_graph_warning: bool,
 }
 
-/// Trade list query parameters
+/// Trade list query parameters.
 #[derive(Debug, Deserialize)]
 pub struct TradeListQueryParams {
-    /// Filter by instrument type (e.g., "vanilla", "forward")
+    /// Filter by instrument type (e.g., "vanilla", "forward").
     pub instrument_type: Option<String>,
-    /// Filter by currency (e.g., "USD", "EUR")
+    /// Filter by currency (e.g., "USD", "EUR").
     pub currency: Option<String>,
 }
 
-/// Trade summary for listing
+/// Trade summary for listing.
 #[derive(Serialize)]
 pub struct TradeSummaryDto {
-    /// Trade identifier
+    /// Trade identifier.
     pub id: String,
-    /// Instrument type (e.g. "IRS", "FX Forward")
+    /// Instrument type (e.g.
     pub instrument_type: String,
-    /// Currency code (e.g. "USD", "EUR")
+    /// Currency code (e.g.
     pub currency: String,
-    /// Notional amount
+    /// Notional amount.
     pub notional: f64,
-    /// Maturity date (last cashflow date) as ISO 8601 string, e.g.,
-    /// "2025-07-15"
+    /// Maturity date (last cashflow date) as ISO 8601 string, e.g.,.
     pub maturity: String,
-    /// Counterparty name
+    /// Counterparty name.
     pub counterparty: String,
-    /// Trading book
+    /// Trading book.
     pub book: String,
 }
 
-/// Trade list response
+/// Trade list response.
 #[derive(Serialize)]
 pub struct TradeListResponse {
-    /// Filtered trade summaries
+    /// Filtered trade summaries.
     pub trades: Vec<TradeSummaryDto>,
-    /// Aggregate statistics across all trades
+    /// Aggregate statistics across all trades.
     pub statistics: TradeStatisticsDto,
 }
 
-/// Trade statistics
+/// Trade statistics.
 #[derive(Serialize)]
 pub struct TradeStatisticsDto {
-    /// Total number of trades
+    /// Total number of trades.
     pub total_count: usize,
-    /// Count by instrument type
+    /// Count by instrument type.
     pub by_instrument_type: HashMap<String, usize>,
-    /// Count by currency
+    /// Count by currency.
     pub by_currency: HashMap<String, usize>,
-    /// Sum of all notional amounts
+    /// Sum of all notional amounts.
     pub total_notional: f64,
 }
 
-/// Shared application state for graph handlers
+/// Shared application state for graph handlers.
 pub struct GraphAppState {
-    /// `FpML` trades loaded from files
+    /// `FpML` trades loaded from files.
     pub trades: Vec<FpmlTrade>,
-    /// Graph cache with TTL
+    /// Graph cache with TTL.
     pub graph_cache: RwLock<GraphCache>,
-    /// Cache TTL in seconds
+    /// Cache TTL in seconds.
     pub cache_ttl_secs: u64,
 }
 
-/// Graph cache entry
+/// Graph cache entry.
 struct CacheEntry {
     graph: PortfolioComputationGraph,
     created_at: Instant,
 }
 
-/// Simple graph cache with TTL
+/// Simple graph cache with TTL.
 pub struct GraphCache {
-    /// Full portfolio graph cache
+    /// Full portfolio graph cache.
     full_graph: Option<CacheEntry>,
-    /// Subgraph cache by `trade_ids` key
+    /// Subgraph cache by `trade_ids` key.
     subgraphs: HashMap<String, CacheEntry>,
-    /// TTL in seconds
+    /// TTL in seconds.
     ttl_secs: u64,
 }
 
 impl GraphCache {
-    /// Create a new cache with specified TTL
+    /// Create a new cache with specified TTL.
     pub fn new(ttl_secs: u64) -> Self {
         Self {
             full_graph: None,
@@ -189,7 +184,7 @@ impl GraphCache {
         }
     }
 
-    /// Get cached full graph if still valid
+    /// Get cached full graph if still valid.
     fn get_full_graph(&self) -> Option<&PortfolioComputationGraph> {
         self.full_graph.as_ref().and_then(|entry| {
             if entry.created_at.elapsed().as_secs() < self.ttl_secs {
@@ -200,7 +195,7 @@ impl GraphCache {
         })
     }
 
-    /// Set full graph cache
+    /// Set full graph cache.
     fn set_full_graph(&mut self, graph: PortfolioComputationGraph) {
         self.full_graph = Some(CacheEntry {
             graph,
@@ -208,7 +203,7 @@ impl GraphCache {
         });
     }
 
-    /// Get cached subgraph if still valid
+    /// Get cached subgraph if still valid.
     fn get_subgraph(&self, key: &str) -> Option<&PortfolioComputationGraph> {
         self.subgraphs.get(key).and_then(|entry| {
             if entry.created_at.elapsed().as_secs() < self.ttl_secs {
@@ -219,7 +214,7 @@ impl GraphCache {
         })
     }
 
-    /// Set subgraph cache
+    /// Set subgraph cache.
     fn set_subgraph(&mut self, key: String, graph: PortfolioComputationGraph) {
         self.subgraphs.insert(
             key,
@@ -230,7 +225,7 @@ impl GraphCache {
         );
     }
 
-    /// Clean expired entries
+    /// Clean expired entries.
     fn _cleanup_expired(&mut self) {
         if let Some(entry) = &self.full_graph {
             if entry.created_at.elapsed().as_secs() >= self.ttl_secs {
@@ -260,7 +255,7 @@ impl GraphAppState {
         })
     }
 
-    /// Create with default settings (loads all `FpML` files, 5 second cache)
+    /// Create with default settings (loads all `FpML` files, 5 second cache).
     pub fn default_sample() -> Result<Self, ServerError> { Self::new_with_sample(0, 5) }
 
     /// Returns the number of loaded trades.
@@ -277,7 +272,6 @@ fn load_fpml_trades() -> Result<Vec<FpmlTrade>, String> {
 
     let mut trades = Vec::new();
 
-    // Directories to scan for FpML files
     let subdirs = ["rates", "fx", "equity", "credit", "commodity"];
 
     for subdir in &subdirs {
@@ -327,19 +321,16 @@ pub async fn get_portfolio_graph(
     let timeout_ms = 500u64;
     let start_time = Instant::now();
 
-    // Parse trade_ids if provided
     let trade_ids: Option<Vec<String>> = params
         .trade_ids
         .map(|s| s.split(',').map(|s| s.trim().to_string()).collect());
 
-    // Check if we need a subgraph
     let cache_key = trade_ids.as_ref().map(|ids| {
         let mut sorted = ids.clone();
         sorted.sort();
         sorted.join(",")
     });
 
-    // Try to get from cache first
     {
         let cache = state.graph_cache.read().await;
         if let Some(key) = &cache_key {
@@ -351,7 +342,6 @@ pub async fn get_portfolio_graph(
         }
     }
 
-    // Extract graph with timeout protection
     let graph = tokio::time::timeout(Duration::from_millis(timeout_ms), async {
         extract_fpml_portfolio_graph(&state.trades, trade_ids.as_deref())
     })
@@ -369,7 +359,6 @@ pub async fn get_portfolio_graph(
         }
     })?;
 
-    // Check for large graph warning
     let large_graph_warning = graph.metadata.node_count > 10_000;
     if large_graph_warning {
         tracing::warn!(
@@ -378,7 +367,6 @@ pub async fn get_portfolio_graph(
         );
     }
 
-    // Cache the result
     {
         let mut cache = state.graph_cache.write().await;
         if let Some(key) = cache_key {
@@ -388,7 +376,6 @@ pub async fn get_portfolio_graph(
         }
     }
 
-    // Log extraction time
     let elapsed = start_time.elapsed();
     tracing::debug!(
         "Graph extraction completed in {:?} ({} nodes, {} edges)",
@@ -416,10 +403,8 @@ pub async fn get_portfolio_trades(
         let instrument_type = get_instrument_type_name(&trade.trade_type);
         let (currency, notional, maturity, counterparty, book) = get_trade_details(trade);
 
-        // Apply filters
         if let Some(ref filter_type) = params.instrument_type {
             if instrument_type != *filter_type {
-                // Still count for statistics
                 *by_instrument_type
                     .entry(instrument_type.clone())
                     .or_insert(0) += 1;
@@ -439,7 +424,6 @@ pub async fn get_portfolio_trades(
             }
         }
 
-        // Update statistics
         *by_instrument_type
             .entry(instrument_type.clone())
             .or_insert(0) += 1;
@@ -499,10 +483,8 @@ fn get_instrument_type_name(trade_type: &TradeType) -> String {
     }
 }
 
-/// Extract currency, notional, maturity date, counterparty, and book from an
-/// `FpML` trade.
+/// Extract currency, notional, maturity date, counterparty, and book from an.
 fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String) {
-    // Get currency and notional from first leg
     let (currency, notional) = trade
         .first_leg()
         .map(|leg| {
@@ -516,7 +498,6 @@ fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String)
         })
         .unwrap_or_else(|| ("USD".to_string(), 0.0));
 
-    // Get maturity as the last cashflow payment date (formatted as ISO 8601)
     let maturity = trade
         .all_cashflows()
         .map(|cf| cf.payment_date)
@@ -524,7 +505,6 @@ fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String)
         .map(|last_date| last_date.to_string())
         .unwrap_or_else(|| "N/A".to_string());
 
-    // Get counterparty from metadata
     let counterparty = trade
         .metadata
         .counterparty
@@ -532,7 +512,6 @@ fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String)
         .map(|cp| cp.as_str().to_string())
         .unwrap_or_else(|| "Unknown".to_string());
 
-    // Get book from metadata
     let book = trade
         .metadata
         .book
@@ -543,8 +522,7 @@ fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String)
     (currency, notional, maturity, counterparty, book)
 }
 
-/// Extract portfolio graph from `FpML` trades, optionally filtered to specific
-/// trades
+/// Extract portfolio graph from `FpML` trades, optionally filtered to specific.
 fn extract_fpml_portfolio_graph(
     trades: &[FpmlTrade],
     trade_ids: Option<&[String]>,
@@ -553,23 +531,18 @@ fn extract_fpml_portfolio_graph(
         .with_timeout(500)
         .with_capacity(5_000, 10_000);
 
-    // First, extract individual trade graphs
     let mut trade_graphs: HashMap<String, ComputationGraph> = HashMap::new();
 
-    // Get all trade IDs
     let all_trade_ids: Vec<String> = trades.iter().map(|t| t.id.to_string()).collect();
 
-    // For each trade, create a graph based on its type
     for trade in trades {
         let trade_id = trade.id.to_string();
         let graph = create_fpml_trade_graph(&trade_id, trade);
         trade_graphs.insert(trade_id, graph);
     }
 
-    // Extract the full portfolio graph
     let full_graph = extractor.extract_portfolio_graph(&all_trade_ids, &trade_graphs)?;
 
-    // If specific trade_ids requested, extract subgraph
     if let Some(selected_ids) = trade_ids {
         extractor.extract_subgraph(&full_graph, selected_ids)
     } else {
@@ -577,7 +550,7 @@ fn extract_fpml_portfolio_graph(
     }
 }
 
-/// Create a simplified computation graph for an `FpML` trade
+/// Create a simplified computation graph for an `FpML` trade.
 fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGraph {
     use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
@@ -658,7 +631,7 @@ fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGrap
     builder.build(Some(trade_id.to_string()))
 }
 
-/// Convert `PortfolioComputationGraph` to response DTO
+/// Convert `PortfolioComputationGraph` to response DTO.
 fn convert_to_response(graph: &PortfolioComputationGraph) -> PortfolioGraphResponse {
     let nodes: Vec<GraphNodeDto> = graph
         .nodes
@@ -708,9 +681,8 @@ mod tests {
 
     #[test]
     fn test_graph_cache_ttl() {
-        let mut cache = GraphCache::new(1); // 1 second TTL
+        let mut cache = GraphCache::new(1);
 
-        // Create a minimal graph for testing
         let graph = PortfolioComputationGraph {
             nodes: vec![],
             edges: vec![],
@@ -728,7 +700,6 @@ mod tests {
         cache.set_full_graph(graph);
         assert!(cache.get_full_graph().is_some());
 
-        // Wait for TTL to expire
         std::thread::sleep(std::time::Duration::from_secs(2));
         assert!(cache.get_full_graph().is_none());
     }

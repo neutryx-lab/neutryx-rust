@@ -1,16 +1,10 @@
 //! Trade-specific error types.
-//!
-//! This module provides structured error handling for trade construction
-//! and validation.
 
 use thiserror::Error;
 
 use crate::error::DateError;
 
 /// Errors that can occur during trade construction and validation.
-///
-/// Provides structured error handling for trade builders with
-/// descriptive context for each failure mode.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum TradeError {
     /// Invalid schedule provided (e.g., empty, dates out of order).

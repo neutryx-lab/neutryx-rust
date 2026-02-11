@@ -1,64 +1,10 @@
 //! Extended workspace with checkpoint and path-dependent option support.
-//!
-//! This module provides `CheckpointWorkspace`, which extends the basic
-//! `PathWorkspace` with additional functionality for:
-//! - Path observers for path-dependent options (Asian, Barrier, Lookback)
-//! - Checkpoint state management references
-//! - Safe clearing of all state for reuse
-//!
-//! # Design
-//!
-//! The workspace maintains per-path observers that accumulate streaming
-//! statistics during the forward pass. These can be snapshotted for
-//! checkpointing and restored during reverse-mode AD.
-//!
-//! # Enzyme AD Compatibility
-//!
-//! All buffer operations are designed for buffer hoisting, enabling Enzyme
-//! to optimise the inner simulation loop.
 
 use num_traits::Float;
 
 use crate::methods::path_dependent::{PathObserver, PathObserverState};
 
 /// Extended workspace with checkpoint and path-dependent support.
-///
-/// This workspace extends the basic simulation buffers with:
-/// - Per-path observers for streaming statistics accumulation
-/// - Methods for checkpoint state management
-/// - Safe clearing functionality for workspace reuse
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type (e.g., `f64`, `f32`, dual numbers)
-///
-/// # Memory Layout
-///
-/// - `randoms`: n_paths × n_steps (random normal samples)
-/// - `paths`: n_paths × (n_steps + 1) (price paths including initial spot)
-/// - `payoffs`: n_paths (terminal payoff values)
-/// - `observers`: n_paths (path statistics observers)
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_pricing::mc::CheckpointWorkspace;
-///
-/// let mut workspace: CheckpointWorkspace<f64> = CheckpointWorkspace::new(1000, 252);
-///
-/// // Ensure capacity for simulation
-/// workspace.ensure_capacity(1000, 252);
-///
-/// // Access observer for path 0
-/// workspace.observer_mut(0).observe(100.0);
-/// workspace.observer_mut(0).observe(105.0);
-///
-/// // Get statistics
-/// let avg = workspace.observer(0).arithmetic_average();
-///
-/// // Clear for reuse
-/// workspace.clear_all();
-/// ```
 #[derive(Clone)]
 pub struct CheckpointWorkspace<T: Float> {
     /// Random normal samples (n_paths × n_steps).
@@ -81,21 +27,6 @@ pub struct CheckpointWorkspace<T: Float> {
 
 impl<T: Float> CheckpointWorkspace<T> {
     /// Creates a new checkpoint-enabled workspace with the specified initial
-    /// capacity.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_paths` - Initial capacity for number of paths
-    /// * `n_steps` - Initial capacity for number of steps
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use pricer_pricing::mc::CheckpointWorkspace;
-    ///
-    /// let workspace: CheckpointWorkspace<f64> = CheckpointWorkspace::new(10_000, 252);
-    /// assert_eq!(workspace.capacity_paths(), 10_000);
-    /// ```
     pub fn new(n_paths: usize, n_steps: usize) -> Self {
         let randoms_size = n_paths * n_steps;
         let paths_size = n_paths * (n_steps + 1);
@@ -113,19 +44,10 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Ensures workspace has sufficient capacity for the given dimensions.
-    ///
-    /// Grows buffers if necessary using a doubling strategy. Never shrinks
-    /// to avoid repeated allocations.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_paths` - Required number of paths
-    /// * `n_steps` - Required number of steps
     pub fn ensure_capacity(&mut self, n_paths: usize, n_steps: usize) {
         let needs_growth = n_paths > self.capacity_paths || n_steps > self.capacity_steps;
 
         if needs_growth {
-            // Use doubling strategy for amortized O(1) growth
             let new_capacity_paths = n_paths.max(self.capacity_paths * 2);
             let new_capacity_steps = n_steps.max(self.capacity_steps * 2);
 
@@ -136,7 +58,6 @@ impl<T: Float> CheckpointWorkspace<T> {
             self.paths.resize(paths_size, T::zero());
             self.payoffs.resize(new_capacity_paths, T::zero());
 
-            // Grow observers
             while self.observers.len() < new_capacity_paths {
                 self.observers.push(PathObserver::new());
             }
@@ -150,9 +71,6 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Resets logical size without deallocating buffers.
-    ///
-    /// Retains capacity for efficient reuse. Does NOT reset observer states.
-    /// Use [`clear_all`](Self::clear_all) to reset everything.
     #[inline]
     pub fn reset(&mut self) {
         self.size_paths = 0;
@@ -160,8 +78,6 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Resets all observers to their initial state.
-    ///
-    /// Call this before starting a new simulation batch.
     #[inline]
     pub fn reset_observers(&mut self) {
         for observer in &mut self.observers[..self.size_paths] {
@@ -170,18 +86,7 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Clears all state for safe reuse.
-    ///
-    /// This method:
-    /// - Zeroes all buffer contents (randoms, paths, payoffs)
-    /// - Resets all observer states
-    /// - Retains capacity for efficient reuse
-    ///
-    /// # Use Case
-    ///
-    /// Call this when switching between different simulations to ensure
-    /// no stale state affects the new computation.
     pub fn clear_all(&mut self) {
-        // Zero buffer contents within logical size
         let randoms_len = self.size_paths * self.size_steps;
         for i in 0..randoms_len {
             self.randoms[i] = T::zero();
@@ -196,13 +101,8 @@ impl<T: Float> CheckpointWorkspace<T> {
             self.payoffs[i] = T::zero();
         }
 
-        // Reset observers
         self.reset_observers();
     }
-
-    // ========================================================================
-    // Capacity and Size Accessors
-    // ========================================================================
 
     /// Returns current path capacity.
     #[inline]
@@ -219,10 +119,6 @@ impl<T: Float> CheckpointWorkspace<T> {
     /// Returns logical step size.
     #[inline]
     pub fn size_steps(&self) -> usize { self.size_steps }
-
-    // ========================================================================
-    // Buffer Accessors
-    // ========================================================================
 
     /// Returns mutable slice of random buffer for filling.
     #[inline]
@@ -260,19 +156,7 @@ impl<T: Float> CheckpointWorkspace<T> {
     #[inline]
     pub fn payoffs_mut(&mut self) -> &mut [T] { &mut self.payoffs[..self.size_paths] }
 
-    // ========================================================================
-    // Observer Accessors
-    // ========================================================================
-
     /// Returns a reference to the observer for a specific path.
-    ///
-    /// # Arguments
-    ///
-    /// * `path_idx` - Path index (0-based)
-    ///
-    /// # Panics
-    ///
-    /// Panics if `path_idx >= size_paths`.
     #[inline]
     pub fn observer(&self, path_idx: usize) -> &PathObserver<T> {
         debug_assert!(path_idx < self.size_paths, "path_idx out of bounds");
@@ -280,14 +164,6 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Returns a mutable reference to the observer for a specific path.
-    ///
-    /// # Arguments
-    ///
-    /// * `path_idx` - Path index (0-based)
-    ///
-    /// # Panics
-    ///
-    /// Panics if `path_idx >= size_paths`.
     #[inline]
     pub fn observer_mut(&mut self, path_idx: usize) -> &mut PathObserver<T> {
         debug_assert!(path_idx < self.size_paths, "path_idx out of bounds");
@@ -304,15 +180,7 @@ impl<T: Float> CheckpointWorkspace<T> {
         &mut self.observers[..self.size_paths]
     }
 
-    // ========================================================================
-    // Checkpoint Support
-    // ========================================================================
-
     /// Creates a snapshot of all observer states for checkpointing.
-    ///
-    /// # Returns
-    ///
-    /// A vector of observer states that can be saved to a checkpoint.
     pub fn snapshot_observers(&self) -> Vec<PathObserverState<T>> {
         self.observers[..self.size_paths]
             .iter()
@@ -321,14 +189,6 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Restores all observers from a checkpointed state.
-    ///
-    /// # Arguments
-    ///
-    /// * `states` - Vector of observer states to restore from
-    ///
-    /// # Panics
-    ///
-    /// Panics if `states.len() != size_paths`.
     pub fn restore_observers(&mut self, states: &[PathObserverState<T>]) {
         assert_eq!(
             states.len(),
@@ -344,8 +204,6 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Returns the approximate memory usage in bytes.
-    ///
-    /// This is useful for memory budget calculations.
     pub fn memory_usage(&self) -> usize {
         let randoms_bytes = self.randoms.len() * std::mem::size_of::<T>();
         let paths_bytes = self.paths.len() * std::mem::size_of::<T>();
@@ -356,15 +214,9 @@ impl<T: Float> CheckpointWorkspace<T> {
     }
 
     /// Returns the estimated state size per path for checkpoint calculations.
-    ///
-    /// This includes the current price value and observer state.
     pub fn state_size_per_path(&self) -> usize {
         std::mem::size_of::<T>() + std::mem::size_of::<PathObserverState<T>>()
     }
-
-    // ========================================================================
-    // Indexing Helpers
-    // ========================================================================
 
     /// Returns the index into the paths buffer for a specific path and step.
     #[inline]
@@ -389,10 +241,6 @@ mod tests {
 
     use super::*;
 
-    // ========================================================================
-    // Construction Tests
-    // ========================================================================
-
     #[test]
     fn test_workspace_new() {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(100, 10);
@@ -414,27 +262,18 @@ mod tests {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(100, 10);
         assert_eq!(ws.observers().len(), 100);
 
-        // All observers should be in initial state
         for observer in ws.observers() {
             assert_eq!(observer.count(), 0);
         }
     }
 
-    // ========================================================================
-    // Buffer Size Tests
-    // ========================================================================
-
     #[test]
     fn test_workspace_buffer_sizes() {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(100, 10);
         assert_eq!(ws.randoms().len(), 100 * 10);
-        assert_eq!(ws.paths().len(), 100 * 11); // n_steps + 1
+        assert_eq!(ws.paths().len(), 100 * 11);
         assert_eq!(ws.payoffs().len(), 100);
     }
-
-    // ========================================================================
-    // Capacity Management Tests
-    // ========================================================================
 
     #[test]
     fn test_workspace_ensure_capacity_growth() {
@@ -446,7 +285,6 @@ mod tests {
         assert_eq!(ws.size_paths(), 200);
         assert_eq!(ws.size_steps(), 20);
 
-        // Observers should also grow
         assert!(ws.observers.len() >= 200);
     }
 
@@ -464,15 +302,10 @@ mod tests {
         assert_eq!(ws.size_steps(), 10);
     }
 
-    // ========================================================================
-    // Observer Tests
-    // ========================================================================
-
     #[test]
     fn test_workspace_observer_access() {
         let mut ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(10, 5);
 
-        // Modify observer for path 0
         ws.observer_mut(0).observe(100.0);
         ws.observer_mut(0).observe(110.0);
 
@@ -484,7 +317,6 @@ mod tests {
     fn test_workspace_reset_observers() {
         let mut ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(10, 5);
 
-        // Add observations
         ws.observer_mut(0).observe(100.0);
         ws.observer_mut(1).observe(200.0);
         ws.observer_mut(2).observe(300.0);
@@ -492,7 +324,6 @@ mod tests {
         assert_eq!(ws.observer(0).count(), 1);
         assert_eq!(ws.observer(1).count(), 1);
 
-        // Reset all
         ws.reset_observers();
 
         assert_eq!(ws.observer(0).count(), 0);
@@ -500,24 +331,17 @@ mod tests {
         assert_eq!(ws.observer(2).count(), 0);
     }
 
-    // ========================================================================
-    // Clear All Tests
-    // ========================================================================
-
     #[test]
     fn test_workspace_clear_all() {
         let mut ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(10, 5);
 
-        // Fill with data
         ws.randoms_mut()[0] = 1.0;
         ws.paths_mut()[0] = 100.0;
         ws.payoffs_mut()[0] = 10.0;
         ws.observer_mut(0).observe(100.0);
 
-        // Clear
         ws.clear_all();
 
-        // Verify cleared
         assert_eq!(ws.randoms()[0], 0.0);
         assert_eq!(ws.paths()[0], 0.0);
         assert_eq!(ws.payoffs()[0], 0.0);
@@ -536,15 +360,10 @@ mod tests {
         assert_eq!(ws.capacity_steps(), cap_steps);
     }
 
-    // ========================================================================
-    // Checkpoint Support Tests
-    // ========================================================================
-
     #[test]
     fn test_workspace_snapshot_observers() {
         let mut ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(3, 5);
 
-        // Add observations to each path
         ws.observer_mut(0).observe(100.0);
         ws.observer_mut(0).observe(110.0);
         ws.observer_mut(1).observe(200.0);
@@ -552,7 +371,6 @@ mod tests {
         ws.observer_mut(2).observe(310.0);
         ws.observer_mut(2).observe(320.0);
 
-        // Snapshot
         let states = ws.snapshot_observers();
 
         assert_eq!(states.len(), 3);
@@ -566,19 +384,15 @@ mod tests {
         let mut ws1: CheckpointWorkspace<f64> = CheckpointWorkspace::new(3, 5);
         let mut ws2: CheckpointWorkspace<f64> = CheckpointWorkspace::new(3, 5);
 
-        // Add observations to ws1
         ws1.observer_mut(0).observe(100.0);
         ws1.observer_mut(0).observe(110.0);
         ws1.observer_mut(1).observe(200.0);
         ws1.observer_mut(2).observe(300.0);
 
-        // Snapshot
         let states = ws1.snapshot_observers();
 
-        // Restore to ws2
         ws2.restore_observers(&states);
 
-        // Verify
         assert_eq!(ws2.observer(0).count(), 2);
         assert_relative_eq!(ws2.observer(0).arithmetic_average(), 105.0, epsilon = 1e-10);
         assert_eq!(ws2.observer(1).count(), 1);
@@ -589,25 +403,18 @@ mod tests {
     #[should_panic(expected = "Observer state count mismatch")]
     fn test_workspace_restore_observers_size_mismatch() {
         let mut ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(5, 3);
-        let states = vec![PathObserverState::<f64>::default(); 3]; // Wrong size
+        let states = vec![PathObserverState::<f64>::default(); 3];
 
-        ws.restore_observers(&states); // Should panic
+        ws.restore_observers(&states);
     }
-
-    // ========================================================================
-    // Memory Usage Tests
-    // ========================================================================
 
     #[test]
     fn test_workspace_memory_usage() {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(100, 10);
         let usage = ws.memory_usage();
 
-        // Should be positive and reasonable
         assert!(usage > 0);
 
-        // Rough estimate: randoms (100*10*8) + paths (100*11*8) + payoffs (100*8) +
-        // observers
         let expected_min = 100 * 10 * 8 + 100 * 11 * 8 + 100 * 8;
         assert!(usage >= expected_min);
     }
@@ -617,55 +424,35 @@ mod tests {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(100, 10);
         let size = ws.state_size_per_path();
 
-        // Should include f64 price and observer state
         assert!(size >= std::mem::size_of::<f64>());
     }
-
-    // ========================================================================
-    // Indexing Tests
-    // ========================================================================
 
     #[test]
     fn test_workspace_indexing() {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(10, 5);
 
-        // Path 0, Step 0
         assert_eq!(ws.path_index(0, 0), 0);
-        // Path 0, Step 5 (terminal)
         assert_eq!(ws.path_index(0, 5), 5);
-        // Path 1, Step 0
         assert_eq!(ws.path_index(1, 0), 6);
 
-        // Random indexing (no +1 for steps)
         assert_eq!(ws.random_index(0, 0), 0);
         assert_eq!(ws.random_index(0, 4), 4);
         assert_eq!(ws.random_index(1, 0), 5);
     }
 
-    // ========================================================================
-    // Mutable Access Tests
-    // ========================================================================
-
     #[test]
     fn test_workspace_mutable_access() {
         let mut ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(10, 5);
 
-        // Modify randoms
         ws.randoms_mut()[0] = 1.0;
         assert_eq!(ws.randoms()[0], 1.0);
 
-        // Modify paths
         ws.paths_mut()[0] = 100.0;
         assert_eq!(ws.paths()[0], 100.0);
 
-        // Modify payoffs
         ws.payoffs_mut()[0] = 10.0;
         assert_eq!(ws.payoffs()[0], 10.0);
     }
-
-    // ========================================================================
-    // Clone Tests
-    // ========================================================================
 
     #[test]
     fn test_workspace_clone() {
@@ -679,10 +466,6 @@ mod tests {
         assert_eq!(ws2.observer(0).count(), 1);
         assert_eq!(ws2.paths()[0], 100.0);
     }
-
-    // ========================================================================
-    // Generic Type Tests
-    // ========================================================================
 
     #[test]
     fn test_workspace_f32() {

@@ -1,7 +1,4 @@
 //! VM/IM margin terms and SIMM configuration.
-//!
-//! This module defines types for Variation Margin (VM) and Initial Margin (IM)
-//! terms, including SIMM (Standard Initial Margin Model) configuration.
 
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
@@ -9,13 +6,7 @@
 use super::CallFrequency;
 use crate::market::Currency;
 
-// ============================================================================
-// Enums
-// ============================================================================
-
 /// Margin type classification.
-///
-/// Defines the type of margin requirements for a netting set.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum MarginType {
@@ -29,34 +20,30 @@ pub enum MarginType {
 }
 
 /// Initial Margin model type.
-///
-/// Defines the methodology used to calculate Initial Margin.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ImModel {
-    /// ISDA SIMM (Standard Initial Margin Model)
+    /// ISDA SIMM (Standard Initial Margin Model).
     #[default]
     Simm,
-    /// Regulatory schedule-based approach
+    /// Regulatory schedule-based approach.
     Schedule,
-    /// Grid/table-based approach (CCP-specific)
+    /// Grid/table-based approach (CCP-specific).
     Grid,
-    /// Internal model (regulator-approved)
+    /// Internal model (regulator-approved).
     Internal,
 }
 
 /// SIMM version.
-///
-/// Defines which version of the ISDA SIMM methodology to use.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SimmVersion {
-    /// SIMM v2.5 (December 2021)
+    /// SIMM v2.5 (December 2021).
     V2_5,
-    /// SIMM v2.6 (December 2023)
+    /// SIMM v2.6 (December 2023).
     #[default]
     V2_6,
-    /// SIMM v2.7 (December 2024)
+    /// SIMM v2.7 (December 2024).
     V2_7,
 }
 
@@ -75,32 +62,16 @@ impl std::fmt::Display for SimmVersion {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum RoundingDirection {
-    /// Round to nearest (half up)
+    /// Round to nearest (half up).
     #[default]
     Nearest,
-    /// Always round up (ceiling)
+    /// Always round up (ceiling).
     Up,
-    /// Always round down (floor)
+    /// Always round down (floor).
     Down,
 }
 
-// ============================================================================
-// RoundingRule
-// ============================================================================
-
 /// Rounding rule for margin amounts.
-///
-/// Defines how margin amounts are rounded to specific increments.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{RoundingRule, RoundingDirection};
-///
-/// let rule = RoundingRule::new(1000.0, RoundingDirection::Up);
-/// assert_eq!(rule.apply(1001.0), 2000.0);
-/// assert_eq!(rule.apply(1000.0), 1000.0);
-/// ```
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RoundingRule {
@@ -110,12 +81,6 @@ pub struct RoundingRule {
 
 impl RoundingRule {
     /// Creates a new rounding rule.
-    ///
-    /// # Arguments
-    ///
-    /// * `amount` - The rounding increment (e.g., 1000 for rounding to
-    ///   thousands)
-    /// * `direction` - The rounding direction
     pub fn new(amount: f64, direction: RoundingDirection) -> Self { Self { amount, direction } }
 
     /// Returns the rounding amount.
@@ -146,22 +111,7 @@ impl Default for RoundingRule {
     }
 }
 
-// ============================================================================
-// VmTerms
-// ============================================================================
-
 /// Variation Margin terms.
-///
-/// Defines the terms for VM calculation and settlement.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{VmTerms, CallFrequency, RoundingRule, RoundingDirection};
-///
-/// let vm = VmTerms::new(CallFrequency::Daily, 1)
-///     .with_rounding(RoundingRule::new(1000.0, RoundingDirection::Up));
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct VmTerms {
@@ -172,11 +122,6 @@ pub struct VmTerms {
 
 impl VmTerms {
     /// Creates new VM terms.
-    ///
-    /// # Arguments
-    ///
-    /// * `frequency` - How often VM is calculated/exchanged
-    /// * `settlement_lag` - Days between calculation and settlement
     pub fn new(frequency: CallFrequency, settlement_lag: u32) -> Self {
         Self {
             frequency,
@@ -213,25 +158,7 @@ impl Default for VmTerms {
     fn default() -> Self { Self::new(CallFrequency::Daily, 1) }
 }
 
-// ============================================================================
-// ImTerms
-// ============================================================================
-
 /// Initial Margin terms.
-///
-/// Defines the terms for IM calculation, including the model used
-/// and posting requirements.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{ImTerms, ImModel, SimmVersion, CallFrequency};
-/// use infra_domain::market::Currency;
-///
-/// let im = ImTerms::new(ImModel::Simm, Currency::USD)
-///     .with_simm_version(SimmVersion::V2_7)
-///     .with_calculation_frequency(CallFrequency::Daily);
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ImTerms {
@@ -243,11 +170,6 @@ pub struct ImTerms {
 
 impl ImTerms {
     /// Creates new IM terms.
-    ///
-    /// # Arguments
-    ///
-    /// * `model` - The IM calculation model
-    /// * `posting_currency` - Currency for posting IM
     pub fn new(model: ImModel, posting_currency: Currency) -> Self {
         let simm_version = if model == ImModel::Simm {
             Some(SimmVersion::default())
@@ -289,36 +211,7 @@ impl ImTerms {
     pub fn posting_currency(&self) -> Currency { self.posting_currency }
 }
 
-// ============================================================================
-// MarginTerms
-// ============================================================================
-
 /// Combined margin terms (VM + IM).
-///
-/// Represents the complete margin requirements for a netting set,
-/// combining VM and IM terms as applicable.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::counterparty::{MarginTerms, MarginType, VmTerms, ImTerms, ImModel, CallFrequency};
-/// use infra_domain::market::Currency;
-///
-/// // No margin
-/// let no_margin = MarginTerms::no_margin();
-/// assert_eq!(no_margin.margin_type(), MarginType::NoMargin);
-///
-/// // VM only
-/// let vm_only = MarginTerms::vm_only(VmTerms::default());
-/// assert_eq!(vm_only.margin_type(), MarginType::VmOnly);
-///
-/// // VM and IM (UMR-compliant)
-/// let umr = MarginTerms::vm_and_im(
-///     VmTerms::new(CallFrequency::Daily, 1),
-///     ImTerms::new(ImModel::Simm, Currency::USD),
-/// );
-/// assert_eq!(umr.margin_type(), MarginType::VmAndIm);
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MarginTerms {
@@ -389,7 +282,6 @@ mod tests {
         let down = RoundingRule::new(1000.0, RoundingDirection::Down);
         assert!((down.apply(1999.0) - 1000.0).abs() < f64::EPSILON);
 
-        // Zero amount returns value unchanged
         let zero = RoundingRule::new(0.0, RoundingDirection::Up);
         assert!((zero.apply(1234.567) - 1234.567).abs() < f64::EPSILON);
     }
@@ -407,7 +299,6 @@ mod tests {
         let im = ImTerms::new(ImModel::Simm, Currency::USD);
         assert_eq!(im.simm_version(), Some(SimmVersion::V2_6));
 
-        // Non-SIMM model ignores SIMM version
         let im2 =
             ImTerms::new(ImModel::Schedule, Currency::EUR).with_simm_version(SimmVersion::V2_7);
         assert!(im2.simm_version().is_none());

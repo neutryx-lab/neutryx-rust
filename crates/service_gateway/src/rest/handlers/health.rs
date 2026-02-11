@@ -1,12 +1,10 @@
-//! Health check handler
+//! Health check handler.
 
 use axum::Json;
 
 use crate::rest::dto::HealthResponse;
 
-/// Health check endpoint
-///
-/// GET /health
+/// Health check endpoint.
 pub async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {
         status: "healthy".to_string(),

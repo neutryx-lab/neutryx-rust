@@ -1,11 +1,65 @@
 //! Common FpML parsing utilities.
-//!
-//! Provides helpers for parsing common FpML elements like dates, parties,
-//! and schedule definitions.
 
-use infra_domain::time::Date;
+use infra_domain::{market::Currency, time::Date, trade::TradeMetadata};
 
 use super::error::FpmlError;
+
+/// Extract a text field from an `XmlNavigator`, returning a default if absent.
+macro_rules! xml_text {
+    ($nav:expr, $elem:expr, $default:expr) => {
+        $nav.find_text($elem)
+            .unwrap_or_else(|| $default.to_string())
+    };
+}
+
+/// Extract a decimal (f64) field from an `XmlNavigator`, returning a default
+/// if.
+macro_rules! xml_decimal {
+    ($nav:expr, $elem:expr, $default:expr) => {
+        $nav.find_text($elem)
+            .map(|v| $crate::fpml::common::parse_decimal(&v))
+            .transpose()?
+            .unwrap_or($default)
+    };
+}
+
+/// Extract a date field from an `XmlNavigator`, returning a default if absent.
+macro_rules! xml_date {
+    ($nav:expr, $elem:expr, $default:expr) => {
+        $nav.find_text($elem)
+            .map(|d| $crate::fpml::common::parse_date(&d))
+            .transpose()?
+            .unwrap_or_else(|| $default)
+    };
+}
+
+/// Extract a decimal from one of several candidate elements, returning a.
+macro_rules! xml_decimal_or {
+    ($nav:expr, $( $elem:expr ),+; $default:expr) => {{
+        let text = None
+            $( .or_else(|| $nav.find_text($elem)) )+;
+        text.map(|v| $crate::fpml::common::parse_decimal(&v))
+            .transpose()?
+            .unwrap_or($default)
+    }};
+}
+
+pub(crate) use xml_date;
+pub(crate) use xml_decimal;
+pub(crate) use xml_decimal_or;
+pub(crate) use xml_text;
+
+/// Parse currency string to Currency enum.
+pub fn parse_currency(s: &str) -> Currency {
+    match s.to_uppercase().as_str() {
+        "USD" => Currency::USD,
+        "EUR" => Currency::EUR,
+        "GBP" => Currency::GBP,
+        "JPY" => Currency::JPY,
+        "CHF" => Currency::CHF,
+        _ => Currency::USD,
+    }
+}
 
 /// Parse a date from FpML format (YYYY-MM-DD).
 pub fn parse_date(date_str: &str) -> Result<Date, FpmlError> {
@@ -49,23 +103,17 @@ impl<'a> XmlNavigator<'a> {
     pub fn new(content: &'a str) -> Self { Self { content } }
 
     /// Finds the first occurrence of an element and returns its text content.
-    ///
-    /// If the element contains nested elements, returns the raw content.
-    /// For leaf elements (no nested elements), returns the text.
     pub fn find_text(&self, element_name: &str) -> Option<String> {
-        // First try to find a simple element (leaf with no nested elements)
         if let Some(text) = self.find_leaf_text(element_name) {
             return Some(text);
         }
 
-        // Fall back to extracting raw content
         let start_tag = format!("<{}", element_name);
         let end_tag = format!("</{}>", element_name);
 
         let start_idx = self.content.find(&start_tag)?;
         let after_start = &self.content[start_idx..];
 
-        // Find the > that closes the opening tag
         let content_start = after_start.find('>')? + 1;
 
         let end_idx = after_start.find(&end_tag)?;
@@ -80,8 +128,6 @@ impl<'a> XmlNavigator<'a> {
 
     /// Finds a leaf element (one with no nested elements) and returns its text.
     pub fn find_leaf_text(&self, element_name: &str) -> Option<String> {
-        // Pattern: <elementName>text</elementName> or <elementName
-        // ...>text</elementName> where text contains no < characters
         let start_tag = format!("<{}", element_name);
         let end_tag = format!("</{}>", element_name);
 
@@ -90,16 +136,13 @@ impl<'a> XmlNavigator<'a> {
             let abs_start = search_from + start_idx;
             let after_start = &self.content[abs_start..];
 
-            // Find the > that closes the opening tag
             if let Some(tag_close) = after_start.find('>') {
                 let content_start = tag_close + 1;
 
-                // Find the corresponding end tag
                 if let Some(end_idx) = after_start.find(&end_tag) {
                     if content_start < end_idx {
                         let text = &after_start[content_start..end_idx];
 
-                        // Check if this is a leaf element (no nested elements)
                         if !text.contains('<') {
                             return Some(text.trim().to_string());
                         }
@@ -107,7 +150,6 @@ impl<'a> XmlNavigator<'a> {
                 }
             }
 
-            // Move to next occurrence
             search_from = abs_start + 1;
         }
 
@@ -158,7 +200,6 @@ impl<'a> XmlNavigator<'a> {
         let tag_end = after_start.find('>')?;
         let tag_content = &after_start[..tag_end];
 
-        // Look for attribute
         let attr_pattern = format!("{}=\"", attr_name);
         let attr_start = tag_content.find(&attr_pattern)?;
         let value_start = attr_start + attr_pattern.len();
@@ -167,6 +208,51 @@ impl<'a> XmlNavigator<'a> {
 
         Some(after_value[..value_end].to_string())
     }
+}
+
+/// Build trade metadata from a parsed trade header.
+pub fn build_metadata(header: &TradeHeader) -> TradeMetadata {
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(ref cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp.clone());
+    }
+    if let Some(ref book) = header.book {
+        metadata = metadata.with_book(book.clone());
+    }
+    metadata
+}
+
+/// Extract a date from a nested section like.
+pub fn extract_nested_date(
+    nav: &XmlNavigator,
+    section_name: &str,
+    fallback_elem: &str,
+    default: Date,
+) -> Result<Date, FpmlError> {
+    nav.extract_section(section_name)
+        .and_then(|section| XmlNavigator::new(&section).find_text("unadjustedDate"))
+        .or_else(|| nav.find_text(fallback_elem))
+        .map(|d| parse_date(&d))
+        .transpose()
+        .map(|opt| opt.unwrap_or(default))
+}
+
+/// Extract notional from a nested section like.
+pub fn extract_nested_amount(
+    nav: &XmlNavigator,
+    section_name: &str,
+    fallback_elem: &str,
+    default: f64,
+) -> Result<f64, FpmlError> {
+    nav.extract_section(section_name)
+        .and_then(|section| XmlNavigator::new(&section).find_text("amount"))
+        .or_else(|| nav.find_text(fallback_elem))
+        .map(|n| parse_decimal(&n))
+        .transpose()
+        .map(|opt| opt.unwrap_or(default))
 }
 
 /// Parsed party information from FpML.
@@ -214,9 +300,6 @@ pub struct TradeHeader {
 }
 
 /// Parse trade header from FpML.
-///
-/// Extracts trade ID, date, party references, and resolves the counterparty
-/// from the party definitions in the document.
 pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
@@ -235,7 +318,6 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
         .map(|d| parse_date(&d))
         .transpose()?;
 
-    // Extract party references
     let mut parties = Vec::new();
     for section in header_nav.extract_all_sections("partyTradeIdentifier") {
         let section_nav = XmlNavigator::new(&section);
@@ -244,14 +326,10 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
         }
     }
 
-    // Parse all party definitions to resolve counterparty
     let all_parties = parse_parties(xml);
 
-    // Find counterparty (party that is not "our" bank - FB_NA, FrictionalBank,
-    // etc.)
     let counterparty = find_counterparty(&parties, &all_parties);
 
-    // Extract book from tradeIdentifierExtension if present
     let book = nav.find_text("book").or_else(|| nav.find_text("bookId"));
 
     Ok(TradeHeader {
@@ -264,17 +342,11 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
 }
 
 /// Find the counterparty from the list of party references.
-///
-/// Returns the party ID (partyReference href value) directly, e.g., "GOLDMAN",
-/// "BARCLAYS". Assumes our bank ID starts with "FB" or contains
-/// "FrictionalBank".
 fn find_counterparty(party_refs: &[String], _all_parties: &[Party]) -> Option<String> {
     for party_ref in party_refs {
-        // Skip our own bank
         if party_ref.starts_with("FB") || party_ref.contains("FRICTIONAL") {
             continue;
         }
-        // Return the party reference ID directly (e.g., "GOLDMAN", "BARCLAYS")
         return Some(party_ref.clone());
     }
 
@@ -294,7 +366,7 @@ mod tests {
     #[test]
     fn test_parse_date_invalid() {
         assert!(parse_date("invalid").is_err());
-        assert!(parse_date("2024-13-01").is_err()); // Invalid month
+        assert!(parse_date("2024-13-01").is_err());
     }
 
     #[test]

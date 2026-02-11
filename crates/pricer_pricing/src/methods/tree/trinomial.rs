@@ -1,16 +1,8 @@
 //! Trinomial tree implementation for option pricing.
-//!
-//! This module provides a trinomial tree alternative to the binomial tree,
-//! offering faster convergence with the same number of steps.
 
 use crate::generic_pricer::ConfigError;
 
 /// Trinomial tree parameters.
-///
-/// The trinomial tree uses three possible movements at each step:
-/// - Up (u): with probability p_u
-/// - Middle (m = 1): with probability p_m
-/// - Down (d): with probability p_d
 #[derive(Debug, Clone, Copy)]
 pub struct TrinomialParams {
     /// Up factor (u = exp(sigma * sqrt(2 * dt)))
@@ -29,39 +21,16 @@ pub struct TrinomialParams {
 
 impl TrinomialParams {
     /// Computes trinomial parameters from volatility, rate, and time step.
-    ///
-    /// Uses the Kamrad-Ritchken parameterisation where:
-    /// - u = exp(λ * sigma * sqrt(dt)), with λ = sqrt(3)
-    /// - d = 1/u
-    /// - m = 1 (middle node stays at same level)
-    ///
-    /// # Arguments
-    ///
-    /// * `volatility` - Annualized volatility (sigma)
-    /// * `rate` - Risk-free rate
-    /// * `dt` - Time step size
-    ///
-    /// # Returns
-    ///
-    /// Trinomial parameters (u, d, p_u, p_m, p_d, dt)
     pub fn compute(volatility: f64, rate: f64, dt: f64) -> Self {
-        // Kamrad-Ritchken trinomial tree parameters
-        // λ = sqrt(3) for optimal stability
         let lambda = 3.0_f64.sqrt();
 
-        // u = exp(lambda * sigma * sqrt(dt))
         let u = (lambda * volatility * dt.sqrt()).exp();
         let d = 1.0 / u;
 
-        // Drift term: nu = r - 0.5 * sigma^2
         let nu = rate - 0.5 * volatility * volatility;
 
-        // Probabilities using Kamrad-Ritchken formulation:
-        // p_u = 1/(2*lambda^2) + nu*sqrt(dt)/(2*lambda*sigma)
-        // p_d = 1/(2*lambda^2) - nu*sqrt(dt)/(2*lambda*sigma)
-        // p_m = 1 - 1/lambda^2
         let sqrt_dt = dt.sqrt();
-        let lambda_sq = lambda * lambda; // = 3
+        let lambda_sq = lambda * lambda;
 
         let drift_term = nu * sqrt_dt / (2.0 * lambda * volatility);
 
@@ -69,12 +38,10 @@ impl TrinomialParams {
         let p_d = 1.0 / (2.0 * lambda_sq) - drift_term;
         let p_m = 1.0 - 1.0 / lambda_sq;
 
-        // Ensure probabilities are valid (clamp to [0, 1])
         let p_u = p_u.clamp(0.0, 1.0);
         let p_d = p_d.clamp(0.0, 1.0);
         let p_m = p_m.clamp(0.0, 1.0);
 
-        // Renormalise if needed
         let total = p_u + p_m + p_d;
         let p_u = p_u / total;
         let p_m = p_m / total;
@@ -92,10 +59,6 @@ impl TrinomialParams {
 }
 
 /// Trinomial tree for option pricing.
-///
-/// Implements a trinomial tree model for pricing European and American options.
-/// The trinomial tree converges faster than the binomial tree for the same
-/// number of steps.
 #[derive(Debug, Clone)]
 pub struct TrinomialTree {
     spot: f64,
@@ -106,27 +69,11 @@ pub struct TrinomialTree {
     num_steps: usize,
     is_call: bool,
     is_american: bool,
-    // Cached trinomial parameters
     params: TrinomialParams,
 }
 
 impl TrinomialTree {
     /// Creates a new trinomial tree for option pricing.
-    ///
-    /// # Arguments
-    ///
-    /// * `spot` - Current spot price
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiry in years
-    /// * `rate` - Risk-free rate (annualized)
-    /// * `volatility` - Volatility (annualized)
-    /// * `num_steps` - Number of time steps
-    /// * `is_call` - True for call, false for put
-    /// * `is_american` - True for American, false for European
-    ///
-    /// # Errors
-    ///
-    /// Returns `ConfigError` if parameters are invalid.
     pub fn new(
         spot: f64,
         strike: f64,
@@ -137,7 +84,6 @@ impl TrinomialTree {
         is_call: bool,
         is_american: bool,
     ) -> Result<Self, ConfigError> {
-        // Validate parameters
         if spot <= 0.0 {
             return Err(ConfigError::InvalidModelParameter {
                 name: "spot",
@@ -198,18 +144,9 @@ impl TrinomialTree {
     }
 
     /// Computes the spot price at node (i, j) where:
-    /// - i is the time step (0 to num_steps)
-    /// - j is the price level relative to center (can be negative)
-    ///
-    /// At time step i, j ranges from -i to +i
-    /// spot_ij = spot * u^j (where j can be negative, so u^(-j) = d^j)
     fn spot_at_node(&self, j: i32) -> f64 { self.spot * self.params.u.powi(j) }
 
     /// Prices the option using backward induction.
-    ///
-    /// # Returns
-    ///
-    /// The option price at time 0.
     pub fn price(&self) -> f64 {
         let n = self.num_steps;
         let p_u = self.params.p_u;
@@ -217,42 +154,30 @@ impl TrinomialTree {
         let p_d = self.params.p_d;
         let discount = (-self.rate * self.params.dt).exp();
 
-        // At step i, we have 2*i + 1 nodes
-        // j ranges from -i to +i
-        // We store values indexed by j + n (to handle negative indices)
-
-        // Terminal values (at maturity, step n)
-        // j ranges from -n to +n, so 2n+1 values
         let size = 2 * n + 1;
         let mut values: Vec<f64> = (0..size)
             .map(|idx| {
-                let j = idx as i32 - n as i32; // j ranges from -n to n
+                let j = idx as i32 - n as i32;
                 let spot_t = self.spot_at_node(j);
                 self.payoff(spot_t)
             })
             .collect();
 
-        // Backward induction
         for i in (0..n).rev() {
-            // At step i, j ranges from -i to +i
             let new_size = 2 * i + 1;
             let mut new_values = vec![0.0; new_size];
 
             for idx in 0..new_size {
-                let j = idx as i32 - i as i32; // j ranges from -i to i
+                let j = idx as i32 - i as i32;
 
-                // Current indices in the values array (from step i+1)
-                // At step i+1, j ranges from -(i+1) to +(i+1)
-                // So we need values at j-1, j, j+1 relative to step i+1
-                let up_idx = ((j + 1) + (i + 1) as i32) as usize; // j+1 at step i+1
-                let mid_idx = (j + (i + 1) as i32) as usize; // j at step i+1
-                let down_idx = ((j - 1) + (i + 1) as i32) as usize; // j-1 at step i+1
+                let up_idx = ((j + 1) + (i + 1) as i32) as usize;
+                let mid_idx = (j + (i + 1) as i32) as usize;
+                let down_idx = ((j - 1) + (i + 1) as i32) as usize;
 
                 let continuation = discount
                     * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
 
                 if self.is_american {
-                    // Early exercise check
                     let spot_ij = self.spot_at_node(j);
                     let intrinsic = self.payoff(spot_ij);
                     new_values[idx] = continuation.max(intrinsic);
@@ -263,14 +188,10 @@ impl TrinomialTree {
             values = new_values;
         }
 
-        // At step 0, there's only one node (j=0)
         values[0]
     }
 
     /// Computes Delta from the tree.
-    ///
-    /// Delta is computed from the first step of the tree using the
-    /// up and down values.
     pub fn delta(&self) -> f64 {
         if self.num_steps < 1 {
             return 0.0;
@@ -283,7 +204,6 @@ impl TrinomialTree {
         let p_d = self.params.p_d;
         let discount = (-self.rate * self.params.dt).exp();
 
-        // Terminal values
         let size = 2 * n + 1;
         let mut values: Vec<f64> = (0..size)
             .map(|idx| {
@@ -293,7 +213,6 @@ impl TrinomialTree {
             })
             .collect();
 
-        // Backward induction to step 1
         for i in (1..n).rev() {
             let new_size = 2 * i + 1;
             let mut new_values = vec![0.0; new_size];
@@ -318,10 +237,8 @@ impl TrinomialTree {
             values = new_values;
         }
 
-        // At step 1: values[0] = V_d (j=-1), values[1] = V_m (j=0), values[2] = V_u
-        // (j=1)
-        let v_u = values[2]; // j = +1
-        let v_d = values[0]; // j = -1
+        let v_u = values[2];
+        let v_d = values[0];
         let s_u = self.spot * u;
         let s_d = self.spot / u;
 
@@ -329,9 +246,6 @@ impl TrinomialTree {
     }
 
     /// Computes Gamma from the tree.
-    ///
-    /// Gamma is computed from the second derivative approximation using
-    /// the values at step 1 of the tree.
     pub fn gamma(&self) -> f64 {
         if self.num_steps < 1 {
             return 0.0;
@@ -344,7 +258,6 @@ impl TrinomialTree {
         let p_d = self.params.p_d;
         let discount = (-self.rate * self.params.dt).exp();
 
-        // Terminal values
         let size = 2 * n + 1;
         let mut values: Vec<f64> = (0..size)
             .map(|idx| {
@@ -354,7 +267,6 @@ impl TrinomialTree {
             })
             .collect();
 
-        // Backward induction to step 1
         for i in (1..n).rev() {
             let new_size = 2 * i + 1;
             let mut new_values = vec![0.0; new_size];
@@ -379,17 +291,14 @@ impl TrinomialTree {
             values = new_values;
         }
 
-        // At step 1: values[0] = V_d (j=-1), values[1] = V_m (j=0), values[2] = V_u
-        // (j=1)
-        let v_u = values[2]; // j = +1
-        let v_m = values[1]; // j = 0
-        let v_d = values[0]; // j = -1
+        let v_u = values[2];
+        let v_m = values[1];
+        let v_d = values[0];
 
         let s_u = self.spot * u;
         let s_m = self.spot;
         let s_d = self.spot / u;
 
-        // Gamma = (delta_up - delta_down) / h
         let delta_up = (v_u - v_m) / (s_u - s_m);
         let delta_down = (v_m - v_d) / (s_m - s_d);
         let h = (s_u - s_d) / 2.0;
@@ -426,7 +335,6 @@ impl TrinomialTree {
 mod tests {
     use super::*;
 
-    // Black-Scholes reference for European option verification
     fn black_scholes_call(spot: f64, strike: f64, rate: f64, volatility: f64, expiry: f64) -> f64 {
         fn norm_cdf(x: f64) -> f64 {
             const A1: f64 = 0.254829592;
@@ -462,19 +370,15 @@ mod tests {
     fn test_trinomial_params_compute() {
         let params = TrinomialParams::compute(0.2, 0.05, 0.01);
 
-        // u = exp(0.2 * sqrt(0.02)) ≈ exp(0.0283) ≈ 1.0287
         assert!(params.u > 1.0, "u should be > 1");
-        // d = 1/u
         assert!(
             (params.u * params.d - 1.0).abs() < 1e-10,
             "u * d should be 1"
         );
-        // Probabilities should sum to 1
         assert!(
             (params.p_u + params.p_m + params.p_d - 1.0).abs() < 1e-10,
             "Probabilities should sum to 1"
         );
-        // All probabilities should be positive
         assert!(
             params.p_u > 0.0 && params.p_u < 1.0,
             "p_u should be in (0,1)"
@@ -546,7 +450,6 @@ mod tests {
 
         let bs_price = black_scholes_call(spot, strike, rate, volatility, expiry);
 
-        // Test convergence with increasing steps
         for num_steps in [50, 100, 200] {
             let tree = TrinomialTree::new(
                 spot, strike, expiry, rate, volatility, num_steps, true, false,
@@ -554,7 +457,6 @@ mod tests {
             .unwrap();
             let tree_price = tree.price();
 
-            // Allow tolerance based on steps
             let tolerance = match num_steps {
                 50 => 0.15,
                 100 => 0.08,
@@ -658,7 +560,6 @@ mod tests {
         let tree = TrinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 200, true, false).unwrap();
         let delta = tree.delta();
 
-        // Delta for ATM call should be around 0.5-0.7
         assert!(
             delta > 0.4 && delta < 0.8,
             "Call delta {} should be reasonable",
@@ -671,7 +572,6 @@ mod tests {
         let tree = TrinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 200, false, false).unwrap();
         let delta = tree.delta();
 
-        // Put delta should be negative
         assert!(delta < 0.0, "Put delta {} should be negative", delta);
     }
 
@@ -680,7 +580,6 @@ mod tests {
         let tree = TrinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 200, true, false).unwrap();
         let gamma = tree.gamma();
 
-        // Gamma should always be positive for vanilla options
         assert!(gamma > 0.0, "Gamma {} should be positive", gamma);
     }
 
@@ -713,9 +612,7 @@ mod tests {
         let tree = TrinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 100, true, false).unwrap();
         let params = tree.params();
 
-        // Verify trinomial relationship: u * d = 1
         assert!((params.u * params.d - 1.0).abs() < 1e-10);
-        // Verify probabilities sum to 1
         assert!((params.p_u + params.p_m + params.p_d - 1.0).abs() < 1e-10);
     }
 
@@ -729,7 +626,6 @@ mod tests {
         let volatility = 0.2;
         let expiry = 1.0;
 
-        // Both should converge to similar values
         let binomial =
             BinomialTree::new(spot, strike, expiry, rate, volatility, 500, true, false).unwrap();
         let trinomial =
@@ -738,7 +634,6 @@ mod tests {
         let bi_price = binomial.price();
         let tri_price = trinomial.price();
 
-        // Should be within reasonable tolerance of each other
         assert!(
             (bi_price - tri_price).abs() < 0.2,
             "Binomial {} and Trinomial {} prices should be close",

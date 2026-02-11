@@ -1,65 +1,13 @@
 //! Market quote error types.
-//!
-//! This module provides structured error types for market quote operations
-//! using the `thiserror` crate.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{MarketQuoteError, RateType};
-//!
-//! let error = MarketQuoteError::InvalidQuote {
-//!     value: f64::NAN,
-//!     reason: "Value is NaN".to_string(),
-//! };
-//!
-//! assert!(error.to_string().contains("Invalid quote"));
-//! ```
 
 use thiserror::Error;
 
 use crate::market::core::RateType;
 
 /// Errors that can occur during market quote operations.
-///
-/// This error type covers validation failures, missing data,
-/// and mapping errors.
-///
-/// # Variants
-///
-/// - `InvalidQuote`: The quote value is invalid (NaN, Infinite, or out of
-///   bounds)
-/// - `StaleData`: The quote data is older than the acceptable threshold
-/// - `MissingQuote`: A required quote was not found
-/// - `MappingFailed`: Failed to map a quote to an instrument
-/// - `ValidationFailed`: Custom validation failure
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{MarketQuoteError, RateType};
-///
-/// // Invalid quote error
-/// let error = MarketQuoteError::InvalidQuote {
-///     value: 150.0,
-///     reason: "Interest rate exceeds 100%".to_string(),
-/// };
-/// println!("{}", error);
-///
-/// // Mapping failed error
-/// let error = MarketQuoteError::MappingFailed {
-///     rate_type: RateType::Vol,
-///     reason: "Volatility mapping not supported".to_string(),
-/// };
-/// println!("{}", error);
-/// ```
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum MarketQuoteError {
     /// The quote value is invalid.
-    ///
-    /// This error is returned when:
-    /// - The value is NaN or Infinite
-    /// - The value exceeds reasonable bounds for the rate type
     #[error("Invalid quote value: {value} ({reason})")]
     InvalidQuote {
         /// The invalid value.
@@ -69,9 +17,6 @@ pub enum MarketQuoteError {
     },
 
     /// The quote data is stale.
-    ///
-    /// This error is returned when the timestamp of a quote
-    /// is older than the acceptable threshold.
     #[error("Stale data: quote is older than {threshold_ms}ms (description: {description})")]
     StaleData {
         /// The staleness threshold in milliseconds.
@@ -88,9 +33,6 @@ pub enum MarketQuoteError {
     },
 
     /// Failed to map a quote to an instrument.
-    ///
-    /// This error is returned when an unsupported rate type
-    /// is used with the instrument mapper.
     #[error("Mapping failed: cannot convert {rate_type:?} to Instrument ({reason})")]
     MappingFailed {
         /// The rate type that could not be mapped.

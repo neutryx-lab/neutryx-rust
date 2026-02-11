@@ -1,6 +1,4 @@
-//! Portfolio service for CRUD and aggregation operations
-//!
-//! Provides portfolio management and Greeks aggregation.
+//! Portfolio service for CRUD and aggregation operations.
 
 #[cfg(feature = "risk")]
 use std::{sync::Arc, time::Instant};
@@ -20,13 +18,13 @@ use crate::{
     state::{AppState, PortfolioEntry},
 };
 
-/// Service for portfolio CRUD and aggregation operations
+/// Service for portfolio CRUD and aggregation operations.
 #[cfg(feature = "risk")]
 pub struct PortfolioService;
 
 #[cfg(feature = "risk")]
 impl PortfolioService {
-    /// Create a new portfolio
+    /// Create a new portfolio.
     pub fn create_portfolio(
         request: &CreatePortfolioRequest,
         state: &Arc<AppState>,
@@ -54,7 +52,7 @@ impl PortfolioService {
         })
     }
 
-    /// Get a portfolio by ID
+    /// Get a portfolio by ID.
     pub fn get_portfolio(
         portfolio_id: &str,
         state: &Arc<AppState>,
@@ -65,14 +63,14 @@ impl PortfolioService {
             portfolio_id: portfolio_id.to_string(),
             name: entry.name,
             trade_count: entry.trade_count,
-            counterparty_count: 0, // Simplified - would need full portfolio data
-            netting_set_count: 0,  // Simplified - would need full portfolio data
+            counterparty_count: 0,
+            netting_set_count: 0,
             created_at: entry.created_at.to_rfc3339(),
             trades: None,
         })
     }
 
-    /// Add trades to an existing portfolio
+    /// Add trades to an existing portfolio.
     pub fn add_trades(
         portfolio_id: &str,
         request: &AddTradesRequest,
@@ -86,7 +84,6 @@ impl PortfolioService {
 
         let trades_added = request.trades.len();
 
-        // Add new trade IDs
         for trade in &request.trades {
             entry.trade_ids.push(trade.trade_id.clone());
         }
@@ -94,7 +91,6 @@ impl PortfolioService {
 
         let total_trade_count = entry.trade_count;
 
-        // Update the cache
         state.portfolio_cache.update(&id, entry);
 
         Ok(AddTradesResponse {
@@ -104,7 +100,7 @@ impl PortfolioService {
         })
     }
 
-    /// Delete a portfolio
+    /// Delete a portfolio.
     pub fn delete_portfolio(portfolio_id: &str, state: &Arc<AppState>) -> Result<(), ServerError> {
         let id = helpers::parse_uuid(portfolio_id, "Portfolio")?;
 
@@ -115,7 +111,7 @@ impl PortfolioService {
         Ok(())
     }
 
-    /// Calculate portfolio present value
+    /// Calculate portfolio present value.
     pub fn price_portfolio(
         portfolio_id: &str,
         state: &Arc<AppState>,
@@ -124,14 +120,13 @@ impl PortfolioService {
 
         let entry = helpers::resolve_cached(&state.portfolio_cache, portfolio_id, "Portfolio")?;
 
-        // Simulate pricing - in real implementation would use pricer_risk::RiskEngine
         let trade_pvs: Vec<TradePvDto> = entry
             .trade_ids
             .iter()
             .enumerate()
             .map(|(i, trade_id)| TradePvDto {
                 trade_id: trade_id.clone(),
-                trade_type: "irs".to_string(), // Placeholder
+                trade_type: "irs".to_string(),
                 pv: 1_000_000.0 * (1.0 + i as f64 * 0.01),
                 currency: "USD".to_string(),
             })
@@ -154,7 +149,7 @@ impl PortfolioService {
         })
     }
 
-    /// Compute portfolio Greeks with optional grouping
+    /// Compute portfolio Greeks with optional grouping.
     pub fn compute_portfolio_greeks(
         portfolio_id: &str,
         request: &PortfolioGreeksRequest,
@@ -166,14 +161,12 @@ impl PortfolioService {
 
         let trade_count = entry.trade_count;
 
-        // Simulate Greeks calculation
         let total_delta = trade_count as f64 * 100.0;
         let total_gamma = trade_count as f64 * 5.0;
         let total_vega = trade_count as f64 * 20.0;
         let total_theta = trade_count as f64 * -1.0;
         let total_rho = trade_count as f64 * 1.5;
 
-        // Generate grouped Greeks if requested
         let by_counterparty = if request.group_by_counterparty {
             Some(vec![GroupGreeksDto {
                 group_id: "CP001".to_string(),
@@ -226,20 +219,7 @@ impl PortfolioService {
 #[cfg(all(test, feature = "risk"))]
 mod tests {
     use super::*;
-    use crate::{rest::dto::TradeDto, state::AppStateConfig};
-
-    fn create_test_state() -> Arc<AppState> {
-        let config = AppStateConfig {
-            curve_cache_size: 10,
-            fxvol_cache_size: 5,
-            portfolio_cache_size: 10,
-            #[cfg(feature = "models")]
-            model_cache_size: 10,
-            #[cfg(feature = "volatility")]
-            vol_surface_cache_size: 10,
-        };
-        Arc::new(AppState::with_config(config))
-    }
+    use crate::rest::dto::TradeDto;
 
     fn create_test_trade(id: &str) -> TradeDto {
         TradeDto {
@@ -256,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_create_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = CreatePortfolioRequest {
             name: Some("Test Portfolio".to_string()),
@@ -273,9 +253,8 @@ mod tests {
 
     #[test]
     fn test_get_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
-        // First create a portfolio
         let create_request = CreatePortfolioRequest {
             name: Some("Test Portfolio".to_string()),
             counterparties: vec![],
@@ -284,7 +263,6 @@ mod tests {
         };
         let create_response = PortfolioService::create_portfolio(&create_request, &state).unwrap();
 
-        // Then get it
         let response =
             PortfolioService::get_portfolio(&create_response.portfolio_id, &state).unwrap();
 
@@ -295,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_get_portfolio_not_found() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let result = PortfolioService::get_portfolio(&uuid::Uuid::new_v4().to_string(), &state);
 
@@ -305,9 +283,8 @@ mod tests {
 
     #[test]
     fn test_add_trades() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
-        // Create portfolio
         let create_request = CreatePortfolioRequest {
             name: Some("Test".to_string()),
             counterparties: vec![],
@@ -316,7 +293,6 @@ mod tests {
         };
         let create_response = PortfolioService::create_portfolio(&create_request, &state).unwrap();
 
-        // Add trades
         let add_request = AddTradesRequest {
             trades: vec![create_test_trade("T002"), create_test_trade("T003")],
         };
@@ -330,9 +306,8 @@ mod tests {
 
     #[test]
     fn test_delete_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
-        // Create portfolio
         let create_request = CreatePortfolioRequest {
             name: None,
             counterparties: vec![],
@@ -341,18 +316,16 @@ mod tests {
         };
         let create_response = PortfolioService::create_portfolio(&create_request, &state).unwrap();
 
-        // Delete it
         let result = PortfolioService::delete_portfolio(&create_response.portfolio_id, &state);
         assert!(result.is_ok());
 
-        // Verify it's gone
         let get_result = PortfolioService::get_portfolio(&create_response.portfolio_id, &state);
         assert!(get_result.is_err());
     }
 
     #[test]
     fn test_price_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreatePortfolioRequest {
             name: None,
@@ -373,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_compute_portfolio_greeks() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreatePortfolioRequest {
             name: None,

@@ -1,25 +1,4 @@
 //! Monte Carlo pricing engine.
-//!
-//! This module provides the orchestration layer for Monte Carlo pricing
-//! with optional automatic differentiation for Greeks computation.
-//!
-//! # Overview
-//!
-//! The [`MonteCarloPricer`] coordinates:
-//! 1. Random number generation (via
-//!    [`PricerRng`](pricer_core::math::rng::PricerRng))
-//! 2. Path generation (via
-//!    [`generate_gbm_paths`](super::paths::generate_gbm_paths))
-//! 3. Payoff computation (via
-//!    [`compute_payoffs`](super::payoff::compute_payoffs))
-//! 4. Discounting and aggregation
-//! 5. Greeks via AD (or bump-and-revalue as placeholder)
-//!
-//! # Workspace Reuse
-//!
-//! The pricer maintains an internal
-//! [`PathWorkspace`](super::workspace::PathWorkspace) that is reused across
-//! pricing calls, minimising memory allocations.
 
 use pricer_core::math::rng::PricerRng;
 
@@ -37,9 +16,6 @@ use super::{
 use crate::methods::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
 
 /// Greek type for selection.
-///
-/// First-order: Delta (∂V/∂S), Vega (∂V/∂σ), Theta (∂V/∂τ), Rho (∂V/∂r).
-/// Second-order: Gamma (∂²V/∂S²), Vanna (∂²V/∂S∂σ), Volga (∂²V/∂σ²).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Greek {
     /// ∂V/∂S
@@ -141,7 +117,6 @@ impl MonteCarloPricer {
     pub fn config(&self) -> &MonteCarloConfig { &self.config }
 
     /// Returns the current RNG seed for reproducible finite difference
-    /// calculations.
     #[inline]
     pub fn current_seed(&self) -> u64 { self.rng.seed() }
 
@@ -167,19 +142,14 @@ impl MonteCarloPricer {
         let n_paths = self.config.n_paths();
         let n_steps = self.config.n_steps();
 
-        // Ensure workspace capacity
         self.workspace.ensure_capacity(n_paths, n_steps);
 
-        // Generate random samples
         self.rng.fill_normal(self.workspace.randoms_mut());
 
-        // Generate paths
         generate_gbm_paths(&mut self.workspace, gbm, n_paths, n_steps);
 
-        // Compute payoffs
         compute_payoffs(&mut self.workspace, payoff, n_paths, n_steps);
 
-        // Aggregate: discounted mean and standard error
         let payoffs = self.workspace.payoffs();
         let sum: f64 = payoffs.iter().sum();
         let mean = sum / n_paths as f64;
@@ -219,10 +189,6 @@ impl MonteCarloPricer {
         }
         result
     }
-
-    // ========================================================================
-    // Bump-and-Revalue Greeks (unified for European and path-dependent)
-    // ========================================================================
 
     /// Reprices with the given pricing mode.
     fn reprice(&mut self, gbm: GbmParams, mode: PricingMode, df: f64) -> f64 {
@@ -430,14 +396,7 @@ impl MonteCarloPricer {
         (up - 2.0 * mid + dn) / (h * h)
     }
 
-    // L1/L2 Integration — YieldCurve methods
-
     /// Prices a European option with discount factor from a `YieldCurve`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the curve returns an error for the given maturity.
-    #[cfg(feature = "l1l2-integration")]
     pub fn price_european_with_curve<C>(
         &mut self,
         gbm: GbmParams,
@@ -454,8 +413,6 @@ impl MonteCarloPricer {
     }
 
     /// Prices a European option with Greeks, discount factor from a
-    /// `YieldCurve`.
-    #[cfg(feature = "l1l2-integration")]
     pub fn price_with_greeks_and_curve<C>(
         &mut self,
         gbm: GbmParams,
@@ -473,7 +430,6 @@ impl MonteCarloPricer {
     }
 
     /// Prices with forward-mode AD for Delta via tangent propagation.
-    /// Returns (price, delta).
     pub fn price_with_delta_ad(
         &mut self,
         gbm: GbmParams,
@@ -483,22 +439,13 @@ impl MonteCarloPricer {
         let n_paths = self.config.n_paths();
         let n_steps = self.config.n_steps();
 
-        // Ensure workspace capacity
         self.workspace.ensure_capacity(n_paths, n_steps);
 
-        // Generate random samples
         self.rng.fill_normal(self.workspace.randoms_mut());
 
-        // Generate paths with tangent (d/dS₀)
-        let tangent_paths = generate_gbm_paths_tangent_spot(
-            &mut self.workspace,
-            gbm,
-            1.0, // d_spot = 1.0 (seed tangent)
-            n_paths,
-            n_steps,
-        );
+        let tangent_paths =
+            generate_gbm_paths_tangent_spot(&mut self.workspace, gbm, 1.0, n_paths, n_steps);
 
-        // Compute payoffs and their tangents
         let paths = self.workspace.paths();
         let n_steps_plus_1 = n_steps + 1;
 
@@ -509,12 +456,9 @@ impl MonteCarloPricer {
             let terminal_price = paths[path_idx * n_steps_plus_1 + n_steps];
             let terminal_tangent = tangent_paths[path_idx * n_steps_plus_1 + n_steps];
 
-            // Primal payoff
             let payoff_value = compute_payoff(terminal_price, payoff);
             price_sum += payoff_value;
 
-            // Tangent payoff: d(payoff)/d(spot) = d(payoff)/d(terminal) ×
-            // d(terminal)/d(spot)
             let payoff_deriv = super::payoff::soft_plus_derivative(
                 match payoff.payoff_type {
                     super::payoff::PayoffType::Call => terminal_price - payoff.strike,
@@ -523,7 +467,6 @@ impl MonteCarloPricer {
                 payoff.smoothing_epsilon,
             );
 
-            // Sign adjustment for put
             let sign = match payoff.payoff_type {
                 super::payoff::PayoffType::Call => 1.0,
                 super::payoff::PayoffType::Put => -1.0,
@@ -538,10 +481,7 @@ impl MonteCarloPricer {
         (price, delta)
     }
 
-    // Path-Dependent Options Integration
-
     /// Prices a path-dependent option (Asian, Barrier, Lookback) using Monte
-    /// Carlo.
     pub fn price_path_dependent(
         &mut self,
         gbm: GbmParams,
@@ -552,41 +492,33 @@ impl MonteCarloPricer {
         let n_steps = self.config.n_steps();
         let n_steps_plus_1 = n_steps + 1;
 
-        // Ensure workspace capacity
         self.workspace.ensure_capacity(n_paths, n_steps);
 
-        // Generate random samples
         self.rng.fill_normal(self.workspace.randoms_mut());
 
-        // Generate GBM paths
         generate_gbm_paths(&mut self.workspace, gbm, n_paths, n_steps);
 
         let paths = self.workspace.paths();
 
-        // Compute path-dependent payoffs
         let mut payoff_sum = 0.0;
         let mut payoff_sum_sq = 0.0;
 
         for path_idx in 0..n_paths {
             let mut observer: PathObserver<f64> = PathObserver::new();
 
-            // Observe each price in the path
             for step_idx in 0..n_steps_plus_1 {
                 let price = paths[path_idx * n_steps_plus_1 + step_idx];
                 observer.observe(price);
             }
 
-            // Set terminal price
             let terminal = paths[path_idx * n_steps_plus_1 + n_steps];
             observer.set_terminal(terminal);
 
-            // Compute payoff
             let payoff_value = payoff.compute(&[], &observer);
             payoff_sum += payoff_value;
             payoff_sum_sq += payoff_value * payoff_value;
         }
 
-        // Aggregate: discounted mean and standard error
         let mean = payoff_sum / n_paths as f64;
         let variance = (payoff_sum_sq / n_paths as f64) - mean * mean;
         let std_dev = variance.max(0.0).sqrt();
@@ -600,7 +532,6 @@ impl MonteCarloPricer {
     }
 
     /// Prices a path-dependent option with selected Greeks via
-    /// bump-and-revalue.
     pub fn price_path_dependent_with_greeks(
         &mut self,
         gbm: GbmParams,
@@ -617,15 +548,11 @@ impl MonteCarloPricer {
                 Greek::Vega => result.vega = Some(self.fd_vega(gbm, mode, discount_factor)),
                 Greek::Theta => result.theta = Some(self.fd_theta(gbm, mode, discount_factor)),
                 Greek::Rho => result.rho = Some(self.fd_rho(gbm, mode)),
-                Greek::Vanna | Greek::Volga => {} // Not yet implemented for path-dependent
+                Greek::Vanna | Greek::Volga => {}
             }
         }
         result
     }
-
-    // ========================================================================
-    // Streaming Mode Methods
-    // ========================================================================
 
     /// Prices a European option using streaming mode (O(paths) memory).
     pub fn price_streaming(
@@ -638,16 +565,13 @@ impl MonteCarloPricer {
         let n_steps = self.config.n_steps();
         let seed = self.config.seed().unwrap_or(0);
 
-        // Create streaming engine
         let streaming_config = *self.config.streaming();
         let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
 
-        // Create observer based on payoff type
         let is_call = matches!(payoff.payoff_type, super::payoff::PayoffType::Call);
         let mut observer =
             EuropeanObserver::new(n_paths, payoff.strike, payoff.smoothing_epsilon, is_call);
 
-        // Run streaming simulation
         let result = engine.run(gbm, &mut observer);
 
         PricingResult {
@@ -798,7 +722,7 @@ mod tests {
             .build()
             .unwrap();
         let pricer = MonteCarloPricer::with_seed(config, 12345).unwrap();
-        assert!(pricer.config().seed().is_none()); // Config seed not set
+        assert!(pricer.config().seed().is_none());
     }
 
     #[test]
@@ -812,7 +736,7 @@ mod tests {
 
         assert!(result.price > 0.0);
         assert!(result.std_error > 0.0);
-        assert!(result.std_error < result.price * 0.1); // Reasonable std error
+        assert!(result.std_error < result.price * 0.1);
     }
 
     #[test]
@@ -884,7 +808,6 @@ mod tests {
         assert!(result.delta.is_some());
         let delta = result.delta.unwrap();
 
-        // Delta of ATM call should be around 0.5-0.6
         assert!(delta > 0.3 && delta < 0.8, "Delta = {}", delta);
     }
 
@@ -900,7 +823,6 @@ mod tests {
         assert!(result.vega.is_some());
         let vega = result.vega.unwrap();
 
-        // Vega should be positive for options
         assert!(vega > 0.0, "Vega = {}", vega);
     }
 
@@ -948,15 +870,12 @@ mod tests {
         let payoff = PayoffParams::call(100.0);
         let df = (-0.05_f64).exp();
 
-        // AD Delta
         pricer.reset_with_seed(42);
         let (_, delta_ad) = pricer.price_with_delta_ad(gbm, payoff, df);
 
-        // Bump-and-revalue Delta
         pricer.reset_with_seed(42);
         let delta_bump = pricer.fd_delta(gbm, PricingMode::European(payoff), df);
 
-        // Should be within 10% of each other
         assert_relative_eq!(delta_ad, delta_bump, max_relative = 0.1);
     }
 
@@ -974,7 +893,6 @@ mod tests {
 
     #[test]
     fn test_call_put_parity_mc() {
-        // Put-call parity: C - P = S - K * exp(-rT)
         let config = MonteCarloConfig::builder()
             .n_paths(50_000)
             .n_steps(50)
@@ -991,28 +909,21 @@ mod tests {
         let strike = 100.0;
         let df = (-gbm.rate * gbm.maturity).exp();
 
-        // Call price
         let mut pricer = MonteCarloPricer::new(config.clone()).unwrap();
         let call_price = pricer
             .price_european(gbm, PayoffParams::call(strike), df)
             .price;
 
-        // Put price
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let put_price = pricer
             .price_european(gbm, PayoffParams::put(strike), df)
             .price;
 
-        // Expected: S - K * exp(-rT) = 100 - 100 * exp(-0.05) ≈ 4.88
         let expected_diff = gbm.spot - strike * df;
         let actual_diff = call_price - put_price;
 
         assert_relative_eq!(actual_diff, expected_diff, max_relative = 0.05);
     }
-
-    // ========================================================================
-    // Path-Dependent Options Tests
-    // ========================================================================
 
     #[test]
     fn test_price_asian_arithmetic_call() {
@@ -1032,7 +943,6 @@ mod tests {
 
         assert!(result.price > 0.0);
         assert!(result.std_error > 0.0);
-        // Asian call should be cheaper than European call due to averaging
         assert!(result.std_error < result.price * 0.1);
     }
 
@@ -1053,7 +963,6 @@ mod tests {
         let result = pricer.price_path_dependent(gbm, payoff, df);
 
         assert!(result.price > 0.0);
-        // Geometric average should be lower than arithmetic average
     }
 
     #[test]
@@ -1068,22 +977,18 @@ mod tests {
         let gbm = GbmParams::default();
         let df = (-0.05_f64).exp();
 
-        // Arithmetic Asian call
         let mut pricer1 = MonteCarloPricer::new(config.clone()).unwrap();
         let arith_price = pricer1
             .price_path_dependent(gbm, PathPayoffType::asian_arithmetic_call(100.0, 1e-6), df)
             .price;
 
-        // Geometric Asian call
         let mut pricer2 = MonteCarloPricer::new(config).unwrap();
         let geom_price = pricer2
             .price_path_dependent(gbm, PathPayoffType::asian_geometric_call(100.0, 1e-6), df)
             .price;
 
-        // Geometric average is always <= arithmetic average (AM-GM inequality)
-        // So geometric Asian call should be <= arithmetic Asian call
         assert!(
-            geom_price <= arith_price * 1.05, // Allow 5% tolerance for MC noise
+            geom_price <= arith_price * 1.05,
             "Geometric price ({}) should be <= Arithmetic price ({})",
             geom_price,
             arith_price
@@ -1101,14 +1006,12 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        // Up-and-Out barrier significantly above spot
         let payoff = PathPayoffType::barrier_up_out_call(100.0, 150.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent(gbm, payoff, df);
 
         assert!(result.price > 0.0);
-        // Barrier option should be cheaper than vanilla option
     }
 
     #[test]
@@ -1128,7 +1031,6 @@ mod tests {
         let result = pricer.price_path_dependent(gbm, payoff, df);
 
         assert!(result.price > 0.0);
-        // Lookback should be more expensive than vanilla due to path maximum
     }
 
     #[test]
@@ -1147,7 +1049,6 @@ mod tests {
 
         let result = pricer.price_path_dependent(gbm, payoff, df);
 
-        // Floating lookback call should always have positive payoff
         assert!(result.price > 0.0);
     }
 
@@ -1193,7 +1094,6 @@ mod tests {
         assert!(result.delta.is_some());
         let delta = result.delta.unwrap();
 
-        // Delta of Asian call should be lower than European call (0.3-0.6)
         assert!(
             delta > 0.2 && delta < 0.7,
             "Asian Delta = {} (expected 0.2-0.7)",
@@ -1220,13 +1120,8 @@ mod tests {
         assert!(result.vega.is_some());
         let vega = result.vega.unwrap();
 
-        // Vega should be positive for options
         assert!(vega > 0.0, "Vega = {}", vega);
     }
-
-    // ========================================================================
-    // Streaming Mode Tests
-    // ========================================================================
 
     #[test]
     fn test_price_streaming_european_call() {
@@ -1292,7 +1187,6 @@ mod tests {
         let gbm = GbmParams::default();
         let df = (-0.05_f64).exp();
 
-        // Up-and-out call with barrier at 150
         let result = pricer.price_barrier_streaming(gbm, 100.0, 150.0, true, true, true, df);
 
         assert!(result.price >= 0.0);
@@ -1316,7 +1210,6 @@ mod tests {
         let gbm = GbmParams::default();
         let df = (-0.05_f64).exp();
 
-        // Floating strike lookback call
         let result = pricer.price_lookback_streaming(gbm, None, true, true, df);
 
         assert!(result.price > 0.0);
@@ -1327,7 +1220,6 @@ mod tests {
     fn test_streaming_vs_batch_similar_results() {
         use super::super::layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
 
-        // Compare streaming vs batch European call
         let n_paths = 50_000;
         let n_steps = 50;
         let seed = 42;
@@ -1335,7 +1227,6 @@ mod tests {
         let payoff = PayoffParams::call(100.0);
         let df = (-0.05_f64).exp();
 
-        // Batch mode
         let batch_config = MonteCarloConfig::builder()
             .n_paths(n_paths)
             .n_steps(n_steps)
@@ -1345,7 +1236,6 @@ mod tests {
         let mut batch_pricer = MonteCarloPricer::new(batch_config).unwrap();
         let batch_result = batch_pricer.price_european(gbm, payoff, df);
 
-        // Streaming mode
         let streaming_config = MonteCarloConfig::builder()
             .n_paths(n_paths)
             .n_steps(n_steps)
@@ -1357,7 +1247,6 @@ mod tests {
         let mut streaming_pricer = MonteCarloPricer::new(streaming_config).unwrap();
         let streaming_result = streaming_pricer.price_streaming(gbm, payoff, df);
 
-        // Results should be similar (within 10% for this seed)
         let diff_ratio = (streaming_result.price - batch_result.price).abs() / batch_result.price;
         assert!(
             diff_ratio < 0.10,

@@ -317,15 +317,19 @@ pub enum ScriptOp {
 /// Barrier type for exotic options.
 ///
 /// Defines the direction and effect of barrier breach.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum::Display)]
 pub enum BarrierType {
     /// Up-and-In: Option activates when spot rises above barrier.
+    #[strum(serialize = "Up-and-In")]
     UpIn,
     /// Up-and-Out: Option terminates when spot rises above barrier.
+    #[strum(serialize = "Up-and-Out")]
     UpOut,
     /// Down-and-In: Option activates when spot falls below barrier.
+    #[strum(serialize = "Down-and-In")]
     DownIn,
     /// Down-and-Out: Option terminates when spot falls below barrier.
+    #[strum(serialize = "Down-and-Out")]
     DownOut,
 }
 
@@ -345,17 +349,6 @@ impl BarrierType {
     /// Returns true if this is a "Down" barrier.
     #[must_use]
     pub fn is_down(&self) -> bool { matches!(self, BarrierType::DownIn | BarrierType::DownOut) }
-}
-
-impl std::fmt::Display for BarrierType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BarrierType::UpIn => write!(f, "Up-and-In"),
-            BarrierType::UpOut => write!(f, "Up-and-Out"),
-            BarrierType::DownIn => write!(f, "Down-and-In"),
-            BarrierType::DownOut => write!(f, "Down-and-Out"),
-        }
-    }
 }
 
 /// Builder for constructing `ScriptKernel` instances.

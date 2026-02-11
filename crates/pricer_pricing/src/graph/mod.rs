@@ -1,42 +1,8 @@
 //! # Computation Graph Visualisation
-//!
-//! This module provides data structures for extracting and representing
-//! computation graphs from the Enzyme AD engine for visualisation purposes.
-//!
-//! ## Module Structure
-//!
-//! - `types`: Core data structures (GraphNode, GraphEdge, ComputationGraph)
-//! - `error`: Error types for graph operations
-//! - `extractor`: Graph extraction trait and implementations
-//!
-//! ## D3.js Compatibility
-//!
-//! All structures are designed to serialise to JSON format compatible with
-//! D3.js force-directed graph visualisation:
-//! - `edges` field is renamed to `links` in JSON output
-//! - `node_type` field is renamed to `type` in JSON output
-//!
-//! ## Graph Extraction
-//!
-//! Use `GraphExtractable` trait and `SimpleGraphExtractor` to extract
-//! computation graphs from pricing contexts:
-//!
-//! ```rust
-//! use pricer_pricing::graph::{SimpleGraphExtractor, GraphExtractable};
-//!
-//! let mut extractor = SimpleGraphExtractor::new();
-//! extractor.register_trade("T001", vec!["spot", "vol"]);
-//!
-//! let graph = extractor.extract_graph(Some("T001")).unwrap();
-//! assert!(graph.nodes.len() > 0);
-//! ```
 
 mod error;
 mod extractor;
 mod types;
-
-#[cfg(feature = "volcube")]
-mod volcube_extractor;
 
 pub use error::GraphError;
 pub use extractor::{
@@ -47,16 +13,10 @@ pub use types::{
     ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
     PortfolioComputationGraph, PortfolioGraphMetadata,
 };
-#[cfg(feature = "volcube")]
-pub use volcube_extractor::VolCubeGraphExtractor;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // Task 1.1: GraphNode and GraphEdge Tests
-    // =========================================================================
 
     mod node_tests {
         use super::*;
@@ -130,7 +90,6 @@ mod tests {
 
         #[test]
         fn test_all_node_types() {
-            // Verify all required node types exist
             let input = NodeType::Input;
             let add = NodeType::Add;
             let mul = NodeType::Mul;
@@ -141,7 +100,6 @@ mod tests {
             let output = NodeType::Output;
             let custom = NodeType::Custom(42);
 
-            // Verify they are distinguishable
             assert_ne!(input, add);
             assert_ne!(add, mul);
             assert_ne!(exp, log);
@@ -164,13 +122,11 @@ mod tests {
 
         #[test]
         fn test_all_node_groups() {
-            // Verify all required node groups exist
             let input = NodeGroup::Input;
             let intermediate = NodeGroup::Intermediate;
             let output = NodeGroup::Output;
             let sensitivity = NodeGroup::Sensitivity;
 
-            // Verify they are distinguishable
             assert_ne!(input, intermediate);
             assert_ne!(intermediate, output);
             assert_ne!(output, sensitivity);
@@ -184,7 +140,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     mod serialisation_tests {
         use super::*;
 
@@ -202,7 +157,6 @@ mod tests {
 
             let json = serde_json::to_string(&node).unwrap();
 
-            // Verify D3.js compatible field name: node_type -> type
             assert!(json.contains("\"type\":\"input\""));
             assert!(json.contains("\"id\":\"N1\""));
             assert!(json.contains("\"label\":\"spot\""));
@@ -228,7 +182,6 @@ mod tests {
 
         #[test]
         fn test_node_type_serialisation_lowercase() {
-            // Verify all node types serialise to lowercase
             let types = vec![
                 (NodeType::Input, "\"input\""),
                 (NodeType::Add, "\"add\""),
@@ -269,10 +222,6 @@ mod tests {
             }
         }
     }
-
-    // =========================================================================
-    // Task 1.2: ComputationGraph and GraphMetadata Tests
-    // =========================================================================
 
     mod graph_tests {
         use super::*;
@@ -383,7 +332,6 @@ mod tests {
         fn test_find_path_direct() {
             let graph = create_sample_graph();
 
-            // N3 -> N4 is a direct path
             let path = graph.find_path("N3", "N4");
             assert!(path.is_some());
             let path = path.unwrap();
@@ -396,7 +344,6 @@ mod tests {
         fn test_find_path_multi_hop() {
             let graph = create_sample_graph();
 
-            // N1 -> N3 -> N4
             let path = graph.find_path("N1", "N4");
             assert!(path.is_some());
             let path = path.unwrap();
@@ -409,7 +356,6 @@ mod tests {
         fn test_find_path_no_path() {
             let graph = create_sample_graph();
 
-            // N4 -> N1 should have no path (reverse direction)
             let path = graph.find_path("N4", "N1");
             assert!(path.is_none());
         }
@@ -419,9 +365,7 @@ mod tests {
             let graph = create_sample_graph();
 
             let critical_path = graph.get_critical_path();
-            // Critical path should be the longest path through the graph
             assert!(!critical_path.is_empty());
-            // Should include at least input -> intermediate -> output
             assert!(critical_path.len() >= 3);
         }
 
@@ -435,13 +379,11 @@ mod tests {
                 generated_at: "2026-01-13T12:00:00Z".to_string(),
             };
 
-            // Verify ISO 8601 format
             assert!(metadata.generated_at.contains("T"));
             assert!(metadata.generated_at.ends_with("Z") || metadata.generated_at.contains("+"));
         }
     }
 
-    #[cfg(feature = "serde")]
     mod graph_serialisation_tests {
         use super::*;
 
@@ -479,14 +421,11 @@ mod tests {
 
             let json = serde_json::to_string(&graph).unwrap();
 
-            // Verify D3.js compatible: edges -> links
             assert!(json.contains("\"links\":"));
             assert!(!json.contains("\"edges\":"));
 
-            // Verify nodes array
             assert!(json.contains("\"nodes\":"));
 
-            // Verify metadata
             assert!(json.contains("\"metadata\":"));
             assert!(json.contains("\"trade_id\":\"T001\""));
         }
@@ -510,10 +449,6 @@ mod tests {
             assert!(json.contains("\"generated_at\":\"2026-01-13T12:00:00Z\""));
         }
     }
-
-    // =========================================================================
-    // Task 1.3: GraphError Tests
-    // =========================================================================
 
     mod error_tests {
         use super::*;
@@ -551,15 +486,12 @@ mod tests {
 
         #[test]
         fn test_error_http_status_codes() {
-            // TradeNotFound -> 404
             let not_found = GraphError::TradeNotFound("T001".to_string());
             assert_eq!(not_found.http_status_code(), 404);
 
-            // ExtractionFailed -> 500
             let extraction_failed = GraphError::ExtractionFailed("reason".to_string());
             assert_eq!(extraction_failed.http_status_code(), 500);
 
-            // Timeout -> 500
             let timeout = GraphError::Timeout;
             assert_eq!(timeout.http_status_code(), 500);
         }
@@ -586,7 +518,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     mod error_serialisation_tests {
         use super::*;
 
@@ -595,14 +526,9 @@ mod tests {
             let error = GraphError::TradeNotFound("T001".to_string());
             let json = serde_json::to_string(&error).unwrap();
 
-            // Verify it can be serialised for error responses
             assert!(!json.is_empty());
         }
     }
-
-    // =========================================================================
-    // Task 2.1 (partial): GraphNodeUpdate Tests
-    // =========================================================================
 
     mod node_update_tests {
         use super::*;
@@ -631,10 +557,6 @@ mod tests {
             assert!(update.delta.is_none());
         }
     }
-
-    // =========================================================================
-    // Portfolio Graph Types Tests
-    // =========================================================================
 
     mod portfolio_graph_tests {
         use super::*;
@@ -805,15 +727,12 @@ mod tests {
                 },
             };
 
-            // T001 should have 2 nodes (spot_USD shared + T001_price)
             let t001_nodes = graph.nodes_for_trade("T001");
             assert_eq!(t001_nodes.len(), 2);
 
-            // T002 should have 2 nodes (spot_USD shared + T002_price)
             let t002_nodes = graph.nodes_for_trade("T002");
             assert_eq!(t002_nodes.len(), 2);
 
-            // T003 should have 0 nodes
             let t003_nodes = graph.nodes_for_trade("T003");
             assert_eq!(t003_nodes.len(), 0);
         }

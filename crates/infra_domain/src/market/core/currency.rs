@@ -1,12 +1,12 @@
 //! ISO 4217 currency codes with decimal precision and serialisation support.
 
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 use crate::error::CurrencyError;
 
 /// ISO 4217 currency codes with decimal precision metadata.
 #[non_exhaustive]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Currency {
     /// United States Dollar (2 dp).
@@ -45,15 +45,7 @@ impl Currency {
 
     /// Returns the ISO 4217 three-letter currency code.
     #[must_use]
-    pub fn code(&self) -> &'static str {
-        match self {
-            Currency::USD => "USD",
-            Currency::EUR => "EUR",
-            Currency::GBP => "GBP",
-            Currency::JPY => "JPY",
-            Currency::CHF => "CHF",
-        }
-    }
+    pub fn code(&self) -> &str { self.as_ref() }
 
     /// Returns the full currency name.
     #[must_use]
@@ -94,11 +86,6 @@ impl FromStr for Currency {
             _ => Err(CurrencyError::UnknownCurrency(s.to_string())),
         }
     }
-}
-
-impl fmt::Display for Currency {
-    /// Formats as ISO 4217 code.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.code()) }
 }
 
 #[cfg(test)]

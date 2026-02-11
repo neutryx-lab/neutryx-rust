@@ -1,10 +1,4 @@
 //! JSON file loaders for trade, market, and CSA data.
-//!
-//! This module provides:
-//! - [`JsonLoader`]: Generic JSON loading with glob support
-//! - [`TradeLoader`]: Trade data loading from JSON
-//! - [`MarketLoader`]: Market data (curves, vol surfaces, FX) loading
-//! - [`CsaLoader`]: CSA terms loading from JSON
 
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
@@ -12,41 +6,11 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::error::LoaderError;
 
-// =============================================================================
-// JsonLoader - Generic JSON loading
-// =============================================================================
-
 /// Generic JSON file loader with glob pattern support.
 pub struct JsonLoader;
 
 impl JsonLoader {
     /// Load a single JSON file into type `T`.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the JSON file
-    ///
-    /// # Returns
-    ///
-    /// Deserialized instance of type `T`, or error if file not found or parsing
-    /// fails.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// use adapter_loader::JsonLoader;
-    /// use serde::Deserialize;
-    ///
-    /// #[derive(Deserialize)]
-    /// struct Config { name: String }
-    ///
-    /// let config: Config = JsonLoader::load("config.json")?;
-    /// ```
-    /// Load a single JSON file into type `T` using streaming deserialization.
-    ///
-    /// Uses `BufReader` with `serde_json::from_reader` for memory-efficient
-    /// loading of large files. Instead of loading the entire file content into
-    /// a `String`, this method streams the data directly to the deserializer.
     pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoaderError> {
         let path = path.as_ref();
         let path_str = path.display().to_string();
@@ -61,24 +25,6 @@ impl JsonLoader {
     }
 
     /// Load multiple JSON files matching a glob pattern.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - Glob pattern (e.g., "data/*.json")
-    ///
-    /// # Returns
-    ///
-    /// Vector of (path, deserialized value) pairs for all matching files.
-    /// Files that fail to parse are returned as errors in the result vector.
-    ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// use adapter_loader::JsonLoader;
-    ///
-    /// let results: Vec<Result<(String, Trade), LoaderError>> =
-    ///     JsonLoader::load_glob("trades/*.json")?;
-    /// ```
     pub fn load_glob<T: DeserializeOwned>(
         pattern: &str,
     ) -> Result<Vec<Result<(String, T), LoaderError>>, LoaderError> {
@@ -99,18 +45,7 @@ impl JsonLoader {
         Ok(results)
     }
 
-    /// Load all JSON files matching a glob pattern, collecting successful
-    /// results.
-    ///
-    /// Files that fail to parse are skipped with a warning logged.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - Glob pattern (e.g., "data/*.json")
-    ///
-    /// # Returns
-    ///
-    /// Vector of successfully loaded values.
+    /// Load all JSON files matching a glob pattern, collecting successful.
     pub fn load_glob_ok<T: DeserializeOwned>(pattern: &str) -> Result<Vec<T>, LoaderError> {
         let results = Self::load_glob::<T>(pattern)?;
         Ok(results
@@ -120,10 +55,6 @@ impl JsonLoader {
             .collect())
     }
 }
-
-// =============================================================================
-// TradeLoader - Trade data loading
-// =============================================================================
 
 /// Trade data loader for JSON format.
 pub struct TradeLoader;
@@ -147,31 +78,27 @@ impl TradeLoader {
     }
 }
 
-// =============================================================================
-// Market Data Types
-// =============================================================================
-
 /// Curve point data for yield curve construction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurvePoint {
-    /// Tenor in years (e.g., 0.25, 0.5, 1.0, 2.0)
+    /// Tenor in years (e.g., 0.25, 0.5, 1.0, 2.0).
     pub tenor: f64,
-    /// Rate value (e.g., 0.05 for 5%)
+    /// Rate value (e.g., 0.05 for 5%).
     pub rate: f64,
 }
 
 /// Yield curve data loaded from JSON.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CurveData {
-    /// Curve identifier (e.g., "USD_SOFR", "EUR_ESTR")
+    /// Curve identifier (e.g., "USD_SOFR", "EUR_ESTR").
     pub curve_id: String,
-    /// Curve type (e.g., "ois", "sofr", "forward", "discount")
+    /// Curve type (e.g., "ois", "sofr", "forward", "discount").
     pub curve_type: String,
-    /// Currency code (e.g., "USD", "EUR")
+    /// Currency code (e.g., "USD", "EUR").
     pub currency: String,
-    /// Curve points (tenor, rate pairs)
+    /// Curve points (tenor, rate pairs).
     pub points: Vec<CurvePoint>,
-    /// Interpolation method (e.g., "linear_on_zero_rate", "linear_on_df")
+    /// Interpolation method (e.g., "linear_on_zero_rate", "linear_on_df").
     #[serde(default = "default_interpolation")]
     pub interpolation: String,
 }
@@ -181,46 +108,46 @@ fn default_interpolation() -> String { "linear_on_zero_rate".to_string() }
 /// Volatility surface point data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VolPoint {
-    /// Expiry in years
+    /// Expiry in years.
     pub expiry: f64,
-    /// Strike (e.g., absolute value or moneyness)
+    /// Strike (e.g., absolute value or moneyness).
     pub strike: f64,
-    /// Volatility value (e.g., 0.20 for 20%)
+    /// Volatility value (e.g., 0.20 for 20%).
     pub volatility: f64,
 }
 
 /// Volatility surface data loaded from JSON.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VolSurfaceData {
-    /// Surface identifier (e.g., "USD_SWAPTION_VOL")
+    /// Surface identifier (e.g., "USD_SWAPTION_VOL").
     pub surface_id: String,
-    /// Surface type (e.g., "swaption", "capfloor", "fx")
+    /// Surface type (e.g., "swaption", "capfloor", "fx").
     pub surface_type: String,
-    /// Currency code
+    /// Currency code.
     pub currency: String,
-    /// Volatility points (expiry, strike, vol triples)
+    /// Volatility points (expiry, strike, vol triples).
     pub points: Vec<VolPoint>,
 }
 
 /// FX spot rate data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FxSpotData {
-    /// Currency pair (e.g., "USDJPY", "EURUSD")
+    /// Currency pair (e.g., "USDJPY", "EURUSD").
     pub pair: String,
-    /// Spot rate
+    /// Spot rate.
     pub rate: f64,
 }
 
 /// Aggregated market data loaded from JSON.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MarketData {
-    /// Yield curves
+    /// Yield curves.
     #[serde(default)]
     pub curves: Vec<CurveData>,
-    /// Volatility surfaces
+    /// Volatility surfaces.
     #[serde(default)]
     pub vol_surfaces: Vec<VolSurfaceData>,
-    /// FX spot rates
+    /// FX spot rates.
     #[serde(default)]
     pub fx_spots: Vec<FxSpotData>,
 }
@@ -258,13 +185,7 @@ impl MarketData {
     }
 }
 
-// =============================================================================
-// MarketLoader - Market data loading
-// =============================================================================
-
 /// Market data loader for JSON format.
-///
-/// Loads market data (curves, volatility surfaces, FX spots) from JSON files.
 pub struct MarketLoader;
 
 impl MarketLoader {
@@ -273,8 +194,7 @@ impl MarketLoader {
         JsonLoader::load(path)
     }
 
-    /// Load and merge market data from multiple JSON files matching a glob
-    /// pattern.
+    /// Load and merge market data from multiple JSON files matching a glob.
     pub fn load_glob(pattern: &str) -> Result<MarketData, LoaderError> {
         let results = JsonLoader::load_glob::<MarketData>(pattern)?;
 
@@ -304,13 +224,7 @@ impl MarketLoader {
     }
 }
 
-// =============================================================================
-// CsaLoader - CSA data loading
-// =============================================================================
-
 /// CSA (Credit Support Annex) data loader for JSON format.
-///
-/// Loads CSA terms from JSON files into `infra_domain::counterparty::CsaTerms`.
 pub struct CsaLoader;
 
 impl CsaLoader {
@@ -329,10 +243,6 @@ impl CsaLoader {
     }
 }
 
-// =============================================================================
-// Tests
-// =============================================================================
-
 #[cfg(test)]
 mod tests {
     use std::io::Write;
@@ -340,10 +250,6 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::*;
-
-    // -------------------------------------------------------------------------
-    // JsonLoader Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_json_loader_file_not_found() {
@@ -381,10 +287,6 @@ mod tests {
         let result = JsonLoader::load_glob::<serde_json::Value>("[invalid");
         assert!(matches!(result, Err(LoaderError::GlobPatternError { .. })));
     }
-
-    // -------------------------------------------------------------------------
-    // MarketData Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_market_data_default() {
@@ -507,10 +409,6 @@ mod tests {
         assert_eq!(data.fx_spots.len(), 1);
     }
 
-    // -------------------------------------------------------------------------
-    // CurveData Tests
-    // -------------------------------------------------------------------------
-
     #[test]
     fn test_curve_data_default_interpolation() {
         let json = r#"{
@@ -523,10 +421,6 @@ mod tests {
         let curve: CurveData = serde_json::from_str(json).unwrap();
         assert_eq!(curve.interpolation, "linear_on_zero_rate");
     }
-
-    // -------------------------------------------------------------------------
-    // MarketLoader Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_market_loader_load() {
@@ -544,10 +438,6 @@ mod tests {
         let data = MarketLoader::load(file.path()).unwrap();
         assert_eq!(data.fx_spots.len(), 1);
     }
-
-    // -------------------------------------------------------------------------
-    // LoaderError Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_loader_error_json_error_display() {

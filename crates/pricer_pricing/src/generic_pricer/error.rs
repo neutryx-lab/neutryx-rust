@@ -1,26 +1,9 @@
 //! Error types for Generic Pricer Engine.
-//!
-//! This module defines structured error types for:
-//! - Pricing operations (`PricingError`)
-//! - Configuration validation (`ConfigError`)
-//! - Market data extensions (`GenericPricerMarketError`)
 
-#[cfg(feature = "l1l2-integration")]
 use infra_domain::market::Currency;
 use thiserror::Error;
 
 /// Pricing operation errors.
-///
-/// Provides structured error handling for pricing operations including
-/// market data resolution and instrument validation.
-///
-/// # Variants
-///
-/// - `MissingMarketData`: Required market data not available
-/// - `UnsupportedInstrument`: Instrument type not supported
-/// - `MarketDataResolution`: Failed to resolve market data
-/// - `FxRateNotFound`: FX rate not available for currency pair
-/// - `InvalidTrade`: Trade structure is invalid
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum PricingError {
     /// Required market data is missing.
@@ -49,7 +32,6 @@ pub enum PricingError {
     },
 
     /// FX rate not found for currency pair.
-    #[cfg(feature = "l1l2-integration")]
     #[error("FX rate not found: {base}/{quote}")]
     FxRateNotFound {
         /// Base currency.
@@ -58,18 +40,7 @@ pub enum PricingError {
         quote: Currency,
     },
 
-    /// FX rate not found for currency pair (without l1l2-integration).
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[error("FX rate not found: {base}/{quote}")]
-    FxRateNotFound {
-        /// Base currency code.
-        base: String,
-        /// Quote currency code.
-        quote: String,
-    },
-
     /// FX rate not found for standalone pricing (always available).
-    /// Use this variant when pricing in standalone mode with DefaultCurrency.
     #[error("FX rate not found (standalone): {base}/{quote}")]
     StandaloneFxRateNotFound {
         /// Base currency code.
@@ -175,24 +146,11 @@ impl PricingError {
     }
 
     /// Creates an FX rate not found error.
-    #[cfg(feature = "l1l2-integration")]
     pub fn fx_rate_not_found(base: Currency, quote: Currency) -> Self {
         Self::FxRateNotFound { base, quote }
     }
 
-    /// Creates an FX rate not found error (without l1l2-integration).
-    #[cfg(not(feature = "l1l2-integration"))]
-    pub fn fx_rate_not_found(base: impl Into<String>, quote: impl Into<String>) -> Self {
-        Self::FxRateNotFound {
-            base: base.into(),
-            quote: quote.into(),
-        }
-    }
-
     /// Creates an FX rate not found error for standalone pricing (always
-    /// available).
-    ///
-    /// Use this when pricing in standalone mode with DefaultCurrency.
     pub fn standalone_fx_rate_not_found(base: impl Into<String>, quote: impl Into<String>) -> Self {
         Self::StandaloneFxRateNotFound {
             base: base.into(),
@@ -278,8 +236,6 @@ impl PricingError {
 }
 
 /// Configuration validation errors.
-///
-/// Errors that occur during construction when invalid parameters are provided.
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum ConfigError {
     /// Invalid model parameter.
@@ -329,10 +285,6 @@ impl ConfigError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // PricingError Tests (Task 1.1)
-    // =========================================================================
 
     #[test]
     fn test_pricing_error_missing_market_data() {
@@ -417,10 +369,6 @@ mod tests {
         let _: &dyn std::error::Error = &err;
     }
 
-    // =========================================================================
-    // ConfigError Tests (Task 1.2)
-    // =========================================================================
-
     #[test]
     fn test_config_error_invalid_model_parameter() {
         let err = ConfigError::invalid_model_parameter("num_paths", "must be > 0");
@@ -455,10 +403,6 @@ mod tests {
         let err = ConfigError::invalid_model_parameter("test", "reason");
         let _: &dyn std::error::Error = &err;
     }
-
-    // =========================================================================
-    // Task 2.1: Extended PricingError Tests (TDD RED → GREEN)
-    // =========================================================================
 
     #[test]
     fn test_pricing_error_unsupported_method() {
