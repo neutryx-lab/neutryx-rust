@@ -9,6 +9,7 @@
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use pricer_core::math::rng::PricerRng;
 use pricer_pricing::{
     checkpoint::CheckpointStrategy,
     mc::{
@@ -17,7 +18,6 @@ use pricer_pricing::{
         GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams,
     },
     path_dependent::PathPayoffType,
-    rng::PricerRng,
     tree::{BinomialTree, TrinomialTree},
 };
 use rayon::prelude::*;

@@ -47,6 +47,8 @@ criterion = { workspace = true, features = ["html_reports"] }
 iai-callgrind = "0.14"
 # JSON serialization for tests
 serde_json.workspace = true
+# Direct access to PricerRng in benchmarks
+pricer_core = { path = "../pricer_core", features = ["rng"] }
 
 [[bench]]
 name = "engine"

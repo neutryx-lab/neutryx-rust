@@ -12,6 +12,7 @@
 use std::marker::PhantomData;
 
 use super::layout_config::PathLayout;
+use super::workspace_trait::PathWorkspaceTrait;
 
 /// Index calculation strategy for workspace memory layout.
 pub trait LayoutStrategy: Send + Sync + Clone + 'static {
@@ -190,41 +191,53 @@ impl<S: LayoutStrategy> Workspace<S> {
 
     // --- Capacity / size accessors ---
 
+    /// Returns path capacity.
     #[inline]
     pub fn capacity_paths(&self) -> usize { self.capacity_paths }
+    /// Returns step capacity.
     #[inline]
     pub fn capacity_steps(&self) -> usize { self.capacity_steps }
+    /// Returns current path count.
     #[inline]
     pub fn size_paths(&self) -> usize { self.size_paths }
+    /// Returns current step count.
     #[inline]
     pub fn size_steps(&self) -> usize { self.size_steps }
+    /// Returns the number of simulation paths.
     #[inline]
     pub fn num_paths(&self) -> usize { self.size_paths }
+    /// Returns the number of time steps.
     #[inline]
     pub fn num_steps(&self) -> usize { self.size_steps }
 
     // --- Flat buffer accessors ---
 
+    /// Returns the randoms buffer as a slice.
     #[inline]
     pub fn randoms(&self) -> &[f64] {
         &self.randoms[..self.size_paths * self.size_steps]
     }
+    /// Returns the randoms buffer as a mutable slice.
     #[inline]
     pub fn randoms_mut(&mut self) -> &mut [f64] {
         let len = self.size_paths * self.size_steps;
         &mut self.randoms[..len]
     }
+    /// Returns the paths buffer as a slice.
     #[inline]
     pub fn paths(&self) -> &[f64] {
         &self.paths[..self.size_paths * (self.size_steps + 1)]
     }
+    /// Returns the paths buffer as a mutable slice.
     #[inline]
     pub fn paths_mut(&mut self) -> &mut [f64] {
         let len = self.size_paths * (self.size_steps + 1);
         &mut self.paths[..len]
     }
+    /// Returns the payoffs buffer as a slice.
     #[inline]
     pub fn payoffs(&self) -> &[f64] { &self.payoffs[..self.size_paths] }
+    /// Returns the payoffs buffer as a mutable slice.
     #[inline]
     pub fn payoffs_mut(&mut self) -> &mut [f64] { &mut self.payoffs[..self.size_paths] }
 
@@ -300,6 +313,105 @@ impl<S: LayoutStrategy> Workspace<S> {
     }
 }
 
+// --- PathWorkspaceTrait implementation ---
+
+impl<S: LayoutStrategy> PathWorkspaceTrait for Workspace<S> {
+    #[inline]
+    fn num_paths(&self) -> usize { self.size_paths }
+    #[inline]
+    fn num_steps(&self) -> usize { self.size_steps }
+    #[inline]
+    fn layout(&self) -> PathLayout { S::layout() }
+
+    #[inline]
+    fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
+        self.paths[self.path_index(path_idx, step_idx)]
+    }
+
+    #[inline]
+    fn set_path_value(&mut self, path_idx: usize, step_idx: usize, value: f64) {
+        let idx = self.path_index(path_idx, step_idx);
+        self.paths[idx] = value;
+    }
+
+    #[inline]
+    fn get_step_slice(&self, step_idx: usize) -> Option<&[f64]> {
+        if S::layout() == PathLayout::TimeStepFirst {
+            let start = step_idx * self.size_paths;
+            Some(&self.paths[start..start + self.size_paths])
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_step_slice_mut(&mut self, step_idx: usize) -> Option<&mut [f64]> {
+        if S::layout() == PathLayout::TimeStepFirst {
+            let start = step_idx * self.size_paths;
+            Some(&mut self.paths[start..start + self.size_paths])
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
+        if S::layout() == PathLayout::PathFirst {
+            let start = path_idx * (self.size_steps + 1);
+            Some(&self.paths[start..start + self.size_steps + 1])
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_path_slice_mut(&mut self, path_idx: usize) -> Option<&mut [f64]> {
+        if S::layout() == PathLayout::PathFirst {
+            let start = path_idx * (self.size_steps + 1);
+            Some(&mut self.paths[start..start + self.size_steps + 1])
+        } else {
+            None
+        }
+    }
+
+    fn clear(&mut self) {
+        let r_len = self.size_paths * self.size_steps;
+        self.randoms[..r_len].fill(0.0);
+        let p_len = self.size_paths * (self.size_steps + 1);
+        self.paths[..p_len].fill(0.0);
+        self.payoffs[..self.size_paths].fill(0.0);
+    }
+
+    #[inline]
+    fn memory_usage(&self) -> usize {
+        (self.randoms.capacity() + self.paths.capacity() + self.payoffs.capacity())
+            * std::mem::size_of::<f64>()
+    }
+
+    #[inline]
+    fn randoms(&self) -> &[f64] {
+        &self.randoms[..self.size_paths * self.size_steps]
+    }
+    #[inline]
+    fn randoms_mut(&mut self) -> &mut [f64] {
+        let len = self.size_paths * self.size_steps;
+        &mut self.randoms[..len]
+    }
+    #[inline]
+    fn payoffs(&self) -> &[f64] { &self.payoffs[..self.size_paths] }
+    #[inline]
+    fn payoffs_mut(&mut self) -> &mut [f64] { &mut self.payoffs[..self.size_paths] }
+    #[inline]
+    fn paths(&self) -> &[f64] {
+        &self.paths[..self.size_paths * (self.size_steps + 1)]
+    }
+    #[inline]
+    fn paths_mut(&mut self) -> &mut [f64] {
+        let len = self.size_paths * (self.size_steps + 1);
+        &mut self.paths[..len]
+    }
+}
+
 // --- PathFirst-specific convenience methods ---
 
 impl Workspace<PathFirst> {
@@ -334,6 +446,7 @@ impl<S: LayoutStrategy> Default for Workspace<S> {
 ///
 /// Avoids `dyn Trait` overhead by using enum dispatch, keeping Enzyme
 /// AD compatibility.
+#[allow(missing_docs)]
 pub enum WorkspaceEnum {
     /// Path-first layout.
     PathFirst(PathWorkspace),
@@ -341,6 +454,7 @@ pub enum WorkspaceEnum {
     TimeStepFirst(TimeStepFirstWorkspace),
 }
 
+#[allow(missing_docs)]
 impl WorkspaceEnum {
     /// Creates a workspace with the specified layout.
     pub fn new(layout: PathLayout, num_paths: usize, num_steps: usize) -> Self {
