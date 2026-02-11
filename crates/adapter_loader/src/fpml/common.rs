@@ -3,7 +3,7 @@
 //! Provides helpers for parsing common FpML elements like dates, parties,
 //! and schedule definitions.
 
-use infra_domain::{market::Currency, time::Date};
+use infra_domain::{market::Currency, time::Date, trade::TradeMetadata};
 
 use super::error::FpmlError;
 
@@ -237,6 +237,53 @@ impl<'a> XmlNavigator<'a> {
 
         Some(after_value[..value_end].to_string())
     }
+}
+
+/// Build trade metadata from a parsed trade header.
+pub fn build_metadata(header: &TradeHeader) -> TradeMetadata {
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(ref cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp.clone());
+    }
+    if let Some(ref book) = header.book {
+        metadata = metadata.with_book(book.clone());
+    }
+    metadata
+}
+
+/// Extract a date from a nested section like
+/// `<effectiveDate><unadjustedDate>...`.
+pub fn extract_nested_date(
+    nav: &XmlNavigator,
+    section_name: &str,
+    fallback_elem: &str,
+    default: Date,
+) -> Result<Date, FpmlError> {
+    nav.extract_section(section_name)
+        .and_then(|section| XmlNavigator::new(&section).find_text("unadjustedDate"))
+        .or_else(|| nav.find_text(fallback_elem))
+        .map(|d| parse_date(&d))
+        .transpose()
+        .map(|opt| opt.unwrap_or(default))
+}
+
+/// Extract notional from a nested section like
+/// `<calculationAmount><amount>...`.
+pub fn extract_nested_amount(
+    nav: &XmlNavigator,
+    section_name: &str,
+    fallback_elem: &str,
+    default: f64,
+) -> Result<f64, FpmlError> {
+    nav.extract_section(section_name)
+        .and_then(|section| XmlNavigator::new(&section).find_text("amount"))
+        .or_else(|| nav.find_text(fallback_elem))
+        .map(|n| parse_decimal(&n))
+        .transpose()
+        .map(|opt| opt.unwrap_or(default))
 }
 
 /// Parsed party information from FpML.

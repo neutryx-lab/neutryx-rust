@@ -146,18 +146,6 @@ pub enum CompileError {
     },
 }
 
-impl CompileError {
-    /// Returns the instrument index where the error occurred.
-    pub fn instrument_index(&self) -> usize {
-        match self {
-            Self::InvalidMaturity { index, .. }
-            | Self::InvalidYearFraction { index, .. }
-            | Self::ConventionMismatch { index, .. }
-            | Self::InvalidConvention { index, .. }
-            | Self::UnsupportedInstrument { index, .. } => *index,
-        }
-    }
-}
 
 // =============================================================================
 // CompiledInstrument Structure (Requirements 1.2, 2.5, 3.5)
@@ -925,7 +913,6 @@ mod tests {
         assert!(msg.contains("Invalid maturity"));
         assert!(msg.contains("0"));
         assert!(msg.contains("USD-SOFR-1Y"));
-        assert_eq!(err.instrument_index(), 0);
     }
 
     #[test]
@@ -938,7 +925,6 @@ mod tests {
         assert!(msg.contains("Invalid year fraction"));
         assert!(msg.contains("3"));
         assert!(msg.contains("EUR-ESTR-5Y"));
-        assert_eq!(err.instrument_index(), 3);
     }
 
     #[test]
@@ -951,7 +937,6 @@ mod tests {
         assert!(msg.contains("Convention mismatch"));
         assert!(msg.contains("5"));
         assert!(msg.contains("JPY-TONA-10Y"));
-        assert_eq!(err.instrument_index(), 5);
     }
 
     #[test]
@@ -964,7 +949,6 @@ mod tests {
         assert!(msg.contains("Invalid convention"));
         assert!(msg.contains("2"));
         assert!(msg.contains("GBP-SONIA-2Y"));
-        assert_eq!(err.instrument_index(), 2);
     }
 
     #[test]
@@ -977,7 +961,6 @@ mod tests {
         assert!(msg.contains("Unsupported instrument type"));
         assert!(msg.contains("1"));
         assert!(msg.contains("XCcyBasis"));
-        assert_eq!(err.instrument_index(), 1);
     }
 
     #[test]

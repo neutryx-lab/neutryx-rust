@@ -49,18 +49,6 @@ pub enum JacobianQuality {
 }
 
 impl JacobianQuality {
-    /// Create a Good quality result.
-    #[must_use]
-    pub fn good() -> Self { Self::Good }
-
-    /// Create a Warning quality result.
-    #[must_use]
-    pub fn warning(reason: &'static str) -> Self { Self::Warning { reason } }
-
-    /// Create a Poor quality result.
-    #[must_use]
-    pub fn poor(reason: &'static str) -> Self { Self::Poor { reason } }
-
     /// Check if the quality is acceptable (Good or Warning).
     pub fn is_acceptable(&self) -> bool { !matches!(self, JacobianQuality::Poor { .. }) }
 
@@ -197,48 +185,6 @@ impl<T: Float> Default for NumericalDiagnostics<T> {
 }
 
 impl<T: Float> NumericalDiagnostics<T> {
-    /// Create new empty diagnostics.
-    pub fn new() -> Self { Self::default() }
-
-    /// Create diagnostics with a condition number.
-    pub fn with_condition_number(mut self, cond: T) -> Self {
-        self.condition_number = Some(cond);
-        self
-    }
-
-    /// Add a residual value to the history.
-    pub fn push_residual(&mut self, residual: T) { self.residual_history.push(residual); }
-
-    /// Set the regularisation type.
-    pub fn with_regularisation(mut self, reg: RegularisationType<T>) -> Self {
-        self.regularisation_applied = reg;
-        self
-    }
-
-    /// Set the Jacobian quality.
-    pub fn with_jacobian_quality(mut self, quality: JacobianQuality) -> Self {
-        self.jacobian_quality = quality;
-        self
-    }
-
-    /// Record that AD fallback was used.
-    pub fn mark_ad_fallback(&mut self) { self.ad_fallback_used = true; }
-
-    /// Set the AD variance.
-    pub fn with_ad_variance(mut self, variance: T) -> Self {
-        self.ad_variance = Some(variance);
-        self
-    }
-
-    /// Increment NaN counter.
-    pub fn record_nan(&mut self) { self.nan_count += 1; }
-
-    /// Increment Inf counter.
-    pub fn record_inf(&mut self) { self.inf_count += 1; }
-
-    /// Increment near-zero diagonal counter.
-    pub fn record_near_zero_diagonal(&mut self) { self.near_zero_diagonal_count += 1; }
-
     /// Check if there were any numerical issues.
     pub fn has_issues(&self) -> bool {
         self.nan_count > 0
@@ -334,15 +280,15 @@ pub fn validate_jacobian_matrix<T: Float>(
     ncols: usize,
     zero_threshold: T,
 ) -> (JacobianQuality, NumericalDiagnostics<T>) {
-    let mut diagnostics = NumericalDiagnostics::new();
+    let mut diagnostics = NumericalDiagnostics::default();
 
     // Check for NaN and Inf
     for &val in jacobian {
         if val.is_nan() {
-            diagnostics.record_nan();
+            diagnostics.nan_count += 1;
         }
         if val.is_infinite() {
-            diagnostics.record_inf();
+            diagnostics.inf_count += 1;
         }
     }
 
@@ -353,7 +299,7 @@ pub fn validate_jacobian_matrix<T: Float>(
             if idx < jacobian.len() {
                 let diag_val = jacobian[idx];
                 if diag_val.abs() < zero_threshold {
-                    diagnostics.record_near_zero_diagonal();
+                    diagnostics.near_zero_diagonal_count += 1;
                 }
             }
         }
@@ -394,15 +340,15 @@ where
     let nrows = jacobian.nrows();
     let ncols = jacobian.ncols();
 
-    let mut diagnostics = NumericalDiagnostics::new();
+    let mut diagnostics = NumericalDiagnostics::default();
 
     // Check for NaN and Inf
     for &val in jacobian.iter() {
         if val.is_nan() {
-            diagnostics.record_nan();
+            diagnostics.nan_count += 1;
         }
         if val.is_infinite() {
-            diagnostics.record_inf();
+            diagnostics.inf_count += 1;
         }
     }
 
@@ -411,7 +357,7 @@ where
         for i in 0..nrows {
             let diag_val = jacobian[(i, i)];
             if Float::abs(diag_val) < zero_threshold {
-                diagnostics.record_near_zero_diagonal();
+                diagnostics.near_zero_diagonal_count += 1;
             }
         }
     }
@@ -769,30 +715,6 @@ pub enum CalibrationError {
 }
 
 impl CalibrationError {
-    /// Create a numerical instability error with a message.
-    #[must_use]
-    pub fn numerical_instability(message: impl Into<String>) -> Self {
-        Self::NumericalInstability {
-            message: message.into(),
-        }
-    }
-
-    /// Create a no-instruments error.
-    #[must_use]
-    pub fn no_instruments() -> Self { Self::NoInstruments }
-
-    /// Create an instrument evaluation failed error.
-    #[must_use]
-    pub fn instrument_evaluation_failed(
-        instrument_index: usize,
-        message: impl Into<String>,
-    ) -> Self {
-        Self::InstrumentEvaluationFailed {
-            instrument_index,
-            message: message.into(),
-        }
-    }
-
     /// Check if this is a recoverable error.
     ///
     /// Recoverable errors might succeed with different initial parameters
@@ -1446,7 +1368,7 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_default() {
-        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
+        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
         assert!(diag.condition_number.is_none());
         assert!(diag.residual_history.is_empty());
         assert!(!diag.has_issues());
@@ -1456,18 +1378,18 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_with_condition_number() {
-        let diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_condition_number(1e8);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.condition_number = Some(1e8);
         assert!(diag.condition_number.is_some());
         assert!((diag.condition_number.unwrap() - 1e8).abs() < 1.0);
     }
 
     #[test]
     fn test_numerical_diagnostics_residual_history() {
-        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
-        diag.push_residual(1.0);
-        diag.push_residual(0.1);
-        diag.push_residual(0.01);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.residual_history.push(1.0);
+        diag.residual_history.push(0.1);
+        diag.residual_history.push(0.01);
 
         assert_eq!(diag.iteration_count(), 3);
         assert!((diag.final_residual().unwrap() - 0.01).abs() < 1e-15);
@@ -1475,49 +1397,50 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_issues() {
-        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
         assert!(!diag.has_issues());
 
-        diag.record_nan();
+        diag.nan_count += 1;
         assert!(diag.has_issues());
         assert_eq!(diag.nan_count, 1);
 
-        diag.record_inf();
+        diag.inf_count += 1;
         assert_eq!(diag.inf_count, 1);
 
-        diag.record_near_zero_diagonal();
+        diag.near_zero_diagonal_count += 1;
         assert_eq!(diag.near_zero_diagonal_count, 1);
     }
 
     #[test]
     fn test_numerical_diagnostics_ill_conditioned() {
-        let diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_condition_number(1e12);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.condition_number = Some(1e12);
         assert!(diag.is_ill_conditioned(1e10));
         assert!(!diag.is_ill_conditioned(1e14));
     }
 
     #[test]
     fn test_numerical_diagnostics_ad_fallback() {
-        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new();
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
         assert!(!diag.ad_fallback_used);
-        diag.mark_ad_fallback();
+        diag.ad_fallback_used = true;
         assert!(diag.ad_fallback_used);
     }
 
     #[test]
     fn test_numerical_diagnostics_ad_unstable() {
-        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new().with_ad_variance(1e7);
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.ad_variance = Some(1e7);
         assert!(diag.is_ad_unstable(1e6));
         assert!(!diag.is_ad_unstable(1e8));
     }
 
     #[test]
     fn test_numerical_diagnostics_summary() {
-        let mut diag: NumericalDiagnostics<f64> =
-            NumericalDiagnostics::new().with_condition_number(1e8);
-        diag.push_residual(0.001);
-        diag.record_nan();
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.condition_number = Some(1e8);
+        diag.residual_history.push(0.001);
+        diag.nan_count += 1;
 
         let summary = diag.summary();
         assert!(summary.contains("Iterations: 1"));
@@ -1526,8 +1449,8 @@ mod tests {
 
     #[test]
     fn test_numerical_diagnostics_with_regularisation() {
-        let diag: NumericalDiagnostics<f64> = NumericalDiagnostics::new()
-            .with_regularisation(RegularisationType::Tikhonov { damping: 1e-6 });
+        let mut diag: NumericalDiagnostics<f64> = NumericalDiagnostics::default();
+        diag.regularisation_applied = RegularisationType::Tikhonov { damping: 1e-6 };
         assert!(diag.was_regularised());
         let summary = diag.summary();
         assert!(summary.contains("Tikhonov"));

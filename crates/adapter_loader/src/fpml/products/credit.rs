@@ -7,65 +7,17 @@
 use infra_domain::{
     time::Date,
     trade::{
-        Cashflow, CashflowType, Direction, Leg, LegType, Payoff, ProtectionSide, Trade,
-        TradeMetadata, TradeType,
+        Cashflow, CashflowType, Direction, Leg, LegType, Payoff, ProtectionSide, Trade, TradeType,
     },
 };
 
 use crate::fpml::{
     common::{
-        parse_currency, parse_date, parse_decimal, parse_trade_header, xml_decimal,
-        xml_text, XmlNavigator,
+        build_metadata, extract_nested_amount, extract_nested_date, parse_currency, parse_date,
+        parse_trade_header, xml_decimal, xml_text, XmlNavigator,
     },
     error::FpmlError,
 };
-
-/// Build trade metadata from header.
-fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(ref cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp.clone());
-    }
-    if let Some(ref book) = header.book {
-        metadata = metadata.with_book(book.clone());
-    }
-    metadata
-}
-
-/// Extract a date from a nested section like
-/// `<effectiveDate><unadjustedDate>...`.
-fn extract_nested_date(
-    nav: &XmlNavigator,
-    section_name: &str,
-    fallback_elem: &str,
-    default: Date,
-) -> Result<Date, FpmlError> {
-    nav.extract_section(section_name)
-        .and_then(|section| XmlNavigator::new(&section).find_text("unadjustedDate"))
-        .or_else(|| nav.find_text(fallback_elem))
-        .map(|d| parse_date(&d))
-        .transpose()
-        .map(|opt| opt.unwrap_or(default))
-}
-
-/// Extract notional from a nested section like
-/// `<calculationAmount><amount>...`.
-fn extract_nested_amount(
-    nav: &XmlNavigator,
-    section_name: &str,
-    fallback_elem: &str,
-    default: f64,
-) -> Result<f64, FpmlError> {
-    nav.extract_section(section_name)
-        .and_then(|section| XmlNavigator::new(&section).find_text("amount"))
-        .or_else(|| nav.find_text(fallback_elem))
-        .map(|n| parse_decimal(&n))
-        .transpose()
-        .map(|opt| opt.unwrap_or(default))
-}
 
 /// Parse a credit default swap from FpML.
 pub fn parse_credit_default_swap(xml: &str) -> Result<Trade, FpmlError> {

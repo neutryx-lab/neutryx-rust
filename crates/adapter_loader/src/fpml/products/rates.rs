@@ -11,14 +11,14 @@ use infra_domain::{
     time::Date,
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, Payoff, SettlementType,
-        Trade, TradeMetadata, TradeType,
+        Trade, TradeType,
     },
 };
 
 use crate::fpml::{
     common::{
-        parse_currency, parse_date, parse_decimal, parse_trade_header, xml_date, xml_decimal,
-        xml_decimal_or, xml_text, XmlNavigator,
+        build_metadata, parse_currency, parse_date, parse_decimal, parse_trade_header, xml_date,
+        xml_decimal, xml_decimal_or, xml_text, XmlNavigator,
     },
     error::FpmlError,
 };
@@ -176,21 +176,6 @@ fn determine_swap_type(legs: &[Leg]) -> TradeType {
     } else {
         TradeType::Swap
     }
-}
-
-/// Build trade metadata from header.
-fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(ref cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp.clone());
-    }
-    if let Some(ref book) = header.book {
-        metadata = metadata.with_book(book.clone());
-    }
-    metadata
 }
 
 /// Parse a swaption from FpML.

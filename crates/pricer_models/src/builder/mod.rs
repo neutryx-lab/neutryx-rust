@@ -151,21 +151,6 @@ pub enum BootstrapError {
     },
 }
 
-impl BootstrapError {
-    /// Creates a convergence failure error.
-    pub fn convergence_failure(maturity: f64, residual: f64, iterations: usize) -> Self {
-        Self::ConvergenceFailure {
-            maturity,
-            residual,
-            iterations,
-        }
-    }
-
-    /// Creates an insufficient data error.
-    pub fn insufficient_data(required: usize, provided: usize) -> Self {
-        Self::InsufficientData { required, provided }
-    }
-}
 
 /// Result of a successful bootstrap operation.
 #[derive(Debug, Clone)]

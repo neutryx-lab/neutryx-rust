@@ -24,8 +24,8 @@ mod products;
 
 // Re-export common utilities for advanced usage
 pub use common::{
-    parse_currency, parse_date, parse_decimal, parse_parties, parse_trade_header, Party,
-    TradeHeader,
+    build_metadata, extract_nested_amount, extract_nested_date, parse_currency, parse_date,
+    parse_decimal, parse_parties, parse_trade_header, Party, TradeHeader,
 };
 pub use error::FpmlError;
 pub use parser::FpmlParser;

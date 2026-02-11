@@ -9,32 +9,17 @@ use infra_domain::{
     time::Date,
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, OptionType, Payoff,
-        SettlementType, Trade, TradeMetadata, TradeType,
+        SettlementType, Trade, TradeType,
     },
 };
 
 use crate::fpml::{
     common::{
-        parse_currency, parse_date, parse_trade_header, xml_decimal, xml_decimal_or,
-        xml_text, XmlNavigator,
+        build_metadata, parse_currency, parse_date, parse_trade_header, xml_decimal,
+        xml_decimal_or, xml_text, XmlNavigator,
     },
     error::FpmlError,
 };
-
-/// Build trade metadata from header.
-fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(ref cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp.clone());
-    }
-    if let Some(ref book) = header.book {
-        metadata = metadata.with_book(book.clone());
-    }
-    metadata
-}
 
 /// Parse an equity option from FpML.
 pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {

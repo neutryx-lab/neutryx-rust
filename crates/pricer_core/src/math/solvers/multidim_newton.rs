@@ -1,59 +1,13 @@
 //! Multi-dimensional Newton-Raphson solver for systems of equations.
 //!
-//! This module provides a generalised Newton-Raphson solver for solving
-//! systems of nonlinear equations F(x) = 0, where F: R^n -> R^n.
-//!
-//! The solver is designed for curve calibration and other financial
-//! applications requiring simultaneous solution of multiple equations.
+//! Solves F(x) = 0 where F: R^n -> R^n, with optional Jacobian inverse
+//! storage for the implicit function theorem (AAD).
 //!
 //! ## Implementation
 //!
-//! Uses `nalgebra` directly for LU decomposition (linear system solve)
-//! and matrix inversion. No custom linear algebra routines.
-//!
-//! ## Key Features
-//!
-//! - Generic over `T: RealField + Copy` for AD compatibility
-//! - Jacobian inverse storage for implicit function theorem (AAD)
-//! - Configurable convergence criteria (residual norm, parameter change)
-//! - Numerical Jacobian fallback via finite differences
-//!
-//! ## Example
-//!
-//! ```ignore
-//! use pricer_core::math::solvers::{
-//!     MultidimensionalNewtonSolver, MultidimNewtonConfig, SystemOfEquations,
-//! };
-//! use nalgebra::{DMatrix, DVector};
-//!
-//! // Define a simple 2D system: F(x, y) = (x² + y - 3, x + y² - 5)
-//! struct QuadraticSystem;
-//!
-//! impl SystemOfEquations<f64> for QuadraticSystem {
-//!     fn dimension(&self) -> usize { 2 }
-//!
-//!     fn evaluate(&self, x: &DVector<f64>) -> Result<DVector<f64>, SolverError> {
-//!         Ok(DVector::from_vec(vec![
-//!             x[0] * x[0] + x[1] - 3.0,
-//!             x[0] + x[1] * x[1] - 5.0,
-//!         ]))
-//!     }
-//!
-//!     fn jacobian(&self, x: &DVector<f64>) -> Result<DMatrix<f64>, SolverError> {
-//!         Ok(DMatrix::from_row_slice(2, 2, &[
-//!             2.0 * x[0], 1.0,
-//!             1.0, 2.0 * x[1],
-//!         ]))
-//!     }
-//! }
-//!
-//! let config = MultidimNewtonConfig::default();
-//! let solver = MultidimensionalNewtonSolver::new(config);
-//! let initial = DVector::from_vec(vec![1.0, 1.0]);
-//!
-//! let result = solver.solve(&QuadraticSystem, initial).unwrap();
-//! assert!(result.converged);
-//! ```
+//! For `f64`, delegates to argmin's [`Newton`](argmin::solver::newton::Newton)
+//! solver internally. The Jacobian inverse J^{-1} is computed at the solution
+//! point when `store_jacobian_inverse` is enabled.
 
 use nalgebra::{DMatrix, DVector, RealField};
 use num_traits::Float;
@@ -66,179 +20,51 @@ use crate::{math::numeric::from_f64, types::SolverError};
 
 /// Trait for defining a system of nonlinear equations F(x) = 0.
 ///
-/// Implementations must provide methods to evaluate the residual vector F(x)
-/// and the Jacobian matrix J(x) = ∂F/∂x. A default numerical Jacobian
-/// implementation is provided via finite differences.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type satisfying `RealField + Copy` for AD
-///   compatibility
-///
-/// # Example
-///
-/// ```ignore
-/// use nalgebra::{DMatrix, DVector, RealField};
-/// use pricer_core::math::solvers::SystemOfEquations;
-/// use pricer_core::types::SolverError;
-///
-/// struct LinearSystem<T: RealField + Copy> {
-///     a: DMatrix<T>,
-///     b: DVector<T>,
-/// }
-///
-/// impl<T: RealField + Copy> SystemOfEquations<T> for LinearSystem<T> {
-///     fn dimension(&self) -> usize {
-///         self.b.len()
-///     }
-///
-///     fn evaluate(&self, x: &DVector<T>) -> Result<DVector<T>, SolverError> {
-///         Ok(&self.a * x - &self.b)
-///     }
-///
-///     fn jacobian(&self, _x: &DVector<T>) -> Result<DMatrix<T>, SolverError> {
-///         Ok(self.a.clone())
-///     }
-/// }
-/// ```
+/// A default numerical Jacobian is provided via finite differences.
 pub trait SystemOfEquations<T: RealField + Copy + Float> {
-    /// Returns the dimension of the system (number of equations/unknowns).
-    ///
-    /// For a square system, this is both the input and output dimension.
+    /// Dimension of the system (number of equations/unknowns).
     fn dimension(&self) -> usize;
 
-    /// Evaluates the residual vector F(x).
-    ///
-    /// # Arguments
-    ///
-    /// * `x` - Current iterate, must have length equal to `dimension()`
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(DVector<T>)` - Residual vector of length `dimension()`
-    /// * `Err(SolverError)` - If evaluation fails (e.g., domain error)
-    ///
-    /// # Errors
-    ///
-    /// Returns `SolverError::DimensionMismatch` if `x.len() != dimension()`.
+    /// Evaluate the residual vector F(x).
     fn evaluate(&self, x: &DVector<T>) -> Result<DVector<T>, SolverError>;
 
-    /// Computes the Jacobian matrix J(x) = ∂F/∂x.
-    ///
-    /// For a system of n equations in n unknowns, the Jacobian is an n×n matrix
-    /// where J\[i,j\] = ∂F_i/∂x_j.
-    ///
-    /// # Arguments
-    ///
-    /// * `x` - Current iterate at which to evaluate the Jacobian
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(DMatrix<T>)` - Jacobian matrix of shape (n, n)
-    /// * `Err(SolverError)` - If computation fails
-    ///
-    /// # Default Implementation
-    ///
-    /// If not overridden, falls back to
-    /// [`jacobian_numerical`](Self::jacobian_numerical) with epsilon =
-    /// 1e-8.
+    /// Compute the Jacobian J(x) = dF/dx. Defaults to numerical approximation.
     fn jacobian(&self, x: &DVector<T>) -> Result<DMatrix<T>, SolverError> {
         self.jacobian_numerical(x, from_f64(1e-8))
     }
 
-    /// Computes a numerical approximation to the Jacobian via finite
-    /// differences.
-    ///
-    /// Uses forward differences: J\[i,j\] ≈ (F_i(x + ε*e_j) - F_i(x)) / ε
-    ///
-    /// # Arguments
-    ///
-    /// * `x` - Current iterate
-    /// * `epsilon` - Finite difference step size
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(DMatrix<T>)` - Numerically approximated Jacobian
-    /// * `Err(SolverError)` - If function evaluation fails
-    ///
-    /// # Performance Note
-    ///
-    /// Requires n+1 function evaluations where n = dimension().
-    /// For large systems, consider providing an analytical Jacobian.
+    /// Numerical Jacobian via forward finite differences.
     fn jacobian_numerical(&self, x: &DVector<T>, epsilon: T) -> Result<DMatrix<T>, SolverError> {
         let n = self.dimension();
         let f0 = self.evaluate(x)?;
-
         let mut jacobian = DMatrix::zeros(n, n);
         let mut x_perturbed = x.clone();
 
         for j in 0..n {
             let x_j_original = x_perturbed[j];
             x_perturbed[j] = x_j_original + epsilon;
-
             let f_perturbed = self.evaluate(&x_perturbed)?;
-
             for i in 0..n {
                 jacobian[(i, j)] = (f_perturbed[i] - f0[i]) / epsilon;
             }
-
             x_perturbed[j] = x_j_original;
         }
-
         Ok(jacobian)
     }
 }
 
 // =============================================================================
-// Solver Configuration
+// Configuration
 // =============================================================================
 
 /// Configuration for the multi-dimensional Newton-Raphson solver.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for tolerance values
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_core::math::solvers::MultidimNewtonConfig;
-///
-/// // Use default configuration
-/// let config: MultidimNewtonConfig<f64> = MultidimNewtonConfig::default();
-///
-/// // Custom configuration
-/// let config = MultidimNewtonConfig {
-///     tolerance: 1e-12,
-///     param_tolerance: 1e-10,
-///     max_iterations: 200,
-///     jacobian_epsilon: 1e-6,
-///     store_jacobian_inverse: true,
-/// };
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MultidimNewtonConfig<T: RealField + Copy> {
-    /// Convergence tolerance for residual norm.
-    ///
-    /// The solver stops when ||F(x)|| < tolerance.
     pub tolerance: T,
-
-    /// Convergence tolerance for parameter change.
-    ///
-    /// The solver also stops when ||Δx|| < param_tolerance.
     pub param_tolerance: T,
-
-    /// Maximum number of iterations before returning an error.
     pub max_iterations: usize,
-
-    /// Step size for numerical Jacobian approximation.
-    ///
-    /// Used when `jacobian_numerical` is called.
     pub jacobian_epsilon: T,
-
-    /// Whether to store the Jacobian inverse in the result.
-    ///
-    /// Set to `true` for AAD applications using the implicit function theorem.
+    /// Store J^{-1} at solution for implicit function theorem (AAD).
     pub store_jacobian_inverse: bool,
 }
 
@@ -255,7 +81,6 @@ impl<T: RealField + Copy + Float> Default for MultidimNewtonConfig<T> {
 }
 
 impl<T: RealField + Copy + Float> MultidimNewtonConfig<T> {
-    /// Create a new configuration with specified tolerances.
     pub fn new(tolerance: T, max_iterations: usize) -> Self {
         Self {
             tolerance,
@@ -265,9 +90,6 @@ impl<T: RealField + Copy + Float> MultidimNewtonConfig<T> {
         }
     }
 
-    /// Create a high-precision configuration.
-    ///
-    /// Uses tighter tolerances (1e-14) and more iterations (500).
     pub fn high_precision() -> Self {
         Self {
             tolerance: from_f64(1e-14),
@@ -278,9 +100,6 @@ impl<T: RealField + Copy + Float> MultidimNewtonConfig<T> {
         }
     }
 
-    /// Create a fast configuration with relaxed tolerances.
-    ///
-    /// Uses looser tolerances (1e-6) and fewer iterations (50).
     pub fn fast() -> Self {
         Self {
             tolerance: from_f64(1e-6),
@@ -291,7 +110,6 @@ impl<T: RealField + Copy + Float> MultidimNewtonConfig<T> {
         }
     }
 
-    /// Enable Jacobian inverse storage for AAD.
     pub fn with_jacobian_inverse(mut self, store: bool) -> Self {
         self.store_jacobian_inverse = store;
         self
@@ -299,50 +117,24 @@ impl<T: RealField + Copy + Float> MultidimNewtonConfig<T> {
 }
 
 // =============================================================================
-// Solver Result
+// Result
 // =============================================================================
 
 /// Result from the multi-dimensional Newton-Raphson solver.
 ///
-/// Contains the solution, convergence information, and optionally the
-/// Jacobian inverse for use with the implicit function theorem in AAD.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for solution components
-///
-/// # AAD Integration
-///
-/// When `store_jacobian_inverse` is enabled, the result contains J⁻¹ at
-/// the solution point. This is used for computing sensitivities via the
-/// implicit function theorem:
-///
-/// ∂x*/∂m = -J⁻¹ · ∂F/∂m
-///
-/// where x* is the solution and m are market parameters.
+/// When `store_jacobian_inverse` is enabled, contains J^{-1} at the solution
+/// for computing sensitivities: dx*/dm = -J^{-1} * dF/dm.
 #[derive(Debug, Clone)]
 pub struct MultidimSolverResult<T: RealField + Copy> {
-    /// Solution vector x* satisfying F(x*) ≈ 0.
     pub solution: DVector<T>,
-
-    /// Euclidean norm of the final residual ||F(x*)||.
     pub residual_norm: T,
-
-    /// Number of iterations performed.
     pub iterations: usize,
-
-    /// Whether the solver converged within tolerance.
     pub converged: bool,
-
-    /// Jacobian inverse at the solution point (for AAD).
-    ///
-    /// This is `Some(J⁻¹)` if `store_jacobian_inverse` was enabled
-    /// and the solver converged successfully.
+    /// J^{-1} at the solution point (for AAD implicit function theorem).
     pub jacobian_inverse: Option<DMatrix<T>>,
 }
 
 impl<T: RealField + Copy> MultidimSolverResult<T> {
-    /// Create a new solver result.
     pub fn new(
         solution: DVector<T>,
         residual_norm: T,
@@ -350,104 +142,114 @@ impl<T: RealField + Copy> MultidimSolverResult<T> {
         converged: bool,
         jacobian_inverse: Option<DMatrix<T>>,
     ) -> Self {
-        Self {
-            solution,
-            residual_norm,
-            iterations,
-            converged,
-            jacobian_inverse,
-        }
+        Self { solution, residual_norm, iterations, converged, jacobian_inverse }
     }
 
-    /// Check if the Jacobian inverse is available.
     pub fn has_jacobian_inverse(&self) -> bool { self.jacobian_inverse.is_some() }
 
-    /// Get the Jacobian inverse, returning an error if not available.
     pub fn jacobian_inverse_or_err(&self) -> Result<&DMatrix<T>, SolverError> {
         self.jacobian_inverse.as_ref().ok_or_else(|| {
-            SolverError::NumericalInstability("Jacobian inverse not available".to_string())
+            SolverError::NumericalInstability("Jacobian inverse not available".into())
         })
     }
 }
 
 // =============================================================================
-// Multi-dimensional Newton-Raphson Solver
+// Argmin-math bridge for dynamic nalgebra types
+// =============================================================================
+
+/// argmin-math traits are not implemented for dynamically-sized nalgebra types
+/// (`DVector`, `DMatrix`). We provide the minimal set needed by `Newton`.
+mod argmin_bridge {
+    use argmin_math::{ArgminDot, ArgminInv, ArgminScaledSub, ArgminSub};
+    use nalgebra::{DMatrix, DVector};
+
+    impl ArgminInv<DMatrix<f64>> for DMatrix<f64> {
+        fn inv(&self) -> Result<DMatrix<f64>, argmin::core::Error> {
+            self.clone()
+                .try_inverse()
+                .ok_or_else(|| argmin::core::Error::msg("Singular matrix"))
+        }
+    }
+
+    impl ArgminDot<DVector<f64>, DVector<f64>> for DMatrix<f64> {
+        fn dot(&self, rhs: &DVector<f64>) -> DVector<f64> { self * rhs }
+    }
+
+    impl ArgminScaledSub<DVector<f64>, f64, DVector<f64>> for DVector<f64> {
+        fn scaled_sub(&self, scale: &f64, rhs: &DVector<f64>) -> DVector<f64> {
+            self - *scale * rhs
+        }
+    }
+
+    impl ArgminSub<DVector<f64>, DVector<f64>> for DVector<f64> {
+        fn sub(&self, rhs: &DVector<f64>) -> DVector<f64> { self - rhs }
+    }
+}
+
+// =============================================================================
+// Argmin adapter (f64 only) -- wraps SystemOfEquations as Gradient + Hessian
+// =============================================================================
+
+/// Adapter that presents a root-finding problem F(x)=0 as an optimisation
+/// problem for argmin's Newton solver. "Gradient" = F(x), "Hessian" = J(x),
+/// so the Newton step x -= H^{-1} * g becomes x -= J^{-1}*F(x).
+struct ArgminSystemAdapter<'a, S> {
+    system: &'a S,
+}
+
+impl<S: SystemOfEquations<f64>> argmin::core::CostFunction for ArgminSystemAdapter<'_, S> {
+    type Param = DVector<f64>;
+    type Output = f64;
+
+    fn cost(&self, x: &Self::Param) -> Result<f64, argmin::core::Error> {
+        let f = self.system.evaluate(x).map_err(|e| argmin::core::Error::msg(e.to_string()))?;
+        Ok(f.norm())
+    }
+}
+
+impl<S: SystemOfEquations<f64>> argmin::core::Gradient for ArgminSystemAdapter<'_, S> {
+    type Param = DVector<f64>;
+    type Gradient = DVector<f64>;
+
+    fn gradient(&self, x: &Self::Param) -> Result<Self::Gradient, argmin::core::Error> {
+        self.system.evaluate(x).map_err(|e| argmin::core::Error::msg(e.to_string()))
+    }
+}
+
+impl<S: SystemOfEquations<f64>> argmin::core::Hessian for ArgminSystemAdapter<'_, S> {
+    type Param = DVector<f64>;
+    type Hessian = DMatrix<f64>;
+
+    fn hessian(&self, x: &Self::Param) -> Result<Self::Hessian, argmin::core::Error> {
+        self.system.jacobian(x).map_err(|e| argmin::core::Error::msg(e.to_string()))
+    }
+}
+
+// =============================================================================
+// Solver
 // =============================================================================
 
 /// Multi-dimensional Newton-Raphson solver for systems of equations.
 ///
-/// Solves F(x) = 0 using the Newton-Raphson iteration:
-///
-/// x_{k+1} = x_k - J(x_k)⁻¹ · F(x_k)
-///
-/// where J(x) is the Jacobian matrix ∂F/∂x.
-///
-/// # Features
-///
-/// - Dual convergence criteria (residual norm and parameter change)
-/// - Optional Jacobian inverse storage for AAD
-/// - Support for analytical or numerical Jacobians
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_core::math::solvers::{
-///     MultidimensionalNewtonSolver, MultidimNewtonConfig, SystemOfEquations,
-/// };
-/// use nalgebra::DVector;
-///
-/// let config = MultidimNewtonConfig::default();
-/// let solver = MultidimensionalNewtonSolver::new(config);
-///
-/// // Solve a 2D quadratic system
-/// let initial = DVector::from_vec(vec![1.0, 1.0]);
-/// let result = solver.solve(&MySystem, initial)?;
-///
-/// if result.converged {
-///     println!("Solution: {:?}", result.solution);
-/// }
-/// ```
+/// For `f64`, delegates to argmin's Newton solver. Jacobian inverse J^{-1}
+/// is computed at the solution point when requested (for AAD).
 #[derive(Debug, Clone)]
 pub struct MultidimensionalNewtonSolver<T: RealField + Copy> {
     config: MultidimNewtonConfig<T>,
 }
 
 impl<T: RealField + Copy + Float> MultidimensionalNewtonSolver<T> {
-    /// Create a new solver with the given configuration.
     pub fn new(config: MultidimNewtonConfig<T>) -> Self { Self { config } }
-
-    /// Create a solver with default configuration.
     pub fn with_defaults() -> Self { Self::new(MultidimNewtonConfig::default()) }
-
-    /// Get the solver configuration.
     pub fn config(&self) -> &MultidimNewtonConfig<T> { &self.config }
 
-    /// Solve the system of equations F(x) = 0.
-    ///
-    /// # Arguments
-    ///
-    /// * `system` - The system of equations to solve
-    /// * `initial_guess` - Starting point for iteration
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(MultidimSolverResult<T>)` - Solution and convergence information
-    /// * `Err(SolverError)` - If the solver fails (singular Jacobian, max
-    ///   iterations)
-    ///
-    /// # Errors
-    ///
-    /// - `SolverError::DimensionMismatch`: Input dimension doesn't match system
-    /// - `SolverError::SingularJacobian`: Jacobian is singular at some iterate
-    /// - `SolverError::MaxIterationsExceeded`: Didn't converge within limit
     pub fn solve<S: SystemOfEquations<T>>(
         &self,
         system: &S,
         initial_guess: DVector<T>,
     ) -> Result<MultidimSolverResult<T>, SolverError> {
         let n = system.dimension();
-
-        // Validate input dimension
         if initial_guess.len() != n {
             return Err(SolverError::DimensionMismatch {
                 expected: n,
@@ -456,84 +258,111 @@ impl<T: RealField + Copy + Float> MultidimensionalNewtonSolver<T> {
         }
 
         let mut x = initial_guess;
-
         for iter in 0..self.config.max_iterations {
-            // Evaluate residual
             let f = system.evaluate(&x)?;
             let residual_norm = f.norm();
 
-            // Check residual convergence
             if residual_norm < self.config.tolerance {
-                // Compute Jacobian inverse if requested
                 let jacobian_inverse = if self.config.store_jacobian_inverse {
-                    let j = system.jacobian(&x)?;
-                    Some(self.compute_inverse(&j)?)
+                    Some(self.compute_inverse(&system.jacobian(&x)?)?)
                 } else {
                     None
                 };
-
                 return Ok(MultidimSolverResult::new(
-                    x,
-                    residual_norm,
-                    iter,
-                    true,
-                    jacobian_inverse,
+                    x, residual_norm, iter, true, jacobian_inverse,
                 ));
             }
 
-            // Compute Jacobian
             let j = system.jacobian(&x)?;
-
-            // Solve J · delta = -f for delta
             let neg_f: Vec<T> = f.iter().map(|&v| -v).collect();
-            let delta_vec = self.solve_linear_system(&j, &neg_f)?;
-            let delta = DVector::from_vec(delta_vec);
+            let delta = self.solve_linear(&j, &neg_f)?;
 
-            // Check parameter convergence
-            let param_change = delta.norm();
-            if param_change < self.config.param_tolerance {
+            if DVector::from_vec(delta.clone()).norm() < self.config.param_tolerance {
                 let jacobian_inverse = if self.config.store_jacobian_inverse {
                     Some(self.compute_inverse(&j)?)
                 } else {
                     None
                 };
-
                 return Ok(MultidimSolverResult::new(
-                    x,
-                    residual_norm,
-                    iter,
-                    true,
-                    jacobian_inverse,
+                    x, residual_norm, iter, true, jacobian_inverse,
                 ));
             }
 
-            // Update iterate
-            x += &delta;
+            x += &DVector::from_vec(delta);
         }
 
-        // Max iterations exceeded
         Err(SolverError::MaxIterationsExceeded {
             iterations: self.config.max_iterations,
         })
     }
 
-    /// Solve the linear system J * x = b using nalgebra's LU decomposition.
-    fn solve_linear_system(&self, j: &DMatrix<T>, b: &[T]) -> Result<Vec<T>, SolverError> {
+    fn solve_linear(&self, j: &DMatrix<T>, b: &[T]) -> Result<Vec<T>, SolverError> {
         let lu = j.clone().lu();
-        let b_vec = DVector::from_column_slice(b);
-        let x = lu.solve(&b_vec).ok_or_else(|| {
-            SolverError::NumericalInstability("Singular Jacobian matrix".to_string())
-        })?;
-        Ok(x.iter().copied().collect())
+        lu.solve(&DVector::from_column_slice(b))
+            .map(|x| x.iter().copied().collect())
+            .ok_or_else(|| SolverError::NumericalInstability("Singular Jacobian matrix".into()))
     }
 
-    /// Compute the inverse of the Jacobian matrix using nalgebra.
     fn compute_inverse(&self, j: &DMatrix<T>) -> Result<DMatrix<T>, SolverError> {
         j.clone().try_inverse().ok_or_else(|| {
-            SolverError::NumericalInstability(
-                "Singular Jacobian matrix (cannot invert)".to_string(),
-            )
+            SolverError::NumericalInstability("Singular Jacobian matrix (cannot invert)".into())
         })
+    }
+}
+
+/// Specialised `f64` implementation that delegates to argmin's Newton solver.
+impl MultidimensionalNewtonSolver<f64> {
+    /// Solve using argmin's Newton solver internally, then collect J^{-1}.
+    pub fn solve_argmin<S: SystemOfEquations<f64>>(
+        &self,
+        system: &S,
+        initial_guess: DVector<f64>,
+    ) -> Result<MultidimSolverResult<f64>, SolverError> {
+        let n = system.dimension();
+        if initial_guess.len() != n {
+            return Err(SolverError::DimensionMismatch {
+                expected: n,
+                got: initial_guess.len(),
+            });
+        }
+
+        let adapter = ArgminSystemAdapter { system };
+        let newton = argmin::solver::newton::Newton::new();
+        let executor = argmin::core::Executor::new(adapter, newton)
+            .configure(|state| {
+                state
+                    .param(initial_guess)
+                    .max_iters(self.config.max_iterations as u64)
+                    .target_cost(self.config.tolerance)
+            });
+
+        let result = executor
+            .run()
+            .map_err(|e| SolverError::NumericalInstability(format!("argmin Newton: {e}")))?;
+
+        let state = &result.state;
+        let solution = state
+            .get_best_param()
+            .cloned()
+            .ok_or_else(|| SolverError::NumericalInstability("No solution found".into()))?;
+        let best_cost = state.get_best_cost();
+        let iterations = state.get_iter() as usize;
+        let converged = best_cost < self.config.tolerance;
+
+        // Compute J^{-1} at the solution for AAD implicit function theorem
+        let jacobian_inverse = if self.config.store_jacobian_inverse {
+            let j = system.jacobian(&solution)?;
+            Some(self.compute_inverse(&j)?)
+        } else {
+            None
+        };
+
+        let f = system.evaluate(&solution)?;
+        let residual_norm = f.norm();
+
+        Ok(MultidimSolverResult::new(
+            solution, residual_norm, iterations, converged, jacobian_inverse,
+        ))
     }
 }
 
@@ -547,7 +376,6 @@ mod tests {
 
     use super::*;
 
-    // Simple linear system: Ax - b = 0
     struct LinearSystem {
         a: DMatrix<f64>,
         b: DVector<f64>,
@@ -555,190 +383,111 @@ mod tests {
 
     impl SystemOfEquations<f64> for LinearSystem {
         fn dimension(&self) -> usize { self.b.len() }
-
         fn evaluate(&self, x: &DVector<f64>) -> Result<DVector<f64>, SolverError> {
             Ok(&self.a * x - &self.b)
         }
-
         fn jacobian(&self, _x: &DVector<f64>) -> Result<DMatrix<f64>, SolverError> {
             Ok(self.a.clone())
         }
     }
 
-    // Quadratic system: (x² + y - 3, x + y² - 5)
     struct QuadraticSystem;
 
     impl SystemOfEquations<f64> for QuadraticSystem {
         fn dimension(&self) -> usize { 2 }
-
         fn evaluate(&self, x: &DVector<f64>) -> Result<DVector<f64>, SolverError> {
             if x.len() != 2 {
-                return Err(SolverError::DimensionMismatch {
-                    expected: 2,
-                    got: x.len(),
-                });
+                return Err(SolverError::DimensionMismatch { expected: 2, got: x.len() });
             }
             Ok(DVector::from_vec(vec![
                 x[0] * x[0] + x[1] - 3.0,
                 x[0] + x[1] * x[1] - 5.0,
             ]))
         }
-
         fn jacobian(&self, x: &DVector<f64>) -> Result<DMatrix<f64>, SolverError> {
-            Ok(DMatrix::from_row_slice(
-                2,
-                2,
-                &[2.0 * x[0], 1.0, 1.0, 2.0 * x[1]],
-            ))
+            Ok(DMatrix::from_row_slice(2, 2, &[2.0 * x[0], 1.0, 1.0, 2.0 * x[1]]))
         }
     }
 
-    // System using numerical Jacobian (no analytical override)
     struct NumericalJacobianSystem;
 
     impl SystemOfEquations<f64> for NumericalJacobianSystem {
         fn dimension(&self) -> usize { 2 }
-
         fn evaluate(&self, x: &DVector<f64>) -> Result<DVector<f64>, SolverError> {
             Ok(DVector::from_vec(vec![
                 x[0] * x[0] + x[1] - 3.0,
                 x[0] + x[1] * x[1] - 5.0,
             ]))
         }
-
-        // Uses default numerical Jacobian
-    }
-
-    // =========================================================================
-    // SystemOfEquations Trait Tests
-    // =========================================================================
-
-    #[test]
-    fn test_system_dimension() {
-        let system = QuadraticSystem;
-        assert_eq!(system.dimension(), 2);
     }
 
     #[test]
-    fn test_system_evaluate() {
-        let system = QuadraticSystem;
+    fn test_system_evaluate_and_jacobian() {
+        let sys = QuadraticSystem;
+        assert_eq!(sys.dimension(), 2);
+
         let x = DVector::from_vec(vec![1.0, 2.0]);
-        let f = system.evaluate(&x).unwrap();
+        let f = sys.evaluate(&x).unwrap();
+        assert_relative_eq!(f[0], 0.0, epsilon = 1e-10);
+        assert_relative_eq!(f[1], -0.0, epsilon = 1e-10);
 
-        assert_eq!(f.len(), 2);
-        assert_relative_eq!(f[0], 1.0 + 2.0 - 3.0, epsilon = 1e-10); // x² + y - 3 = 0
-        assert_relative_eq!(f[1], 1.0 + 4.0 - 5.0, epsilon = 1e-10); // x + y² -
-                                                                     // 5 = 0
+        let x2 = DVector::from_vec(vec![2.0, 3.0]);
+        let j = sys.jacobian(&x2).unwrap();
+        assert_relative_eq!(j[(0, 0)], 4.0, epsilon = 1e-10);
+        assert_relative_eq!(j[(1, 1)], 6.0, epsilon = 1e-10);
     }
 
     #[test]
-    fn test_system_jacobian_analytical() {
-        let system = QuadraticSystem;
+    fn test_numerical_jacobian() {
+        let sys = NumericalJacobianSystem;
         let x = DVector::from_vec(vec![2.0, 3.0]);
-        let j = system.jacobian(&x).unwrap();
-
-        assert_eq!(j.nrows(), 2);
-        assert_eq!(j.ncols(), 2);
-        assert_relative_eq!(j[(0, 0)], 4.0, epsilon = 1e-10); // ∂f1/∂x = 2x
-        assert_relative_eq!(j[(0, 1)], 1.0, epsilon = 1e-10); // ∂f1/∂y = 1
-        assert_relative_eq!(j[(1, 0)], 1.0, epsilon = 1e-10); // ∂f2/∂x = 1
-        assert_relative_eq!(j[(1, 1)], 6.0, epsilon = 1e-10); // ∂f2/∂y = 2y
-    }
-
-    #[test]
-    fn test_system_jacobian_numerical() {
-        let system = NumericalJacobianSystem;
-        let x = DVector::from_vec(vec![2.0, 3.0]);
-        let j = system.jacobian(&x).unwrap();
-
-        // Numerical Jacobian should approximate analytical Jacobian
+        let j = sys.jacobian(&x).unwrap();
         assert_relative_eq!(j[(0, 0)], 4.0, epsilon = 1e-5);
         assert_relative_eq!(j[(0, 1)], 1.0, epsilon = 1e-5);
         assert_relative_eq!(j[(1, 0)], 1.0, epsilon = 1e-5);
         assert_relative_eq!(j[(1, 1)], 6.0, epsilon = 1e-5);
     }
 
-    // =========================================================================
-    // MultidimNewtonConfig Tests
-    // =========================================================================
-
     #[test]
-    fn test_config_default() {
-        let config: MultidimNewtonConfig<f64> = MultidimNewtonConfig::default();
-        assert_relative_eq!(config.tolerance, 1e-10, epsilon = 1e-15);
-        assert_eq!(config.max_iterations, 100);
-        assert!(config.store_jacobian_inverse);
-    }
+    fn test_config_presets() {
+        let d: MultidimNewtonConfig<f64> = MultidimNewtonConfig::default();
+        assert_relative_eq!(d.tolerance, 1e-10, epsilon = 1e-15);
+        assert_eq!(d.max_iterations, 100);
+        assert!(d.store_jacobian_inverse);
 
-    #[test]
-    fn test_config_high_precision() {
-        let config: MultidimNewtonConfig<f64> = MultidimNewtonConfig::high_precision();
-        assert!(config.tolerance < 1e-12);
-        assert!(config.max_iterations >= 500);
-    }
+        let hp: MultidimNewtonConfig<f64> = MultidimNewtonConfig::high_precision();
+        assert!(hp.tolerance < 1e-12 && hp.max_iterations >= 500);
 
-    #[test]
-    fn test_config_fast() {
-        let config: MultidimNewtonConfig<f64> = MultidimNewtonConfig::fast();
-        assert!(config.tolerance > 1e-8);
-        assert!(config.max_iterations <= 50);
-        assert!(!config.store_jacobian_inverse);
-    }
+        let f: MultidimNewtonConfig<f64> = MultidimNewtonConfig::fast();
+        assert!(f.tolerance > 1e-8 && f.max_iterations <= 50 && !f.store_jacobian_inverse);
 
-    #[test]
-    fn test_config_builder() {
-        let config: MultidimNewtonConfig<f64> =
+        let c: MultidimNewtonConfig<f64> =
             MultidimNewtonConfig::new(1e-8, 200).with_jacobian_inverse(false);
-        assert_relative_eq!(config.tolerance, 1e-8, epsilon = 1e-15);
-        assert_eq!(config.max_iterations, 200);
-        assert!(!config.store_jacobian_inverse);
-    }
-
-    // =========================================================================
-    // MultidimSolverResult Tests
-    // =========================================================================
-
-    #[test]
-    fn test_solver_result_new() {
-        let solution = DVector::from_vec(vec![1.0, 2.0]);
-        let jacobian_inverse = DMatrix::identity(2, 2);
-
-        let result =
-            MultidimSolverResult::new(solution.clone(), 1e-12, 5, true, Some(jacobian_inverse));
-
-        assert_eq!(result.solution, solution);
-        assert!(result.converged);
-        assert_eq!(result.iterations, 5);
-        assert!(result.has_jacobian_inverse());
+        assert_relative_eq!(c.tolerance, 1e-8, epsilon = 1e-15);
+        assert!(!c.store_jacobian_inverse);
     }
 
     #[test]
-    fn test_solver_result_without_jacobian() {
+    fn test_result_jacobian_inverse() {
         let solution = DVector::from_vec(vec![1.0, 2.0]);
+        let ji = DMatrix::identity(2, 2);
+        let r = MultidimSolverResult::new(solution, 1e-12, 5, true, Some(ji));
+        assert!(r.has_jacobian_inverse());
+        assert!(r.jacobian_inverse_or_err().is_ok());
 
-        let result = MultidimSolverResult::new(solution, 1e-12, 5, true, None);
-
-        assert!(!result.has_jacobian_inverse());
-        assert!(result.jacobian_inverse_or_err().is_err());
+        let r2 = MultidimSolverResult::new(DVector::from_vec(vec![1.0]), 1e-12, 5, true, None);
+        assert!(!r2.has_jacobian_inverse());
+        assert!(r2.jacobian_inverse_or_err().is_err());
     }
-
-    // =========================================================================
-    // MultidimensionalNewtonSolver Tests
-    // =========================================================================
 
     #[test]
     fn test_solve_linear_system() {
-        // Solve: [2 1; 1 3] * x = [5; 8]
-        // 2x + y = 5, x + 3y = 8
-        // x = 1.4, y = 2.2
         let a = DMatrix::from_row_slice(2, 2, &[2.0, 1.0, 1.0, 3.0]);
         let b = DVector::from_vec(vec![5.0, 8.0]);
         let system = LinearSystem { a, b };
 
         let solver = MultidimensionalNewtonSolver::with_defaults();
-        let initial = DVector::from_vec(vec![0.0, 0.0]);
-
-        let result = solver.solve(&system, initial).unwrap();
+        let result = solver.solve(&system, DVector::from_vec(vec![0.0, 0.0])).unwrap();
 
         assert!(result.converged);
         assert_relative_eq!(result.solution[0], 1.4, epsilon = 1e-8);
@@ -747,17 +496,10 @@ mod tests {
 
     #[test]
     fn test_solve_quadratic_system() {
-        // Solve: x² + y - 3 = 0, x + y² - 5 = 0
-        // Solutions include approximately (1.2016, 1.5567)
         let solver = MultidimensionalNewtonSolver::with_defaults();
-        let initial = DVector::from_vec(vec![1.0, 1.0]);
+        let result = solver.solve(&QuadraticSystem, DVector::from_vec(vec![1.0, 1.0])).unwrap();
 
-        let result = solver.solve(&QuadraticSystem, initial).unwrap();
-
-        assert!(result.converged);
-        assert!(result.iterations < 20);
-
-        // Verify solution satisfies equations
+        assert!(result.converged && result.iterations < 20);
         let f = QuadraticSystem.evaluate(&result.solution).unwrap();
         assert!(f.norm() < 1e-10);
     }
@@ -765,61 +507,43 @@ mod tests {
     #[test]
     fn test_solve_with_numerical_jacobian() {
         let solver = MultidimensionalNewtonSolver::with_defaults();
-        let initial = DVector::from_vec(vec![1.0, 1.0]);
-
-        let result = solver.solve(&NumericalJacobianSystem, initial).unwrap();
-
+        let result = solver
+            .solve(&NumericalJacobianSystem, DVector::from_vec(vec![1.0, 1.0]))
+            .unwrap();
         assert!(result.converged);
-
-        // Verify solution
-        let f = NumericalJacobianSystem.evaluate(&result.solution).unwrap();
-        assert!(f.norm() < 1e-8);
+        assert!(NumericalJacobianSystem.evaluate(&result.solution).unwrap().norm() < 1e-8);
     }
 
     #[test]
-    fn test_solve_stores_jacobian_inverse() {
+    fn test_stores_jacobian_inverse() {
         let config = MultidimNewtonConfig::default().with_jacobian_inverse(true);
         let solver = MultidimensionalNewtonSolver::new(config);
-        let initial = DVector::from_vec(vec![1.0, 1.0]);
+        let result = solver.solve(&QuadraticSystem, DVector::from_vec(vec![1.0, 1.0])).unwrap();
 
-        let result = solver.solve(&QuadraticSystem, initial).unwrap();
-
-        assert!(result.converged);
-        assert!(result.has_jacobian_inverse());
-
-        // Verify J * J^-1 ≈ I
+        assert!(result.converged && result.has_jacobian_inverse());
         let j = QuadraticSystem.jacobian(&result.solution).unwrap();
-        let j_inv = result.jacobian_inverse.as_ref().unwrap();
-        let product = &j * j_inv;
-
-        let identity = DMatrix::<f64>::identity(2, 2);
+        let ji = result.jacobian_inverse.as_ref().unwrap();
+        let prod = &j * ji;
+        let id = DMatrix::<f64>::identity(2, 2);
         for i in 0..2 {
-            for j_idx in 0..2 {
-                assert_relative_eq!(product[(i, j_idx)], identity[(i, j_idx)], epsilon = 1e-8);
+            for k in 0..2 {
+                assert_relative_eq!(prod[(i, k)], id[(i, k)], epsilon = 1e-8);
             }
         }
     }
 
     #[test]
-    fn test_solve_dimension_mismatch_error() {
+    fn test_dimension_mismatch_error() {
         let solver = MultidimensionalNewtonSolver::with_defaults();
-        let initial = DVector::from_vec(vec![1.0, 2.0, 3.0]); // Wrong dimension
-
-        let result = solver.solve(&QuadraticSystem, initial);
-
-        assert!(result.is_err());
+        let result = solver.solve(&QuadraticSystem, DVector::from_vec(vec![1.0, 2.0, 3.0]));
         assert!(matches!(
             result.unwrap_err(),
-            SolverError::DimensionMismatch {
-                expected: 2,
-                got: 3
-            }
+            SolverError::DimensionMismatch { expected: 2, got: 3 }
         ));
     }
 
     #[test]
-    fn test_solve_max_iterations_exceeded() {
-        // Use very strict tolerance that won't be reached
+    fn test_max_iterations_exceeded() {
         let config = MultidimNewtonConfig {
             tolerance: 1e-100,
             param_tolerance: 1e-100,
@@ -827,45 +551,72 @@ mod tests {
             ..MultidimNewtonConfig::default()
         };
         let solver = MultidimensionalNewtonSolver::new(config);
-        let initial = DVector::from_vec(vec![1.0, 1.0]);
-
-        let result = solver.solve(&QuadraticSystem, initial);
-
-        assert!(result.is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            solver.solve(&QuadraticSystem, DVector::from_vec(vec![1.0, 1.0])).unwrap_err(),
             SolverError::MaxIterationsExceeded { iterations: 2 }
         ));
     }
 
     #[test]
-    fn test_solve_without_storing_jacobian_inverse() {
-        let config = MultidimNewtonConfig::fast();
-        let solver = MultidimensionalNewtonSolver::new(config);
-        let initial = DVector::from_vec(vec![1.0, 1.0]);
-
-        let result = solver.solve(&QuadraticSystem, initial).unwrap();
-
-        assert!(result.converged);
-        assert!(!result.has_jacobian_inverse());
-        assert!(result.jacobian_inverse.is_none());
+    fn test_solve_without_jacobian_inverse() {
+        let solver = MultidimensionalNewtonSolver::new(MultidimNewtonConfig::fast());
+        let result = solver.solve(&QuadraticSystem, DVector::from_vec(vec![1.0, 1.0])).unwrap();
+        assert!(result.converged && !result.has_jacobian_inverse());
     }
 
     #[test]
-    fn test_solve_identity_system() {
-        // Solve x - [1, 2] = 0 (trivial system)
-        let a = DMatrix::<f64>::identity(2, 2);
-        let b = DVector::from_vec(vec![1.0, 2.0]);
+    fn test_identity_system() {
+        let system = LinearSystem {
+            a: DMatrix::<f64>::identity(2, 2),
+            b: DVector::from_vec(vec![1.0, 2.0]),
+        };
+        let solver = MultidimensionalNewtonSolver::with_defaults();
+        let result = solver.solve(&system, DVector::from_vec(vec![0.0, 0.0])).unwrap();
+        assert!(result.converged && result.iterations == 1);
+        assert_relative_eq!(result.solution[0], 1.0, epsilon = 1e-10);
+        assert_relative_eq!(result.solution[1], 2.0, epsilon = 1e-10);
+    }
+
+    // =========================================================================
+    // argmin Newton adapter tests (f64 specialisation)
+    // =========================================================================
+
+    #[test]
+    fn test_solve_argmin_linear() {
+        let a = DMatrix::from_row_slice(2, 2, &[2.0, 1.0, 1.0, 3.0]);
+        let b = DVector::from_vec(vec![5.0, 8.0]);
         let system = LinearSystem { a, b };
 
         let solver = MultidimensionalNewtonSolver::with_defaults();
-        let initial = DVector::from_vec(vec![0.0, 0.0]);
-
-        let result = solver.solve(&system, initial).unwrap();
+        let result = solver
+            .solve_argmin(&system, DVector::from_vec(vec![0.0, 0.0]))
+            .unwrap();
 
         assert!(result.converged);
-        assert_eq!(result.iterations, 1); // Should converge in 1 iteration
-        assert_relative_eq!(result.solution[0], 1.0, epsilon = 1e-10);
-        assert_relative_eq!(result.solution[1], 2.0, epsilon = 1e-10);
+        assert_relative_eq!(result.solution[0], 1.4, epsilon = 1e-6);
+        assert_relative_eq!(result.solution[1], 2.2, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn test_solve_argmin_quadratic() {
+        let solver = MultidimensionalNewtonSolver::with_defaults();
+        let result = solver
+            .solve_argmin(&QuadraticSystem, DVector::from_vec(vec![1.0, 1.0]))
+            .unwrap();
+
+        assert!(result.converged);
+        let f = QuadraticSystem.evaluate(&result.solution).unwrap();
+        assert!(f.norm() < 1e-8);
+    }
+
+    #[test]
+    fn test_solve_argmin_stores_jacobian_inverse() {
+        let config = MultidimNewtonConfig::default().with_jacobian_inverse(true);
+        let solver = MultidimensionalNewtonSolver::new(config);
+        let result = solver
+            .solve_argmin(&QuadraticSystem, DVector::from_vec(vec![1.0, 1.0]))
+            .unwrap();
+
+        assert!(result.converged && result.has_jacobian_inverse());
     }
 }

@@ -49,7 +49,11 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::stochastic::stochastic::{RatesModel, SingleState, StochasticModel};
+use crate::stochastic::{
+    stochastic::{RatesModel, SingleState, StochasticModel},
+    validation::ParamValidationError,
+};
+use crate::validate_params;
 
 /// CIR model parameters.
 ///
@@ -107,20 +111,22 @@ impl<T: Float> CIRParams<T> {
         volatility: T,
         initial_rate: T,
     ) -> Option<Self> {
-        if mean_reversion <= T::zero()
-            || long_term_mean <= T::zero()
-            || volatility <= T::zero()
-            || initial_rate <= T::zero()
-        {
-            return None;
-        }
-
-        Some(Self {
+        let params = Self {
             mean_reversion,
             long_term_mean,
             volatility,
             initial_rate,
-        })
+        };
+        params.validate().ok()?;
+        Some(params)
+    }
+
+    /// Validate CIR parameters.
+    pub fn validate(&self) -> Result<(), ParamValidationError> {
+        validate_params! {
+            self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
+            positive: [mean_reversion, long_term_mean, volatility, initial_rate],
+        }
     }
 
     /// Check if the Feller condition is satisfied.

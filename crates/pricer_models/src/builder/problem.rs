@@ -880,7 +880,7 @@ where
         use super::error::NumericalDiagnostics;
 
         let variance_threshold: T = from_f64(1e6);
-        let mut diagnostics = NumericalDiagnostics::new();
+        let mut diagnostics = NumericalDiagnostics::default();
 
         match self.try_compute_jacobian_enzyme(log_df) {
             Ok(enzyme_jacobian) => {
