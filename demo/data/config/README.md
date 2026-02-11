@@ -78,7 +78,7 @@ Defines calibration instruments for yield curve construction:
 
 | Type | Convention Pattern | Tenor Format | Description |
 |------|-------------------|--------------|-------------|
-| Deposit | `*-DEPO` | `"O/N"`, `"1M"`, `"3M"` | Money market deposits |
+| Deposit | `*-DEPO` | `"ON"`, `"1M"`, `"3M"` | Money market deposits |
 | OIS | `*-OIS` | `"1M"` - `"50Y"` | Overnight index swaps |
 | IRS | `*-SWAP` | `"2Y"` - `"30Y"` | Interest rate swaps |
 | FRA | `*-FRA` | `"3x6"`, `"6x12"` | Forward rate agreements |

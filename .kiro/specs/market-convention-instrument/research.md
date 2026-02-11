@@ -178,7 +178,7 @@ const state: MarketDataState = {
   "instruments": [
     {
       "type": "deposit",
-      "tenor": "O/N",
+      "tenor": "ON",
       "tenor_years": 0.00274,
       "rate": 0.0433,
       "frequency": "annual",

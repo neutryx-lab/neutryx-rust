@@ -168,9 +168,7 @@ function buildInstrumentId(type: string, tenor: string, currency: string): strin
     'swap': 'Swap',
   };
   const typeLabel = typeMap[type] || type.toUpperCase();
-  // Normalize tenor: "O/N" -> "ON" to match curve config format
-  const normalizedTenor = tenor === 'O/N' ? 'ON' : tenor;
-  return `${currency}-${typeLabel}-${normalizedTenor}`;
+  return `${currency}-${typeLabel}-${tenor}`;
 }
 
 // ---------------------------------------------------------------------------

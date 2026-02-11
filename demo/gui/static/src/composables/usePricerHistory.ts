@@ -8,6 +8,11 @@ import { usePricerStore } from '@/stores/pricer';
 import { useToast } from '@/composables/useToast';
 import type { HistoryEntry } from '@/constants/pricer';
 
+/** Deep-clone plain data, stripping Vue reactive proxies and non-serialisable values. */
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
 let historyCounter = 0;
 
 export function usePricerHistory() {
@@ -27,8 +32,8 @@ export function usePricerHistory() {
       instrumentName:
         store.selectedInstrument?.displayName || store.selectedInstrument?.name || store.selectedInstrumentId,
       params: { ...store.instrumentParams },
-      pricingResult: structuredClone(store.pricingResult),
-      greeksResult: store.greeksResult ? structuredClone(store.greeksResult) : null,
+      pricingResult: deepClone(store.pricingResult),
+      greeksResult: store.greeksResult ? deepClone(store.greeksResult) : null,
       valuationDate: store.valuationDate,
       reportingCcy: store.reportingCcy,
       modelType: store.modelType,
@@ -51,8 +56,8 @@ export function usePricerHistory() {
     store.reportingCcy = entry.reportingCcy;
     store.modelType = entry.modelType;
     store.selectedCurveIndex = entry.curveIndex;
-    store.pricingResult = structuredClone(entry.pricingResult);
-    store.greeksResult = entry.greeksResult ? structuredClone(entry.greeksResult) : null;
+    store.pricingResult = deepClone(entry.pricingResult);
+    store.greeksResult = entry.greeksResult ? deepClone(entry.greeksResult) : null;
     toast.info('Restored pricing result from history');
   }
 

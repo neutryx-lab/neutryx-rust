@@ -87,7 +87,7 @@ const riskLimits = computed<RiskLimit[]>(() => [
 ]);
 
 const sensitivityBuckets = computed<SensitivityBucket[]>(() => [
-  { tenor: 'O/N', dv01: -12, cs01: -2, vega01: 0 },
+  { tenor: 'ON', dv01: -12, cs01: -2, vega01: 0 },
   { tenor: '1M', dv01: -45, cs01: -8, vega01: 15 },
   { tenor: '3M', dv01: -120, cs01: -25, vega01: 42 },
   { tenor: '6M', dv01: -85, cs01: -18, vega01: 68 },

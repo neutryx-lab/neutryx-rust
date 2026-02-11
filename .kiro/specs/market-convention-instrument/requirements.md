@@ -357,7 +357,7 @@ MarketRate (USD 5Y OIS, rate=3.42%)
    - `code`: API code (e.g., "SOFR")
    - `name`: Display name (e.g., "SOFR")
    - `currency`: Currency code
-   - `tenor`: Tenor code (e.g., "O/N", "3M")
+   - `tenor`: Tenor code (e.g., "ON", "3M")
    - `dayCounter`: Day count convention
    - `metadata`: Full `IndexMetadata` object
    - `associatedRatesCount`: Number of MarketRates referencing this index

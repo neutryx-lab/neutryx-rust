@@ -24,7 +24,8 @@ COPY . .
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/demo/gui/dist ./demo/gui/dist
 
-RUN cargo build --release -p service_gateway --features demo --bin neutryx-server
+RUN cargo build --release -p service_gateway --features demo --bin neutryx-server && \
+    cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps
 
 # --- Stage 3: Runtime ---
 FROM debian:bookworm-slim
@@ -42,6 +43,8 @@ COPY --from=builder /app/demo/data/input ./demo/data/input
 COPY --from=builder /app/demo/data/config ./demo/data/config
 # Copy FpML trades for GraphAppState::new_with_sample()
 COPY --from=builder /app/demo/data/trades ./demo/data/trades
+# Copy rustdoc output for /doc route (ServeDir::new("target/doc"))
+COPY --from=builder /app/target/doc ./target/doc
 
 # Verify critical files exist (build will fail if missing)
 # This helps catch file path issues before deployment

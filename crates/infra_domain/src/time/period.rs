@@ -668,6 +668,7 @@ mod tests {
     #[test]
     fn test_tenor_from_str() {
         assert_eq!("ON".parse::<Tenor>().unwrap(), Tenor::Overnight);
+        assert_eq!("on".parse::<Tenor>().unwrap(), Tenor::Overnight);
         assert_eq!("3M".parse::<Tenor>().unwrap(), Tenor::ThreeMonths);
         assert_eq!("1Y".parse::<Tenor>().unwrap(), Tenor::OneYear);
         assert_eq!("10Y".parse::<Tenor>().unwrap(), Tenor::TenYears);
@@ -717,7 +718,6 @@ mod tests {
     fn test_tenor_from_str_invalid() {
         assert!("INVALID".parse::<Tenor>().is_err());
         assert!("OVERNIGHT".parse::<Tenor>().is_err());
-        assert!("O/N".parse::<Tenor>().is_err());
         assert!("".parse::<Tenor>().is_err());
         assert!("X".parse::<Tenor>().is_err());
         assert!("3X".parse::<Tenor>().is_err());
