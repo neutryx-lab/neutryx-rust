@@ -12,6 +12,8 @@ use axum::{
 pub mod dto;
 mod graph_handlers;
 mod handlers;
+#[cfg(feature = "openapi")]
+pub mod openapi;
 mod ws_handlers;
 
 pub use graph_handlers::GraphAppState;
@@ -21,10 +23,15 @@ use crate::state::AppState;
 
 /// Create the REST API router with full state.
 pub fn create_router_with_state(state: Arc<AppState>) -> Router {
-    Router::new()
+    let router = Router::new()
         .route("/health", get(handlers::health))
         .nest("/api", api_routes(state.clone()))
-        .nest("/api/v1", api_v1_routes(state))
+        .nest("/api/v1", api_v1_routes(state));
+
+    #[cfg(feature = "openapi")]
+    let router = mount_swagger_ui(router);
+
+    router
 }
 
 /// Create the full router with all features (used when demo feature is.
@@ -62,6 +69,9 @@ pub fn create_demo_router(state: Arc<AppState>) -> Router {
 
     let doc_dir =
         ServeDir::new("target/doc").not_found_service(ServeFile::new("target/doc/index.html"));
+
+    #[cfg(feature = "openapi")]
+    let router = mount_swagger_ui(router);
 
     router
         .nest_service("/doc", doc_dir)
@@ -286,4 +296,16 @@ fn graph_alias_routes(state: Arc<GraphAppState>) -> Router {
     Router::new()
         .route("/graph", get(graph_handlers::get_portfolio_graph))
         .with_state(state)
+}
+
+/// Serve the OpenAPI JSON spec at `/api-docs/openapi.json`.
+#[cfg(feature = "openapi")]
+fn mount_swagger_ui(router: Router) -> Router {
+    use axum::Json;
+    use utoipa::OpenApi;
+
+    router.route(
+        "/api-docs/openapi.json",
+        get(|| async { Json(openapi::ApiDoc::openapi()) }),
+    )
 }

@@ -71,7 +71,6 @@ validator.workspace = true
 
 # OpenAPI documentation
 utoipa = { workspace = true, optional = true }
-utoipa-swagger-ui = { workspace = true, optional = true }
 
 # Caching
 lru = "0.12"
@@ -101,7 +100,7 @@ cli = ["dep:clap"]
 # Enable Python bindings (PyO3)
 python = ["dep:pyo3"]
 # OpenAPI documentation (Swagger UI)
-openapi = ["dep:utoipa", "dep:utoipa-swagger-ui"]
+openapi = ["dep:utoipa"]
 # Full bundle with all services
 full = ["rest", "risk", "models", "volatility", "demo", "cli", "openapi"]
 

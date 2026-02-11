@@ -2,6 +2,7 @@
 
 use std::{path::Path, sync::Arc};
 
+use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
@@ -11,8 +12,6 @@ use crate::{
     services::helpers,
     state::AppState,
 };
-
-use super::DemoService;
 
 impl DemoService {
     /// Get all rate indices.

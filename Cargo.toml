@@ -176,7 +176,6 @@ validator = { version = "0.20", features = ["derive"] }
 
 # OpenAPI documentation
 utoipa = { version = "5", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
 # Graph data structures and algorithms
 petgraph = "0.6"

@@ -2,10 +2,9 @@
 
 use pricer_models::market::BootstrapInterpolation;
 use serde::{Deserialize, Serialize};
-use validator::Validate;
-
 #[cfg(feature = "openapi")]
 use utoipa::ToSchema;
+use validator::Validate;
 
 /// Bootstrap method for curve building.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
@@ -64,6 +63,7 @@ pub struct CurveBuildRequest {
     pub instruments: Vec<CurveInstrumentInput>,
     /// Interpolation method.
     #[serde(default)]
+    #[cfg_attr(feature = "openapi", schema(value_type = String))]
     pub interpolation: BootstrapInterpolation,
     /// Bootstrap method.
     #[serde(default)]

@@ -2,6 +2,7 @@
 
 use std::{sync::Arc, time::Instant};
 
+use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
@@ -12,8 +13,6 @@ use crate::{
     services::helpers,
     state::AppState,
 };
-
-use super::DemoService;
 
 impl DemoService {
     /// Get rate detail.

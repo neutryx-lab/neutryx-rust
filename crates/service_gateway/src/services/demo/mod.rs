@@ -11,9 +11,9 @@ pub struct DemoService;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::Path;
 
+    use super::*;
     use crate::state::AppState;
 
     /// Check if demo data files are available.

@@ -1,10 +1,9 @@
 //! Pricing-related DTOs.
 
 use serde::{Deserialize, Serialize};
-use validator::Validate;
-
 #[cfg(feature = "openapi")]
 use utoipa::ToSchema;
+use validator::Validate;
 
 /// Instrument type for pricing.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]

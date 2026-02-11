@@ -6,16 +6,15 @@ use pricer_pricing::generic_pricer::{
     DefaultCurrency, SimpleCashflow, SimpleDate, SimpleDirection, SimpleLeg,
 };
 
+use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
         Cashflow, CashflowPvResult, DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest,
-        DemoPricingResult, ExpandedTrade, LegResult, TradeExpandRequest, TradeMetadata, TradeLeg,
+        DemoPricingResult, ExpandedTrade, LegResult, TradeExpandRequest, TradeLeg, TradeMetadata,
     },
     state::AppState,
 };
-
-use super::DemoService;
 
 /// Parse a "YYYY-MM-DD" date string into `SimpleDate`.
 fn parse_simple_date(date_str: &str) -> Result<SimpleDate, ServerError> {

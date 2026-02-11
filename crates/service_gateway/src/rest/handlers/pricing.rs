@@ -10,7 +10,17 @@ use crate::{
     services::PricingService,
 };
 
-/// POST /api/price.
+/// Price a single instrument.
+#[cfg_attr(feature = "openapi", utoipa::path(
+    post,
+    path = "/api/price",
+    tag = "pricing",
+    request_body = PricingRequest,
+    responses(
+        (status = 200, description = "Pricing result", body = PricingResponse),
+        (status = 400, description = "Invalid request"),
+    )
+))]
 pub async fn price_instrument(
     ValidatedJson(request): ValidatedJson<PricingRequest>,
 ) -> Result<Json<PricingResponse>, ServerError> {
@@ -18,7 +28,17 @@ pub async fn price_instrument(
     Ok(Json(response))
 }
 
-/// POST /api/price/batch.
+/// Price a batch of instruments.
+#[cfg_attr(feature = "openapi", utoipa::path(
+    post,
+    path = "/api/price/batch",
+    tag = "pricing",
+    request_body = PortfolioPricingRequest,
+    responses(
+        (status = 200, description = "Portfolio pricing result", body = PortfolioPricingResponse),
+        (status = 400, description = "Invalid request"),
+    )
+))]
 pub async fn price_portfolio(
     ValidatedJson(request): ValidatedJson<PortfolioPricingRequest>,
 ) -> Result<Json<PortfolioPricingResponse>, ServerError> {

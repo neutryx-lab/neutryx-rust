@@ -1,8 +1,7 @@
 //! Common FpML parsing utilities.
 
-use quick_xml::{events::Event, Reader};
-
 use infra_domain::{market::Currency, time::Date, trade::TradeMetadata};
+use quick_xml::{events::Event, Reader};
 
 use super::error::FpmlError;
 
