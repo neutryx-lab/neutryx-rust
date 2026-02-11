@@ -170,6 +170,19 @@ onUnmounted(() => {
           <i v-else class="fas fa-adjust"></i>
         </button>
 
+        <!-- Rust Docs -->
+        <a
+          href="/doc/neutryx/index.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="docs-btn p-2 rounded-lg text-[var(--text-secondary)]
+                 hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]
+                 transition-all duration-200"
+          title="Rust Documentation"
+        >
+          <i class="fas fa-book"></i>
+        </a>
+
         <!-- Notifications -->
         <div class="notifications-container relative">
           <button

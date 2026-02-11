@@ -60,7 +60,11 @@ pub fn create_demo_router(state: Arc<AppState>) -> Router {
     let data_input_dir = ServeDir::new("demo/data/input");
     let data_config_dir = ServeDir::new("demo/data/config");
 
+    let doc_dir = ServeDir::new("target/doc")
+        .not_found_service(ServeFile::new("target/doc/index.html"));
+
     router
+        .nest_service("/doc", doc_dir)
         .nest_service("/assets", ServeDir::new("demo/gui/dist/assets"))
         .nest_service("/data/input", data_input_dir)
         .nest_service("/data/config", data_config_dir)

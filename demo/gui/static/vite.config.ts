@@ -31,10 +31,40 @@ function serveDataFiles(): Plugin {
   };
 }
 
+// Serve cargo doc output during development.
+// This allows /doc/* to resolve without the Rust backend.
+function serveDocFiles(): Plugin {
+  const docDir = resolve(__dirname, '../../../target/doc');
+  const mimeTypes: Record<string, string> = {
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+  };
+  return {
+    name: 'serve-doc-files',
+    configureServer(server) {
+      server.middlewares.use('/doc', (req, res, next) => {
+        const filePath = join(docDir, decodeURIComponent(req.url || ''));
+        if (existsSync(filePath) && statSync(filePath).isFile()) {
+          const ext = extname(filePath);
+          res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+          createReadStream(filePath).pipe(res);
+        } else {
+          next();
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: '.',
   base: '/',
-  plugins: [vue(), serveDataFiles()],
+  plugins: [vue(), serveDataFiles(), serveDocFiles()],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
