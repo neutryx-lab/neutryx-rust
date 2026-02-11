@@ -13,6 +13,10 @@ const {
   updateCharts,
 } = useCurveCharts();
 
+// Template refs – bound via ref="..." in <template>; mark as read for TS
+void shortTermChartCanvas;
+void longTermChartCanvas;
+
 // Initialise builder composable, wiring chart updates via callback
 const {
   // State
