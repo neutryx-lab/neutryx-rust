@@ -6,7 +6,6 @@
 //! - FX Option (fxOption)
 
 use infra_domain::{
-    market::Currency,
     time::Date,
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, OptionType, Payoff,
@@ -16,7 +15,7 @@ use infra_domain::{
 
 use crate::fpml::{
     common::{
-        parse_currency, parse_date, parse_decimal, parse_trade_header, xml_date, xml_decimal,
+        parse_currency, parse_decimal, parse_trade_header, xml_date, xml_decimal,
         xml_decimal_or, xml_text, XmlNavigator,
     },
     error::FpmlError,
