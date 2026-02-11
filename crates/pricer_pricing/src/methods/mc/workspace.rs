@@ -11,8 +11,7 @@
 
 use std::marker::PhantomData;
 
-use super::layout_config::PathLayout;
-use super::workspace_trait::PathWorkspaceTrait;
+use super::{layout_config::PathLayout, workspace_trait::PathWorkspaceTrait};
 
 /// Index calculation strategy for workspace memory layout.
 pub trait LayoutStrategy: Send + Sync + Clone + 'static {
@@ -25,12 +24,7 @@ pub trait LayoutStrategy: Send + Sync + Clone + 'static {
     ) -> usize;
 
     /// Computes the linear index into the randoms buffer.
-    fn random_index(
-        path_idx: usize,
-        step_idx: usize,
-        num_paths: usize,
-        num_steps: usize,
-    ) -> usize;
+    fn random_index(path_idx: usize, step_idx: usize, num_paths: usize, num_steps: usize) -> usize;
 
     /// Returns the [`PathLayout`] tag for this strategy.
     fn layout() -> PathLayout;
@@ -62,9 +56,7 @@ impl LayoutStrategy for PathFirst {
     }
 
     #[inline]
-    fn layout() -> PathLayout {
-        PathLayout::PathFirst
-    }
+    fn layout() -> PathLayout { PathLayout::PathFirst }
 }
 
 /// Time-step-first layout: `paths[step_idx * num_paths + path_idx]`.
@@ -93,9 +85,7 @@ impl LayoutStrategy for TimeStepFirst {
     }
 
     #[inline]
-    fn layout() -> PathLayout {
-        PathLayout::TimeStepFirst
-    }
+    fn layout() -> PathLayout { PathLayout::TimeStepFirst }
 }
 
 // ============================================================================
@@ -148,7 +138,8 @@ impl<S: LayoutStrategy> Workspace<S> {
         }
     }
 
-    /// Ensures workspace has sufficient capacity (doubling strategy, never shrinks).
+    /// Ensures workspace has sufficient capacity (doubling strategy, never
+    /// shrinks).
     pub fn ensure_capacity(&mut self, n_paths: usize, n_steps: usize) {
         if n_paths > self.capacity_paths || n_steps > self.capacity_steps {
             let new_cap_paths = n_paths.max(self.capacity_paths * 2);
@@ -178,9 +169,7 @@ impl<S: LayoutStrategy> Workspace<S> {
 
     /// Returns the memory layout.
     #[inline]
-    pub fn layout(&self) -> PathLayout {
-        S::layout()
-    }
+    pub fn layout(&self) -> PathLayout { S::layout() }
 
     /// Returns total memory used by all buffers in bytes.
     #[inline]
@@ -214,9 +203,7 @@ impl<S: LayoutStrategy> Workspace<S> {
 
     /// Returns the randoms buffer as a slice.
     #[inline]
-    pub fn randoms(&self) -> &[f64] {
-        &self.randoms[..self.size_paths * self.size_steps]
-    }
+    pub fn randoms(&self) -> &[f64] { &self.randoms[..self.size_paths * self.size_steps] }
     /// Returns the randoms buffer as a mutable slice.
     #[inline]
     pub fn randoms_mut(&mut self) -> &mut [f64] {
@@ -225,9 +212,7 @@ impl<S: LayoutStrategy> Workspace<S> {
     }
     /// Returns the paths buffer as a slice.
     #[inline]
-    pub fn paths(&self) -> &[f64] {
-        &self.paths[..self.size_paths * (self.size_steps + 1)]
-    }
+    pub fn paths(&self) -> &[f64] { &self.paths[..self.size_paths * (self.size_steps + 1)] }
     /// Returns the paths buffer as a mutable slice.
     #[inline]
     pub fn paths_mut(&mut self) -> &mut [f64] {
@@ -389,9 +374,7 @@ impl<S: LayoutStrategy> PathWorkspaceTrait for Workspace<S> {
     }
 
     #[inline]
-    fn randoms(&self) -> &[f64] {
-        &self.randoms[..self.size_paths * self.size_steps]
-    }
+    fn randoms(&self) -> &[f64] { &self.randoms[..self.size_paths * self.size_steps] }
     #[inline]
     fn randoms_mut(&mut self) -> &mut [f64] {
         let len = self.size_paths * self.size_steps;
@@ -402,9 +385,7 @@ impl<S: LayoutStrategy> PathWorkspaceTrait for Workspace<S> {
     #[inline]
     fn payoffs_mut(&mut self) -> &mut [f64] { &mut self.payoffs[..self.size_paths] }
     #[inline]
-    fn paths(&self) -> &[f64] {
-        &self.paths[..self.size_paths * (self.size_steps + 1)]
-    }
+    fn paths(&self) -> &[f64] { &self.paths[..self.size_paths * (self.size_steps + 1)] }
     #[inline]
     fn paths_mut(&mut self) -> &mut [f64] {
         let len = self.size_paths * (self.size_steps + 1);
@@ -477,87 +458,150 @@ impl WorkspaceEnum {
 
     #[inline]
     pub fn as_path_first(&self) -> Option<&PathWorkspace> {
-        match self { Self::PathFirst(ws) => Some(ws), _ => None }
+        match self {
+            Self::PathFirst(ws) => Some(ws),
+            _ => None,
+        }
     }
     #[inline]
     pub fn as_path_first_mut(&mut self) -> Option<&mut PathWorkspace> {
-        match self { Self::PathFirst(ws) => Some(ws), _ => None }
+        match self {
+            Self::PathFirst(ws) => Some(ws),
+            _ => None,
+        }
     }
     #[inline]
     pub fn as_timestep_first(&self) -> Option<&TimeStepFirstWorkspace> {
-        match self { Self::TimeStepFirst(ws) => Some(ws), _ => None }
+        match self {
+            Self::TimeStepFirst(ws) => Some(ws),
+            _ => None,
+        }
     }
 
     // --- Delegated methods ---
 
     #[inline]
     pub fn num_paths(&self) -> usize {
-        match self { Self::PathFirst(w) => w.num_paths(), Self::TimeStepFirst(w) => w.num_paths() }
+        match self {
+            Self::PathFirst(w) => w.num_paths(),
+            Self::TimeStepFirst(w) => w.num_paths(),
+        }
     }
     #[inline]
     pub fn num_steps(&self) -> usize {
-        match self { Self::PathFirst(w) => w.num_steps(), Self::TimeStepFirst(w) => w.num_steps() }
+        match self {
+            Self::PathFirst(w) => w.num_steps(),
+            Self::TimeStepFirst(w) => w.num_steps(),
+        }
     }
     #[inline]
     pub fn layout(&self) -> PathLayout {
-        match self { Self::PathFirst(w) => w.layout(), Self::TimeStepFirst(w) => w.layout() }
+        match self {
+            Self::PathFirst(w) => w.layout(),
+            Self::TimeStepFirst(w) => w.layout(),
+        }
     }
     pub fn ensure_capacity(&mut self, np: usize, ns: usize) {
-        match self { Self::PathFirst(w) => w.ensure_capacity(np, ns), Self::TimeStepFirst(w) => w.ensure_capacity(np, ns) }
+        match self {
+            Self::PathFirst(w) => w.ensure_capacity(np, ns),
+            Self::TimeStepFirst(w) => w.ensure_capacity(np, ns),
+        }
     }
     pub fn reset(&mut self) {
-        match self { Self::PathFirst(w) => w.reset(), Self::TimeStepFirst(w) => w.reset() }
+        match self {
+            Self::PathFirst(w) => w.reset(),
+            Self::TimeStepFirst(w) => w.reset(),
+        }
     }
     #[inline]
     pub fn memory_usage(&self) -> usize {
-        match self { Self::PathFirst(w) => w.memory_usage(), Self::TimeStepFirst(w) => w.memory_usage() }
+        match self {
+            Self::PathFirst(w) => w.memory_usage(),
+            Self::TimeStepFirst(w) => w.memory_usage(),
+        }
     }
     #[inline]
     pub fn randoms(&self) -> &[f64] {
-        match self { Self::PathFirst(w) => w.randoms(), Self::TimeStepFirst(w) => w.randoms() }
+        match self {
+            Self::PathFirst(w) => w.randoms(),
+            Self::TimeStepFirst(w) => w.randoms(),
+        }
     }
     #[inline]
     pub fn randoms_mut(&mut self) -> &mut [f64] {
-        match self { Self::PathFirst(w) => w.randoms_mut(), Self::TimeStepFirst(w) => w.randoms_mut() }
+        match self {
+            Self::PathFirst(w) => w.randoms_mut(),
+            Self::TimeStepFirst(w) => w.randoms_mut(),
+        }
     }
     #[inline]
     pub fn paths(&self) -> &[f64] {
-        match self { Self::PathFirst(w) => w.paths(), Self::TimeStepFirst(w) => w.paths() }
+        match self {
+            Self::PathFirst(w) => w.paths(),
+            Self::TimeStepFirst(w) => w.paths(),
+        }
     }
     #[inline]
     pub fn paths_mut(&mut self) -> &mut [f64] {
-        match self { Self::PathFirst(w) => w.paths_mut(), Self::TimeStepFirst(w) => w.paths_mut() }
+        match self {
+            Self::PathFirst(w) => w.paths_mut(),
+            Self::TimeStepFirst(w) => w.paths_mut(),
+        }
     }
     #[inline]
     pub fn payoffs(&self) -> &[f64] {
-        match self { Self::PathFirst(w) => w.payoffs(), Self::TimeStepFirst(w) => w.payoffs() }
+        match self {
+            Self::PathFirst(w) => w.payoffs(),
+            Self::TimeStepFirst(w) => w.payoffs(),
+        }
     }
     #[inline]
     pub fn payoffs_mut(&mut self) -> &mut [f64] {
-        match self { Self::PathFirst(w) => w.payoffs_mut(), Self::TimeStepFirst(w) => w.payoffs_mut() }
+        match self {
+            Self::PathFirst(w) => w.payoffs_mut(),
+            Self::TimeStepFirst(w) => w.payoffs_mut(),
+        }
     }
     #[inline]
     pub fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
-        match self { Self::PathFirst(w) => w.get_path_value(path_idx, step_idx), Self::TimeStepFirst(w) => w.get_path_value(path_idx, step_idx) }
+        match self {
+            Self::PathFirst(w) => w.get_path_value(path_idx, step_idx),
+            Self::TimeStepFirst(w) => w.get_path_value(path_idx, step_idx),
+        }
     }
     #[inline]
     pub fn set_path_value(&mut self, path_idx: usize, step_idx: usize, value: f64) {
-        match self { Self::PathFirst(w) => w.set_path_value(path_idx, step_idx, value), Self::TimeStepFirst(w) => w.set_path_value(path_idx, step_idx, value) }
+        match self {
+            Self::PathFirst(w) => w.set_path_value(path_idx, step_idx, value),
+            Self::TimeStepFirst(w) => w.set_path_value(path_idx, step_idx, value),
+        }
     }
     #[inline]
     pub fn get_step_slice(&self, step_idx: usize) -> Option<&[f64]> {
-        match self { Self::PathFirst(w) => w.get_step_slice(step_idx), Self::TimeStepFirst(w) => w.get_step_slice(step_idx) }
+        match self {
+            Self::PathFirst(w) => w.get_step_slice(step_idx),
+            Self::TimeStepFirst(w) => w.get_step_slice(step_idx),
+        }
     }
     #[inline]
     pub fn get_step_slice_mut(&mut self, step_idx: usize) -> Option<&mut [f64]> {
-        match self { Self::PathFirst(w) => w.get_step_slice_mut(step_idx), Self::TimeStepFirst(w) => w.get_step_slice_mut(step_idx) }
+        match self {
+            Self::PathFirst(w) => w.get_step_slice_mut(step_idx),
+            Self::TimeStepFirst(w) => w.get_step_slice_mut(step_idx),
+        }
     }
     #[inline]
     pub fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
-        match self { Self::PathFirst(w) => w.get_path_slice(path_idx), Self::TimeStepFirst(w) => w.get_path_slice(path_idx) }
+        match self {
+            Self::PathFirst(w) => w.get_path_slice(path_idx),
+            Self::TimeStepFirst(w) => w.get_path_slice(path_idx),
+        }
     }
     pub fn clear(&mut self) {
-        match self { Self::PathFirst(w) => w.clear(), Self::TimeStepFirst(w) => w.clear() }
+        match self {
+            Self::PathFirst(w) => w.clear(),
+            Self::TimeStepFirst(w) => w.clear(),
+        }
     }
 }
 
