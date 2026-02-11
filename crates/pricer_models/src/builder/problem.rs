@@ -278,14 +278,16 @@ where
             let mut log_df_plus = log_df.to_vec();
             log_df_plus[j] = log_df_plus[j] + eps;
             let curve_plus = self.build_curve(&log_df_plus).map_err(|e| {
-                CalibrationError::NumericalInstability { message: format!("Failed to build curve+: {e}"))
+                CalibrationError::NumericalInstability { message: format!("Failed to build curve+: {e}") }
             })?;
             let f_plus = self.compute_residuals(&curve_plus)?;
 
             let mut log_df_minus = log_df.to_vec();
             log_df_minus[j] = log_df_minus[j] - eps;
             let curve_minus = self.build_curve(&log_df_minus).map_err(|e| {
-                CalibrationError::NumericalInstability { message: format!("Failed to build curve-: {e}"))
+                CalibrationError::NumericalInstability {
+                    message: format!("Failed to build curve-: {e}"),
+                }
             })?;
             let f_minus = self.compute_residuals(&curve_minus)?;
 
@@ -440,7 +442,9 @@ where
         let jumps = self.extract_jumps(params);
 
         let curve = self.build_curve_with_jumps(log_df, jumps).map_err(|e| {
-            CalibrationError::NumericalInstability { message: format!("Failed to build jump curve: {e}"))
+            CalibrationError::NumericalInstability {
+                message: format!("Failed to build jump curve: {e}"),
+            }
         })?;
 
         let mut residuals = self.compute_residuals(&curve)?;
@@ -807,10 +811,12 @@ where
             }
             _ => {
                 // Unknown instrument type - return error to trigger fallback
-                Err(CalibrationError::NumericalInstability { message: format!(
-                    "Unsupported instrument type for Enzyme AD: {}",
-                    inst_type
-                )))
+                Err(CalibrationError::NumericalInstability {
+                    message: format!(
+                        "Unsupported instrument type for Enzyme AD: {}",
+                        inst_type
+                    ),
+                })
             }
         }
     }
