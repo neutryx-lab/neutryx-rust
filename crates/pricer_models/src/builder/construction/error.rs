@@ -3,7 +3,7 @@
 //! This module provides error types for the curve construction engine.
 
 use infra_domain::market::{
-    CurveDefError, InstrumentDefError, RateIndexDefError, RateType, RegistryError,
+    CurveDefError, InstrumentDefError, QuoteCategory, RateIndexDefError, RegistryError,
 };
 use thiserror::Error;
 
@@ -56,11 +56,11 @@ pub enum ConstructionError {
         curve_name: String,
     },
 
-    /// Unsupported rate type for conversion.
-    #[error("Unsupported rate type: {rate_type:?}")]
-    UnsupportedRateType {
-        /// The unsupported rate type.
-        rate_type: RateType,
+    /// Unsupported quote category for conversion.
+    #[error("Unsupported quote category: {quote_category:?}")]
+    UnsupportedQuoteCategory {
+        /// The unsupported quote category.
+        quote_category: QuoteCategory,
     },
 
     /// Calibration (bootstrap) failed.

@@ -2,7 +2,7 @@
 
 use crate::{
     market::{
-        core::RateType,
+        core::QuoteCategory,
         quote::{MarketQuote, MarketQuoteError},
     },
     time::{Date, EndOfMonthRule},
@@ -147,16 +147,19 @@ impl InstrumentMapper for StandardInstrumentMapper {
         quote: &MarketQuote,
         valuation_date: Date,
     ) -> Result<Instrument, MarketQuoteError> {
-        match quote.id.rate_type {
-            RateType::Deposit => Ok(self.map_deposit(quote, valuation_date)),
-            RateType::Fra => Ok(self.map_fra(quote, valuation_date)),
-            RateType::Futures => Ok(self.map_futures(quote, valuation_date)),
-            RateType::Swap => Ok(self.map_swap(quote, valuation_date)),
-            RateType::Ois => Ok(self.map_ois(quote, valuation_date)),
-            RateType::BasisSwap => Ok(self.map_basis_swap(quote, valuation_date)),
-            RateType::FxSpot | RateType::FxForward | RateType::Vol | RateType::Event => {
-                Err(MarketQuoteError::unsupported_rate_type(quote.id.rate_type))
-            }
+        match quote.id.quote_category {
+            QuoteCategory::Deposit => Ok(self.map_deposit(quote, valuation_date)),
+            QuoteCategory::Fra => Ok(self.map_fra(quote, valuation_date)),
+            QuoteCategory::Futures => Ok(self.map_futures(quote, valuation_date)),
+            QuoteCategory::Swap => Ok(self.map_swap(quote, valuation_date)),
+            QuoteCategory::Ois => Ok(self.map_ois(quote, valuation_date)),
+            QuoteCategory::BasisSwap => Ok(self.map_basis_swap(quote, valuation_date)),
+            QuoteCategory::FxSpot
+            | QuoteCategory::FxForward
+            | QuoteCategory::Vol
+            | QuoteCategory::Event => Err(MarketQuoteError::unsupported_quote_category(
+                quote.id.quote_category,
+            )),
         }
     }
 }
@@ -169,7 +172,7 @@ mod tests {
         time::Tenor,
     };
 
-    fn q(rt: RateType, t: Tenor, v: f64) -> MarketQuote {
+    fn q(rt: QuoteCategory, t: Tenor, v: f64) -> MarketQuote {
         MarketQuote::new(
             QuoteId::new(Currency::USD, t, rt),
             QuoteType::Mid,
@@ -208,7 +211,7 @@ mod tests {
         let v = vd();
 
         match m
-            .map_to_instrument(&q(RateType::Deposit, Tenor::ThreeMonths, 0.05), v)
+            .map_to_instrument(&q(QuoteCategory::Deposit, Tenor::ThreeMonths, 0.05), v)
             .unwrap()
         {
             Instrument::Deposit {
@@ -225,7 +228,7 @@ mod tests {
             _ => panic!("Expected Deposit"),
         }
         match m
-            .map_to_instrument(&q(RateType::Fra, Tenor::SixMonths, 0.055), v)
+            .map_to_instrument(&q(QuoteCategory::Fra, Tenor::SixMonths, 0.055), v)
             .unwrap()
         {
             Instrument::Fra {
@@ -242,7 +245,7 @@ mod tests {
             _ => panic!("Expected Fra"),
         }
         match m
-            .map_to_instrument(&q(RateType::Futures, Tenor::ThreeMonths, 0.045), v)
+            .map_to_instrument(&q(QuoteCategory::Futures, Tenor::ThreeMonths, 0.045), v)
             .unwrap()
         {
             Instrument::Futures {
@@ -257,7 +260,7 @@ mod tests {
             _ => panic!("Expected Futures"),
         }
         match m
-            .map_to_instrument(&q(RateType::Swap, Tenor::FiveYears, 0.04), v)
+            .map_to_instrument(&q(QuoteCategory::Swap, Tenor::FiveYears, 0.04), v)
             .unwrap()
         {
             Instrument::ParSwap {
@@ -274,7 +277,7 @@ mod tests {
             _ => panic!("Expected ParSwap"),
         }
         match m
-            .map_to_instrument(&q(RateType::Ois, Tenor::OneYear, 0.035), v)
+            .map_to_instrument(&q(QuoteCategory::Ois, Tenor::OneYear, 0.035), v)
             .unwrap()
         {
             Instrument::Ois {
@@ -291,7 +294,7 @@ mod tests {
             _ => panic!("Expected Ois"),
         }
         match m
-            .map_to_instrument(&q(RateType::BasisSwap, Tenor::TenYears, 0.0025), v)
+            .map_to_instrument(&q(QuoteCategory::BasisSwap, Tenor::TenYears, 0.0025), v)
             .unwrap()
         {
             Instrument::BasisSwap {
@@ -308,17 +311,17 @@ mod tests {
             _ => panic!("Expected BasisSwap"),
         }
         assert!(matches!(
-            m.map_to_instrument(&q(RateType::FxSpot, Tenor::TwoWeeks, 1.1), v),
+            m.map_to_instrument(&q(QuoteCategory::FxSpot, Tenor::TwoWeeks, 1.1), v),
             Err(MarketQuoteError::MappingFailed {
-                rate_type: RateType::FxSpot,
+                quote_category: QuoteCategory::FxSpot,
                 ..
             })
         ));
         assert!(m
-            .map_to_instrument(&q(RateType::FxForward, Tenor::ThreeMonths, 1.1), v)
+            .map_to_instrument(&q(QuoteCategory::FxForward, Tenor::ThreeMonths, 1.1), v)
             .is_err());
         assert!(m
-            .map_to_instrument(&q(RateType::Vol, Tenor::OneYear, 0.2), v)
+            .map_to_instrument(&q(QuoteCategory::Vol, Tenor::OneYear, 0.2), v)
             .is_err());
     }
 
@@ -328,7 +331,7 @@ mod tests {
 
         let m1 = StandardInstrumentMapper::new().with_settlement_lag(1);
         match m1
-            .map_to_instrument(&q(RateType::Deposit, Tenor::OneMonth, 0.05), v)
+            .map_to_instrument(&q(QuoteCategory::Deposit, Tenor::OneMonth, 0.05), v)
             .unwrap()
         {
             Instrument::Deposit { start_date, .. } => {
@@ -339,18 +342,18 @@ mod tests {
 
         let m = StandardInstrumentMapper::new();
         assert!(m
-            .map_to_instrument(&q(RateType::Deposit, Tenor::ThreeMonths, 0.05), v)
+            .map_to_instrument(&q(QuoteCategory::Deposit, Tenor::ThreeMonths, 0.05), v)
             .is_ok());
         assert!(m
-            .map_to_instrument(&q(RateType::Swap, Tenor::FiveYears, 0.045), v)
+            .map_to_instrument(&q(QuoteCategory::Swap, Tenor::FiveYears, 0.045), v)
             .is_ok());
         assert!(m
-            .map_to_instrument(&q(RateType::Ois, Tenor::OneYear, 0.04), v)
+            .map_to_instrument(&q(QuoteCategory::Ois, Tenor::OneYear, 0.04), v)
             .is_ok());
 
         for (rate_val, expected_price) in [(0.0, 100.0), (0.01, 99.0), (0.05, 95.0), (0.10, 90.0)] {
             match m
-                .map_to_instrument(&q(RateType::Futures, Tenor::ThreeMonths, rate_val), v)
+                .map_to_instrument(&q(QuoteCategory::Futures, Tenor::ThreeMonths, rate_val), v)
                 .unwrap()
             {
                 Instrument::Futures { price, .. } => {
@@ -361,7 +364,7 @@ mod tests {
         }
 
         let eur_q = MarketQuote::new(
-            QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::TenYears, QuoteCategory::Swap),
             QuoteType::Mid,
             0.025,
             1700000000000,

@@ -2,9 +2,13 @@
 
 use pricer_models::market::BootstrapInterpolation;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "openapi")]
+use utoipa::ToSchema;
+use validator::Validate;
 
 /// Bootstrap method for curve building.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum BootstrapMethod {
     /// Iterative bootstrapping (default).
@@ -15,10 +19,12 @@ pub enum BootstrapMethod {
 }
 
 /// Single instrument input for curve building.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurveInstrumentInput {
     /// Instrument type (e.g., "deposit", "fra", "swap", "event").
     #[serde(alias = "type")]
+    #[validate(length(min = 1))]
     pub instrument_type: String,
     /// Tenor string (e.g., "1M", "3M", "1Y") - optional for event type.
     #[serde(default)]
@@ -39,9 +45,11 @@ pub struct CurveInstrumentInput {
 }
 
 /// Request to build a yield curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurveBuildRequest {
     /// Index name (e.g., "USD-SOFR", "EUR-EURIBOR-6M").
+    #[validate(length(min = 1))]
     pub index: String,
     /// Currency code (optional, extracted from index if not provided).
     #[serde(default)]
@@ -50,18 +58,23 @@ pub struct CurveBuildRequest {
     #[serde(default)]
     pub reference_date: Option<String>,
     /// Market instruments for bootstrapping.
+    #[validate(length(min = 1))]
+    #[validate(nested)]
     pub instruments: Vec<CurveInstrumentInput>,
     /// Interpolation method.
     #[serde(default)]
+    #[cfg_attr(feature = "openapi", schema(value_type = String))]
     pub interpolation: BootstrapInterpolation,
     /// Bootstrap method.
     #[serde(default)]
     pub bootstrap_method: BootstrapMethod,
     /// Tolerance for bootstrap convergence.
     #[serde(default = "default_tolerance")]
+    #[validate(range(exclusive_min = 0.0))]
     pub tolerance: f64,
     /// Maximum iterations for bootstrap.
     #[serde(default = "default_max_iterations")]
+    #[validate(range(min = 1))]
     pub max_iterations: usize,
 }
 
@@ -71,6 +84,7 @@ fn default_max_iterations() -> usize { 100 }
 
 /// Pillar point in a bootstrapped curve.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurvePillar {
     /// Date (ISO 8601, e.g.
     pub date: String,
@@ -86,6 +100,7 @@ pub struct CurvePillar {
 
 /// Forward rate point on a daily grid.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardRatePoint {
     /// Date (ISO 8601).
     pub date: String,
@@ -97,6 +112,7 @@ pub struct ForwardRatePoint {
 
 /// A single point on a pre-computed chart display grid.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ChartGridPoint {
     /// Date (ISO 8601, e.g.
     pub date: String,
@@ -112,6 +128,7 @@ pub struct ChartGridPoint {
 
 /// Jacobian matrix data for curve sensitivity analysis.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct JacobianData {
     /// Row labels (pillar descriptions, e.g., "Depo-1M", "IRS-5Y").
     pub row_labels: Vec<String>,
@@ -125,6 +142,7 @@ pub struct JacobianData {
 
 /// Response for curve building.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurveBuildResponse {
     /// Generated curve ID for caching.
     pub curve_id: String,
@@ -156,16 +174,20 @@ pub struct CurveBuildResponse {
 }
 
 /// Request to get discount factor from a cached curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct DiscountFactorRequest {
     /// Curve ID from previous build.
+    #[validate(length(min = 1))]
     pub curve_id: String,
     /// Time in years.
+    #[validate(range(min = 0.0))]
     pub time: f64,
 }
 
 /// Response with discount factor.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct DiscountFactorResponse {
     /// Curve ID used for the lookup.
     pub curve_id: String,
@@ -178,18 +200,23 @@ pub struct DiscountFactorResponse {
 }
 
 /// Request to get forward rate from a cached curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardRateRequest {
     /// Curve ID from previous build.
+    #[validate(length(min = 1))]
     pub curve_id: String,
     /// Start time in years.
+    #[validate(range(min = 0.0))]
     pub start_time: f64,
     /// End time in years.
+    #[validate(range(exclusive_min = 0.0))]
     pub end_time: f64,
 }
 
 /// Response with forward rate.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardRateResponse {
     /// Curve ID used for the lookup.
     pub curve_id: String,
@@ -202,18 +229,23 @@ pub struct ForwardRateResponse {
 }
 
 /// Request to compute forward swap rates from a cached curve.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardSwapRateRequest {
     /// Curve ID from previous build.
+    #[validate(length(min = 1))]
     pub curve_id: String,
     /// Expiry tenor strings (e.g., "1M", "3M", "1Y", "5Y", "10Y").
+    #[validate(length(min = 1))]
     pub expiries: Vec<String>,
     /// Swap tenor strings (e.g., "1Y", "2Y", "5Y", "10Y", "30Y").
+    #[validate(length(min = 1))]
     pub tenors: Vec<String>,
 }
 
 /// Response with forward swap rate matrix.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardSwapRateResponse {
     /// Curve ID used.
     pub curve_id: String,

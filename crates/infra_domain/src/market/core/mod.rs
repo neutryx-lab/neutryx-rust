@@ -3,9 +3,9 @@
 mod compounding;
 mod currency;
 mod currency_pair;
-mod rate_type;
+mod quote_category;
 
 pub use compounding::CompoundingMethod;
 pub use currency::Currency;
 pub use currency_pair::CurrencyPair;
-pub use rate_type::RateType;
+pub use quote_category::QuoteCategory;

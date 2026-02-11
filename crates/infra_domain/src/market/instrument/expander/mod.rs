@@ -146,6 +146,58 @@ pub(super) fn coupon_swap_trade(
     Trade::new(trade_id, vec![fixed_leg, floating_leg], TradeType::Swap)
 }
 
+/// Generates floating-rate leg cashflows from payment dates.
+///
+/// Shared by `InterestRateSwap`, `BasisSwap`, `CrossCurrencyBasisSwap`, etc.
+pub(super) fn generate_floating_leg_cashflows(
+    payment_dates: &[Date],
+    rate_index: crate::market::RateIndex,
+    notional: f64,
+    currency: Currency,
+) -> Vec<Cashflow> {
+    use crate::trade::IndexType;
+
+    (0..payment_dates.len().saturating_sub(1))
+        .map(|i| {
+            let (start, end) = (payment_dates[i], payment_dates[i + 1]);
+            let year_fraction = (end - start) as f64 / 360.0;
+            Cashflow::new(
+                CashflowType::Coupon,
+                end,
+                start,
+                end,
+                year_fraction,
+                notional,
+                Payoff::floating(IndexType::Rate(rate_index)),
+                currency,
+            )
+        })
+        .collect()
+}
+
+/// Creates a CDS-style premium leg (single coupon paying a spread).
+///
+/// Shared by `Cds`, `CdsIndex`, `NtdBasket`.
+pub(super) fn credit_premium_leg(
+    start_date: Date,
+    maturity: Date,
+    notional: f64,
+    spread: f64,
+    currency: Currency,
+) -> Leg {
+    let premium_cf = Cashflow::new(
+        CashflowType::Coupon,
+        maturity,
+        start_date,
+        maturity,
+        1.0,
+        notional,
+        Payoff::fixed(spread),
+        currency,
+    );
+    Leg::new(vec![premium_cf], Direction::Payer, LegType::Fixed, currency)
+}
+
 macro_rules! dispatch_expand {
     ($self:expr, $tid:expr, $vd:expr, $conv:expr; $($Variant:ident),+ $(,)?) => {
         match $self {

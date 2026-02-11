@@ -171,6 +171,12 @@ bon = "3.8"
 # Enum dispatch for static trait forwarding
 enum_dispatch = "0.3"
 
+# Validation
+validator = { version = "0.20", features = ["derive"] }
+
+# OpenAPI documentation
+utoipa = { version = "5", features = ["axum_extras"] }
+
 # Graph data structures and algorithms
 petgraph = "0.6"
 

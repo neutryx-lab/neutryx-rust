@@ -1,6 +1,7 @@
 //! Risk-related DTOs for Greeks and Scenario analysis.
 
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 /// Mode for Greeks calculation.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
@@ -37,10 +38,11 @@ pub enum GreekTypeDto {
 }
 
 /// Request for Greeks calculation.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[allow(dead_code)]
 pub struct GreeksRequest {
     /// Portfolio ID to calculate Greeks for.
+    #[validate(length(min = 1))]
     pub portfolio_id: String,
     /// Calculation mode (bump-and-revalue or AAD).
     #[serde(default)]
@@ -50,6 +52,7 @@ pub struct GreeksRequest {
     pub greek_types: Vec<GreekTypeDto>,
     /// Bump size for bump-and-revalue (basis points).
     #[serde(default = "default_bump_bps")]
+    #[validate(range(exclusive_min = 0.0))]
     pub bump_size_bps: f64,
 }
 
@@ -177,12 +180,14 @@ pub enum ScenarioDefinition {
 }
 
 /// Request for scenario analysis.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[allow(dead_code)]
 pub struct ScenarioRequest {
     /// Portfolio ID to analyze.
+    #[validate(length(min = 1))]
     pub portfolio_id: String,
     /// List of scenarios to run.
+    #[validate(length(min = 1))]
     pub scenarios: Vec<ScenarioDefinition>,
 }
 

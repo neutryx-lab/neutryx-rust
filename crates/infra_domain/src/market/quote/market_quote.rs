@@ -63,12 +63,12 @@ impl MarketQuote {
 mod tests {
     use super::*;
     use crate::{
-        market::{Currency, RateType},
+        market::{Currency, QuoteCategory},
         time::Tenor,
     };
 
     fn test_quote_id() -> QuoteId {
-        QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit)
+        QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit)
     }
 
     #[test]

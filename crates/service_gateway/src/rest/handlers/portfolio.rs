@@ -12,7 +12,7 @@ use axum::{
 
 #[cfg(feature = "risk")]
 use crate::{
-    error::{AppJson, ServerError},
+    error::{AppJson, ServerError, ValidatedJson},
     rest::dto::{
         AddTradesRequest, AddTradesResponse, CreatePortfolioRequest, CreatePortfolioResponse,
         GetPortfolioResponse, PortfolioGreeksRequest, PortfolioGreeksResponse,
@@ -47,7 +47,7 @@ pub async fn get_portfolio(
 pub async fn add_trades(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
-    AppJson(request): AppJson<AddTradesRequest>,
+    ValidatedJson(request): ValidatedJson<AddTradesRequest>,
 ) -> Result<Json<AddTradesResponse>, ServerError> {
     let response = PortfolioService::add_trades(&id, &request, &state)?;
     Ok(Json(response))

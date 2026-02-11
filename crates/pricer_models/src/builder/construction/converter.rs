@@ -6,7 +6,7 @@
 //!
 //! Note: Currently uses `f64` as the bootstrapper only supports `f64`.
 
-use infra_domain::market::{InstrumentDefinition, RateType};
+use infra_domain::market::{InstrumentDefinition, QuoteCategory};
 
 use super::error::ConstructionError;
 use crate::market::curves::{Frequency, MarketInstrument};
@@ -40,15 +40,15 @@ pub fn definition_to_instrument(
     rate: f64,
     reference_date: Option<ReferenceDate>,
 ) -> Result<MarketInstrument<f64>, ConstructionError> {
-    match def.rate_type() {
-        RateType::Deposit => {
+    match def.quote_category() {
+        QuoteCategory::Deposit => {
             let maturity = def
                 .tenor_years()
                 .map_err(ConstructionError::InstrumentDef)?;
             Ok(MarketInstrument::ois(maturity, rate))
         }
 
-        RateType::Ois => {
+        QuoteCategory::Ois => {
             let maturity = def
                 .tenor_years()
                 .map_err(ConstructionError::InstrumentDef)?;
@@ -68,7 +68,7 @@ pub fn definition_to_instrument(
             })
         }
 
-        RateType::Swap => {
+        QuoteCategory::Swap => {
             let maturity = def
                 .tenor_years()
                 .map_err(ConstructionError::InstrumentDef)?;
@@ -88,7 +88,7 @@ pub fn definition_to_instrument(
             })
         }
 
-        RateType::Fra => {
+        QuoteCategory::Fra => {
             let (start_years, end_years) =
                 def.fra_tenors()
                     .ok_or_else(|| ConstructionError::TenorParseError {
@@ -103,7 +103,7 @@ pub fn definition_to_instrument(
             })
         }
 
-        RateType::Futures => {
+        QuoteCategory::Futures => {
             let maturity = def
                 .tenor_years()
                 .map_err(ConstructionError::InstrumentDef)?;
@@ -116,7 +116,7 @@ pub fn definition_to_instrument(
             })
         }
 
-        RateType::Event => {
+        QuoteCategory::Event => {
             let event_date_str =
                 def.event_date
                     .as_ref()
@@ -148,7 +148,9 @@ pub fn definition_to_instrument(
         }
 
         // These rate types are not directly mappable to calibration instruments
-        other => Err(ConstructionError::UnsupportedRateType { rate_type: other }),
+        other => Err(ConstructionError::UnsupportedQuoteCategory {
+            quote_category: other,
+        }),
     }
 }
 
@@ -210,7 +212,8 @@ mod tests {
 
     #[test]
     fn test_convert_deposit() {
-        let def = InstrumentDefinition::new("USD-Depo-3M", Currency::USD, RateType::Deposit, "3M");
+        let def =
+            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M");
 
         let inst = definition_to_instrument(&def, 0.05, None).unwrap();
 
@@ -225,7 +228,7 @@ mod tests {
 
     #[test]
     fn test_convert_ois() {
-        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y");
+        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y");
 
         let inst = definition_to_instrument(&def, 0.04, None).unwrap();
 
@@ -240,7 +243,8 @@ mod tests {
 
     #[test]
     fn test_convert_swap() {
-        let def = InstrumentDefinition::new("USD-Swap-10Y", Currency::USD, RateType::Swap, "10Y");
+        let def =
+            InstrumentDefinition::new("USD-Swap-10Y", Currency::USD, QuoteCategory::Swap, "10Y");
 
         let inst = definition_to_instrument(&def, 0.035, None).unwrap();
 
@@ -260,7 +264,8 @@ mod tests {
 
     #[test]
     fn test_convert_fra() {
-        let def = InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, RateType::Fra, "3x6");
+        let def =
+            InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
 
         let inst = definition_to_instrument(&def, 0.045, None).unwrap();
 
@@ -276,7 +281,8 @@ mod tests {
 
     #[test]
     fn test_convert_futures() {
-        let def = InstrumentDefinition::new("USD-Fut-3M", Currency::USD, RateType::Futures, "3M");
+        let def =
+            InstrumentDefinition::new("USD-Fut-3M", Currency::USD, QuoteCategory::Futures, "3M");
 
         let inst = definition_to_instrument(&def, 0.042, None).unwrap();
 
@@ -295,24 +301,24 @@ mod tests {
     }
 
     #[test]
-    fn test_convert_unsupported_rate_type() {
-        let def = InstrumentDefinition::new("USD-Vol-1Y", Currency::USD, RateType::Vol, "1Y");
+    fn test_convert_unsupported_quote_category() {
+        let def = InstrumentDefinition::new("USD-Vol-1Y", Currency::USD, QuoteCategory::Vol, "1Y");
 
         let result = definition_to_instrument(&def, 0.2, None);
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            ConstructionError::UnsupportedRateType { rate_type } => {
-                assert_eq!(rate_type, RateType::Vol);
+            ConstructionError::UnsupportedQuoteCategory { quote_category } => {
+                assert_eq!(quote_category, QuoteCategory::Vol);
             }
-            _ => panic!("Expected UnsupportedRateType error"),
+            _ => panic!("Expected UnsupportedQuoteCategory error"),
         }
     }
 
     #[test]
     fn test_convert_fra_without_fra_tenor() {
         // FRA with standard tenor (not 3x6 format) - should fail
-        let def = InstrumentDefinition::new("USD-FRA-6M", Currency::USD, RateType::Fra, "6M");
+        let def = InstrumentDefinition::new("USD-FRA-6M", Currency::USD, QuoteCategory::Fra, "6M");
 
         let result = definition_to_instrument(&def, 0.045, None);
 
@@ -327,13 +333,14 @@ mod tests {
 
     #[test]
     fn test_convert_overnight_deposit() {
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N");
+        let def =
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
 
         let inst = definition_to_instrument(&def, 0.055, None).unwrap();
 
         match inst {
             MarketInstrument::Ois { maturity, rate, .. } => {
-                // O/N is approximately 1/365 years
+                // ON is approximately 1/365 years
                 assert!((maturity - 1.0 / 365.0).abs() < 1e-6);
                 assert!((rate - 0.055).abs() < 1e-10);
             }

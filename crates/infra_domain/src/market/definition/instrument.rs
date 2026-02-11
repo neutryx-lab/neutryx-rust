@@ -6,7 +6,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    market::{Currency, QuoteId, RateType},
+    market::{Currency, QuoteCategory, QuoteId},
     time::{parse_fra_tenor, parse_tenor_to_years, CalendarId, DayCounter, Frequency, Tenor},
 };
 
@@ -31,11 +31,15 @@ pub struct InstrumentDefinition {
     /// Instrument type - derived from convention if not explicitly set.
     #[cfg_attr(
         feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none", alias = "rateType")
+        serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            alias = "quoteCategory"
+        )
     )]
-    rate_type_override: Option<RateType>,
+    quote_category_override: Option<QuoteCategory>,
 
-    /// Tenor specification (e.g., "O/N", "3M", "5Y", or FRA format "3x6").
+    /// Tenor specification (e.g., "ON", "3M", "5Y", or FRA format "3x6").
     pub tenor: String,
 
     /// Related rate index ID (e.g., "USD-SOFR") - optional.
@@ -124,19 +128,19 @@ impl std::fmt::Display for InstrumentDefError {
 impl std::error::Error for InstrumentDefError {}
 
 impl InstrumentDefinition {
-    /// Creates a new instrument definition with explicit rate type.
+    /// Creates a new instrument definition with explicit quote category.
     #[must_use]
     pub fn new(
         id: impl Into<String>,
         currency: Currency,
-        rate_type: RateType,
+        quote_category: QuoteCategory,
         tenor: impl Into<String>,
     ) -> Self {
         Self {
             id: id.into(),
             currency,
             convention: None,
-            rate_type_override: Some(rate_type),
+            quote_category_override: Some(quote_category),
             tenor: tenor.into(),
             rate_index: None,
             conventions: None,
@@ -156,7 +160,7 @@ impl InstrumentDefinition {
             id: id.into(),
             currency,
             convention: Some(convention.into()),
-            rate_type_override: None,
+            quote_category_override: None,
             tenor: tenor.into(),
             rate_index: None,
             conventions: None,
@@ -176,7 +180,7 @@ impl InstrumentDefinition {
             id: id.into(),
             currency,
             convention: None,
-            rate_type_override: Some(RateType::Event),
+            quote_category_override: Some(QuoteCategory::Event),
             tenor: "EVENT".into(),
             rate_index: Some(rate_index.into()),
             conventions: None,
@@ -202,7 +206,7 @@ impl InstrumentDefinition {
             id: id.into(),
             currency: event.rate_index().currency(),
             convention: None,
-            rate_type_override: Some(RateType::Event),
+            quote_category_override: Some(QuoteCategory::Event),
             tenor: "EVENT".into(),
             rate_index: Some(event.rate_index().code().to_string()),
             conventions: None,
@@ -210,71 +214,71 @@ impl InstrumentDefinition {
         }
     }
 
-    /// Returns the rate type for this instrument.
+    /// Returns the quote category for this instrument.
     #[must_use]
-    pub fn rate_type(&self) -> RateType {
+    pub fn quote_category(&self) -> QuoteCategory {
         if let Some(ref conv) = self.convention {
-            return Self::derive_rate_type_from_convention(conv);
+            return Self::derive_quote_category_from_convention(conv);
         }
 
-        self.rate_type_override
-            .expect("InstrumentDefinition must have either convention or rate_type set")
+        self.quote_category_override
+            .expect("InstrumentDefinition must have either convention or quote_category set")
     }
 
     /// Returns the convention ID if set.
     #[must_use]
     pub fn convention_id(&self) -> Option<&str> { self.convention.as_deref() }
 
-    /// Derives the `RateType` from a convention ID string.
+    /// Derives the `QuoteCategory` from a convention ID string.
     #[must_use]
-    pub fn derive_rate_type_from_convention(convention: &str) -> RateType {
+    pub fn derive_quote_category_from_convention(convention: &str) -> QuoteCategory {
         let upper = convention.to_uppercase();
 
         if upper.ends_with("-EVENT") {
-            return RateType::Event;
+            return QuoteCategory::Event;
         }
         if upper.ends_with("-OIS") {
-            return RateType::Ois;
+            return QuoteCategory::Ois;
         }
         if upper.ends_with("-SWAP") {
-            return RateType::Swap;
+            return QuoteCategory::Swap;
         }
         if upper.ends_with("-DEPO") {
-            return RateType::Deposit;
+            return QuoteCategory::Deposit;
         }
         if upper.ends_with("-FRA") {
-            return RateType::Fra;
+            return QuoteCategory::Fra;
         }
         if upper.ends_with("-FUTURES") {
-            return RateType::Futures;
+            return QuoteCategory::Futures;
         }
         if upper.ends_with("-SWAPTION") || upper.ends_with("-CAPFLOOR") {
-            return RateType::Vol;
+            return QuoteCategory::Vol;
         }
         if upper.ends_with("-FXOPTION") || upper.starts_with("FX-") {
-            return RateType::FxSpot;
+            return QuoteCategory::FxSpot;
         }
         if upper.starts_with("XCCY-") || upper.contains("-BASIS") {
-            return RateType::BasisSwap;
+            return QuoteCategory::BasisSwap;
         }
 
         if upper.contains("OIS") {
-            return RateType::Ois;
+            return QuoteCategory::Ois;
         }
         if upper.contains("SWAP") && !upper.contains("SWAPTION") {
-            return RateType::Swap;
+            return QuoteCategory::Swap;
         }
         if upper.contains("DEPO") || upper.contains("DEPOSIT") {
-            return RateType::Deposit;
+            return QuoteCategory::Deposit;
         }
         if upper.contains("FRA") {
-            return RateType::Fra;
+            return QuoteCategory::Fra;
         }
         if upper.contains("FUTURES") || upper.contains("FUT") {
-            return RateType::Futures;
+            return QuoteCategory::Futures;
         }
 
-        RateType::Deposit
+        QuoteCategory::Deposit
     }
 
     /// Sets the rate index for this instrument.
@@ -319,7 +323,7 @@ impl InstrumentDefinition {
     /// Converts to a [`QuoteId`] for lookup in `MarketQuoteSet`.
     pub fn to_quote_id(&self) -> Result<QuoteId, InstrumentDefError> {
         let tenor = self.parse_tenor()?;
-        Ok(QuoteId::new(self.currency, tenor, self.rate_type()))
+        Ok(QuoteId::new(self.currency, tenor, self.quote_category()))
     }
 
     /// Parses the tenor string to a [`Tenor`] enum.
@@ -363,11 +367,13 @@ impl InstrumentDefinition {
             return Err(InstrumentDefError::MissingField("id"));
         }
 
-        if self.convention.is_none() && self.rate_type_override.is_none() {
-            return Err(InstrumentDefError::MissingField("convention or rateType"));
+        if self.convention.is_none() && self.quote_category_override.is_none() {
+            return Err(InstrumentDefError::MissingField(
+                "convention or quoteCategory",
+            ));
         }
 
-        if self.rate_type() == RateType::Event {
+        if self.quote_category() == QuoteCategory::Event {
             if self.event_date.is_none() {
                 return Err(InstrumentDefError::MissingEventDate);
             }
@@ -386,7 +392,7 @@ impl InstrumentDefinition {
 
     /// Returns true if this is an event instrument.
     #[must_use]
-    pub fn is_event(&self) -> bool { self.rate_type() == RateType::Event }
+    pub fn is_event(&self) -> bool { self.quote_category() == QuoteCategory::Event }
 
     /// Sets the event date for this instrument.
     #[must_use]
@@ -617,7 +623,7 @@ mod tests {
         assert_eq!(instruments.len(), 5);
         assert_eq!(instruments[0].id, "USD-OIS-1M");
         assert_eq!(instruments[0].currency, Currency::USD);
-        assert_eq!(instruments[0].rate_type(), RateType::Ois);
+        assert_eq!(instruments[0].quote_category(), QuoteCategory::Ois);
         assert_eq!(instruments[0].rate_index, Some("USD-SOFR".to_string()));
         assert_eq!(instruments[4].id, "USD-OIS-5Y");
     }
@@ -628,11 +634,11 @@ mod tests {
             "{currency}-{type}-{tenor}",
             Currency::EUR,
             "EUR-DEPO",
-            vec!["O/N".into(), "1W".into()],
+            vec!["ON".into(), "1W".into()],
         );
 
         let instruments = template.expand();
-        assert_eq!(instruments[0].id, "EUR-Depo-O/N");
+        assert_eq!(instruments[0].id, "EUR-Depo-ON");
         assert_eq!(instruments[1].id, "EUR-Depo-1W");
     }
 
@@ -668,17 +674,18 @@ mod tests {
         let instruments = template.expand();
         assert_eq!(instruments.len(), 3);
         assert_eq!(instruments[0].id, "USD-FRA-1x4");
-        assert_eq!(instruments[0].rate_type(), RateType::Fra);
+        assert_eq!(instruments[0].quote_category(), QuoteCategory::Fra);
     }
 
     #[test]
     fn test_instrument_definition_new() {
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N");
+        let def =
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
 
         assert_eq!(def.id, "USD-Depo-ON");
         assert_eq!(def.currency, Currency::USD);
-        assert_eq!(def.rate_type(), RateType::Deposit);
-        assert_eq!(def.tenor, "O/N");
+        assert_eq!(def.quote_category(), QuoteCategory::Deposit);
+        assert_eq!(def.tenor, "ON");
         assert!(def.rate_index.is_none());
         assert!(def.conventions.is_none());
     }
@@ -694,77 +701,77 @@ mod tests {
 
         assert_eq!(def.id, "USD-OIS-5Y");
         assert_eq!(def.currency, Currency::USD);
-        assert_eq!(def.rate_type(), RateType::Ois);
+        assert_eq!(def.quote_category(), QuoteCategory::Ois);
         assert_eq!(def.convention_id(), Some("USD-SOFR-OIS"));
         assert_eq!(def.tenor, "5Y");
     }
 
     #[test]
-    fn test_derive_rate_type_from_convention() {
+    fn test_derive_quote_category_from_convention() {
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("USD-SOFR-OIS"),
-            RateType::Ois
+            InstrumentDefinition::derive_quote_category_from_convention("USD-SOFR-OIS"),
+            QuoteCategory::Ois
         );
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("EUR-ESTR-OIS"),
-            RateType::Ois
-        );
-
-        assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("USD-SOFR-SWAP"),
-            RateType::Swap
-        );
-        assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("EUR-EURIBOR-SWAP"),
-            RateType::Swap
+            InstrumentDefinition::derive_quote_category_from_convention("EUR-ESTR-OIS"),
+            QuoteCategory::Ois
         );
 
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("USD-DEPO"),
-            RateType::Deposit
+            InstrumentDefinition::derive_quote_category_from_convention("USD-SOFR-SWAP"),
+            QuoteCategory::Swap
         );
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("EUR-DEPO"),
-            RateType::Deposit
-        );
-
-        assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("USD-FRA"),
-            RateType::Fra
-        );
-        assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("EUR-FRA"),
-            RateType::Fra
+            InstrumentDefinition::derive_quote_category_from_convention("EUR-EURIBOR-SWAP"),
+            QuoteCategory::Swap
         );
 
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("USD-FUTURES"),
-            RateType::Futures
+            InstrumentDefinition::derive_quote_category_from_convention("USD-DEPO"),
+            QuoteCategory::Deposit
+        );
+        assert_eq!(
+            InstrumentDefinition::derive_quote_category_from_convention("EUR-DEPO"),
+            QuoteCategory::Deposit
         );
 
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("XCCY-EURUSD"),
-            RateType::BasisSwap
+            InstrumentDefinition::derive_quote_category_from_convention("USD-FRA"),
+            QuoteCategory::Fra
+        );
+        assert_eq!(
+            InstrumentDefinition::derive_quote_category_from_convention("EUR-FRA"),
+            QuoteCategory::Fra
         );
 
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("USD-SWAPTION"),
-            RateType::Vol
+            InstrumentDefinition::derive_quote_category_from_convention("USD-FUTURES"),
+            QuoteCategory::Futures
         );
 
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("USD-SOFR-EVENT"),
-            RateType::Event
+            InstrumentDefinition::derive_quote_category_from_convention("XCCY-EURUSD"),
+            QuoteCategory::BasisSwap
+        );
+
+        assert_eq!(
+            InstrumentDefinition::derive_quote_category_from_convention("USD-SWAPTION"),
+            QuoteCategory::Vol
+        );
+
+        assert_eq!(
+            InstrumentDefinition::derive_quote_category_from_convention("USD-SOFR-EVENT"),
+            QuoteCategory::Event
         );
         assert_eq!(
-            InstrumentDefinition::derive_rate_type_from_convention("EUR-ESTR-EVENT"),
-            RateType::Event
+            InstrumentDefinition::derive_quote_category_from_convention("EUR-ESTR-EVENT"),
+            QuoteCategory::Event
         );
     }
 
     #[test]
     fn test_instrument_definition_with_rate_index() {
-        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y")
+        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y")
             .with_rate_index("USD-SOFR");
 
         assert_eq!(def.rate_index, Some("USD-SOFR".to_string()));
@@ -776,33 +783,38 @@ mod tests {
             .with_day_count(DayCounter::Actual360)
             .with_spot_lag(2);
 
-        let def = InstrumentDefinition::new("USD-Depo-3M", Currency::USD, RateType::Deposit, "3M")
-            .with_conventions(conventions.clone());
+        let def =
+            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M")
+                .with_conventions(conventions.clone());
 
         assert_eq!(def.conventions, Some(conventions));
     }
 
     #[test]
     fn test_tenor_years_standard() {
-        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y");
+        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y");
         assert!((def.tenor_years().unwrap() - 5.0).abs() < 1e-10);
 
-        let def = InstrumentDefinition::new("USD-Depo-3M", Currency::USD, RateType::Deposit, "3M");
+        let def =
+            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M");
         assert!((def.tenor_years().unwrap() - 0.25).abs() < 1e-10);
 
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N");
+        let def =
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
         assert!((def.tenor_years().unwrap() - 1.0 / 365.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_tenor_years_fra() {
-        let def = InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, RateType::Fra, "3x6");
+        let def =
+            InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
         assert!((def.tenor_years().unwrap() - 0.5).abs() < 1e-10);
     }
 
     #[test]
     fn test_fra_tenors() {
-        let def = InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, RateType::Fra, "3x6");
+        let def =
+            InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
         let (start, end) = def.fra_tenors().unwrap();
         assert!((start - 0.25).abs() < 1e-10);
         assert!((end - 0.5).abs() < 1e-10);
@@ -810,17 +822,17 @@ mod tests {
 
     #[test]
     fn test_fra_tenors_none_for_standard() {
-        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y");
+        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y");
         assert!(def.fra_tenors().is_none());
     }
 
     #[test]
     fn test_to_quote_id() {
-        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y");
+        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y");
         let quote_id = def.to_quote_id().unwrap();
 
         assert_eq!(quote_id.currency, Currency::USD);
-        assert_eq!(quote_id.rate_type, RateType::Ois);
+        assert_eq!(quote_id.quote_category, QuoteCategory::Ois);
         assert_eq!(quote_id.tenor, Tenor::FiveYears);
     }
 
@@ -835,13 +847,13 @@ mod tests {
         let quote_id = def.to_quote_id().unwrap();
 
         assert_eq!(quote_id.currency, Currency::USD);
-        assert_eq!(quote_id.rate_type, RateType::Ois);
+        assert_eq!(quote_id.quote_category, QuoteCategory::Ois);
         assert_eq!(quote_id.tenor, Tenor::FiveYears);
     }
 
     #[test]
     fn test_validate_success() {
-        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y");
+        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y");
         assert!(def.validate().is_ok());
     }
 
@@ -858,7 +870,7 @@ mod tests {
 
     #[test]
     fn test_validate_empty_id() {
-        let def = InstrumentDefinition::new("", Currency::USD, RateType::Ois, "5Y");
+        let def = InstrumentDefinition::new("", Currency::USD, QuoteCategory::Ois, "5Y");
         assert!(matches!(
             def.validate(),
             Err(InstrumentDefError::MissingField("id"))
@@ -867,8 +879,12 @@ mod tests {
 
     #[test]
     fn test_validate_invalid_tenor() {
-        let def =
-            InstrumentDefinition::new("USD-OIS-INVALID", Currency::USD, RateType::Ois, "INVALID");
+        let def = InstrumentDefinition::new(
+            "USD-OIS-INVALID",
+            Currency::USD,
+            QuoteCategory::Ois,
+            "INVALID",
+        );
         assert!(matches!(
             def.validate(),
             Err(InstrumentDefError::InvalidTenor(_))
@@ -878,13 +894,13 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_serde_roundtrip() {
-        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y")
+        let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y")
             .with_rate_index("USD-SOFR");
 
         let json = serde_json::to_string(&def).unwrap();
         let parsed: InstrumentDefinition = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(def.rate_type(), parsed.rate_type());
+        assert_eq!(def.quote_category(), parsed.quote_category());
         assert_eq!(def.id, parsed.id);
     }
 
@@ -894,15 +910,15 @@ mod tests {
         let json = r#"{
             "id": "USD-Depo-ON",
             "currency": "USD",
-            "rateType": "Deposit",
-            "tenor": "O/N"
+            "quoteCategory": "Deposit",
+            "tenor": "ON"
         }"#;
 
         let def: InstrumentDefinition = serde_json::from_str(json).unwrap();
         assert_eq!(def.id, "USD-Depo-ON");
         assert_eq!(def.currency, Currency::USD);
-        assert_eq!(def.rate_type(), RateType::Deposit);
-        assert_eq!(def.tenor, "O/N");
+        assert_eq!(def.quote_category(), QuoteCategory::Deposit);
+        assert_eq!(def.tenor, "ON");
     }
 
     #[cfg(feature = "serde")]
@@ -919,7 +935,7 @@ mod tests {
         let def: InstrumentDefinition = serde_json::from_str(json).unwrap();
         assert_eq!(def.id, "USD-OIS-5Y");
         assert_eq!(def.currency, Currency::USD);
-        assert_eq!(def.rate_type(), RateType::Ois);
+        assert_eq!(def.quote_category(), QuoteCategory::Ois);
         assert_eq!(def.convention_id(), Some("USD-SOFR-OIS"));
         assert_eq!(def.tenor, "5Y");
     }
@@ -958,7 +974,7 @@ mod tests {
 
         assert_eq!(event.id, "USD-FOMC-2024-03");
         assert_eq!(event.currency, Currency::USD);
-        assert_eq!(event.rate_type(), RateType::Event);
+        assert_eq!(event.quote_category(), QuoteCategory::Event);
         assert_eq!(event.event_date, Some("2024-03-20".to_string()));
         assert_eq!(event.rate_index, Some("USD-SOFR".to_string()));
         assert!(event.is_event());
@@ -977,8 +993,12 @@ mod tests {
 
     #[test]
     fn test_event_instrument_validate_missing_date() {
-        let event =
-            InstrumentDefinition::new("USD-FOMC-2024-03", Currency::USD, RateType::Event, "EVENT");
+        let event = InstrumentDefinition::new(
+            "USD-FOMC-2024-03",
+            Currency::USD,
+            QuoteCategory::Event,
+            "EVENT",
+        );
         assert!(matches!(
             event.validate(),
             Err(InstrumentDefError::MissingEventDate)
@@ -1014,7 +1034,7 @@ mod tests {
 
         let def: InstrumentDefinition = serde_json::from_str(json).unwrap();
         assert_eq!(def.id, "USD-FOMC-2024-03");
-        assert_eq!(def.rate_type(), RateType::Event);
+        assert_eq!(def.quote_category(), QuoteCategory::Event);
         assert_eq!(def.event_date, Some("2024-03-20".to_string()));
         assert!(def.validate().is_ok());
     }
@@ -1038,7 +1058,7 @@ mod tests {
 
         assert_eq!(def.id, "USD-FOMC-2024-03");
         assert_eq!(def.currency, Currency::USD);
-        assert_eq!(def.rate_type(), RateType::Event);
+        assert_eq!(def.quote_category(), QuoteCategory::Event);
         assert_eq!(def.event_date, Some("2024-03-20".to_string()));
         assert_eq!(def.rate_index, Some("SOFR".to_string()));
         assert!(def.is_event());

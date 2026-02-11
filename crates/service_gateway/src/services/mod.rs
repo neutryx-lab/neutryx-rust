@@ -6,7 +6,7 @@ pub mod helpers;
 mod pricing_service;
 
 #[cfg(feature = "demo")]
-mod demo_service;
+mod demo;
 #[cfg(feature = "models")]
 mod model_service;
 #[cfg(feature = "risk")]
@@ -20,7 +20,7 @@ mod volcube_service;
 
 pub use curve_service::CurveService;
 #[cfg(feature = "demo")]
-pub use demo_service::DemoService;
+pub use demo::DemoService;
 #[cfg(feature = "models")]
 pub use model_service::ModelService;
 #[cfg(feature = "risk")]

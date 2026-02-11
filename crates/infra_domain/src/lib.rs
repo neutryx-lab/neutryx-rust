@@ -9,6 +9,9 @@
 
 //! Static master data (Calendars, Currencies, ISINs) for Neutryx.
 
+#[macro_use]
+mod macros;
+
 pub mod book;
 pub mod counterparty;
 pub mod ids;

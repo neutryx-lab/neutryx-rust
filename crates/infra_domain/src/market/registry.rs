@@ -13,7 +13,7 @@ use super::definition::{
 };
 
 /// Error type for registry operations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, derive_more::From)]
 pub enum RegistryError {
     /// Instrument definition error.
     Instrument(InstrumentDefError),
@@ -60,18 +60,6 @@ impl std::fmt::Display for RegistryError {
 }
 
 impl std::error::Error for RegistryError {}
-
-impl From<InstrumentDefError> for RegistryError {
-    fn from(e: InstrumentDefError) -> Self { Self::Instrument(e) }
-}
-
-impl From<RateIndexDefError> for RegistryError {
-    fn from(e: RateIndexDefError) -> Self { Self::RateIndex(e) }
-}
-
-impl From<CurveDefError> for RegistryError {
-    fn from(e: CurveDefError) -> Self { Self::Curve(e) }
-}
 
 /// Registry for curve construction definitions.
 #[derive(Debug, Clone, Default)]
@@ -297,10 +285,10 @@ impl DefinitionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::{Currency, RateIndex, RateType};
+    use crate::market::{Currency, QuoteCategory, RateIndex};
 
     fn inst(id: &str) -> InstrumentDefinition {
-        InstrumentDefinition::new(id, Currency::USD, RateType::Deposit, "O/N")
+        InstrumentDefinition::new(id, Currency::USD, QuoteCategory::Deposit, "ON")
     }
     fn idx(id: &str) -> RateIndexDefinition {
         RateIndexDefinition::new(id, Currency::USD, RateIndex::Sofr)
@@ -369,7 +357,7 @@ mod tests {
         r4.register_instrument(InstrumentDefinition::new(
             "USD-OIS-5Y",
             Currency::USD,
-            RateType::Ois,
+            QuoteCategory::Ois,
             "5Y",
         ))
         .unwrap();
@@ -390,36 +378,36 @@ mod tests {
     #[test]
     fn test_registry_json() {
         let json = r#"{"instruments":[
-            {"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"O/N"},
+            {"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"ON"},
             {"id":"USD-OIS-5Y","currency":"USD","convention":"USD-SOFR-OIS","tenor":"5Y","rateIndex":"USD-SOFR"}],
-            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],
+            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"ON"}],
             "curves":[{"name":"USD-SOFR-Discount","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON","USD-OIS-5Y"]}]}"#;
         let r = DefinitionRegistry::load_from_json(json).unwrap();
         assert_eq!(r.instrument_count(), 2);
         assert_eq!(r.rate_index_count(), 1);
         assert_eq!(r.curve_count(), 1);
         assert_eq!(
-            r.get_instrument("USD-Depo-ON").unwrap().rate_type(),
-            RateType::Deposit
+            r.get_instrument("USD-Depo-ON").unwrap().quote_category(),
+            QuoteCategory::Deposit
         );
         assert_eq!(
-            r.get_instrument("USD-OIS-5Y").unwrap().rate_type(),
-            RateType::Ois
+            r.get_instrument("USD-OIS-5Y").unwrap().quote_category(),
+            QuoteCategory::Ois
         );
 
-        let legacy = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","rateTypeOverride":"Deposit","tenor":"O/N"}],
-            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],
+        let legacy = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","quoteCategoryOverride":"Deposit","tenor":"ON"}],
+            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"ON"}],
             "curves":[{"name":"c","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON"]}]}"#;
         assert_eq!(
             DefinitionRegistry::load_from_json(legacy)
                 .unwrap()
                 .get_instrument("USD-Depo-ON")
                 .unwrap()
-                .rate_type(),
-            RateType::Deposit
+                .quote_category(),
+            QuoteCategory::Deposit
         );
 
-        let bad = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"O/N"}],
+        let bad = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"ON"}],
             "rateIndices":[],"curves":[{"name":"c","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON"]}]}"#;
         assert!(DefinitionRegistry::load_from_json(bad).is_err());
     }
@@ -429,20 +417,20 @@ mod tests {
     fn test_registry_templates() {
         let json = r#"{"templates":[
             {"idPattern":"{currency}-OIS-{tenor}","currency":"USD","convention":"USD-SOFR-OIS","rateIndex":"USD-SOFR","tenors":["1M","3M","6M","1Y","5Y"]},
-            {"idPattern":"{currency}-Depo-{tenor}","currency":"USD","convention":"USD-DEPO","rateIndex":"USD-SOFR","tenors":["O/N","1W"]}],
+            {"idPattern":"{currency}-Depo-{tenor}","currency":"USD","convention":"USD-DEPO","rateIndex":"USD-SOFR","tenors":["ON","1W"]}],
             "instruments":[{"id":"USD-Custom","currency":"USD","convention":"USD-DEPO","tenor":"2W"}],
-            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],
-            "curves":[{"name":"USD-SOFR-Discount","rateIndex":"USD-SOFR","instruments":["USD-Depo-O/N","USD-OIS-1M","USD-OIS-5Y"]}]}"#;
+            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"ON"}],
+            "curves":[{"name":"USD-SOFR-Discount","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON","USD-OIS-1M","USD-OIS-5Y"]}]}"#;
         let r = DefinitionRegistry::load_from_json(json).unwrap();
         assert_eq!(r.instrument_count(), 8);
         assert_eq!(
-            r.get_instrument("USD-OIS-1M").unwrap().rate_type(),
-            RateType::Ois
+            r.get_instrument("USD-OIS-1M").unwrap().quote_category(),
+            QuoteCategory::Ois
         );
         assert_eq!(r.get_instrument("USD-OIS-5Y").unwrap().tenor, "5Y");
         assert_eq!(
-            r.get_instrument("USD-Depo-O/N").unwrap().rate_type(),
-            RateType::Deposit
+            r.get_instrument("USD-Depo-ON").unwrap().quote_category(),
+            QuoteCategory::Deposit
         );
         assert_eq!(r.get_instrument("USD-Custom").unwrap().tenor, "2W");
         assert_eq!(
@@ -461,7 +449,7 @@ mod tests {
                 "USD-Custom",
                 Currency::USD,
                 "USD-DEPO",
-                "O/N",
+                "ON",
             )],
             rate_indices: vec![],
             curves: vec![],
@@ -472,12 +460,12 @@ mod tests {
         assert_eq!(expanded[0].id, "USD-OIS-1M");
 
         let fra_json = r#"{"templates":[{"idPattern":"{currency}-FRA-{tenor}","currency":"USD","convention":"USD-FRA","rateIndex":"USD-SOFR","tenors":["1x4","3x6","6x9"]}],
-            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],"curves":[]}"#;
+            "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"ON"}],"curves":[]}"#;
         let r2 = DefinitionRegistry::load_from_json(fra_json).unwrap();
         assert_eq!(r2.instrument_count(), 3);
         assert_eq!(
-            r2.get_instrument("USD-FRA-1x4").unwrap().rate_type(),
-            RateType::Fra
+            r2.get_instrument("USD-FRA-1x4").unwrap().quote_category(),
+            QuoteCategory::Fra
         );
     }
 }

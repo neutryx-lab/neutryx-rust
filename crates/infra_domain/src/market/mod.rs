@@ -1,6 +1,6 @@
 //! Market data types and rate infrastructure.
 
-/// Fundamental market types (Currency, CurrencyPair, RateType,.
+/// Fundamental market types (Currency, CurrencyPair, QuoteCategory).
 pub mod core;
 /// Index definitions (RateIndex, FxIndex, SwapIndex).
 pub mod index;
@@ -20,7 +20,7 @@ mod event_instrument;
 mod market_instrument;
 mod registry;
 
-pub use core::{CompoundingMethod, Currency, CurrencyPair, RateType};
+pub use core::{CompoundingMethod, Currency, CurrencyPair, QuoteCategory};
 
 pub use definition::{
     CalibrationMethod, CalibrationModel, CurveDefError, CurveDefinition, IndexConventions,

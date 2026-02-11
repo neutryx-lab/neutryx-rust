@@ -5,7 +5,7 @@ use std::sync::Arc;
 use axum::{extract::State, Json};
 
 use crate::{
-    error::{AppJson, ServerError},
+    error::{ServerError, ValidatedJson},
     rest::dto::{
         CurveBuildRequest, CurveBuildResponse, DiscountFactorRequest, DiscountFactorResponse,
         ForwardRateRequest, ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse,
@@ -14,37 +14,77 @@ use crate::{
     state::AppState,
 };
 
-/// POST /api/curves/build.
+/// Build a yield curve from market instruments.
+#[cfg_attr(feature = "openapi", utoipa::path(
+    post,
+    path = "/api/curves/build",
+    tag = "curves",
+    request_body = CurveBuildRequest,
+    responses(
+        (status = 200, description = "Built curve with pillars and forward rates", body = CurveBuildResponse),
+        (status = 400, description = "Invalid request"),
+    )
+))]
 pub async fn build_curve(
     State(state): State<Arc<AppState>>,
-    AppJson(request): AppJson<CurveBuildRequest>,
+    ValidatedJson(request): ValidatedJson<CurveBuildRequest>,
 ) -> Result<Json<CurveBuildResponse>, ServerError> {
     let response = CurveService::build_curve(&request, &state)?;
     Ok(Json(response))
 }
 
-/// POST /api/curves/discount-factor.
+/// Get discount factor from a cached curve.
+#[cfg_attr(feature = "openapi", utoipa::path(
+    post,
+    path = "/api/curves/discount-factor",
+    tag = "curves",
+    request_body = DiscountFactorRequest,
+    responses(
+        (status = 200, description = "Discount factor at given time", body = DiscountFactorResponse),
+        (status = 400, description = "Invalid request"),
+    )
+))]
 pub async fn get_discount_factor(
     State(state): State<Arc<AppState>>,
-    AppJson(request): AppJson<DiscountFactorRequest>,
+    ValidatedJson(request): ValidatedJson<DiscountFactorRequest>,
 ) -> Result<Json<DiscountFactorResponse>, ServerError> {
     let response = CurveService::get_discount_factor(&request, &state)?;
     Ok(Json(response))
 }
 
-/// POST /api/curves/forward-rate.
+/// Get forward rate from a cached curve.
+#[cfg_attr(feature = "openapi", utoipa::path(
+    post,
+    path = "/api/curves/forward-rate",
+    tag = "curves",
+    request_body = ForwardRateRequest,
+    responses(
+        (status = 200, description = "Forward rate for the period", body = ForwardRateResponse),
+        (status = 400, description = "Invalid request"),
+    )
+))]
 pub async fn get_forward_rate(
     State(state): State<Arc<AppState>>,
-    AppJson(request): AppJson<ForwardRateRequest>,
+    ValidatedJson(request): ValidatedJson<ForwardRateRequest>,
 ) -> Result<Json<ForwardRateResponse>, ServerError> {
     let response = CurveService::get_forward_rate(&request, &state)?;
     Ok(Json(response))
 }
 
-/// POST /api/curves/forward-swap-rates.
+/// Compute forward swap rate matrix from a cached curve.
+#[cfg_attr(feature = "openapi", utoipa::path(
+    post,
+    path = "/api/curves/forward-swap-rates",
+    tag = "curves",
+    request_body = ForwardSwapRateRequest,
+    responses(
+        (status = 200, description = "Forward swap rate matrix", body = ForwardSwapRateResponse),
+        (status = 400, description = "Invalid request"),
+    )
+))]
 pub async fn get_forward_swap_rates(
     State(state): State<Arc<AppState>>,
-    AppJson(request): AppJson<ForwardSwapRateRequest>,
+    ValidatedJson(request): ValidatedJson<ForwardSwapRateRequest>,
 ) -> Result<Json<ForwardSwapRateResponse>, ServerError> {
     let response = CurveService::compute_forward_swap_rates(&request, &state)?;
     Ok(Json(response))

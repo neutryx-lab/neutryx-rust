@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
     market::{
-        core::{Currency, RateType},
+        core::{Currency, QuoteCategory},
         quote::QuoteId,
     },
     time::Tenor,
@@ -33,116 +33,116 @@ impl TickerMapping {
 
         mapping.register(
             "USD1MD=",
-            QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::USD, Tenor::OneMonth, QuoteCategory::Deposit),
         );
         mapping.register(
             "USD3MD=",
-            QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit),
         );
         mapping.register(
             "USD6MD=",
-            QuoteId::new(Currency::USD, Tenor::SixMonths, RateType::Deposit),
+            QuoteId::new(Currency::USD, Tenor::SixMonths, QuoteCategory::Deposit),
         );
 
         mapping.register(
             "USSW1 Curncy",
-            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::OneYear, QuoteCategory::Swap),
         );
         mapping.register(
             "USSW2 Curncy",
-            QuoteId::new(Currency::USD, Tenor::TwoYears, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::TwoYears, QuoteCategory::Swap),
         );
         mapping.register(
             "USSW5 Curncy",
-            QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::FiveYears, QuoteCategory::Swap),
         );
         mapping.register(
             "USSW10 Curncy",
-            QuoteId::new(Currency::USD, Tenor::TenYears, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::TenYears, QuoteCategory::Swap),
         );
 
         mapping.register(
             "EUR1MD=",
-            QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::OneMonth, QuoteCategory::Deposit),
         );
         mapping.register(
             "EUR3MD=",
-            QuoteId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::ThreeMonths, QuoteCategory::Deposit),
         );
         mapping.register(
             "EUR6MD=",
-            QuoteId::new(Currency::EUR, Tenor::SixMonths, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::SixMonths, QuoteCategory::Deposit),
         );
 
         mapping.register(
             "EUSW1 Curncy",
-            QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::OneYear, QuoteCategory::Swap),
         );
         mapping.register(
             "EUSW2 Curncy",
-            QuoteId::new(Currency::EUR, Tenor::TwoYears, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::TwoYears, QuoteCategory::Swap),
         );
         mapping.register(
             "EUSW5 Curncy",
-            QuoteId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::FiveYears, QuoteCategory::Swap),
         );
         mapping.register(
             "EUSW10 Curncy",
-            QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::TenYears, QuoteCategory::Swap),
         );
 
         mapping.register(
             "GBP1MD=",
-            QuoteId::new(Currency::GBP, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::GBP, Tenor::OneMonth, QuoteCategory::Deposit),
         );
         mapping.register(
             "GBP3MD=",
-            QuoteId::new(Currency::GBP, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::GBP, Tenor::ThreeMonths, QuoteCategory::Deposit),
         );
 
         mapping.register(
             "BPSW1 Curncy",
-            QuoteId::new(Currency::GBP, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::GBP, Tenor::OneYear, QuoteCategory::Swap),
         );
         mapping.register(
             "BPSW5 Curncy",
-            QuoteId::new(Currency::GBP, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::GBP, Tenor::FiveYears, QuoteCategory::Swap),
         );
 
         mapping.register(
             "JPY1MD=",
-            QuoteId::new(Currency::JPY, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::JPY, Tenor::OneMonth, QuoteCategory::Deposit),
         );
         mapping.register(
             "JPY3MD=",
-            QuoteId::new(Currency::JPY, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::JPY, Tenor::ThreeMonths, QuoteCategory::Deposit),
         );
 
         mapping.register(
             "JYSW1 Curncy",
-            QuoteId::new(Currency::JPY, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::JPY, Tenor::OneYear, QuoteCategory::Swap),
         );
         mapping.register(
             "JYSW5 Curncy",
-            QuoteId::new(Currency::JPY, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::JPY, Tenor::FiveYears, QuoteCategory::Swap),
         );
 
         mapping.register(
             "CHF1MD=",
-            QuoteId::new(Currency::CHF, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::CHF, Tenor::OneMonth, QuoteCategory::Deposit),
         );
         mapping.register(
             "CHF3MD=",
-            QuoteId::new(Currency::CHF, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::CHF, Tenor::ThreeMonths, QuoteCategory::Deposit),
         );
 
         mapping.register(
             "SFSW1 Curncy",
-            QuoteId::new(Currency::CHF, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::CHF, Tenor::OneYear, QuoteCategory::Swap),
         );
         mapping.register(
             "SFSW5 Curncy",
-            QuoteId::new(Currency::CHF, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::CHF, Tenor::FiveYears, QuoteCategory::Swap),
         );
 
         mapping
@@ -186,7 +186,7 @@ mod tests {
         assert!(format!("{:?}", empty).contains("TickerMapping"));
 
         let mut m = TickerMapping::new();
-        let q1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let q1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit);
         m.register("TEST", q1.clone());
         assert!(m.contains("TEST"));
         assert!(!m.contains("NOPE"));
@@ -196,11 +196,11 @@ mod tests {
 
         m.register(
             "T2",
-            QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::OneMonth, QuoteCategory::Deposit),
         );
         assert_eq!(m.len(), 2);
 
-        let q2 = QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit);
+        let q2 = QuoteId::new(Currency::EUR, Tenor::OneMonth, QuoteCategory::Deposit);
         m.register("TEST", q2.clone());
         assert_eq!(m.len(), 2);
         assert_eq!(m.lookup("TEST"), Some(&q2));
@@ -226,7 +226,7 @@ mod tests {
         let q = m.lookup("USD3MD=").unwrap();
         assert_eq!(q.currency, Currency::USD);
         assert_eq!(q.tenor, Tenor::ThreeMonths);
-        assert_eq!(q.rate_type, RateType::Deposit);
+        assert_eq!(q.quote_category, QuoteCategory::Deposit);
         assert!(m.contains("EUR3MD="));
         assert!(m.contains("USSW5 Curncy"));
         assert!(m.contains("EUSW5 Curncy"));

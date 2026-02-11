@@ -123,8 +123,6 @@ impl InstrumentExpander for InterestRateSwap {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        use crate::trade::IndexType;
-
         let end_date = self.end_date();
 
         let fixed_dates = generate_payment_dates(self.start_date, end_date, self.fixed_frequency);
@@ -139,24 +137,12 @@ impl InstrumentExpander for InterestRateSwap {
             self.currency,
         );
 
-        let mut floating_cashflows = Vec::new();
-        for i in 0..float_dates.len().saturating_sub(1) {
-            let accrual_start = float_dates[i];
-            let accrual_end = float_dates[i + 1];
-            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
-
-            let cf = Cashflow::new(
-                CashflowType::Coupon,
-                accrual_end,
-                accrual_start,
-                accrual_end,
-                year_fraction,
-                self.notional,
-                Payoff::floating(IndexType::Rate(self.rate_index)),
-                self.currency,
-            );
-            floating_cashflows.push(cf);
-        }
+        let floating_cashflows = super::generate_floating_leg_cashflows(
+            &float_dates,
+            self.rate_index,
+            self.notional,
+            self.currency,
+        );
 
         let (fixed_direction, floating_direction) = if self.is_payer() {
             (Direction::Payer, Direction::Receiver)
@@ -193,51 +179,25 @@ impl InstrumentExpander for BasisSwap {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        use crate::trade::IndexType;
-
         let end_date = self.end_date();
 
         let leg1_dates = generate_payment_dates(self.start_date, end_date, self.leg1_frequency);
 
         let leg2_dates = generate_payment_dates(self.start_date, end_date, self.leg2_frequency);
 
-        let mut leg1_cashflows = Vec::new();
-        for i in 0..leg1_dates.len().saturating_sub(1) {
-            let accrual_start = leg1_dates[i];
-            let accrual_end = leg1_dates[i + 1];
-            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
+        let leg1_cashflows = super::generate_floating_leg_cashflows(
+            &leg1_dates,
+            self.leg1_index,
+            self.notional,
+            self.currency,
+        );
 
-            let cf = Cashflow::new(
-                CashflowType::Coupon,
-                accrual_end,
-                accrual_start,
-                accrual_end,
-                year_fraction,
-                self.notional,
-                Payoff::floating(IndexType::Rate(self.leg1_index)),
-                self.currency,
-            );
-            leg1_cashflows.push(cf);
-        }
-
-        let mut leg2_cashflows = Vec::new();
-        for i in 0..leg2_dates.len().saturating_sub(1) {
-            let accrual_start = leg2_dates[i];
-            let accrual_end = leg2_dates[i + 1];
-            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
-
-            let cf = Cashflow::new(
-                CashflowType::Coupon,
-                accrual_end,
-                accrual_start,
-                accrual_end,
-                year_fraction,
-                self.notional,
-                Payoff::floating(IndexType::Rate(self.leg2_index)),
-                self.currency,
-            );
-            leg2_cashflows.push(cf);
-        }
+        let leg2_cashflows = super::generate_floating_leg_cashflows(
+            &leg2_dates,
+            self.leg2_index,
+            self.notional,
+            self.currency,
+        );
 
         let (leg1_direction, leg2_direction) =
             if self.payer_receiver == crate::market::instrument::PayerReceiver::Payer {

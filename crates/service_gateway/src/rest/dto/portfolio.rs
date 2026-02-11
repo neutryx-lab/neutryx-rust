@@ -1,6 +1,7 @@
 //! Portfolio-related DTOs for CRUD and aggregation operations.
 
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 /// Counterparty information.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -27,19 +28,25 @@ pub struct NettingSetDto {
 }
 
 /// Trade representation for API.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 pub struct TradeDto {
     /// Unique trade identifier.
+    #[validate(length(min = 1))]
     pub trade_id: String,
     /// Trade type (e.g., "irs", "fx\_forward", "equity\_option").
+    #[validate(length(min = 1))]
     pub trade_type: String,
     /// Counterparty ID.
+    #[validate(length(min = 1))]
     pub counterparty_id: String,
     /// Netting set ID.
+    #[validate(length(min = 1))]
     pub netting_set_id: String,
     /// Notional amount.
+    #[validate(range(exclusive_min = 0.0))]
     pub notional: f64,
     /// Currency.
+    #[validate(length(min = 1))]
     pub currency: String,
     /// Maturity date (ISO 8601 format).
     pub maturity_date: String,
@@ -101,10 +108,12 @@ pub struct GetPortfolioResponse {
 }
 
 /// Request to add trades to a portfolio.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[allow(dead_code)]
 pub struct AddTradesRequest {
     /// Trades to add.
+    #[validate(length(min = 1))]
+    #[validate(nested)]
     pub trades: Vec<TradeDto>,
 }
 

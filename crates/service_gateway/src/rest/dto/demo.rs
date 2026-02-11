@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 /// Application configuration response.
 #[derive(Debug, Clone, Serialize)]
@@ -88,9 +89,10 @@ pub struct ParameterValidation {
 }
 
 /// Trade expansion request.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct TradeExpandRequest {
+    #[validate(length(min = 1))]
     pub instrument_type: String,
     pub params: serde_json::Value,
 }
@@ -142,18 +144,21 @@ pub struct TradeMetadata {
 }
 
 /// Pricing request.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoPricingRequest {
+    #[validate(length(min = 1))]
     pub valuation_date: String,
+    #[validate(length(min = 1))]
     pub reporting_currency: String,
+    #[validate(length(min = 1))]
     pub legs: Vec<PricingLeg>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_config: Option<DemoModelConfig>,
 }
 
 /// Pricing leg.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PricingLeg {
     pub currency: String,
@@ -162,7 +167,7 @@ pub struct PricingLeg {
 }
 
 /// Pricing cashflow.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PricingCashflow {
     pub payment_date: String,
@@ -217,11 +222,14 @@ pub struct CashflowPvResult {
 }
 
 /// Greeks request.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoGreeksRequest {
+    #[validate(length(min = 1))]
     pub valuation_date: String,
+    #[validate(length(min = 1))]
     pub reporting_currency: String,
+    #[validate(length(min = 1))]
     pub legs: Vec<PricingLeg>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_config: Option<DemoModelConfig>,
@@ -595,9 +603,10 @@ pub struct SabrFixedParams {
 }
 
 /// Volcube calibration request.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct VolcubeCalibrateRequest {
+    #[validate(length(min = 1))]
     pub index: String,
     pub reference_date: Option<String>,
     pub model: Option<String>,
@@ -651,10 +660,12 @@ pub struct CellJacobian {
 }
 
 /// FX vol calibration request.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct FxVolCalibrateRequest {
+    #[validate(length(min = 1))]
     pub pair: String,
+    #[validate(range(exclusive_min = 0.0))]
     pub spot: f64,
     pub domestic_rate: f64,
     pub foreign_rate: f64,
@@ -692,19 +703,25 @@ pub struct CalibrationParameters {
 
 /// Request to compute SABR smile and implied density from calibrated
 /// parameters.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct SabrSmileRequest {
     /// SABR alpha (vol-of-vol backbone).
+    #[validate(range(exclusive_min = 0.0))]
     pub alpha: f64,
     /// SABR beta (CEV exponent).
+    #[validate(range(min = 0.0, max = 1.0))]
     pub beta: f64,
     /// SABR rho (correlation).
+    #[validate(range(min = -1.0, max = 1.0))]
     pub rho: f64,
     /// SABR nu (vol-of-vol).
+    #[validate(range(min = 0.0))]
     pub nu: f64,
     /// Forward rate.
+    #[validate(range(exclusive_min = 0.0))]
     pub forward: f64,
     /// Time to expiry in years.
+    #[validate(range(exclusive_min = 0.0))]
     pub expiry_years: f64,
     /// Number of output points (default: 101).
     #[serde(default = "default_sabr_n_points")]
@@ -844,7 +861,7 @@ pub struct RateIndexInfo {
     pub name: String,
     /// Currency.
     pub currency: String,
-    /// Tenor (e.g., "O/N", "3M").
+    /// Tenor (e.g., "ON", "3M").
     pub tenor: String,
     /// Day counter.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -927,11 +944,13 @@ pub struct ImpliedPdfSmilePoint {
 }
 
 /// Request to compute implied probability density function via.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct ImpliedPdfRequest {
     /// Time to expiry in years.
+    #[validate(range(exclusive_min = 0.0))]
     pub expiry_years: f64,
     /// ATM normal volatility (percentage, e.g., 80.0 for 80bp).
+    #[validate(range(exclusive_min = 0.0))]
     pub atm_vol: f64,
     /// Smile points (strike offset in bp, vol in percentage).
     pub smile: Vec<ImpliedPdfSmilePoint>,
