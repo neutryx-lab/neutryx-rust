@@ -13,7 +13,6 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-#[cfg(feature = "serde")]
 use serde::Serialize;
 
 // =============================================================================
@@ -41,8 +40,8 @@ use serde::Serialize;
 /// - `Output`: Final output value
 /// - `Custom(u8)`: User-defined custom operation type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum NodeType {
     /// Input variable (market data, model parameters)
     Input,
@@ -61,11 +60,10 @@ pub enum NodeType {
     /// Final output value
     Output,
     /// User-defined custom operation type
-    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_custom"))]
+    #[serde(serialize_with = "serialize_custom")]
     Custom(u8),
 }
 
-#[cfg(feature = "serde")]
 fn serialize_custom<S>(value: &u8, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
@@ -88,8 +86,8 @@ where
 /// - `Output`: Green (#22c55e)
 /// - `Sensitivity`: Orange (#f97316)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum NodeGroup {
     /// Input nodes (market data, parameters)
     Input,
@@ -136,13 +134,13 @@ pub enum NodeGroup {
 /// };
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct GraphNode {
     /// Unique identifier for the node
     pub id: String,
 
     /// Operation type performed by this node
-    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    #[serde(rename = "type")]
     pub node_type: NodeType,
 
     /// Human-readable label (variable name or operation description)
@@ -162,10 +160,7 @@ pub struct GraphNode {
     /// - Single-trade graphs: Empty vector (omitted from JSON for backward
     ///   compatibility)
     /// - Portfolio graphs: One or more trade IDs (shared nodes have multiple)
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Vec::is_empty")
-    )]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub trade_ids: Vec<String>,
 }
 
@@ -203,7 +198,7 @@ impl Default for GraphNode {
 /// };
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct GraphEdge {
     /// Source node ID (input to the operation)
     pub source: String,
@@ -238,7 +233,7 @@ pub struct GraphEdge {
 /// };
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct GraphMetadata {
     /// Trade ID this graph belongs to (None for aggregate graphs)
     pub trade_id: Option<String>,
@@ -280,13 +275,13 @@ pub struct GraphMetadata {
 /// }
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct ComputationGraph {
     /// All nodes in the computation graph
     pub nodes: Vec<GraphNode>,
 
     /// All edges in the computation graph (serialised as "links" for D3.js)
-    #[cfg_attr(feature = "serde", serde(rename = "links"))]
+    #[serde(rename = "links")]
     pub edges: Vec<GraphEdge>,
 
     /// Graph metadata (statistics, timestamps, identification)
@@ -512,7 +507,7 @@ impl ComputationGraph {
 /// };
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct GraphNodeUpdate {
     /// Node ID being updated
     pub id: String,
@@ -549,7 +544,7 @@ pub struct GraphNodeUpdate {
 /// };
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct PortfolioGraphMetadata {
     /// Total number of nodes in the graph
     pub node_count: usize,
@@ -614,13 +609,13 @@ pub struct PortfolioGraphMetadata {
 /// }
 /// ```
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct PortfolioComputationGraph {
     /// All nodes in the computation graph (with trade_ids populated)
     pub nodes: Vec<GraphNode>,
 
     /// All edges in the computation graph (serialised as "links" for D3.js)
-    #[cfg_attr(feature = "serde", serde(rename = "links"))]
+    #[serde(rename = "links")]
     pub edges: Vec<GraphEdge>,
 
     /// Portfolio-specific metadata (statistics, timestamps)

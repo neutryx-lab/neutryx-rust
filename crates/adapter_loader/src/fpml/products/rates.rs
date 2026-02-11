@@ -7,7 +7,7 @@
 //! - Cap/Floor
 
 use infra_domain::{
-    market::{Currency, RateIndex},
+    market::RateIndex,
     time::Date,
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, Payoff, SettlementType,
@@ -16,7 +16,10 @@ use infra_domain::{
 };
 
 use crate::fpml::{
-    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    common::{
+        parse_currency, parse_date, parse_decimal, parse_trade_header, xml_date, xml_decimal,
+        xml_decimal_or, xml_text, XmlNavigator,
+    },
     error::FpmlError,
 };
 
@@ -45,16 +48,7 @@ pub fn parse_swap(xml: &str) -> Result<Trade, FpmlError> {
     // Determine if this is OIS or regular swap based on floating rate index
     let trade_type = determine_swap_type(&legs);
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -71,10 +65,6 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
     // Determine if this is fixed or floating
     let is_fixed = nav.extract_section("fixedRateSchedule").is_some();
 
-    // Get direction from payer/receiver party refs
-    // Note: In a full implementation, we'd resolve the party refs to determine
-    // direction For now, we'll use a heuristic: fixed leg is receiver, floating
-    // is payer
     let direction = if is_fixed {
         Direction::Receiver
     } else {
@@ -93,32 +83,23 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
         .unwrap_or_default();
     let calc_nav = XmlNavigator::new(&calc_section);
 
-    let effective_date = calc_nav
-        .find_text("unadjustedDate")
-        .map(|d| parse_date(&d))
-        .transpose()?
-        .unwrap_or_else(|| Date::from_ymd(2024, 1, 1).unwrap());
+    let effective_date = xml_date!(
+        calc_nav,
+        "unadjustedDate",
+        Date::from_ymd(2024, 1, 1).unwrap()
+    );
 
     // Parse notional
-    let notional = nav
-        .find_text("initialValue")
-        .or_else(|| nav.find_text("notionalAmount"))
-        .map(|n| parse_decimal(&n))
-        .transpose()?
-        .unwrap_or(0.0);
+    let notional = xml_decimal_or!(nav, "initialValue", "notionalAmount"; 0.0);
 
     // Parse currency
-    let currency_str = nav
-        .find_text("currency")
-        .unwrap_or_else(|| "USD".to_string());
-    let currency = parse_currency(&currency_str);
+    let currency = parse_currency(&xml_text!(nav, "currency", "USD"));
 
     // Parse fixed rate or floating index
     let payoff = if is_fixed {
         let rate = nav
             .find_text("initialValue")
             .or_else(|| {
-                // Look in fixedRateSchedule section
                 let schedule = nav.extract_section("fixedRateSchedule")?;
                 XmlNavigator::new(&schedule).find_text("initialValue")
             })
@@ -128,18 +109,12 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
         Payoff::fixed(rate)
     } else {
         let index = parse_floating_rate_index(&nav)?;
-        let spread = nav
-            .find_text("spread")
-            .map(|s| parse_decimal(&s))
-            .transpose()?
-            .unwrap_or(0.0);
+        let spread = xml_decimal!(nav, "spread", 0.0);
         Payoff::floating_with_spread(index.into(), spread)
     };
 
     // Parse day count fraction
-    let _dcf = nav
-        .find_text("dayCountFraction")
-        .unwrap_or_else(|| "ACT/360".to_string());
+    let _dcf = xml_text!(nav, "dayCountFraction", "ACT/360");
 
     // Create a simplified single cashflow for now
     // A full implementation would generate the full schedule
@@ -160,10 +135,7 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
 /// Parse floating rate index from FpML.
 #[allow(clippy::unnecessary_wraps)]
 fn parse_floating_rate_index(nav: &XmlNavigator) -> Result<RateIndex, FpmlError> {
-    // Look for floatingRateIndex element
-    let index_name = nav
-        .find_text("floatingRateIndex")
-        .unwrap_or_else(|| "USD-SOFR".to_string());
+    let index_name = xml_text!(nav, "floatingRateIndex", "USD-SOFR");
 
     // Map FpML index names to internal RateIndex
     let index = match index_name.to_uppercase().as_str() {
@@ -206,16 +178,19 @@ fn determine_swap_type(legs: &[Leg]) -> TradeType {
     }
 }
 
-/// Parse currency string to Currency enum.
-fn parse_currency(s: &str) -> Currency {
-    match s.to_uppercase().as_str() {
-        "USD" => Currency::USD,
-        "EUR" => Currency::EUR,
-        "GBP" => Currency::GBP,
-        "JPY" => Currency::JPY,
-        "CHF" => Currency::CHF,
-        _ => Currency::USD, // Default fallback
+/// Build trade metadata from header.
+fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
     }
+    if let Some(ref cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp.clone());
+    }
+    if let Some(ref book) = header.book {
+        metadata = metadata.with_book(book.clone());
+    }
+    metadata
 }
 
 /// Parse a swaption from FpML.
@@ -277,16 +252,7 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
         settlement_type,
     };
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     // Get legs from underlying swap
     let legs: Vec<Leg> = underlying_swap.legs().cloned().collect();
@@ -314,26 +280,13 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
     let cf_nav = XmlNavigator::new(&capfloor_section);
 
     // Parse notional
-    let notional = cf_nav
-        .find_text("notionalStepAmount")
-        .or_else(|| cf_nav.find_text("initialValue"))
-        .map(|n| parse_decimal(&n))
-        .transpose()?
-        .unwrap_or(0.0);
+    let notional = xml_decimal_or!(cf_nav, "notionalStepAmount", "initialValue"; 0.0);
 
     // Parse currency
-    let currency_str = cf_nav
-        .find_text("currency")
-        .unwrap_or_else(|| "USD".to_string());
-    let currency = parse_currency(&currency_str);
+    let currency = parse_currency(&xml_text!(cf_nav, "currency", "USD"));
 
     // Parse strike (cap or floor rate)
-    let strike = cf_nav
-        .find_text("capRate")
-        .or_else(|| cf_nav.find_text("floorRate"))
-        .map(|s| parse_decimal(&s))
-        .transpose()?
-        .unwrap_or(0.0);
+    let strike = xml_decimal_or!(cf_nav, "capRate", "floorRate"; 0.0);
 
     // Determine if cap or floor
     let is_cap = cf_nav.find_text("capRate").is_some();
@@ -341,12 +294,12 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
     // Parse floating rate index
     let index = parse_floating_rate_index(&cf_nav)?;
 
-    // Parse effective and termination dates
-    let effective_date = cf_nav
-        .find_text("unadjustedDate")
-        .map(|d| parse_date(&d))
-        .transpose()?
-        .unwrap_or_else(|| Date::from_ymd(2024, 1, 1).unwrap());
+    // Parse effective date
+    let effective_date = xml_date!(
+        cf_nav,
+        "unadjustedDate",
+        Date::from_ymd(2024, 1, 1).unwrap()
+    );
 
     // Create payoff
     let payoff = if is_cap {
@@ -368,16 +321,7 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
 
     let leg = Leg::new(cashflows, Direction::Receiver, LegType::CapFloor, currency);
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -390,6 +334,7 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use infra_domain::market::Currency;
 
     const SAMPLE_SWAP_XML: &str = r#"
         <trade>

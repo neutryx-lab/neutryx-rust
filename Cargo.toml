@@ -9,7 +9,7 @@ description = "Unified facade crate for Neutryx derivatives pricing library"
 
 [dependencies]
 # --- Infra Layer (always included) ---
-infra_domain = { path = "crates/infra_domain" }
+infra_domain = { path = "crates/infra_domain", features = ["serde"] }
 
 # --- Infra Layer (optional) ---
 infra_config = { path = "crates/infra_config", optional = true }
@@ -30,8 +30,6 @@ minimal = []
 analytics = [
     "dep:pricer_core",
     "dep:pricer_models",
-    "pricer_core/serde",
-    "pricer_models/serde",
 ]
 
 # Full: Complete pricing and risk functionality
@@ -40,45 +38,10 @@ full = [
     "dep:infra_config",
     "dep:pricer_pricing",
     "dep:pricer_risk",
-    "pricer_pricing/l1l2-integration",
-    "pricer_pricing/serde",
-    "pricer_risk/serde",
 ]
-
-# Storage backends (optional)
-storage = ["dep:infra_config"]
-postgres = ["storage", "infra_config/postgres"]
-
-# Serialisation support
-serde = [
-    "infra_domain/serde",
-    "pricer_core?/serde",
-    "pricer_models?/serde",
-    "pricer_pricing?/serde",
-    "pricer_risk?/serde",
-]
-
-# All asset classes
-all-assets = [
-    "pricer_core?/all",
-    "pricer_models?/all",
-]
-
-# Global bootstrap with multi-dimensional Newton solver
-global-bootstrap = ["pricer_models?/global-bootstrap"]
-
-# Parallel processing
-parallel = [
-    "pricer_core?/parallel",
-    "pricer_models?/parallel",
-]
-
-# VolCube calibration
-volcube = ["pricer_pricing?/volcube"]
 
 # Enzyme automatic differentiation (requires nightly + LLVM 18)
 enzyme-ad = [
-    "pricer_pricing?/enzyme-ad",
     "pricer_risk?/enzyme-ad",
 ]
 
@@ -207,6 +170,9 @@ bon = "3.8"
 
 # Enum dispatch for static trait forwarding
 enum_dispatch = "0.3"
+
+# Graph data structures and algorithms
+petgraph = "0.6"
 
 # Newtype derive utilities
 derive_more = { version = "2", features = ["from", "display", "as_ref", "add", "mul"] }

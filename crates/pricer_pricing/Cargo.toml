@@ -8,13 +8,11 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-# pricer_core for rng module (always enabled) and optional L1/L2 integration
-pricer_core = { path = "../pricer_core", default-features = false, features = ["rng"] }
-pricer_models = { path = "../pricer_models", optional = true, features = ["rates"] }
-# Infra layer for shared types (Currency, Date, Direction) when l1l2-integration is enabled
-infra_domain = { path = "../infra_domain", optional = true, features = ["serde"] }
-# Infra configuration for config-driven pricing (always enabled for BumpSizes)
+pricer_core = { path = "../pricer_core" }
+pricer_models = { path = "../pricer_models" }
+infra_domain = { path = "../infra_domain", features = ["serde"] }
 infra_config = { path = "../infra_config" }
+strum.workspace = true
 
 # Enum dispatch for static trait forwarding
 enum_dispatch.workspace = true
@@ -22,8 +20,8 @@ enum_dispatch.workspace = true
 # Basic numeric traits
 num-traits.workspace = true
 
-# Date/time (only for l1l2-integration feature)
-chrono = { workspace = true, optional = true }
+# Date/time
+chrono.workspace = true
 
 # Error handling
 thiserror.workspace = true
@@ -31,12 +29,15 @@ thiserror.workspace = true
 # Parallel processing
 rayon.workspace = true
 
-# Serialization (optional)
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
 
-# Aligned memory allocation (optional, for SIMD optimisation)
-aligned-vec = { version = "0.5", optional = true }
+# Aligned memory allocation (for SIMD optimisation)
+aligned-vec = "0.5"
+
+# Graph data structures and algorithms
+petgraph.workspace = true
 
 [dev-dependencies]
 approx.workspace = true
@@ -48,7 +49,7 @@ iai-callgrind = "0.14"
 # JSON serialization for tests
 serde_json.workspace = true
 # Direct access to PricerRng in benchmarks
-pricer_core = { path = "../pricer_core", features = ["rng"] }
+pricer_core = { path = "../pricer_core" }
 
 [[bench]]
 name = "engine"
@@ -61,7 +62,6 @@ harness = false
 [[bench]]
 name = "kernel_batch"
 harness = false
-required-features = ["l1l2-integration"]
 
 [build-dependencies]
 # Future: For linking Enzyme LLVM plugin
@@ -69,16 +69,8 @@ required-features = ["l1l2-integration"]
 
 [features]
 default = []
-# L1/L2 integration for smoothing functions, YieldCurve, Instrument
-l1l2-integration = ["pricer_core/serde", "pricer_core/equity", "dep:pricer_models", "dep:infra_domain", "dep:chrono"]
-# Serialization support for GreeksResult
-serde = ["dep:serde", "dep:serde_json"]
 # Enzyme automatic differentiation (future: LLVM plugin integration)
 enzyme-ad = []
-# SIMD-aligned memory buffers for AVX-512 optimisation
-simd-aligned = ["dep:aligned-vec"]
-# VolCube support (requires volcube feature in pricer_models)
-volcube = ["l1l2-integration", "pricer_models/volcube"]
 
 [lints]
 workspace = true

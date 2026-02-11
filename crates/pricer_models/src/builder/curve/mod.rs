@@ -18,7 +18,6 @@
 
 mod bootstrap;
 
-#[cfg(feature = "global-bootstrap")]
 mod global;
 
 // =============================================================================
@@ -26,9 +25,7 @@ mod global;
 // =============================================================================
 
 pub use bootstrap::{BootstrapConfig, CurveBootstrapper, JacobianMatrix};
-#[cfg(feature = "global-bootstrap")]
 pub use global::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 
 // Re-export JacobianMethod from problem module for convenience
-#[cfg(feature = "global-bootstrap")]
 pub use super::problem::JacobianMethod;

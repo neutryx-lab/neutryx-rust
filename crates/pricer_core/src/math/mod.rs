@@ -7,8 +7,8 @@
 //!   Bachelier, SABR)
 //! - `solvers`: Root-finding algorithms for numerical solving
 //! - `numeric`: Numeric conversion utilities (`from_f64`)
-//! - `linalg`: Linear algebra operations (requires `linalg` feature)
-//! - `rng`: Random number generation (requires `rng` feature)
+//! - `linalg`: Linear algebra operations
+//! - `rng`: Random number generation
 
 // Allow standard mathematical single-letter variable names (a, b, c, x, y, etc.)
 // which are conventional in numerical computing and interpolation algorithms.
@@ -21,8 +21,6 @@ pub mod numeric;
 pub mod smoothing;
 pub mod solvers;
 
-#[cfg(feature = "linalg")]
 pub mod linalg;
 
-#[cfg(feature = "rng")]
 pub mod rng;

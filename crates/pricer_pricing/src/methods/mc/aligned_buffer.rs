@@ -1,12 +1,8 @@
 //! Aligned memory buffers for SIMD-optimised Monte Carlo simulation.
 //!
-//! This module provides [`AlignedPathBuffer`], a memory buffer that can be
-//! aligned to specified boundaries (e.g., 64 bytes for AVX-512 cache lines).
-//!
-//! # Feature Flags
-//!
-//! - `simd-aligned`: Uses `aligned-vec` crate for guaranteed alignment
-//! - Without flag: Falls back to standard `Vec<T>` (alignment not guaranteed)
+//! This module provides [`AlignedPathBuffer`], a memory buffer that is
+//! aligned to specified boundaries (e.g., 64 bytes for AVX-512 cache lines)
+//! using the `aligned-vec` crate.
 //!
 //! # Performance
 //!
@@ -15,8 +11,7 @@
 //! - Reduced cache line splits
 //! - Better hardware prefetching
 
-use std::marker::PhantomData;
-
+use aligned_vec::AVec;
 use num_traits::Float;
 
 /// Default alignment for AVX-512 cache lines.
@@ -24,8 +19,9 @@ pub const DEFAULT_ALIGNMENT: usize = 64;
 
 /// Aligned memory buffer for path data.
 ///
-/// Provides a contiguous buffer of floating-point values that can be
+/// Provides a contiguous buffer of floating-point values that is
 /// aligned to specified memory boundaries for SIMD efficiency.
+/// Backed by `aligned_vec::AVec` for guaranteed alignment.
 ///
 /// # Type Parameters
 ///
@@ -45,27 +41,19 @@ pub const DEFAULT_ALIGNMENT: usize = 64;
 /// }
 ///
 /// // Check alignment
-/// assert!(buffer.alignment() >= 8); // At least f64 alignment
+/// assert_eq!(buffer.alignment(), 64);
+/// assert!(buffer.is_aligned_to(64));
 /// ```
-#[cfg(feature = "simd-aligned")]
 pub struct AlignedPathBuffer<T: Float> {
-    inner: aligned_vec::AVec<T, aligned_vec::ConstAlign<DEFAULT_ALIGNMENT>>,
-}
-
-/// Aligned memory buffer for path data (fallback implementation).
-///
-/// When the `simd-aligned` feature is not enabled, this uses a standard
-/// `Vec<T>` which provides natural alignment for type `T`.
-#[cfg(not(feature = "simd-aligned"))]
-pub struct AlignedPathBuffer<T: Float> {
-    inner: Vec<T>,
-    _marker: PhantomData<T>,
+    inner: AVec<T>,
+    align: usize,
 }
 
 impl<T: Float> AlignedPathBuffer<T> {
     /// Creates a new buffer with the specified capacity.
     ///
-    /// The buffer is initialised with zeros.
+    /// The buffer is initialised with zeros and aligned to
+    /// [`DEFAULT_ALIGNMENT`] (64 bytes for AVX-512).
     ///
     /// # Arguments
     ///
@@ -79,23 +67,10 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(1000);
     /// assert_eq!(buffer.len(), 1000);
     /// ```
-    #[cfg(feature = "simd-aligned")]
     pub fn new(capacity: usize) -> Self {
-        use aligned_vec::AVec;
         let mut inner = AVec::new(DEFAULT_ALIGNMENT);
         inner.resize(capacity, T::zero());
-        Self { inner }
-    }
-
-    /// Creates a new buffer with the specified capacity (fallback).
-    ///
-    /// Uses standard `Vec<T>` when `simd-aligned` feature is not enabled.
-    #[cfg(not(feature = "simd-aligned"))]
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            inner: vec![T::zero(); capacity],
-            _marker: PhantomData,
-        }
+        Self { inner, align: DEFAULT_ALIGNMENT }
     }
 
     /// Creates a buffer with custom alignment.
@@ -103,12 +78,11 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// # Arguments
     ///
     /// * `capacity` - Number of elements to allocate
-    /// * `alignment` - Alignment in bytes (ignored without `simd-aligned`
-    ///   feature)
+    /// * `alignment` - Alignment in bytes (must be a power of 2)
     ///
     /// # Panics
     ///
-    /// Panics if `alignment` is not a power of 2 (with `simd-aligned` feature).
+    /// Panics if `alignment` is not a power of 2.
     ///
     /// # Examples
     ///
@@ -117,9 +91,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     ///
     /// let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::with_alignment(1000, 64);
     /// ```
-    #[cfg(feature = "simd-aligned")]
     pub fn with_alignment(capacity: usize, alignment: usize) -> Self {
-        use aligned_vec::AVec;
         assert!(
             alignment > 0 && alignment.is_power_of_two(),
             "alignment must be a power of 2, got {}",
@@ -127,15 +99,8 @@ impl<T: Float> AlignedPathBuffer<T> {
         );
         let mut inner = AVec::new(alignment);
         inner.resize(capacity, T::zero());
-        Self { inner }
+        Self { inner, align: alignment }
     }
-
-    /// Creates a buffer with custom alignment (fallback).
-    ///
-    /// Without `simd-aligned` feature, alignment is ignored and uses natural
-    /// type alignment.
-    #[cfg(not(feature = "simd-aligned"))]
-    pub fn with_alignment(capacity: usize, _alignment: usize) -> Self { Self::new(capacity) }
 
     /// Returns an immutable slice of the buffer.
     ///
@@ -175,30 +140,16 @@ impl<T: Float> AlignedPathBuffer<T> {
 
     /// Returns the alignment of the buffer in bytes.
     ///
-    /// # Note
-    ///
-    /// Without the `simd-aligned` feature, this returns the natural
-    /// alignment of type `T` (8 bytes for `f64`).
-    ///
     /// # Examples
     ///
     /// ```rust
     /// use pricer_pricing::mc::AlignedPathBuffer;
     ///
     /// let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(1000);
-    /// println!("Alignment: {} bytes", buffer.alignment());
+    /// assert_eq!(buffer.alignment(), 64);
     /// ```
-    #[cfg(feature = "simd-aligned")]
     #[inline]
-    pub fn alignment(&self) -> usize { DEFAULT_ALIGNMENT }
-
-    /// Returns the alignment of the buffer in bytes (fallback).
-    ///
-    /// Returns the natural alignment of type `T` when `simd-aligned`
-    /// feature is not enabled.
-    #[cfg(not(feature = "simd-aligned"))]
-    #[inline]
-    pub fn alignment(&self) -> usize { std::mem::align_of::<T>() }
+    pub fn alignment(&self) -> usize { self.align }
 
     /// Checks if the buffer data is aligned to the specified boundary.
     ///
@@ -216,7 +167,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// use pricer_pricing::mc::AlignedPathBuffer;
     ///
     /// let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(1000);
-    /// assert!(buffer.is_aligned_to(8)); // Always true for f64
+    /// assert!(buffer.is_aligned_to(64));
     /// ```
     #[inline]
     #[allow(clippy::manual_is_multiple_of)] // is_multiple_of is unstable
@@ -268,19 +219,9 @@ impl<T: Float> AlignedPathBuffer<T> {
 // Implement Clone manually since we need Float bound
 impl<T: Float + Clone> Clone for AlignedPathBuffer<T> {
     fn clone(&self) -> Self {
-        #[cfg(feature = "simd-aligned")]
-        {
-            let mut inner = aligned_vec::AVec::new(DEFAULT_ALIGNMENT);
-            inner.extend(self.inner.iter().cloned());
-            Self { inner }
-        }
-        #[cfg(not(feature = "simd-aligned"))]
-        {
-            Self {
-                inner: self.inner.clone(),
-                _marker: PhantomData,
-            }
-        }
+        let mut inner = AVec::new(self.align);
+        inner.extend(self.inner.iter().cloned());
+        Self { inner, align: self.align }
     }
 }
 
@@ -331,14 +272,15 @@ mod tests {
     #[test]
     fn test_aligned_buffer_alignment() {
         let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(1000);
-        // Alignment should be at least f64 alignment
-        assert!(buffer.alignment() >= 8);
+        assert_eq!(buffer.alignment(), 64);
     }
 
     #[test]
     fn test_aligned_buffer_is_aligned_to() {
         let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(1000);
-        // Should always be aligned to f64 (8 bytes)
+        // Should be aligned to 64 bytes (AVX-512)
+        assert!(buffer.is_aligned_to(64));
+        // Also aligned to smaller boundaries
         assert!(buffer.is_aligned_to(8));
     }
 
@@ -388,8 +330,7 @@ mod tests {
     fn test_aligned_buffer_f32() {
         let buffer: AlignedPathBuffer<f32> = AlignedPathBuffer::new(1000);
         assert_eq!(buffer.len(), 1000);
-        // f32 alignment is 4 bytes
-        assert!(buffer.alignment() >= 4);
+        assert_eq!(buffer.alignment(), 64);
     }
 
     #[test]
@@ -405,8 +346,8 @@ mod tests {
         let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(100);
         let ptr = buffer.as_ptr();
         assert!(!ptr.is_null());
-        // Verify pointer alignment to f64
-        assert_eq!(ptr as usize % std::mem::align_of::<f64>(), 0);
+        // Verify pointer alignment to AVX-512
+        assert_eq!(ptr as usize % 64, 0);
     }
 
     #[test]
@@ -414,20 +355,17 @@ mod tests {
         let mut buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(100);
         let ptr = buffer.as_mut_ptr();
         assert!(!ptr.is_null());
-        // Verify pointer alignment to f64
-        assert_eq!(ptr as usize % std::mem::align_of::<f64>(), 0);
+        // Verify pointer alignment to AVX-512
+        assert_eq!(ptr as usize % 64, 0);
     }
 
-    #[cfg(feature = "simd-aligned")]
     #[test]
     fn test_aligned_buffer_simd_alignment() {
         let buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(1000);
-        // With simd-aligned feature, should be 64-byte aligned
         assert_eq!(buffer.alignment(), 64);
         assert!(buffer.is_aligned_to(64));
     }
 
-    #[cfg(feature = "simd-aligned")]
     #[test]
     #[should_panic(expected = "alignment must be a power of 2")]
     fn test_aligned_buffer_invalid_alignment() {

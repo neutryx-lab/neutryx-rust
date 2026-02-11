@@ -124,41 +124,6 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
 }
 
 // =============================================================================
-// Convenience Methods for Curve Calibration
-// =============================================================================
-
-impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
-    /// Set a cashflow value (convenience method for curve calibration).
-    pub fn set_cashflow(&mut self, instrument_idx: usize, date_idx: usize, value: T) {
-        self.set(instrument_idx, date_idx, value);
-    }
-
-    /// Get a cashflow value (convenience method for curve calibration).
-    pub fn get_cashflow(&self, instrument_idx: usize, date_idx: usize) -> Option<T> {
-        self.get(instrument_idx, date_idx)
-    }
-
-    /// Get the number of instruments (alias for `num_rows()`).
-    pub fn num_instruments(&self) -> usize { self.num_rows }
-
-    /// Get the number of dates (alias for `num_cols()`).
-    pub fn num_dates(&self) -> usize { self.num_cols }
-
-    /// Check if a cashflow exists (alias for `is_nonzero()`).
-    pub fn has_cashflow(&self, instrument_idx: usize, date_idx: usize) -> bool {
-        self.is_nonzero(instrument_idx, date_idx)
-    }
-
-    /// Get all cashflows for an instrument (alias for `get_row()`).
-    pub fn get_instrument_cashflows(&self, instrument_idx: usize) -> Option<Vec<T>> {
-        self.get_row(instrument_idx)
-    }
-
-    /// Get all cashflows at a date (alias for `get_col()`).
-    pub fn get_date_cashflows(&self, date_idx: usize) -> Option<Vec<T>> { self.get_col(date_idx) }
-}
-
-// =============================================================================
 // InterpolationMatrix
 // =============================================================================
 
@@ -260,9 +225,6 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
     /// Get the number of grid points.
     pub fn num_points(&self) -> usize { self.num_points }
 
-    /// Alias for `num_points()` - backward compatibility.
-    pub fn num_dates(&self) -> usize { self.num_points }
-
     /// Get the number of pillars.
     pub fn num_pillars(&self) -> usize { self.num_pillars }
 
@@ -289,11 +251,6 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         result
     }
 
-    /// Alias for `interpolate()` - backward compatibility with log DF.
-    pub fn interpolate_log_df(&self, log_df_pillars: &[T]) -> Vec<T> {
-        self.interpolate(log_df_pillars)
-    }
-
     /// Interpolate and exponentiate (for discount factors).
     ///
     /// # Arguments
@@ -304,7 +261,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
     ///
     /// DF at each grid point.
     pub fn interpolate_df(&self, log_df_pillars: &[T]) -> Vec<T> {
-        self.interpolate_log_df(log_df_pillars)
+        self.interpolate(log_df_pillars)
             .into_iter()
             .map(Float::exp)
             .collect()
@@ -439,7 +396,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         grid_points: &[T],
     ) -> Vec<T> {
         // First, get smooth interpolated values
-        let smooth_log_df = self.interpolate_log_df(log_df_pillars);
+        let smooth_log_df = self.interpolate(log_df_pillars);
 
         if jumps.is_empty() {
             return smooth_log_df;
@@ -503,36 +460,6 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
             .map(Float::exp)
             .collect()
     }
-}
-
-// =============================================================================
-// CalibrationMatrixBuilder
-// =============================================================================
-
-/// Builder for constructing calibration matrices.
-#[derive(Debug, Clone)]
-pub struct CalibrationMatrixBuilder<T: Float> {
-    /// Tolerance for point matching.
-    tolerance: T,
-}
-
-impl<T: Float> CalibrationMatrixBuilder<T> {
-    /// Create a new builder with default settings.
-    pub fn new() -> Self {
-        Self {
-            tolerance: T::from(1e-10).unwrap(),
-        }
-    }
-
-    /// Set the point matching tolerance.
-    pub fn with_tolerance(mut self, tolerance: T) -> Self {
-        self.tolerance = tolerance;
-        self
-    }
-}
-
-impl<T: Float> Default for CalibrationMatrixBuilder<T> {
-    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -674,25 +601,6 @@ mod tests {
         // t=3.0: after last pillar (extrapolate flat)
         assert_relative_eq!(interp.matrix()[(3, 0)], 0.0, epsilon = 1e-10);
         assert_relative_eq!(interp.matrix()[(3, 1)], 1.0, epsilon = 1e-10);
-    }
-
-    #[test]
-    fn test_calibration_matrix_builder() {
-        let builder: CalibrationMatrixBuilder<f64> =
-            CalibrationMatrixBuilder::new().with_tolerance(1e-8);
-
-        assert!(builder.tolerance > 0.0);
-    }
-
-    #[test]
-    fn test_cashflow_convenience_methods() {
-        let mut matrix: CalibrationMatrix<f64> = CalibrationMatrix::zeros(2, 3);
-
-        matrix.set_cashflow(0, 1, 100.0);
-        assert_relative_eq!(matrix.get_cashflow(0, 1).unwrap(), 100.0, epsilon = 1e-10);
-        assert_eq!(matrix.num_instruments(), 2);
-        assert_eq!(matrix.num_dates(), 3);
-        assert!(matrix.has_cashflow(0, 1));
     }
 
     // =========================================================================

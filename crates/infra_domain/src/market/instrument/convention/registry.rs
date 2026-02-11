@@ -259,7 +259,7 @@ impl ConventionRegistry {
     #[must_use]
     pub fn currencies(&self) -> Vec<Currency> {
         let mut currencies: Vec<Currency> = self.conventions.keys().map(|k| k.currency).collect();
-        currencies.sort_by_key(|c| c.code());
+        currencies.sort_by(|a, b| a.code().cmp(b.code()));
         currencies.dedup();
         currencies
     }

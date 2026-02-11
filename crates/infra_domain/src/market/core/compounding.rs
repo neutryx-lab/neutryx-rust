@@ -1,16 +1,20 @@
 //! Compounding method definitions for interest rate calculations.
 
-use std::{fmt, str::FromStr};
-
 /// Compounding method for interest rate calculations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
+    strum::Display, strum::EnumString, strum::AsRefStr,
+)]
+#[strum(ascii_case_insensitive)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CompoundingMethod {
     /// Simple interest (no compounding within period).
     #[default]
+    #[strum(serialize = "Simple", serialize = "none")]
     Simple,
 
     /// Daily compounding (OIS indices).
+    #[strum(serialize = "Compounded", serialize = "compound", serialize = "daily")]
     Compounded,
 
     /// Arithmetic average calculation.
@@ -19,6 +23,7 @@ pub enum CompoundingMethod {
     /// arithmetic average of daily observations.
     ///
     /// Formula: `(Σ r_i) / n`
+    #[strum(serialize = "Averaged", serialize = "average", serialize = "arithmetic")]
     Averaged,
 }
 
@@ -35,13 +40,7 @@ impl CompoundingMethod {
     /// assert_eq!(CompoundingMethod::Averaged.name(), "Averaged");
     /// ```
     #[must_use]
-    pub const fn name(&self) -> &'static str {
-        match self {
-            Self::Simple => "Simple",
-            Self::Compounded => "Compounded",
-            Self::Averaged => "Averaged",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 
     /// Returns true if this is a compounding method (not simple).
     ///
@@ -69,34 +68,6 @@ impl CompoundingMethod {
     /// ```
     #[must_use]
     pub const fn is_simple(&self) -> bool { matches!(self, Self::Simple) }
-}
-
-impl fmt::Display for CompoundingMethod {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
-}
-
-impl FromStr for CompoundingMethod {
-    type Err = String;
-
-    /// Parses compounding method from string (case-insensitive).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::CompoundingMethod;
-    ///
-    /// assert_eq!("Simple".parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Simple);
-    /// assert_eq!("compounded".parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Compounded);
-    /// assert_eq!("AVERAGED".parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Averaged);
-    /// ```
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "simple" | "none" => Ok(Self::Simple),
-            "compounded" | "compound" | "daily" => Ok(Self::Compounded),
-            "averaged" | "average" | "arithmetic" => Ok(Self::Averaged),
-            _ => Err(format!("Unknown compounding method: {s}")),
-        }
-    }
 }
 
 #[cfg(test)]

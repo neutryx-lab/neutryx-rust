@@ -15,9 +15,27 @@ use infra_domain::{
 };
 
 use crate::fpml::{
-    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    common::{
+        parse_currency, parse_date, parse_decimal, parse_trade_header, xml_date, xml_decimal,
+        xml_decimal_or, xml_text, XmlNavigator,
+    },
     error::FpmlError,
 };
+
+/// Build trade metadata from header.
+fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(ref cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp.clone());
+    }
+    if let Some(ref book) = header.book {
+        metadata = metadata.with_book(book.clone());
+    }
+    metadata
+}
 
 /// Parse an FX forward (fxSingleLeg) from FpML.
 pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
@@ -34,11 +52,11 @@ pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
     let fx_nav = XmlNavigator::new(&fx_section);
 
     // Parse value date
-    let value_date = fx_nav
-        .find_text("valueDate")
-        .map(|d| parse_date(&d))
-        .transpose()?
-        .unwrap_or_else(|| Date::from_ymd(2024, 1, 1).unwrap());
+    let value_date = xml_date!(
+        fx_nav,
+        "valueDate",
+        Date::from_ymd(2024, 1, 1).unwrap()
+    );
 
     // Parse exchanged currencies
     let ccy1_section = fx_nav
@@ -51,34 +69,14 @@ pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
     let ccy1_nav = XmlNavigator::new(&ccy1_section);
     let ccy2_nav = XmlNavigator::new(&ccy2_section);
 
-    let ccy1_str = ccy1_nav
-        .find_text("currency")
-        .unwrap_or_else(|| "EUR".to_string());
-    let ccy2_str = ccy2_nav
-        .find_text("currency")
-        .unwrap_or_else(|| "USD".to_string());
+    let currency1 = parse_currency(&xml_text!(ccy1_nav, "currency", "EUR"));
+    let currency2 = parse_currency(&xml_text!(ccy2_nav, "currency", "USD"));
 
-    let amount1 = ccy1_nav
-        .find_text("amount")
-        .map(|a| parse_decimal(&a))
-        .transpose()?
-        .unwrap_or(0.0);
-
-    let amount2 = ccy2_nav
-        .find_text("amount")
-        .map(|a| parse_decimal(&a))
-        .transpose()?
-        .unwrap_or(0.0);
-
-    let currency1 = parse_currency(&ccy1_str);
-    let currency2 = parse_currency(&ccy2_str);
+    let amount1 = xml_decimal!(ccy1_nav, "amount", 0.0);
+    let amount2 = xml_decimal!(ccy2_nav, "amount", 0.0);
 
     // Parse exchange rate
-    let _rate = fx_nav
-        .find_text("rate")
-        .map(|r| parse_decimal(&r))
-        .transpose()?
-        .unwrap_or(1.0);
+    let _rate = xml_decimal!(fx_nav, "rate", 1.0);
 
     // Create legs for each currency
     // Leg 1: Pay currency 1
@@ -117,16 +115,7 @@ pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
         currency2,
     );
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -150,39 +139,23 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     let fx_nav = XmlNavigator::new(&fx_section);
 
-    // Parse near leg
-    let near_section = fx_nav.extract_section("nearLeg").unwrap_or_default();
-    let _near_nav = XmlNavigator::new(&near_section);
-
-    // Parse far leg
-    let far_section = fx_nav.extract_section("farLeg").unwrap_or_default();
-    let _far_nav = XmlNavigator::new(&far_section);
-
-    // For simplicity, we'll parse this as a single FxSwap with combined legs
-    // A full implementation would parse near and far legs separately
+    // Parse near leg (unused directly but extracted for completeness)
+    let _near_section = fx_nav.extract_section("nearLeg").unwrap_or_default();
+    let _far_section = fx_nav.extract_section("farLeg").unwrap_or_default();
 
     let mut legs = Vec::new();
 
-    // Parse all exchangedCurrency sections
+    // Parse all exchangedCurrency1 sections
     for ccy_section in fx_nav.extract_all_sections("exchangedCurrency1") {
         let ccy_nav = XmlNavigator::new(&ccy_section);
-        let currency_str = ccy_nav
-            .find_text("currency")
-            .unwrap_or_else(|| "USD".to_string());
-        let amount = ccy_nav
-            .find_text("amount")
-            .map(|a| parse_decimal(&a))
-            .transpose()?
-            .unwrap_or(0.0);
+        let currency = parse_currency(&xml_text!(ccy_nav, "currency", "USD"));
+        let amount = xml_decimal!(ccy_nav, "amount", 0.0);
 
-        let currency = parse_currency(&currency_str);
-
-        // Get value date from nearest ancestor
-        let value_date = fx_nav
-            .find_text("valueDate")
-            .map(|d| parse_date(&d))
-            .transpose()?
-            .unwrap_or_else(|| Date::from_ymd(2024, 1, 1).unwrap());
+        let value_date = xml_date!(
+            fx_nav,
+            "valueDate",
+            Date::from_ymd(2024, 1, 1).unwrap()
+        );
 
         let cf = Cashflow::new(
             CashflowType::Principal,
@@ -204,21 +177,14 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     for ccy_section in fx_nav.extract_all_sections("exchangedCurrency2") {
         let ccy_nav = XmlNavigator::new(&ccy_section);
-        let currency_str = ccy_nav
-            .find_text("currency")
-            .unwrap_or_else(|| "USD".to_string());
-        let amount = ccy_nav
-            .find_text("amount")
-            .map(|a| parse_decimal(&a))
-            .transpose()?
-            .unwrap_or(0.0);
+        let currency = parse_currency(&xml_text!(ccy_nav, "currency", "USD"));
+        let amount = xml_decimal!(ccy_nav, "amount", 0.0);
 
-        let currency = parse_currency(&currency_str);
-        let value_date = fx_nav
-            .find_text("valueDate")
-            .map(|d| parse_date(&d))
-            .transpose()?
-            .unwrap_or_else(|| Date::from_ymd(2024, 1, 1).unwrap());
+        let value_date = xml_date!(
+            fx_nav,
+            "valueDate",
+            Date::from_ymd(2024, 1, 1).unwrap()
+        );
 
         let cf = Cashflow::new(
             CashflowType::Principal,
@@ -238,16 +204,7 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
         ));
     }
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -288,19 +245,14 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
     };
 
     // Parse strike
-    let strike = opt_nav
-        .find_text("rate")
-        .or_else(|| opt_nav.find_text("strikePrice"))
-        .map(|s| parse_decimal(&s))
-        .transpose()?
-        .unwrap_or(1.0);
+    let strike = xml_decimal_or!(opt_nav, "rate", "strikePrice"; 1.0);
 
     // Parse expiry date
-    let expiry_date = opt_nav
-        .find_text("expiryDate")
-        .map(|d| parse_date(&d))
-        .transpose()?
-        .unwrap_or_else(|| Date::from_ymd(2025, 1, 1).unwrap());
+    let expiry_date = xml_date!(
+        opt_nav,
+        "expiryDate",
+        Date::from_ymd(2025, 1, 1).unwrap()
+    );
 
     // Parse exercise type
     let exercise_type = if opt_nav.extract_section("europeanExercise").is_some() {
@@ -332,8 +284,7 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
         .transpose()?
         .unwrap_or(0.0);
 
-    // Parse currency (look inside callCurrencyAmount/putCurrencyAmount for
-    // currency)
+    // Parse currency (look inside callCurrencyAmount/putCurrencyAmount for currency)
     let currency_str = opt_nav
         .extract_section("callCurrencyAmount")
         .and_then(|section| XmlNavigator::new(&section).find_text("currency"))
@@ -369,16 +320,7 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
         expiry_date,
     };
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -386,18 +328,6 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
         .trade_type(trade_type)
         .metadata(metadata)
         .build())
-}
-
-/// Parse currency string to Currency enum.
-fn parse_currency(s: &str) -> Currency {
-    match s.to_uppercase().as_str() {
-        "USD" => Currency::USD,
-        "EUR" => Currency::EUR,
-        "GBP" => Currency::GBP,
-        "JPY" => Currency::JPY,
-        "CHF" => Currency::CHF,
-        _ => Currency::USD,
-    }
 }
 
 #[cfg(test)]

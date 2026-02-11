@@ -26,6 +26,51 @@
 //! let usd_conventions = ConventionSet::usd_standard();
 //! ```
 
+// =============================================================================
+// Convention factory macro
+// =============================================================================
+
+/// Generates named factory methods for a convention type.
+///
+/// Each entry in the table produces a `#[must_use] pub fn name() -> Self`
+/// that constructs `Self { field1: val1, field2: val2, ... }`.
+///
+/// # Syntax
+///
+/// ```ignore
+/// define_convention_factories! {
+///     for DepositConvention;
+///     /// USD deposit convention (ACT/360, NY, ModFol, T+2).
+///     usd => { day_count: DayCounter::Actual360, calendar: CalendarId::NewYork,
+///              business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 2 };
+///     /// EUR deposit convention (ACT/360, TARGET, ModFol, T+2).
+///     eur => { day_count: DayCounter::Actual360, calendar: CalendarId::Target,
+///              business_day_convention: BusinessDayConvention::ModifiedFollowing, spot_lag: 2 };
+/// }
+/// ```
+macro_rules! define_convention_factories {
+    (
+        for $Type:ident;
+        $(
+            $(#[$meta:meta])*
+            $name:ident => { $($field:ident : $val:expr),* $(,)? };
+        )*
+    ) => {
+        impl $Type {
+            $(
+                $(#[$meta])*
+                #[must_use]
+                pub fn $name() -> Self {
+                    Self { $($field: $val),* }
+                }
+            )*
+        }
+    };
+}
+
+// Make macro available within the convention submodules
+pub(crate) use define_convention_factories;
+
 // Asset class modules
 mod commodity;
 mod credit;

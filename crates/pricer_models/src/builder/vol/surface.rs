@@ -33,7 +33,7 @@ use pricer_core::math::formulas::fx_delta::delta_to_strike;
 
 use super::{
     CalibrationError, DeltaVolSlice, OrderedFloat, SabrParams, SabrSliceCalibrator,
-    SliceCalibrationConfig, SliceCalibrationDiagnostics, SliceCalibrator, VolQuote,
+    SliceCalibrationConfig, SliceCalibrationDiagnostics, SliceCalibrator, VolBuilder, VolQuote,
 };
 use crate::market::{FxCurve, FxCurveEnum};
 
@@ -215,14 +215,17 @@ impl<T: Float> FxVolBuilder<T> {
         Ok(self)
     }
 
-    /// Calibrates all slices and returns the parameter surface.
-    pub fn calibrate(&self) -> Result<FxVolResult<T>, CalibrationError> {
-        if self.slices.is_empty() {
-            return Err(CalibrationError::InsufficientData {
-                required: 1,
-                provided: 0,
-            });
-        }
+}
+
+impl<T: Float> VolBuilder<T> for FxVolBuilder<T> {
+    type Result = FxVolResult<T>;
+
+    fn config(&self) -> &SliceCalibrationConfig<T> { &self.config }
+
+    fn num_slices(&self) -> usize { self.slices.len() }
+
+    fn calibrate(&self) -> Result<FxVolResult<T>, CalibrationError> {
+        self.validate()?;
 
         let mut expiries = Vec::new();
         let mut params = BTreeMap::new();

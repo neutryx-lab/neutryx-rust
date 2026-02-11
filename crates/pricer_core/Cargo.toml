@@ -8,40 +8,24 @@ authors.workspace = true
 
 [dependencies]
 num-traits.workspace = true
-chrono = { workspace = true, features = [] }
+chrono.workspace = true
 thiserror.workspace = true
-serde = { workspace = true, features = ["derive"], optional = true }
-infra_domain = { path = "../infra_domain" }
-rayon = { workspace = true, optional = true }
-nalgebra = { workspace = true, optional = true }
-nalgebra-sparse = { workspace = true, optional = true }
-rand = { workspace = true, optional = true }
-rand_distr = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+infra_domain = { path = "../infra_domain", features = ["serde"] }
+rayon.workspace = true
+nalgebra.workspace = true
+nalgebra-sparse.workspace = true
+levenberg-marquardt.workspace = true
+argmin.workspace = true
+argmin-math.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+strum.workspace = true
 
 [dev-dependencies]
 approx.workspace = true
 proptest.workspace = true
 serde_json = "1.0"
-
-[features]
-default = ["serde", "equity", "parallel", "rng"]
-enzyme-mode = []                   # Production mode (Enzyme AD)
-serde = ["dep:serde", "chrono/serde", "infra_domain/serde"]  # Serialisation support
-parallel = ["dep:rayon"]           # Parallel bootstrapping support
-rng = ["dep:rand", "dep:rand_distr"]  # Random number generation (PRNG, QMC placeholders)
-linalg = ["dep:nalgebra", "rng"]  # Linear algebra support
-sparse = ["linalg", "dep:nalgebra-sparse"]  # Sparse matrix support (CSR/CSC, SparseLU)
-
-# Asset class features (trades/instruments)
-equity = []      # Equity derivatives (VanillaOption, Forward) - default
-rates = []       # Interest rate derivatives (IRS, Swaption, Cap/Floor)
-credit = []      # Credit derivatives (CDS)
-fx = []          # FX derivatives (FxOption, FxForward)
-commodity = []   # Commodity derivatives
-exotic = ["equity"]  # Exotic products (typically extend equity)
-
-# Convenience feature for all asset classes
-all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 
 [lints]
 workspace = true

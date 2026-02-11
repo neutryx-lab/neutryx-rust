@@ -751,7 +751,7 @@ impl RiskEngine {
 
 /// Result of Greeks calculation under a specific scenario.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ScenarioGreeksResult {
     /// Name of the scenario applied.
     pub scenario_name: String,
@@ -772,7 +772,7 @@ impl ScenarioGreeksResult {
 
 /// Result of portfolio Greeks calculation under a specific scenario.
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct ScenarioPortfolioResult {
     /// Name of the scenario applied.
     pub scenario_name: String,

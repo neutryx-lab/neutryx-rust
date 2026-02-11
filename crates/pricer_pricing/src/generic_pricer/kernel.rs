@@ -7,46 +7,29 @@
 //! - Business day adjustments
 //! - Year fraction calculations
 
-#[cfg(feature = "l1l2-integration")]
 use infra_domain::time::Date;
-
-#[cfg(not(feature = "l1l2-integration"))]
-use super::result::Date;
 
 // Helper functions for Date operations that work with both infra_domain::Date
 // and local Date
 
 /// Returns the number of days between two dates.
-#[cfg(feature = "l1l2-integration")]
 fn days_between(start: Date, end: Date) -> i32 {
     (end.into_inner() - start.into_inner()).num_days() as i32
 }
 
-#[cfg(not(feature = "l1l2-integration"))]
-fn days_between(start: Date, end: Date) -> i32 { end.0 - start.0 }
-
 /// Returns a date value suitable for date_to_ymd conversion.
-#[cfg(feature = "l1l2-integration")]
 fn date_to_days(date: Date) -> i32 {
     // Calculate days since 2000-01-01 for compatibility
     let epoch = chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap();
     (date.into_inner() - epoch).num_days() as i32
 }
 
-#[cfg(not(feature = "l1l2-integration"))]
-fn date_to_days(date: Date) -> i32 { date.0 }
-
 /// Adds days to a date.
-#[cfg(feature = "l1l2-integration")]
 fn add_days_to_date(date: Date, days: i32) -> Date {
     let new_naive = date.into_inner() + chrono::Duration::days(i64::from(days));
     Date::from_ymd(new_naive.year(), new_naive.month(), new_naive.day()).expect("valid date")
 }
 
-#[cfg(not(feature = "l1l2-integration"))]
-fn add_days_to_date(date: Date, days: i32) -> Date { Date::from_days(date.days() + days) }
-
-#[cfg(feature = "l1l2-integration")]
 use chrono::Datelike;
 
 /// Day count convention for year fraction calculations.
@@ -369,16 +352,9 @@ mod tests {
     fn test_day_count_actual365() {
         let dc = DayCountConvention::Actual365Fixed;
         // Use non-leap year (2023) for exactly 365 days with proper calendar
-        #[cfg(feature = "l1l2-integration")]
         let (start, end) = (
             Date::from_ymd(2023, 1, 1).unwrap(),
             Date::from_ymd(2024, 1, 1).unwrap(),
-        );
-        // SimpleDate uses simplified calculation (30 days/month, 365 days/year)
-        #[cfg(not(feature = "l1l2-integration"))]
-        let (start, end) = (
-            Date::from_ymd(2024, 1, 1).unwrap(),
-            Date::from_ymd(2025, 1, 1).unwrap(),
         );
         let yf = dc.year_fraction(start, end);
         assert!((yf - 1.0).abs() < 1e-10);
@@ -388,16 +364,9 @@ mod tests {
     fn test_day_count_actual360() {
         let dc = DayCountConvention::Actual360;
         // Use dates exactly 360 days apart for proper calendar
-        #[cfg(feature = "l1l2-integration")]
         let (start, end) = (
             Date::from_ymd(2023, 1, 1).unwrap(),
             Date::from_ymd(2023, 12, 27).unwrap(), // 360 days in non-leap year
-        );
-        // SimpleDate: 30 days/month means 2024-12-31 is 360 days from 2024-01-01
-        #[cfg(not(feature = "l1l2-integration"))]
-        let (start, end) = (
-            Date::from_ymd(2024, 1, 1).unwrap(),
-            Date::from_ymd(2024, 12, 31).unwrap(),
         );
         let yf = dc.year_fraction(start, end);
         assert!((yf - 1.0).abs() < 1e-10);

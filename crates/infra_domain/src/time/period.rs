@@ -35,28 +35,21 @@ use super::{day_counters::DayCounter, types::Date};
 /// let unit = TimeUnit::Months;
 /// assert_eq!(format!("{}", unit), "M");
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TimeUnit {
     /// Days
+    #[strum(serialize = "D")]
     Days,
     /// Weeks (7 days)
+    #[strum(serialize = "W")]
     Weeks,
     /// Months
+    #[strum(serialize = "M")]
     Months,
     /// Years (12 months)
+    #[strum(serialize = "Y")]
     Years,
-}
-
-impl fmt::Display for TimeUnit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TimeUnit::Days => write!(f, "D"),
-            TimeUnit::Weeks => write!(f, "W"),
-            TimeUnit::Months => write!(f, "M"),
-            TimeUnit::Years => write!(f, "Y"),
-        }
-    }
 }
 
 /// A generic time period.
@@ -261,59 +254,80 @@ pub enum EndOfMonthRule {
 /// assert_eq!(tenor.to_months(), 3);
 /// ```
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash,
+    strum::Display, strum::AsRefStr, strum::EnumString,
+)]
+#[strum(ascii_case_insensitive)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Tenor {
     /// Overnight (O/N)
     #[cfg_attr(feature = "serde", serde(rename = "O/N"))]
+    #[strum(serialize = "ON", serialize = "O/N", serialize = "OVERNIGHT")]
     Overnight,
     /// One week (1W)
     #[cfg_attr(feature = "serde", serde(rename = "1W"))]
+    #[strum(serialize = "1W")]
     OneWeek,
     /// Two weeks (2W)
     #[cfg_attr(feature = "serde", serde(rename = "2W"))]
+    #[strum(serialize = "2W")]
     TwoWeeks,
     /// One month (1M)
     #[cfg_attr(feature = "serde", serde(rename = "1M"))]
+    #[strum(serialize = "1M")]
     OneMonth,
     /// Two months (2M)
     #[cfg_attr(feature = "serde", serde(rename = "2M"))]
+    #[strum(serialize = "2M")]
     TwoMonths,
     /// Three months (3M)
     #[cfg_attr(feature = "serde", serde(rename = "3M"))]
+    #[strum(serialize = "3M")]
     ThreeMonths,
     /// Six months (6M)
     #[cfg_attr(feature = "serde", serde(rename = "6M"))]
+    #[strum(serialize = "6M")]
     SixMonths,
     /// Nine months (9M)
     #[cfg_attr(feature = "serde", serde(rename = "9M"))]
+    #[strum(serialize = "9M")]
     NineMonths,
     /// One year (1Y)
     #[cfg_attr(feature = "serde", serde(rename = "1Y"))]
+    #[strum(serialize = "1Y", serialize = "12M")]
     OneYear,
     /// Two years (2Y)
     #[cfg_attr(feature = "serde", serde(rename = "2Y"))]
+    #[strum(serialize = "2Y", serialize = "24M")]
     TwoYears,
     /// Three years (3Y)
     #[cfg_attr(feature = "serde", serde(rename = "3Y"))]
+    #[strum(serialize = "3Y", serialize = "36M")]
     ThreeYears,
     /// Five years (5Y)
     #[cfg_attr(feature = "serde", serde(rename = "5Y"))]
+    #[strum(serialize = "5Y", serialize = "60M")]
     FiveYears,
     /// Seven years (7Y)
     #[cfg_attr(feature = "serde", serde(rename = "7Y"))]
+    #[strum(serialize = "7Y", serialize = "84M")]
     SevenYears,
     /// Ten years (10Y)
     #[cfg_attr(feature = "serde", serde(rename = "10Y"))]
+    #[strum(serialize = "10Y", serialize = "120M")]
     TenYears,
     /// Fifteen years (15Y)
     #[cfg_attr(feature = "serde", serde(rename = "15Y"))]
+    #[strum(serialize = "15Y", serialize = "180M")]
     FifteenYears,
     /// Twenty years (20Y)
     #[cfg_attr(feature = "serde", serde(rename = "20Y"))]
+    #[strum(serialize = "20Y", serialize = "240M")]
     TwentyYears,
     /// Thirty years (30Y)
     #[cfg_attr(feature = "serde", serde(rename = "30Y"))]
+    #[strum(serialize = "30Y", serialize = "360M")]
     ThirtyYears,
 }
 
@@ -398,27 +412,7 @@ impl Tenor {
     /// assert_eq!(Tenor::OneYear.code(), "1Y");
     /// ```
     #[must_use]
-    pub fn code(&self) -> &'static str {
-        match self {
-            Tenor::Overnight => "ON",
-            Tenor::OneWeek => "1W",
-            Tenor::TwoWeeks => "2W",
-            Tenor::OneMonth => "1M",
-            Tenor::TwoMonths => "2M",
-            Tenor::ThreeMonths => "3M",
-            Tenor::SixMonths => "6M",
-            Tenor::NineMonths => "9M",
-            Tenor::OneYear => "1Y",
-            Tenor::TwoYears => "2Y",
-            Tenor::ThreeYears => "3Y",
-            Tenor::FiveYears => "5Y",
-            Tenor::SevenYears => "7Y",
-            Tenor::TenYears => "10Y",
-            Tenor::FifteenYears => "15Y",
-            Tenor::TwentyYears => "20Y",
-            Tenor::ThirtyYears => "30Y",
-        }
-    }
+    pub fn code(&self) -> &str { self.as_ref() }
 
     /// Returns the number of months for this tenor.
     ///
@@ -655,43 +649,6 @@ fn end_of_month(date: NaiveDate) -> NaiveDate {
     }
 }
 
-impl FromStr for Tenor {
-    type Err = String;
-
-    /// Parses a tenor from string (case-insensitive).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::time::Tenor;
-    ///
-    /// assert_eq!("3M".parse::<Tenor>().unwrap(), Tenor::ThreeMonths);
-    /// assert_eq!("1Y".parse::<Tenor>().unwrap(), Tenor::OneYear);
-    /// assert_eq!("ON".parse::<Tenor>().unwrap(), Tenor::Overnight);
-    /// ```
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_uppercase().as_str() {
-            "ON" | "O/N" | "OVERNIGHT" => Ok(Tenor::Overnight),
-            "1W" => Ok(Tenor::OneWeek),
-            "2W" => Ok(Tenor::TwoWeeks),
-            "1M" => Ok(Tenor::OneMonth),
-            "2M" => Ok(Tenor::TwoMonths),
-            "3M" => Ok(Tenor::ThreeMonths),
-            "6M" => Ok(Tenor::SixMonths),
-            "9M" => Ok(Tenor::NineMonths),
-            "1Y" | "12M" => Ok(Tenor::OneYear),
-            "2Y" | "24M" => Ok(Tenor::TwoYears),
-            "3Y" | "36M" => Ok(Tenor::ThreeYears),
-            "5Y" | "60M" => Ok(Tenor::FiveYears),
-            "7Y" | "84M" => Ok(Tenor::SevenYears),
-            "10Y" | "120M" => Ok(Tenor::TenYears),
-            "15Y" | "180M" => Ok(Tenor::FifteenYears),
-            "20Y" | "240M" => Ok(Tenor::TwentyYears),
-            "30Y" | "360M" => Ok(Tenor::ThirtyYears),
-            _ => Err(format!("Unknown tenor: {}", s)),
-        }
-    }
-}
 
 /// Parses any tenor string to years.
 ///
@@ -886,10 +843,6 @@ pub fn parse_expiry_to_date(expiry_str: &str, as_of_date: Date) -> Result<Date, 
         .checked_add_signed(chrono::Duration::days(days))
         .map(Date::from)
         .ok_or_else(|| format!("Date overflow for expiry: {}", expiry_str))
-}
-
-impl fmt::Display for Tenor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.code()) }
 }
 
 /// A single accrual period for fixed income instruments.

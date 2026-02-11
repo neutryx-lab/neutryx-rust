@@ -24,7 +24,7 @@ use super::error::XvaError;
 /// let params = FundingParams::from_bps(60.0, 40.0);
 /// ```
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct FundingParams {
     /// Funding spread for borrowing (positive exposure).
     /// Expressed as annualised decimal (e.g., 0.005 = 50bp).
@@ -111,7 +111,7 @@ impl Default for FundingParams {
 /// let surv = params.survival_prob(1.0);
 /// ```
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct OwnCreditParams {
     /// Own hazard rate (annualised intensity).
     hazard_rate: f64,

@@ -5,7 +5,6 @@
 //! - [`PricerConfig`]: Pricer settings including Greeks mode and default
 //!   currency
 
-#[cfg(feature = "l1l2-integration")]
 use infra_domain::market::Currency;
 
 use super::error::ConfigError;
@@ -310,7 +309,7 @@ impl ModelConfigBuilder {
 ///
 /// This type is always exported regardless of l1l2-integration feature.
 /// Use this for standalone pricing without full market data integration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr)]
 pub enum DefaultCurrency {
     /// US Dollar
     #[default]
@@ -341,21 +340,7 @@ impl DefaultCurrency {
     }
 
     /// Returns the ISO 4217 currency code.
-    pub fn code(&self) -> &'static str {
-        match self {
-            Self::USD => "USD",
-            Self::EUR => "EUR",
-            Self::GBP => "GBP",
-            Self::JPY => "JPY",
-            Self::CHF => "CHF",
-        }
-    }
-}
-
-impl std::fmt::Display for DefaultCurrency {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.code())
-    }
+    pub fn code(&self) -> &str { self.as_ref() }
 }
 
 /// Pricer configuration for Generic Pricer.
@@ -387,12 +372,7 @@ pub struct PricerConfig {
     pub greeks_config: GreeksConfig,
 
     /// Default reporting currency.
-    #[cfg(feature = "l1l2-integration")]
     pub default_currency: Currency,
-
-    /// Default reporting currency (without l1l2-integration).
-    #[cfg(not(feature = "l1l2-integration"))]
-    pub default_currency: DefaultCurrency,
 
     /// Whether to use thread-local buffer pool for batch processing.
     pub use_thread_local_buffers: bool,
@@ -402,10 +382,7 @@ impl Default for PricerConfig {
     fn default() -> Self {
         Self {
             greeks_config: GreeksConfig::default(),
-            #[cfg(feature = "l1l2-integration")]
             default_currency: Currency::USD,
-            #[cfg(not(feature = "l1l2-integration"))]
-            default_currency: DefaultCurrency::USD,
             use_thread_local_buffers: true,
         }
     }
@@ -432,10 +409,7 @@ impl PricerConfig {
 #[derive(Debug, Default)]
 pub struct PricerConfigBuilder {
     greeks_config: Option<GreeksConfig>,
-    #[cfg(feature = "l1l2-integration")]
     default_currency: Option<Currency>,
-    #[cfg(not(feature = "l1l2-integration"))]
-    default_currency: Option<DefaultCurrency>,
     use_thread_local_buffers: Option<bool>,
 }
 
@@ -455,15 +429,7 @@ impl PricerConfigBuilder {
     }
 
     /// Sets the default reporting currency.
-    #[cfg(feature = "l1l2-integration")]
     pub fn default_currency(mut self, currency: Currency) -> Self {
-        self.default_currency = Some(currency);
-        self
-    }
-
-    /// Sets the default reporting currency (without l1l2-integration).
-    #[cfg(not(feature = "l1l2-integration"))]
-    pub fn default_currency(mut self, currency: DefaultCurrency) -> Self {
         self.default_currency = Some(currency);
         self
     }
@@ -482,10 +448,7 @@ impl PricerConfigBuilder {
     pub fn build(self) -> Result<PricerConfig, ConfigError> {
         let config = PricerConfig {
             greeks_config: self.greeks_config.unwrap_or_default(),
-            #[cfg(feature = "l1l2-integration")]
             default_currency: self.default_currency.unwrap_or(Currency::USD),
-            #[cfg(not(feature = "l1l2-integration"))]
-            default_currency: self.default_currency.unwrap_or(DefaultCurrency::USD),
             use_thread_local_buffers: self.use_thread_local_buffers.unwrap_or(true),
         };
         config.validate()?;

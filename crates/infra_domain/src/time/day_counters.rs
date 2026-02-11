@@ -15,7 +15,7 @@
 //! assert!((yf - 0.4986).abs() < 0.001);
 //! ```
 
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 use chrono::{Datelike, NaiveDate};
 
@@ -40,13 +40,17 @@ use super::types::Date;
 /// - `Thirty360European`: 30/360 European
 /// - `ThirtyE360Isda`: 30E/360 ISDA
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
+    strum::Display, strum::AsRefStr,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DayCounter {
     /// Actual/360
     ///
     /// Used in money market instruments, US Treasury bills,
     /// and LIBOR-based instruments.
+    #[strum(serialize = "ACT/360")]
     Actual360,
 
     /// Actual/365 Fixed
@@ -54,33 +58,39 @@ pub enum DayCounter {
     /// Used in most derivatives markets, UK gilts,
     /// and Japanese government bonds.
     #[default]
+    #[strum(serialize = "ACT/365")]
     Actual365Fixed,
 
     /// Actual/365.25
     ///
     /// Uses 365.25 as the denominator to account for leap years.
+    #[strum(serialize = "ACT/365.25")]
     Actual36525,
 
     /// Actual/Actual (ISDA)
     ///
     /// ISDA standard actual/actual convention.
+    #[strum(serialize = "ACT/ACT ISDA")]
     ActualActualIsda,
 
     /// 30/360 (Bond Basis)
     ///
     /// US corporate and agency bonds convention.
     /// Each month is treated as having 30 days.
+    #[strum(serialize = "30/360")]
     Thirty360Bond,
 
     /// 30/360 (European)
     ///
     /// European convention where both start and end days
     /// are capped at 30.
+    #[strum(serialize = "30E/360")]
     Thirty360European,
 
     /// 30E/360 (ISDA)
     ///
     /// ISDA variant of 30/360.
+    #[strum(serialize = "30E/360 ISDA")]
     ThirtyE360Isda,
 }
 
@@ -97,17 +107,7 @@ impl DayCounter {
     /// assert_eq!(DayCounter::Thirty360Bond.name(), "30/360");
     /// ```
     #[must_use]
-    pub fn name(&self) -> &'static str {
-        match self {
-            DayCounter::Actual360 => "ACT/360",
-            DayCounter::Actual365Fixed => "ACT/365",
-            DayCounter::Actual36525 => "ACT/365.25",
-            DayCounter::ActualActualIsda => "ACT/ACT ISDA",
-            DayCounter::Thirty360Bond => "30/360",
-            DayCounter::Thirty360European => "30E/360",
-            DayCounter::ThirtyE360Isda => "30E/360 ISDA",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 
     /// Returns the year fraction for a given number of calendar days.
     ///
@@ -236,10 +236,6 @@ impl FromStr for DayCounter {
             _ => Err(format!("Unknown day count convention: {}", s)),
         }
     }
-}
-
-impl fmt::Display for DayCounter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 #[cfg(test)]

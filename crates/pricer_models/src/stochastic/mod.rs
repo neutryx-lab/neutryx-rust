@@ -38,33 +38,23 @@ pub mod validation;
 
 // === Individual Models ===
 
-#[cfg(feature = "equity")]
 pub mod gbm;
 
-#[cfg(feature = "equity")]
 pub mod heston;
 
-#[cfg(feature = "rates")]
 pub mod hull_white;
 
-#[cfg(feature = "rates")]
 pub mod cir;
 
-#[cfg(feature = "exotic")]
 pub mod correlated;
 
 // === Re-exports ===
 
-#[cfg(feature = "rates")]
 pub use cir::{CIRModel, CIRParams};
-#[cfg(feature = "exotic")]
 pub use correlated::{CholeskyFactor, CorrelatedModels, CorrelationError, CorrelationMatrix};
 pub use error::ModelError;
-#[cfg(feature = "equity")]
 pub use gbm::{GBMModel, GBMParams};
-#[cfg(feature = "equity")]
 pub use heston::{HestonError, HestonModel, HestonParams};
-#[cfg(feature = "rates")]
 pub use hull_white::{HullWhiteModel, HullWhiteParams, ThetaFunction};
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
 pub use stochastic::{

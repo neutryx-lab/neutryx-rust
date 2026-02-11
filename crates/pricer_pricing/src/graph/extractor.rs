@@ -17,8 +17,14 @@
 //! with shared node deduplication and optimisation.
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
     time::Instant,
+};
+
+use petgraph::{
+    algo::{is_cyclic_directed, toposort},
+    graph::{DiGraph, NodeIndex},
+    visit::EdgeRef,
 };
 
 use super::{
@@ -48,14 +54,17 @@ pub trait GraphExtractable {
 // =============================================================================
 
 /// Pre-allocated buffer builder for graph construction.
+///
+/// Internally backed by a `petgraph::graph::DiGraph` for efficient
+/// topological sort, cycle detection, and depth calculation.
 #[derive(Debug)]
 pub struct GraphBuilder {
-    /// Pre-allocated node buffer
-    nodes: Vec<GraphNode>,
-    /// Pre-allocated edge buffer
+    /// Directed graph storing domain `GraphNode` payloads
+    digraph: DiGraph<GraphNode, ()>,
+    /// Domain edge records (kept for serialisation into `ComputationGraph`)
     edges: Vec<GraphEdge>,
-    /// Node ID to index mapping for fast lookup
-    node_index: HashMap<String, usize>,
+    /// Node ID (String) to petgraph `NodeIndex` mapping for fast lookup
+    node_index: HashMap<String, NodeIndex>,
 }
 
 impl GraphBuilder {
@@ -65,29 +74,37 @@ impl GraphBuilder {
     /// Create a new GraphBuilder with specified capacity.
     pub fn with_capacity(node_capacity: usize, edge_capacity: usize) -> Self {
         Self {
-            nodes: Vec::with_capacity(node_capacity),
+            digraph: DiGraph::with_capacity(node_capacity, edge_capacity),
             edges: Vec::with_capacity(edge_capacity),
             node_index: HashMap::with_capacity(node_capacity),
         }
     }
 
-    /// Add a node to the graph, returning its index.
+    /// Add a node to the graph, returning its index (ordinal position).
     pub fn add_node(&mut self, node: GraphNode) -> usize {
-        let index = self.nodes.len();
-        self.node_index.insert(node.id.clone(), index);
-        self.nodes.push(node);
-        index
+        let id = node.id.clone();
+        let nx = self.digraph.add_node(node);
+        self.node_index.insert(id, nx);
+        nx.index()
     }
 
     /// Add an edge to the graph.
-    pub fn add_edge(&mut self, edge: GraphEdge) { self.edges.push(edge); }
+    pub fn add_edge(&mut self, edge: GraphEdge) {
+        // Also add the edge to the petgraph DiGraph when both endpoints exist
+        if let (Some(&src), Some(&tgt)) =
+            (self.node_index.get(&edge.source), self.node_index.get(&edge.target))
+        {
+            self.digraph.add_edge(src, tgt, ());
+        }
+        self.edges.push(edge);
+    }
 
     /// Check if a node exists by ID.
     pub fn has_node(&self, id: &str) -> bool { self.node_index.contains_key(id) }
 
     /// Get a node by ID.
     pub fn get_node(&self, id: &str) -> Option<&GraphNode> {
-        self.node_index.get(id).map(|&idx| &self.nodes[idx])
+        self.node_index.get(id).map(|&nx| &self.digraph[nx])
     }
 
     /// Get a mutable reference to a node by ID.
@@ -95,11 +112,11 @@ impl GraphBuilder {
         self.node_index
             .get(id)
             .copied()
-            .map(|idx| &mut self.nodes[idx])
+            .map(|nx| &mut self.digraph[nx])
     }
 
     /// Get the number of nodes.
-    pub fn node_count(&self) -> usize { self.nodes.len() }
+    pub fn node_count(&self) -> usize { self.digraph.node_count() }
 
     /// Get the number of edges.
     pub fn edge_count(&self) -> usize { self.edges.len() }
@@ -126,68 +143,47 @@ impl GraphBuilder {
     /// This clears all nodes and edges but retains the allocated capacity,
     /// allowing the builder to be reused efficiently.
     pub fn clear(&mut self) {
-        self.nodes.clear();
+        self.digraph.clear();
         self.edges.clear();
         self.node_index.clear();
     }
 
     /// Calculate the graph depth (longest path from any input to any output).
     ///
-    /// Uses topological sort and dynamic programming for O(V + E) complexity.
+    /// Uses `petgraph::algo::toposort` followed by dynamic programming
+    /// for O(V + E) complexity.
     pub fn calculate_depth(&self) -> usize {
-        if self.nodes.is_empty() {
+        if self.digraph.node_count() == 0 {
             return 0;
         }
 
-        // Build adjacency list and in-degree
-        let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::with_capacity(self.nodes.len());
-        let mut in_degree: HashMap<&str, usize> = HashMap::with_capacity(self.nodes.len());
+        // Obtain topological ordering via petgraph
+        let sorted = match toposort(&self.digraph, None) {
+            Ok(order) => order,
+            Err(_) => return 0, // Graph has cycles; depth is undefined
+        };
 
-        for node in &self.nodes {
-            adjacency.entry(node.id.as_str()).or_default();
-            in_degree.entry(node.id.as_str()).or_insert(0);
-        }
+        // Compute longest path via DP over topological order
+        let mut distance: HashMap<NodeIndex, usize> =
+            HashMap::with_capacity(self.digraph.node_count());
 
-        for edge in &self.edges {
-            adjacency
-                .entry(edge.source.as_str())
-                .or_default()
-                .push(edge.target.as_str());
-            *in_degree.entry(edge.target.as_str()).or_insert(0) += 1;
-        }
-
-        // Topological sort with distance tracking
-        let mut queue: VecDeque<&str> = VecDeque::with_capacity(self.nodes.len());
-        let mut distance: HashMap<&str, usize> = HashMap::with_capacity(self.nodes.len());
-
-        for (node, &degree) in &in_degree {
-            if degree == 0 {
-                queue.push_back(*node);
-                distance.insert(*node, 0);
-            }
+        for &nx in &sorted {
+            distance.entry(nx).or_insert(0);
         }
 
         let mut max_depth: usize = 0;
 
-        while let Some(current) = queue.pop_front() {
-            let current_dist = *distance.get(current).unwrap_or(&0);
-            max_depth = max_depth.max(current_dist);
-
-            if let Some(neighbours) = adjacency.get(current) {
-                for &neighbour in neighbours {
-                    let new_dist = current_dist + 1;
-                    let old_dist = distance.entry(neighbour).or_insert(0);
-                    if new_dist > *old_dist {
-                        *old_dist = new_dist;
-                    }
-
-                    let degree = in_degree.get_mut(neighbour).unwrap();
-                    *degree -= 1;
-                    if *degree == 0 {
-                        queue.push_back(neighbour);
-                    }
+        for &nx in &sorted {
+            let current_dist = distance[&nx];
+            for edge_ref in self.digraph.edges(nx) {
+                let target = edge_ref.target();
+                let new_dist = current_dist + 1;
+                let entry = distance.entry(target).or_insert(0);
+                if new_dist > *entry {
+                    *entry = new_dist;
                 }
             }
+            max_depth = max_depth.max(current_dist);
         }
 
         // Depth is max_depth + 1 (counting nodes, not edges)
@@ -195,62 +191,18 @@ impl GraphBuilder {
     }
 
     /// Validate that the graph is a DAG (no cycles).
+    ///
+    /// Delegates to `petgraph::algo::is_cyclic_directed`.
     pub fn is_dag(&self) -> bool {
-        if self.nodes.is_empty() {
+        if self.digraph.node_count() == 0 {
             return true;
         }
-
-        // Build in-degree map
-        let mut in_degree: HashMap<&str, usize> = HashMap::with_capacity(self.nodes.len());
-
-        for node in &self.nodes {
-            in_degree.entry(node.id.as_str()).or_insert(0);
-        }
-
-        for edge in &self.edges {
-            *in_degree.entry(edge.target.as_str()).or_insert(0) += 1;
-        }
-
-        // Build adjacency list
-        let mut adjacency: HashMap<&str, Vec<&str>> = HashMap::with_capacity(self.nodes.len());
-        for edge in &self.edges {
-            adjacency
-                .entry(edge.source.as_str())
-                .or_default()
-                .push(edge.target.as_str());
-        }
-
-        // Kahn's algorithm for topological sort
-        let mut queue: VecDeque<&str> = VecDeque::new();
-        let mut processed_count = 0;
-
-        for (node, &degree) in &in_degree {
-            if degree == 0 {
-                queue.push_back(*node);
-            }
-        }
-
-        while let Some(current) = queue.pop_front() {
-            processed_count += 1;
-
-            if let Some(neighbours) = adjacency.get(current) {
-                for &neighbour in neighbours {
-                    let degree = in_degree.get_mut(neighbour).unwrap();
-                    *degree -= 1;
-                    if *degree == 0 {
-                        queue.push_back(neighbour);
-                    }
-                }
-            }
-        }
-
-        // If all nodes were processed, graph is a DAG
-        processed_count == self.nodes.len()
+        !is_cyclic_directed(&self.digraph)
     }
 
-    /// Build the final ComputationGraph with calculated metadata.
+    /// Build the final `ComputationGraph` with calculated metadata.
     pub fn build(self, trade_id: Option<String>) -> ComputationGraph {
-        let node_count = self.nodes.len();
+        let node_count = self.digraph.node_count();
         let edge_count = self.edges.len();
         let depth = self.calculate_depth();
         let generated_at = Self::current_timestamp();
@@ -263,16 +215,24 @@ impl GraphBuilder {
             generated_at,
         };
 
+        // Collect nodes from the petgraph storage
+        let nodes: Vec<GraphNode> = self
+            .digraph
+            .raw_nodes()
+            .iter()
+            .map(|n| n.weight.clone())
+            .collect();
+
         ComputationGraph {
-            nodes: self.nodes,
+            nodes,
             edges: self.edges,
             metadata,
         }
     }
 
-    /// Build the final ComputationGraph with a pre-calculated depth.
+    /// Build the final `ComputationGraph` with a pre-calculated depth.
     pub fn build_with_depth(self, trade_id: Option<String>, depth: usize) -> ComputationGraph {
-        let node_count = self.nodes.len();
+        let node_count = self.digraph.node_count();
         let edge_count = self.edges.len();
         let generated_at = Self::current_timestamp();
 
@@ -284,8 +244,15 @@ impl GraphBuilder {
             generated_at,
         };
 
+        let nodes: Vec<GraphNode> = self
+            .digraph
+            .raw_nodes()
+            .iter()
+            .map(|n| n.weight.clone())
+            .collect();
+
         ComputationGraph {
-            nodes: self.nodes,
+            nodes,
             edges: self.edges,
             metadata,
         }

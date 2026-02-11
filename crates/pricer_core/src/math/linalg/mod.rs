@@ -31,15 +31,12 @@
 pub use nalgebra::{Cholesky, DMatrix, DVector, RealField, LU, QR, SVD};
 
 mod error;
-#[cfg(feature = "sparse")]
 pub mod sparse;
-#[cfg(feature = "sparse")]
 mod sparse_strategy;
 mod strategy;
 mod wrappers;
 
 pub use error::LinearAlgebraError;
-#[cfg(feature = "sparse")]
 pub use sparse_strategy::SparseLUStrategy;
 pub use strategy::{
     forward_substitution, lower_triangular_inverse, LUStrategy, LinearSolveStrategy,

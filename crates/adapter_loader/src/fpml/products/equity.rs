@@ -6,7 +6,6 @@
 //! - Equity Swap (returnSwap)
 
 use infra_domain::{
-    market::Currency,
     time::Date,
     trade::{
         Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, OptionType, Payoff,
@@ -15,9 +14,27 @@ use infra_domain::{
 };
 
 use crate::fpml::{
-    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    common::{
+        parse_currency, parse_date, parse_trade_header, xml_date, xml_decimal, xml_decimal_or,
+        xml_text, XmlNavigator,
+    },
     error::FpmlError,
 };
+
+/// Build trade metadata from header.
+fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(ref cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp.clone());
+    }
+    if let Some(ref book) = header.book {
+        metadata = metadata.with_book(book.clone());
+    }
+    metadata
+}
 
 /// Parse an equity option from FpML.
 pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
@@ -34,9 +51,7 @@ pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
     let opt_nav = XmlNavigator::new(&option_section);
 
     // Parse option type
-    let option_type_str = opt_nav
-        .find_text("optionType")
-        .unwrap_or_else(|| "Call".to_string());
+    let option_type_str = xml_text!(opt_nav, "optionType", "Call");
     let option_type = if option_type_str.to_lowercase().contains("put") {
         OptionType::Put
     } else {
@@ -50,33 +65,16 @@ pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
         .unwrap_or_else(|| "UNKNOWN".to_string());
 
     // Parse strike
-    let strike = opt_nav
-        .find_text("strikePrice")
-        .map(|s| parse_decimal(&s))
-        .transpose()?
-        .unwrap_or(0.0);
+    let strike = xml_decimal!(opt_nav, "strikePrice", 0.0);
 
     // Parse notional/contract size
-    let notional = opt_nav
-        .find_text("amount")
-        .or_else(|| opt_nav.find_text("numberOfOptions"))
-        .map(|n| parse_decimal(&n))
-        .transpose()?
-        .unwrap_or(0.0);
+    let notional = xml_decimal_or!(opt_nav, "amount", "numberOfOptions"; 0.0);
 
     // Parse number of shares per contract
-    let contract_multiplier = opt_nav
-        .find_text("optionEntitlement")
-        .or_else(|| opt_nav.find_text("openUnits"))
-        .map(|n| parse_decimal(&n))
-        .transpose()?
-        .unwrap_or(1.0);
+    let contract_multiplier = xml_decimal_or!(opt_nav, "optionEntitlement", "openUnits"; 1.0);
 
     // Parse currency
-    let currency_str = opt_nav
-        .find_text("currency")
-        .unwrap_or_else(|| "USD".to_string());
-    let currency = parse_currency(&currency_str);
+    let currency = parse_currency(&xml_text!(opt_nav, "currency", "USD"));
 
     // Parse exercise type
     let exercise_type = if opt_nav.extract_section("equityEuropeanExercise").is_some() {
@@ -99,9 +97,7 @@ pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
         .unwrap_or_else(|| Date::from_ymd(2025, 1, 1).unwrap());
 
     // Parse settlement type
-    let settlement_type_str = opt_nav
-        .find_text("settlementType")
-        .unwrap_or_else(|| "Cash".to_string());
+    let settlement_type_str = xml_text!(opt_nav, "settlementType", "Cash");
     let settlement_type = if settlement_type_str.to_lowercase().contains("physical") {
         SettlementType::Physical
     } else {
@@ -132,16 +128,7 @@ pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
         contract_multiplier,
     };
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -149,18 +136,6 @@ pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
         .trade_type(trade_type)
         .metadata(metadata)
         .build())
-}
-
-/// Parse currency string to Currency enum.
-fn parse_currency(s: &str) -> Currency {
-    match s.to_uppercase().as_str() {
-        "USD" => Currency::USD,
-        "EUR" => Currency::EUR,
-        "GBP" => Currency::GBP,
-        "JPY" => Currency::JPY,
-        "CHF" => Currency::CHF,
-        _ => Currency::USD,
-    }
 }
 
 #[cfg(test)]

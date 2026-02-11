@@ -440,7 +440,6 @@ mod tests {
         assert!(!data.nodes.is_empty());
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_d3_json_compatibility() {
         let cube = create_test_cube();

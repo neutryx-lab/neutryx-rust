@@ -12,7 +12,6 @@
 
 use pricer_core::traits::risk::ShiftType;
 use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
-#[cfg(feature = "serde")]
 use serde::Serialize;
 
 /// Error types for curve shift operations.
@@ -33,7 +32,7 @@ pub enum CurveShiftError {
 
 /// Specification for a curve shift operation.
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub struct CurveShiftSpec {
     /// Name of the curve to shift.
     pub curve_name: String,
@@ -47,7 +46,7 @@ pub struct CurveShiftSpec {
 
 /// Types of curve shifts.
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[derive(Serialize)]
 pub enum CurveShiftType {
     /// Uniform shift across all tenors.
     ///

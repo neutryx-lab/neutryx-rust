@@ -123,7 +123,7 @@ where
         config: CalibrationProblemConfig<T>,
     ) -> Result<Self, CalibrationError> {
         if instruments.is_empty() {
-            return Err(CalibrationError::no_instruments());
+            return Err(CalibrationError::NoInstruments);
         }
 
         let pillars = extract_sorted_pillars(&instruments);
@@ -146,7 +146,7 @@ where
         config: CalibrationProblemConfig<T>,
     ) -> Result<Self, CalibrationError> {
         if instruments.is_empty() {
-            return Err(CalibrationError::no_instruments());
+            return Err(CalibrationError::NoInstruments);
         }
 
         let pillars = extract_sorted_pillars(&instruments);
@@ -218,7 +218,7 @@ where
         for (idx, instrument) in self.instruments.iter().enumerate() {
             let error = instrument
                 .pricing_error(curve)
-                .map_err(|e| CalibrationError::instrument_evaluation_failed(idx, e.to_string()))?;
+                .map_err(|e| CalibrationError::InstrumentEvaluationFailed { instrument_index: idx, message: e.to_string() })?;
             residuals.push(error);
         }
 
@@ -237,7 +237,7 @@ where
 
         // Base residuals
         let curve = self.build_curve(log_df).map_err(|e| {
-            CalibrationError::numerical_instability(format!("Failed to build curve: {e}"))
+            CalibrationError::NumericalInstability { message: format!("Failed to build curve: {e}") }
         })?;
         let f0 = self.compute_residuals(&curve)?;
 
@@ -249,9 +249,9 @@ where
             log_df_pert[j] = log_df_pert[j] + eps;
 
             let curve_pert = self.build_curve(&log_df_pert).map_err(|e| {
-                CalibrationError::numerical_instability(format!(
+                CalibrationError::NumericalInstability { message: format!(
                     "Failed to build perturbed curve: {e}"
-                ))
+                ) }
             })?;
             let f_pert = self.compute_residuals(&curve_pert)?;
 
@@ -278,14 +278,14 @@ where
             let mut log_df_plus = log_df.to_vec();
             log_df_plus[j] = log_df_plus[j] + eps;
             let curve_plus = self.build_curve(&log_df_plus).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Failed to build curve+: {e}"))
+                CalibrationError::NumericalInstability { message: format!("Failed to build curve+: {e}"))
             })?;
             let f_plus = self.compute_residuals(&curve_plus)?;
 
             let mut log_df_minus = log_df.to_vec();
             log_df_minus[j] = log_df_minus[j] - eps;
             let curve_minus = self.build_curve(&log_df_minus).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Failed to build curve-: {e}"))
+                CalibrationError::NumericalInstability { message: format!("Failed to build curve-: {e}"))
             })?;
             let f_minus = self.compute_residuals(&curve_minus)?;
 
@@ -311,14 +311,14 @@ where
         // Check for NaN
         for &val in jacobian.iter() {
             if val.is_nan() {
-                return JacobianQuality::poor("NaN detected in Jacobian");
+                return JacobianQuality::Poor { reason: "NaN detected in Jacobian" };
             }
         }
 
         // Check for Inf
         for &val in jacobian.iter() {
             if val.is_infinite() {
-                return JacobianQuality::poor("Inf detected in Jacobian");
+                return JacobianQuality::Poor { reason: "Inf detected in Jacobian" };
             }
         }
 
@@ -327,12 +327,12 @@ where
             for i in 0..nrows {
                 let diag_val = jacobian[(i, i)];
                 if Float::abs(diag_val) < zero_threshold {
-                    return JacobianQuality::warning("Near-zero diagonal element detected");
+                    return JacobianQuality::Warning { reason: "Near-zero diagonal element detected" };
                 }
             }
         }
 
-        JacobianQuality::good()
+        JacobianQuality::Good
     }
 
     /// Validate Jacobian quality and return full diagnostics.
@@ -440,7 +440,7 @@ where
         let jumps = self.extract_jumps(params);
 
         let curve = self.build_curve_with_jumps(log_df, jumps).map_err(|e| {
-            CalibrationError::numerical_instability(format!("Failed to build jump curve: {e}"))
+            CalibrationError::NumericalInstability { message: format!("Failed to build jump curve: {e}"))
         })?;
 
         let mut residuals = self.compute_residuals(&curve)?;
@@ -598,13 +598,12 @@ where
         config: CalibrationProblemConfig<T>,
     ) -> Result<Self, CalibrationError> {
         if instruments.is_empty() {
-            return Err(CalibrationError::no_instruments());
+            return Err(CalibrationError::NoInstruments);
         }
 
         let pillars = extract_sorted_pillars(&instruments);
 
         // Log compilation info
-        #[cfg(feature = "tracing")]
         {
             let total_cashflows: usize = instruments.iter().map(|i| i.num_cashflows()).sum();
             tracing::info!(
@@ -640,7 +639,6 @@ where
         let compiled = compiler.compile_batch(market_instruments)?;
         let compile_duration = start_time.elapsed();
 
-        #[cfg(feature = "tracing")]
         {
             let total_cashflows: usize = compiled.iter().map(|i| i.num_cashflows()).sum();
             tracing::info!(
@@ -723,7 +721,6 @@ where
         match self.try_compute_jacobian_enzyme(log_df) {
             Ok(jacobian) => Ok(jacobian),
             Err(e) => {
-                #[cfg(feature = "tracing")]
                 tracing::warn!("Enzyme AD Jacobian failed, falling back to FD: {}", e);
                 self.compute_jacobian_finite_diff(log_df)
             }
@@ -810,7 +807,7 @@ where
             }
             _ => {
                 // Unknown instrument type - return error to trigger fallback
-                Err(CalibrationError::numerical_instability(format!(
+                Err(CalibrationError::NumericalInstability { message: format!(
                     "Unsupported instrument type for Enzyme AD: {}",
                     inst_type
                 )))
@@ -876,7 +873,6 @@ where
                 diagnostics.ad_variance = Some(variance);
 
                 if variance > variance_threshold {
-                    #[cfg(feature = "tracing")]
                     tracing::warn!(
                         variance = %variance.to_f64().unwrap_or(0.0),
                         "AD variance exceeds threshold, falling back to central diff"
@@ -888,7 +884,6 @@ where
                 }
             }
             Err(_e) => {
-                #[cfg(feature = "tracing")]
                 tracing::warn!(error = %_e, "Enzyme AD failed, falling back to central diff");
                 diagnostics.ad_fallback_used = true;
                 Ok((self.compute_jacobian_central_diff(log_df)?, diagnostics))

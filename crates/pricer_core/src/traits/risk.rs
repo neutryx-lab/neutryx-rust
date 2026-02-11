@@ -46,13 +46,14 @@ use super::Float;
 /// # Requirements
 ///
 /// - Requirements: 10.1
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum RiskFactorType {
     /// Interest rate curve factors (OIS, SOFR, swap curves, etc.)
     InterestRate,
     /// Credit spread and default probability factors
     Credit,
     /// Foreign exchange rate factors
+    #[strum(serialize = "FX")]
     Fx,
     /// Equity price and dividend factors
     Equity,
@@ -85,16 +86,7 @@ impl RiskFactorType {
     pub fn is_surface_factor(&self) -> bool { matches!(self, RiskFactorType::Volatility) }
 
     /// Get the name of this factor type.
-    pub fn name(&self) -> &'static str {
-        match self {
-            RiskFactorType::InterestRate => "InterestRate",
-            RiskFactorType::Credit => "Credit",
-            RiskFactorType::Fx => "FX",
-            RiskFactorType::Equity => "Equity",
-            RiskFactorType::Commodity => "Commodity",
-            RiskFactorType::Volatility => "Volatility",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 }
 
 /// Types of market data shifts for scenario analysis.

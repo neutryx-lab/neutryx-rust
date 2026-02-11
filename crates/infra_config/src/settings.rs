@@ -93,40 +93,19 @@ impl Settings {
     /// Returns a list of all validation errors found, rather than stopping
     /// at the first error. This helps users fix all issues at once.
     pub fn validate(&self) -> Result<(), Vec<ConfigError>> {
-        let mut errors = Vec::new();
-
-        // Validate pricing config if present
-        if let Some(ref pricing) = self.pricing {
-            if let Err(e) = pricing.validate() {
-                errors.push(e);
-            }
-        }
-
-        // Validate risk config if present
-        if let Some(ref risk) = self.risk {
-            if let Err(e) = risk.validate() {
-                errors.push(e);
-            }
-        }
+        let errors: Vec<ConfigError> = [
+            self.pricing.as_ref().and_then(|p| p.validate().err()),
+            self.risk.as_ref().and_then(|r| r.validate().err()),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
 
         if errors.is_empty() {
             Ok(())
         } else {
             Err(errors)
         }
-    }
-
-    /// Validates and returns the first error if any.
-    ///
-    /// For cases where you only need to know if the config is valid.
-    pub fn validate_first(&self) -> Result<(), ConfigError> {
-        if let Some(ref pricing) = self.pricing {
-            pricing.validate()?;
-        }
-        if let Some(ref risk) = self.risk {
-            risk.validate()?;
-        }
-        Ok(())
     }
 }
 
@@ -211,7 +190,7 @@ pub struct ServiceConfig {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RestConfig {
     /// Enable REST API
-    #[serde(default = "default_true")]
+    #[serde(default = "RestConfig::default_enabled")]
     pub enabled: bool,
     /// REST API bind address
     #[serde(default = "default_rest_addr")]
@@ -227,7 +206,9 @@ impl Default for RestConfig {
     }
 }
 
-fn default_true() -> bool { true }
+impl RestConfig {
+    fn default_enabled() -> bool { true }
+}
 
 fn default_rest_addr() -> String { "0.0.0.0:8080".to_string() }
 
@@ -372,26 +353,6 @@ mod tests {
         let errors = result.unwrap_err();
         // Should have 2 errors: invalid currency + empty target_greeks
         assert_eq!(errors.len(), 2);
-    }
-
-    #[test]
-    fn test_settings_validate_first_stops_early() {
-        let toml = r#"
-            [pricing]
-            valuation_date = "2026-01-25"
-            reporting_currency = "invalid"
-            pricing_method = "analytical"
-            market_data_path = "data/market.json"
-            trade_data_path = "data/trades.json"
-
-            [risk]
-            target_greeks = []
-        "#;
-
-        let settings = Settings::from_toml_str(toml).unwrap();
-        let result = settings.validate_first();
-        assert!(result.is_err());
-        // Should return only the first error
     }
 
     #[test]

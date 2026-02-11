@@ -44,46 +44,33 @@ impl FxConvention {
         }
     }
 
+}
+
+super::define_convention_factories! {
+    for FxConvention;
     /// Returns the USD/JPY FX convention.
-    #[must_use]
-    pub fn usd_jpy() -> Self {
-        Self {
-            spot_days: 2,
-            calendar: CalendarId::Tokyo,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-        }
-    }
-
+    usd_jpy => {
+        spot_days: 2, calendar: CalendarId::Tokyo,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing,
+    };
     /// Returns the EUR/USD FX convention.
-    #[must_use]
-    pub fn eur_usd() -> Self {
-        Self {
-            spot_days: 2,
-            calendar: CalendarId::Target,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-        }
-    }
-
+    eur_usd => {
+        spot_days: 2, calendar: CalendarId::Target,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing,
+    };
     /// Returns the GBP/USD FX convention.
-    #[must_use]
-    pub fn gbp_usd() -> Self {
-        Self {
-            spot_days: 2,
-            calendar: CalendarId::London,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-        }
-    }
-
+    gbp_usd => {
+        spot_days: 2, calendar: CalendarId::London,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing,
+    };
     /// Returns the default USD FX convention.
-    #[must_use]
-    pub fn usd_default() -> Self {
-        Self {
-            spot_days: 2,
-            calendar: CalendarId::NewYork,
-            business_day_convention: BusinessDayConvention::ModifiedFollowing,
-        }
-    }
+    usd_default => {
+        spot_days: 2, calendar: CalendarId::NewYork,
+        business_day_convention: BusinessDayConvention::ModifiedFollowing,
+    };
+}
 
+impl FxConvention {
     /// Returns the default EUR FX convention.
     #[must_use]
     pub fn eur_default() -> Self { Self::eur_usd() }

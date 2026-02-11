@@ -10,7 +10,6 @@
 
 use std::fmt;
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Unique identifier for a risk factor.
@@ -37,7 +36,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// - Requirement 1.3: Risk factor identification for Greeks aggregation.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Serialize, Deserialize)]
 pub enum RiskFactorId {
     /// Underlying asset identifier (e.g., "USDJPY", "SPX").
     ///
@@ -315,7 +314,6 @@ mod tests {
         assert!(debug_str.contains("SPX"));
     }
 
-    #[cfg(feature = "serde")]
     mod serde_tests {
         use super::*;
 

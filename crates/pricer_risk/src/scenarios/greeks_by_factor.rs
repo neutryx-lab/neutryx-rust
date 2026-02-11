@@ -12,7 +12,6 @@
 use std::collections::HashMap;
 
 use pricer_core::traits::Float;
-#[cfg(feature = "serde")]
 use serde::{ser::SerializeMap, Serialize, Serializer};
 
 use super::RiskFactorId;
@@ -20,7 +19,6 @@ use crate::greeks::{GreeksMode, GreeksResult};
 
 /// Custom serializer for HashMap<RiskFactorId, GreeksResult<T>>.
 /// Converts RiskFactorId keys to strings using their Display implementation.
-#[cfg(feature = "serde")]
 fn serialize_by_factor<S, T>(
     map: &HashMap<RiskFactorId, GreeksResult<T>>,
     serializer: S,
@@ -76,14 +74,11 @@ where
 ///
 /// - Requirement 1.1, 1.2, 1.3, 1.5
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
-#[cfg_attr(
-    feature = "serde",
-    serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize"))
-)]
+#[derive(Serialize)]
+#[serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize"))]
 pub struct GreeksResultByFactor<T: Float> {
     /// Greeks results keyed by risk factor.
-    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_by_factor"))]
+    #[serde(serialize_with = "serialize_by_factor")]
     by_factor: HashMap<RiskFactorId, GreeksResult<T>>,
 
     /// Computation mode used (AAD or Bump).
@@ -786,7 +781,6 @@ mod tests {
         assert!(total.theta.is_none());
     }
 
-    #[cfg(feature = "serde")]
     mod serde_tests {
         use super::*;
 

@@ -34,36 +34,36 @@
 //! let npv = LinearEngine::price(&kernel, &context);
 //! ```
 
-#[cfg(feature = "l1l2-integration")]
+
 mod callable_engine;
-#[cfg(feature = "l1l2-integration")]
+
 mod context;
-#[cfg(feature = "l1l2-integration")]
+
 mod engine;
-#[cfg(feature = "l1l2-integration")]
+
 mod lsmc;
-#[cfg(feature = "l1l2-integration")]
+
 mod provider;
-#[cfg(feature = "l1l2-integration")]
+
 mod script_engine;
 
-#[cfg(feature = "l1l2-integration")]
+
 pub use callable_engine::{
     BackwardPassResult, CallableEngine, ExerciseDecision, ExerciseState, SimulatedPaths,
 };
-#[cfg(feature = "l1l2-integration")]
+
 pub use context::KernelContext;
-#[cfg(feature = "l1l2-integration")]
+
 pub use engine::{days_to_years, years_to_days, LinearEngine};
-#[cfg(feature = "l1l2-integration")]
+
 pub use lsmc::{BasisFunction, LSMCRegressor, RegressionResult};
-#[cfg(feature = "l1l2-integration")]
+
 pub use provider::{
     CurveProvider, FlatCurveProvider, IndexedMarketAdapter, IndexedMarketAdapterBuilder,
 };
-#[cfg(feature = "l1l2-integration")]
+
 pub use script_engine::{ExecutionTrace, FlatSpotProvider, ScriptEngine, SpotProvider, TraceStep};
 
 // Integration tests: E2E Trade → PricingKernel → Price
-#[cfg(all(test, feature = "l1l2-integration"))]
+#[cfg(test)]
 mod integration;

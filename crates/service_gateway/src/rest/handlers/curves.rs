@@ -16,22 +16,38 @@ use crate::{
     state::AppState,
 };
 
-json_handler! {
-    /// POST /api/curves/build
-    pub async fn build_curve(CurveBuildRequest => CurveBuildResponse) = CurveService::build_curve;
+/// POST /api/curves/build
+pub async fn build_curve(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<CurveBuildRequest>,
+) -> Result<Json<CurveBuildResponse>, ServerError> {
+    let response = CurveService::build_curve(&request, &state)?;
+    Ok(Json(response))
 }
 
-json_handler! {
-    /// POST /api/curves/discount-factor
-    pub async fn get_discount_factor(DiscountFactorRequest => DiscountFactorResponse) = CurveService::get_discount_factor;
+/// POST /api/curves/discount-factor
+pub async fn get_discount_factor(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<DiscountFactorRequest>,
+) -> Result<Json<DiscountFactorResponse>, ServerError> {
+    let response = CurveService::get_discount_factor(&request, &state)?;
+    Ok(Json(response))
 }
 
-json_handler! {
-    /// POST /api/curves/forward-rate
-    pub async fn get_forward_rate(ForwardRateRequest => ForwardRateResponse) = CurveService::get_forward_rate;
+/// POST /api/curves/forward-rate
+pub async fn get_forward_rate(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<ForwardRateRequest>,
+) -> Result<Json<ForwardRateResponse>, ServerError> {
+    let response = CurveService::get_forward_rate(&request, &state)?;
+    Ok(Json(response))
 }
 
-json_handler! {
-    /// POST /api/curves/forward-swap-rates
-    pub async fn get_forward_swap_rates(ForwardSwapRateRequest => ForwardSwapRateResponse) = CurveService::compute_forward_swap_rates;
+/// POST /api/curves/forward-swap-rates
+pub async fn get_forward_swap_rates(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<ForwardSwapRateRequest>,
+) -> Result<Json<ForwardSwapRateResponse>, ServerError> {
+    let response = CurveService::compute_forward_swap_rates(&request, &state)?;
+    Ok(Json(response))
 }

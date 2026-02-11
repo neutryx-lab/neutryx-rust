@@ -35,7 +35,6 @@ mod error;
 mod extractor;
 mod types;
 
-#[cfg(feature = "volcube")]
 mod volcube_extractor;
 
 pub use error::GraphError;
@@ -47,7 +46,6 @@ pub use types::{
     ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
     PortfolioComputationGraph, PortfolioGraphMetadata,
 };
-#[cfg(feature = "volcube")]
 pub use volcube_extractor::VolCubeGraphExtractor;
 
 #[cfg(test)]
@@ -184,7 +182,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     mod serialisation_tests {
         use super::*;
 
@@ -441,7 +438,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     mod graph_serialisation_tests {
         use super::*;
 
@@ -586,7 +582,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     mod error_serialisation_tests {
         use super::*;
 

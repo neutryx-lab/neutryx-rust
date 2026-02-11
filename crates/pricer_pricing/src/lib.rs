@@ -90,11 +90,10 @@
 // Allow unknown lints for clippy compatibility across versions
 #![allow(unknown_lints)]
 
-#[cfg(all(test, feature = "l1l2-integration"))]
+#[cfg(test)]
 mod integration_tests;
 
-/// Pricing Kernel IR runtime engine (requires `l1l2-integration` feature).
-#[cfg(feature = "l1l2-integration")]
+/// Pricing Kernel IR runtime engine.
 pub mod kernel;
 
 // Numeric conversion utilities (standalone, no l1l2-integration dependency)

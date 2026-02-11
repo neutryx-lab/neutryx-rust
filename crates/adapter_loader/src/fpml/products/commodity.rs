@@ -6,7 +6,6 @@
 //! - Commodity Forward (commodityForward)
 
 use infra_domain::{
-    market::Currency,
     time::Date,
     trade::{
         Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeMetadata, TradeType,
@@ -14,9 +13,26 @@ use infra_domain::{
 };
 
 use crate::fpml::{
-    common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator},
+    common::{
+        parse_currency, parse_trade_header, xml_date, xml_decimal, xml_text, XmlNavigator,
+    },
     error::FpmlError,
 };
+
+/// Build trade metadata from header.
+fn build_metadata(header: &crate::fpml::common::TradeHeader) -> TradeMetadata {
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(ref cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp.clone());
+    }
+    if let Some(ref book) = header.book {
+        metadata = metadata.with_book(book.clone());
+    }
+    metadata
+}
 
 /// Parse a commodity swap from FpML.
 pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
@@ -32,46 +48,23 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     let swap_nav = XmlNavigator::new(&swap_section);
 
-    // Parse effective and termination dates
-    let effective_date = swap_nav
-        .find_text("unadjustedDate")
-        .map(|d| parse_date(&d))
-        .transpose()?
-        .unwrap_or_else(|| Date::from_ymd(2024, 1, 1).unwrap());
+    // Parse effective date
+    let effective_date = xml_date!(
+        swap_nav,
+        "unadjustedDate",
+        Date::from_ymd(2024, 1, 1).unwrap()
+    );
 
     // Parse fixed leg
     let fixed_section = swap_nav.extract_section("fixedLeg").unwrap_or_default();
     let fixed_nav = XmlNavigator::new(&fixed_section);
 
-    let fixed_price = fixed_nav
-        .find_text("price")
-        .map(|p| parse_decimal(&p))
-        .transpose()?
-        .unwrap_or(0.0);
-
-    let price_currency = fixed_nav
-        .find_text("priceCurrency")
-        .unwrap_or_else(|| "USD".to_string());
-
-    let price_unit = fixed_nav
-        .find_text("priceUnit")
-        .unwrap_or_else(|| "BBL".to_string());
-
-    let quantity = fixed_nav
-        .find_text("quantity")
-        .map(|q| parse_decimal(&q))
-        .transpose()?
-        .unwrap_or(0.0);
-
-    let quantity_unit = fixed_nav
-        .find_text("quantityUnit")
-        .unwrap_or_else(|| "BBL".to_string());
-
-    let total_quantity = fixed_nav
-        .find_text("totalNotionalQuantity")
-        .map(|q| parse_decimal(&q))
-        .transpose()?
-        .unwrap_or(quantity);
+    let fixed_price = xml_decimal!(fixed_nav, "price", 0.0);
+    let price_currency = xml_text!(fixed_nav, "priceCurrency", "USD");
+    let price_unit = xml_text!(fixed_nav, "priceUnit", "BBL");
+    let quantity = xml_decimal!(fixed_nav, "quantity", 0.0);
+    let quantity_unit = xml_text!(fixed_nav, "quantityUnit", "BBL");
+    let total_quantity = xml_decimal!(fixed_nav, "totalNotionalQuantity", quantity);
 
     // Parse floating leg for commodity reference
     let floating_section = swap_nav.extract_section("floatingLeg").unwrap_or_default();
@@ -126,16 +119,7 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
         quantity_unit,
     };
 
-    let mut metadata = TradeMetadata::new();
-    if let Some(td) = header.trade_date {
-        metadata = metadata.with_trade_date(td);
-    }
-    if let Some(cp) = header.counterparty {
-        metadata = metadata.with_counterparty(cp);
-    }
-    if let Some(book) = header.book {
-        metadata = metadata.with_book(book);
-    }
+    let metadata = build_metadata(&header);
 
     Ok(Trade::builder()
         .id(header.trade_id)
@@ -143,18 +127,6 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
         .trade_type(trade_type)
         .metadata(metadata)
         .build())
-}
-
-/// Parse currency string to Currency enum.
-fn parse_currency(s: &str) -> Currency {
-    match s.to_uppercase().as_str() {
-        "USD" => Currency::USD,
-        "EUR" => Currency::EUR,
-        "GBP" => Currency::GBP,
-        "JPY" => Currency::JPY,
-        "CHF" => Currency::CHF,
-        _ => Currency::USD,
-    }
 }
 
 #[cfg(test)]

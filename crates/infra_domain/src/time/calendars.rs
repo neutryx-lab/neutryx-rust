@@ -44,7 +44,10 @@ use super::types::Date;
 /// assert_eq!(conv.name(), "Modified Following");
 /// ```
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash,
+    strum::Display, strum::AsRefStr,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BusinessDayConvention {
     /// Move to the next business day.
@@ -58,6 +61,7 @@ pub enum BusinessDayConvention {
     /// If moving forward would cross into a new month, move backward
     /// to the previous business day instead. This is the most common
     /// convention for money market instruments.
+    #[strum(serialize = "Modified Following")]
     ModifiedFollowing,
 
     /// Move to the previous business day.
@@ -70,6 +74,7 @@ pub enum BusinessDayConvention {
     ///
     /// If moving backward would cross into a previous month, move forward
     /// to the next business day instead.
+    #[strum(serialize = "Modified Preceding")]
     ModifiedPreceding,
 
     /// Do not adjust the date.
@@ -91,15 +96,7 @@ impl BusinessDayConvention {
     /// ```
     #[inline]
     #[must_use]
-    pub fn name(&self) -> &'static str {
-        match self {
-            BusinessDayConvention::Following => "Following",
-            BusinessDayConvention::ModifiedFollowing => "Modified Following",
-            BusinessDayConvention::Preceding => "Preceding",
-            BusinessDayConvention::ModifiedPreceding => "Modified Preceding",
-            BusinessDayConvention::Unadjusted => "Unadjusted",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 
     /// Returns a short code for this convention.
     ///
@@ -122,10 +119,6 @@ impl BusinessDayConvention {
             BusinessDayConvention::Unadjusted => "U",
         }
     }
-}
-
-impl fmt::Display for BusinessDayConvention {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 impl FromStr for BusinessDayConvention {

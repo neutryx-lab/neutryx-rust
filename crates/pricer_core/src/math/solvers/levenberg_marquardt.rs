@@ -19,6 +19,11 @@
 //! - `λ` is the damping factor (adjusted during iteration)
 //! - `δ` is the parameter update step
 //!
+//! # Implementation
+//!
+//! Delegates to the [`levenberg_marquardt`](::levenberg_marquardt) crate while
+//! preserving the same public API.
+//!
 //! # Example
 //!
 //! ```
@@ -46,6 +51,9 @@
 //! // Should converge to a ≈ 1.0, b ≈ 1.0
 //! assert!(result.converged);
 //! ```
+
+use levenberg_marquardt::{LeastSquaresProblem, LevenbergMarquardt};
+use nalgebra::{DMatrix, DVector, Dyn, Owned};
 
 use crate::types::SolverError;
 
@@ -167,6 +175,71 @@ impl LMResult {
     }
 }
 
+// =============================================================================
+// Adapter: wraps a closure-based residual function as a LeastSquaresProblem
+// =============================================================================
+
+/// Internal adapter that wraps a user-supplied closure into the
+/// [`LeastSquaresProblem`] trait required by the `levenberg-marquardt` crate.
+struct ClosureProblem<F> {
+    /// Current parameter vector.
+    params: DVector<f64>,
+    /// User-supplied residual function.
+    residuals_fn: F,
+}
+
+impl<F> LeastSquaresProblem<f64, Dyn, Dyn> for ClosureProblem<F>
+where
+    F: Fn(&[f64]) -> Vec<f64>,
+{
+    type ParameterStorage = Owned<f64, Dyn>;
+    type ResidualStorage = Owned<f64, Dyn>;
+    type JacobianStorage = Owned<f64, Dyn, Dyn>;
+
+    fn set_params(&mut self, params: &DVector<f64>) {
+        self.params.copy_from(params);
+    }
+
+    fn params(&self) -> DVector<f64> {
+        self.params.clone()
+    }
+
+    fn residuals(&self) -> Option<DVector<f64>> {
+        let r = (self.residuals_fn)(self.params.as_slice());
+        if r.is_empty() {
+            return None;
+        }
+        Some(DVector::from_vec(r))
+    }
+
+    fn jacobian(&self) -> Option<DMatrix<f64>> {
+        let params = self.params.as_slice();
+        let r0 = (self.residuals_fn)(params);
+        let n_params = params.len();
+        let n_residuals = r0.len();
+        if n_residuals == 0 || n_params == 0 {
+            return None;
+        }
+
+        let eps = 1e-8;
+        let mut jacobian = DMatrix::zeros(n_residuals, n_params);
+
+        for j in 0..n_params {
+            let h = eps * params[j].abs().max(1.0);
+            let mut params_plus = params.to_vec();
+            params_plus[j] += h;
+
+            let r_plus = (self.residuals_fn)(&params_plus);
+
+            for i in 0..n_residuals {
+                jacobian[(i, j)] = (r_plus[i] - r0[i]) / h;
+            }
+        }
+
+        Some(jacobian)
+    }
+}
+
 /// Levenberg-Marquardt nonlinear least-squares solver.
 ///
 /// Solves optimisation problems of the form:
@@ -240,205 +313,62 @@ impl LevenbergMarquardtSolver {
             ));
         }
 
-        let mut params = initial_params;
-        let mut lambda = self.config.initial_lambda;
-
-        // Compute initial residuals
-        let mut r = residuals(&params);
-        let n_residuals = r.len();
+        // Probe to discover n_residuals
+        let r0 = residuals(&initial_params);
+        let n_residuals = r0.len();
         if n_residuals == 0 {
             return Err(SolverError::NumericalInstability(
                 "Empty residual vector".to_string(),
             ));
         }
 
-        let mut ss = sum_of_squares(&r);
-
-        for iteration in 0..self.config.max_iterations {
-            // Check convergence on residual
-            if ss.sqrt() < self.config.tolerance {
-                return Ok(LMResult::new(params, ss, iteration, true, lambda));
-            }
-
-            // Compute Jacobian using finite differences
-            let jacobian = compute_jacobian(&residuals, &params, &r);
-
-            // Solve (J^T J + λI) δ = J^T r
-            let delta = match self.solve_normal_equations(&jacobian, &r, lambda, n_params) {
-                Some(d) => d,
-                None => {
-                    // Increase lambda and try again
-                    lambda = (lambda * self.config.lambda_up).min(self.config.max_lambda);
-                    continue;
-                }
-            };
-
-            // Check for parameter change convergence
-            let param_change = delta.iter().map(|d| d * d).sum::<f64>().sqrt();
-            let param_norm = params.iter().map(|p| p * p).sum::<f64>().sqrt().max(1.0);
-            if param_change / param_norm < self.config.param_tolerance {
-                return Ok(LMResult::new(params, ss, iteration, true, lambda));
-            }
-
-            // Trial update
-            let new_params: Vec<f64> = params.iter().zip(&delta).map(|(p, d)| p + d).collect();
-            let new_r = residuals(&new_params);
-            let new_ss = sum_of_squares(&new_r);
-
-            // Accept or reject step
-            if new_ss < ss {
-                // Accept step
-                params = new_params;
-                r = new_r;
-                ss = new_ss;
-                lambda = (lambda * self.config.lambda_down).max(self.config.min_lambda);
-            } else {
-                // Reject step, increase lambda
-                lambda = (lambda * self.config.lambda_up).min(self.config.max_lambda);
-            }
+        // Check if already optimal
+        let initial_ss: f64 = r0.iter().map(|x| x * x).sum();
+        if initial_ss.sqrt() < self.config.tolerance {
+            return Ok(LMResult::new(initial_params, initial_ss, 0, true, self.config.initial_lambda));
         }
 
-        // Return result even if not converged
+        // Build adapter problem
+        let problem = ClosureProblem {
+            params: DVector::from_vec(initial_params),
+            residuals_fn: residuals,
+        };
+
+        // Configure the library solver.
+        //
+        // The `levenberg-marquardt` crate uses `ftol` / `gtol` / `xtol` for
+        // convergence, and `patience` for maximum iterations. We map our
+        // config accordingly.
+        let lm = LevenbergMarquardt::new()
+            .with_patience(self.config.max_iterations)
+            .with_stepbound(self.config.max_lambda)
+            .with_tol(self.config.tolerance);
+
+        let (result, report) = lm.minimize(problem);
+
+        let final_params: Vec<f64> = result.params.as_slice().to_vec();
+        let final_r = (result.residuals_fn)(&final_params);
+        let final_ss: f64 = final_r.iter().map(|x| x * x).sum();
+
+        let converged = matches!(
+            report.termination,
+            levenberg_marquardt::TerminationReason::Converged { .. }
+                | levenberg_marquardt::TerminationReason::ResidualsZero
+                | levenberg_marquardt::TerminationReason::Orthogonal
+        );
+
+        // If the library converged but our own tolerance check is stricter,
+        // honour our tolerance.
+        let converged = converged || final_ss.sqrt() < self.config.tolerance;
+
         Ok(LMResult::new(
-            params,
-            ss,
-            self.config.max_iterations,
-            false,
-            lambda,
+            final_params,
+            final_ss,
+            report.number_of_evaluations,
+            converged,
+            0.0, // Library does not expose final lambda
         ))
     }
-
-    /// Solve the normal equations (J^T J + λI) δ = -J^T r
-    fn solve_normal_equations(
-        &self,
-        jacobian: &[Vec<f64>],
-        residuals: &[f64],
-        lambda: f64,
-        n_params: usize,
-    ) -> Option<Vec<f64>> {
-        let _n_residuals = residuals.len();
-
-        // Compute J^T J
-        let mut jtj = vec![vec![0.0; n_params]; n_params];
-        for i in 0..n_params {
-            for j in 0..n_params {
-                let mut sum = 0.0;
-                for row in jacobian {
-                    sum += row[i] * row[j];
-                }
-                jtj[i][j] = sum;
-            }
-        }
-
-        // Add λI to diagonal
-        for (i, row) in jtj.iter_mut().enumerate() {
-            row[i] += lambda;
-        }
-
-        // Compute J^T r (note: we want -J^T r for the step)
-        let mut jtr = vec![0.0; n_params];
-        for (i, jtr_val) in jtr.iter_mut().enumerate() {
-            let mut sum = 0.0;
-            for (row, r) in jacobian.iter().zip(residuals.iter()) {
-                sum += row[i] * r;
-            }
-            *jtr_val = -sum; // Negative for descent direction
-        }
-
-        // Solve using Cholesky decomposition (since J^T J + λI is positive definite)
-        solve_cholesky(&jtj, &jtr)
-    }
-}
-
-/// Compute Jacobian matrix using finite differences.
-fn compute_jacobian<F>(residuals: &F, params: &[f64], r0: &[f64]) -> Vec<Vec<f64>>
-where
-    F: Fn(&[f64]) -> Vec<f64>,
-{
-    let n_params = params.len();
-    let n_residuals = r0.len();
-    let eps = 1e-8;
-
-    let mut jacobian = vec![vec![0.0; n_params]; n_residuals];
-
-    for j in 0..n_params {
-        let h = eps * params[j].abs().max(1.0);
-
-        let mut params_plus = params.to_vec();
-        params_plus[j] += h;
-
-        let r_plus = residuals(&params_plus);
-
-        for i in 0..n_residuals {
-            jacobian[i][j] = (r_plus[i] - r0[i]) / h;
-        }
-    }
-
-    jacobian
-}
-
-/// Compute sum of squares of a vector.
-#[inline]
-fn sum_of_squares(v: &[f64]) -> f64 { v.iter().map(|x| x * x).sum() }
-
-/// Solve Ax = b using Cholesky decomposition.
-fn solve_cholesky(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
-    let n = b.len();
-    if n == 0 || a.len() != n {
-        return None;
-    }
-
-    // Cholesky decomposition: A = L L^T
-    let mut l = vec![vec![0.0; n]; n];
-
-    for i in 0..n {
-        for j in 0..=i {
-            let mut sum = a[i][j];
-            for (l_ik, l_jk) in l[i].iter().take(j).zip(l[j].iter().take(j)) {
-                sum -= l_ik * l_jk;
-            }
-
-            if i == j {
-                if sum <= 0.0 {
-                    return None; // Not positive definite
-                }
-                l[i][j] = sum.sqrt();
-            } else {
-                if l[j][j].abs() < 1e-30 {
-                    return None;
-                }
-                l[i][j] = sum / l[j][j];
-            }
-        }
-    }
-
-    // Solve L y = b (forward substitution)
-    let mut y = vec![0.0; n];
-    for i in 0..n {
-        let mut sum = b[i];
-        for (l_ij, y_j) in l[i].iter().take(i).zip(y.iter()) {
-            sum -= l_ij * y_j;
-        }
-        if l[i][i].abs() < 1e-30 {
-            return None;
-        }
-        y[i] = sum / l[i][i];
-    }
-
-    // Solve L^T x = y (backward substitution)
-    let mut x = vec![0.0; n];
-    for i in (0..n).rev() {
-        let mut sum = y[i];
-        for j in (i + 1)..n {
-            sum -= l[j][i] * x[j];
-        }
-        if l[i][i].abs() < 1e-30 {
-            return None;
-        }
-        x[i] = sum / l[i][i];
-    }
-
-    Some(x)
 }
 
 #[cfg(test)]
@@ -632,78 +562,6 @@ mod tests {
         for (i, &p) in result.params.iter().enumerate() {
             assert!((p - i as f64).abs() < 1e-6);
         }
-    }
-
-    // ========================================
-    // Cholesky Solver Tests
-    // ========================================
-
-    #[test]
-    fn test_cholesky_simple() {
-        // Solve [[4, 2], [2, 2]] x = [8, 5]
-        // 4*x0 + 2*x1 = 8, 2*x0 + 2*x1 = 5
-        // Solution: x0 = 1.5, x1 = 1.0
-        let a = vec![vec![4.0, 2.0], vec![2.0, 2.0]];
-        let b = vec![8.0, 5.0];
-
-        let x = solve_cholesky(&a, &b).unwrap();
-        assert!((x[0] - 1.5).abs() < 1e-10);
-        assert!((x[1] - 1.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_cholesky_identity() {
-        // Solve I x = b
-        let a = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
-        let b = vec![3.0, 4.0];
-
-        let x = solve_cholesky(&a, &b).unwrap();
-        assert!((x[0] - 3.0).abs() < 1e-10);
-        assert!((x[1] - 4.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_cholesky_non_positive_definite() {
-        // Not positive definite
-        let a = vec![vec![-1.0, 0.0], vec![0.0, 1.0]];
-        let b = vec![1.0, 1.0];
-
-        let result = solve_cholesky(&a, &b);
-        assert!(result.is_none());
-    }
-
-    // ========================================
-    // Jacobian Tests
-    // ========================================
-
-    #[test]
-    fn test_jacobian_linear() {
-        // f(p) = [2*p[0] + 3*p[1]]
-        // J = [[2, 3]]
-        let residuals = |params: &[f64]| -> Vec<f64> { vec![2.0 * params[0] + 3.0 * params[1]] };
-
-        let params = vec![1.0, 1.0];
-        let r0 = residuals(&params);
-        let jacobian = compute_jacobian(&residuals, &params, &r0);
-
-        assert_eq!(jacobian.len(), 1);
-        assert_eq!(jacobian[0].len(), 2);
-        assert!((jacobian[0][0] - 2.0).abs() < 1e-5);
-        assert!((jacobian[0][1] - 3.0).abs() < 1e-5);
-    }
-
-    #[test]
-    fn test_jacobian_quadratic() {
-        // f(p) = [p[0]^2]
-        // J = [[2*p[0]]]
-        let residuals = |params: &[f64]| -> Vec<f64> { vec![params[0] * params[0]] };
-
-        let params = vec![3.0];
-        let r0 = residuals(&params);
-        let jacobian = compute_jacobian(&residuals, &params, &r0);
-
-        assert_eq!(jacobian.len(), 1);
-        assert!((jacobian[0][0] - 6.0).abs() < 1e-4);
     }
 
     // ========================================

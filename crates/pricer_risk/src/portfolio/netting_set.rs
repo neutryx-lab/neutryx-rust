@@ -30,7 +30,7 @@ use super::{
 /// ).unwrap();
 /// ```
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct CollateralAgreement {
     /// Threshold amount below which no collateral is required
     threshold: f64,
@@ -180,7 +180,7 @@ impl CollateralAgreement {
 /// assert_eq!(ns.trade_count(), 2);
 /// ```
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct NettingSet {
     id: NettingSetId,
     counterparty_id: CounterpartyId,

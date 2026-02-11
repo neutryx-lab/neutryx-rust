@@ -3,9 +3,77 @@
 //! Provides helpers for parsing common FpML elements like dates, parties,
 //! and schedule definitions.
 
-use infra_domain::time::Date;
+use infra_domain::{market::Currency, time::Date};
 
 use super::error::FpmlError;
+
+// =============================================================================
+// Field Extraction Macros
+// =============================================================================
+
+/// Extract a text field from an `XmlNavigator`, returning a default if absent.
+///
+/// Usage: `xml_text!(nav, "elementName", "default")`
+macro_rules! xml_text {
+    ($nav:expr, $elem:expr, $default:expr) => {
+        $nav.find_text($elem)
+            .unwrap_or_else(|| $default.to_string())
+    };
+}
+
+/// Extract a decimal (f64) field from an `XmlNavigator`, returning a default if absent.
+///
+/// Usage: `xml_decimal!(nav, "elementName", 0.0)`
+macro_rules! xml_decimal {
+    ($nav:expr, $elem:expr, $default:expr) => {
+        $nav.find_text($elem)
+            .map(|v| $crate::fpml::common::parse_decimal(&v))
+            .transpose()?
+            .unwrap_or($default)
+    };
+}
+
+/// Extract a date field from an `XmlNavigator`, returning a default if absent.
+///
+/// Usage: `xml_date!(nav, "elementName", Date::from_ymd(2024,1,1).unwrap())`
+macro_rules! xml_date {
+    ($nav:expr, $elem:expr, $default:expr) => {
+        $nav.find_text($elem)
+            .map(|d| $crate::fpml::common::parse_date(&d))
+            .transpose()?
+            .unwrap_or_else(|| $default)
+    };
+}
+
+/// Extract a decimal from one of several candidate elements, returning a default.
+///
+/// Usage: `xml_decimal_or!(nav, "primary", "fallback", 0.0)`
+macro_rules! xml_decimal_or {
+    ($nav:expr, $( $elem:expr ),+; $default:expr) => {{
+        let text = None
+            $( .or_else(|| $nav.find_text($elem)) )+;
+        text.map(|v| $crate::fpml::common::parse_decimal(&v))
+            .transpose()?
+            .unwrap_or($default)
+    }};
+}
+
+pub(crate) use xml_date;
+pub(crate) use xml_decimal;
+pub(crate) use xml_decimal_or;
+pub(crate) use xml_text;
+
+/// Parse currency string to Currency enum.
+pub fn parse_currency(s: &str) -> Currency {
+    match s.to_uppercase().as_str() {
+        "USD" => Currency::USD,
+        "EUR" => Currency::EUR,
+        "GBP" => Currency::GBP,
+        "JPY" => Currency::JPY,
+        "CHF" => Currency::CHF,
+        _ => Currency::USD, // Default fallback
+    }
+}
 
 /// Parse a date from FpML format (YYYY-MM-DD).
 pub fn parse_date(date_str: &str) -> Result<Date, FpmlError> {

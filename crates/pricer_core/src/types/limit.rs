@@ -19,7 +19,6 @@
 //! let right = Limit::Right;
 //! ```
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Specifies which limit to use when querying a curve at a jump date.
@@ -47,9 +46,12 @@ use serde::{Deserialize, Serialize};
 /// // Continuous is the default
 /// assert_eq!(Limit::default(), Limit::Continuous);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default,
+    Serialize, Deserialize,
+    strum::Display, strum::AsRefStr,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum Limit {
     /// Left limit - value immediately before the jump.
     ///
@@ -86,19 +88,7 @@ impl Limit {
 
     /// Returns the display name of this limit type.
     #[must_use]
-    pub const fn name(&self) -> &'static str {
-        match self {
-            Self::Left => "Left",
-            Self::Right => "Right",
-            Self::Continuous => "Continuous",
-        }
-    }
-}
-
-impl std::fmt::Display for Limit {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 }
 
 #[cfg(test)]
@@ -188,7 +178,6 @@ mod tests {
         assert!(set.contains(&Limit::Continuous));
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_limit_serde_roundtrip() {
         let limits = [Limit::Left, Limit::Right, Limit::Continuous];
@@ -200,7 +189,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_limit_serde_lowercase() {
         // Verify lowercase serialisation

@@ -373,7 +373,6 @@ impl Shadow for SimpleMarketData {
 // GlobalBootstrapResult Shadow Implementation (Requirement 7.3)
 // =============================================================================
 
-#[cfg(feature = "global-bootstrap")]
 mod global_bootstrap_shadow {
     use pricer_models::builder::GlobalBootstrapResult;
 
@@ -420,7 +419,6 @@ mod global_bootstrap_shadow {
     }
 }
 
-#[cfg(feature = "global-bootstrap")]
 pub use global_bootstrap_shadow::*;
 
 // =============================================================================
@@ -833,7 +831,6 @@ mod tests {
     // GlobalBootstrapResult Shadow tests (Requirement 7.3)
     // =========================================================================
 
-    #[cfg(feature = "global-bootstrap")]
     mod global_bootstrap_tests {
         use nalgebra::DMatrix;
         use pricer_models::{

@@ -18,9 +18,8 @@ use pricer_core::{
 };
 use thiserror::Error;
 
-use super::validation::{
-    validate_correlation, validate_positive, ComputationError, ParamValidationError,
-};
+use super::validation::{ComputationError, ParamValidationError, DEFAULT_SMOOTHING_EPSILON};
+use crate::validate_params;
 
 // ================================================================
 // エラー型
@@ -104,7 +103,7 @@ impl<T: Float> HestonParams<T> {
             rate,
             maturity,
             psi_c: T::from(1.5).unwrap_or(T::one()),
-            smoothing_epsilon: T::from(1e-8).unwrap_or(T::zero()),
+            smoothing_epsilon: T::from(DEFAULT_SMOOTHING_EPSILON).unwrap_or(T::zero()),
         };
         params.validate()?;
         Ok(params)
@@ -112,31 +111,31 @@ impl<T: Float> HestonParams<T> {
 
     /// カスタムQE閾値を設定
     pub fn with_psi_c(mut self, psi_c: T) -> Result<Self, HestonError> {
-        validate_positive("psi_c", psi_c.to_f64().unwrap_or(f64::NAN))?;
+        crate::stochastic::validation::validate_positive(
+            "psi_c",
+            psi_c.to_f64().unwrap_or(f64::NAN),
+        )?;
         self.psi_c = psi_c;
         Ok(self)
     }
 
     /// カスタムsmoothing epsilonを設定
     pub fn with_epsilon(mut self, epsilon: T) -> Result<Self, HestonError> {
-        validate_positive("smoothing_epsilon", epsilon.to_f64().unwrap_or(f64::NAN))?;
+        crate::stochastic::validation::validate_positive(
+            "smoothing_epsilon",
+            epsilon.to_f64().unwrap_or(f64::NAN),
+        )?;
         self.smoothing_epsilon = epsilon;
         Ok(self)
     }
 
     /// パラメータを検証
     pub fn validate(&self) -> Result<(), HestonError> {
-        let f = |v: T| v.to_f64().unwrap_or(f64::NAN);
-        validate_positive("spot", f(self.spot))?;
-        validate_positive("v0", f(self.v0))?;
-        validate_positive("theta", f(self.theta))?;
-        validate_positive("kappa", f(self.kappa))?;
-        validate_positive("xi", f(self.xi))?;
-        validate_correlation("rho", f(self.rho))?;
-        validate_positive("maturity", f(self.maturity))?;
-        validate_positive("psi_c", f(self.psi_c))?;
-        validate_positive("smoothing_epsilon", f(self.smoothing_epsilon))?;
-        Ok(())
+        validate_params! {
+            self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
+            positive: [spot, v0, theta, kappa, xi, maturity, psi_c, smoothing_epsilon],
+            correlation: [rho],
+        }
     }
 
     /// Feller条件をチェック: 2 * kappa * theta > xi^2
@@ -169,7 +168,7 @@ impl<T: Float> Default for HestonParams<T> {
             rate: T::from(0.05).unwrap_or(T::zero()),
             maturity: T::from(1.0).unwrap_or(T::one()),
             psi_c: T::from(1.5).unwrap_or(T::one()),
-            smoothing_epsilon: T::from(1e-8).unwrap_or(T::zero()),
+            smoothing_epsilon: T::from(DEFAULT_SMOOTHING_EPSILON).unwrap_or(T::zero()),
         }
     }
 }

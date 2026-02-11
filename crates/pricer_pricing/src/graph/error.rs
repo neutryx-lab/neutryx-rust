@@ -9,7 +9,6 @@
 //! - `ExtractionFailed` -> 500 Internal Server Error
 //! - `Timeout` -> 500 Internal Server Error (or 504 Gateway Timeout)
 
-#[cfg(feature = "serde")]
 use serde::Serialize;
 use thiserror::Error;
 
@@ -41,8 +40,8 @@ use thiserror::Error;
 /// assert_eq!(error.http_status_code(), 500);
 /// ```
 #[derive(Error, Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "error_type", content = "message"))]
+#[derive(Serialize)]
+#[serde(tag = "error_type", content = "message")]
 pub enum GraphError {
     /// The specified trade ID was not found.
     ///

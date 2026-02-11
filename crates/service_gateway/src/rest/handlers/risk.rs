@@ -16,14 +16,22 @@ use crate::{
     state::AppState,
 };
 
+/// POST /api/v1/risk/greeks
 #[cfg(feature = "risk")]
-json_handler! {
-    /// POST /api/v1/risk/greeks
-    pub async fn compute_greeks(GreeksRequest => RiskGreeksResponse) = RiskService::compute_greeks;
+pub async fn compute_greeks(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<GreeksRequest>,
+) -> Result<Json<RiskGreeksResponse>, ServerError> {
+    let response = RiskService::compute_greeks(&request, &state)?;
+    Ok(Json(response))
 }
 
+/// POST /api/v1/risk/scenarios
 #[cfg(feature = "risk")]
-json_handler! {
-    /// POST /api/v1/risk/scenarios
-    pub async fn run_scenarios(ScenarioRequest => ScenarioResponse) = RiskService::run_scenarios;
+pub async fn run_scenarios(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<ScenarioRequest>,
+) -> Result<Json<ScenarioResponse>, ServerError> {
+    let response = RiskService::run_scenarios(&request, &state)?;
+    Ok(Json(response))
 }

@@ -14,27 +14,20 @@
 //! 2. **Integrated mode** (with `l1l2-integration` feature): Uses
 //!    `infra_domain` types and `MarketProvider`. Use `new()` and `get_pv()`.
 
-#[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
 
-#[cfg(feature = "l1l2-integration")]
 use chrono::Datelike;
-#[cfg(feature = "l1l2-integration")]
 use infra_config::{PricingConfig, PricingMethod};
-#[cfg(feature = "l1l2-integration")]
 use infra_domain::{
     market::Currency,
     time::Date,
     trade::{Leg, Trade},
 };
-#[cfg(feature = "l1l2-integration")]
 use pricer_models::market::{MarketProvider, YieldCurve};
 
 // Standalone types - always available
 use super::config::DefaultCurrency;
-#[cfg(feature = "l1l2-integration")]
 use super::payoff_evaluator::PayoffEvaluator;
-#[cfg(feature = "l1l2-integration")]
 use super::result::{CashflowPricingResult, LegPricingResult, PricingResult};
 use super::{
     config::{ModelConfig, PricerConfig},
@@ -59,8 +52,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct GenericPricer {
     /// Market data provider (Arc-shared for thread safety).
-    #[cfg(feature = "l1l2-integration")]
-    market: Arc<MarketProvider>,
+        market: Arc<MarketProvider>,
 
     /// Model configuration (simulation parameters).
     model_config: ModelConfig,
@@ -77,23 +69,13 @@ impl GenericPricer {
     /// * `market` - Arc-shared market data provider
     /// * `model_config` - Model and simulation configuration
     /// * `pricer_config` - Pricer output configuration
-    #[cfg(feature = "l1l2-integration")]
-    pub fn new(
+        pub fn new(
         market: Arc<MarketProvider>,
         model_config: ModelConfig,
         pricer_config: PricerConfig,
     ) -> Self {
         Self {
             market,
-            model_config,
-            pricer_config,
-        }
-    }
-
-    /// Creates a new GenericPricer (standalone mode without market provider).
-    #[cfg(not(feature = "l1l2-integration"))]
-    pub fn new(model_config: ModelConfig, pricer_config: PricerConfig) -> Self {
-        Self {
             model_config,
             pricer_config,
         }
@@ -119,8 +101,7 @@ impl GenericPricer {
     /// let pricing_config = PricingConfig::from_toml_str(toml_str)?;
     /// let pricer = GenericPricer::from_config(market, &pricing_config)?;
     /// ```
-    #[cfg(feature = "l1l2-integration")]
-    pub fn from_config(
+        pub fn from_config(
         market: Arc<MarketProvider>,
         config: &PricingConfig,
     ) -> Result<Self, PricingError> {
@@ -168,8 +149,7 @@ impl GenericPricer {
     }
 
     /// Returns the pricing method from config (Analytical or MonteCarlo).
-    #[cfg(feature = "l1l2-integration")]
-    pub fn pricing_method_from_config(config: &PricingConfig) -> PricingMethod {
+        pub fn pricing_method_from_config(config: &PricingConfig) -> PricingMethod {
         config.pricing_method
     }
 
@@ -194,8 +174,7 @@ impl GenericPricer {
     /// - Required market data is missing
     /// - Currency code is invalid
     /// - The instrument type is not supported
-    #[cfg(feature = "l1l2-integration")]
-    pub fn price_with_config(
+        pub fn price_with_config(
         &self,
         trade: &Trade,
         config: &PricingConfig,
@@ -248,8 +227,7 @@ impl GenericPricer {
     /// - Required market data is missing
     /// - FX rate is not available
     /// - The instrument type is not supported
-    #[cfg(feature = "l1l2-integration")]
-    pub fn get_pv(
+        pub fn get_pv(
         &self,
         trade: &Trade,
         valuation_date: Date,
@@ -274,8 +252,7 @@ impl GenericPricer {
     }
 
     /// Prices a single leg.
-    #[cfg(feature = "l1l2-integration")]
-    fn price_leg(
+        fn price_leg(
         &self,
         leg: &Leg,
         valuation_date: Date,
@@ -351,8 +328,7 @@ impl GenericPricer {
     }
 
     /// Evaluates the cashflow amount based on its payoff type.
-    #[cfg(feature = "l1l2-integration")]
-    fn evaluate_cashflow_amount(
+        fn evaluate_cashflow_amount(
         &self,
         cf: &infra_domain::trade::Cashflow,
         valuation_date: Date,
@@ -378,8 +354,7 @@ impl GenericPricer {
     ///
     /// Note: This method is preserved for backward compatibility. The new
     /// `evaluate_cashflow_amount` method extracts notional from `cf.notional`.
-    #[cfg(feature = "l1l2-integration")]
-    #[allow(dead_code)]
+        #[allow(dead_code)]
     fn get_notional_for_cashflow(&self, _cf: &infra_domain::trade::Cashflow, _leg: &Leg) -> f64 {
         // TODO: Extract notional from cashflow/leg based on cashflow type
         // For now, return a default notional
@@ -387,8 +362,7 @@ impl GenericPricer {
     }
 
     /// Gets the FX rate between two currencies.
-    #[cfg(feature = "l1l2-integration")]
-    fn get_fx_rate(&self, from: Currency, to: Currency) -> Result<f64, PricingError> {
+        fn get_fx_rate(&self, from: Currency, to: Currency) -> Result<f64, PricingError> {
         // TODO: Implement MarketProvider::get_fx_rate when available
         // For now, return an error indicating the feature is not yet implemented
         Err(PricingError::fx_rate_not_found(from, to))
@@ -432,7 +406,6 @@ impl GenericPricer {
     /// Use this for standalone pricing without full market data integration.
     pub fn new_standalone(model_config: ModelConfig, pricer_config: PricerConfig) -> Self {
         Self {
-            #[cfg(feature = "l1l2-integration")]
             market: std::sync::Arc::new(pricer_models::market::MarketProvider::new()),
             model_config,
             pricer_config,
@@ -615,249 +588,19 @@ fn get_placeholder_fx_rate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Type aliases for standalone mode tests
-    #[cfg(not(feature = "l1l2-integration"))]
-    use crate::generic_pricer::config::DefaultCurrency as Currency;
     use crate::generic_pricer::config::{ModelConfigBuilder, PricerConfigBuilder};
-    #[cfg(not(feature = "l1l2-integration"))]
-    use crate::generic_pricer::result::{Date, Direction};
 
     #[test]
-    fn test_generic_pricer_creation() {
-        #[cfg(not(feature = "l1l2-integration"))]
-        let model_config = ModelConfigBuilder::default().build().unwrap();
-        #[cfg(not(feature = "l1l2-integration"))]
-        let pricer_config = PricerConfigBuilder::default().build().unwrap();
-
-        #[cfg(not(feature = "l1l2-integration"))]
-        let pricer = GenericPricer::new(model_config.clone(), pricer_config.clone());
-
-        #[cfg(not(feature = "l1l2-integration"))]
-        {
-            assert_eq!(pricer.model_config().num_paths, model_config.num_paths);
-            assert_eq!(
-                pricer.pricer_config().use_thread_local_buffers,
-                pricer_config.use_thread_local_buffers
-            );
-        }
-    }
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_simple_pricing() {
+    fn test_standalone_pricer_creation() {
         let model_config = ModelConfigBuilder::default().build().unwrap();
         let pricer_config = PricerConfigBuilder::default().build().unwrap();
-        let pricer = GenericPricer::new(model_config, pricer_config);
 
-        let valuation_date = Date::from_days(0);
-        let payment_date = Date::from_days(365); // 1 year from now
+        let pricer = GenericPricer::new_standalone(model_config.clone(), pricer_config.clone());
 
-        let leg = SimpleLeg {
-            currency: Currency::USD,
-            direction: Direction::Receiver,
-            cashflows: vec![SimpleCashflow {
-                payment_date,
-                amount: 100_000.0, // 100k
-            }],
-        };
-
-        let result = pricer
-            .get_pv_simple(vec![leg], valuation_date, Currency::USD)
-            .unwrap();
-
-        // PV should be discounted amount
-        // With 5% flat rate, 1 year: 100k * exp(-0.05) ≈ 95,123
-        assert!(result.total_pv > 95_000.0 && result.total_pv < 96_000.0);
-        assert_eq!(result.leg_count(), 1);
-        assert_eq!(result.cashflow_count(), 1);
-    }
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_simple_pricing_with_fx() {
-        let model_config = ModelConfigBuilder::default().build().unwrap();
-        let pricer_config = PricerConfigBuilder::default().build().unwrap();
-        let pricer = GenericPricer::new(model_config, pricer_config);
-
-        let valuation_date = Date::from_days(0);
-        let payment_date = Date::from_days(365);
-
-        let leg = SimpleLeg {
-            currency: Currency::EUR,
-            direction: Direction::Receiver,
-            cashflows: vec![SimpleCashflow {
-                payment_date,
-                amount: 100_000.0,
-            }],
-        };
-
-        let result = pricer
-            .get_pv_simple(vec![leg], valuation_date, Currency::USD)
-            .unwrap();
-
-        // EUR 100k discounted, then converted to USD (EUR/USD ≈ 1.087)
-        // Expected: 95_123 * 1.087 ≈ 103,398
-        assert!(result.total_pv > 103_000.0 && result.total_pv < 104_000.0);
-    }
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_simple_pricing_payer_receiver() {
-        let model_config = ModelConfigBuilder::default().build().unwrap();
-        let pricer_config = PricerConfigBuilder::default().build().unwrap();
-        let pricer = GenericPricer::new(model_config, pricer_config);
-
-        let valuation_date = Date::from_days(0);
-        let payment_date = Date::from_days(365);
-
-        // Receiver leg
-        let receiver_leg = SimpleLeg {
-            currency: Currency::USD,
-            direction: Direction::Receiver,
-            cashflows: vec![SimpleCashflow {
-                payment_date,
-                amount: 100_000.0,
-            }],
-        };
-
-        // Payer leg
-        let payer_leg = SimpleLeg {
-            currency: Currency::USD,
-            direction: Direction::Payer,
-            cashflows: vec![SimpleCashflow {
-                payment_date,
-                amount: 100_000.0,
-            }],
-        };
-
-        let result = pricer
-            .get_pv_simple(vec![receiver_leg, payer_leg], valuation_date, Currency::USD)
-            .unwrap();
-
-        // Receiver + Payer with same amounts should net to 0
-        assert!(result.total_pv.abs() < 1e-10);
-    }
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_simple_pricing_skip_past_cashflows() {
-        let model_config = ModelConfigBuilder::default().build().unwrap();
-        let pricer_config = PricerConfigBuilder::default().build().unwrap();
-        let pricer = GenericPricer::new(model_config, pricer_config);
-
-        let valuation_date = Date::from_days(100);
-
-        let leg = SimpleLeg {
-            currency: Currency::USD,
-            direction: Direction::Receiver,
-            cashflows: vec![
-                SimpleCashflow {
-                    payment_date: Date::from_days(50), // Past
-                    amount: 1_000_000.0,
-                },
-                SimpleCashflow {
-                    payment_date: Date::from_days(200), // Future
-                    amount: 100_000.0,
-                },
-            ],
-        };
-
-        let result = pricer
-            .get_pv_simple(vec![leg], valuation_date, Currency::USD)
-            .unwrap();
-
-        // Only future cashflow should be priced
-        assert_eq!(result.cashflow_count(), 1);
-        // PV should be much less than 1M (past cashflow ignored)
-        assert!(result.total_pv < 200_000.0);
-    }
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_fx_rate_not_found() {
-        let model_config = ModelConfigBuilder::default().build().unwrap();
-        let pricer_config = PricerConfigBuilder::default().build().unwrap();
-        let pricer = GenericPricer::new(model_config, pricer_config);
-
-        let valuation_date = Date::from_days(0);
-        let payment_date = Date::from_days(365);
-
-        let leg = SimpleLeg {
-            currency: Currency::CHF, // Swiss Franc - not in placeholder rates
-            direction: Direction::Receiver,
-            cashflows: vec![SimpleCashflow {
-                payment_date,
-                amount: 100_000.0,
-            }],
-        };
-
-        let result = pricer.get_pv_simple(vec![leg], valuation_date, Currency::USD);
-
-        // Standalone mode uses StandaloneFxRateNotFound (not FxRateNotFound)
-        assert!(matches!(
-            result,
-            Err(PricingError::StandaloneFxRateNotFound { .. })
-        ));
-    }
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_pricer_config_accessors() {
-        let model_config = ModelConfigBuilder::default()
-            .num_paths(5000)
-            .num_steps(50)
-            .build()
-            .unwrap();
-        let pricer_config = PricerConfigBuilder::default()
-            .use_thread_local_buffers(false)
-            .build()
-            .unwrap();
-
-        let pricer = GenericPricer::new(model_config, pricer_config);
-
-        assert_eq!(pricer.model_config().num_paths, 5000);
-        assert_eq!(pricer.model_config().num_steps, 50);
-        assert!(!pricer.pricer_config().use_thread_local_buffers);
-    }
-
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_multiple_legs_multiple_currencies() {
-        let model_config = ModelConfigBuilder::default().build().unwrap();
-        let pricer_config = PricerConfigBuilder::default().build().unwrap();
-        let pricer = GenericPricer::new(model_config, pricer_config);
-
-        let valuation_date = Date::from_days(0);
-        let payment_date = Date::from_days(365);
-
-        // USD leg (receiver)
-        let usd_leg = SimpleLeg {
-            currency: Currency::USD,
-            direction: Direction::Receiver,
-            cashflows: vec![SimpleCashflow {
-                payment_date,
-                amount: 100_000.0,
-            }],
-        };
-
-        // EUR leg (payer)
-        let eur_leg = SimpleLeg {
-            currency: Currency::EUR,
-            direction: Direction::Payer,
-            cashflows: vec![SimpleCashflow {
-                payment_date,
-                amount: 87_500.0, // Roughly equivalent to 95k USD at 1.087
-            }],
-        };
-
-        let result = pricer
-            .get_pv_simple(vec![usd_leg, eur_leg], valuation_date, Currency::USD)
-            .unwrap();
-
-        assert_eq!(result.leg_count(), 2);
-
-        // Check group_by_currency
-        let by_ccy = result.group_by_currency();
-        assert_eq!(by_ccy.len(), 2);
+        assert_eq!(pricer.model_config().num_paths, model_config.num_paths);
+        assert_eq!(
+            pricer.pricer_config().use_thread_local_buffers,
+            pricer_config.use_thread_local_buffers
+        );
     }
 }

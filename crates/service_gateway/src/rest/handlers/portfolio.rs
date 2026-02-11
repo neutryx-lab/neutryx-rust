@@ -24,22 +24,35 @@ use crate::{
     state::AppState,
 };
 
+/// POST /api/v1/portfolios
 #[cfg(feature = "risk")]
-json_created_handler! {
-    /// POST /api/v1/portfolios
-    pub async fn create_portfolio(CreatePortfolioRequest => CreatePortfolioResponse) = PortfolioService::create_portfolio;
+pub async fn create_portfolio(
+    State(state): State<Arc<AppState>>,
+    AppJson(request): AppJson<CreatePortfolioRequest>,
+) -> Result<(StatusCode, Json<CreatePortfolioResponse>), ServerError> {
+    let response = PortfolioService::create_portfolio(&request, &state)?;
+    Ok((StatusCode::CREATED, Json(response)))
 }
 
+/// GET /api/v1/portfolios/{id}
 #[cfg(feature = "risk")]
-path_handler! {
-    /// GET /api/v1/portfolios/{id}
-    pub async fn get_portfolio(=> GetPortfolioResponse) = PortfolioService::get_portfolio;
+pub async fn get_portfolio(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<GetPortfolioResponse>, ServerError> {
+    let response = PortfolioService::get_portfolio(&id, &state)?;
+    Ok(Json(response))
 }
 
+/// PUT /api/v1/portfolios/{id}/trades
 #[cfg(feature = "risk")]
-path_json_handler! {
-    /// PUT /api/v1/portfolios/{id}/trades
-    pub async fn add_trades(AddTradesRequest => AddTradesResponse) = PortfolioService::add_trades;
+pub async fn add_trades(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    AppJson(request): AppJson<AddTradesRequest>,
+) -> Result<Json<AddTradesResponse>, ServerError> {
+    let response = PortfolioService::add_trades(&id, &request, &state)?;
+    Ok(Json(response))
 }
 
 /// DELETE /api/v1/portfolios/{id}
@@ -52,14 +65,23 @@ pub async fn delete_portfolio(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// POST /api/v1/portfolios/{id}/price
 #[cfg(feature = "risk")]
-path_handler! {
-    /// POST /api/v1/portfolios/{id}/price
-    pub async fn price_portfolio_id(=> PortfolioPriceResponse) = PortfolioService::price_portfolio;
+pub async fn price_portfolio_id(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<PortfolioPriceResponse>, ServerError> {
+    let response = PortfolioService::price_portfolio(&id, &state)?;
+    Ok(Json(response))
 }
 
+/// POST /api/v1/portfolios/{id}/greeks
 #[cfg(feature = "risk")]
-path_json_handler! {
-    /// POST /api/v1/portfolios/{id}/greeks
-    pub async fn compute_portfolio_greeks(PortfolioGreeksRequest => PortfolioGreeksResponse) = PortfolioService::compute_portfolio_greeks;
+pub async fn compute_portfolio_greeks(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    AppJson(request): AppJson<PortfolioGreeksRequest>,
+) -> Result<Json<PortfolioGreeksResponse>, ServerError> {
+    let response = PortfolioService::compute_portfolio_greeks(&id, &request, &state)?;
+    Ok(Json(response))
 }

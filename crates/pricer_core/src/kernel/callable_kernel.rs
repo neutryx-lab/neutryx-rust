@@ -52,22 +52,12 @@ use super::PricingKernel;
 /// Exercise style for callable products.
 ///
 /// Determines the timing and nature of exercise opportunities.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, strum::Display)]
 pub enum ExerciseStyle {
     /// Bermudan: Exercise only at specific dates.
     Bermudan,
     /// American: Exercise at any time (approximated by frequent dates).
     American,
-}
-
-impl std::fmt::Display for ExerciseStyle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Bermudan => write!(f, "Bermudan"),
-            Self::American => write!(f, "American"),
-        }
-    }
 }
 
 /// Exercise opportunity definition.
@@ -88,8 +78,7 @@ impl std::fmt::Display for ExerciseStyle {
 /// assert_eq!(exercise.exercise_date, 19365);
 /// assert!(exercise.exercise_cost.abs() < 1e-10);
 /// ```
-#[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ExerciseDef {
     /// Exercise date (days from Unix epoch).
     pub exercise_date: i32,

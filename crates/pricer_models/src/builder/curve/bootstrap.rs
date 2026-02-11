@@ -356,7 +356,6 @@ impl CurveBootstrapper {
     ///
     /// A tuple of (curve, jacobian_inverse) where jacobian_inverse is
     /// Some(DMatrix) if computation succeeded, None otherwise.
-    #[cfg(feature = "global-bootstrap")]
     pub fn bootstrap_with_jacobian<I>(
         &self,
         instruments: &[I],

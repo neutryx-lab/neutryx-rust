@@ -5,7 +5,6 @@
 //! - Configuration validation (`ConfigError`)
 //! - Market data extensions (`GenericPricerMarketError`)
 
-#[cfg(feature = "l1l2-integration")]
 use infra_domain::market::Currency;
 use thiserror::Error;
 
@@ -49,23 +48,12 @@ pub enum PricingError {
     },
 
     /// FX rate not found for currency pair.
-    #[cfg(feature = "l1l2-integration")]
     #[error("FX rate not found: {base}/{quote}")]
     FxRateNotFound {
         /// Base currency.
         base: Currency,
         /// Quote currency.
         quote: Currency,
-    },
-
-    /// FX rate not found for currency pair (without l1l2-integration).
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[error("FX rate not found: {base}/{quote}")]
-    FxRateNotFound {
-        /// Base currency code.
-        base: String,
-        /// Quote currency code.
-        quote: String,
     },
 
     /// FX rate not found for standalone pricing (always available).
@@ -175,18 +163,8 @@ impl PricingError {
     }
 
     /// Creates an FX rate not found error.
-    #[cfg(feature = "l1l2-integration")]
     pub fn fx_rate_not_found(base: Currency, quote: Currency) -> Self {
         Self::FxRateNotFound { base, quote }
-    }
-
-    /// Creates an FX rate not found error (without l1l2-integration).
-    #[cfg(not(feature = "l1l2-integration"))]
-    pub fn fx_rate_not_found(base: impl Into<String>, quote: impl Into<String>) -> Self {
-        Self::FxRateNotFound {
-            base: base.into(),
-            quote: quote.into(),
-        }
     }
 
     /// Creates an FX rate not found error for standalone pricing (always

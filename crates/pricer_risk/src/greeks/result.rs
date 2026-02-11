@@ -230,8 +230,7 @@ impl<T: Float> GreeksResult<T> {
     }
 }
 
-// Serde support (optional feature)
-#[cfg(feature = "serde")]
+// Serde support
 mod serde_impl {
     use serde::{Deserialize, Serialize};
 

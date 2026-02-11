@@ -379,7 +379,6 @@ pub fn validate_jacobian_matrix<T: Float>(
 /// Validate a Jacobian DMatrix for numerical quality.
 ///
 /// # Requirement: 5.3
-#[cfg(feature = "global-bootstrap")]
 pub fn validate_jacobian_dmatrix<T>(
     jacobian: &pricer_core::math::linalg::DMatrix<T>,
     zero_threshold: T,
@@ -434,7 +433,6 @@ where
 /// (which would require SVD).
 ///
 /// # Requirement: 5.1
-#[cfg(feature = "global-bootstrap")]
 pub fn estimate_condition_number<T>(jacobian: &pricer_core::math::linalg::DMatrix<T>) -> Option<T>
 where
     T: Float + pricer_core::math::linalg::RealField,
@@ -472,7 +470,6 @@ where
 /// Adds λI to the matrix to improve conditioning.
 ///
 /// # Requirement: 5.2
-#[cfg(feature = "global-bootstrap")]
 pub fn apply_tikhonov_regularisation<T>(
     matrix: &mut pricer_core::math::linalg::DMatrix<T>,
     damping: T,

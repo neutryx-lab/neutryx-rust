@@ -12,7 +12,7 @@ use pricer_core::traits::Float;
 /// # Requirements
 ///
 /// - Requirements: 10.3
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, strum::AsRefStr)]
 pub enum AggregationMethod {
     /// Simple sum of Greeks (no weighting)
     #[default]
@@ -25,13 +25,7 @@ pub enum AggregationMethod {
 
 impl AggregationMethod {
     /// Get the name of this aggregation method.
-    pub fn name(&self) -> &'static str {
-        match self {
-            AggregationMethod::Simple => "Simple",
-            AggregationMethod::NotionalWeighted => "NotionalWeighted",
-            AggregationMethod::CorrelationAdjusted => "CorrelationAdjusted",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 
     /// Check if this method requires correlation data.
     pub fn requires_correlation(&self) -> bool {

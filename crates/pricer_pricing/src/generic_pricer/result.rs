@@ -15,10 +15,8 @@
 //! - **Dynamic aggregation**: `group_by_currency()` aggregates from leg data on
 //!   demand
 
-// Re-export infra_domain types when l1l2-integration is enabled
-#[cfg(feature = "l1l2-integration")]
+// Re-export infra_domain types
 pub use infra_domain::trade::Direction;
-#[cfg(feature = "l1l2-integration")]
 use infra_domain::{market::Currency, time::Date};
 
 // ============================================================================
@@ -70,15 +68,6 @@ impl SimpleDate {
     }
 }
 
-// Type aliases for backward compatibility when l1l2-integration is NOT enabled
-#[cfg(not(feature = "l1l2-integration"))]
-pub use super::config::DefaultCurrency as Currency;
-/// Date type alias for standalone mode (uses SimpleDate).
-#[cfg(not(feature = "l1l2-integration"))]
-pub type Date = SimpleDate;
-/// Direction type alias for standalone mode (uses SimpleDirection).
-#[cfg(not(feature = "l1l2-integration"))]
-pub type Direction = SimpleDirection;
 
 /// Cashflow-level pricing result.
 ///
@@ -278,7 +267,6 @@ impl PricingResult {
     /// Groups PV by original currency (aggregated from legs).
     ///
     /// Returns a vector of (currency, pv_original) pairs.
-    #[cfg(feature = "l1l2-integration")]
     pub fn group_by_currency(&self) -> Vec<(Currency, f64)> {
         use std::collections::HashMap;
 
@@ -293,24 +281,6 @@ impl PricingResult {
         result
     }
 
-    /// Groups leg PVs by original currency.
-    ///
-    /// Returns a vector of (currency, pv) pairs where pv is the sum of all
-    /// leg PVs in that currency (in original currency terms, before FX
-    /// conversion).
-    #[cfg(not(feature = "l1l2-integration"))]
-    pub fn group_by_currency(&self) -> Vec<(Currency, f64)> {
-        use std::collections::HashMap;
-
-        let mut currency_pv: HashMap<Currency, f64> = HashMap::new();
-        for leg in &self.legs {
-            *currency_pv.entry(leg.original_currency).or_insert(0.0) +=
-                leg.pv_original * leg.direction.sign();
-        }
-
-        currency_pv.into_iter().collect()
-    }
-
     /// Returns the total number of legs.
     pub fn leg_count(&self) -> usize { self.legs.len() }
 
@@ -323,14 +293,7 @@ mod tests {
     use super::*;
 
     fn sample_date() -> Date {
-        #[cfg(feature = "l1l2-integration")]
-        {
-            Date::from_ymd(2025, 6, 15).unwrap()
-        }
-        #[cfg(not(feature = "l1l2-integration"))]
-        {
-            Date::from_ymd(2025, 6, 15).unwrap()
-        }
+        Date::from_ymd(2025, 6, 15).unwrap()
     }
 
     // =========================================================================
@@ -584,13 +547,4 @@ mod tests {
     // Simple Date Tests (without l1l2-integration)
     // =========================================================================
 
-    #[cfg(not(feature = "l1l2-integration"))]
-    #[test]
-    fn test_date_creation() {
-        let date = Date::from_days(9315); // Arbitrary day count
-        assert_eq!(date.days(), 9315);
-
-        let date2 = Date::from_ymd(2025, 6, 15).unwrap();
-        assert!(date2.days() > 0);
-    }
 }

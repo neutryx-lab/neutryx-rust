@@ -864,7 +864,6 @@ mod tests {
 // GlobalBootstrapResult Integration (Task 3.5)
 // =============================================================================
 
-#[cfg(feature = "global-bootstrap")]
 mod global_bootstrap_integration {
     use pricer_models::builder::{GlobalBootstrapResult, IftError};
 
@@ -1401,6 +1400,5 @@ mod global_bootstrap_integration {
     }
 }
 
-// Re-export for global-bootstrap feature
-#[cfg(feature = "global-bootstrap")]
+// Re-export from global-bootstrap integration
 pub use global_bootstrap_integration::*;

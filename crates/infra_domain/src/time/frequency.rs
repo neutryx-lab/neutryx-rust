@@ -13,7 +13,7 @@
 //! assert_eq!(freq.months_per_period(), 3);
 //! ```
 
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 /// Payment frequency for financial instruments.
 ///
@@ -49,7 +49,10 @@ use std::{fmt, str::FromStr};
 /// assert!(Frequency::Daily < Frequency::Weekly);
 /// assert!(Frequency::Monthly < Frequency::Annual);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default,
+    strum::Display, strum::AsRefStr,
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Frequency {
@@ -63,6 +66,7 @@ pub enum Frequency {
     /// Quarterly payments (4 per year)
     Quarterly,
     /// Semi-annual payments (2 per year)
+    #[strum(serialize = "Semi-Annual")]
     SemiAnnual,
     /// Annual payments (1 per year)
     Annual,
@@ -122,16 +126,7 @@ impl Frequency {
 
     /// Returns the standard name for this frequency.
     #[must_use]
-    pub fn name(&self) -> &'static str {
-        match self {
-            Frequency::Annual => "Annual",
-            Frequency::SemiAnnual => "Semi-Annual",
-            Frequency::Quarterly => "Quarterly",
-            Frequency::Monthly => "Monthly",
-            Frequency::Weekly => "Weekly",
-            Frequency::Daily => "Daily",
-        }
-    }
+    pub fn name(&self) -> &str { self.as_ref() }
 }
 
 impl FromStr for Frequency {
@@ -151,9 +146,6 @@ impl FromStr for Frequency {
     }
 }
 
-impl fmt::Display for Frequency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
-}
 
 #[cfg(test)]
 mod tests {

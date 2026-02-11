@@ -9,7 +9,7 @@ use crate::portfolio::{CounterpartyId, NettingSetId};
 ///
 /// Contains CVA, DVA, and FVA (FCA/FBA) for one netting set.
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct NettingSetXva {
     /// Netting set identifier.
     pub netting_set_id: NettingSetId,
@@ -72,7 +72,7 @@ impl NettingSetXva {
 /// Contains the sum of XVA metrics across all netting sets
 /// with this counterparty.
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct CounterpartyXva {
     /// Counterparty identifier.
     pub counterparty_id: CounterpartyId,
@@ -131,7 +131,7 @@ impl CounterpartyXva {
 /// Contains aggregated XVA metrics across all counterparties
 /// in the portfolio.
 #[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct PortfolioXva {
     /// Total CVA across all counterparties.
     pub cva: f64,
