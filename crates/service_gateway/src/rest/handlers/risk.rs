@@ -1,6 +1,4 @@
-//! Risk handlers
-//!
-//! Thin handlers delegating to `RiskService`.
+//! Risk handlers.
 
 #[cfg(feature = "risk")]
 use std::sync::Arc;
@@ -16,7 +14,7 @@ use crate::{
     state::AppState,
 };
 
-/// POST /api/v1/risk/greeks
+/// POST /api/v1/risk/greeks.
 #[cfg(feature = "risk")]
 pub async fn compute_greeks(
     State(state): State<Arc<AppState>>,
@@ -26,7 +24,7 @@ pub async fn compute_greeks(
     Ok(Json(response))
 }
 
-/// POST /api/v1/risk/scenarios
+/// POST /api/v1/risk/scenarios.
 #[cfg(feature = "risk")]
 pub async fn run_scenarios(
     State(state): State<Arc<AppState>>,

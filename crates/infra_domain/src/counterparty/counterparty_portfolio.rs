@@ -1,15 +1,4 @@
 //! Counterparty portfolio hierarchy (stub for future XVA integration).
-//!
-//! This module will provide the complete hierarchy for XVA calculation:
-//! `CounterpartyPortfolio` -> `IsdaMasterAgreement` ->
-//! `VariationMarginAgreement` -> Trade
-//!
-//! Currently provides minimal enum types. Full implementation will be added
-//! when the XVA engine is integrated.
-
-// ============================================================================
-// IsdaPaymentMethod
-// ============================================================================
 
 /// ISDA payment method for collateral.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
@@ -25,10 +14,6 @@ pub enum IsdaPaymentMethod {
     /// One-way posting to self.
     OnewayToSelf,
 }
-
-// ============================================================================
-// CollateralCallFrequency
-// ============================================================================
 
 /// Collateral call frequency for VM agreements.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
@@ -57,10 +42,6 @@ impl CollateralCallFrequency {
         }
     }
 }
-
-// ============================================================================
-// NettingEligibility
-// ============================================================================
 
 /// Netting eligibility classification.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

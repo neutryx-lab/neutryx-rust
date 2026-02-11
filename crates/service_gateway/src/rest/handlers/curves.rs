@@ -1,6 +1,4 @@
-//! Curve handlers
-//!
-//! Thin handlers delegating to `CurveService`.
+//! Curve handlers.
 
 use std::sync::Arc;
 
@@ -16,7 +14,7 @@ use crate::{
     state::AppState,
 };
 
-/// POST /api/curves/build
+/// POST /api/curves/build.
 pub async fn build_curve(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<CurveBuildRequest>,
@@ -25,7 +23,7 @@ pub async fn build_curve(
     Ok(Json(response))
 }
 
-/// POST /api/curves/discount-factor
+/// POST /api/curves/discount-factor.
 pub async fn get_discount_factor(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<DiscountFactorRequest>,
@@ -34,7 +32,7 @@ pub async fn get_discount_factor(
     Ok(Json(response))
 }
 
-/// POST /api/curves/forward-rate
+/// POST /api/curves/forward-rate.
 pub async fn get_forward_rate(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<ForwardRateRequest>,
@@ -43,7 +41,7 @@ pub async fn get_forward_rate(
     Ok(Json(response))
 }
 
-/// POST /api/curves/forward-swap-rates
+/// POST /api/curves/forward-swap-rates.
 pub async fn get_forward_swap_rates(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<ForwardSwapRateRequest>,

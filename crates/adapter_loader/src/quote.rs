@@ -2,36 +2,33 @@
 
 use infra_domain::market::Currency;
 
-/// Type of market quote
+/// Type of market quote.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QuoteType {
-    /// Bid price (buy side)
+    /// Bid price (buy side).
     Bid,
-    /// Ask price (sell side)
+    /// Ask price (sell side).
     Ask,
-    /// Last traded price
+    /// Last traded price.
     Last,
-    /// Mid price (average of bid and ask)
+    /// Mid price (average of bid and ask).
     Mid,
 }
 
 /// Normalised market quote from external data sources.
-///
-/// This struct represents a standardised quote format that can be
-/// populated from various market data providers.
 #[derive(Debug, Clone)]
 pub struct MarketQuote {
-    /// Instrument identifier (e.g., ISIN, ticker)
+    /// Instrument identifier (e.g., ISIN, ticker).
     pub identifier: String,
-    /// Bid price
+    /// Bid price.
     pub bid: Option<f64>,
-    /// Ask price
+    /// Ask price.
     pub ask: Option<f64>,
-    /// Last traded price
+    /// Last traded price.
     pub last: Option<f64>,
-    /// Quote currency
+    /// Quote currency.
     pub currency: Currency,
-    /// Timestamp (Unix milliseconds)
+    /// Timestamp (Unix milliseconds).
     pub timestamp_ms: i64,
 }
 

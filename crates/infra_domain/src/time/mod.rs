@@ -1,5 +1,4 @@
-//! Time management: dates, calendars, day count conventions, and period
-//! calculations.
+//! Time management: dates, calendars, day count conventions, and period.
 
 mod calendars;
 mod day_counters;
@@ -8,7 +7,6 @@ mod frequency;
 mod period;
 mod types;
 
-// Primary exports
 pub use calendars::{
     BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, JointCalendar, JointCalendarRule,
 };

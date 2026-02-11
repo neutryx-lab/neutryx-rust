@@ -1,9 +1,4 @@
 //! Commodity product parsers.
-//!
-//! Handles parsing for:
-//! - Commodity Swap (commoditySwap)
-//! - Commodity Option (commodityOption)
-//! - Commodity Forward (commodityForward)
 
 use infra_domain::{
     time::Date,
@@ -22,24 +17,20 @@ use crate::fpml::{
 pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Parse trade header (includes counterparty resolution)
     let header = parse_trade_header(xml)?;
 
-    // Extract commoditySwap section
     let swap_section = nav
         .extract_section("commoditySwap")
         .ok_or_else(|| FpmlError::MissingElement("commoditySwap".to_string()))?;
 
     let swap_nav = XmlNavigator::new(&swap_section);
 
-    // Parse effective date
     let effective_date = xml_date!(
         swap_nav,
         "unadjustedDate",
         Date::from_ymd(2024, 1, 1).unwrap()
     );
 
-    // Parse fixed leg
     let fixed_section = swap_nav.extract_section("fixedLeg").unwrap_or_default();
     let fixed_nav = XmlNavigator::new(&fixed_section);
 
@@ -50,7 +41,6 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
     let quantity_unit = xml_text!(fixed_nav, "quantityUnit", "BBL");
     let total_quantity = xml_decimal!(fixed_nav, "totalNotionalQuantity", quantity);
 
-    // Parse floating leg for commodity reference
     let floating_section = swap_nav.extract_section("floatingLeg").unwrap_or_default();
     let floating_nav = XmlNavigator::new(&floating_section);
 
@@ -61,7 +51,6 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     let currency = parse_currency(&price_currency);
 
-    // Create fixed leg
     let fixed_notional = fixed_price * total_quantity;
     let fixed_cf = Cashflow::new(
         CashflowType::Coupon,
@@ -76,7 +65,6 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
 
     let fixed_leg = Leg::new(vec![fixed_cf], Direction::Payer, LegType::Fixed, currency);
 
-    // Create floating leg
     let floating_cf = Cashflow::new(
         CashflowType::Coupon,
         effective_date,
@@ -84,7 +72,7 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
         effective_date,
         1.0,
         total_quantity,
-        Payoff::fixed(1.0), // Commodity index reference
+        Payoff::fixed(1.0),
         currency,
     );
 

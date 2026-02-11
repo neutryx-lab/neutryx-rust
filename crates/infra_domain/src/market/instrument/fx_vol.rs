@@ -1,8 +1,4 @@
 //! FX Volatility instrument definitions.
-//!
-//! This module provides definitions for FX volatility instruments including
-//! ATM, Butterfly (BF), Risk Reversal (RR), and Delta-quoted options.
-//! These instruments are used for calibrating FX volatility surfaces.
 
 use super::error::InstrumentError;
 use crate::{
@@ -10,10 +6,6 @@ use crate::{
     time::{CalendarId, Date, DayCounter},
     trade::OptionType,
 };
-
-// ============================================================================
-// Error Types
-// ============================================================================
 
 /// Errors specific to FX Vol instrument operations.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -30,10 +22,6 @@ pub enum FxVolInstrumentError {
     #[error("Invalid volatility: {0} (must be positive)")]
     InvalidVolatility(f64),
 }
-
-// ============================================================================
-// Delta Type and Convention
-// ============================================================================
 
 /// Delta type convention for FX options.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -85,9 +73,6 @@ pub enum CutOffTime {
 }
 
 /// FX Vol Convention specification.
-///
-/// Contains all the market conventions needed for FX volatility quoting
-/// and delta-strike conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxVolConvention {
@@ -141,11 +126,8 @@ impl FxVolConvention {
     }
 
     /// Creates default convention for a given currency pair.
-    ///
-    /// Returns premium-adjusted delta for JPY pairs, spot delta for others.
     #[must_use]
     pub fn for_currency_pair(pair: &CurrencyPair) -> Self {
-        // USDJPY and other JPY pairs typically use premium-adjusted delta
         if pair.quote == Currency::JPY || pair.base == Currency::JPY {
             Self::usdjpy()
         } else {
@@ -154,14 +136,7 @@ impl FxVolConvention {
     }
 }
 
-// ============================================================================
-// Delta Newtype
-// ============================================================================
-
 /// Delta value for FX options (0 < delta <= 50).
-///
-/// Delta is quoted as a percentage (e.g., 25 for 25-delta).
-/// Valid range is (0, 50] where 50 represents ATM.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Delta(f64);
@@ -175,15 +150,6 @@ impl Delta {
     pub const ATM: Delta = Delta(50.0);
 
     /// Creates a new Delta with validation.
-    ///
-    /// # Arguments
-    ///
-    /// * `value` - Delta value (must be 0 < value <= 50)
-    ///
-    /// # Errors
-    ///
-    /// Returns `FxVolInstrumentError::InvalidDelta` if value is outside (0,
-    /// 50].
     pub fn new(value: f64) -> Result<Self, FxVolInstrumentError> {
         if value <= 0.0 || value > 50.0 {
             return Err(FxVolInstrumentError::InvalidDelta(value));
@@ -206,21 +172,11 @@ impl std::fmt::Display for Delta {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}D", self.0) }
 }
 
-// ============================================================================
-// FX Vol Instrument
-// ============================================================================
-
 /// FX Volatility Instrument variants.
-///
-/// These instruments are used for calibrating FX volatility surfaces.
-/// The standard market convention quotes ATM, Butterfly (BF), and
-/// Risk Reversal (RR) instruments at various delta points.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FxVolInstrument {
     /// At-the-money volatility quote.
-    ///
-    /// ATM is typically quoted at 50-delta (straddle).
     Atm {
         /// Currency pair for this instrument.
         currency_pair: CurrencyPair,
@@ -233,9 +189,6 @@ pub enum FxVolInstrument {
     },
 
     /// Butterfly spread volatility quote.
-    ///
-    /// BF = (σ_call + σ_put) / 2 - σ_ATM
-    /// Measures the curvature of the volatility smile.
     Butterfly {
         /// Currency pair for this instrument.
         currency_pair: CurrencyPair,
@@ -250,9 +203,6 @@ pub enum FxVolInstrument {
     },
 
     /// Risk reversal volatility quote.
-    ///
-    /// RR = σ_call - σ_put
-    /// Measures the skew of the volatility smile.
     RiskReversal {
         /// Currency pair for this instrument.
         currency_pair: CurrencyPair,
@@ -267,8 +217,6 @@ pub enum FxVolInstrument {
     },
 
     /// Delta-quoted option volatility.
-    ///
-    /// Direct volatility quote for a specific delta and option type.
     DeltaQuoted {
         /// Currency pair for this instrument.
         currency_pair: CurrencyPair,
@@ -330,7 +278,6 @@ impl FxVolInstrument {
                 }
             }
             Self::Butterfly { vol_spread, .. } => {
-                // Butterfly spread can be positive or negative, but typically small
                 if vol_spread.abs() > 1.0 {
                     return Err(InstrumentError::invalid_parameter(
                         "Butterfly spread seems unreasonably large",
@@ -338,7 +285,6 @@ impl FxVolInstrument {
                 }
             }
             Self::RiskReversal { vol_spread, .. } => {
-                // Risk reversal can be positive or negative
                 if vol_spread.abs() > 1.0 {
                     return Err(InstrumentError::invalid_parameter(
                         "Risk reversal spread seems unreasonably large",
@@ -394,28 +340,7 @@ impl std::fmt::Display for FxVolInstrument {
     }
 }
 
-// ============================================================================
-// Builder Pattern
-// ============================================================================
-
 /// Builder for constructing FxVolInstrument instances with fluent API.
-///
-/// # Example
-///
-/// ```
-/// use infra_domain::trade::instrument_def::{
-///     FxVolInstrumentBuilder, CurrencyPair, Delta, FxVolConvention,
-/// };
-/// use infra_domain::{market::Currency, time::Date};
-///
-/// let inst = FxVolInstrumentBuilder::new(
-///         CurrencyPair::new(Currency::EUR, Currency::USD),
-///         Date::from_ymd(2026, 6, 15).unwrap(),
-///     )
-///     .atm(0.10)
-///     .build()
-///     .unwrap();
-/// ```
 #[derive(Debug, Clone)]
 pub struct FxVolInstrumentBuilder {
     currency_pair: CurrencyPair,
@@ -496,12 +421,6 @@ impl FxVolInstrumentBuilder {
     }
 
     /// Builds the FxVolInstrument, validating all parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InstrumentError` if:
-    /// - No instrument type was specified
-    /// - Validation fails (e.g., negative volatility)
     pub fn build(self) -> Result<FxVolInstrument, InstrumentError> {
         let instrument = match self.instrument_type {
             Some(BuilderInstrumentType::Atm { vol }) => FxVolInstrument::Atm {
@@ -552,10 +471,6 @@ impl FxVolInstrumentBuilder {
     }
 }
 
-// ============================================================================
-// Tests
-// ============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -565,7 +480,6 @@ mod tests {
 
     #[test]
     fn test_delta_validation_and_features() {
-        // Valid deltas
         let d25 = Delta::new(25.0).unwrap();
         assert!((d25.value() - 25.0).abs() < 1e-10);
         assert!((d25.as_decimal() - 0.25).abs() < 1e-10);
@@ -574,7 +488,6 @@ mod tests {
         assert!((d50.value() - 50.0).abs() < 1e-10);
         assert!((Delta::new(0.001).unwrap().value() - 0.001).abs() < 1e-10);
 
-        // Invalid deltas
         assert!(matches!(
             Delta::new(0.0),
             Err(FxVolInstrumentError::InvalidDelta(0.0))
@@ -588,7 +501,6 @@ mod tests {
             Err(FxVolInstrumentError::InvalidDelta(51.0))
         ));
 
-        // Constants, display, copy
         assert!((Delta::D10.value() - 10.0).abs() < 1e-10);
         assert!((Delta::D25.value() - 25.0).abs() < 1e-10);
         assert!((Delta::ATM.value() - 50.0).abs() < 1e-10);
@@ -597,7 +509,6 @@ mod tests {
         let copied = d;
         assert_eq!(d, copied);
 
-        // Defaults
         assert_eq!(DeltaType::default(), DeltaType::SpotDelta);
         assert_eq!(CutOffTime::default(), CutOffTime::NewYork10am);
     }
@@ -617,7 +528,6 @@ mod tests {
         assert_eq!(usdjpy.delta_type, DeltaType::PremiumAdjusted);
         assert_eq!(usdjpy.premium_currency, Currency::JPY);
 
-        // Currency pair lookup
         let pair_eu = CurrencyPair::new(Currency::EUR, Currency::USD);
         assert_eq!(
             FxVolConvention::for_currency_pair(&pair_eu).delta_type,
@@ -637,7 +547,6 @@ mod tests {
 
     #[test]
     fn test_fx_vol_instrument_types() {
-        // ATM
         let atm = FxVolInstrument::Atm {
             currency_pair: make_pair(),
             expiry: make_expiry(),
@@ -650,7 +559,6 @@ mod tests {
         assert_eq!(atm.to_string(), "EUR/USD ATM 2026-06-15");
         assert_eq!(atm.clone(), atm);
 
-        // ATM invalid vol
         let bad_atm = FxVolInstrument::Atm {
             currency_pair: make_pair(),
             expiry: make_expiry(),
@@ -659,7 +567,6 @@ mod tests {
         };
         assert!(bad_atm.validate().is_err());
 
-        // Butterfly
         let bf = FxVolInstrument::Butterfly {
             currency_pair: make_pair(),
             expiry: make_expiry(),
@@ -670,7 +577,6 @@ mod tests {
         assert!(bf.validate().is_ok());
         assert_eq!(bf.to_string(), "EUR/USD 25D BF 2026-06-15");
 
-        // Risk Reversal
         let rr = FxVolInstrument::RiskReversal {
             currency_pair: make_pair(),
             expiry: make_expiry(),
@@ -681,7 +587,6 @@ mod tests {
         assert!(rr.validate().is_ok());
         assert_eq!(rr.to_string(), "EUR/USD 25D RR 2026-06-15");
 
-        // Delta Quoted (valid + invalid)
         let dq = FxVolInstrument::DeltaQuoted {
             currency_pair: make_pair(),
             expiry: make_expiry(),
@@ -709,14 +614,12 @@ mod tests {
         let pair = make_pair();
         let exp = make_expiry();
 
-        // ATM
         let atm = FxVolInstrumentBuilder::new(pair, exp)
             .atm(0.10)
             .build()
             .unwrap();
         assert!(matches!(atm, FxVolInstrument::Atm { vol, .. } if (vol - 0.10).abs() < 1e-10));
 
-        // Butterfly
         let bf = FxVolInstrumentBuilder::new(pair, exp)
             .butterfly(Delta::D25, 0.005)
             .build()
@@ -726,7 +629,6 @@ mod tests {
             if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - 0.005).abs() < 1e-10)
         );
 
-        // Risk Reversal
         let rr = FxVolInstrumentBuilder::new(pair, exp)
             .risk_reversal(Delta::D25, -0.01)
             .build()
@@ -736,7 +638,6 @@ mod tests {
             if (delta.value() - 25.0).abs() < 1e-10 && (vol_spread - (-0.01)).abs() < 1e-10)
         );
 
-        // Delta Quoted
         let dq = FxVolInstrumentBuilder::new(pair, exp)
             .delta_quoted(Delta::D25, 0.11, OptionType::Call)
             .build()
@@ -746,7 +647,6 @@ mod tests {
             if (delta.value() - 25.0).abs() < 1e-10 && (vol - 0.11).abs() < 1e-10)
         );
 
-        // Custom convention
         let custom = FxVolInstrumentBuilder::new(pair, exp)
             .with_convention(FxVolConvention::usdjpy())
             .atm(0.10)
@@ -754,7 +654,6 @@ mod tests {
             .unwrap();
         assert_eq!(custom.convention().delta_type, DeltaType::PremiumAdjusted);
 
-        // Fluent chain
         let fluent = FxVolInstrumentBuilder::new(pair, exp)
             .with_convention(FxVolConvention::eurusd())
             .butterfly(Delta::D10, 0.003)
@@ -762,7 +661,6 @@ mod tests {
             .unwrap();
         assert!(matches!(fluent, FxVolInstrument::Butterfly { .. }));
 
-        // Errors
         assert!(FxVolInstrumentBuilder::new(pair, exp).build().is_err());
         assert!(FxVolInstrumentBuilder::new(pair, exp)
             .atm(-0.10)

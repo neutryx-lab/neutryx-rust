@@ -1,22 +1,4 @@
 //! Ticker mapping for external data sources.
-//!
-//! This module provides the [`TickerMapping`] type for mapping external
-//! tickers (Reuters RIC, Bloomberg ticker) to internal [`QuoteId`] identifiers.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{TickerMapping, QuoteId, RateType, Currency};
-//! use infra_domain::time::Tenor;
-//!
-//! let mut mapping = TickerMapping::new();
-//!
-//! let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-//! mapping.register("USD3MD=", quote_id);
-//!
-//! assert!(mapping.contains("USD3MD="));
-//! assert!(mapping.lookup("USD3MD=").is_some());
-//! ```
 
 use std::collections::HashMap;
 
@@ -29,25 +11,6 @@ use crate::{
 };
 
 /// Mapping from external tickers to internal rate identifiers.
-///
-/// Provides a bidirectional mapping between external data provider tickers
-/// (such as Reuters RICs or Bloomberg tickers) and internal [`QuoteId`]
-/// identifiers.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{TickerMapping, QuoteId, RateType, Currency};
-/// use infra_domain::time::Tenor;
-///
-/// // Create with default mappings for major currencies
-/// let mapping = TickerMapping::with_defaults();
-///
-/// // Or create an empty mapping and register custom tickers
-/// let mut custom = TickerMapping::new();
-/// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
-/// custom.register("USSW3M Curncy", quote_id);
-/// ```
 #[derive(Debug, Clone, Default)]
 pub struct TickerMapping {
     /// Mapping from ticker string to QuoteId.
@@ -56,15 +19,6 @@ pub struct TickerMapping {
 
 impl TickerMapping {
     /// Creates a new empty `TickerMapping`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::TickerMapping;
-    ///
-    /// let mapping = TickerMapping::new();
-    /// assert!(mapping.is_empty());
-    /// ```
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -73,23 +27,10 @@ impl TickerMapping {
     }
 
     /// Creates a `TickerMapping` with default mappings for major currencies.
-    ///
-    /// Includes standard mappings for USD, EUR, GBP, JPY, and CHF
-    /// for common rate types (deposits, swaps).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::TickerMapping;
-    ///
-    /// let mapping = TickerMapping::with_defaults();
-    /// assert!(!mapping.is_empty());
-    /// ```
     #[must_use]
     pub fn with_defaults() -> Self {
         let mut mapping = Self::new();
 
-        // USD Deposits
         mapping.register(
             "USD1MD=",
             QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit),
@@ -103,7 +44,6 @@ impl TickerMapping {
             QuoteId::new(Currency::USD, Tenor::SixMonths, RateType::Deposit),
         );
 
-        // USD Swaps
         mapping.register(
             "USSW1 Curncy",
             QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Swap),
@@ -121,7 +61,6 @@ impl TickerMapping {
             QuoteId::new(Currency::USD, Tenor::TenYears, RateType::Swap),
         );
 
-        // EUR Deposits
         mapping.register(
             "EUR1MD=",
             QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
@@ -135,7 +74,6 @@ impl TickerMapping {
             QuoteId::new(Currency::EUR, Tenor::SixMonths, RateType::Deposit),
         );
 
-        // EUR Swaps
         mapping.register(
             "EUSW1 Curncy",
             QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Swap),
@@ -153,7 +91,6 @@ impl TickerMapping {
             QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap),
         );
 
-        // GBP Deposits
         mapping.register(
             "GBP1MD=",
             QuoteId::new(Currency::GBP, Tenor::OneMonth, RateType::Deposit),
@@ -163,7 +100,6 @@ impl TickerMapping {
             QuoteId::new(Currency::GBP, Tenor::ThreeMonths, RateType::Deposit),
         );
 
-        // GBP Swaps
         mapping.register(
             "BPSW1 Curncy",
             QuoteId::new(Currency::GBP, Tenor::OneYear, RateType::Swap),
@@ -173,7 +109,6 @@ impl TickerMapping {
             QuoteId::new(Currency::GBP, Tenor::FiveYears, RateType::Swap),
         );
 
-        // JPY Deposits
         mapping.register(
             "JPY1MD=",
             QuoteId::new(Currency::JPY, Tenor::OneMonth, RateType::Deposit),
@@ -183,7 +118,6 @@ impl TickerMapping {
             QuoteId::new(Currency::JPY, Tenor::ThreeMonths, RateType::Deposit),
         );
 
-        // JPY Swaps
         mapping.register(
             "JYSW1 Curncy",
             QuoteId::new(Currency::JPY, Tenor::OneYear, RateType::Swap),
@@ -193,7 +127,6 @@ impl TickerMapping {
             QuoteId::new(Currency::JPY, Tenor::FiveYears, RateType::Swap),
         );
 
-        // CHF Deposits
         mapping.register(
             "CHF1MD=",
             QuoteId::new(Currency::CHF, Tenor::OneMonth, RateType::Deposit),
@@ -203,7 +136,6 @@ impl TickerMapping {
             QuoteId::new(Currency::CHF, Tenor::ThreeMonths, RateType::Deposit),
         );
 
-        // CHF Swaps
         mapping.register(
             "SFSW1 Curncy",
             QuoteId::new(Currency::CHF, Tenor::OneYear, RateType::Swap),
@@ -217,110 +149,27 @@ impl TickerMapping {
     }
 
     /// Registers a ticker mapping.
-    ///
-    /// # Arguments
-    ///
-    /// * `ticker` - The external ticker string
-    /// * `quote_id` - The internal rate identifier
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::{TickerMapping, QuoteId, RateType, Currency};
-    /// use infra_domain::time::Tenor;
-    ///
-    /// let mut mapping = TickerMapping::new();
-    /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-    /// mapping.register("USD3MD=", quote_id);
-    /// ```
     pub fn register(&mut self, ticker: impl Into<String>, quote_id: QuoteId) {
         self.mapping.insert(ticker.into(), quote_id);
     }
 
     /// Looks up a rate ID by ticker.
-    ///
-    /// Returns `None` if the ticker is not found.
-    ///
-    /// # Arguments
-    ///
-    /// * `ticker` - The external ticker string to look up
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::TickerMapping;
-    ///
-    /// let mapping = TickerMapping::with_defaults();
-    ///
-    /// // Existing ticker
-    /// assert!(mapping.lookup("USD3MD=").is_some());
-    ///
-    /// // Unknown ticker
-    /// assert!(mapping.lookup("UNKNOWN").is_none());
-    /// ```
     #[must_use]
     pub fn lookup(&self, ticker: &str) -> Option<&QuoteId> { self.mapping.get(ticker) }
 
     /// Checks if a ticker is registered.
-    ///
-    /// # Arguments
-    ///
-    /// * `ticker` - The external ticker string to check
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::TickerMapping;
-    ///
-    /// let mapping = TickerMapping::with_defaults();
-    ///
-    /// assert!(mapping.contains("USD3MD="));
-    /// assert!(!mapping.contains("UNKNOWN"));
-    /// ```
     #[must_use]
     pub fn contains(&self, ticker: &str) -> bool { self.mapping.contains_key(ticker) }
 
     /// Returns the number of registered tickers.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::TickerMapping;
-    ///
-    /// let mapping = TickerMapping::new();
-    /// assert_eq!(mapping.len(), 0);
-    ///
-    /// let defaults = TickerMapping::with_defaults();
-    /// assert!(defaults.len() > 0);
-    /// ```
     #[must_use]
     pub fn len(&self) -> usize { self.mapping.len() }
 
     /// Returns `true` if no tickers are registered.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::TickerMapping;
-    ///
-    /// let mapping = TickerMapping::new();
-    /// assert!(mapping.is_empty());
-    /// ```
     #[must_use]
     pub fn is_empty(&self) -> bool { self.mapping.is_empty() }
 
     /// Returns an iterator over all registered tickers.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::TickerMapping;
-    ///
-    /// let mapping = TickerMapping::with_defaults();
-    /// for (ticker, quote_id) in mapping.iter() {
-    ///     println!("{} -> {}", ticker, quote_id);
-    /// }
-    /// ```
     pub fn iter(&self) -> impl Iterator<Item = (&String, &QuoteId)> { self.mapping.iter() }
 }
 
@@ -330,14 +179,12 @@ mod tests {
 
     #[test]
     fn test_ticker_mapping_operations() {
-        // new + empty + default
         let empty = TickerMapping::new();
         assert!(empty.is_empty());
         assert_eq!(empty.len(), 0);
         assert_eq!(TickerMapping::default().len(), 0);
         assert!(format!("{:?}", empty).contains("TickerMapping"));
 
-        // register + lookup + contains + len
         let mut m = TickerMapping::new();
         let q1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         m.register("TEST", q1.clone());
@@ -353,13 +200,11 @@ mod tests {
         );
         assert_eq!(m.len(), 2);
 
-        // overwrite
         let q2 = QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit);
         m.register("TEST", q2.clone());
         assert_eq!(m.len(), 2);
         assert_eq!(m.lookup("TEST"), Some(&q2));
 
-        // clone
         let c = m.clone();
         assert_eq!(c.len(), m.len());
         for (t, q) in m.iter() {
@@ -372,14 +217,12 @@ mod tests {
         let m = TickerMapping::with_defaults();
         assert!(!m.is_empty());
 
-        // iter consistency
         assert_eq!(m.iter().count(), m.len());
         for (t, q) in m.iter() {
             assert!(!t.is_empty());
             assert_eq!(m.lookup(t), Some(q));
         }
 
-        // specific lookups
         let q = m.lookup("USD3MD=").unwrap();
         assert_eq!(q.currency, Currency::USD);
         assert_eq!(q.tenor, Tenor::ThreeMonths);
@@ -388,7 +231,6 @@ mod tests {
         assert!(m.contains("USSW5 Curncy"));
         assert!(m.contains("EUSW5 Curncy"));
 
-        // multi-currency defaults
         for (dep, sw) in [
             ("USD1MD=", "USSW1 Curncy"),
             ("EUR1MD=", "EUSW1 Curncy"),

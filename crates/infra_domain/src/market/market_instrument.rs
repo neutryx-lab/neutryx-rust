@@ -1,8 +1,4 @@
 //! Market instrument type for CF-expandable instruments.
-//!
-//! This module provides the [`MarketInstrument`] type that combines a market
-//! rate with its convention to create a fully specified instrument that can be
-//! expanded into cashflows.
 
 use thiserror::Error;
 
@@ -84,36 +80,6 @@ impl MarketInstrumentError {
 }
 
 /// A market instrument combining rate data with convention.
-///
-/// `MarketInstrument` represents a fully specified market instrument that can
-/// be expanded into a trade with cashflows. It combines:
-/// - A rate identifier and value from market data
-/// - The applicable market convention
-/// - Calculated effective and maturity dates
-/// - Notional amount
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::{Currency, QuoteId, RateType};
-/// use infra_domain::market::convention::{MarketConvention, DepositConvention};
-/// use infra_domain::market::MarketInstrument;
-/// use infra_domain::time::{Date, Tenor};
-///
-/// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-/// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-/// let convention = MarketConvention::Deposit(DepositConvention::usd());
-///
-/// let instrument = MarketInstrument::new(
-///     quote_id,
-///     0.05,  // 5% rate
-///     convention,
-///     valuation_date,
-///     1_000_000.0,  // 1M notional
-/// ).unwrap();
-///
-/// assert_eq!(instrument.rate_value, 0.05);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MarketInstrument {
@@ -135,44 +101,6 @@ pub struct MarketInstrument {
 
 impl MarketInstrument {
     /// Creates a new market instrument.
-    ///
-    /// The effective and maturity dates are calculated from the valuation date
-    /// and tenor, taking into account the spot lag from the convention.
-    ///
-    /// # Arguments
-    ///
-    /// * `quote_id` - The rate identifier
-    /// * `rate_value` - The rate value (e.g., 0.05 for 5%)
-    /// * `convention` - The market convention to use
-    /// * `valuation_date` - The valuation/trade date
-    /// * `notional` - The notional amount
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The rate value is NaN or infinite
-    /// - The date calculations fail
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use infra_domain::market::{Currency, QuoteId, RateType};
-    /// use infra_domain::market::convention::{MarketConvention, SwapConvention};
-    /// use infra_domain::market::MarketInstrument;
-    /// use infra_domain::time::{Date, Tenor};
-    ///
-    /// let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
-    /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-    /// let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
-    ///
-    /// let instrument = MarketInstrument::new(
-    ///     quote_id,
-    ///     0.045,
-    ///     convention,
-    ///     valuation_date,
-    ///     10_000_000.0,
-    /// ).unwrap();
-    /// ```
     pub fn new(
         quote_id: QuoteId,
         rate_value: f64,
@@ -180,7 +108,6 @@ impl MarketInstrument {
         valuation_date: Date,
         notional: f64,
     ) -> Result<Self, MarketInstrumentError> {
-        // Validate rate value
         if rate_value.is_nan() {
             return Err(MarketInstrumentError::nan());
         }
@@ -188,14 +115,9 @@ impl MarketInstrument {
             return Err(MarketInstrumentError::infinite(rate_value));
         }
 
-        // Calculate effective date (valuation + spot lag)
-        // Note: This uses calendar days as a simplification.
-        // In production, this should use the calendar from the convention
-        // to properly adjust for business days.
         let spot_lag = Self::get_spot_lag(&convention);
         let effective_date = valuation_date + spot_lag as i64;
 
-        // Calculate maturity date from tenor
         let maturity_date = effective_date + quote_id.tenor.to_period();
 
         Ok(Self {
@@ -210,23 +132,6 @@ impl MarketInstrument {
     }
 
     /// Creates a market instrument with explicit dates.
-    ///
-    /// Use this when you need to specify exact effective and maturity dates
-    /// instead of calculating them from the tenor.
-    ///
-    /// # Arguments
-    ///
-    /// * `quote_id` - The rate identifier
-    /// * `rate_value` - The rate value
-    /// * `convention` - The market convention
-    /// * `valuation_date` - The valuation date
-    /// * `effective_date` - The effective/start date
-    /// * `maturity_date` - The maturity date
-    /// * `notional` - The notional amount
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the rate value is invalid.
     #[allow(clippy::too_many_arguments)]
     pub fn with_dates(
         quote_id: QuoteId,
@@ -237,7 +142,6 @@ impl MarketInstrument {
         maturity_date: Date,
         notional: f64,
     ) -> Result<Self, MarketInstrumentError> {
-        // Validate rate value
         if rate_value.is_nan() {
             return Err(MarketInstrumentError::nan());
         }
@@ -245,7 +149,6 @@ impl MarketInstrument {
             return Err(MarketInstrumentError::infinite(rate_value));
         }
 
-        // Validate dates
         if maturity_date <= effective_date {
             return Err(MarketInstrumentError::InvalidDate {
                 reason: format!(
@@ -271,8 +174,8 @@ impl MarketInstrument {
         match convention {
             MarketConvention::Deposit(c) => c.spot_lag,
             MarketConvention::Swap(c) | MarketConvention::Ois(c) => c.spot_lag,
-            MarketConvention::Fra(_) => 2,     // Standard FRA spot lag
-            MarketConvention::Futures(_) => 0, // Futures start immediately
+            MarketConvention::Fra(_) => 2,
+            MarketConvention::Futures(_) => 0,
             MarketConvention::XCcyBasis(c) => c.spot_lag,
             MarketConvention::FxForward(c) => c.spot_days,
             MarketConvention::FxSwap(c) => c.spot_days,
@@ -296,13 +199,8 @@ impl MarketInstrument {
     pub fn instrument_type_name(&self) -> &'static str { self.convention.instrument_type_name() }
 
     /// Returns the year fraction for the instrument period.
-    ///
-    /// Calculates the year fraction between effective and maturity dates
-    /// using the day count convention from the instrument's convention.
     #[must_use]
     pub fn year_fraction(&self) -> f64 {
-        // Use ACT/365 as a simple default for now
-        // In a full implementation, this would use the convention's day count
         let days = (self.maturity_date - self.effective_date) as f64;
         days / 365.0
     }
@@ -320,38 +218,6 @@ impl MarketInstrument {
     pub fn is_ois(&self) -> bool { self.convention.is_ois() }
 
     /// Converts this market instrument to a CF-expanded Trade.
-    ///
-    /// This method generates a full Trade structure with legs and cashflows
-    /// based on the instrument's convention and rate value.
-    ///
-    /// # Returns
-    ///
-    /// A `Trade` with appropriate legs and cashflows, or an error if
-    /// the expansion fails.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use infra_domain::market::{Currency, QuoteId, RateType};
-    /// use infra_domain::market::convention::{MarketConvention, DepositConvention};
-    /// use infra_domain::market::MarketInstrument;
-    /// use infra_domain::time::{Date, Tenor};
-    ///
-    /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-    /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-    /// let convention = MarketConvention::Deposit(DepositConvention::usd());
-    ///
-    /// let instrument = MarketInstrument::new(
-    ///     quote_id,
-    ///     0.05,
-    ///     convention,
-    ///     valuation_date,
-    ///     1_000_000.0,
-    /// ).unwrap();
-    ///
-    /// let trade = instrument.to_trade().unwrap();
-    /// assert_eq!(trade.legs().count(), 1);
-    /// ```
     pub fn to_trade(&self) -> Result<Trade, MarketInstrumentError> {
         let trade_id = format!(
             "MI_{}_{}_{:?}",
@@ -383,7 +249,6 @@ impl MarketInstrument {
     /// Expands a deposit instrument to a trade.
     #[allow(clippy::unnecessary_wraps)]
     fn expand_deposit(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
-        // A deposit has a single cashflow at maturity
         let cashflow = Cashflow::new(
             CashflowType::Coupon,
             self.maturity_date,
@@ -409,8 +274,6 @@ impl MarketInstrument {
 
     /// Expands a swap or OIS instrument to a trade.
     fn expand_swap(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
-        // Generate a simple annual schedule for demonstration
-        // In production, this would use the convention's frequency and calendar
         let schedule = self.generate_annual_schedule();
 
         if schedule.len() < 2 {
@@ -419,7 +282,6 @@ impl MarketInstrument {
             });
         }
 
-        // Fixed leg: pay fixed rate
         let mut fixed_cashflows = Vec::new();
         for window in schedule.windows(2) {
             let (start, end) = (window[0], window[1]);
@@ -446,13 +308,11 @@ impl MarketInstrument {
             self.currency(),
         );
 
-        // Floating leg: receive floating rate (index + 0 spread)
         let mut floating_cashflows = Vec::new();
         for window in schedule.windows(2) {
             let (start, end) = (window[0], window[1]);
             let yf = (end - start) as f64 / 365.0;
 
-            // Use a generic index type for the floating leg
             let index = crate::trade::IndexType::Rate(crate::market::RateIndex::Sofr);
 
             floating_cashflows.push(Cashflow::new(
@@ -478,7 +338,6 @@ impl MarketInstrument {
             self.currency(),
         );
 
-        // OIS is a type of swap
         let trade_type = TradeType::Swap;
 
         Ok(Trade::new(
@@ -491,7 +350,6 @@ impl MarketInstrument {
     /// Expands a FRA instrument to a trade.
     #[allow(clippy::unnecessary_wraps)]
     fn expand_fra(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
-        // FRA has a single settlement at effective date based on rate difference
         let cashflow = Cashflow::new(
             CashflowType::Settlement,
             self.effective_date,
@@ -518,7 +376,6 @@ impl MarketInstrument {
     /// Expands a futures instrument to a trade.
     #[allow(clippy::unnecessary_wraps)]
     fn expand_futures(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
-        // Futures have daily margining, simplified as a single settlement
         let cashflow = Cashflow::new(
             CashflowType::Settlement,
             self.maturity_date,
@@ -547,16 +404,13 @@ impl MarketInstrument {
         let mut schedule = vec![self.effective_date];
         let mut current = self.effective_date;
 
-        // Add dates at annual intervals
         while current < self.maturity_date {
-            // Add approximately one year (365 days)
             current = current + 365;
             if current <= self.maturity_date {
                 schedule.push(current);
             }
         }
 
-        // Always include maturity date
         if schedule.last() != Some(&self.maturity_date) {
             schedule.push(self.maturity_date);
         }
@@ -717,7 +571,7 @@ mod tests {
         let quote_id = QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Swap);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let effective_date = Date::from_ymd(2025, 1, 17).unwrap();
-        let maturity_date = Date::from_ymd(2024, 1, 17).unwrap(); // Before effective!
+        let maturity_date = Date::from_ymd(2024, 1, 17).unwrap();
         let convention = MarketConvention::Swap(SwapConvention::eur_euribor_6m());
 
         let result = MarketInstrument::with_dates(
@@ -787,7 +641,6 @@ mod tests {
         let instrument =
             MarketInstrument::new(quote_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
 
-        // Year fraction should be approximately 1.0 for a 1Y tenor
         let yf = instrument.year_fraction();
         assert!(
             yf > 0.9 && yf < 1.1,
@@ -836,8 +689,6 @@ mod tests {
         }
     }
 
-    // to_trade() tests
-
     #[test]
     fn test_to_trade_deposit() {
         let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -870,12 +721,10 @@ mod tests {
 
         let trade = instrument.to_trade().unwrap();
 
-        // Swap has 2 legs: fixed and floating
         let legs: Vec<_> = trade.legs().collect();
         assert_eq!(legs.len(), 2);
         assert!(matches!(trade.trade_type, TradeType::Swap));
 
-        // Verify we have both fixed and floating legs
         let has_fixed = legs.iter().any(|l| matches!(l.leg_type, LegType::Fixed));
         let has_floating = legs.iter().any(|l| matches!(l.leg_type, LegType::Floating));
         assert!(has_fixed, "Should have fixed leg");
@@ -894,7 +743,6 @@ mod tests {
 
         let trade = instrument.to_trade().unwrap();
 
-        // OIS also has 2 legs
         assert_eq!(trade.legs().count(), 2);
     }
 
@@ -953,7 +801,6 @@ mod tests {
         let cashflows: Vec<_> = legs[0].cashflows().collect();
         let cf = cashflows[0];
 
-        // Verify cashflow properties
         assert_eq!(cf.notional, 1_000_000.0);
         assert!(cf.year_fraction > 0.0);
         assert!(matches!(cf.payoff, Payoff::Fixed { rate } if (rate - 0.05).abs() < 1e-10));

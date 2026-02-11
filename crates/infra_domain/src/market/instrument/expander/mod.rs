@@ -1,22 +1,4 @@
 //! Instrument expansion to Trade (cashflow generation).
-//!
-//! This module provides the `InstrumentExpander` trait for converting
-//! `InstrumentDefinition` into `Trade` with generated cashflows.
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use infra_domain::market::instrument::{InstrumentDefinition, InstrumentExpander, FxSpot};
-//! use infra_domain::market::convention::ConventionSet;
-//! use infra_domain::time::Date;
-//!
-//! let fx_spot = FxSpot { /* ... */ };
-//! let instrument = InstrumentDefinition::FxSpot(fx_spot);
-//! let conventions = ConventionSet::usd_standard();
-//! let valuation_date = Date::from_ymd(2025, 1, 1).unwrap();
-//!
-//! let trade = instrument.expand_to_trade("TRADE-001", valuation_date, &conventions)?;
-//! ```
 
 mod commodity;
 mod credit;
@@ -44,10 +26,6 @@ pub trait InstrumentExpander {
         conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError>;
 }
-
-// ============================================================================
-// Shared helper functions for common expansion patterns
-// ============================================================================
 
 /// Creates a single-leg settlement trade (options, forwards, etc.).
 pub(super) fn settlement_trade(

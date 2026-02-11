@@ -1,21 +1,9 @@
 //! Foreign exchange convention definitions.
-//!
-//! This module provides types for all FX-related conventions:
-//!
-//! - [`FxConvention`]: Spot FX conventions
-//! - [`FxOptionConvention`], [`PremiumCurrency`], [`DeltaConvention`],
-//!   [`CutOffTime`]: FX option conventions
-//! - [`FxSwapConvention`], [`FxSettlementType`], [`NearLegType`]: FX swap
-//!   conventions
 
 use crate::{
     market::Currency,
     time::{BusinessDayConvention, CalendarId},
 };
-
-// ============================================================================
-// FX Spot Conventions
-// ============================================================================
 
 /// Convention for foreign exchange transactions.
 #[derive(Debug, Clone, PartialEq)]
@@ -83,10 +71,6 @@ impl FxConvention {
     pub fn jpy_default() -> Self { Self::usd_jpy() }
 }
 
-// ============================================================================
-// FX Option Conventions
-// ============================================================================
-
 /// Premium currency specification for FX options.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -152,21 +136,6 @@ impl std::fmt::Display for CutOffTime {
 }
 
 /// Convention for FX options.
-///
-/// Represents the market conventions for pricing and settling FX options.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{
-///     FxOptionConvention, PremiumCurrency, DeltaConvention, CutOffTime,
-/// };
-/// use infra_domain::time::CalendarId;
-///
-/// let conv = FxOptionConvention::g10_standard();
-/// assert_eq!(conv.delta_convention, DeltaConvention::SpotDelta);
-/// assert_eq!(conv.settlement_days, 2);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxOptionConvention {
@@ -206,12 +175,6 @@ impl FxOptionConvention {
     }
 
     /// Returns the standard G10 FX option convention.
-    ///
-    /// - Premium currency: Quote (USD for most pairs)
-    /// - Delta: Spot delta
-    /// - Cut-off: 10:00 NY
-    /// - Settlement: T+2
-    /// - Calendar: New York
     #[must_use]
     pub fn g10_standard() -> Self {
         Self {
@@ -225,11 +188,6 @@ impl FxOptionConvention {
     }
 
     /// Returns the EUR/USD FX option convention.
-    ///
-    /// - Premium currency: USD (Quote)
-    /// - Delta: Spot delta
-    /// - Cut-off: 10:00 NY
-    /// - Settlement: T+2
     #[must_use]
     pub fn eur_usd() -> Self {
         Self {
@@ -243,11 +201,6 @@ impl FxOptionConvention {
     }
 
     /// Returns the USD/JPY FX option convention.
-    ///
-    /// - Premium currency: USD (Base)
-    /// - Delta: Spot delta, premium-adjusted
-    /// - Cut-off: 15:00 TOK
-    /// - Settlement: T+2
     #[must_use]
     pub fn usd_jpy() -> Self {
         Self {
@@ -261,11 +214,6 @@ impl FxOptionConvention {
     }
 
     /// Returns the GBP/USD FX option convention.
-    ///
-    /// - Premium currency: USD (Quote)
-    /// - Delta: Spot delta
-    /// - Cut-off: 10:00 NY
-    /// - Settlement: T+2
     #[must_use]
     pub fn gbp_usd() -> Self {
         Self {
@@ -278,10 +226,6 @@ impl FxOptionConvention {
         }
     }
 }
-
-// ============================================================================
-// FX Swap Conventions
-// ============================================================================
 
 /// Settlement type for FX transactions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -306,19 +250,6 @@ pub enum NearLegType {
 }
 
 /// Convention for an FX swap.
-///
-/// Represents the market conventions for pricing and settling FX swaps
-/// where two FX transactions (near and far legs) are executed simultaneously.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{FxSwapConvention, NearLegType};
-///
-/// let conv = FxSwapConvention::usd_jpy();
-/// assert_eq!(conv.near_leg_type, NearLegType::Spot);
-/// assert_eq!(conv.spot_days, 2);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FxSwapConvention {
@@ -367,12 +298,6 @@ impl FxSwapConvention {
     }
 
     /// Returns the USD/JPY FX swap convention.
-    ///
-    /// - Near leg: Spot
-    /// - Spot days: 2
-    /// - Base calendar: New York
-    /// - Quote calendar: Tokyo
-    /// - Settlement: Deliverable
     #[must_use]
     pub fn usd_jpy() -> Self {
         Self {
@@ -388,12 +313,6 @@ impl FxSwapConvention {
     }
 
     /// Returns the EUR/USD FX swap convention.
-    ///
-    /// - Near leg: Spot
-    /// - Spot days: 2
-    /// - Base calendar: TARGET
-    /// - Quote calendar: New York
-    /// - Settlement: Deliverable
     #[must_use]
     pub fn eur_usd() -> Self {
         Self {
@@ -409,12 +328,6 @@ impl FxSwapConvention {
     }
 
     /// Returns the GBP/USD FX swap convention.
-    ///
-    /// - Near leg: Spot
-    /// - Spot days: 2
-    /// - Base calendar: London
-    /// - Quote calendar: New York
-    /// - Settlement: Deliverable
     #[must_use]
     pub fn gbp_usd() -> Self {
         Self {
@@ -430,12 +343,6 @@ impl FxSwapConvention {
     }
 
     /// Returns the EUR/JPY FX swap convention.
-    ///
-    /// - Near leg: Spot
-    /// - Spot days: 2
-    /// - Base calendar: TARGET
-    /// - Quote calendar: Tokyo
-    /// - Settlement: Deliverable
     #[must_use]
     pub fn eur_jpy() -> Self {
         Self {
@@ -451,9 +358,6 @@ impl FxSwapConvention {
     }
 
     /// Creates a tom/next FX swap convention based on an existing convention.
-    ///
-    /// Tom/next swaps have near leg on T+1 (tomorrow) and far leg on T+2
-    /// (spot).
     #[must_use]
     pub fn as_tom_next(&self) -> Self {
         Self {
@@ -463,9 +367,6 @@ impl FxSwapConvention {
     }
 
     /// Creates an overnight FX swap convention based on an existing convention.
-    ///
-    /// Overnight swaps have near leg on T+0 (today) and far leg on T+1
-    /// (tomorrow).
     #[must_use]
     pub fn as_overnight(&self) -> Self {
         Self {
@@ -478,10 +379,6 @@ impl FxSwapConvention {
     #[must_use]
     pub fn is_deliverable(&self) -> bool { self.settlement_type == FxSettlementType::Deliverable }
 }
-
-// ============================================================================
-// Tests
-// ============================================================================
 
 #[cfg(test)]
 mod tests {

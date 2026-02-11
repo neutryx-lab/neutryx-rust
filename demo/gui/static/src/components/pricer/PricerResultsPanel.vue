@@ -5,7 +5,7 @@ import ComputationMetrics from '@/components/pricer/ComputationMetrics.vue';
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="d-flex flex-column" style="gap: 16px">
     <PvDisplay />
     <GreeksDisplay />
     <ComputationMetrics />

@@ -1,293 +1,279 @@
-//! Model-related DTOs for stochastic model configuration and pricing
-//!
-//! Request/Response types for `ModelService` endpoints.
+//! Model-related DTOs for stochastic model configuration and pricing.
 
 use serde::{Deserialize, Serialize};
 
-// ============================================================================
-// Model Parameter DTOs
-// ============================================================================
-
-/// GBM (Geometric Brownian Motion) parameters
+/// GBM (Geometric Brownian Motion) parameters.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GbmParamsDto {
-    /// Drift rate (mu)
+    /// Drift rate (mu).
     pub drift: f64,
-    /// Volatility (sigma)
+    /// Volatility (sigma).
     pub volatility: f64,
 }
 
-/// Heston stochastic volatility parameters
+/// Heston stochastic volatility parameters.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HestonParamsDto {
-    /// Initial variance (v0)
+    /// Initial variance (v0).
     pub v0: f64,
-    /// Mean reversion speed (kappa)
+    /// Mean reversion speed (kappa).
     pub kappa: f64,
-    /// Long-term variance (theta)
+    /// Long-term variance (theta).
     pub theta: f64,
-    /// Volatility of volatility (sigma)
+    /// Volatility of volatility (sigma).
     pub sigma: f64,
-    /// Correlation between spot and variance (rho)
+    /// Correlation between spot and variance (rho).
     pub rho: f64,
 }
 
-/// Hull-White interest rate model parameters
+/// Hull-White interest rate model parameters.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HullWhiteParamsDto {
-    /// Mean reversion speed (a)
+    /// Mean reversion speed (a).
     pub mean_reversion: f64,
-    /// Volatility (sigma)
+    /// Volatility (sigma).
     pub volatility: f64,
 }
 
-/// CIR (Cox-Ingersoll-Ross) model parameters
+/// CIR (Cox-Ingersoll-Ross) model parameters.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CirParamsDto {
-    /// Mean reversion speed (kappa)
+    /// Mean reversion speed (kappa).
     pub kappa: f64,
-    /// Long-term mean (theta)
+    /// Long-term mean (theta).
     pub theta: f64,
-    /// Volatility (sigma)
+    /// Volatility (sigma).
     pub sigma: f64,
 }
 
-/// SABR model parameters
+/// SABR model parameters.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SabrParamsDto {
-    /// Initial volatility (alpha)
+    /// Initial volatility (alpha).
     pub alpha: f64,
-    /// Beta exponent
+    /// Beta exponent.
     pub beta: f64,
-    /// Correlation (rho)
+    /// Correlation (rho).
     pub rho: f64,
-    /// Vol-of-vol (nu)
+    /// Vol-of-vol (nu).
     pub nu: f64,
 }
 
-// ============================================================================
-// Model CRUD DTOs
-// ============================================================================
-
-/// Request to create a new model
+/// Request to create a new model.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "model_type", rename_all = "snake_case")]
-#[allow(dead_code)] // Fields accessed via serde deserialization
+#[allow(dead_code)]
 pub enum CreateModelRequest {
-    /// Geometric Brownian Motion
+    /// Geometric Brownian Motion.
     Gbm {
-        /// Model name
+        /// Model name.
         #[serde(default)]
         name: Option<String>,
-        /// GBM parameters
+        /// GBM parameters.
         params: GbmParamsDto,
     },
-    /// Heston stochastic volatility
+    /// Heston stochastic volatility.
     Heston {
-        /// Model name
+        /// Model name.
         #[serde(default)]
         name: Option<String>,
-        /// Heston parameters
+        /// Heston parameters.
         params: HestonParamsDto,
     },
-    /// Hull-White interest rate
+    /// Hull-White interest rate.
     HullWhite {
-        /// Model name
+        /// Model name.
         #[serde(default)]
         name: Option<String>,
-        /// Hull-White parameters
+        /// Hull-White parameters.
         params: HullWhiteParamsDto,
     },
-    /// Cox-Ingersoll-Ross
+    /// Cox-Ingersoll-Ross.
     Cir {
-        /// Model name
+        /// Model name.
         #[serde(default)]
         name: Option<String>,
-        /// CIR parameters
+        /// CIR parameters.
         params: CirParamsDto,
     },
-    /// SABR
+    /// SABR.
     Sabr {
-        /// Model name
+        /// Model name.
         #[serde(default)]
         name: Option<String>,
-        /// SABR parameters
+        /// SABR parameters.
         params: SabrParamsDto,
     },
 }
 
-/// Response for model creation
+/// Response for model creation.
 #[derive(Debug, Clone, Serialize)]
 pub struct CreateModelResponse {
-    /// Generated model ID
+    /// Generated model ID.
     pub model_id: String,
-    /// Model type
+    /// Model type.
     pub model_type: String,
-    /// Model name
+    /// Model name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// Validation results
+    /// Validation results.
     pub validation: ModelValidationDto,
 }
 
-/// Model validation result
+/// Model validation result.
 #[derive(Debug, Clone, Serialize)]
 pub struct ModelValidationDto {
-    /// Is the model valid?
+    /// Is the model valid?.
     pub valid: bool,
-    /// Validation warnings
+    /// Validation warnings.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<String>,
-    /// Validation errors
+    /// Validation errors.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<String>,
 }
 
-/// Response for model retrieval
+/// Response for model retrieval.
 #[derive(Debug, Clone, Serialize)]
 pub struct GetModelResponse {
-    /// Model ID
+    /// Model ID.
     pub model_id: String,
-    /// Model type
+    /// Model type.
     pub model_type: String,
-    /// Model name
+    /// Model name.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    /// Model parameters (as JSON object)
+    /// Model parameters (as JSON object).
     pub params: serde_json::Value,
-    /// Creation timestamp (ISO 8601)
+    /// Creation timestamp (ISO 8601).
     pub created_at: String,
 }
 
-// ============================================================================
-// Model Pricing DTOs
-// ============================================================================
-
-/// Pricing method
+/// Pricing method.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PricingMethodDto {
-    /// Closed-form analytical solution (if available)
+    /// Closed-form analytical solution (if available).
     #[default]
     Analytical,
-    /// Monte Carlo simulation
+    /// Monte Carlo simulation.
     MonteCarlo,
-    /// Tree method (binomial/trinomial)
+    /// Tree method (binomial/trinomial).
     Tree,
 }
 
-/// Instrument type for pricing
+/// Instrument type for pricing.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum InstrumentDto {
-    /// Vanilla European option
+    /// Vanilla European option.
     VanillaOption {
-        /// Underlying spot price
+        /// Underlying spot price.
         spot: f64,
-        /// Strike price
+        /// Strike price.
         strike: f64,
-        /// Time to maturity (years)
+        /// Time to maturity (years).
         maturity: f64,
-        /// Is call option?
+        /// Is call option?.
         is_call: bool,
     },
-    /// Forward contract
+    /// Forward contract.
     Forward {
-        /// Underlying spot price
+        /// Underlying spot price.
         spot: f64,
-        /// Forward price
+        /// Forward price.
         forward_price: f64,
-        /// Time to maturity (years)
+        /// Time to maturity (years).
         maturity: f64,
     },
-    /// Asian option (arithmetic average)
+    /// Asian option (arithmetic average).
     AsianOption {
-        /// Underlying spot price
+        /// Underlying spot price.
         spot: f64,
-        /// Strike price
+        /// Strike price.
         strike: f64,
-        /// Time to maturity (years)
+        /// Time to maturity (years).
         maturity: f64,
-        /// Number of averaging periods
+        /// Number of averaging periods.
         num_periods: usize,
-        /// Is call option?
+        /// Is call option?.
         is_call: bool,
     },
-    /// Barrier option
+    /// Barrier option.
     BarrierOption {
-        /// Underlying spot price
+        /// Underlying spot price.
         spot: f64,
-        /// Strike price
+        /// Strike price.
         strike: f64,
-        /// Barrier level
+        /// Barrier level.
         barrier: f64,
-        /// Time to maturity (years)
+        /// Time to maturity (years).
         maturity: f64,
-        /// Barrier type
+        /// Barrier type.
         barrier_type: String,
-        /// Is call option?
+        /// Is call option?.
         is_call: bool,
     },
 }
 
-/// Request for model-based pricing
+/// Request for model-based pricing.
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)] // Fields accessed via serde deserialization
+#[allow(dead_code)]
 pub struct ModelPricingRequest {
-    /// Pricing method to use
+    /// Pricing method to use.
     #[serde(default)]
     pub method: PricingMethodDto,
-    /// Instrument to price
+    /// Instrument to price.
     pub instrument: InstrumentDto,
-    /// Number of Monte Carlo paths (optional)
+    /// Number of Monte Carlo paths (optional).
     #[serde(default)]
     pub num_paths: Option<usize>,
-    /// Number of time steps (optional)
+    /// Number of time steps (optional).
     #[serde(default)]
     pub num_steps: Option<usize>,
-    /// Risk-free rate (optional, overrides model)
+    /// Risk-free rate (optional, overrides model).
     #[serde(default)]
     pub risk_free_rate: Option<f64>,
 }
 
-/// Response for model-based pricing
+/// Response for model-based pricing.
 #[derive(Debug, Clone, Serialize)]
 pub struct ModelPricingResponse {
-    /// Model ID used
+    /// Model ID used.
     pub model_id: String,
-    /// Model type
+    /// Model type.
     pub model_type: String,
-    /// Pricing method used
+    /// Pricing method used.
     pub method: PricingMethodDto,
-    /// Calculated price
+    /// Calculated price.
     pub price: f64,
-    /// Price currency
+    /// Price currency.
     pub currency: String,
-    /// Greeks (if calculated)
+    /// Greeks (if calculated).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub greeks: Option<PricingGreeksDto>,
-    /// Number of paths used (for MC)
+    /// Number of paths used (for MC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub num_paths: Option<usize>,
-    /// Standard error (for MC)
+    /// Standard error (for MC).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub std_error: Option<f64>,
-    /// Calculation time in milliseconds
+    /// Calculation time in milliseconds.
     pub calculation_time_ms: f64,
 }
 
-/// Greeks from pricing
+/// Greeks from pricing.
 #[derive(Debug, Clone, Serialize)]
 pub struct PricingGreeksDto {
-    /// Delta
+    /// Delta.
     pub delta: f64,
-    /// Gamma
+    /// Gamma.
     pub gamma: f64,
-    /// Vega
+    /// Vega.
     pub vega: f64,
-    /// Theta
+    /// Theta.
     pub theta: f64,
-    /// Rho
+    /// Rho.
     pub rho: f64,
 }
 

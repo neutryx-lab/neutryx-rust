@@ -1,26 +1,8 @@
 //! Currency pair representation for FX markets.
-//!
-//! This module provides the fundamental [`CurrencyPair`] type used throughout
-//! the system for representing FX currency pairs.
-//!
-//! # Example
-//!
-//! ```rust
-//! use infra_domain::market::{CurrencyPair, Currency};
-//!
-//! let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
-//! assert_eq!(pair.to_string(), "EUR/USD");
-//!
-//! let inverse = pair.inverse();
-//! assert_eq!(inverse.to_string(), "USD/EUR");
-//! ```
 
 use super::currency::Currency;
 
 /// Currency pair representation.
-///
-/// Represents a pair of currencies for FX transactions.
-/// Convention: Base/Quote, e.g., EUR/USD means EUR is base, USD is quote.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CurrencyPair {

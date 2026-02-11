@@ -1,7 +1,4 @@
-//! Demo handlers for the demo_gui frontend
-//!
-//! Thin handlers that delegate business logic to `DemoService` and
-//! `VolcubeService`.
+//! Demo handlers for the demo_gui frontend.
 
 use std::sync::Arc;
 
@@ -30,11 +27,7 @@ use crate::{
     state::AppState,
 };
 
-// =============================================================================
-// Configuration & Instruments
-// =============================================================================
-
-/// GET /api/config
+/// GET /api/config.
 pub async fn get_config(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<AppConfigResponse>, ServerError> {
@@ -42,7 +35,7 @@ pub async fn get_config(
     Ok(Json(response))
 }
 
-/// GET /api/instruments
+/// GET /api/instruments.
 pub async fn get_instruments(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<InstrumentsResponse>, ServerError> {
@@ -50,11 +43,7 @@ pub async fn get_instruments(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Trade Expansion & Pricing
-// =============================================================================
-
-/// POST /api/trade/expand
+/// POST /api/trade/expand.
 pub async fn expand_trade(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<TradeExpandRequest>,
@@ -63,7 +52,7 @@ pub async fn expand_trade(
     Ok(Json(response))
 }
 
-/// POST /api/pricer/price
+/// POST /api/pricer/price.
 pub async fn price_trade(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<DemoPricingRequest>,
@@ -72,7 +61,7 @@ pub async fn price_trade(
     Ok(Json(response))
 }
 
-/// POST /api/pricer/greeks
+/// POST /api/pricer/greeks.
 pub async fn calculate_greeks(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<DemoGreeksRequest>,
@@ -81,11 +70,7 @@ pub async fn calculate_greeks(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Market Data
-// =============================================================================
-
-/// GET /api/market/rates
+/// GET /api/market/rates.
 pub async fn get_market_rates(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<MarketRatesResponse>, ServerError> {
@@ -93,7 +78,7 @@ pub async fn get_market_rates(
     Ok(Json(response))
 }
 
-/// GET /api/market/config
+/// GET /api/market/config.
 pub async fn get_market_config(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<MarketConfigResponse>, ServerError> {
@@ -101,7 +86,7 @@ pub async fn get_market_config(
     Ok(Json(response))
 }
 
-/// GET /api/market/rates/:rate_id
+/// GET /api/market/rates/:rate_id.
 pub async fn get_rate_detail(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -110,7 +95,7 @@ pub async fn get_rate_detail(
     Ok(Json(response))
 }
 
-/// POST /api/market/rates/refresh
+/// POST /api/market/rates/refresh.
 pub async fn refresh_market_rates(
     State(state): State<Arc<AppState>>,
 ) -> Result<StatusCode, ServerError> {
@@ -118,11 +103,7 @@ pub async fn refresh_market_rates(
     Ok(StatusCode::OK)
 }
 
-// =============================================================================
-// Conventions
-// =============================================================================
-
-/// GET /api/market/conventions
+/// GET /api/market/conventions.
 pub async fn get_conventions(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<ConventionsResponse>, ServerError> {
@@ -130,7 +111,7 @@ pub async fn get_conventions(
     Ok(Json(response))
 }
 
-/// GET /api/market/conventions/:id
+/// GET /api/market/conventions/:id.
 pub async fn get_convention_detail(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -139,11 +120,7 @@ pub async fn get_convention_detail(
     Ok(Json(response))
 }
 
-// =============================================================================
-// IR & FX Volatility
-// =============================================================================
-
-/// GET /api/irvol/currencies
+/// GET /api/irvol/currencies.
 pub async fn get_ir_vol_currencies(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<IrVolCurrenciesResponse>, ServerError> {
@@ -151,7 +128,7 @@ pub async fn get_ir_vol_currencies(
     Ok(Json(response))
 }
 
-/// GET /api/irvol/quotes/:currency
+/// GET /api/irvol/quotes/:currency.
 pub async fn get_ir_vol_quotes(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -160,7 +137,7 @@ pub async fn get_ir_vol_quotes(
     Ok(Json(response))
 }
 
-/// GET /api/fxvol/pairs
+/// GET /api/fxvol/pairs.
 pub async fn get_fx_vol_pairs(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<FxVolPairsResponse>, ServerError> {
@@ -168,7 +145,7 @@ pub async fn get_fx_vol_pairs(
     Ok(Json(response))
 }
 
-/// GET /api/fxvol/quotes/:pair
+/// GET /api/fxvol/quotes/:pair.
 pub async fn get_fx_vol_quotes(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -177,11 +154,7 @@ pub async fn get_fx_vol_quotes(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Events & Holidays
-// =============================================================================
-
-/// GET /api/market/events
+/// GET /api/market/events.
 pub async fn get_events(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<EventsResponse>, ServerError> {
@@ -189,7 +162,7 @@ pub async fn get_events(
     Ok(Json(response))
 }
 
-/// GET /api/market/events/types
+/// GET /api/market/events/types.
 pub async fn get_event_types(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<EventTypesResponse>, ServerError> {
@@ -197,7 +170,7 @@ pub async fn get_event_types(
     Ok(Json(response))
 }
 
-/// GET /api/market/holidays
+/// GET /api/market/holidays.
 pub async fn get_holidays(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<HolidaysResponse>, ServerError> {
@@ -205,11 +178,7 @@ pub async fn get_holidays(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Curves
-// =============================================================================
-
-/// GET /api/curves
+/// GET /api/curves.
 pub async fn get_available_curves(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<AvailableCurvesResponse>, ServerError> {
@@ -217,7 +186,7 @@ pub async fn get_available_curves(
     Ok(Json(response))
 }
 
-/// GET /api/curves/indices
+/// GET /api/curves/indices.
 pub async fn get_curve_indices(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<CurveIndicesResponse>, ServerError> {
@@ -225,7 +194,7 @@ pub async fn get_curve_indices(
     Ok(Json(response))
 }
 
-/// GET /api/curves/instruments/:index
+/// GET /api/curves/instruments/:index.
 pub async fn get_curve_instruments(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -234,11 +203,7 @@ pub async fn get_curve_instruments(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Volcube
-// =============================================================================
-
-/// GET /api/volcube/indices
+/// GET /api/volcube/indices.
 pub async fn get_volcube_indices(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<VolcubeIndicesResponse>, ServerError> {
@@ -246,7 +211,7 @@ pub async fn get_volcube_indices(
     Ok(Json(response))
 }
 
-/// GET /api/volcube/models
+/// GET /api/volcube/models.
 pub async fn get_volcube_models(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<VolcubeModelsResponse>, ServerError> {
@@ -254,7 +219,7 @@ pub async fn get_volcube_models(
     Ok(Json(response))
 }
 
-/// GET /api/volcube/instruments/:currency
+/// GET /api/volcube/instruments/:currency.
 pub async fn get_volcube_instruments(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -263,7 +228,7 @@ pub async fn get_volcube_instruments(
     Ok(Json(response))
 }
 
-/// POST /api/volcube/calibrate
+/// POST /api/volcube/calibrate.
 pub async fn calibrate_volcube(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<VolcubeCalibrateRequest>,
@@ -272,7 +237,7 @@ pub async fn calibrate_volcube(
     Ok(Json(response))
 }
 
-/// POST /api/fxvol/calibrate
+/// POST /api/fxvol/calibrate.
 pub async fn calibrate_fxvol(
     State(state): State<Arc<AppState>>,
     AppJson(request): AppJson<FxVolCalibrateRequest>,
@@ -281,11 +246,7 @@ pub async fn calibrate_fxvol(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Export
-// =============================================================================
-
-/// GET /api/market/export/csv
+/// GET /api/market/export/csv.
 pub async fn export_market_csv(
     State(state): State<Arc<AppState>>,
 ) -> Result<Response<Body>, ServerError> {
@@ -302,7 +263,7 @@ pub async fn export_market_csv(
         .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))
 }
 
-/// GET /api/market/export/json
+/// GET /api/market/export/json.
 pub async fn export_market_json(
     State(state): State<Arc<AppState>>,
 ) -> Result<Response<Body>, ServerError> {
@@ -319,11 +280,7 @@ pub async fn export_market_json(
         .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))
 }
 
-// =============================================================================
-// Rate Instrument & Cashflows
-// =============================================================================
-
-/// GET /api/market/rates/:rate_id/instrument
+/// GET /api/market/rates/:rate_id/instrument.
 pub async fn get_rate_instrument(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -332,7 +289,7 @@ pub async fn get_rate_instrument(
     Ok(Json(response))
 }
 
-/// GET /api/market/rates/:rate_id/cashflows
+/// GET /api/market/rates/:rate_id/cashflows.
 pub async fn get_rate_cashflows(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -341,11 +298,7 @@ pub async fn get_rate_cashflows(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Rate Index
-// =============================================================================
-
-/// GET /api/market/indices
+/// GET /api/market/indices.
 pub async fn get_rate_indices(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<RateIndicesResponse>, ServerError> {
@@ -353,7 +306,7 @@ pub async fn get_rate_indices(
     Ok(Json(response))
 }
 
-/// GET /api/market/indices/:code
+/// GET /api/market/indices/:code.
 pub async fn get_rate_index_detail(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -362,7 +315,7 @@ pub async fn get_rate_index_detail(
     Ok(Json(response))
 }
 
-/// GET /api/market/indices/:code/rates
+/// GET /api/market/indices/:code/rates.
 pub async fn get_index_rates(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -371,7 +324,7 @@ pub async fn get_index_rates(
     Ok(Json(response))
 }
 
-/// GET /api/market/indices/:code/conventions
+/// GET /api/market/indices/:code/conventions.
 pub async fn get_index_conventions(
     State(state): State<Arc<AppState>>,
     Path(id): Path<String>,
@@ -380,11 +333,7 @@ pub async fn get_index_conventions(
     Ok(Json(response))
 }
 
-// =============================================================================
-// Implied PDF & SABR
-// =============================================================================
-
-/// POST /api/volcube/implied-pdf
+/// POST /api/volcube/implied-pdf.
 pub async fn compute_implied_pdf(
     AppJson(request): AppJson<ImpliedPdfRequest>,
 ) -> Result<Json<ImpliedPdfResponse>, ServerError> {
@@ -392,7 +341,7 @@ pub async fn compute_implied_pdf(
     Ok(Json(response))
 }
 
-/// POST /api/volcube/sabr-smile
+/// POST /api/volcube/sabr-smile.
 pub async fn compute_sabr_smile(
     AppJson(request): AppJson<SabrSmileRequest>,
 ) -> Result<Json<SabrSmileResponse>, ServerError> {

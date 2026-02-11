@@ -1,42 +1,36 @@
-//! Demo DTOs for the demo_gui frontend integration
-//!
-//! These DTOs match the TypeScript API types defined in:
-//! `demo/gui/static/src/types/api.ts`
-//!
-//! Note: Fields are used for serde serialisation/deserialisation,
-//! not read directly in Rust code.
+//! Demo DTOs for the demo_gui frontend integration.
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 
-/// Application configuration response
+/// Application configuration response.
 #[derive(Debug, Clone, Serialize)]
 pub struct AppConfigResponse {
-    /// Enum values for dropdowns
+    /// Enum values for dropdowns.
     pub enums: std::collections::HashMap<String, Vec<EnumValue>>,
-    /// Default values for forms
+    /// Default values for forms.
     pub defaults: std::collections::HashMap<String, serde_json::Value>,
-    /// Rate index by currency
+    /// Rate index by currency.
     pub rate_index_by_currency: std::collections::HashMap<String, String>,
 }
 
-/// Enum value (string or object with code/name)
+/// Enum value (string or object with code/name).
 #[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
 pub enum EnumValue {
-    /// Simple string value
+    /// Simple string value.
     Simple(String),
-    /// Object with code and optional name
+    /// Object with code and optional name.
     Object { code: String, name: Option<String> },
 }
 
-/// Instruments response
+/// Instruments response.
 #[derive(Debug, Clone, Serialize)]
 pub struct InstrumentsResponse {
     pub instruments: Vec<InstrumentDef>,
 }
 
-/// Instrument definition
+/// Instrument definition.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstrumentDef {
@@ -51,7 +45,7 @@ pub struct InstrumentDef {
     pub optional_params: Vec<ParameterDef>,
 }
 
-/// Parameter definition
+/// Parameter definition.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParameterDef {
@@ -67,7 +61,7 @@ pub struct ParameterDef {
     pub validation: Option<ParameterValidation>,
 }
 
-/// Field type
+/// Field type.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FieldType {
@@ -77,14 +71,14 @@ pub enum FieldType {
     Select,
 }
 
-/// Parameter option for select fields
+/// Parameter option for select fields.
 #[derive(Debug, Clone, Serialize)]
 pub struct ParameterOption {
     pub value: String,
     pub label: String,
 }
 
-/// Parameter validation
+/// Parameter validation.
 #[derive(Debug, Clone, Serialize)]
 pub struct ParameterValidation {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -93,7 +87,7 @@ pub struct ParameterValidation {
     pub max: Option<f64>,
 }
 
-/// Trade expansion request
+/// Trade expansion request.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TradeExpandRequest {
@@ -101,7 +95,7 @@ pub struct TradeExpandRequest {
     pub params: serde_json::Value,
 }
 
-/// Expanded trade response
+/// Expanded trade response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExpandedTrade {
@@ -111,7 +105,7 @@ pub struct ExpandedTrade {
     pub metadata: TradeMetadata,
 }
 
-/// Trade leg
+/// Trade leg.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TradeLeg {
@@ -123,7 +117,7 @@ pub struct TradeLeg {
     pub cashflows: Vec<Cashflow>,
 }
 
-/// Cashflow
+/// Cashflow.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cashflow {
@@ -138,7 +132,7 @@ pub struct Cashflow {
     pub rate_index: Option<String>,
 }
 
-/// Trade metadata
+/// Trade metadata.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TradeMetadata {
@@ -147,7 +141,7 @@ pub struct TradeMetadata {
     pub processing_time_ms: f64,
 }
 
-/// Pricing request
+/// Pricing request.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoPricingRequest {
@@ -158,7 +152,7 @@ pub struct DemoPricingRequest {
     pub model_config: Option<DemoModelConfig>,
 }
 
-/// Pricing leg
+/// Pricing leg.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PricingLeg {
@@ -167,7 +161,7 @@ pub struct PricingLeg {
     pub cashflows: Vec<PricingCashflow>,
 }
 
-/// Pricing cashflow
+/// Pricing cashflow.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PricingCashflow {
@@ -175,7 +169,7 @@ pub struct PricingCashflow {
     pub amount: f64,
 }
 
-/// Model configuration
+/// Model configuration.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoModelConfig {
@@ -185,7 +179,7 @@ pub struct DemoModelConfig {
     pub seed: Option<u64>,
 }
 
-/// Pricing result
+/// Pricing result.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoPricingResult {
@@ -198,7 +192,7 @@ pub struct DemoPricingResult {
     pub legs: Option<Vec<LegResult>>,
 }
 
-/// Leg result with detailed breakdown
+/// Leg result with detailed breakdown.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LegResult {
@@ -213,7 +207,7 @@ pub struct LegResult {
     pub cashflows: Option<Vec<CashflowPvResult>>,
 }
 
-/// Cashflow-level PV result
+/// Cashflow-level PV result.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CashflowPvResult {
@@ -222,7 +216,7 @@ pub struct CashflowPvResult {
     pub payment_date: String,
 }
 
-/// Greeks request
+/// Greeks request.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoGreeksRequest {
@@ -234,7 +228,7 @@ pub struct DemoGreeksRequest {
     pub bump_sizes: BumpSizes,
 }
 
-/// Bump sizes for Greeks
+/// Bump sizes for Greeks.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BumpSizes {
@@ -243,7 +237,7 @@ pub struct BumpSizes {
     pub vol_bump_pct: f64,
 }
 
-/// Greeks result
+/// Greeks result.
 #[derive(Debug, Clone, Serialize)]
 pub struct DemoGreeksResult {
     pub currency: String,
@@ -253,7 +247,7 @@ pub struct DemoGreeksResult {
     pub vega: Option<f64>,
 }
 
-/// Market rate
+/// Market rate.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketRate {
@@ -271,7 +265,7 @@ pub struct MarketRate {
     pub is_stale: bool,
 }
 
-/// Market rates response
+/// Market rates response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketRatesResponse {
@@ -279,14 +273,14 @@ pub struct MarketRatesResponse {
     pub last_updated: String,
 }
 
-/// Market config response
+/// Market config response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketConfigResponse {
     pub tenor_order: Vec<String>,
 }
 
-/// Market rate detail response
+/// Market rate detail response.
 #[derive(Debug, Clone, Serialize)]
 pub struct MarketRateDetailResponse {
     pub rate: MarketRate,
@@ -296,7 +290,7 @@ pub struct MarketRateDetailResponse {
     pub convention: Option<Convention>,
 }
 
-/// Convention
+/// Convention.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Convention {
@@ -309,32 +303,32 @@ pub struct Convention {
     pub fields: Option<Vec<ConventionField>>,
 }
 
-/// Convention field
+/// Convention field.
 #[derive(Debug, Clone, Serialize)]
 pub struct ConventionField {
     pub label: String,
     pub value: String,
 }
 
-/// Conventions response
+/// Conventions response.
 #[derive(Debug, Clone, Serialize)]
 pub struct ConventionsResponse {
     pub conventions: Vec<Convention>,
 }
 
-/// IR vol currency
+/// IR vol currency.
 #[derive(Debug, Clone, Serialize)]
 pub struct IrVolCurrency {
     pub currency: String,
 }
 
-/// IR vol currencies response
+/// IR vol currencies response.
 #[derive(Debug, Clone, Serialize)]
 pub struct IrVolCurrenciesResponse {
     pub currencies: Vec<IrVolCurrency>,
 }
 
-/// IR vol quote
+/// IR vol quote.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IrVolQuote {
@@ -345,7 +339,7 @@ pub struct IrVolQuote {
     pub smile: Option<Vec<SmilePoint>>,
 }
 
-/// Smile point
+/// Smile point.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SmilePoint {
@@ -353,7 +347,7 @@ pub struct SmilePoint {
     pub vol: f64,
 }
 
-/// IR vol quotes response
+/// IR vol quotes response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IrVolQuotesResponse {
@@ -364,24 +358,24 @@ pub struct IrVolQuotesResponse {
     pub source: Option<String>,
 }
 
-/// FX vol pair
+/// FX vol pair.
 #[derive(Debug, Clone, Serialize)]
 pub struct FxVolPair {
     pub pair: String,
 }
 
-/// FX vol pairs response
+/// FX vol pairs response.
 #[derive(Debug, Clone, Serialize)]
 pub struct FxVolPairsResponse {
     pub pairs: Vec<FxVolPair>,
 }
 
-/// FX vol quote
+/// FX vol quote.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FxVolQuote {
     pub expiry: f64,
-    /// Human-readable label for the expiry (e.g., "9M", "15M", "1Y")
+    /// Human-readable label for the expiry (e.g., "9M", "15M", "1Y").
     pub expiry_label: String,
     pub atm_vol: f64,
     pub rr25d: f64,
@@ -390,28 +384,27 @@ pub struct FxVolQuote {
     pub rr10d: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bf10d: Option<f64>,
-    /// FX forward rate at this tenor: F(T) = Spot × DF_foreign(T) /
-    /// DF_domestic(T)
+    /// FX forward rate at this tenor: F(T) = Spot × DF_foreign(T) /.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub forward: Option<f64>,
 }
 
-/// FX vol quotes response
+/// FX vol quotes response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FxVolQuotesResponse {
     pub quotes: Vec<FxVolQuote>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spot: Option<f64>,
-    /// Domestic rate (quote currency) used for forward computation
+    /// Domestic rate (quote currency) used for forward computation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domestic_rate: Option<f64>,
-    /// Foreign rate (base currency) used for forward computation
+    /// Foreign rate (base currency) used for forward computation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub foreign_rate: Option<f64>,
 }
 
-/// Market event
+/// Market event.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketEvent {
@@ -441,12 +434,12 @@ pub struct MarketEvent {
     pub forecast: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub actual: Option<String>,
-    /// Expected rate spike in basis points (for turn events)
+    /// Expected rate spike in basis points (for turn events).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_spike_bp: Option<f64>,
 }
 
-/// Event type
+/// Event type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventType {
@@ -455,18 +448,18 @@ pub enum EventType {
     Holiday,
     News,
     Expiry,
-    /// Turn of Year (TOY) - year-end rate spike
+    /// Turn of Year (TOY) - year-end rate spike.
     TurnOfYear,
-    /// Turn of Quarter (TOQ) - quarter-end rate spike
+    /// Turn of Quarter (TOQ) - quarter-end rate spike.
     TurnOfQuarter,
-    /// Turn of Month (TOM) - month-end rate spike
+    /// Turn of Month (TOM) - month-end rate spike.
     TurnOfMonth,
-    /// Generic turn event
+    /// Generic turn event.
     Turn,
     Other,
 }
 
-/// Importance level
+/// Importance level.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Importance {
@@ -476,7 +469,7 @@ pub enum Importance {
     Low,
 }
 
-/// Central bank
+/// Central bank.
 #[derive(Debug, Clone, Serialize)]
 pub struct CentralBank {
     pub name: String,
@@ -484,19 +477,19 @@ pub struct CentralBank {
     pub currency: String,
 }
 
-/// Events response
+/// Events response.
 #[derive(Debug, Clone, Serialize)]
 pub struct EventsResponse {
     pub events: Vec<MarketEvent>,
 }
 
-/// Event types response
+/// Event types response.
 #[derive(Debug, Clone, Serialize)]
 pub struct EventTypesResponse {
     pub types: Vec<String>,
 }
 
-/// Holiday data
+/// Holiday data.
 #[derive(Debug, Clone, Serialize)]
 pub struct Holiday {
     pub id: String,
@@ -505,7 +498,7 @@ pub struct Holiday {
     pub country: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
-    /// Holiday type: "bank", "market", "settlement"
+    /// Holiday type: "bank", "market", "settlement".
     #[serde(rename = "type")]
     pub holiday_type: String,
     pub importance: Importance,
@@ -513,25 +506,25 @@ pub struct Holiday {
     pub source: Option<String>,
 }
 
-/// Holidays response
+/// Holidays response.
 #[derive(Debug, Clone, Serialize)]
 pub struct HolidaysResponse {
     pub holidays: Vec<Holiday>,
 }
 
-/// Available curves response
+/// Available curves response.
 #[derive(Debug, Clone, Serialize)]
 pub struct AvailableCurvesResponse {
     pub curves: Vec<String>,
 }
 
-/// Curve indices response
+/// Curve indices response.
 #[derive(Debug, Clone, Serialize)]
 pub struct CurveIndicesResponse {
     pub indices: Vec<String>,
 }
 
-/// Curve instrument for bootstrapping
+/// Curve instrument for bootstrapping.
 #[derive(Debug, Clone, Serialize)]
 pub struct CurveInstrument {
     #[serde(rename = "type")]
@@ -541,25 +534,25 @@ pub struct CurveInstrument {
     pub enabled: bool,
 }
 
-/// Curve instruments response
+/// Curve instruments response.
 #[derive(Debug, Clone, Serialize)]
 pub struct CurveInstrumentsResponse {
     pub instruments: Vec<CurveInstrument>,
 }
 
-/// Volcube indices response
+/// Volcube indices response.
 #[derive(Debug, Clone, Serialize)]
 pub struct VolcubeIndicesResponse {
     pub indices: Vec<String>,
 }
 
-/// Volcube calibration models response
+/// Volcube calibration models response.
 #[derive(Debug, Clone, Serialize)]
 pub struct VolcubeModelsResponse {
     pub models: Vec<String>,
 }
 
-/// Swaption instrument for volcube
+/// Swaption instrument for volcube.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SwaptionInstrument {
@@ -572,7 +565,7 @@ pub struct SwaptionInstrument {
     pub enabled: bool,
 }
 
-/// Volcube instruments response
+/// Volcube instruments response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VolcubeInstrumentsResponse {
@@ -581,7 +574,7 @@ pub struct VolcubeInstrumentsResponse {
     pub reference_date: Option<String>,
 }
 
-/// Initial SABR parameter guesses for calibration
+/// Initial SABR parameter guesses for calibration.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SabrInitialParams {
@@ -591,8 +584,7 @@ pub struct SabrInitialParams {
     pub nu: Option<f64>,
 }
 
-/// Flags indicating which SABR parameters should be held fixed during
-/// calibration
+/// Flags indicating which SABR parameters should be held fixed during.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SabrFixedParams {
@@ -602,42 +594,42 @@ pub struct SabrFixedParams {
     pub nu: Option<bool>,
 }
 
-/// Volcube calibration request
+/// Volcube calibration request.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VolcubeCalibrateRequest {
     pub index: String,
     pub reference_date: Option<String>,
     pub model: Option<String>,
-    /// Forward swap rates keyed by "expiry|tenor" (e.g. "1Y|5Y" → 0.045)
+    /// Forward swap rates keyed by "expiry|tenor" (e.g.
     #[serde(default)]
     pub forward_rates: Option<std::collections::HashMap<String, f64>>,
-    /// Initial SABR parameter guesses
+    /// Initial SABR parameter guesses.
     #[serde(default)]
     pub initial_params: Option<SabrInitialParams>,
-    /// Which parameters to hold fixed during calibration
+    /// Which parameters to hold fixed during calibration.
     #[serde(default)]
     pub fixed_params: Option<SabrFixedParams>,
 }
 
-/// Volcube calibration response
+/// Volcube calibration response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VolcubeCalibrateResponse {
     pub model: String,
     pub metadata: CalibrationMetadata,
     pub parameters: CalibrationParameters,
-    /// Per-cell SABR parameters keyed by "expiry|tenor"
+    /// Per-cell SABR parameters keyed by "expiry|tenor".
     pub cell_parameters: std::collections::HashMap<String, CalibrationParameters>,
-    /// Per-cell calibration diagnostics
+    /// Per-cell calibration diagnostics.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cell_diagnostics: Option<std::collections::HashMap<String, CellDiagnostics>>,
-    /// Per-cell Jacobian `∂σ_model / ∂θ_k`
+    /// Per-cell Jacobian `∂σ_model / ∂θ_k`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cell_jacobians: Option<std::collections::HashMap<String, CellJacobian>>,
 }
 
-/// Per-cell calibration diagnostics
+/// Per-cell calibration diagnostics.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CellDiagnostics {
@@ -647,10 +639,6 @@ pub struct CellDiagnostics {
 }
 
 /// Per-cell Jacobian: `∂σ_model / ∂θ_k` at each instrument strike.
-///
-/// Vols are in percentage units (matching the market data scale).
-/// Row i corresponds to a strike (ATM or smile offset) and column k
-/// to a SABR parameter (α, ρ, ν).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CellJacobian {
@@ -662,7 +650,7 @@ pub struct CellJacobian {
     pub matrix: Vec<Vec<f64>>,
 }
 
-/// FX vol calibration request
+/// FX vol calibration request.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FxVolCalibrateRequest {
@@ -670,18 +658,18 @@ pub struct FxVolCalibrateRequest {
     pub spot: f64,
     pub domestic_rate: f64,
     pub foreign_rate: f64,
-    /// FX forward rates keyed by tenor label (e.g. "1M" → 1.0842)
+    /// FX forward rates keyed by tenor label (e.g.
     #[serde(default)]
     pub forward_rates: Option<std::collections::HashMap<String, f64>>,
-    /// Initial SABR parameter guesses
+    /// Initial SABR parameter guesses.
     #[serde(default)]
     pub initial_params: Option<SabrInitialParams>,
-    /// Which parameters to hold fixed during calibration
+    /// Which parameters to hold fixed during calibration.
     #[serde(default)]
     pub fixed_params: Option<SabrFixedParams>,
 }
 
-/// Calibration metadata
+/// Calibration metadata.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CalibrationMetadata {
@@ -693,7 +681,7 @@ pub struct CalibrationMetadata {
     pub max_rmse: Option<f64>,
 }
 
-/// Calibration parameters (SABR model)
+/// Calibration parameters (SABR model).
 #[derive(Debug, Clone, Serialize)]
 pub struct CalibrationParameters {
     pub alpha: f64,
@@ -702,25 +690,25 @@ pub struct CalibrationParameters {
     pub nu: f64,
 }
 
-/// Request to compute SABR smile and implied density from calibrated parameters
+/// Request to compute SABR smile and implied density from calibrated parameters.
 #[derive(Debug, Clone, Deserialize)]
 pub struct SabrSmileRequest {
-    /// SABR alpha (vol-of-vol backbone)
+    /// SABR alpha (vol-of-vol backbone).
     pub alpha: f64,
-    /// SABR beta (CEV exponent)
+    /// SABR beta (CEV exponent).
     pub beta: f64,
-    /// SABR rho (correlation)
+    /// SABR rho (correlation).
     pub rho: f64,
-    /// SABR nu (vol-of-vol)
+    /// SABR nu (vol-of-vol).
     pub nu: f64,
-    /// Forward rate
+    /// Forward rate.
     pub forward: f64,
-    /// Time to expiry in years
+    /// Time to expiry in years.
     pub expiry_years: f64,
-    /// Number of output points (default: 101)
+    /// Number of output points (default: 101).
     #[serde(default = "default_sabr_n_points")]
     pub n_points: usize,
-    /// Strike range in basis points (default: 200, i.e., -200 to +200)
+    /// Strike range in basis points (default: 200, i.e., -200 to +200).
     #[serde(default = "default_sabr_range_bp")]
     pub range_bp: f64,
 }
@@ -728,18 +716,18 @@ pub struct SabrSmileRequest {
 fn default_sabr_n_points() -> usize { 101 }
 fn default_sabr_range_bp() -> f64 { 200.0 }
 
-/// Response with SABR smile and implied density
+/// Response with SABR smile and implied density.
 #[derive(Debug, Clone, Serialize)]
 pub struct SabrSmileResponse {
-    /// Strike offsets in basis points
+    /// Strike offsets in basis points.
     pub offsets: Vec<f64>,
-    /// Normal volatilities (percentage, same scale as market data)
+    /// Normal volatilities (percentage, same scale as market data).
     pub vols: Vec<f64>,
-    /// Implied probability density (Breeden-Litzenberger)
+    /// Implied probability density (Breeden-Litzenberger).
     pub density: Vec<f64>,
 }
 
-/// Export format
+/// Export format.
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ExportFormat {
@@ -747,210 +735,209 @@ pub enum ExportFormat {
     Json,
 }
 
-/// Rate instrument response
+/// Rate instrument response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RateInstrumentResponse {
-    /// Rate identifier
+    /// Rate identifier.
     pub rate_id: String,
-    /// Rate value
+    /// Rate value.
     pub rate_value: f64,
-    /// Instrument type name
+    /// Instrument type name.
     pub instrument_type: String,
-    /// Convention details
+    /// Convention details.
     pub convention: Option<ConventionDetail>,
-    /// Effective date
+    /// Effective date.
     pub effective_date: String,
-    /// Maturity date
+    /// Maturity date.
     pub maturity_date: String,
-    /// Notional amount
+    /// Notional amount.
     pub notional: f64,
-    /// Processing time in milliseconds
+    /// Processing time in milliseconds.
     pub processing_time_ms: f64,
 }
 
-/// Convention detail for instrument response
+/// Convention detail for instrument response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConventionDetail {
-    /// Convention type
+    /// Convention type.
     pub convention_type: String,
-    /// Day count convention
+    /// Day count convention.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day_count: Option<String>,
-    /// Payment frequency
+    /// Payment frequency.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub frequency: Option<String>,
-    /// Business day convention
+    /// Business day convention.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub business_day_convention: Option<String>,
-    /// Settlement days (spot lag)
+    /// Settlement days (spot lag).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spot_lag: Option<u32>,
-    /// Calendar
+    /// Calendar.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub calendar: Option<String>,
 }
 
-/// Rate cashflows response
+/// Rate cashflows response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RateCashflowsResponse {
-    /// Rate identifier
+    /// Rate identifier.
     pub rate_id: String,
-    /// Legs with cashflows
+    /// Legs with cashflows.
     pub legs: Vec<LegCashflows>,
-    /// Processing time in milliseconds
+    /// Processing time in milliseconds.
     pub processing_time_ms: f64,
 }
 
-/// Leg with cashflows
+/// Leg with cashflows.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LegCashflows {
-    /// Leg type (Fixed, Floating)
+    /// Leg type (Fixed, Floating).
     pub leg_type: String,
-    /// Direction (Payer, Receiver)
+    /// Direction (Payer, Receiver).
     pub direction: String,
-    /// Currency
+    /// Currency.
     pub currency: String,
-    /// Rate index (for floating legs)
+    /// Rate index (for floating legs).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate_index: Option<String>,
-    /// Cashflows
+    /// Cashflows.
     pub cashflows: Vec<CashflowDetail>,
 }
 
-/// Cashflow detail
+/// Cashflow detail.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CashflowDetail {
-    /// Payment date
+    /// Payment date.
     pub payment_date: String,
-    /// Accrual start date
+    /// Accrual start date.
     pub accrual_start: String,
-    /// Accrual end date
+    /// Accrual end date.
     pub accrual_end: String,
-    /// Year fraction
+    /// Year fraction.
     pub year_fraction: f64,
-    /// Notional amount
+    /// Notional amount.
     pub notional: f64,
-    /// Fixed rate (for fixed legs)
+    /// Fixed rate (for fixed legs).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rate: Option<f64>,
-    /// Spread (for floating legs)
+    /// Spread (for floating legs).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spread: Option<f64>,
-    /// Payoff type
+    /// Payoff type.
     pub payoff_type: String,
 }
 
-/// Rate index info
+/// Rate index info.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RateIndexInfo {
-    /// Index code (e.g., "SOFR", "ESTR")
+    /// Index code (e.g., "SOFR", "ESTR").
     pub code: String,
-    /// Display name
+    /// Display name.
     pub name: String,
-    /// Currency
+    /// Currency.
     pub currency: String,
-    /// Tenor (e.g., "O/N", "3M")
+    /// Tenor (e.g., "O/N", "3M").
     pub tenor: String,
-    /// Day counter
+    /// Day counter.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub day_counter: Option<String>,
-    /// Is overnight RFR
+    /// Is overnight RFR.
     pub is_overnight: bool,
-    /// Number of associated market rates
+    /// Number of associated market rates.
     pub associated_rates_count: usize,
-    /// Number of associated conventions
+    /// Number of associated conventions.
     pub associated_conventions_count: usize,
 }
 
-/// Rate indices response
+/// Rate indices response.
 #[derive(Debug, Clone, Serialize)]
 pub struct RateIndicesResponse {
-    /// List of rate indices
+    /// List of rate indices.
     pub indices: Vec<RateIndexInfo>,
 }
 
-/// Rate index detail response
+/// Rate index detail response.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RateIndexDetailResponse {
-    /// Index code
+    /// Index code.
     pub code: String,
-    /// Display name
+    /// Display name.
     pub name: String,
-    /// Currency
+    /// Currency.
     pub currency: String,
-    /// Tenor
+    /// Tenor.
     pub tenor: String,
-    /// Index metadata
+    /// Index metadata.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<RateIndexMetadata>,
-    /// Associated rate IDs
+    /// Associated rate IDs.
     pub associated_rates: Vec<String>,
-    /// Associated convention IDs
+    /// Associated convention IDs.
     pub associated_conventions: Vec<String>,
 }
 
-/// Rate index metadata
+/// Rate index metadata.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RateIndexMetadata {
-    /// Fixing lag in days
+    /// Fixing lag in days.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fixing_lag: Option<u32>,
-    /// Settlement lag in days
+    /// Settlement lag in days.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub settlement_lag: Option<u32>,
-    /// Compounding method
+    /// Compounding method.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compounding_method: Option<String>,
-    /// Fixing calendar
+    /// Fixing calendar.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fixing_calendar: Option<String>,
 }
 
-/// Index rates response
+/// Index rates response.
 #[derive(Debug, Clone, Serialize)]
 pub struct IndexRatesResponse {
-    /// List of market rates for this index
+    /// List of market rates for this index.
     pub rates: Vec<MarketRate>,
 }
 
-/// Index conventions response
+/// Index conventions response.
 #[derive(Debug, Clone, Serialize)]
 pub struct IndexConventionsResponse {
-    /// List of conventions using this index
+    /// List of conventions using this index.
     pub conventions: Vec<Convention>,
 }
 
-/// A smile point for implied PDF computation
+/// A smile point for implied PDF computation.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImpliedPdfSmilePoint {
-    /// Strike offset in basis points from ATM
+    /// Strike offset in basis points from ATM.
     pub strike_offset_bp: f64,
-    /// Normal volatility (percentage, e.g., 80.0 for 80bp)
+    /// Normal volatility (percentage, e.g., 80.0 for 80bp).
     pub vol: f64,
 }
 
-/// Request to compute implied probability density function via
-/// Breeden-Litzenberger
+/// Request to compute implied probability density function via.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImpliedPdfRequest {
-    /// Time to expiry in years
+    /// Time to expiry in years.
     pub expiry_years: f64,
-    /// ATM normal volatility (percentage, e.g., 80.0 for 80bp)
+    /// ATM normal volatility (percentage, e.g., 80.0 for 80bp).
     pub atm_vol: f64,
-    /// Smile points (strike offset in bp, vol in percentage)
+    /// Smile points (strike offset in bp, vol in percentage).
     pub smile: Vec<ImpliedPdfSmilePoint>,
-    /// Strike range in bp (default: 150, i.e., -150 to +150)
+    /// Strike range in bp (default: 150, i.e., -150 to +150).
     #[serde(default = "default_pdf_range_bp")]
     pub range_bp: f64,
-    /// Strike step in bp (default: 2)
+    /// Strike step in bp (default: 2).
     #[serde(default = "default_pdf_step_bp")]
     pub step_bp: f64,
 }
@@ -958,12 +945,12 @@ pub struct ImpliedPdfRequest {
 fn default_pdf_range_bp() -> f64 { 150.0 }
 fn default_pdf_step_bp() -> f64 { 2.0 }
 
-/// Response with implied probability density
+/// Response with implied probability density.
 #[derive(Debug, Clone, Serialize)]
 pub struct ImpliedPdfResponse {
-    /// Strike offsets in basis points
+    /// Strike offsets in basis points.
     pub offsets: Vec<f64>,
-    /// Probability density values
+    /// Probability density values.
     pub density: Vec<f64>,
 }
 

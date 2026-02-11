@@ -1,6 +1,4 @@
-//! Model handlers
-//!
-//! Thin handlers delegating to `ModelService`.
+//! Model handlers.
 
 #[cfg(feature = "models")]
 use std::sync::Arc;
@@ -23,7 +21,7 @@ use crate::{
     state::AppState,
 };
 
-/// POST /api/v1/models
+/// POST /api/v1/models.
 #[cfg(feature = "models")]
 pub async fn create_model(
     State(state): State<Arc<AppState>>,
@@ -33,7 +31,7 @@ pub async fn create_model(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
-/// GET /api/v1/models/{id}
+/// GET /api/v1/models/{id}.
 #[cfg(feature = "models")]
 pub async fn get_model(
     State(state): State<Arc<AppState>>,
@@ -43,7 +41,7 @@ pub async fn get_model(
     Ok(Json(response))
 }
 
-/// POST /api/v1/models/{id}/price
+/// POST /api/v1/models/{id}/price.
 #[cfg(feature = "models")]
 pub async fn price_with_model(
     State(state): State<Arc<AppState>>,

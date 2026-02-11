@@ -5,61 +5,61 @@ use thiserror::Error;
 /// Errors that can occur during file loading.
 #[derive(Error, Debug)]
 pub enum LoaderError {
-    /// IO error
+    /// IO error.
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
-    /// CSV parsing error
+    /// CSV parsing error.
     #[error("CSV parsing error: {0}")]
     CsvError(#[from] csv::Error),
 
-    /// JSON parsing error
+    /// JSON parsing error.
     #[error("JSON parse error in '{path}' at line {line}, column {column}: {message}")]
     JsonError {
-        /// File path where the error occurred
+        /// File path where the error occurred.
         path: String,
-        /// Line number (1-indexed)
+        /// Line number (1-indexed).
         line: usize,
-        /// Column number (1-indexed)
+        /// Column number (1-indexed).
         column: usize,
-        /// Description of the parse error
+        /// Description of the parse error.
         message: String,
     },
 
-    /// Missing required column
+    /// Missing required column.
     #[error("Missing required column: {0}")]
     MissingColumn(String),
 
-    /// Invalid data format
+    /// Invalid data format.
     #[error("Invalid data format in row {row}: {message}")]
     InvalidFormat {
-        /// Row number where the error occurred
+        /// Row number where the error occurred.
         row: usize,
-        /// Description of the format error
+        /// Description of the format error.
         message: String,
     },
 
-    /// File not found
+    /// File not found.
     #[error("File not found: {0}")]
     FileNotFound(String),
 
-    /// Glob pattern error
+    /// Glob pattern error.
     #[error("Invalid glob pattern '{pattern}': {message}")]
     GlobPatternError {
-        /// The invalid pattern
+        /// The invalid pattern.
         pattern: String,
-        /// Description of the error
+        /// Description of the error.
         message: String,
     },
 
-    /// Validation error
+    /// Validation error.
     #[error("Validation error in '{path}' for field '{field}': {reason}")]
     ValidationError {
-        /// File path where validation failed
+        /// File path where validation failed.
         path: String,
-        /// Field that failed validation
+        /// Field that failed validation.
         field: String,
-        /// Reason for validation failure
+        /// Reason for validation failure.
         reason: String,
     },
 }

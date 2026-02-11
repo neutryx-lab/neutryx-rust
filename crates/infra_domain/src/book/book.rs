@@ -1,40 +1,11 @@
 //! Book entity and builder.
-//!
-//! This module provides the Book struct representing a trading book
-//! and its builder for fluent construction using `bon`.
 
 use bon::Builder;
 
 use super::{BookMetadata, BookOwnership, BookType, RegulatoryBookType};
 use crate::ids::BookId;
 
-// ============================================================================
-// Book
-// ============================================================================
-
 /// A trading book.
-///
-/// Represents a logical grouping of trades for risk management, P&L
-/// attribution, and regulatory reporting purposes.
-///
-/// Uses `bon::Builder` for fluent construction with compile-time safety.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::book::{Book, BookType};
-///
-/// let book = Book::builder()
-///     .book_id("BOOK001")
-///     .name("Main Trading Book")
-///     .book_type(BookType::Trading)
-///     .description("Primary book for FX spot trading")
-///     .build();
-///
-/// assert_eq!(book.book_id().as_str(), "BOOK001");
-/// assert_eq!(book.name(), "Main Trading Book");
-/// assert_eq!(book.book_type(), BookType::Trading);
-/// ```
 #[derive(Clone, Debug, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -112,16 +83,12 @@ impl Book {
 mod tests {
     use super::*;
 
-    // ========================================================================
-    // Book tests
-    // ========================================================================
-
     #[test]
     fn test_book_builder_minimal() {
         let book = Book::builder().book_id("BOOK001").name("Test Book").build();
         assert_eq!(book.book_id().as_str(), "BOOK001");
         assert_eq!(book.name(), "Test Book");
-        assert_eq!(book.book_type(), BookType::Trading); // Default
+        assert_eq!(book.book_type(), BookType::Trading);
         assert!(book.description().is_none());
         assert!(book.regulatory_type().is_none());
         assert!(book.ownership().is_none());

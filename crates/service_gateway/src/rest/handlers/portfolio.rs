@@ -1,6 +1,4 @@
-//! Portfolio handlers
-//!
-//! Thin handlers delegating to `PortfolioService`.
+//! Portfolio handlers.
 
 #[cfg(feature = "risk")]
 use std::sync::Arc;
@@ -24,7 +22,7 @@ use crate::{
     state::AppState,
 };
 
-/// POST /api/v1/portfolios
+/// POST /api/v1/portfolios.
 #[cfg(feature = "risk")]
 pub async fn create_portfolio(
     State(state): State<Arc<AppState>>,
@@ -34,7 +32,7 @@ pub async fn create_portfolio(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
-/// GET /api/v1/portfolios/{id}
+/// GET /api/v1/portfolios/{id}.
 #[cfg(feature = "risk")]
 pub async fn get_portfolio(
     State(state): State<Arc<AppState>>,
@@ -44,7 +42,7 @@ pub async fn get_portfolio(
     Ok(Json(response))
 }
 
-/// PUT /api/v1/portfolios/{id}/trades
+/// PUT /api/v1/portfolios/{id}/trades.
 #[cfg(feature = "risk")]
 pub async fn add_trades(
     State(state): State<Arc<AppState>>,
@@ -55,7 +53,7 @@ pub async fn add_trades(
     Ok(Json(response))
 }
 
-/// DELETE /api/v1/portfolios/{id}
+/// DELETE /api/v1/portfolios/{id}.
 #[cfg(feature = "risk")]
 pub async fn delete_portfolio(
     State(state): State<Arc<AppState>>,
@@ -65,7 +63,7 @@ pub async fn delete_portfolio(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// POST /api/v1/portfolios/{id}/price
+/// POST /api/v1/portfolios/{id}/price.
 #[cfg(feature = "risk")]
 pub async fn price_portfolio_id(
     State(state): State<Arc<AppState>>,
@@ -75,7 +73,7 @@ pub async fn price_portfolio_id(
     Ok(Json(response))
 }
 
-/// POST /api/v1/portfolios/{id}/greeks
+/// POST /api/v1/portfolios/{id}/greeks.
 #[cfg(feature = "risk")]
 pub async fn compute_portfolio_greeks(
     State(state): State<Arc<AppState>>,

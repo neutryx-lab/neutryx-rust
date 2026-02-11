@@ -1,8 +1,4 @@
 //! Credit product parsers.
-//!
-//! Handles parsing for:
-//! - Credit Default Swap (creditDefaultSwap)
-//! - Credit Default Swap Index (CDX, iTraxx)
 
 use infra_domain::{
     time::Date,
@@ -23,30 +19,24 @@ use crate::fpml::{
 pub fn parse_credit_default_swap(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Parse trade header (includes counterparty resolution)
     let header = parse_trade_header(xml)?;
 
-    // Extract creditDefaultSwap section
     let cds_section = nav
         .extract_section("creditDefaultSwap")
         .ok_or_else(|| FpmlError::MissingElement("creditDefaultSwap".to_string()))?;
 
     let cds_nav = XmlNavigator::new(&cds_section);
 
-    // Parse reference entity
     let reference_entity = xml_text!(cds_nav, "entityName", "UNKNOWN");
 
-    // Parse entity ID (RED code)
     let entity_id = cds_nav.find_text("entityId");
 
-    // Determine protection side
     let protection_side = if cds_nav.extract_section("buyerPartyReference").is_some() {
         ProtectionSide::Buyer
     } else {
         ProtectionSide::Seller
     };
 
-    // Parse dates
     let effective_date = extract_nested_date(
         &cds_nav,
         "effectiveDate",
@@ -61,16 +51,12 @@ pub fn parse_credit_default_swap(xml: &str) -> Result<Trade, FpmlError> {
         Date::from_ymd(2029, 1, 1).unwrap(),
     )?;
 
-    // Parse notional
     let notional = extract_nested_amount(&cds_nav, "calculationAmount", "amount", 0.0)?;
 
-    // Parse currency
     let currency = parse_currency(&xml_text!(cds_nav, "currency", "USD"));
 
-    // Parse fixed rate (premium)
     let fixed_rate = xml_decimal!(cds_nav, "fixedRate", 0.01);
 
-    // Create fee leg (premium payments)
     let fee_cf = Cashflow::new(
         CashflowType::Coupon,
         termination_date,
@@ -93,7 +79,6 @@ pub fn parse_credit_default_swap(xml: &str) -> Result<Trade, FpmlError> {
         currency,
     );
 
-    // Create protection leg (contingent payment)
     let protection_cf = Cashflow::new(
         CashflowType::Settlement,
         termination_date,
@@ -136,17 +121,14 @@ pub fn parse_credit_default_swap(xml: &str) -> Result<Trade, FpmlError> {
 pub fn parse_credit_default_swap_index(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Parse trade header (includes counterparty resolution)
     let header = parse_trade_header(xml)?;
 
-    // Extract creditDefaultSwap section (same element for index CDS)
     let cds_section = nav
         .extract_section("creditDefaultSwap")
         .ok_or_else(|| FpmlError::MissingElement("creditDefaultSwap".to_string()))?;
 
     let cds_nav = XmlNavigator::new(&cds_section);
 
-    // Parse index reference information
     let index_name = xml_text!(cds_nav, "indexName", "UNKNOWN INDEX");
 
     let series: u32 = cds_nav
@@ -158,14 +140,12 @@ pub fn parse_credit_default_swap_index(xml: &str) -> Result<Trade, FpmlError> {
         .find_text("indexAnnexVersion")
         .and_then(|v| v.parse().ok());
 
-    // Determine protection side
     let protection_side = if cds_nav.extract_section("buyerPartyReference").is_some() {
         ProtectionSide::Buyer
     } else {
         ProtectionSide::Seller
     };
 
-    // Parse dates
     let effective_date = extract_nested_date(
         &cds_nav,
         "effectiveDate",
@@ -180,15 +160,12 @@ pub fn parse_credit_default_swap_index(xml: &str) -> Result<Trade, FpmlError> {
         .transpose()?
         .unwrap_or_else(|| Date::from_ymd(2029, 1, 1).unwrap());
 
-    // Parse notional
     let notional = extract_nested_amount(&cds_nav, "calculationAmount", "amount", 0.0)?;
 
     let currency = parse_currency(&xml_text!(cds_nav, "currency", "USD"));
 
-    // Parse fixed rate
     let fixed_rate = xml_decimal!(cds_nav, "fixedRate", 0.01);
 
-    // Create fee leg
     let fee_cf = Cashflow::new(
         CashflowType::Coupon,
         termination_date,
@@ -211,7 +188,6 @@ pub fn parse_credit_default_swap_index(xml: &str) -> Result<Trade, FpmlError> {
         currency,
     );
 
-    // Create protection leg
     let protection_cf = Cashflow::new(
         CashflowType::Settlement,
         termination_date,

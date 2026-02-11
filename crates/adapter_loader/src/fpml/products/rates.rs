@@ -1,10 +1,4 @@
 //! Interest rate product parsers.
-//!
-//! Handles parsing for:
-//! - Interest Rate Swaps (IRS)
-//! - Overnight Index Swaps (OIS)
-//! - Swaptions
-//! - Cap/Floor
 
 use infra_domain::{
     market::RateIndex,
@@ -27,17 +21,14 @@ use crate::fpml::{
 pub fn parse_swap(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Parse trade header (includes counterparty resolution)
     let header = parse_trade_header(xml)?;
 
-    // Extract swap section
     let swap_section = nav
         .extract_section("swap")
         .ok_or_else(|| FpmlError::MissingElement("swap".to_string()))?;
 
     let swap_nav = XmlNavigator::new(&swap_section);
 
-    // Parse swap streams (legs)
     let mut legs = Vec::new();
 
     for stream_xml in swap_nav.extract_all_sections("swapStream") {
@@ -45,7 +36,6 @@ pub fn parse_swap(xml: &str) -> Result<Trade, FpmlError> {
         legs.push(leg);
     }
 
-    // Determine if this is OIS or regular swap based on floating rate index
     let trade_type = determine_swap_type(&legs);
 
     let metadata = build_metadata(&header);
@@ -62,7 +52,6 @@ pub fn parse_swap(xml: &str) -> Result<Trade, FpmlError> {
 fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Determine if this is fixed or floating
     let is_fixed = nav.extract_section("fixedRateSchedule").is_some();
 
     let direction = if is_fixed {
@@ -77,7 +66,6 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
         LegType::Floating
     };
 
-    // Parse calculation period dates
     let calc_section = nav
         .extract_section("calculationPeriodDates")
         .unwrap_or_default();
@@ -89,13 +77,10 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
         Date::from_ymd(2024, 1, 1).unwrap()
     );
 
-    // Parse notional
     let notional = xml_decimal_or!(nav, "initialValue", "notionalAmount"; 0.0);
 
-    // Parse currency
     let currency = parse_currency(&xml_text!(nav, "currency", "USD"));
 
-    // Parse fixed rate or floating index
     let payoff = if is_fixed {
         let rate = nav
             .find_text("initialValue")
@@ -113,17 +98,14 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
         Payoff::floating_with_spread(index.into(), spread)
     };
 
-    // Parse day count fraction
     let _dcf = xml_text!(nav, "dayCountFraction", "ACT/360");
 
-    // Create a simplified single cashflow for now
-    // A full implementation would generate the full schedule
     let cashflows = vec![Cashflow::new(
         CashflowType::Coupon,
         effective_date,
         effective_date,
         effective_date,
-        0.5, // Simplified year fraction
+        0.5,
         notional,
         payoff,
         currency,
@@ -137,7 +119,6 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
 fn parse_floating_rate_index(nav: &XmlNavigator) -> Result<RateIndex, FpmlError> {
     let index_name = xml_text!(nav, "floatingRateIndex", "USD-SOFR");
 
-    // Map FpML index names to internal RateIndex
     let index = match index_name.to_uppercase().as_str() {
         s if s.contains("SOFR") => RateIndex::Sofr,
         s if s.contains("SONIA") => RateIndex::Sonia,
@@ -150,8 +131,8 @@ fn parse_floating_rate_index(nav: &XmlNavigator) -> Result<RateIndex, FpmlError>
                 RateIndex::Euribor3M
             }
         }
-        s if s.contains("TIBOR") => RateIndex::Tonar, // Map TIBOR to TONAR (JPY)
-        _ => RateIndex::Sofr,                         // Default fallback
+        s if s.contains("TIBOR") => RateIndex::Tonar,
+        _ => RateIndex::Sofr,
     };
 
     Ok(index)
@@ -159,7 +140,6 @@ fn parse_floating_rate_index(nav: &XmlNavigator) -> Result<RateIndex, FpmlError>
 
 /// Determine swap type based on leg characteristics.
 fn determine_swap_type(legs: &[Leg]) -> TradeType {
-    // Check if any leg references an overnight index
     let has_overnight = legs.iter().any(|leg| {
         leg.cashflows().any(|cf| {
             if let Some(index) = cf.payoff.required_index() {
@@ -182,17 +162,14 @@ fn determine_swap_type(legs: &[Leg]) -> TradeType {
 pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Parse trade header (includes counterparty resolution)
     let header = parse_trade_header(xml)?;
 
-    // Extract swaption section
     let swaption_section = nav
         .extract_section("swaption")
         .ok_or_else(|| FpmlError::MissingElement("swaption".to_string()))?;
 
     let swaption_nav = XmlNavigator::new(&swaption_section);
 
-    // Parse exercise type
     let exercise_type = if swaption_nav.extract_section("europeanExercise").is_some() {
         ExerciseType::European
     } else if swaption_nav.extract_section("americanExercise").is_some() {
@@ -200,10 +177,9 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
     } else if swaption_nav.extract_section("bermudaExercise").is_some() {
         ExerciseType::Bermudan
     } else {
-        ExerciseType::European // Default
+        ExerciseType::European
     };
 
-    // Parse exercise dates (look inside expirationDate for unadjustedDate)
     let mut exercise_dates = Vec::new();
     if let Some(expiry_section) = swaption_nav.extract_section("expirationDate") {
         let expiry_nav = XmlNavigator::new(&expiry_section);
@@ -214,14 +190,12 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
         }
     }
 
-    // Parse settlement type
     let settlement_type = if swaption_nav.extract_section("cashSettlement").is_some() {
         SettlementType::Cash
     } else {
         SettlementType::Physical
     };
 
-    // Parse the underlying swap
     let underlying_swap = if let Some(swap_section) = swaption_nav.extract_section("swap") {
         parse_swap(&format!(
             "<trade><tradeHeader><tradeId>{}</tradeId></tradeHeader>{}</trade>",
@@ -239,7 +213,6 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
 
     let metadata = build_metadata(&header);
 
-    // Get legs from underlying swap
     let legs: Vec<Leg> = underlying_swap.legs().cloned().collect();
 
     Ok(Trade::builder()
@@ -254,39 +227,30 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
 pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Parse trade header (includes counterparty resolution)
     let header = parse_trade_header(xml)?;
 
-    // Extract capFloor section
     let capfloor_section = nav
         .extract_section("capFloor")
         .ok_or_else(|| FpmlError::MissingElement("capFloor".to_string()))?;
 
     let cf_nav = XmlNavigator::new(&capfloor_section);
 
-    // Parse notional
     let notional = xml_decimal_or!(cf_nav, "notionalStepAmount", "initialValue"; 0.0);
 
-    // Parse currency
     let currency = parse_currency(&xml_text!(cf_nav, "currency", "USD"));
 
-    // Parse strike (cap or floor rate)
     let strike = xml_decimal_or!(cf_nav, "capRate", "floorRate"; 0.0);
 
-    // Determine if cap or floor
     let is_cap = cf_nav.find_text("capRate").is_some();
 
-    // Parse floating rate index
     let index = parse_floating_rate_index(&cf_nav)?;
 
-    // Parse effective date
     let effective_date = xml_date!(
         cf_nav,
         "unadjustedDate",
         Date::from_ymd(2024, 1, 1).unwrap()
     );
 
-    // Create payoff
     let payoff = if is_cap {
         Payoff::cap(index.into(), strike)
     } else {
@@ -298,7 +262,7 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
         effective_date,
         effective_date,
         effective_date,
-        0.25, // Quarterly
+        0.25,
         notional,
         payoff,
         currency,
@@ -389,6 +353,6 @@ mod tests {
         assert_eq!(parse_currency("USD"), Currency::USD);
         assert_eq!(parse_currency("EUR"), Currency::EUR);
         assert_eq!(parse_currency("GBP"), Currency::GBP);
-        assert_eq!(parse_currency("usd"), Currency::USD); // Case insensitive
+        assert_eq!(parse_currency("usd"), Currency::USD);
     }
 }

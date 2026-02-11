@@ -1,23 +1,9 @@
 //! Configuration export handler for frontend integration.
-//!
-//! Provides the `/api/config` endpoint that returns application configuration
-//! including enum values, default settings, and currency mappings.
 
 use axum::Json;
 use infra_config::AppConfig;
 
 /// Get application configuration.
-///
-/// GET /api/config
-///
-/// Returns a JSON object containing:
-/// - `enums`: All enum variant names for form dropdowns
-/// - `defaults`: Default values for configuration structures
-/// - `rateIndexByCurrency`: Currency code to rate index mapping
-///
-/// # Responses
-///
-/// - 200 OK: Returns `AppConfig` as JSON
 pub async fn get_config() -> Json<AppConfig> { Json(AppConfig::build()) }
 
 #[cfg(test)]
@@ -28,7 +14,6 @@ mod tests {
     async fn test_get_config_returns_valid_response() {
         let Json(config) = get_config().await;
 
-        // Verify all sections are present
         assert!(!config.enums.is_null());
         assert!(!config.defaults.is_null());
         assert!(!config.rate_index_by_currency.is_null());

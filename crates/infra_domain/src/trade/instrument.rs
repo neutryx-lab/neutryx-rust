@@ -1,7 +1,4 @@
 //! Market instrument definitions.
-//!
-//! This module provides types for standardised market instruments
-//! used in curve calibration and trading.
 
 use crate::{
     market::Currency,
@@ -9,8 +6,6 @@ use crate::{
 };
 
 /// A market instrument used for curve calibration.
-///
-/// Represents standardised financial products with market quotes.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Instrument {
@@ -101,8 +96,6 @@ pub enum Instrument {
 
 impl Instrument {
     /// Returns the market quote for this instrument.
-    ///
-    /// For futures, returns (100 - price) as the implied rate.
     #[must_use]
     pub fn quote(&self) -> f64 {
         match self {

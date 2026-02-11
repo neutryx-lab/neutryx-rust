@@ -1,13 +1,4 @@
-//! Neutryx Service Gateway
-//!
-//! Unified service delivery crate providing REST API, CLI, and Python bindings
-//! via feature-gated modules.
-//!
-//! # Features
-//!
-//! - `rest` (default) — Axum-based REST API server
-//! - `cli` — Clap-based command-line interface
-//! - `python` — `PyO3` bindings for Jupyter/notebook workflows
+//! Neutryx Service Gateway.
 
 pub mod config;
 pub mod error;
@@ -22,7 +13,6 @@ pub mod cli;
 pub mod python;
 
 pub use error::ServerError;
-// --- Python extension module registration ---
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 pub use rest::{GraphAppState, WsAppState};

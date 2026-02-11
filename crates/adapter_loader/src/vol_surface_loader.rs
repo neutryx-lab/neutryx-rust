@@ -1,24 +1,4 @@
 //! Volatility Surface Loaders for Swaption and CapFloor vol quotes.
-//!
-//! # Requirements: 10.1, 10.2, 10.3, 10.5, 10.6
-//!
-//! This module provides loaders for volatility surface data from:
-//! - CSV files with expiry, tenor, strike, vol columns
-//! - JSON files with structured vol quote data
-//!
-//! Loaded data can be converted to `VolQuoteSet` for use with `VolCubeBuilder`.
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use adapter_loader::{VolSurfaceLoader, SwaptionVolCsvRow};
-//!
-//! // Load from CSV
-//! let quotes = VolSurfaceLoader::load_swaption_csv("swaption_vol.csv")?;
-//!
-//! // Load from JSON
-//! let quote_set = VolSurfaceLoader::load_json("vol_quotes.json")?;
-//! ```
 
 use std::path::Path;
 
@@ -27,19 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{error::LoaderError, JsonLoader};
 
-// =============================================================================
-// CSV Row Structures
-// =============================================================================
-
 /// CSV row for swaption volatility quotes.
-///
-/// # Requirements: 10.1, 10.3
-///
-/// Expected CSV format:
-/// ```csv
-/// expiry,tenor,strike,bid,ask,mid,quote_type,strike_type
-/// 1Y,5Y,0.03,0.195,0.205,0.20,lognormal,absolute
-/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SwaptionVolCsvRow {
     /// Expiry tenor string (e.g., "1Y", "6M", "2Y").
@@ -71,10 +39,6 @@ fn default_quote_type() -> String { "lognormal".to_string() }
 fn default_strike_type() -> String { "absolute".to_string() }
 
 /// CSV row for capfloor volatility quotes.
-///
-/// # Requirements: 10.1, 10.3
-///
-/// Similar to swaption but with cap/floor specific fields.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CapFloorVolCsvRow {
     /// Expiry/maturity tenor string (e.g., "1Y", "5Y").
@@ -105,13 +69,7 @@ pub struct CapFloorVolCsvRow {
 
 fn default_cap_floor_type() -> String { "cap".to_string() }
 
-// =============================================================================
-// JSON Structures
-// =============================================================================
-
 /// JSON structure for a single volatility quote.
-///
-/// # Requirements: 10.2, 10.4
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VolQuoteJson {
     /// Unique instrument identifier.
@@ -203,8 +161,6 @@ impl Default for QuoteTypeJson {
 }
 
 /// JSON structure for a volatility quote set.
-///
-/// # Requirements: 10.2, 10.4
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VolQuoteSetJson {
     /// Currency code (e.g., "USD", "EUR").
@@ -223,31 +179,11 @@ pub struct VolQuoteSetJson {
 
 fn default_surface_type() -> String { "swaption".to_string() }
 
-// =============================================================================
-// Volatility Surface Loader
-// =============================================================================
-
 /// Volatility surface data loader.
-///
-/// # Requirements: 10.1, 10.2, 10.5, 10.6
-///
-/// Provides methods to load volatility surface data from CSV and JSON files.
 pub struct VolSurfaceLoader;
 
 impl VolSurfaceLoader {
     /// Load swaption volatility quotes from a CSV file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the CSV file
-    ///
-    /// # Returns
-    ///
-    /// Vector of parsed swaption vol rows.
-    ///
-    /// # Errors
-    ///
-    /// Returns `LoaderError` if file not found or parsing fails.
     pub fn load_swaption_csv<P: AsRef<Path>>(
         path: P,
     ) -> Result<Vec<SwaptionVolCsvRow>, LoaderError> {
@@ -263,11 +199,10 @@ impl VolSurfaceLoader {
 
         for (idx, result) in reader.deserialize().enumerate() {
             let row: SwaptionVolCsvRow = result.map_err(|e| LoaderError::InvalidFormat {
-                row: idx + 2, // CSV row number (1-indexed, +1 for header)
+                row: idx + 2,
                 message: format!("Failed to parse swaption vol row: {}", e),
             })?;
 
-            // Validate row
             Self::validate_swaption_row(&row, idx + 2, &path_str)?;
             rows.push(row);
         }
@@ -276,14 +211,6 @@ impl VolSurfaceLoader {
     }
 
     /// Load capfloor volatility quotes from a CSV file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the CSV file
-    ///
-    /// # Returns
-    ///
-    /// Vector of parsed capfloor vol rows.
     pub fn load_capfloor_csv<P: AsRef<Path>>(
         path: P,
     ) -> Result<Vec<CapFloorVolCsvRow>, LoaderError> {
@@ -303,7 +230,6 @@ impl VolSurfaceLoader {
                 message: format!("Failed to parse capfloor vol row: {}", e),
             })?;
 
-            // Validate row
             Self::validate_capfloor_row(&row, idx + 2, &path_str)?;
             rows.push(row);
         }
@@ -312,50 +238,27 @@ impl VolSurfaceLoader {
     }
 
     /// Load volatility quote set from a JSON file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the JSON file
-    ///
-    /// # Returns
-    ///
-    /// Parsed volatility quote set.
     pub fn load_json<P: AsRef<Path>>(path: P) -> Result<VolQuoteSetJson, LoaderError> {
         let path = path.as_ref();
         let path_str = path.display().to_string();
 
         let quote_set: VolQuoteSetJson = JsonLoader::load(path)?;
 
-        // Validate
         Self::validate_quote_set_json(&quote_set, &path_str)?;
 
         Ok(quote_set)
     }
 
-    /// Load multiple volatility quote sets from JSON files matching a glob
-    /// pattern.
-    ///
-    /// # Arguments
-    ///
-    /// * `pattern` - Glob pattern (e.g., "data/volsurface/*.json")
-    ///
-    /// # Returns
-    ///
-    /// Vector of successfully loaded quote sets.
+    /// Load multiple volatility quote sets from JSON files matching a glob.
     pub fn load_json_glob(pattern: &str) -> Result<Vec<VolQuoteSetJson>, LoaderError> {
         JsonLoader::load_glob_ok(pattern)
     }
-
-    // =========================================================================
-    // Validation Helpers
-    // =========================================================================
 
     fn validate_swaption_row(
         row: &SwaptionVolCsvRow,
         row_num: usize,
         path: &str,
     ) -> Result<(), LoaderError> {
-        // Validate mid volatility
         if row.mid <= 0.0 {
             return Err(LoaderError::ValidationError {
                 path: path.to_string(),
@@ -364,7 +267,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate expiry tenor format
         if parse_tenor_string(&row.expiry).is_err() {
             return Err(LoaderError::ValidationError {
                 path: path.to_string(),
@@ -373,7 +275,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate underlying tenor format
         if parse_tenor_string(&row.tenor).is_err() {
             return Err(LoaderError::ValidationError {
                 path: path.to_string(),
@@ -382,7 +283,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate quote type
         let valid_quote_types = ["normal", "lognormal", "shifted_lognormal"];
         if !valid_quote_types.contains(&row.quote_type.to_lowercase().as_str()) {
             return Err(LoaderError::ValidationError {
@@ -392,7 +292,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate strike type
         let valid_strike_types = ["absolute", "relative", "moneyness", "log_moneyness"];
         if !valid_strike_types.contains(&row.strike_type.to_lowercase().as_str()) {
             return Err(LoaderError::ValidationError {
@@ -402,7 +301,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate bid/ask consistency
         if let (Some(bid), Some(ask)) = (row.bid, row.ask) {
             if bid > ask {
                 return Err(LoaderError::ValidationError {
@@ -421,7 +319,6 @@ impl VolSurfaceLoader {
         row_num: usize,
         path: &str,
     ) -> Result<(), LoaderError> {
-        // Validate mid volatility
         if row.mid <= 0.0 {
             return Err(LoaderError::ValidationError {
                 path: path.to_string(),
@@ -430,7 +327,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate expiry tenor format
         if parse_tenor_string(&row.expiry).is_err() {
             return Err(LoaderError::ValidationError {
                 path: path.to_string(),
@@ -439,7 +335,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate cap/floor type
         let valid_types = ["cap", "floor"];
         if !valid_types.contains(&row.cap_floor.to_lowercase().as_str()) {
             return Err(LoaderError::ValidationError {
@@ -453,7 +348,6 @@ impl VolSurfaceLoader {
     }
 
     fn validate_quote_set_json(quote_set: &VolQuoteSetJson, path: &str) -> Result<(), LoaderError> {
-        // Validate currency
         let valid_currencies = ["USD", "EUR", "JPY", "GBP", "CHF", "AUD", "CAD"];
         if !valid_currencies.contains(&quote_set.currency.to_uppercase().as_str()) {
             return Err(LoaderError::ValidationError {
@@ -463,7 +357,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate as_of_date format
         if NaiveDate::parse_from_str(&quote_set.as_of_date, "%Y-%m-%d").is_err() {
             return Err(LoaderError::ValidationError {
                 path: path.to_string(),
@@ -475,7 +368,6 @@ impl VolSurfaceLoader {
             });
         }
 
-        // Validate each quote
         for (i, quote) in quote_set.quotes.iter().enumerate() {
             if quote.mid <= 0.0 {
                 return Err(LoaderError::ValidationError {
@@ -485,7 +377,6 @@ impl VolSurfaceLoader {
                 });
             }
 
-            // Validate tenor
             if quote.tenor.to_years().is_err() {
                 return Err(LoaderError::ValidationError {
                     path: path.to_string(),
@@ -499,81 +390,21 @@ impl VolSurfaceLoader {
     }
 }
 
-// =============================================================================
-// Utility Functions
-// =============================================================================
-
 /// Parse a tenor string (e.g., "1Y", "6M", "3M") to years.
-///
-/// This is a convenience wrapper around
-/// `infra_domain::time::parse_tenor_to_years`.
-///
-/// # Arguments
-///
-/// * `s` - Tenor string
-///
-/// # Returns
-///
-/// Tenor in years, or error if parsing fails.
 pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
     infra_domain::time::parse_tenor_to_years(s)
 }
 
 /// Convert expiry string to NaiveDate.
-///
-/// This is a convenience wrapper around
-/// `infra_domain::time::parse_expiry_to_date` that works with
-/// `chrono::NaiveDate`.
-///
-/// Supports:
-/// - ISO date format: "2027-01-25"
-/// - Tenor from as_of_date: "1Y", "6M", etc.
-///
-/// # Arguments
-///
-/// * `expiry_str` - Expiry string
-/// * `as_of_date` - Reference date for tenor-based expiry
 pub fn parse_expiry_string(expiry_str: &str, as_of_date: NaiveDate) -> Result<NaiveDate, String> {
     let as_of_date = infra_domain::time::Date::from(as_of_date);
     infra_domain::time::parse_expiry_to_date(expiry_str, as_of_date).map(|d| d.into_inner())
 }
 
 /// Parse FRA tenor string in "NxM" format (e.g., "3x6", "3X6M", "3Mx6M").
-///
-/// This is a convenience re-export of `infra_domain::time::parse_fra_tenor`.
-///
-/// FRA tenors represent forward rate agreements with a start and end period.
-/// Common formats include:
-/// - "3x6" - 3 months to 6 months
-/// - "6x12" - 6 months to 12 months
-/// - "3Mx6M" - 3 months to 6 months (explicit month suffix)
-///
-/// # Arguments
-///
-/// * `tenor` - FRA tenor string
-///
-/// # Returns
-///
-/// `Some((start_years, end_years))` if successful, `None` otherwise.
-///
-/// # Example
-///
-/// ```
-/// use adapter_loader::parse_fra_tenor;
-///
-/// let result = parse_fra_tenor("3x6");
-/// assert!(result.is_some());
-/// let (start, end) = result.unwrap();
-/// assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
-/// assert!((end - 0.5).abs() < 1e-10);    // 6M = 0.5Y
-/// ```
 pub fn parse_fra_tenor(tenor: &str) -> Option<(f64, f64)> {
     infra_domain::time::parse_fra_tenor(tenor)
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -582,10 +413,6 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::*;
-
-    // -------------------------------------------------------------------------
-    // Tenor Parsing Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_parse_tenor_years() {
@@ -604,9 +431,7 @@ mod tests {
 
     #[test]
     fn test_parse_tenor_weeks() {
-        // Standard tenor "1W" uses days-based calculation from Tenor enum
         assert!((parse_tenor_string("1W").unwrap() - 7.0 / 365.0).abs() < 1e-10);
-        // Custom week tenors use weeks-based calculation (w / 52.0)
         assert!((parse_tenor_string("4W").unwrap() - 4.0 / 52.0).abs() < 1e-10);
     }
 
@@ -628,17 +453,13 @@ mod tests {
         assert!((parse_tenor_string("6m").unwrap() - 0.5).abs() < 1e-10);
     }
 
-    // -------------------------------------------------------------------------
-    // FRA Tenor Parsing Tests
-    // -------------------------------------------------------------------------
-
     #[test]
     fn test_parse_fra_tenor_3x6() {
         let result = parse_fra_tenor("3x6");
         assert!(result.is_some());
         let (start, end) = result.unwrap();
-        assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
-        assert!((end - 0.5).abs() < 1e-10); // 6M = 0.5Y
+        assert!((start - 0.25).abs() < 1e-10);
+        assert!((end - 0.5).abs() < 1e-10);
     }
 
     #[test]
@@ -646,20 +467,18 @@ mod tests {
         let result = parse_fra_tenor("6x12");
         assert!(result.is_some());
         let (start, end) = result.unwrap();
-        assert!((start - 0.5).abs() < 1e-10); // 6M = 0.5Y
-        assert!((end - 1.0).abs() < 1e-10); // 12M = 1.0Y
+        assert!((start - 0.5).abs() < 1e-10);
+        assert!((end - 1.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_parse_fra_tenor_with_suffix() {
-        // Test "3Mx6M" format
         let result = parse_fra_tenor("3Mx6M");
         assert!(result.is_some());
         let (start, end) = result.unwrap();
         assert!((start - 0.25).abs() < 1e-10);
         assert!((end - 0.5).abs() < 1e-10);
 
-        // Test "1Mx4M" format
         let result = parse_fra_tenor("1Mx4M");
         assert!(result.is_some());
         let (start, end) = result.unwrap();
@@ -676,23 +495,16 @@ mod tests {
 
     #[test]
     fn test_parse_fra_tenor_invalid() {
-        // Not FRA format
         assert!(parse_fra_tenor("6M").is_none());
         assert!(parse_fra_tenor("1Y").is_none());
 
-        // Invalid: end <= start
         assert!(parse_fra_tenor("6x3").is_none());
         assert!(parse_fra_tenor("12x6").is_none());
 
-        // Invalid: empty parts
         assert!(parse_fra_tenor("x6").is_none());
         assert!(parse_fra_tenor("3x").is_none());
         assert!(parse_fra_tenor("").is_none());
     }
-
-    // -------------------------------------------------------------------------
-    // Expiry Parsing Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_parse_expiry_iso_date() {
@@ -705,14 +517,9 @@ mod tests {
     fn test_parse_expiry_tenor() {
         let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
         let expiry = parse_expiry_string("1Y", as_of).unwrap();
-        // Approximately 1 year later
         let days_diff = (expiry - as_of).num_days();
         assert!(days_diff >= 364 && days_diff <= 366);
     }
-
-    // -------------------------------------------------------------------------
-    // CSV Loading Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_load_swaption_csv_valid() {
@@ -742,8 +549,8 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert!(rows[0].bid.is_none());
         assert!(rows[0].ask.is_none());
-        assert_eq!(rows[0].quote_type, "lognormal"); // default
-        assert_eq!(rows[0].strike_type, "absolute"); // default
+        assert_eq!(rows[0].quote_type, "lognormal");
+        assert_eq!(rows[0].strike_type, "absolute");
     }
 
     #[test]
@@ -788,10 +595,6 @@ mod tests {
         assert_eq!(rows[0].cap_floor, "cap");
         assert_eq!(rows[1].cap_floor, "floor");
     }
-
-    // -------------------------------------------------------------------------
-    // JSON Loading Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_load_json_valid() {
@@ -929,10 +732,6 @@ mod tests {
             .contains("Mid volatility must be positive"));
     }
 
-    // -------------------------------------------------------------------------
-    // TenorValue Tests
-    // -------------------------------------------------------------------------
-
     #[test]
     fn test_tenor_value_years() {
         let tv = TenorValue::Years(5.0);
@@ -944,10 +743,6 @@ mod tests {
         let tv = TenorValue::String("6M".to_string());
         assert!((tv.to_years().unwrap() - 0.5).abs() < 1e-10);
     }
-
-    // -------------------------------------------------------------------------
-    // StrikeValue Tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_strike_value_absolute() {

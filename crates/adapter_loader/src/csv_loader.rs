@@ -9,14 +9,6 @@ pub struct CsvLoader;
 
 impl CsvLoader {
     /// Load records from a CSV file.
-    ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the CSV file
-    ///
-    /// # Returns
-    ///
-    /// A vector of parsed records, or an error if loading fails.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Vec<CsvRecord>, LoaderError> {
         let path = path.as_ref();
         if !path.exists() {
@@ -41,9 +33,9 @@ impl CsvLoader {
 /// A single CSV record.
 #[derive(Debug, Clone)]
 pub struct CsvRecord {
-    /// Row number (1-indexed)
+    /// Row number (1-indexed).
     pub row: usize,
-    /// Field values
+    /// Field values.
     pub fields: Vec<String>,
 }
 

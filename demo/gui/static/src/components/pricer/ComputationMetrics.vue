@@ -5,28 +5,20 @@ const store = usePricerStore();
 </script>
 
 <template>
-  <div v-if="store.computationMetrics" class="glass-card p-4">
-    <div class="flex items-center justify-between text-sm">
-      <span class="text-[var(--text-muted)]">
-        <i class="fas fa-clock mr-1"></i>{{ store.computationMetrics.pricingTimeMs.toFixed(0) }}ms
+  <v-card v-if="store.computationMetrics" variant="tonal">
+    <v-card-text class="d-flex justify-space-between text-caption text-medium-emphasis">
+      <span>
+        <v-icon icon="mdi-timer-outline" size="14" class="mr-1" />
+        {{ store.computationMetrics.pricingTimeMs.toFixed(0) }}ms
       </span>
-      <span class="text-[var(--text-muted)]">
-        <i class="fas fa-microchip mr-1"></i>{{ store.computationMetrics.method }}
+      <span>
+        <v-icon icon="mdi-chip" size="14" class="mr-1" />
+        {{ store.computationMetrics.method }}
       </span>
-      <span class="text-[var(--text-muted)]">
-        <i class="fas fa-calendar mr-1"></i
-        >{{ new Date(store.computationMetrics.timestamp).toLocaleTimeString() }}
+      <span>
+        <v-icon icon="mdi-clock-outline" size="14" class="mr-1" />
+        {{ new Date(store.computationMetrics.timestamp).toLocaleTimeString() }}
       </span>
-    </div>
-  </div>
+    </v-card-text>
+  </v-card>
 </template>
-
-<style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-</style>

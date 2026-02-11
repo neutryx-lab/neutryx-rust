@@ -1,6 +1,4 @@
 //! Commodity convention definitions.
-//!
-//! This module provides types for representing commodity market conventions.
 
 use crate::time::CalendarId;
 
@@ -35,22 +33,6 @@ pub enum PriceQuotation {
 }
 
 /// Convention for commodity derivatives.
-///
-/// Represents the market conventions for pricing and settling commodity
-/// derivatives.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{
-///     CommodityConvention, DeliveryConvention, PriceQuotation,
-/// };
-/// use infra_domain::time::CalendarId;
-///
-/// let conv = CommodityConvention::wti_crude();
-/// assert_eq!(conv.delivery_convention, DeliveryConvention::Physical);
-/// assert_eq!(conv.price_quotation, PriceQuotation::PerBarrel);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CommodityConvention {

@@ -6,59 +6,30 @@ use serde::{Deserialize, Serialize};
 use crate::{error::ConfigError, pricing_config::PricingConfig, risk_config::RiskConfig};
 
 /// Main application settings.
-///
-/// This is the single source of truth for all Neutryx configuration.
-/// Services should use this struct instead of defining their own config types.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use infra_config::Settings;
-///
-/// // Load from config files
-/// let settings = Settings::load()?;
-///
-/// // Or load from TOML string
-/// let toml = r#"
-///     [pricing]
-///     valuation_date = "2026-01-25"
-///     reporting_currency = "USD"
-///
-///     [risk]
-///     greeks_method = "bump"
-/// "#;
-/// let settings = Settings::from_toml_str(toml)?;
-/// ```
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Settings {
-    /// Engine configuration (thread pools, memory limits, Monte Carlo)
+    /// Engine configuration (thread pools, memory limits, Monte Carlo).
     #[serde(default)]
     pub engine: EngineConfig,
-    /// Database configuration
+    /// Database configuration.
     #[serde(default)]
     pub database: DatabaseConfig,
-    /// Service-specific configuration (CLI, Gateway)
+    /// Service-specific configuration (CLI, Gateway).
     #[serde(default)]
     pub service: ServiceConfig,
-    /// Logging and output configuration
+    /// Logging and output configuration.
     #[serde(default)]
     pub logging: LoggingConfig,
-    /// Pricing configuration (optional)
+    /// Pricing configuration (optional).
     #[serde(default)]
     pub pricing: Option<PricingConfig>,
-    /// Risk/Greeks configuration (optional)
+    /// Risk/Greeks configuration (optional).
     #[serde(default)]
     pub risk: Option<RiskConfig>,
 }
 
 impl Settings {
     /// Load settings from configuration files and environment variables.
-    ///
-    /// Configuration is loaded in the following order (later sources override
-    /// earlier):
-    /// 1. `config/default.toml`
-    /// 2. `config/{environment}.toml` (based on `NEUTRYX_ENV`)
-    /// 3. Environment variables prefixed with `NEUTRYX_`
     pub fn load() -> Result<Self, ConfigError> {
         let env = std::env::var("NEUTRYX_ENV").unwrap_or_else(|_| "development".into());
 
@@ -89,9 +60,6 @@ impl Settings {
     }
 
     /// Validates all nested configurations and collects all errors.
-    ///
-    /// Returns a list of all validation errors found, rather than stopping
-    /// at the first error. This helps users fix all issues at once.
     pub fn validate(&self) -> Result<(), Vec<ConfigError>> {
         let errors: Vec<ConfigError> = [
             self.pricing.as_ref().and_then(|p| p.validate().err()),
@@ -112,16 +80,16 @@ impl Settings {
 /// Engine configuration.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EngineConfig {
-    /// Thread pool size for parallel computation
+    /// Thread pool size for parallel computation.
     #[serde(default = "default_thread_pool_size")]
     pub thread_pool_size: usize,
-    /// Memory limit for AD engine (in MB)
+    /// Memory limit for AD engine (in MB).
     #[serde(default = "default_memory_limit_mb")]
     pub memory_limit_mb: usize,
-    /// Monte Carlo simulation paths (default batch size)
+    /// Monte Carlo simulation paths (default batch size).
     #[serde(default = "default_mc_paths")]
     pub mc_paths: usize,
-    /// Checkpointing enabled
+    /// Checkpointing enabled.
     #[serde(default)]
     pub checkpointing_enabled: bool,
 }
@@ -140,7 +108,7 @@ impl Default for EngineConfig {
 fn default_thread_pool_size() -> usize { num_cpus::get() }
 
 fn default_memory_limit_mb() -> usize {
-    1024 // 1 GB
+    1024
 }
 
 fn default_mc_paths() -> usize { 10_000 }
@@ -148,13 +116,13 @@ fn default_mc_paths() -> usize { 10_000 }
 /// Database configuration.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DatabaseConfig {
-    /// Database connection URL
+    /// Database connection URL.
     #[serde(default)]
     pub url: String,
-    /// Maximum connection pool size
+    /// Maximum connection pool size.
     #[serde(default = "default_max_connections")]
     pub max_connections: u32,
-    /// Connection timeout (in seconds)
+    /// Connection timeout (in seconds).
     #[serde(default = "default_connection_timeout")]
     pub connection_timeout_secs: u64,
 }
@@ -174,14 +142,12 @@ fn default_max_connections() -> u32 { 10 }
 fn default_connection_timeout() -> u64 { 30 }
 
 /// Service-specific configuration.
-///
-/// Consolidates settings for CLI, Gateway, and other services.
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ServiceConfig {
-    /// REST API configuration
+    /// REST API configuration.
     #[serde(default)]
     pub rest: RestConfig,
-    /// gRPC API configuration
+    /// gRPC API configuration.
     #[serde(default)]
     pub grpc: GrpcConfig,
 }
@@ -189,10 +155,10 @@ pub struct ServiceConfig {
 /// REST API configuration.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RestConfig {
-    /// Enable REST API
+    /// Enable REST API.
     #[serde(default = "RestConfig::default_enabled")]
     pub enabled: bool,
-    /// REST API bind address
+    /// REST API bind address.
     #[serde(default = "default_rest_addr")]
     pub addr: String,
 }
@@ -215,10 +181,10 @@ fn default_rest_addr() -> String { "0.0.0.0:8080".to_string() }
 /// gRPC API configuration.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GrpcConfig {
-    /// Enable gRPC API
+    /// Enable gRPC API.
     #[serde(default)]
     pub enabled: bool,
-    /// gRPC bind address
+    /// gRPC bind address.
     #[serde(default = "default_grpc_addr")]
     pub addr: String,
 }
@@ -237,10 +203,10 @@ fn default_grpc_addr() -> String { "0.0.0.0:50051".to_string() }
 /// Logging and output configuration.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LoggingConfig {
-    /// Log level (trace, debug, info, warn, error)
+    /// Log level (trace, debug, info, warn, error).
     #[serde(default = "default_log_level")]
     pub level: String,
-    /// Output directory for reports and results
+    /// Output directory for reports and results.
     #[serde(default = "default_output_dir")]
     pub output_dir: String,
 }
@@ -351,7 +317,6 @@ mod tests {
         assert!(result.is_err());
 
         let errors = result.unwrap_err();
-        // Should have 2 errors: invalid currency + empty target_greeks
         assert_eq!(errors.len(), 2);
     }
 

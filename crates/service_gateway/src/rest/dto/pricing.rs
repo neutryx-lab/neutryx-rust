@@ -1,121 +1,121 @@
-//! Pricing-related DTOs
+//! Pricing-related DTOs.
 
 use serde::{Deserialize, Serialize};
 
-/// Instrument type for pricing
+/// Instrument type for pricing.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum InstrumentType {
-    /// Vanilla option (American or European)
+    /// Vanilla option (American or European).
     VanillaOption,
-    /// European-style option
+    /// European-style option.
     EuropeanOption,
-    /// Forward contract
+    /// Forward contract.
     Forward,
-    /// Interest rate swap
+    /// Interest rate swap.
     Swap,
-    /// Forward rate agreement
+    /// Forward rate agreement.
     Fra,
 }
 
-/// Pricing request for a single instrument
+/// Pricing request for a single instrument.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PricingRequest {
-    /// Type of instrument
+    /// Type of instrument.
     pub instrument_type: InstrumentType,
-    /// Strike price
+    /// Strike price.
     pub strike: f64,
-    /// Time to expiry in years
+    /// Time to expiry in years.
     pub expiry: f64,
-    /// Whether the option is a call (true) or put (false)
+    /// Whether the option is a call (true) or put (false).
     #[serde(default = "default_is_call")]
     pub is_call: bool,
-    /// Spot price
+    /// Spot price.
     pub spot: f64,
-    /// Volatility (annualised)
+    /// Volatility (annualised).
     pub volatility: f64,
-    /// Risk-free rate (annualised)
+    /// Risk-free rate (annualised).
     pub rate: f64,
-    /// Dividend yield (optional)
+    /// Dividend yield (optional).
     #[serde(default)]
     pub dividend_yield: f64,
-    /// Whether to compute Greeks
+    /// Whether to compute Greeks.
     #[serde(default)]
     pub compute_greeks: bool,
 }
 
 fn default_is_call() -> bool { true }
 
-/// Greeks computed for an instrument
+/// Greeks computed for an instrument.
 #[derive(Debug, Clone, Serialize)]
 pub struct GreeksResponse {
-    /// Delta (dV/dS)
+    /// Delta (dV/dS).
     pub delta: f64,
-    /// Gamma (d²V/dS²)
+    /// Gamma (d²V/dS²).
     pub gamma: f64,
-    /// Vega (dV/dσ)
+    /// Vega (dV/dσ).
     pub vega: f64,
-    /// Theta (dV/dt)
+    /// Theta (dV/dt).
     pub theta: f64,
-    /// Rho (dV/dr)
+    /// Rho (dV/dr).
     pub rho: f64,
 }
 
-/// Pricing response for a single instrument
+/// Pricing response for a single instrument.
 #[derive(Debug, Clone, Serialize)]
 pub struct PricingResponse {
-    /// Calculated price (present value)
+    /// Calculated price (present value).
     pub price: f64,
-    /// Greeks if computed
+    /// Greeks if computed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub greeks: Option<GreeksResponse>,
-    /// Calculation time in milliseconds
+    /// Calculation time in milliseconds.
     pub calculation_time_ms: f64,
 }
 
-/// Portfolio pricing request
+/// Portfolio pricing request.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PortfolioPricingRequest {
-    /// List of instruments to price
+    /// List of instruments to price.
     pub instruments: Vec<PricingRequest>,
-    /// Whether to compute Greeks for all instruments
+    /// Whether to compute Greeks for all instruments.
     #[serde(default)]
     pub compute_greeks: bool,
 }
 
-/// Single instrument result in portfolio
+/// Single instrument result in portfolio.
 #[derive(Debug, Clone, Serialize)]
 pub struct PortfolioInstrumentResult {
-    /// Calculated price (present value)
+    /// Calculated price (present value).
     pub price: f64,
-    /// Greeks if computed
+    /// Greeks if computed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub greeks: Option<GreeksResponse>,
-    /// Error message if pricing failed
+    /// Error message if pricing failed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
 
-/// Portfolio pricing response
+/// Portfolio pricing response.
 #[derive(Debug, Clone, Serialize)]
 pub struct PortfolioPricingResponse {
-    /// Results for each instrument
+    /// Results for each instrument.
     pub results: Vec<PortfolioInstrumentResult>,
-    /// Total portfolio value
+    /// Total portfolio value.
     pub total_value: f64,
-    /// Number of successful pricings
+    /// Number of successful pricings.
     pub success_count: usize,
-    /// Number of failed pricings
+    /// Number of failed pricings.
     pub failure_count: usize,
-    /// Total calculation time in milliseconds
+    /// Total calculation time in milliseconds.
     pub calculation_time_ms: f64,
 }
 
-/// Health check response
+/// Health check response.
 #[derive(Debug, Clone, Serialize)]
 pub struct HealthResponse {
-    /// Service status (e.g. "ok")
+    /// Service status (e.g.
     pub status: String,
-    /// Service version
+    /// Service version.
     pub version: String,
 }

@@ -7,47 +7,39 @@ const { expandCashflows, calculateAll, resetAll } = usePricer();
 </script>
 
 <template>
-  <div class="glass-card p-6">
-    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Actions</h3>
-    <div class="space-y-3">
-      <!-- Expand Cashflows -->
-      <button
+  <v-card>
+    <v-card-text class="d-flex flex-column" style="gap: 8px">
+      <v-btn
+        block
+        variant="tonal"
         :disabled="!store.selectedInstrumentId || store.isExpanding"
-        class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] text-[var(--text-primary)] font-medium transition-all duration-200 hover:bg-[var(--surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        :loading="store.isExpanding"
+        prepend-icon="mdi-arrow-expand-all"
         @click="expandCashflows"
       >
-        <i :class="['fas', store.isExpanding ? 'fa-spinner fa-spin' : 'fa-expand']"></i>
-        {{ store.isExpanding ? 'Expanding...' : 'Expand Cashflows' }}
-      </button>
+        Expand Cashflows
+      </v-btn>
 
-      <!-- Price & Risks -->
-      <button
+      <v-btn
+        block
+        color="primary"
         :disabled="!store.expandedTrade || store.isCalculating"
-        class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        :loading="store.isCalculating"
+        prepend-icon="mdi-play"
         @click="calculateAll"
       >
-        <i :class="['fas', store.isCalculating ? 'fa-spinner fa-spin' : 'fa-play']"></i>
-        {{ store.isCalculating ? 'Calculating...' : 'Price & Risks' }}
-      </button>
+        Price &amp; Risks
+      </v-btn>
 
-      <!-- Reset -->
-      <button
+      <v-btn
+        block
+        variant="text"
         :disabled="!store.expandedTrade"
-        class="w-full px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] font-medium transition-all duration-200 hover:bg-[var(--surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+        prepend-icon="mdi-undo"
         @click="resetAll"
       >
-        <i class="fas fa-undo mr-2"></i>Reset
-      </button>
-    </div>
-  </div>
+        Reset
+      </v-btn>
+    </v-card-text>
+  </v-card>
 </template>
-
-<style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-</style>

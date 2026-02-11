@@ -1,65 +1,29 @@
 //! FpML parser implementation.
-//!
-//! Main entry point for parsing FpML documents into Trade objects.
 
 use infra_domain::trade::Trade;
 
 use super::{common::XmlNavigator, error::FpmlError, products};
 
 /// FpML parser for trade definitions.
-///
-/// Parses FpML 5.x XML documents and converts them directly to internal
-/// `Trade` objects.
-///
-/// # Supported Products
-///
-/// - **Rates**: swap, swaption, capFloor
-/// - **FX**: fxSingleLeg, fxSwap, fxOption
-/// - **Equity**: equityOption, equityForward
-/// - **Credit**: creditDefaultSwap (single name and index)
-/// - **Commodity**: commoditySwap, commodityForward
 pub struct FpmlParser;
 
 impl FpmlParser {
     /// Parse an FpML XML document into a Trade.
-    ///
-    /// Automatically detects the product type from the XML structure
-    /// and routes to the appropriate parser.
-    ///
-    /// # Arguments
-    ///
-    /// * `xml` - The FpML XML string to parse
-    ///
-    /// # Returns
-    ///
-    /// A `Trade` object, or an error if parsing fails.
-    ///
-    /// # Errors
-    ///
-    /// Returns `FpmlError` if:
-    /// - The XML is malformed
-    /// - A required element is missing
-    /// - The product type is not supported
     pub fn parse(xml: &str) -> Result<Trade, FpmlError> {
         let product_type = Self::detect_product_type(xml)?;
 
         match product_type {
-            // Rates
             ProductType::Swap => products::parse_swap(xml),
             ProductType::Swaption => products::parse_swaption(xml),
             ProductType::CapFloor => products::parse_cap_floor(xml),
 
-            // FX
             ProductType::FxForward => products::parse_fx_forward(xml),
             ProductType::FxSwap => products::parse_fx_swap(xml),
             ProductType::FxOption => products::parse_fx_option(xml),
 
-            // Equity
             ProductType::EquityOption => products::parse_equity_option(xml),
 
-            // Credit
             ProductType::CreditDefaultSwap => {
-                // Check if it's an index CDS or single name
                 if Self::is_index_cds(xml) {
                     products::parse_credit_default_swap_index(xml)
                 } else {
@@ -67,26 +31,21 @@ impl FpmlParser {
                 }
             }
 
-            // Commodity
             ProductType::CommoditySwap => products::parse_commodity_swap(xml),
         }
     }
 
     /// Parse multiple FpML documents from a single XML file.
-    ///
-    /// Handles FpML documents that contain multiple trades.
     pub fn parse_multiple(xml: &str) -> Result<Vec<Trade>, FpmlError> {
         let nav = XmlNavigator::new(xml);
         let trade_sections = nav.extract_all_sections("trade");
 
         if trade_sections.is_empty() {
-            // Single trade document
             return Ok(vec![Self::parse(xml)?]);
         }
 
         let mut trades = Vec::with_capacity(trade_sections.len());
         for trade_xml in trade_sections {
-            // Wrap in minimal document structure for parsing
             let full_xml = format!(
                 r#"<?xml version="1.0"?><dataDocument>{}</dataDocument>"#,
                 trade_xml
@@ -99,9 +58,6 @@ impl FpmlParser {
 
     /// Detect the product type from FpML XML.
     fn detect_product_type(xml: &str) -> Result<ProductType, FpmlError> {
-        // Check for each product element
-        // Note: Order matters! Swaption must be checked before swap
-        // because swaption contains a nested swap element.
         if xml.contains("<swaption>") || xml.contains("<swaption ") {
             return Ok(ProductType::Swaption);
         }
@@ -146,23 +102,18 @@ impl FpmlParser {
 /// Detected FpML product type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProductType {
-    // Rates
     Swap,
     Swaption,
     CapFloor,
 
-    // FX
     FxForward,
     FxSwap,
     FxOption,
 
-    // Equity
     EquityOption,
 
-    // Credit
     CreditDefaultSwap,
 
-    // Commodity
     CommoditySwap,
 }
 

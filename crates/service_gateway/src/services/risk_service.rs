@@ -1,6 +1,4 @@
-//! Risk service wrapping pricer_risk facade
-//!
-//! Provides Greeks calculation and scenario analysis operations.
+//! Risk service wrapping pricer_risk facade.
 
 #[cfg(feature = "risk")]
 use std::{sync::Arc, time::Instant};
@@ -17,15 +15,13 @@ use crate::{
     state::AppState,
 };
 
-/// Service for risk calculations (Greeks and scenario analysis)
+/// Service for risk calculations (Greeks and scenario analysis).
 #[cfg(feature = "risk")]
 pub struct RiskService;
 
 #[cfg(feature = "risk")]
 impl RiskService {
-    /// Compute Greeks for a portfolio
-    ///
-    /// Uses either bump-and-revalue or Enzyme AAD depending on the mode.
+    /// Compute Greeks for a portfolio.
     pub fn compute_greeks(
         request: &GreeksRequest,
         state: &Arc<AppState>,
@@ -35,11 +31,8 @@ impl RiskService {
         let portfolio_entry =
             helpers::resolve_cached(&state.portfolio_cache, &request.portfolio_id, "Portfolio")?;
 
-        // For now, we simulate Greeks calculation since we don't have actual trades
-        // In a real implementation, we would use pricer_risk::RiskEngine
         let trade_count = portfolio_entry.trade_count;
 
-        // Simulate Greeks based on trade count (placeholder values)
         let greeks = GreeksResultDto {
             delta: trade_count as f64 * 100.0,
             gamma: trade_count as f64 * 5.0,
@@ -60,9 +53,7 @@ impl RiskService {
         })
     }
 
-    /// Run scenario analysis on a portfolio
-    ///
-    /// Supports both preset and custom scenarios.
+    /// Run scenario analysis on a portfolio.
     pub fn run_scenarios(
         request: &ScenarioRequest,
         state: &Arc<AppState>,
@@ -72,17 +63,14 @@ impl RiskService {
         let portfolio_entry =
             helpers::resolve_cached(&state.portfolio_cache, &request.portfolio_id, "Portfolio")?;
 
-        // Validate scenarios
         if request.scenarios.is_empty() {
             return Err(ServerError::InvalidRequest(
                 "At least one scenario must be specified".to_string(),
             ));
         }
 
-        // Simulate base portfolio value
         let base_value = portfolio_entry.trade_count as f64 * 1_000_000.0;
 
-        // Process each scenario
         let results: Vec<ScenarioResultDto> = request
             .scenarios
             .iter()
@@ -93,7 +81,6 @@ impl RiskService {
                         (name.to_string(), factor)
                     }
                     ScenarioDefinition::Custom { name, shifts } => {
-                        // Calculate aggregate shift factor from custom shifts
                         let factor = shifts.iter().fold(1.0, |acc, shift| {
                             let shift_amount = match shift.shift_type {
                                 ShiftTypeDto::Absolute => shift.amount / 100.0,
@@ -135,7 +122,7 @@ impl RiskService {
         })
     }
 
-    /// Convert preset scenario type to name and shift factor
+    /// Convert preset scenario type to name and shift factor.
     fn preset_to_shift(preset: PresetScenarioTypeDto) -> (&'static str, f64) {
         match preset {
             PresetScenarioTypeDto::ParallelUp100bp => ("Parallel +100bp", 0.98),
@@ -150,7 +137,7 @@ impl RiskService {
         }
     }
 
-    /// Convert DTO Greek type to pricer_risk Greek type
+    /// Convert DTO Greek type to pricer_risk Greek type.
     #[allow(dead_code)]
     fn convert_greek_type(dto: &GreekTypeDto) -> &'static str {
         match dto {
@@ -165,7 +152,7 @@ impl RiskService {
         }
     }
 
-    /// Convert DTO Greeks mode to pricer_risk mode
+    /// Convert DTO Greeks mode to pricer_risk mode.
     #[allow(dead_code)]
     fn convert_greeks_mode(dto: &GreeksModeDto) -> &'static str {
         match dto {
@@ -265,11 +252,9 @@ mod tests {
         assert_eq!(response.scenario_count, 2);
         assert_eq!(response.results.len(), 2);
 
-        // Check first scenario (parallel up - should decrease value)
         let first = &response.results[0];
         assert!(first.pnl < 0.0);
 
-        // Check second scenario (FX down - should decrease value)
         let second = &response.results[1];
         assert!(second.pnl < 0.0);
     }

@@ -7,11 +7,31 @@ import PricerActions from '@/components/pricer/PricerActions.vue';
 </script>
 
 <template>
-  <div class="space-y-6">
-    <InstrumentSelector />
-    <ValuationSettings />
-    <MarketDataSelector />
-    <ModelSelector />
-    <PricerActions />
-  </div>
+  <v-expansion-panels multiple variant="accordion" :model-value="[0, 1]">
+    <v-expansion-panel title="Trade Setup">
+      <v-expansion-panel-text>
+        <InstrumentSelector />
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+
+    <v-expansion-panel title="Valuation Settings">
+      <v-expansion-panel-text>
+        <ValuationSettings />
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+
+    <v-expansion-panel title="Market Data">
+      <v-expansion-panel-text>
+        <MarketDataSelector />
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+
+    <v-expansion-panel title="Stochastic Model">
+      <v-expansion-panel-text>
+        <ModelSelector />
+      </v-expansion-panel-text>
+    </v-expansion-panel>
+  </v-expansion-panels>
+
+  <PricerActions class="mt-4" />
 </template>

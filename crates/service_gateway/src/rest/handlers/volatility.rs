@@ -1,6 +1,4 @@
-//! Volatility handlers
-//!
-//! Thin handlers delegating to `VolatilityService`.
+//! Volatility handlers.
 
 #[cfg(feature = "volatility")]
 use std::sync::Arc;
@@ -23,7 +21,7 @@ use crate::{
     state::AppState,
 };
 
-/// POST /api/v1/volatility/fx-surface
+/// POST /api/v1/volatility/fx-surface.
 #[cfg(feature = "volatility")]
 pub async fn build_fx_vol_surface(
     State(state): State<Arc<AppState>>,
@@ -33,7 +31,7 @@ pub async fn build_fx_vol_surface(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
-/// POST /api/v1/volatility/cube
+/// POST /api/v1/volatility/cube.
 #[cfg(feature = "volatility")]
 pub async fn build_vol_cube(
     State(state): State<Arc<AppState>>,
@@ -43,7 +41,7 @@ pub async fn build_vol_cube(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
-/// POST /api/v1/volatility/{id}/implied-vol
+/// POST /api/v1/volatility/{id}/implied-vol.
 #[cfg(feature = "volatility")]
 pub async fn get_implied_vol(
     State(state): State<Arc<AppState>>,

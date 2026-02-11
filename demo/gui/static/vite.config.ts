@@ -51,6 +51,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['vue', 'vue-router', 'pinia', 'chart.js'],
+          vuetify: ['vuetify'],
         },
       },
     },

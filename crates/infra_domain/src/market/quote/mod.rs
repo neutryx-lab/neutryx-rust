@@ -1,12 +1,4 @@
 //! Market quote management.
-//!
-//! This module provides types for managing market quotes:
-//!
-//! - [`MarketQuote`]: A single market quote with metadata
-//! - [`QuoteId`]: Unique identifier for a market quote
-//! - [`MarketQuoteSet`]: Collection of quotes with O(1) lookup
-//! - [`QuoteType`]: Quote classification (Bid, Ask, Mid, Last)
-//! - [`QuoteValidator`]: Validation trait for quotes
 
 mod error;
 mod market_quote;

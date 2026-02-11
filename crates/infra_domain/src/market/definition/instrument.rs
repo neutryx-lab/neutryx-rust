@@ -1,31 +1,4 @@
 //! Instrument definition for curve calibration.
-//!
-//! This module provides [`InstrumentDefinition`] which defines calibration
-//! instruments as master data. These definitions are used by
-//! `CurveDefinition` to specify which instruments make up a curve.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::definition::{InstrumentDefinition, InstrumentConventions};
-//! use infra_domain::market::{Currency, RateType};
-//!
-//! // Deposit instrument
-//! let depo = InstrumentDefinition::new(
-//!     "USD-Depo-ON",
-//!     Currency::USD,
-//!     RateType::Deposit,
-//!     "O/N",
-//! );
-//!
-//! // OIS instrument with rate index
-//! let ois = InstrumentDefinition::new(
-//!     "USD-OIS-5Y",
-//!     Currency::USD,
-//!     RateType::Ois,
-//!     "5Y",
-//! ).with_rate_index("USD-SOFR");
-//! ```
 
 use std::str::FromStr;
 
@@ -38,51 +11,17 @@ use crate::{
 };
 
 /// Instrument definition for curve calibration.
-///
-/// Defines a calibration instrument as master data, specifying its type,
-/// currency, tenor, and optional market conventions.
-///
-/// # Convention-Based Definition
-///
-/// Instruments can be defined using a `convention` field that references
-/// a market convention ID (e.g., "USD-SOFR-OIS", "EUR-DEPO"). The `RateType`
-/// is then derived from the convention name.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::definition::InstrumentDefinition;
-/// use infra_domain::market::{Currency, RateType};
-///
-/// // Convention-based definition (preferred)
-/// let ois = InstrumentDefinition::from_convention(
-///     "USD-OIS-5Y",
-///     Currency::USD,
-///     "USD-SOFR-OIS",
-///     "5Y",
-/// );
-/// assert_eq!(ois.rate_type(), RateType::Ois);
-///
-/// // Legacy definition with explicit rate_type
-/// let depo = InstrumentDefinition::new(
-///     "USD-Depo-ON",
-///     Currency::USD,
-///     RateType::Deposit,
-///     "O/N",
-/// );
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct InstrumentDefinition {
-    /// Unique identifier (e.g., "USD-Depo-ON", "USD-OIS-5Y")
+    /// Unique identifier (e.g., "USD-Depo-ON", "USD-OIS-5Y").
     pub id: String,
 
-    /// Currency of the instrument
+    /// Currency of the instrument.
     pub currency: Currency,
 
-    /// Convention ID (e.g., "USD-SOFR-OIS", "EUR-DEPO")
-    /// If provided, `rate_type` is derived from this.
+    /// Convention ID (e.g., "USD-SOFR-OIS", "EUR-DEPO").
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -90,25 +29,23 @@ pub struct InstrumentDefinition {
     pub convention: Option<String>,
 
     /// Instrument type - derived from convention if not explicitly set.
-    /// When deserialising, if both `convention` and `rate_type` are present,
-    /// `convention` takes precedence for deriving the actual rate type.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none", alias = "rateType")
     )]
     rate_type_override: Option<RateType>,
 
-    /// Tenor specification (e.g., "O/N", "3M", "5Y", or FRA format "3x6")
+    /// Tenor specification (e.g., "O/N", "3M", "5Y", or FRA format "3x6").
     pub tenor: String,
 
-    /// Related rate index ID (e.g., "USD-SOFR") - optional
+    /// Related rate index ID (e.g., "USD-SOFR") - optional.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub rate_index: Option<String>,
 
-    /// Market conventions override - optional
+    /// Market conventions override - optional.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -116,7 +53,6 @@ pub struct InstrumentDefinition {
     pub conventions: Option<InstrumentConventions>,
 
     /// Event date for event instruments (ISO format: YYYY-MM-DD).
-    /// Only used when rate_type is Event.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -125,35 +61,32 @@ pub struct InstrumentDefinition {
 }
 
 /// Market conventions for an instrument.
-///
-/// If not specified, defaults are derived from the instrument type and
-/// currency.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct InstrumentConventions {
-    /// Day count convention
+    /// Day count convention.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub day_count: Option<DayCounter>,
 
-    /// Spot lag in business days
+    /// Spot lag in business days.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub spot_lag: Option<u8>,
 
-    /// Holiday calendar
+    /// Holiday calendar.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub calendar: Option<CalendarId>,
 
-    /// Payment frequency
+    /// Payment frequency.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -164,15 +97,15 @@ pub struct InstrumentConventions {
 /// Error type for instrument definition parsing and validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstrumentDefError {
-    /// Invalid tenor format
+    /// Invalid tenor format.
     InvalidTenor(String),
-    /// Missing required field
+    /// Missing required field.
     MissingField(&'static str),
-    /// Invalid FRA tenor
+    /// Invalid FRA tenor.
     InvalidFraTenor(String),
-    /// Missing event date for Event instrument
+    /// Missing event date for Event instrument.
     MissingEventDate,
-    /// Invalid event date format
+    /// Invalid event date format.
     InvalidEventDate(String),
 }
 
@@ -192,13 +125,6 @@ impl std::error::Error for InstrumentDefError {}
 
 impl InstrumentDefinition {
     /// Creates a new instrument definition with explicit rate type.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique identifier
-    /// * `currency` - Currency of the instrument
-    /// * `rate_type` - Type of the instrument
-    /// * `tenor` - Tenor string (e.g., "O/N", "3M", "5Y", "3x6")
     #[must_use]
     pub fn new(
         id: impl Into<String>,
@@ -219,31 +145,6 @@ impl InstrumentDefinition {
     }
 
     /// Creates a new instrument definition from a convention ID.
-    ///
-    /// The `RateType` is derived from the convention name.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique identifier
-    /// * `currency` - Currency of the instrument
-    /// * `convention` - Convention ID (e.g., "USD-SOFR-OIS", "EUR-DEPO")
-    /// * `tenor` - Tenor string (e.g., "O/N", "3M", "5Y")
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::InstrumentDefinition;
-    /// use infra_domain::market::{Currency, RateType};
-    ///
-    /// let ois = InstrumentDefinition::from_convention(
-    ///     "USD-OIS-5Y",
-    ///     Currency::USD,
-    ///     "USD-SOFR-OIS",
-    ///     "5Y",
-    /// );
-    /// assert_eq!(ois.rate_type(), RateType::Ois);
-    /// assert_eq!(ois.convention_id(), Some("USD-SOFR-OIS"));
-    /// ```
     #[must_use]
     pub fn from_convention(
         id: impl Into<String>,
@@ -264,32 +165,6 @@ impl InstrumentDefinition {
     }
 
     /// Creates a new event instrument definition.
-    ///
-    /// Event instruments represent rate jumps at specific dates (e.g., central
-    /// bank meetings). The `event_date` is in ISO format (YYYY-MM-DD).
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique identifier (e.g., "USD-FOMC-2024-03")
-    /// * `currency` - Currency of the instrument
-    /// * `event_date` - Event date in ISO format (e.g., "2024-03-20")
-    /// * `rate_index` - Rate index ID (e.g., "USD-SOFR")
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::InstrumentDefinition;
-    /// use infra_domain::market::{Currency, RateType};
-    ///
-    /// let event = InstrumentDefinition::from_event(
-    ///     "USD-FOMC-2024-03",
-    ///     Currency::USD,
-    ///     "2024-03-20",
-    ///     "USD-SOFR",
-    /// );
-    /// assert_eq!(event.rate_type(), RateType::Event);
-    /// assert_eq!(event.event_date, Some("2024-03-20".to_string()));
-    /// ```
     #[must_use]
     pub fn from_event(
         id: impl Into<String>,
@@ -302,7 +177,7 @@ impl InstrumentDefinition {
             currency,
             convention: None,
             rate_type_override: Some(RateType::Event),
-            tenor: "EVENT".into(), // Placeholder tenor for events
+            tenor: "EVENT".into(),
             rate_index: Some(rate_index.into()),
             conventions: None,
             event_date: Some(event_date.into()),
@@ -310,36 +185,6 @@ impl InstrumentDefinition {
     }
 
     /// Creates an event instrument definition from an `EventInstrument`.
-    ///
-    /// This provides a conversion path from event data loaded via
-    /// `MarketEvent` → `EventInstrument::from_historical()` to an
-    /// `InstrumentDefinition` that can be registered in a `DefinitionRegistry`.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique identifier for the instrument
-    /// * `event` - The `EventInstrument` to convert
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::definition::InstrumentDefinition;
-    /// use infra_domain::market::{EventInstrument, RateIndex, Currency, RateType};
-    /// use infra_domain::market::events::EventType;
-    /// use infra_domain::time::Date;
-    ///
-    /// let event = EventInstrument::new(
-    ///     Date::from_ymd(2024, 3, 20).unwrap(),
-    ///     EventType::CentralBankMeeting,
-    ///     25.0,
-    ///     0.85,
-    ///     RateIndex::Sofr,
-    /// );
-    ///
-    /// let def = InstrumentDefinition::from_event_instrument("USD-FOMC-2024-03", &event);
-    /// assert_eq!(def.rate_type(), RateType::Event);
-    /// assert_eq!(def.event_date, Some("2024-03-20".to_string()));
-    /// ```
     #[must_use]
     pub fn from_event_instrument(
         id: impl Into<String>,
@@ -366,22 +211,12 @@ impl InstrumentDefinition {
     }
 
     /// Returns the rate type for this instrument.
-    ///
-    /// If a convention is set, derives the rate type from the convention name.
-    /// Otherwise, returns the explicitly set rate type.
-    ///
-    /// # Panics
-    ///
-    /// Panics if neither convention nor rate_type is set. This should not
-    /// happen for properly constructed instruments.
     #[must_use]
     pub fn rate_type(&self) -> RateType {
-        // If convention is set, derive from it
         if let Some(ref conv) = self.convention {
             return Self::derive_rate_type_from_convention(conv);
         }
 
-        // Fall back to explicit rate type
         self.rate_type_override
             .expect("InstrumentDefinition must have either convention or rate_type set")
     }
@@ -391,21 +226,10 @@ impl InstrumentDefinition {
     pub fn convention_id(&self) -> Option<&str> { self.convention.as_deref() }
 
     /// Derives the `RateType` from a convention ID string.
-    ///
-    /// Convention naming patterns:
-    /// - `*-OIS` → OIS
-    /// - `*-SWAP` → Swap
-    /// - `*-DEPO` → Deposit
-    /// - `*-FRA` → Fra
-    /// - `*-FUTURES` → Futures
-    /// - `*-BASIS` / `XCCY-*` → BasisSwap
-    /// - `FX-*` / `*-FXOPTION` → FxSpot
-    /// - `*-EVENT` → Event
     #[must_use]
     pub fn derive_rate_type_from_convention(convention: &str) -> RateType {
         let upper = convention.to_uppercase();
 
-        // Check suffix patterns first (most specific)
         if upper.ends_with("-EVENT") {
             return RateType::Event;
         }
@@ -425,7 +249,6 @@ impl InstrumentDefinition {
             return RateType::Futures;
         }
         if upper.ends_with("-SWAPTION") || upper.ends_with("-CAPFLOOR") {
-            // Volatility products
             return RateType::Vol;
         }
         if upper.ends_with("-FXOPTION") || upper.starts_with("FX-") {
@@ -435,7 +258,6 @@ impl InstrumentDefinition {
             return RateType::BasisSwap;
         }
 
-        // Check contains patterns (less specific)
         if upper.contains("OIS") {
             return RateType::Ois;
         }
@@ -452,7 +274,6 @@ impl InstrumentDefinition {
             return RateType::Futures;
         }
 
-        // Default to Deposit for unknown patterns
         RateType::Deposit
     }
 
@@ -478,14 +299,7 @@ impl InstrumentDefinition {
     }
 
     /// Converts the tenor to years.
-    ///
-    /// For FRA instruments, returns the end tenor in years.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the tenor cannot be parsed.
     pub fn tenor_years(&self) -> Result<f64, InstrumentDefError> {
-        // Check for FRA tenor first
         if let Some((_, end)) = parse_fra_tenor(&self.tenor) {
             return Ok(end);
         }
@@ -494,10 +308,7 @@ impl InstrumentDefinition {
             .map_err(|_| InstrumentDefError::InvalidTenor(self.tenor.clone()))
     }
 
-    /// Returns the FRA start and end tenors in years, if this is a FRA
-    /// instrument.
-    ///
-    /// Returns `None` if this is not a FRA or the tenor is not in FRA format.
+    /// Returns the FRA start and end tenors in years, if this is a FRA.
     #[must_use]
     pub fn fra_tenors(&self) -> Option<(f64, f64)> { parse_fra_tenor(&self.tenor) }
 
@@ -506,26 +317,18 @@ impl InstrumentDefinition {
     pub fn is_fra_tenor(&self) -> bool { parse_fra_tenor(&self.tenor).is_some() }
 
     /// Converts to a [`QuoteId`] for lookup in `MarketQuoteSet`.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the tenor cannot be parsed.
     pub fn to_quote_id(&self) -> Result<QuoteId, InstrumentDefError> {
         let tenor = self.parse_tenor()?;
         Ok(QuoteId::new(self.currency, tenor, self.rate_type()))
     }
 
     /// Parses the tenor string to a [`Tenor`] enum.
-    ///
-    /// For FRA tenors, returns the end tenor.
     fn parse_tenor(&self) -> Result<Tenor, InstrumentDefError> {
-        // For FRA, extract the end tenor
         if let Some((_, end_years)) = parse_fra_tenor(&self.tenor) {
             return Self::years_to_tenor(end_years)
                 .ok_or_else(|| InstrumentDefError::InvalidFraTenor(self.tenor.clone()));
         }
 
-        // Try parsing as standard Tenor
         Tenor::from_str(&self.tenor)
             .map_err(|_| InstrumentDefError::InvalidTenor(self.tenor.clone()))
     }
@@ -555,41 +358,30 @@ impl InstrumentDefinition {
     }
 
     /// Validates the instrument definition.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentDefError> {
         if self.id.is_empty() {
             return Err(InstrumentDefError::MissingField("id"));
         }
 
-        // Verify we have either convention or rate_type
         if self.convention.is_none() && self.rate_type_override.is_none() {
             return Err(InstrumentDefError::MissingField("convention or rateType"));
         }
 
-        // Event-specific validation
         if self.rate_type() == RateType::Event {
             if self.event_date.is_none() {
                 return Err(InstrumentDefError::MissingEventDate);
             }
-            // Basic date format validation (YYYY-MM-DD)
             if let Some(ref date) = self.event_date {
                 if date.len() != 10 || date.chars().filter(|c| *c == '-').count() != 2 {
                     return Err(InstrumentDefError::InvalidEventDate(date.clone()));
                 }
             }
-            // Event instruments don't need tenor validation
             return Ok(());
         }
 
-        // Verify tenor can be parsed (non-Event instruments)
         let _ = self.tenor_years()?;
 
-        // FRA-specific validation
         if self.rate_type() == RateType::Fra && !self.is_fra_tenor() {
-            // FRA should have FRA tenor format, but we allow standard tenor too
         }
 
         Ok(())
@@ -642,63 +434,30 @@ impl InstrumentConventions {
 }
 
 /// Template for generating multiple instrument definitions.
-///
-/// A template defines common properties and a list of tenors,
-/// generating one [`InstrumentDefinition`] per tenor.
-///
-/// # ID Pattern
-///
-/// The `id_pattern` field supports placeholders:
-/// - `{currency}` - Currency code (e.g., "USD")
-/// - `{tenor}` - Tenor string (e.g., "5Y")
-/// - `{type}` - Short type name derived from convention (e.g., "OIS", "Depo")
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::definition::InstrumentTemplate;
-/// use infra_domain::market::Currency;
-///
-/// let template = InstrumentTemplate {
-///     id_pattern: "{currency}-OIS-{tenor}".to_string(),
-///     currency: Currency::USD,
-///     convention: "USD-SOFR-OIS".to_string(),
-///     rate_index: Some("USD-SOFR".to_string()),
-///     tenors: vec!["1M".into(), "3M".into(), "6M".into(), "1Y".into(), "5Y".into()],
-///     conventions: None,
-/// };
-///
-/// let instruments = template.expand();
-/// assert_eq!(instruments.len(), 5);
-/// assert_eq!(instruments[0].id, "USD-OIS-1M");
-/// assert_eq!(instruments[4].id, "USD-OIS-5Y");
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct InstrumentTemplate {
-    /// Pattern for generating IDs. Supports {currency}, {tenor}, {type}
-    /// placeholders.
+    /// Pattern for generating IDs.
     pub id_pattern: String,
 
-    /// Currency for all generated instruments
+    /// Currency for all generated instruments.
     pub currency: Currency,
 
-    /// Convention ID (e.g., "USD-SOFR-OIS", "EUR-DEPO")
+    /// Convention ID (e.g., "USD-SOFR-OIS", "EUR-DEPO").
     pub convention: String,
 
-    /// Rate index ID (e.g., "USD-SOFR") - optional
+    /// Rate index ID (e.g., "USD-SOFR") - optional.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub rate_index: Option<String>,
 
-    /// List of tenors to generate instruments for
+    /// List of tenors to generate instruments for.
     pub tenors: Vec<String>,
 
-    /// Market conventions override - optional, applied to all generated
-    /// instruments
+    /// Market conventions override - optional, applied to all generated.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -708,13 +467,6 @@ pub struct InstrumentTemplate {
 
 impl InstrumentTemplate {
     /// Creates a new instrument template.
-    ///
-    /// # Arguments
-    ///
-    /// * `id_pattern` - Pattern with placeholders for ID generation
-    /// * `currency` - Currency for all instruments
-    /// * `convention` - Convention ID
-    /// * `tenors` - List of tenors
     #[must_use]
     pub fn new(
         id_pattern: impl Into<String>,
@@ -747,8 +499,6 @@ impl InstrumentTemplate {
     }
 
     /// Expands the template into a vector of [`InstrumentDefinition`].
-    ///
-    /// Generates one definition per tenor in the `tenors` list.
     #[must_use]
     pub fn expand(&self) -> Vec<InstrumentDefinition> {
         self.tenors
@@ -782,11 +532,6 @@ impl InstrumentTemplate {
     }
 
     /// Derives a short type name from the convention for ID generation.
-    ///
-    /// Examples:
-    /// - "USD-SOFR-OIS" → "OIS"
-    /// - "EUR-DEPO" → "Depo"
-    /// - "USD-FRA" → "FRA"
     fn derive_type_short(&self) -> String {
         let upper = self.convention.to_uppercase();
 
@@ -806,7 +551,6 @@ impl InstrumentTemplate {
             return "Futures".to_string();
         }
 
-        // Default: extract last segment
         self.convention
             .rsplit('-')
             .next()
@@ -828,10 +572,6 @@ impl InstrumentTemplate {
     pub fn count(&self) -> usize { self.tenors.len() }
 
     /// Validates the template.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails.
     pub fn validate(&self) -> Result<(), InstrumentDefError> {
         if self.id_pattern.is_empty() {
             return Err(InstrumentDefError::MissingField("idPattern"));
@@ -843,13 +583,10 @@ impl InstrumentTemplate {
             return Err(InstrumentDefError::MissingField("tenors"));
         }
 
-        // Validate each tenor can be parsed
         for tenor in &self.tenors {
-            // FRA tenors are valid
             if parse_fra_tenor(tenor).is_some() {
                 continue;
             }
-            // Standard tenors
             if parse_tenor_to_years(tenor).is_err() {
                 return Err(InstrumentDefError::InvalidTenor(tenor.clone()));
             }
@@ -967,7 +704,6 @@ mod tests {
 
     #[test]
     fn test_derive_rate_type_from_convention() {
-        // OIS conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("USD-SOFR-OIS"),
             RateType::Ois
@@ -977,7 +713,6 @@ mod tests {
             RateType::Ois
         );
 
-        // Swap conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("USD-SOFR-SWAP"),
             RateType::Swap
@@ -987,7 +722,6 @@ mod tests {
             RateType::Swap
         );
 
-        // Deposit conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("USD-DEPO"),
             RateType::Deposit
@@ -997,7 +731,6 @@ mod tests {
             RateType::Deposit
         );
 
-        // FRA conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("USD-FRA"),
             RateType::Fra
@@ -1007,25 +740,21 @@ mod tests {
             RateType::Fra
         );
 
-        // Futures conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("USD-FUTURES"),
             RateType::Futures
         );
 
-        // XCCY Basis conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("XCCY-EURUSD"),
             RateType::BasisSwap
         );
 
-        // Vol conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("USD-SWAPTION"),
             RateType::Vol
         );
 
-        // Event conventions
         assert_eq!(
             InstrumentDefinition::derive_rate_type_from_convention("USD-SOFR-EVENT"),
             RateType::Event
@@ -1071,7 +800,6 @@ mod tests {
     #[test]
     fn test_tenor_years_fra() {
         let def = InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, RateType::Fra, "3x6");
-        // FRA 3x6 ends at 6 months = 0.5 years
         assert!((def.tenor_years().unwrap() - 0.5).abs() < 1e-10);
     }
 
@@ -1166,7 +894,6 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_serde_from_json_legacy() {
-        // Test backwards compatibility with rateType field
         let json = r#"{
             "id": "USD-Depo-ON",
             "currency": "USD",
@@ -1184,7 +911,6 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_serde_from_json_convention() {
-        // Test convention-based deserialization
         let json = r#"{
             "id": "USD-OIS-5Y",
             "currency": "USD",

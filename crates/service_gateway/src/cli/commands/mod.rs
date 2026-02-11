@@ -1,6 +1,4 @@
-//! CLI command implementations
-//!
-//! Each submodule implements a specific CLI command.
+//! CLI command implementations.
 
 pub mod calibrate;
 pub mod check;

@@ -1,7 +1,4 @@
 //! Common types shared across instrument definitions.
-//!
-//! This module provides shared enums and structs used by multiple
-//! instrument types across asset classes.
 
 use crate::time::{AccrualPeriod, Date, EndOfMonthRule, Frequency, Period, Tenor, TimeUnit};
 
@@ -43,10 +40,6 @@ impl std::fmt::Display for AssetClass {
 }
 
 /// Exercise style for option instruments.
-///
-/// Note: This is distinct from `ExerciseType` in the trade module which is used
-/// for trade-level exercise specifications. This enum is for instrument
-/// definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ExerciseStyle {
@@ -130,9 +123,6 @@ impl NotionalSchedule {
     pub fn from_schedule(notionals: Vec<f64>) -> Self { Self { notionals } }
 
     /// Returns the notional for a given period index.
-    ///
-    /// If the schedule has fewer entries than the period index,
-    /// returns the last notional (constant extrapolation).
     #[must_use]
     pub fn notional_at(&self, period_index: usize) -> f64 {
         self.notionals
@@ -162,24 +152,6 @@ impl Default for NotionalSchedule {
 }
 
 /// Payment schedule for fixed income instruments.
-///
-/// Contains a series of accrual periods representing the payment structure
-/// of an instrument such as a swap, cap/floor, or bond.
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use infra_domain::trade::instrument_def::PaymentSchedule;
-/// use infra_domain::time::{Date, Frequency};
-///
-/// let schedule = PaymentSchedule::generate(
-///     Date::from_ymd(2025, 1, 1).unwrap(),
-///     Date::from_ymd(2030, 1, 1).unwrap(),
-///     Frequency::Annual,
-///     0, // payment lag
-/// );
-/// assert_eq!(schedule.periods.len(), 5);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PaymentSchedule {
@@ -197,23 +169,12 @@ impl PaymentSchedule {
     pub fn empty() -> Self { Self { periods: vec![] } }
 
     /// Generates a payment schedule from start/end dates and frequency.
-    ///
-    /// # Arguments
-    /// * `start` - Start date of the schedule
-    /// * `end` - End date of the schedule
-    /// * `frequency` - Payment frequency
-    /// * `payment_lag` - Number of business days between end of period and
-    ///   payment
-    ///
-    /// # Returns
-    /// A new payment schedule with accrual periods.
     #[must_use]
     pub fn generate(start: Date, end: Date, frequency: Frequency, payment_lag: u32) -> Self {
         let mut periods = Vec::new();
         let period_months = frequency.months_per_period();
 
         if period_months == 0 {
-            // For overnight or unknown frequency, create single period
             let payment = add_business_days(end, payment_lag);
             periods.push(AccrualPeriod::new(start, end, payment));
             return Self { periods };
@@ -237,13 +198,6 @@ impl PaymentSchedule {
     }
 
     /// Generates a schedule from a start date and tenor.
-    ///
-    /// # Arguments
-    /// * `start` - Start date of the schedule
-    /// * `tenor` - Total tenor of the instrument
-    /// * `frequency` - Payment frequency
-    /// * `payment_lag` - Number of business days between end of period and
-    ///   payment
     #[must_use]
     pub fn generate_from_tenor(
         start: Date,
@@ -295,7 +249,6 @@ mod tests {
 
     #[test]
     fn test_enums_and_traits() {
-        // AssetClass: display, as_str, eq, hash
         assert_eq!(AssetClass::Rates.to_string(), "Rates");
         assert_eq!(AssetClass::Fx.to_string(), "FX");
         assert_eq!(AssetClass::Equity.to_string(), "Equity");
@@ -311,7 +264,6 @@ mod tests {
         set.insert(AssetClass::Rates);
         assert_eq!(set.len(), 2);
 
-        // ExerciseStyle, PayerReceiver, Barrier
         assert_eq!(ExerciseStyle::European, ExerciseStyle::European);
         assert_ne!(ExerciseStyle::European, ExerciseStyle::American);
         assert_eq!(PayerReceiver::Payer.opposite(), PayerReceiver::Receiver);
@@ -326,13 +278,11 @@ mod tests {
 
     #[test]
     fn test_notional_schedule() {
-        // Constant
         let c = NotionalSchedule::constant(1_000_000.0);
         assert!(c.is_constant());
         assert_eq!(c.notional_at(0), 1_000_000.0);
         assert_eq!(c.notional_at(10), 1_000_000.0);
 
-        // Amortising
         let a = NotionalSchedule::from_schedule(vec![1_000_000.0, 800_000.0, 600_000.0]);
         assert!(!a.is_constant());
         assert_eq!(a.notional_at(0), 1_000_000.0);
@@ -340,7 +290,6 @@ mod tests {
         assert_eq!(a.notional_at(2), 600_000.0);
         assert_eq!(a.notional_at(5), 600_000.0);
 
-        // Default + clone
         let d = NotionalSchedule::default();
         assert!(d.is_constant());
         assert_eq!(d.notional_at(0), 1_000_000.0);
@@ -352,14 +301,12 @@ mod tests {
     fn test_payment_schedule() {
         let s = Date::from_ymd(2025, 1, 1).unwrap();
 
-        // Annual 5Y
         let ann =
             PaymentSchedule::generate(s, Date::from_ymd(2030, 1, 1).unwrap(), Frequency::Annual, 0);
         assert_eq!(ann.num_periods(), 5);
         assert_eq!(ann.start_date(), Some(s));
         assert_eq!(ann.end_date(), Some(Date::from_ymd(2030, 1, 1).unwrap()));
 
-        // SemiAnnual 2Y
         let semi = PaymentSchedule::generate(
             s,
             Date::from_ymd(2027, 1, 1).unwrap(),
@@ -368,7 +315,6 @@ mod tests {
         );
         assert_eq!(semi.num_periods(), 4);
 
-        // Quarterly 1Y
         let q = PaymentSchedule::generate(
             s,
             Date::from_ymd(2026, 1, 1).unwrap(),
@@ -377,17 +323,14 @@ mod tests {
         );
         assert_eq!(q.num_periods(), 4);
 
-        // With payment lag
         let lag =
             PaymentSchedule::generate(s, Date::from_ymd(2026, 1, 1).unwrap(), Frequency::Annual, 2);
         assert_eq!(lag.num_periods(), 1);
         assert_eq!(lag.payment_dates()[0], Date::from_ymd(2026, 1, 3).unwrap());
 
-        // From tenor
         let tenor = PaymentSchedule::generate_from_tenor(s, Tenor::FiveYears, Frequency::Annual, 0);
         assert_eq!(tenor.num_periods(), 5);
 
-        // Empty + clone
         let e = PaymentSchedule::empty();
         assert!(e.is_empty());
         assert_eq!(e.num_periods(), 0);

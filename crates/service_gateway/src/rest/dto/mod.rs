@@ -1,12 +1,8 @@
-//! Data Transfer Objects for REST API
-//!
-//! Contains request and response types for all API endpoints.
-//! Domain-specific DTOs are feature-gated.
+//! Data Transfer Objects for REST API.
 
 mod curves;
 mod pricing;
 
-// Feature-gated DTO modules
 #[cfg(feature = "demo")]
 pub mod demo;
 #[cfg(feature = "models")]
@@ -18,9 +14,7 @@ pub mod risk;
 #[cfg(feature = "volatility")]
 pub mod volatility;
 
-// Re-export common DTOs
 pub use curves::*;
-// Feature-gated re-exports (public API, may not be used internally)
 #[cfg(feature = "demo")]
 #[allow(unused_imports)]
 pub use demo::*;

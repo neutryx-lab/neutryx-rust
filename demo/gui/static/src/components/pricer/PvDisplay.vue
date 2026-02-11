@@ -10,78 +10,63 @@ function pvValue(): number {
 </script>
 
 <template>
-  <div v-if="store.pricingResult" class="glass-card p-6">
-    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Present Value</h3>
-
-    <!-- Total PV -->
-    <div
-      :class="[
-        'text-3xl font-bold text-center py-4',
-        pvValue() >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]',
-      ]"
-    >
-      {{ formatCurrency(pvValue()) }}
-    </div>
-
-    <!-- PV Diff from Previous -->
-    <div v-if="store.pvDiff" class="mt-2 text-center text-sm">
-      <span
-        :class="store.pvDiff.absolute >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'"
-      >
-        {{ store.pvDiff.absolute >= 0 ? '+' : '' }}{{ formatCurrency(store.pvDiff.absolute) }}
-        ({{ store.pvDiff.percent >= 0 ? '+' : '' }}{{ store.pvDiff.percent.toFixed(2) }}%)
-      </span>
-      <span class="text-[var(--text-muted)]"> vs previous</span>
-    </div>
-
-    <!-- Leg-level PV -->
-    <div v-if="store.pricingResult.legs" class="mt-4 space-y-2">
+  <v-card v-if="store.pricingResult">
+    <v-card-title>Present Value</v-card-title>
+    <v-card-text>
+      <!-- Total PV -->
       <div
-        v-for="(leg, idx) in store.pricingResult.legs"
-        :key="idx"
-        class="flex justify-between text-sm"
+        class="text-h4 font-weight-bold text-center py-3"
+        :class="pvValue() >= 0 ? 'text-success' : 'text-error'"
       >
-        <span class="text-[var(--text-muted)]">
-          Leg {{ idx + 1 }} ({{ leg.direction }})
-          <span
-            v-if="(leg as Record<string, unknown>).currency"
-            class="ml-1 px-1.5 py-0.5 rounded bg-[var(--surface)] text-xs"
-          >
-            {{ (leg as Record<string, unknown>).currency }}
-          </span>
-        </span>
-        <span :class="leg.pv >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'">
-          {{ formatCurrency(leg.pv) }}
-        </span>
+        {{ formatCurrency(pvValue()) }}
       </div>
+
+      <!-- PV Diff -->
+      <div v-if="store.pvDiff" class="text-center text-body-2 mb-3">
+        <span :class="store.pvDiff.absolute >= 0 ? 'text-success' : 'text-error'">
+          {{ store.pvDiff.absolute >= 0 ? '+' : '' }}{{ formatCurrency(store.pvDiff.absolute) }}
+          ({{ store.pvDiff.percent >= 0 ? '+' : '' }}{{ store.pvDiff.percent.toFixed(2) }}%)
+        </span>
+        <span class="text-medium-emphasis"> vs previous</span>
+      </div>
+
+      <!-- Leg PV Breakdown -->
+      <v-table v-if="store.pricingResult.legs" density="compact">
+        <tbody>
+          <tr v-for="(leg, idx) in store.pricingResult.legs" :key="idx">
+            <td class="text-medium-emphasis">
+              Leg {{ idx + 1 }} ({{ leg.direction }})
+              <v-chip
+                v-if="(leg as Record<string, unknown>).currency"
+                size="x-small"
+                variant="tonal"
+                class="ml-1"
+              >
+                {{ (leg as Record<string, unknown>).currency }}
+              </v-chip>
+            </td>
+            <td class="text-right" :class="leg.pv >= 0 ? 'text-success' : 'text-error'">
+              {{ formatCurrency(leg.pv) }}
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
 
       <!-- Currency Aggregation -->
-      <div
-        v-if="store.currencyAggregation.length > 1"
-        class="pt-2 border-t border-[var(--glass-border)]"
-      >
-        <p class="text-xs text-[var(--text-muted)] mb-1">By Currency</p>
-        <div
-          v-for="agg in store.currencyAggregation"
-          :key="agg.ccy"
-          class="flex justify-between text-sm"
-        >
-          <span class="text-[var(--text-muted)]">{{ agg.ccy }}</span>
-          <span :class="agg.pv >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'">
-            {{ formatCurrency(agg.pv) }}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
+      <template v-if="store.currencyAggregation.length > 1">
+        <v-divider class="my-2" />
+        <div class="text-caption text-medium-emphasis mb-1">By Currency</div>
+        <v-table density="compact">
+          <tbody>
+            <tr v-for="agg in store.currencyAggregation" :key="agg.ccy">
+              <td class="text-medium-emphasis">{{ agg.ccy }}</td>
+              <td class="text-right" :class="agg.pv >= 0 ? 'text-success' : 'text-error'">
+                {{ formatCurrency(agg.pv) }}
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+      </template>
+    </v-card-text>
+  </v-card>
 </template>
-
-<style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-</style>

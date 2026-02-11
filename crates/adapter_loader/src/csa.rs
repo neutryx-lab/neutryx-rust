@@ -1,6 +1,5 @@
 //! CSA (Credit Support Annex) terms and netting set configuration.
 
-// Re-export from infra_domain::counterparty
 pub use infra_domain::counterparty::{CsaTerms, NettingSet};
 
 #[cfg(test)]

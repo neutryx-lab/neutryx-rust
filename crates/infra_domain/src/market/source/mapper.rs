@@ -1,32 +1,4 @@
 //! Instrument mapping for market quotes.
-//!
-//! This module provides the [`InstrumentMapper`] trait and
-//! [`StandardInstrumentMapper`] implementation for converting market quotes to
-//! trading instruments.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{
-//!     InstrumentMapper, StandardInstrumentMapper, MarketQuote,
-//!     QuoteId, RateType, QuoteType, DataSource, Currency
-//! };
-//! use infra_domain::time::{Date, Tenor};
-//!
-//! let mapper = StandardInstrumentMapper::new();
-//! let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-//! let quote = MarketQuote::new(
-//!     quote_id,
-//!     QuoteType::Mid,
-//!     0.05,
-//!     1700000000000,
-//!     DataSource::Bloomberg,
-//! ).unwrap();
-//!
-//! let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-//! let instrument = mapper.map_to_instrument(&quote, valuation_date);
-//! assert!(instrument.is_ok());
-//! ```
 
 use crate::{
     market::{
@@ -38,44 +10,8 @@ use crate::{
 };
 
 /// Trait for mapping market quotes to instruments.
-///
-/// Implementations of this trait convert [`MarketQuote`] quotes to
-/// [`Instrument`] definitions suitable for curve calibration.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{
-///     InstrumentMapper, StandardInstrumentMapper, MarketQuote,
-///     QuoteId, RateType, QuoteType, DataSource, Currency
-/// };
-/// use infra_domain::time::{Date, Tenor};
-///
-/// struct CustomMapper;
-///
-/// impl InstrumentMapper for CustomMapper {
-///     fn map_to_instrument(
-///         &self,
-///         quote: &MarketQuote,
-///         valuation_date: Date,
-///     ) -> Result<infra_domain::trade::Instrument, infra_domain::market::MarketQuoteError> {
-///         // Custom mapping logic
-///         StandardInstrumentMapper::new().map_to_instrument(quote, valuation_date)
-///     }
-/// }
-/// ```
 pub trait InstrumentMapper {
     /// Maps a market quote to an instrument.
-    ///
-    /// # Arguments
-    ///
-    /// * `quote` - The market quote to map
-    /// * `valuation_date` - The valuation date for calculating instrument dates
-    ///
-    /// # Errors
-    ///
-    /// Returns [`MarketQuoteError::MappingFailed`] if the rate type cannot be
-    /// mapped.
     fn map_to_instrument(
         &self,
         quote: &MarketQuote,
@@ -84,40 +20,6 @@ pub trait InstrumentMapper {
 }
 
 /// Standard instrument mapper with default conventions.
-///
-/// Maps market quotes to instruments using standard market conventions:
-/// - Deposit rates → [`Instrument::Deposit`]
-/// - FRA rates → [`Instrument::Fra`]
-/// - Futures rates → [`Instrument::Futures`] (price = 100 - rate × 100)
-/// - Swap rates → [`Instrument::ParSwap`]
-/// - OIS rates → [`Instrument::Ois`]
-/// - Basis swap rates → [`Instrument::BasisSwap`]
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::{
-///     InstrumentMapper, StandardInstrumentMapper, MarketQuote,
-///     QuoteId, RateType, QuoteType, DataSource, Currency
-/// };
-/// use infra_domain::time::{Date, Tenor};
-///
-/// let mapper = StandardInstrumentMapper::new();
-///
-/// let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
-/// let quote = MarketQuote::new(
-///     quote_id,
-///     QuoteType::Mid,
-///     0.045,
-///     1700000000000,
-///     DataSource::Bloomberg,
-/// ).unwrap();
-///
-/// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-/// let instrument = mapper.map_to_instrument(&quote, valuation_date).unwrap();
-///
-/// assert!(matches!(instrument, infra_domain::trade::Instrument::ParSwap { .. }));
-/// ```
 #[derive(Debug, Clone)]
 pub struct StandardInstrumentMapper {
     /// End of month rule for date calculations.
@@ -132,18 +34,6 @@ impl Default for StandardInstrumentMapper {
 
 impl StandardInstrumentMapper {
     /// Creates a new `StandardInstrumentMapper` with default settings.
-    ///
-    /// Uses:
-    /// - End of month rule: Adjust
-    /// - Settlement lag: 2 business days
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::StandardInstrumentMapper;
-    ///
-    /// let mapper = StandardInstrumentMapper::new();
-    /// ```
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -153,19 +43,6 @@ impl StandardInstrumentMapper {
     }
 
     /// Creates a mapper with a custom end of month rule.
-    ///
-    /// # Arguments
-    ///
-    /// * `eom_rule` - The end of month rule to use for date calculations
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::StandardInstrumentMapper;
-    /// use infra_domain::time::EndOfMonthRule;
-    ///
-    /// let mapper = StandardInstrumentMapper::with_eom_rule(EndOfMonthRule::Preserve);
-    /// ```
     #[must_use]
     pub fn with_eom_rule(eom_rule: EndOfMonthRule) -> Self {
         Self {
@@ -175,18 +52,6 @@ impl StandardInstrumentMapper {
     }
 
     /// Creates a mapper with a custom settlement lag.
-    ///
-    /// # Arguments
-    ///
-    /// * `settlement_lag` - Settlement lag in business days
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::StandardInstrumentMapper;
-    ///
-    /// let mapper = StandardInstrumentMapper::new().with_settlement_lag(1);
-    /// ```
     #[must_use]
     pub fn with_settlement_lag(mut self, settlement_lag: u32) -> Self {
         self.settlement_lag = settlement_lag;
@@ -194,9 +59,6 @@ impl StandardInstrumentMapper {
     }
 
     /// Calculates the start date (spot date) from valuation date.
-    ///
-    /// For simplicity, adds settlement_lag calendar days.
-    /// A production implementation would use business day calendars.
     fn spot_date(&self, valuation_date: Date) -> Date {
         use crate::time::Period;
         valuation_date + Period::days(self.settlement_lag as i32)
@@ -227,18 +89,12 @@ impl StandardInstrumentMapper {
     }
 
     /// Maps a futures rate to a Futures instrument.
-    ///
-    /// Converts rate to price: price = 100 - rate × 100
     fn map_futures(&self, quote: &MarketQuote, valuation_date: Date) -> Instrument {
-        // For futures, the start date is typically the expiry date
-        // which depends on IMM dates. Simplified: use spot + tenor.
         let expiry = quote
             .id
             .tenor
             .add_to_date(self.spot_date(valuation_date), self.eom_rule);
 
-        // Convert rate to price: price = 100 - rate × 100
-        // e.g., 5% rate → price = 95.0
         let price = 100.0 - quote.value * 100.0;
 
         Instrument::Futures {
@@ -351,7 +207,6 @@ mod tests {
         let m = StandardInstrumentMapper::new();
         let v = vd();
 
-        // Deposit
         match m
             .map_to_instrument(&q(RateType::Deposit, Tenor::ThreeMonths, 0.05), v)
             .unwrap()
@@ -369,7 +224,6 @@ mod tests {
             }
             _ => panic!("Expected Deposit"),
         }
-        // Fra
         match m
             .map_to_instrument(&q(RateType::Fra, Tenor::SixMonths, 0.055), v)
             .unwrap()
@@ -387,7 +241,6 @@ mod tests {
             }
             _ => panic!("Expected Fra"),
         }
-        // Futures
         match m
             .map_to_instrument(&q(RateType::Futures, Tenor::ThreeMonths, 0.045), v)
             .unwrap()
@@ -403,7 +256,6 @@ mod tests {
             }
             _ => panic!("Expected Futures"),
         }
-        // Swap
         match m
             .map_to_instrument(&q(RateType::Swap, Tenor::FiveYears, 0.04), v)
             .unwrap()
@@ -421,7 +273,6 @@ mod tests {
             }
             _ => panic!("Expected ParSwap"),
         }
-        // OIS
         match m
             .map_to_instrument(&q(RateType::Ois, Tenor::OneYear, 0.035), v)
             .unwrap()
@@ -439,7 +290,6 @@ mod tests {
             }
             _ => panic!("Expected Ois"),
         }
-        // BasisSwap
         match m
             .map_to_instrument(&q(RateType::BasisSwap, Tenor::TenYears, 0.0025), v)
             .unwrap()
@@ -457,7 +307,6 @@ mod tests {
             }
             _ => panic!("Expected BasisSwap"),
         }
-        // Unsupported types
         assert!(matches!(
             m.map_to_instrument(&q(RateType::FxSpot, Tenor::TwoWeeks, 1.1), v),
             Err(MarketQuoteError::MappingFailed {
@@ -477,7 +326,6 @@ mod tests {
     fn test_mapper_edge_cases() {
         let v = vd();
 
-        // Custom settlement lag
         let m1 = StandardInstrumentMapper::new().with_settlement_lag(1);
         match m1
             .map_to_instrument(&q(RateType::Deposit, Tenor::OneMonth, 0.05), v)
@@ -489,7 +337,6 @@ mod tests {
             _ => panic!("Expected Deposit"),
         }
 
-        // Multiple mappings
         let m = StandardInstrumentMapper::new();
         assert!(m
             .map_to_instrument(&q(RateType::Deposit, Tenor::ThreeMonths, 0.05), v)
@@ -501,7 +348,6 @@ mod tests {
             .map_to_instrument(&q(RateType::Ois, Tenor::OneYear, 0.04), v)
             .is_ok());
 
-        // Futures price conversion
         for (rate_val, expected_price) in [(0.0, 100.0), (0.01, 99.0), (0.05, 95.0), (0.10, 90.0)] {
             match m
                 .map_to_instrument(&q(RateType::Futures, Tenor::ThreeMonths, rate_val), v)
@@ -514,7 +360,6 @@ mod tests {
             }
         }
 
-        // EUR currency
         let eur_q = MarketQuote::new(
             QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap),
             QuoteType::Mid,

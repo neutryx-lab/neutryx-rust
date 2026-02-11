@@ -1,13 +1,10 @@
-//! REST API handlers
-//!
-//! Thin handlers that delegate business logic to services.
+//! REST API handlers.
 
 mod config;
 mod curves;
 mod health;
 mod pricing;
 
-// Feature-gated handlers
 #[cfg(feature = "demo")]
 pub mod demo;
 #[cfg(feature = "models")]
@@ -21,8 +18,6 @@ mod volatility;
 
 pub use config::*;
 pub use curves::*;
-// Feature-gated re-exports
-// Note: demo handlers are accessed via handlers::demo::* prefix, not re-exported here
 pub use health::*;
 #[cfg(feature = "models")]
 pub use models::*;

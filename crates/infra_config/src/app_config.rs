@@ -1,12 +1,4 @@
 //! Application configuration export for frontend integration.
-//!
-//! This module provides `AppConfig` which aggregates:
-//! - `EnumRegistry`: All enum variant names for dropdown/form population
-//! - `DefaultsRegistry`: Default values for configuration structures
-//! - `CurrencyRateIndexMap`: Currency code to rate index mapping
-//!
-//! Together these form the Single Source of Truth for frontend configuration,
-//! eliminating the need for duplicated JSON files.
 
 use std::collections::HashMap;
 
@@ -17,10 +9,6 @@ use crate::{
     BumpSizes, GreekType, GreeksMethod, MonteCarloParams, PricingMethod, SecondOrderMode,
     ShiftType, TreeParams, TreeType,
 };
-
-// =============================================================================
-// EnumRegistry
-// =============================================================================
 
 /// Registry that exports all enum variant names as JSON.
 pub struct EnumRegistry;
@@ -39,10 +27,6 @@ impl EnumRegistry {
     }
 }
 
-// =============================================================================
-// DefaultsRegistry
-// =============================================================================
-
 /// Registry that exports default values for configuration structures.
 pub struct DefaultsRegistry;
 
@@ -57,10 +41,6 @@ impl DefaultsRegistry {
     }
 }
 
-// =============================================================================
-// CurrencyRateIndexMap
-// =============================================================================
-
 /// Mapping from currency codes to their primary rate indices.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct CurrencyRateIndexMap {
@@ -69,13 +49,6 @@ pub struct CurrencyRateIndexMap {
 
 impl CurrencyRateIndexMap {
     /// Creates a new map with default currency→rate index mappings.
-    ///
-    /// Default mappings:
-    /// - USD → SOFR (Secured Overnight Financing Rate)
-    /// - EUR → ESTR (Euro Short-Term Rate)
-    /// - GBP → SONIA (Sterling Overnight Index Average)
-    /// - JPY → TONA (Tokyo Overnight Average Rate)
-    /// - CHF → SARON (Swiss Average Rate Overnight)
     #[must_use]
     pub fn new() -> Self {
         let mut mapping = HashMap::new();
@@ -98,10 +71,6 @@ impl CurrencyRateIndexMap {
     }
 }
 
-// =============================================================================
-// AppConfig
-// =============================================================================
-
 /// Unified application configuration for frontend integration.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -116,9 +85,6 @@ pub struct AppConfig {
 
 impl AppConfig {
     /// Builds a complete `AppConfig` from all registries.
-    ///
-    /// This is the primary entry point for generating the configuration
-    /// to be served via the `/api/config` endpoint.
     #[must_use]
     pub fn build() -> Self {
         let currency_map = CurrencyRateIndexMap::new();
@@ -130,23 +96,14 @@ impl AppConfig {
     }
 }
 
-// =============================================================================
-// Tests
-// =============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // EnumRegistry Tests
-    // =========================================================================
 
     #[test]
     fn test_enum_registry_contains_all_target_enums() {
         let json = EnumRegistry::to_json();
 
-        // Verify all target enums are present
         assert!(json.get("pricing_method").is_some());
         assert!(json.get("tree_type").is_some());
         assert!(json.get("greeks_method").is_some());
@@ -170,7 +127,6 @@ mod tests {
         let json = EnumRegistry::to_json();
         let variants = json.get("greek_type").unwrap().as_array().unwrap();
 
-        // Verify all 7 Greek types are present
         assert_eq!(variants.len(), 7);
         assert!(variants.iter().any(|v| v == "delta"));
         assert!(variants.iter().any(|v| v == "gamma"));
@@ -195,16 +151,10 @@ mod tests {
         let json = EnumRegistry::to_json();
         let pricing_methods = json.get("pricing_method").unwrap().as_array().unwrap();
 
-        // Verify snake_case format (contains underscore for multi-word variants)
         assert!(pricing_methods.iter().any(|v| v == "monte_carlo"));
-        // No PascalCase or camelCase
         assert!(!pricing_methods.iter().any(|v| v == "MonteCarlo"));
         assert!(!pricing_methods.iter().any(|v| v == "monteCarlo"));
     }
-
-    // =========================================================================
-    // DefaultsRegistry Tests
-    // =========================================================================
 
     #[test]
     fn test_defaults_registry_contains_all_target_structs() {
@@ -244,10 +194,6 @@ mod tests {
         assert_eq!(bump.get("spot").unwrap(), 0.01);
     }
 
-    // =========================================================================
-    // CurrencyRateIndexMap Tests
-    // =========================================================================
-
     #[test]
     fn test_currency_rate_index_map_default_mappings() {
         let map = CurrencyRateIndexMap::new();
@@ -279,10 +225,6 @@ mod tests {
         assert_eq!(json.get("CHF").unwrap(), "SARON");
     }
 
-    // =========================================================================
-    // AppConfig Tests
-    // =========================================================================
-
     #[test]
     fn test_app_config_build_contains_all_sections() {
         let config = AppConfig::build();
@@ -297,12 +239,10 @@ mod tests {
         let config = AppConfig::build();
         let json = serde_json::to_string(&config).unwrap();
 
-        // Verify camelCase field names
         assert!(json.contains("\"enums\""));
         assert!(json.contains("\"defaults\""));
         assert!(json.contains("\"rateIndexByCurrency\""));
 
-        // No snake_case field names at top level
         assert!(!json.contains("\"rate_index_by_currency\""));
     }
 
@@ -311,15 +251,12 @@ mod tests {
         let config = AppConfig::build();
         let json_str = serde_json::to_string_pretty(&config).unwrap();
 
-        // Parse back to verify structure
         let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
 
-        // Verify frontend-expected structure
         assert!(parsed.get("enums").unwrap().is_object());
         assert!(parsed.get("defaults").unwrap().is_object());
         assert!(parsed.get("rateIndexByCurrency").unwrap().is_object());
 
-        // Verify enums are arrays
         let enums = parsed.get("enums").unwrap();
         assert!(enums.get("pricing_method").unwrap().is_array());
         assert!(enums.get("greek_type").unwrap().is_array());

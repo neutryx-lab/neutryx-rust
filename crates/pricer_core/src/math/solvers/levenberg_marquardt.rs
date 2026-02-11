@@ -15,13 +15,21 @@ use crate::types::SolverError;
 /// Configuration for Levenberg-Marquardt solver.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LMConfig {
+    /// Convergence tolerance for relative residual change.
     pub tolerance: f64,
+    /// Maximum number of iterations.
     pub max_iterations: usize,
+    /// Initial damping factor.
     pub initial_lambda: f64,
+    /// Factor to increase lambda on rejected step.
     pub lambda_up: f64,
+    /// Factor to decrease lambda on accepted step.
     pub lambda_down: f64,
+    /// Minimum damping factor.
     pub min_lambda: f64,
+    /// Maximum damping factor.
     pub max_lambda: f64,
+    /// Tolerance for parameter change convergence.
     pub param_tolerance: f64,
 }
 
@@ -41,22 +49,17 @@ impl Default for LMConfig {
 }
 
 impl LMConfig {
+    /// Create configuration with specified tolerance and iteration limit.
     pub fn new(tolerance: f64, max_iterations: usize) -> Self {
-        Self {
-            tolerance,
-            max_iterations,
-            ..Default::default()
-        }
+        Self { tolerance, max_iterations, ..Default::default() }
     }
 
+    /// Relaxed tolerances for fast calibration.
     pub fn fast() -> Self {
-        Self {
-            tolerance: 1e-6,
-            max_iterations: 50,
-            ..Default::default()
-        }
+        Self { tolerance: 1e-6, max_iterations: 50, ..Default::default() }
     }
 
+    /// Tight tolerances for high-precision calibration.
     pub fn high_precision() -> Self {
         Self {
             tolerance: 1e-14,
@@ -74,14 +77,20 @@ impl LMConfig {
 /// Result of Levenberg-Marquardt optimisation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LMResult {
+    /// Final optimised parameters.
     pub params: Vec<f64>,
+    /// Final residual sum of squares.
     pub residual_ss: f64,
+    /// Number of iterations performed.
     pub iterations: usize,
+    /// Whether convergence was achieved.
     pub converged: bool,
+    /// Final lambda value.
     pub final_lambda: f64,
 }
 
 impl LMResult {
+    /// Create a new LM result.
     pub fn new(
         params: Vec<f64>,
         residual_ss: f64,
@@ -89,20 +98,12 @@ impl LMResult {
         converged: bool,
         final_lambda: f64,
     ) -> Self {
-        Self {
-            params,
-            residual_ss,
-            iterations,
-            converged,
-            final_lambda,
-        }
+        Self { params, residual_ss, iterations, converged, final_lambda }
     }
 
+    /// Root mean square error.
     pub fn rmse(&self, n_observations: usize) -> f64 {
-        if n_observations == 0 {
-            return 0.0;
-        }
-        (self.residual_ss / n_observations as f64).sqrt()
+        if n_observations == 0 { 0.0 } else { (self.residual_ss / n_observations as f64).sqrt() }
     }
 }
 
@@ -163,41 +164,33 @@ pub struct LevenbergMarquardtSolver {
 }
 
 impl LevenbergMarquardtSolver {
+    /// Create a new LM solver with the given configuration.
     pub fn new(config: LMConfig) -> Self { Self { config } }
 
-    pub fn with_defaults() -> Self {
-        Self {
-            config: LMConfig::default(),
-        }
-    }
+    /// Create a solver with default configuration.
+    pub fn with_defaults() -> Self { Self { config: LMConfig::default() } }
 
+    /// Get the solver configuration.
     pub fn config(&self) -> &LMConfig { &self.config }
 
+    /// Solve the nonlinear least-squares problem.
     pub fn solve<F>(&self, residuals: F, initial_params: Vec<f64>) -> Result<LMResult, SolverError>
     where
         F: Fn(&[f64]) -> Vec<f64>,
     {
         if initial_params.is_empty() {
-            return Err(SolverError::NumericalInstability(
-                "Empty parameter vector".into(),
-            ));
+            return Err(SolverError::NumericalInstability("Empty parameter vector".into()));
         }
 
         let r0 = residuals(&initial_params);
         if r0.is_empty() {
-            return Err(SolverError::NumericalInstability(
-                "Empty residual vector".into(),
-            ));
+            return Err(SolverError::NumericalInstability("Empty residual vector".into()));
         }
 
         let initial_ss: f64 = r0.iter().map(|x| x * x).sum();
         if initial_ss.sqrt() < self.config.tolerance {
             return Ok(LMResult::new(
-                initial_params,
-                initial_ss,
-                0,
-                true,
-                self.config.initial_lambda,
+                initial_params, initial_ss, 0, true, self.config.initial_lambda,
             ));
         }
 
@@ -224,13 +217,7 @@ impl LevenbergMarquardtSolver {
                 | levenberg_marquardt::TerminationReason::Orthogonal
         ) || final_ss.sqrt() < self.config.tolerance;
 
-        Ok(LMResult::new(
-            final_params,
-            final_ss,
-            report.number_of_evaluations,
-            converged,
-            0.0,
-        ))
+        Ok(LMResult::new(final_params, final_ss, report.number_of_evaluations, converged, 0.0))
     }
 }
 
@@ -276,11 +263,8 @@ mod tests {
     #[test]
     fn test_solve_quadratic() {
         let solver = LevenbergMarquardtSolver::with_defaults();
-        let res = solver
-            .solve(|p: &[f64]| vec![p[0] - 3.0], vec![10.0])
-            .unwrap();
-        assert!(res.converged);
-        assert!((res.params[0] - 3.0).abs() < 1e-6);
+        let res = solver.solve(|p: &[f64]| vec![p[0] - 3.0], vec![10.0]).unwrap();
+        assert!(res.converged && (res.params[0] - 3.0).abs() < 1e-6);
     }
 
     #[test]

@@ -1,7 +1,4 @@
 //! Netting agreement types (stub for future XVA integration).
-//!
-//! Provides enum types for netting agreement classification. Full agreement
-//! structures will be added when the XVA engine is integrated.
 
 /// Netting agreement type classification.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]

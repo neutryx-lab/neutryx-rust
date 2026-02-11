@@ -9,147 +9,150 @@ const { restoreFromHistory, toggleCompareMode } = usePricerHistory();
 function entryPv(entry: (typeof store.recentHistory)[number]): number {
   return entry.pricingResult.totalPv ?? entry.pricingResult.pv ?? 0;
 }
+
+const compareItems = (_idx: number) =>
+  store.recentHistory.map((e, i) => ({
+    title: `#${e.id} ${e.instrumentName}`,
+    value: i,
+  }));
 </script>
 
 <template>
-  <div v-if="store.recentHistory.length > 0" class="glass-card p-6">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-[var(--text-primary)]">History</h3>
-      <button
+  <v-card v-if="store.recentHistory.length > 0">
+    <v-card-title class="d-flex align-center justify-space-between">
+      <span>History</span>
+      <v-btn
         v-if="store.resultHistory.length >= 2"
-        class="px-3 py-1.5 text-xs rounded-lg transition-colors"
-        :class="
-          store.compareMode
-            ? 'bg-[var(--primary)] text-white'
-            : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-        "
+        size="small"
+        :variant="store.compareMode ? 'flat' : 'text'"
+        :color="store.compareMode ? 'primary' : undefined"
+        prepend-icon="mdi-compare"
         @click="toggleCompareMode"
       >
-        <i class="fas fa-columns mr-1"></i>{{ store.compareMode ? 'Exit Compare' : 'Compare' }}
-      </button>
-    </div>
+        {{ store.compareMode ? 'Exit Compare' : 'Compare' }}
+      </v-btn>
+    </v-card-title>
 
-    <!-- History List -->
-    <div class="space-y-2">
-      <div
-        v-for="entry in store.recentHistory"
-        :key="entry.id"
-        class="p-3 rounded-lg bg-[var(--surface)] cursor-pointer hover:bg-[var(--surface-hover)] transition-colors"
-        @click="restoreFromHistory(entry)"
-      >
-        <div class="flex justify-between items-center">
-          <div>
-            <span class="text-sm font-medium text-[var(--text-primary)]">
-              {{ entry.instrumentName }}
-            </span>
-            <span class="text-xs text-[var(--text-muted)] ml-2">
+    <v-card-text>
+      <!-- History List -->
+      <v-list density="compact" class="pa-0">
+        <v-list-item
+          v-for="entry in store.recentHistory"
+          :key="entry.id"
+          rounded="lg"
+          @click="restoreFromHistory(entry)"
+        >
+          <v-list-item-title class="text-body-2">
+            {{ entry.instrumentName }}
+            <span class="text-caption text-medium-emphasis ml-2">
               {{ new Date(entry.timestamp).toLocaleTimeString() }}
             </span>
-          </div>
-          <span
-            :class="[
-              'text-sm font-semibold',
-              entryPv(entry) >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]',
-            ]"
-          >
-            {{ formatCurrency(entryPv(entry)) }}
-          </span>
-        </div>
-      </div>
-    </div>
+          </v-list-item-title>
 
-    <!-- Compare Mode View -->
-    <div
-      v-if="store.compareMode && store.comparedResults"
-      class="mt-4 border-t border-[var(--glass-border)] pt-4"
-    >
-      <div class="grid grid-cols-2 gap-4 mb-3">
-        <select
-          v-model.number="store.compareIndices[0]"
-          class="px-3 py-2 text-sm rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)]"
-        >
-          <option v-for="(e, i) in store.recentHistory" :key="i" :value="i">
-            #{{ e.id }} {{ e.instrumentName }}
-          </option>
-        </select>
-        <select
-          v-model.number="store.compareIndices[1]"
-          class="px-3 py-2 text-sm rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)]"
-        >
-          <option v-for="(e, i) in store.recentHistory" :key="i" :value="i">
-            #{{ e.id }} {{ e.instrumentName }}
-          </option>
-        </select>
-      </div>
+          <template #append>
+            <span
+              class="text-body-2 font-weight-bold"
+              :class="entryPv(entry) >= 0 ? 'text-success' : 'text-error'"
+            >
+              {{ formatCurrency(entryPv(entry)) }}
+            </span>
+          </template>
+        </v-list-item>
+      </v-list>
 
-      <!-- Side-by-side PV -->
-      <div class="grid grid-cols-2 gap-4 text-center">
-        <div class="p-3 rounded-lg bg-[var(--surface)]">
-          <p class="text-xs text-[var(--text-muted)] mb-1">Result A</p>
-          <p
-            :class="[
-              'text-lg font-bold',
-              (store.comparedResults.a.pricingResult.totalPv ?? 0) >= 0
-                ? 'text-[var(--success)]'
-                : 'text-[var(--danger)]',
-            ]"
-          >
-            {{
-              formatCurrency(
-                store.comparedResults.a.pricingResult.totalPv ??
-                  store.comparedResults.a.pricingResult.pv ??
-                  0,
-              )
-            }}
-          </p>
-        </div>
-        <div class="p-3 rounded-lg bg-[var(--surface)]">
-          <p class="text-xs text-[var(--text-muted)] mb-1">Result B</p>
-          <p
-            :class="[
-              'text-lg font-bold',
-              (store.comparedResults.b.pricingResult.totalPv ?? 0) >= 0
-                ? 'text-[var(--success)]'
-                : 'text-[var(--danger)]',
-            ]"
-          >
-            {{
-              formatCurrency(
-                store.comparedResults.b.pricingResult.totalPv ??
-                  store.comparedResults.b.pricingResult.pv ??
-                  0,
-              )
-            }}
-          </p>
-        </div>
-      </div>
+      <!-- Compare Mode -->
+      <template v-if="store.compareMode && store.comparedResults">
+        <v-divider class="my-3" />
 
-      <!-- Changed Parameters -->
-      <div v-if="store.changedParams.length > 0" class="mt-3">
-        <p class="text-xs text-[var(--text-muted)] mb-2">Changed Parameters</p>
-        <div
-          v-for="cp in store.changedParams"
-          :key="cp.name"
-          class="flex justify-between text-xs py-1 border-b border-[var(--glass-border)]"
-        >
-          <span class="text-[var(--text-muted)]">{{ cp.name }}</span>
-          <span>
-            <span class="text-[var(--danger)]">{{ cp.valueA }}</span>
-            <i class="fas fa-arrow-right mx-1 text-[var(--text-muted)]"></i>
-            <span class="text-[var(--success)]">{{ cp.valueB }}</span>
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
+        <v-row dense>
+          <v-col cols="6">
+            <v-select
+              v-model.number="store.compareIndices[0]"
+              :items="compareItems(0)"
+              density="compact"
+              label="Result A"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="6">
+            <v-select
+              v-model.number="store.compareIndices[1]"
+              :items="compareItems(1)"
+              density="compact"
+              label="Result B"
+              hide-details
+            />
+          </v-col>
+        </v-row>
+
+        <!-- Side-by-side PV -->
+        <v-row dense class="mt-2">
+          <v-col cols="6">
+            <v-sheet rounded="lg" class="pa-3 text-center" color="surface-variant">
+              <div class="text-caption text-medium-emphasis">Result A</div>
+              <div
+                class="text-subtitle-1 font-weight-bold"
+                :class="
+                  (store.comparedResults.a.pricingResult.totalPv ?? 0) >= 0
+                    ? 'text-success'
+                    : 'text-error'
+                "
+              >
+                {{
+                  formatCurrency(
+                    store.comparedResults.a.pricingResult.totalPv ??
+                      store.comparedResults.a.pricingResult.pv ??
+                      0,
+                  )
+                }}
+              </div>
+            </v-sheet>
+          </v-col>
+          <v-col cols="6">
+            <v-sheet rounded="lg" class="pa-3 text-center" color="surface-variant">
+              <div class="text-caption text-medium-emphasis">Result B</div>
+              <div
+                class="text-subtitle-1 font-weight-bold"
+                :class="
+                  (store.comparedResults.b.pricingResult.totalPv ?? 0) >= 0
+                    ? 'text-success'
+                    : 'text-error'
+                "
+              >
+                {{
+                  formatCurrency(
+                    store.comparedResults.b.pricingResult.totalPv ??
+                      store.comparedResults.b.pricingResult.pv ??
+                      0,
+                  )
+                }}
+              </div>
+            </v-sheet>
+          </v-col>
+        </v-row>
+
+        <!-- Changed Parameters -->
+        <v-table v-if="store.changedParams.length > 0" density="compact" class="mt-3">
+          <thead>
+            <tr>
+              <th class="text-caption">Parameter</th>
+              <th class="text-caption text-right">A</th>
+              <th class="text-caption text-center" style="width: 24px"></th>
+              <th class="text-caption">B</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="cp in store.changedParams" :key="cp.name">
+              <td class="text-caption text-medium-emphasis">{{ cp.name }}</td>
+              <td class="text-caption text-right text-error">{{ cp.valueA }}</td>
+              <td class="text-center">
+                <v-icon icon="mdi-arrow-right" size="12" />
+              </td>
+              <td class="text-caption text-success">{{ cp.valueB }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </template>
+    </v-card-text>
+  </v-card>
 </template>
-
-<style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-</style>

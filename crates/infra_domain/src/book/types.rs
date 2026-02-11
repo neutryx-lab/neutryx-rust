@@ -1,28 +1,10 @@
 //! Book-related types.
-//!
-//! This module provides type definitions for trading books including
-//! book types, regulatory classifications, and ownership information.
 
 use chrono::{DateTime, Utc};
 
 use crate::counterparty::LegalEntityId;
 
-// ============================================================================
-// BookType
-// ============================================================================
-
 /// Type of trading book.
-///
-/// Classifies the purpose and usage of a trading book within the organisation.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::book::BookType;
-///
-/// let book_type = BookType::Trading;
-/// assert_eq!(book_type, BookType::default());
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -60,22 +42,7 @@ impl BookType {
     pub fn is_internal(&self) -> bool { matches!(self, BookType::Internal) }
 }
 
-// ============================================================================
-// RegulatoryBookType
-// ============================================================================
-
 /// Regulatory classification of a trading book.
-///
-/// Used for regulatory reporting purposes (Basel III/IV, FRTB).
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::book::RegulatoryBookType;
-///
-/// let reg_type = RegulatoryBookType::TB;
-/// assert!(reg_type.is_trading_book());
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum RegulatoryBookType {
@@ -104,26 +71,7 @@ impl RegulatoryBookType {
     pub fn is_ntbr(&self) -> bool { matches!(self, RegulatoryBookType::NTBR) }
 }
 
-// ============================================================================
-// BookOwnership
-// ============================================================================
-
 /// Ownership information for a trading book.
-///
-/// Captures the organisational hierarchy of book ownership including
-/// desk, division, and legal entity.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::book::BookOwnership;
-///
-/// let ownership = BookOwnership::new()
-///     .with_desk("FX Spot")
-///     .with_division("Markets");
-///
-/// assert_eq!(ownership.desk(), Some("FX Spot"));
-/// ```
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -175,23 +123,7 @@ impl BookOwnership {
     pub fn legal_entity_id(&self) -> Option<&LegalEntityId> { self.legal_entity_id.as_ref() }
 }
 
-// ============================================================================
-// BookMetadata
-// ============================================================================
-
 /// Metadata for a trading book.
-///
-/// Captures audit information including creation and modification timestamps
-/// and user identifiers.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::book::BookMetadata;
-///
-/// let metadata = BookMetadata::new();
-/// assert!(metadata.created_by().is_none());
-/// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]

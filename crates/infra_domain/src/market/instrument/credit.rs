@@ -1,7 +1,4 @@
 //! Credit instrument definitions.
-//!
-//! This module provides definitions for credit derivatives including
-//! CDS, CDS indices, CDS options, and Nth-to-Default baskets.
 
 use super::error::InstrumentError;
 use crate::{market::Currency, time::Date};
@@ -40,9 +37,6 @@ impl CreditEvent {
 }
 
 /// Single-name Credit Default Swap (CDS).
-///
-/// A bilateral contract where the protection buyer pays periodic premiums
-/// in exchange for protection against default of a reference entity.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Cds {
@@ -121,8 +115,6 @@ impl Cds {
 }
 
 /// CDS Index (e.g., CDX, iTraxx).
-///
-/// A standardised portfolio of single-name CDS contracts.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CdsIndex {
@@ -185,8 +177,6 @@ impl CdsIndex {
 }
 
 /// CDS Option (Swaption on CDS).
-///
-/// An option to enter into a CDS at a specified spread.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CdsOption {
@@ -202,8 +192,7 @@ pub struct CdsOption {
     pub notional: f64,
     /// Currency.
     pub currency: Currency,
-    /// Payer option (right to buy protection) or receiver option (right to sell
-    /// protection).
+    /// Payer option (right to buy protection) or receiver option (right to sell.
     pub is_payer: bool,
 }
 
@@ -235,9 +224,6 @@ impl CdsOption {
 }
 
 /// Nth-to-Default Basket.
-///
-/// A credit derivative that pays out when the Nth default occurs
-/// in a basket of reference entities.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NtdBasket {
@@ -327,8 +313,6 @@ mod tests {
 
     #[test]
     fn test_cds_and_index_validation() {
-        // CDS: valid + empty ref + negative notional + invalid recovery + invalid dates
-        // + with_na
         let cds = Cds {
             reference_entity: "ACME Corp".to_string(),
             notional: 10_000_000.0,
@@ -356,7 +340,6 @@ mod tests {
         assert!(na.credit_events.contains(&CreditEvent::Bankruptcy));
         assert!(na.credit_events.contains(&CreditEvent::FailureToPay));
 
-        // CDS Index: valid + full_identifier + empty name + zero constituents
         let idx = CdsIndex {
             index_name: "CDX.NA.IG".to_string(),
             series: 39,
@@ -380,7 +363,6 @@ mod tests {
 
     #[test]
     fn test_credit_options_and_baskets() {
-        // CDS Option: valid + invalid dates
         let opt = CdsOption {
             reference_entity: "ACME Corp".to_string(),
             strike_spread: 0.01,
@@ -395,8 +377,6 @@ mod tests {
         bad.underlying_maturity = Date::from_ymd(2025, 1, 1).unwrap();
         assert!(bad.validate().is_err());
 
-        // NTD Basket: valid + first_to_default + empty + n_too_large + invalid
-        // correlation
         let basket = NtdBasket {
             constituents: vec!["A".into(), "B".into(), "C".into(), "D".into(), "E".into()],
             nth_to_default: 1,

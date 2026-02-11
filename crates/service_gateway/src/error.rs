@@ -1,7 +1,4 @@
-//! Server error types
-//!
-//! Provides domain-specific error types for the service layer with
-//! automatic HTTP status code mapping.
+//! Server error types.
 
 use async_trait::async_trait;
 use axum::{
@@ -14,74 +11,72 @@ use serde::de::DeserializeOwned;
 use serde_json::json;
 use thiserror::Error;
 
-/// Server-specific errors with domain separation
+/// Server-specific errors with domain separation.
 #[derive(Error, Debug)]
 pub enum ServerError {
-    /// Pricing error
+    /// Pricing error.
     #[error("Pricing error: {0}")]
     Pricing(String),
 
-    /// Calibration error
+    /// Calibration error.
     #[error("Calibration error: {0}")]
     Calibration(String),
 
-    /// Invalid request
+    /// Invalid request.
     #[error("Invalid request: {0}")]
     InvalidRequest(String),
 
-    /// Not found
+    /// Not found.
     #[error("Not found: {0}")]
     NotFound(String),
 
-    /// Request timeout (504 Gateway Timeout)
+    /// Request timeout (504 Gateway Timeout).
     #[error("Request timeout: {0}")]
     Timeout(String),
 
-    /// Internal error
+    /// Internal error.
     #[error("Internal error: {0}")]
     Internal(String),
 
-    // Domain-specific error variants (Requirement 9)
-    /// Risk calculation error (Greeks, scenarios)
+    /// Risk calculation error (Greeks, scenarios).
     #[error("Risk error: {0}")]
     Risk(String),
 
-    /// Portfolio management error
+    /// Portfolio management error.
     #[error("Portfolio error: {0}")]
     Portfolio(String),
 
-    /// Model configuration error
+    /// Model configuration error.
     #[error("Model error: {0}")]
     Model(String),
 
-    /// Volatility surface/cube error
+    /// Volatility surface/cube error.
     #[error("Volatility error: {0}")]
     Volatility(String),
 
-    // CLI-specific error variants
-    /// Configuration error
+    /// Configuration error.
     #[error("Configuration error: {0}")]
     Config(String),
 
-    /// I/O error
+    /// I/O error.
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    /// File not found
+    /// File not found.
     #[error("File not found: {0}")]
     FileNotFound(String),
 
-    /// Invalid argument
+    /// Invalid argument.
     #[error("Invalid argument: {0}")]
     InvalidArgument(String),
 
-    /// Parse error
+    /// Parse error.
     #[error("Parse error: {0}")]
     Parse(String),
 }
 
 impl ServerError {
-    /// Get the error code for structured responses
+    /// Get the error code for structured responses.
     pub fn error_code(&self) -> &'static str {
         match self {
             Self::Pricing(_) => "PRICING_ERROR",
@@ -111,9 +106,7 @@ impl From<serde_json::Error> for ServerError {
     fn from(err: serde_json::Error) -> Self { Self::Internal(format!("JSON error: {err}")) }
 }
 
-/// Custom JSON extractor that converts deserialisation failures into
-/// [`ServerError::InvalidRequest`] with a proper JSON body, instead of
-/// Axum's default plain-text `JsonRejection` response.
+/// Custom JSON extractor that converts deserialisation failures into.
 pub struct AppJson<T>(pub T);
 
 #[async_trait]
@@ -142,12 +135,10 @@ impl IntoResponse for ServerError {
             ServerError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
             ServerError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg.clone()),
             ServerError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
-            // Domain errors map to 422 Unprocessable Entity
             ServerError::Risk(msg)
             | ServerError::Portfolio(msg)
             | ServerError::Model(msg)
             | ServerError::Volatility(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
-            // CLI-originated errors
             ServerError::Config(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
             ServerError::Io(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
             ServerError::FileNotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),

@@ -1,33 +1,27 @@
-//! PyO3 bindings for Neutryx types
-//!
-//! This module exposes Rust structs as Python classes.
+//! PyO3 bindings for Neutryx types.
 
 use pyo3::prelude::*;
 
-// ============================================================================
-// Instrument Bindings
-// ============================================================================
-
-/// A vanilla European option
+/// A vanilla European option.
 #[pyclass]
 #[derive(Clone)]
 pub struct PyVanillaOption {
-    /// Strike price
+    /// Strike price.
     #[pyo3(get, set)]
     pub strike: f64,
 
-    /// Time to expiry in years
+    /// Time to expiry in years.
     #[pyo3(get, set)]
     pub expiry: f64,
 
-    /// True for call, False for put
+    /// True for call, False for put.
     #[pyo3(get, set)]
     pub is_call: bool,
 }
 
 #[pymethods]
 impl PyVanillaOption {
-    /// Create a new vanilla option
+    /// Create a new vanilla option.
     #[new]
     pub fn new(strike: f64, expiry: f64, is_call: bool) -> Self {
         Self {
@@ -46,22 +40,22 @@ impl PyVanillaOption {
     }
 }
 
-/// A forward contract
+/// A forward contract.
 #[pyclass]
 #[derive(Clone)]
 pub struct PyForward {
-    /// Strike price (delivery price)
+    /// Strike price (delivery price).
     #[pyo3(get, set)]
     pub strike: f64,
 
-    /// Time to maturity in years
+    /// Time to maturity in years.
     #[pyo3(get, set)]
     pub maturity: f64,
 }
 
 #[pymethods]
 impl PyForward {
-    /// Create a new forward contract
+    /// Create a new forward contract.
     #[new]
     pub fn new(strike: f64, maturity: f64) -> Self { Self { strike, maturity } }
 
@@ -73,26 +67,22 @@ impl PyForward {
     }
 }
 
-// ============================================================================
-// Model Bindings
-// ============================================================================
-
-/// Hull-White short rate model
+/// Hull-White short rate model.
 #[pyclass]
 #[derive(Clone)]
 pub struct PyHullWhite {
-    /// Mean reversion speed (alpha)
+    /// Mean reversion speed (alpha).
     #[pyo3(get, set)]
     pub alpha: f64,
 
-    /// Volatility (sigma)
+    /// Volatility (sigma).
     #[pyo3(get, set)]
     pub sigma: f64,
 }
 
 #[pymethods]
 impl PyHullWhite {
-    /// Create a new Hull-White model
+    /// Create a new Hull-White model.
     #[new]
     pub fn new(alpha: f64, sigma: f64) -> Self { Self { alpha, sigma } }
 
@@ -101,21 +91,7 @@ impl PyHullWhite {
     }
 }
 
-// ============================================================================
-// Pricing Functions
-// ============================================================================
-
-/// Price a vanilla option using Black-Scholes formula
-///
-/// # Arguments
-/// * `option` - The vanilla option to price
-/// * `spot` - Current spot price
-/// * `vol` - Volatility (annualised)
-/// * `rate` - Risk-free rate (annualised)
-/// * `dividend` - Dividend yield (optional, default 0.0)
-///
-/// # Returns
-/// The option price
+/// Price a vanilla option using Black-Scholes formula.
 #[pyfunction]
 #[pyo3(signature = (option, spot, vol, rate, dividend=0.0))]
 pub fn price_black_scholes(
@@ -140,17 +116,7 @@ pub fn price_black_scholes(
     }
 }
 
-/// Price an FX option using Garman-Kohlhagen formula
-///
-/// # Arguments
-/// * `option` - The vanilla option to price
-/// * `spot` - Current spot FX rate
-/// * `vol` - Volatility (annualised)
-/// * `domestic_rate` - Domestic risk-free rate
-/// * `foreign_rate` - Foreign risk-free rate
-///
-/// # Returns
-/// The option price
+/// Price an FX option using Garman-Kohlhagen formula.
 #[pyfunction]
 pub fn price_garman_kohlhagen(
     option: &PyVanillaOption,
@@ -159,15 +125,10 @@ pub fn price_garman_kohlhagen(
     domestic_rate: f64,
     foreign_rate: f64,
 ) -> f64 {
-    // Garman-Kohlhagen is Black-Scholes with foreign rate as dividend
     price_black_scholes(option, spot, vol, domestic_rate, foreign_rate)
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/// Standard normal CDF approximation (Abramowitz and Stegun)
+/// Standard normal CDF approximation (Abramowitz and Stegun).
 fn normal_cdf(x: f64) -> f64 {
     let a1 = 0.254829592;
     let a2 = -0.284496736;

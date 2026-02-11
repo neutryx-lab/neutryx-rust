@@ -1,6 +1,4 @@
-//! Curve service wrapping `CurveBootstrapper` facade
-//!
-//! Provides high-level curve building operations using `pricer_models`.
+//! Curve service wrapping `CurveBootstrapper` facade.
 
 use std::{sync::Arc, time::Instant};
 
@@ -33,18 +31,17 @@ use crate::{
     state::{AppState, CurveEntry, InstrumentInput},
 };
 
-/// Service for building and querying yield curves
+/// Service for building and querying yield curves.
 pub struct CurveService;
 
 impl CurveService {
-    /// Build a yield curve from market instruments
+    /// Build a yield curve from market instruments.
     pub fn build_curve(
         request: &CurveBuildRequest,
         state: &Arc<AppState>,
     ) -> Result<CurveBuildResponse, ServerError> {
         let start = Instant::now();
 
-        // Parse reference date (default to today if not provided)
         let reference_date = if let Some(ref date_str) = request.reference_date {
             chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
                 .map_err(|e| ServerError::InvalidRequest(format!("Invalid reference_date: {e}")))?
@@ -52,9 +49,6 @@ impl CurveService {
             chrono::Utc::now().date_naive()
         };
 
-        // Separate regular instruments from event instruments.
-        // Events are converted to infra_domain::JumpPillar definitions,
-        // which pricer_models converts to the internal jump grid.
         let mut regular_specs: Vec<InstrumentSpec> = Vec::new();
         let mut jump_pillars: Vec<JumpPillar> = Vec::new();
 
@@ -65,13 +59,11 @@ impl CurveService {
                         ServerError::InvalidRequest(format!("Invalid event_date: {e}"))
                     })?;
 
-                    // API sends decimal rates (e.g. -0.0025); JumpPillar takes bps (-25.0)
                     let expected_spike = i.expected_rate_spike.unwrap_or(i.rate);
                     let jump_bps = expected_spike * 10_000.0;
 
                     let mut pillar = JumpPillar::new(event_date, jump_bps, 1.0);
 
-                    // Turn events: spike reverts at end_date
                     if let Some(ref end_date_str) = i.end_date {
                         let end_date = Date::parse(end_date_str).map_err(|e| {
                             ServerError::InvalidRequest(format!("Invalid end_date: {e}"))
@@ -92,11 +84,9 @@ impl CurveService {
             }
         }
 
-        // Validate rates for regular instruments only
         validate_rates(&regular_specs, -0.10, 0.50)
             .map_err(|e| ServerError::InvalidRequest(format!("Rate validation failed: {e}")))?;
 
-        // Parse regular instruments using adapter_loader
         let market_instruments = if regular_specs.is_empty() {
             return Err(ServerError::InvalidRequest(
                 "At least one non-event instrument is required".to_string(),
@@ -109,12 +99,6 @@ impl CurveService {
 
         let interpolation = request.interpolation;
 
-        // Build the forward-rate-shift grid from jump pillars.
-        //
-        // Jump pillars (FOMC meetings, turn-of-year events) are converted to
-        // a dense daily grid of ramp offsets by pricer_models. This model
-        // ensures that forward rates shift as a step function (not a delta),
-        // producing smooth curves suitable for pricing.
         let valuation_date = Date::from_naive(reference_date);
         let max_time = market_instruments
             .iter()
@@ -127,21 +111,12 @@ impl CurveService {
             max_time,
         );
 
-        // Build curve using pricer_models.
-        //
-        // When jump data is present, we use jump-aware calibration: the
-        // bootstrapper evaluates instrument pricing errors on the
-        // jump-adjusted curve, so the resulting base DFs ensure the
-        // combined (base + jumps) curve correctly reprices all inputs.
         let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
             .with_interpolation(interpolation);
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, maybe_jacobian, actual_method) = match request.bootstrap_method {
             BootstrapMethod::Bootstrapping => {
-                // Sequential bootstrapper requires unique maturities.
-                // Instruments like FRA-3x6 and Future-6M may share the 0.5Y
-                // pillar — deduplicate, keeping the first per maturity.
                 let mut deduped = market_instruments.clone();
                 deduped.dedup_by(|a, b| (a.maturity() - b.maturity()).abs() < 1e-10);
 
@@ -160,9 +135,6 @@ impl CurveService {
 
                 let n = market_instruments.len();
 
-                // Use the same forward-rate-shift grid as the sequential
-                // bootstrapper so that both methods calibrate base DFs
-                // against the (base + shifts) curve consistently.
                 let result = global
                     .calibrate_with_shift_grid(&market_instruments, &jump_data)
                     .map_err(|e| ServerError::Pricing(format!("Global bootstrap failed: {e}")))?;
@@ -176,8 +148,6 @@ impl CurveService {
                     }
                     JacobianMatrix { data, size }
                 });
-                // Attach the forward-rate-shift grid so the output curve
-                // renders forward rate discontinuities at jump dates.
                 let curve = if jump_data.is_empty() {
                     result.curve
                 } else {
@@ -187,18 +157,10 @@ impl CurveService {
             }
         };
 
-        // Build Jacobian labels from regular instrument specs, sorted by
-        // maturity to match the bootstrap order.
-        //
-        // When instruments share a maturity (e.g. FRA-3x6 and Fut-6M both
-        // at 0.5Y), the Jacobian has fewer rows/columns than instruments.
-        // Deduplicate by maturity so labels match the matrix dimension.
         let jacobian_data = maybe_jacobian.map(|jac| {
             let mut sorted_specs: Vec<(f64, String)> = regular_specs
                 .iter()
                 .map(|spec| {
-                    // Use InstrumentSpec::tenor_years() to get the correct
-                    // maturity for FRA instruments (NxM format → end tenor).
                     let t = spec.tenor_years().unwrap_or(0.0);
                     let lower = spec.instrument_type.to_lowercase();
                     let type_label = match lower.as_str() {
@@ -213,16 +175,12 @@ impl CurveService {
                 })
                 .collect();
             sorted_specs.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-            // Deduplicate by maturity (keep first label per unique pillar)
             sorted_specs.dedup_by(|a, b| (a.0 - b.0).abs() < 1e-10);
 
             let pillar_times: Vec<f64> = sorted_specs.iter().map(|(t, _)| *t).collect();
             let jacobian_labels: Vec<String> =
                 sorted_specs.into_iter().map(|(_, label)| label).collect();
 
-            // Normalise: d(log DF_i) / dr_j  →  [d(log DF_i) / T_i] / dr_j
-            // This converts the sensitivity to zero-rate units (≈ −dz_i/dr_j),
-            // giving comparable magnitudes across maturities.
             let matrix: Vec<Vec<f64>> = jac
                 .data
                 .into_iter()
@@ -245,11 +203,8 @@ impl CurveService {
             }
         });
 
-        // Resolve day count convention from the canonical RateIndex definition.
-        // Used for all forward rate annualisation (date-based δ).
         let day_counter = resolve_day_counter(&request.index);
 
-        // Extract pillar data with jump-adjusted discount factors
         let pillars: Vec<CurvePillar> = curve
             .pillars()
             .iter()
@@ -272,7 +227,6 @@ impl CurveService {
             })
             .collect();
 
-        // Generate forward curve on daily grid (date-based iteration)
         let max_days = curve
             .pillars()
             .last()
@@ -291,7 +245,6 @@ impl CurveService {
             })
             .collect();
 
-        // Generate pre-computed chart display grids (date-based)
         let (short_term_grid, long_term_grid) =
             generate_chart_grids(reference_date, &curve, day_counter);
 
@@ -302,7 +255,6 @@ impl CurveService {
         }
         .to_string();
 
-        // Cache the curve
         let instrument_inputs: Vec<InstrumentInput> = request
             .instruments
             .iter()
@@ -337,7 +289,7 @@ impl CurveService {
         })
     }
 
-    /// Get discount factor from a cached curve
+    /// Get discount factor from a cached curve.
     pub fn get_discount_factor(
         request: &DiscountFactorRequest,
         state: &Arc<AppState>,
@@ -365,7 +317,7 @@ impl CurveService {
         })
     }
 
-    /// Compute forward swap rate matrix from a cached curve
+    /// Compute forward swap rate matrix from a cached curve.
     pub fn compute_forward_swap_rates(
         request: &ForwardSwapRateRequest,
         state: &Arc<AppState>,
@@ -408,7 +360,7 @@ impl CurveService {
         })
     }
 
-    /// Compute a single forward swap rate: (`df_start` - `df_end`) / annuity
+    /// Compute a single forward swap rate: (`df_start` - `df_end`) / annuity.
     pub(crate) fn forward_swap_rate(
         curve: &dyn YieldCurve<f64>,
         expiry_years: f64,
@@ -421,7 +373,6 @@ impl CurveService {
             .discount_factor(expiry_years + tenor_years)
             .map_err(|e| ServerError::Pricing(format!("Failed to compute DF at maturity: {e}")))?;
 
-        // Annuity: sum of DFs at annual payment dates
         let n_payments = tenor_years.ceil() as usize;
         if n_payments == 0 {
             return Err(ServerError::InvalidRequest(
@@ -443,7 +394,7 @@ impl CurveService {
         Ok((df_start - df_end) / annuity)
     }
 
-    /// Get forward rate from a cached curve
+    /// Get forward rate from a cached curve.
     pub fn get_forward_rate(
         request: &ForwardRateRequest,
         state: &Arc<AppState>,
@@ -587,9 +538,6 @@ mod tests {
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);
 
-        // Verify no extreme spikes in the forward curve.
-        // With the forward-rate-shift model, the 10bp turn should produce a smooth
-        // ~10bp bump at year-end, not a delta-function spike of 10bp*365 = 36.5%.
         let max_fwd = response
             .forward_curve
             .iter()
@@ -601,9 +549,8 @@ mod tests {
             max_fwd * 100.0
         );
 
-        // Verify the turn creates a visible bump during the turn period
-        let turn_time = 336.0 / 365.0; // ~Dec 31
-        let revert_time = 340.0 / 365.0; // ~Jan 4
+        let turn_time = 336.0 / 365.0;
+        let revert_time = 340.0 / 365.0;
 
         let fwd_during_turn: Vec<_> = response
             .forward_curve
@@ -617,7 +564,6 @@ mod tests {
             .collect();
 
         if let (Some(during), Some(after)) = (fwd_during_turn.first(), fwd_after_revert.first()) {
-            // During turn should be higher than after revert by ~10bp
             let diff = during.forward_rate - after.forward_rate;
             assert!(
                 diff > 0.0005 && diff < 0.002,
@@ -644,8 +590,6 @@ mod tests {
         let response = CurveService::build_curve(&request, &state).unwrap();
         assert!(response.converged);
 
-        // All forward rates should be within a reasonable range (no 91% spikes).
-        // The short end (t < 0.01) may be noisy due to interpolation, so skip it.
         for point in response.forward_curve.iter().filter(|p| p.time > 0.01) {
             assert!(
                 point.forward_rate > -0.05 && point.forward_rate < 0.15,
@@ -655,8 +599,7 @@ mod tests {
             );
         }
 
-        // Forward rate after the cut should be ~25bp lower than before
-        let event_time = 123.0 / 365.0; // ~Jun 1
+        let event_time = 123.0 / 365.0;
         let fwd_before: Vec<_> = response
             .forward_curve
             .iter()

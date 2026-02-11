@@ -1,32 +1,9 @@
 //! Cashflow types for financial instruments.
-//!
-//! This module provides the fundamental unit of financial calculations:
-//! the cashflow.
 
 use super::payoff::Payoff;
 use crate::{market::Currency, time::Date};
 
 /// Daily accrual detail for OIS (Overnight Index Swap) compounding.
-///
-/// Each daily accrual represents one day's contribution to the compounded
-/// interest calculation in an OIS leg.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::trade::DailyAccrual;
-/// use infra_domain::time::Date;
-///
-/// let accrual = DailyAccrual::new(
-///     Date::from_ymd(2025, 1, 2).unwrap(),
-///     0.0425,  // 4.25% overnight rate
-///     1.0 / 360.0,  // day fraction
-///     10_000_000.0,  // starting notional
-/// );
-///
-/// // After one day at 4.25%, the compounded notional
-/// assert!(accrual.compounded_notional > 10_000_000.0);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DailyAccrual {
@@ -45,16 +22,6 @@ pub struct DailyAccrual {
 
 impl DailyAccrual {
     /// Creates a new daily accrual.
-    ///
-    /// # Arguments
-    ///
-    /// * `date` - The accrual date
-    /// * `overnight_rate` - The overnight rate (as decimal)
-    /// * `day_fraction` - The day count fraction
-    /// * `starting_notional` - The notional at start of the day
-    ///
-    /// The `compounded_notional` is calculated as:
-    /// `starting_notional * (1 + overnight_rate * day_fraction)`
     #[must_use]
     pub fn new(date: Date, overnight_rate: f64, day_fraction: f64, starting_notional: f64) -> Self {
         let compounded_notional = starting_notional * (1.0 + overnight_rate * day_fraction);
@@ -67,8 +34,6 @@ impl DailyAccrual {
     }
 
     /// Creates a daily accrual with pre-calculated compounded notional.
-    ///
-    /// Use this when you already have the compounded notional calculated.
     #[must_use]
     pub fn with_compounded_notional(
         date: Date,
@@ -85,9 +50,6 @@ impl DailyAccrual {
     }
 
     /// Returns the daily interest earned.
-    ///
-    /// For OIS, this is calculated as the previous compounded notional
-    /// multiplied by the overnight rate and day fraction.
     #[must_use]
     pub fn daily_interest(&self, starting_notional: f64) -> f64 {
         self.compounded_notional - starting_notional
@@ -119,9 +81,6 @@ impl CashflowType {
 }
 
 /// A single cashflow in a financial instrument.
-///
-/// Represents the smallest unit of a financial trade: a single payment
-/// at a specific date with a defined calculation formula.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Cashflow {
@@ -150,10 +109,6 @@ pub struct Cashflow {
     pub currency: Currency,
 
     /// Daily accrual details for OIS compounding.
-    ///
-    /// This field is populated for OIS floating leg cashflows to provide
-    /// the breakdown of daily compounding. For non-OIS cashflows, this is
-    /// `None`.
     pub daily_accruals: Option<Vec<DailyAccrual>>,
 }
 
@@ -184,9 +139,6 @@ impl Cashflow {
     }
 
     /// Creates a new OIS cashflow with daily accrual details.
-    ///
-    /// This constructor is used for OIS floating leg cashflows where
-    /// daily compounding details are required.
     #[must_use]
     pub fn new_with_daily_accruals(
         cf_type: CashflowType,
@@ -328,13 +280,12 @@ mod tests {
     fn test_cashflow_is_future_same_date() {
         let cf = make_fixed_cashflow();
         let ref_date = Date::from_ymd(2025, 7, 1).unwrap();
-        assert!(!cf.is_future(ref_date)); // Same date is NOT future
+        assert!(!cf.is_future(ref_date));
     }
 
     #[test]
     fn test_cashflow_accrual_days() {
         let cf = make_fixed_cashflow();
-        // From 2025-01-01 to 2025-07-01 = 181 days
         assert_eq!(cf.accrual_days(), 181);
     }
 
@@ -353,7 +304,7 @@ mod tests {
             Date::from_ymd(2030, 1, 1).unwrap(),
             0.0,
             100_000_000.0,
-            Payoff::fixed(1.0), // Principal uses rate=1.0
+            Payoff::fixed(1.0),
             Currency::EUR,
         );
 
@@ -383,7 +334,7 @@ mod tests {
         let mut set = HashSet::new();
         set.insert(CashflowType::Coupon);
         set.insert(CashflowType::Principal);
-        set.insert(CashflowType::Coupon); // Duplicate
+        set.insert(CashflowType::Coupon);
         assert_eq!(set.len(), 2);
     }
 }

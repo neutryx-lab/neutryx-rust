@@ -1,36 +1,4 @@
 //! Definition registry for curve construction.
-//!
-//! This module provides [`DefinitionRegistry`] which aggregates and validates
-//! [`InstrumentDefinition`], [`RateIndexDefinition`], and [`CurveDefinition`]
-//! instances, ensuring referential integrity.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::{
-//!     DefinitionRegistry, InstrumentDefinition, RateIndexDefinition,
-//!     CurveDefinition, Currency, RateType, RateIndex,
-//! };
-//!
-//! let mut registry = DefinitionRegistry::new();
-//!
-//! // Register instrument
-//! registry.register_instrument(InstrumentDefinition::new(
-//!     "USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N",
-//! ));
-//!
-//! // Register rate index
-//! registry.register_rate_index(RateIndexDefinition::new(
-//!     "USD-SOFR", Currency::USD, RateIndex::Sofr,
-//! )).unwrap();
-//!
-//! // Register curve (validates references)
-//! registry.register_curve(CurveDefinition::new(
-//!     "USD-SOFR-Discount",
-//!     "USD-SOFR",
-//!     vec!["USD-Depo-ON".to_string()],
-//! )).unwrap();
-//! ```
 
 use std::collections::HashMap;
 
@@ -47,26 +15,26 @@ use super::definition::{
 /// Error type for registry operations.
 #[derive(Debug, Clone)]
 pub enum RegistryError {
-    /// Instrument definition error
+    /// Instrument definition error.
     Instrument(InstrumentDefError),
-    /// Rate index definition error
+    /// Rate index definition error.
     RateIndex(RateIndexDefError),
-    /// Curve definition error
+    /// Curve definition error.
     Curve(CurveDefError),
-    /// Duplicate ID
+    /// Duplicate ID.
     DuplicateId {
-        /// Entity type (e.g., "instrument", "curve")
+        /// Entity type (e.g., "instrument", "curve").
         entity: &'static str,
-        /// The duplicate ID
+        /// The duplicate ID.
         id: String,
     },
-    /// Reference not found
+    /// Reference not found.
     ReferenceNotFound {
-        /// Source entity that has the reference
+        /// Source entity that has the reference.
         from: String,
-        /// Target ID that was not found
+        /// Target ID that was not found.
         to: String,
-        /// Target entity type
+        /// Target entity type.
         entity: &'static str,
     },
 }
@@ -106,9 +74,6 @@ impl From<CurveDefError> for RegistryError {
 }
 
 /// Registry for curve construction definitions.
-///
-/// Aggregates instruments, rate indices, and curve definitions,
-/// validating referential integrity on registration.
 #[derive(Debug, Clone, Default)]
 pub struct DefinitionRegistry {
     instruments: HashMap<String, InstrumentDefinition>,
@@ -117,47 +82,23 @@ pub struct DefinitionRegistry {
 }
 
 /// JSON-serializable bundle of all definitions for loading.
-///
-/// Supports both individual instrument definitions and templates.
-/// Templates are expanded to individual instruments during loading.
-///
-/// # Example JSON
-///
-/// ```json
-/// {
-///   "templates": [
-///     {
-///       "idPattern": "{currency}-OIS-{tenor}",
-///       "currency": "USD",
-///       "convention": "USD-SOFR-OIS",
-///       "rateIndex": "USD-SOFR",
-///       "tenors": ["1M", "3M", "6M", "1Y", "5Y", "10Y", "30Y"]
-///     }
-///   ],
-///   "instruments": [
-///     { "id": "USD-Custom", "currency": "USD", "convention": "USD-DEPO", "tenor": "O/N" }
-///   ],
-///   "rateIndices": [...],
-///   "curves": [...]
-/// }
-/// ```
 #[cfg(feature = "serde")]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DefinitionBundle {
-    /// Instrument templates for bulk generation
+    /// Instrument templates for bulk generation.
     #[serde(default)]
     pub templates: Vec<InstrumentTemplate>,
 
-    /// Individual instrument definitions
+    /// Individual instrument definitions.
     #[serde(default)]
     pub instruments: Vec<InstrumentDefinition>,
 
-    /// Rate index definitions
+    /// Rate index definitions.
     #[serde(default, rename = "rateIndices")]
     pub rate_indices: Vec<RateIndexDefinition>,
 
-    /// Curve definitions
+    /// Curve definitions.
     #[serde(default)]
     pub curves: Vec<CurveDefinition>,
 }
@@ -165,19 +106,14 @@ pub struct DefinitionBundle {
 #[cfg(feature = "serde")]
 impl DefinitionBundle {
     /// Expands all templates and returns the combined list of instruments.
-    ///
-    /// This includes both individually defined instruments and those
-    /// generated from templates.
     #[must_use]
     pub fn expand_instruments(&self) -> Vec<InstrumentDefinition> {
         let mut result = Vec::new();
 
-        // First, expand all templates
         for template in &self.templates {
             result.extend(template.expand());
         }
 
-        // Then add individual instruments
         result.extend(self.instruments.iter().cloned());
 
         result
@@ -196,12 +132,6 @@ impl DefinitionRegistry {
     pub fn new() -> Self { Self::default() }
 
     /// Registers an instrument definition.
-    ///
-    /// Validates the definition and checks for duplicate IDs.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails or ID already exists.
     pub fn register_instrument(&mut self, def: InstrumentDefinition) -> Result<(), RegistryError> {
         def.validate()?;
 
@@ -217,12 +147,6 @@ impl DefinitionRegistry {
     }
 
     /// Registers a rate index definition.
-    ///
-    /// Validates the definition and checks for duplicate IDs.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails or ID already exists.
     pub fn register_rate_index(&mut self, def: RateIndexDefinition) -> Result<(), RegistryError> {
         def.validate()?;
 
@@ -238,18 +162,9 @@ impl DefinitionRegistry {
     }
 
     /// Registers a curve definition.
-    ///
-    /// Validates the definition and checks that all referenced
-    /// instruments and rate index exist.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails, references are missing,
-    /// or name already exists.
     pub fn register_curve(&mut self, def: CurveDefinition) -> Result<(), RegistryError> {
         def.validate()?;
 
-        // Check for duplicate
         if self.curves.contains_key(&def.name) {
             return Err(RegistryError::DuplicateId {
                 entity: "curve",
@@ -257,7 +172,6 @@ impl DefinitionRegistry {
             });
         }
 
-        // Verify rate_index reference
         if !self.rate_indices.contains_key(&def.rate_index) {
             return Err(RegistryError::ReferenceNotFound {
                 from: def.name.clone(),
@@ -266,7 +180,6 @@ impl DefinitionRegistry {
             });
         }
 
-        // Verify all instrument references
         for inst_id in &def.instruments {
             if !self.instruments.contains_key(inst_id) {
                 return Err(RegistryError::ReferenceNotFound {
@@ -323,14 +236,6 @@ impl DefinitionRegistry {
     pub fn curves(&self) -> impl Iterator<Item = &CurveDefinition> { self.curves.values() }
 
     /// Gets the instrument definitions for a curve.
-    ///
-    /// Returns the definitions in the order specified by the curve.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the curve references an instrument that doesn't exist.
-    /// This should not happen if the curve was registered via
-    /// `register_curve`.
     #[must_use]
     pub fn curve_instruments(&self, curve_name: &str) -> Option<Vec<&InstrumentDefinition>> {
         let curve = self.curves.get(curve_name)?;
@@ -348,12 +253,6 @@ impl DefinitionRegistry {
     }
 
     /// Gets the rate index definition for a curve.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the curve references a rate index that doesn't exist.
-    /// This should not happen if the curve was registered via
-    /// `register_curve`.
     #[must_use]
     pub fn curve_rate_index(&self, curve_name: &str) -> Option<&RateIndexDefinition> {
         let curve = self.curves.get(curve_name)?;
@@ -361,19 +260,8 @@ impl DefinitionRegistry {
     }
 
     /// Loads definitions from a JSON bundle.
-    ///
-    /// Registers all definitions in order:
-    /// 1. Instruments from templates (expanded)
-    /// 2. Individual instruments
-    /// 3. Rate indices
-    /// 4. Curves
-    ///
-    /// # Errors
-    ///
-    /// Returns error if any definition fails validation or registration.
     #[cfg(feature = "serde")]
     pub fn load_bundle(&mut self, bundle: DefinitionBundle) -> Result<(), RegistryError> {
-        // First, expand and register instruments from templates
         for template in &bundle.templates {
             template.validate()?;
             for inst in template.expand() {
@@ -381,17 +269,14 @@ impl DefinitionRegistry {
             }
         }
 
-        // Then register individual instruments
         for inst in bundle.instruments {
             self.register_instrument(inst)?;
         }
 
-        // Then rate indices
         for idx in bundle.rate_indices {
             self.register_rate_index(idx)?;
         }
 
-        // Finally curves (which reference the above)
         for curve in bundle.curves {
             self.register_curve(curve)?;
         }
@@ -400,10 +285,6 @@ impl DefinitionRegistry {
     }
 
     /// Loads definitions from a JSON string.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if JSON parsing fails or any definition fails validation.
     #[cfg(feature = "serde")]
     pub fn load_from_json(json: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let bundle: DefinitionBundle = serde_json::from_str(json)?;
@@ -432,7 +313,6 @@ mod tests {
         assert_eq!(r.rate_index_count(), 0);
         assert_eq!(r.curve_count(), 0);
 
-        // Register instrument + duplicate
         assert!(r.register_instrument(inst("USD-Depo-ON")).is_ok());
         assert_eq!(r.instrument_count(), 1);
         assert!(r.get_instrument("USD-Depo-ON").is_some());
@@ -441,12 +321,10 @@ mod tests {
             Err(RegistryError::DuplicateId { .. })
         ));
 
-        // Register rate index
         assert!(r.register_rate_index(idx("USD-SOFR")).is_ok());
         assert_eq!(r.rate_index_count(), 1);
         assert!(r.get_rate_index("USD-SOFR").is_some());
 
-        // Register curve (success)
         let curve = CurveDefinition::new(
             "USD-SOFR-Discount",
             "USD-SOFR",
@@ -455,11 +333,9 @@ mod tests {
         assert!(r.register_curve(curve).is_ok());
         assert_eq!(r.curve_count(), 1);
 
-        // curve_rate_index
         let ri = r.curve_rate_index("USD-SOFR-Discount").unwrap();
         assert_eq!(ri.id, "USD-SOFR");
 
-        // Missing rate_index
         let mut r2 = DefinitionRegistry::new();
         r2.register_instrument(inst("USD-Depo-ON")).unwrap();
         assert!(matches!(
@@ -474,7 +350,6 @@ mod tests {
             })
         ));
 
-        // Missing instrument
         let mut r3 = DefinitionRegistry::new();
         r3.register_rate_index(idx("USD-SOFR")).unwrap();
         assert!(matches!(
@@ -489,7 +364,6 @@ mod tests {
             })
         ));
 
-        // curve_instruments
         let mut r4 = DefinitionRegistry::new();
         r4.register_instrument(inst("USD-Depo-ON")).unwrap();
         r4.register_instrument(InstrumentDefinition::new(
@@ -515,7 +389,6 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_registry_json() {
-        // Convention-based format
         let json = r#"{"instruments":[
             {"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"O/N"},
             {"id":"USD-OIS-5Y","currency":"USD","convention":"USD-SOFR-OIS","tenor":"5Y","rateIndex":"USD-SOFR"}],
@@ -534,7 +407,6 @@ mod tests {
             RateType::Ois
         );
 
-        // Legacy format
         let legacy = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","rateTypeOverride":"Deposit","tenor":"O/N"}],
             "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],
             "curves":[{"name":"c","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON"]}]}"#;
@@ -547,7 +419,6 @@ mod tests {
             RateType::Deposit
         );
 
-        // Validation error (missing rate index)
         let bad = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"O/N"}],
             "rateIndices":[],"curves":[{"name":"c","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON"]}]}"#;
         assert!(DefinitionRegistry::load_from_json(bad).is_err());
@@ -556,7 +427,6 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_registry_templates() {
-        // Templates with OIS + Depo + custom
         let json = r#"{"templates":[
             {"idPattern":"{currency}-OIS-{tenor}","currency":"USD","convention":"USD-SOFR-OIS","rateIndex":"USD-SOFR","tenors":["1M","3M","6M","1Y","5Y"]},
             {"idPattern":"{currency}-Depo-{tenor}","currency":"USD","convention":"USD-DEPO","rateIndex":"USD-SOFR","tenors":["O/N","1W"]}],
@@ -564,7 +434,7 @@ mod tests {
             "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],
             "curves":[{"name":"USD-SOFR-Discount","rateIndex":"USD-SOFR","instruments":["USD-Depo-O/N","USD-OIS-1M","USD-OIS-5Y"]}]}"#;
         let r = DefinitionRegistry::load_from_json(json).unwrap();
-        assert_eq!(r.instrument_count(), 8); // 5 OIS + 2 Depo + 1 Custom
+        assert_eq!(r.instrument_count(), 8);
         assert_eq!(
             r.get_instrument("USD-OIS-1M").unwrap().rate_type(),
             RateType::Ois
@@ -580,7 +450,6 @@ mod tests {
             3
         );
 
-        // Bundle expand
         let bundle = DefinitionBundle {
             templates: vec![InstrumentTemplate::new(
                 "{currency}-OIS-{tenor}",
@@ -602,7 +471,6 @@ mod tests {
         assert_eq!(expanded.len(), 4);
         assert_eq!(expanded[0].id, "USD-OIS-1M");
 
-        // FRA templates
         let fra_json = r#"{"templates":[{"idPattern":"{currency}-FRA-{tenor}","currency":"USD","convention":"USD-FRA","rateIndex":"USD-SOFR","tenors":["1x4","3x6","6x9"]}],
             "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"O/N"}],"curves":[]}"#;
         let r2 = DefinitionRegistry::load_from_json(fra_json).unwrap();

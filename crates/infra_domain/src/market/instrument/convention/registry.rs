@@ -1,7 +1,4 @@
 //! Convention registry for looking up market conventions.
-//!
-//! This module provides the [`ConventionRegistry`] type for managing
-//! and looking up market conventions by currency and rate type.
 
 use std::collections::HashMap;
 
@@ -65,28 +62,6 @@ impl std::fmt::Display for RegistryError {
 impl std::error::Error for RegistryError {}
 
 /// Registry for market conventions.
-///
-/// Provides O(1) lookup of conventions by (Currency, RateType) pairs.
-/// Can be populated programmatically or from JSON configuration.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{
-///     ConventionRegistry, MarketConvention, DepositConvention,
-/// };
-/// use infra_domain::market::{Currency, RateType};
-///
-/// let mut registry = ConventionRegistry::new();
-/// registry.register(
-///     Currency::USD,
-///     RateType::Deposit,
-///     MarketConvention::Deposit(DepositConvention::usd()),
-/// );
-///
-/// let convention = registry.get(Currency::USD, RateType::Deposit);
-/// assert!(convention.is_some());
-/// ```
 #[derive(Debug, Clone, Default)]
 pub struct ConventionRegistry {
     conventions: HashMap<ConventionKey, MarketConvention>,
@@ -102,25 +77,10 @@ impl ConventionRegistry {
     }
 
     /// Creates a registry with standard conventions for major currencies.
-    ///
-    /// Includes conventions for:
-    /// - USD, EUR, GBP, JPY, CHF
-    /// - Deposit, Swap, OIS, FRA, Futures rate types
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use infra_domain::market::convention::ConventionRegistry;
-    /// use infra_domain::market::{Currency, RateType};
-    ///
-    /// let registry = ConventionRegistry::with_defaults();
-    /// assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
-    /// ```
     #[must_use]
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
 
-        // Register all default conventions using MarketConvention::for_rate_id
         let currencies = [
             Currency::USD,
             Currency::EUR,
@@ -141,7 +101,7 @@ impl ConventionRegistry {
             for rate_type in rate_types {
                 let quote_id = crate::market::QuoteId::new(
                     currency,
-                    crate::time::Tenor::OneYear, // Tenor doesn't affect convention selection
+                    crate::time::Tenor::OneYear,
                     rate_type,
                 );
                 if let Some(convention) = MarketConvention::for_quote_id(&quote_id) {
@@ -154,14 +114,6 @@ impl ConventionRegistry {
     }
 
     /// Registers a convention in the registry.
-    ///
-    /// If a convention already exists for the given key, it is replaced.
-    ///
-    /// # Arguments
-    ///
-    /// * `currency` - The currency
-    /// * `rate_type` - The rate type
-    /// * `convention` - The convention to register
     pub fn register(
         &mut self,
         currency: Currency,
@@ -173,28 +125,6 @@ impl ConventionRegistry {
     }
 
     /// Gets a convention from the registry.
-    ///
-    /// Returns `None` if no convention is registered for the given key.
-    ///
-    /// # Arguments
-    ///
-    /// * `currency` - The currency
-    /// * `rate_type` - The rate type
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use infra_domain::market::convention::ConventionRegistry;
-    /// use infra_domain::market::{Currency, RateType};
-    ///
-    /// let registry = ConventionRegistry::with_defaults();
-    ///
-    /// // USD Deposit exists
-    /// assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
-    ///
-    /// // Vol doesn't have a convention
-    /// assert!(registry.get(Currency::USD, RateType::Vol).is_none());
-    /// ```
     #[must_use]
     pub fn get(&self, currency: Currency, rate_type: RateType) -> Option<&MarketConvention> {
         let key = ConventionKey::new(currency, rate_type);
@@ -215,17 +145,6 @@ impl ConventionRegistry {
     }
 
     /// Returns an iterator over all registered keys.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use infra_domain::market::convention::ConventionRegistry;
-    ///
-    /// let registry = ConventionRegistry::with_defaults();
-    /// for key in registry.keys() {
-    ///     println!("{}", key);
-    /// }
-    /// ```
     pub fn keys(&self) -> impl Iterator<Item = &ConventionKey> { self.conventions.keys() }
 
     /// Returns an iterator over all registered conventions.
@@ -245,8 +164,6 @@ impl ConventionRegistry {
     pub fn is_empty(&self) -> bool { self.conventions.is_empty() }
 
     /// Removes a convention from the registry.
-    ///
-    /// Returns the removed convention, or `None` if it wasn't registered.
     pub fn remove(&mut self, currency: Currency, rate_type: RateType) -> Option<MarketConvention> {
         let key = ConventionKey::new(currency, rate_type);
         self.conventions.remove(&key)

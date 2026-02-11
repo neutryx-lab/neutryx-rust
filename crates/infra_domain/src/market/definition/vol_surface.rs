@@ -1,63 +1,19 @@
 //! Volatility surface/cube definition for vol surface construction.
-//!
-//! This module provides [`VolSurfaceDefinition`] which defines the recipe for
-//! building a volatility surface or cube. It references calibration instruments
-//! by ID to specify which instruments to use for calibration.
-//!
-//! # Examples
-//!
-//! ## Vol Surface Definition
-//!
-//! ```
-//! use infra_domain::market::definition::{VolSurfaceDefinition, CalibrationModel, StrikeAxisType};
-//!
-//! let vol_surface = VolSurfaceDefinition::new(
-//!     "USD-SOFR-Swaption-Vol",
-//!     vec![
-//!         "USD-SOFR-1Y1Y-ATM".to_string(),
-//!         "USD-SOFR-5Y5Y-ATM".to_string(),
-//!     ],
-//! )
-//! .with_model(CalibrationModel::Sabr)
-//! .with_strike_axis(StrikeAxisType::Delta);
-//!
-//! assert_eq!(vol_surface.name, "USD-SOFR-Swaption-Vol");
-//! ```
-//!
-//! ## Calibration Model
-//!
-//! ```
-//! use infra_domain::market::definition::CalibrationModel;
-//!
-//! let model = CalibrationModel::Sabr;
-//! assert!(model.is_enabled());
-//! assert_eq!(model.parameter_count(), 4);
-//! ```
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Calibration model for volatility surfaces.
-///
-/// Defines the parametric model used to fit volatility smiles/surfaces.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum CalibrationModel {
     /// SABR (Stochastic Alpha Beta Rho) model.
-    ///
-    /// Standard model for interest rate volatility surfaces.
-    /// Parameters: alpha, beta, rho, nu.
     #[default]
     Sabr,
     /// SVI (Stochastic Volatility Inspired) model.
-    ///
-    /// Popular parametrisation for equity volatility surfaces.
-    /// Parameters: a, b, rho, m, sigma.
     Svi,
     /// Dupire's local volatility model.
-    ///
-    /// Non-parametric, arbitrage-free model derived from option prices.
     LocalVolatility,
 }
 
@@ -86,9 +42,9 @@ impl CalibrationModel {
     /// Get the number of parameters for this model.
     pub fn parameter_count(&self) -> usize {
         match self {
-            Self::Sabr => 4,            // alpha, beta, rho, nu
-            Self::Svi => 5,             // a, b, rho, m, sigma
-            Self::LocalVolatility => 0, // Non-parametric
+            Self::Sabr => 4,
+            Self::Svi => 5,
+            Self::LocalVolatility => 0,
         }
     }
 
@@ -117,64 +73,34 @@ impl std::fmt::Display for CalibrationModel {
     }
 }
 
-// =============================================================================
-// VolSurfaceDefinition
-// =============================================================================
-
 /// Volatility surface/cube definition - the recipe for building a vol surface.
-///
-/// References calibration instrument IDs to specify which instruments to use
-/// for surface construction. Similar to `CurveDefinition` for yield curves.
-///
-/// # Asset Class Support
-///
-/// Volatility surfaces can be built for multiple asset classes:
-/// - **Rates**: Swaption vols, cap/floor vols
-/// - **FX**: FX option vols
-/// - **Equity**: Equity option vols
-/// - **Commodity**: Commodity option vols
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::definition::{VolSurfaceDefinition, CalibrationModel, StrikeAxisType};
-///
-/// let vol_surface = VolSurfaceDefinition::new(
-///     "USD-SOFR-Swaption-Vol",
-///     vec!["USD-SOFR-1Y1Y-ATM".to_string()],
-/// )
-/// .with_model(CalibrationModel::Sabr)
-/// .with_strike_axis(StrikeAxisType::Delta);
-///
-/// assert_eq!(vol_surface.model, CalibrationModel::Sabr);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct VolSurfaceDefinition {
-    /// Surface name (e.g., "USD-SOFR-Swaption-Vol", "EURUSD-FX-Vol")
+    /// Surface name (e.g., "USD-SOFR-Swaption-Vol", "EURUSD-FX-Vol").
     pub name: String,
 
-    /// List of calibration instrument IDs
+    /// List of calibration instrument IDs.
     pub instruments: Vec<String>,
 
-    /// Calibration model (SABR, SVI, LocalVol)
+    /// Calibration model (SABR, SVI, LocalVol).
     #[cfg_attr(feature = "serde", serde(default))]
     pub model: CalibrationModel,
 
-    /// Strike axis representation
+    /// Strike axis representation.
     #[cfg_attr(feature = "serde", serde(default))]
     pub strike_axis: StrikeAxisType,
 
-    /// Time interpolation method for the surface
+    /// Time interpolation method for the surface.
     #[cfg_attr(feature = "serde", serde(default))]
     pub time_interpolation: TimeInterpolation,
 
-    /// Strike interpolation method for the surface
+    /// Strike interpolation method for the surface.
     #[cfg_attr(feature = "serde", serde(default))]
     pub strike_interpolation: StrikeInterpolation,
 
-    /// Whether to allow extrapolation beyond calibrated region
+    /// Whether to allow extrapolation beyond calibrated region.
     #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub allow_extrapolation: bool,
 }
@@ -187,12 +113,12 @@ fn default_true() -> bool { true }
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum TimeInterpolation {
-    /// Linear interpolation in total variance (σ²T)
+    /// Linear interpolation in total variance (σ²T).
     #[default]
     LinearVariance,
-    /// Flat forward variance interpolation
+    /// Flat forward variance interpolation.
     FlatForward,
-    /// Linear interpolation in volatility
+    /// Linear interpolation in volatility.
     LinearVol,
 }
 
@@ -213,12 +139,12 @@ impl TimeInterpolation {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum StrikeInterpolation {
-    /// Linear interpolation
+    /// Linear interpolation.
     Linear,
-    /// Cubic spline interpolation
+    /// Cubic spline interpolation.
     #[default]
     CubicSpline,
-    /// SABR model interpolation (smile dynamics)
+    /// SABR model interpolation (smile dynamics).
     Sabr,
 }
 
@@ -237,15 +163,15 @@ impl StrikeInterpolation {
 /// Error type for vol surface definition validation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum VolSurfaceDefError {
-    /// Missing required field
+    /// Missing required field.
     MissingField(&'static str),
-    /// No instruments specified
+    /// No instruments specified.
     NoInstruments,
-    /// Duplicate instrument in the list
+    /// Duplicate instrument in the list.
     DuplicateInstrument(String),
-    /// Unknown instrument reference
+    /// Unknown instrument reference.
     UnknownInstrument(String),
-    /// Model not supported for this surface type
+    /// Model not supported for this surface type.
     UnsupportedModel(CalibrationModel),
 }
 
@@ -265,11 +191,6 @@ impl std::error::Error for VolSurfaceDefError {}
 
 impl VolSurfaceDefinition {
     /// Creates a new vol surface definition.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - Surface name
-    /// * `instruments` - List of calibration instrument IDs
     #[must_use]
     pub fn new(name: impl Into<String>, instruments: Vec<String>) -> Self {
         Self {
@@ -330,10 +251,6 @@ impl VolSurfaceDefinition {
     pub fn instrument_count(&self) -> usize { self.instruments.len() }
 
     /// Validates the vol surface definition (basic validation only).
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails.
     pub fn validate(&self) -> Result<(), VolSurfaceDefError> {
         if self.name.is_empty() {
             return Err(VolSurfaceDefError::MissingField("name"));
@@ -343,7 +260,6 @@ impl VolSurfaceDefinition {
             return Err(VolSurfaceDefError::NoInstruments);
         }
 
-        // Check for duplicate instruments
         let mut seen = std::collections::HashSet::new();
         for inst_id in &self.instruments {
             if !seen.insert(inst_id) {
@@ -351,7 +267,6 @@ impl VolSurfaceDefinition {
             }
         }
 
-        // Check model is enabled
         if !self.model.is_enabled() {
             return Err(VolSurfaceDefError::UnsupportedModel(self.model));
         }
@@ -361,8 +276,6 @@ impl VolSurfaceDefinition {
 }
 
 /// Strike axis type for volatility surface display.
-///
-/// Defines how the strike axis is represented in visualisation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
@@ -451,10 +364,6 @@ mod tests {
     fn test_strike_axis_display() {
         assert_eq!(StrikeAxisType::Delta.display_name(), "Delta");
     }
-
-    // =========================================================================
-    // VolSurfaceDefinition Tests
-    // =========================================================================
 
     #[test]
     fn test_vol_surface_definition_new() {

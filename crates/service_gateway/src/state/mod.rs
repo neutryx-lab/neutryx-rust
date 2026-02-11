@@ -1,7 +1,4 @@
-//! Application state management for `service_gateway`
-//!
-//! Provides shared state including caches, pricers, and risk engines.
-//! Feature-gated caches are included based on enabled features.
+//! Application state management for `service_gateway`.
 
 mod cache;
 
@@ -21,21 +18,21 @@ pub use cache::{ModelEntry, ModelType};
 pub use cache::{VolSurfaceEntry, VolSurfaceType};
 use pricer_pricing::generic_pricer::{GenericPricer, ModelConfig, PricerConfig};
 
-/// Configuration for `AppState` cache sizes
+/// Configuration for `AppState` cache sizes.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_field_names)] // Intentional: all fields are cache sizes
+#[allow(clippy::struct_field_names)]
 pub struct AppStateConfig {
-    /// Curve cache capacity
+    /// Curve cache capacity.
     pub curve_cache_size: usize,
-    /// FX vol cache capacity
+    /// FX vol cache capacity.
     pub fxvol_cache_size: usize,
-    /// Portfolio cache capacity (risk feature)
+    /// Portfolio cache capacity (risk feature).
     #[cfg(feature = "risk")]
     pub portfolio_cache_size: usize,
-    /// Model cache capacity (models feature)
+    /// Model cache capacity (models feature).
     #[cfg(feature = "models")]
     pub model_cache_size: usize,
-    /// Vol surface cache capacity (volatility feature)
+    /// Vol surface cache capacity (volatility feature).
     #[cfg(feature = "volatility")]
     pub vol_surface_cache_size: usize,
 }
@@ -55,32 +52,31 @@ impl Default for AppStateConfig {
     }
 }
 
-/// Application state shared across all handlers
+/// Application state shared across all handlers.
 pub struct AppState {
-    /// Cache for bootstrapped curves
+    /// Cache for bootstrapped curves.
     pub curve_cache: TypedCache<CurveEntry>,
-    /// Cache for FX volatility surfaces
+    /// Cache for FX volatility surfaces.
     pub fxvol_cache: TypedCache<FxVolEntry>,
-    /// Pre-configured generic pricer for standalone pricing
+    /// Pre-configured generic pricer for standalone pricing.
     pub pricer: Arc<GenericPricer>,
 
-    // Feature-gated caches
-    /// Cache for portfolios (risk feature)
+    /// Cache for portfolios (risk feature).
     #[cfg(feature = "risk")]
     pub portfolio_cache: TypedCache<PortfolioEntry>,
-    /// Cache for stochastic models (models feature)
+    /// Cache for stochastic models (models feature).
     #[cfg(feature = "models")]
     pub model_cache: TypedCache<ModelEntry>,
-    /// Cache for volatility surfaces/cubes (volatility feature)
+    /// Cache for volatility surfaces/cubes (volatility feature).
     #[cfg(feature = "volatility")]
     pub vol_surface_cache: TypedCache<VolSurfaceEntry>,
 }
 
 impl AppState {
-    /// Create a new application state with default configuration
+    /// Create a new application state with default configuration.
     pub fn new() -> Self { Self::with_config(AppStateConfig::default()) }
 
-    /// Create application state with custom configuration
+    /// Create application state with custom configuration.
     pub fn with_config(config: AppStateConfig) -> Self {
         let model_config = ModelConfig::builder()
             .num_paths(10_000)
@@ -107,8 +103,8 @@ impl AppState {
         }
     }
 
-    /// Create application state with custom cache sizes (legacy API)
-    #[allow(clippy::needless_update)] // Feature-gated fields need default values
+    /// Create application state with custom cache sizes (legacy API).
+    #[allow(clippy::needless_update)]
     pub fn with_cache_sizes(curve_cache_size: usize, fxvol_cache_size: usize) -> Self {
         let config = AppStateConfig {
             curve_cache_size,

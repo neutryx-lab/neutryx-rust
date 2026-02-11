@@ -1,22 +1,4 @@
 //! Rate index definition for curve construction.
-//!
-//! This module provides [`RateIndexDefinition`] which defines benchmark
-//! rate indices as master data. These definitions are used by
-//! [`CurveDefinition`] to specify the underlying index for a curve.
-//!
-//! # Examples
-//!
-//! ```
-//! use infra_domain::market::definition::RateIndexDefinition;
-//! use infra_domain::market::{Currency, RateIndex};
-//!
-//! // SOFR definition
-//! let sofr = RateIndexDefinition::new("USD-SOFR", Currency::USD, RateIndex::Sofr);
-//!
-//! // With display name
-//! let estr = RateIndexDefinition::new("EUR-ESTR", Currency::EUR, RateIndex::Estr)
-//!     .with_name("Euro Short-Term Rate");
-//! ```
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -27,33 +9,30 @@ use crate::{
 };
 
 /// Rate index definition for curve construction.
-///
-/// Defines a benchmark rate index as master data, linking an ID to the
-/// underlying [`RateIndex`] enum with optional convention overrides.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct RateIndexDefinition {
-    /// Unique identifier (e.g., "USD-SOFR", "EUR-ESTR")
+    /// Unique identifier (e.g., "USD-SOFR", "EUR-ESTR").
     pub id: String,
 
-    /// Display name (optional)
+    /// Display name (optional).
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub name: Option<String>,
 
-    /// Currency of the index
+    /// Currency of the index.
     pub currency: Currency,
 
-    /// Index type from the enum
+    /// Index type from the enum.
     pub index_type: RateIndex,
 
-    /// Tenor of the index (e.g., O/N for SOFR, 6M for EURIBOR6M)
+    /// Tenor of the index (e.g., O/N for SOFR, 6M for EURIBOR6M).
     pub tenor: Tenor,
 
-    /// Convention overrides (optional, defaults derived from index_type)
+    /// Convention overrides (optional, defaults derived from index_type).
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -62,41 +41,39 @@ pub struct RateIndexDefinition {
 }
 
 /// Market conventions for a rate index.
-///
-/// If not specified, defaults are derived from the [`RateIndex`] metadata.
 #[derive(Debug, Clone, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct IndexConventions {
-    /// Day count convention
+    /// Day count convention.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub day_count: Option<DayCounter>,
 
-    /// Compounding method
+    /// Compounding method.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub compounding: Option<CompoundingMethod>,
 
-    /// Fixing lag in business days
+    /// Fixing lag in business days.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub fixing_lag: Option<u8>,
 
-    /// Settlement lag in business days
+    /// Settlement lag in business days.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
     )]
     pub settlement_lag: Option<u8>,
 
-    /// Holiday calendar
+    /// Holiday calendar.
     #[cfg_attr(
         feature = "serde",
         serde(default, skip_serializing_if = "Option::is_none")
@@ -107,16 +84,16 @@ pub struct IndexConventions {
 /// Error type for rate index definition validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RateIndexDefError {
-    /// Currency mismatch between definition and index type
+    /// Currency mismatch between definition and index type.
     CurrencyMismatch {
-        /// Definition ID
+        /// Definition ID.
         id: String,
-        /// Expected currency from index type
+        /// Expected currency from index type.
         expected: Currency,
-        /// Provided currency
+        /// Provided currency.
         got: Currency,
     },
-    /// Missing required field
+    /// Missing required field.
     MissingField(&'static str),
 }
 
@@ -139,12 +116,6 @@ impl std::error::Error for RateIndexDefError {}
 
 impl RateIndexDefinition {
     /// Creates a new rate index definition.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique identifier (e.g., "USD-SOFR")
-    /// * `currency` - Currency of the index
-    /// * `index_type` - The underlying rate index enum
     #[must_use]
     pub fn new(id: impl Into<String>, currency: Currency, index_type: RateIndex) -> Self {
         Self {
@@ -183,18 +154,11 @@ impl RateIndexDefinition {
     pub fn is_overnight(&self) -> bool { self.tenor == Tenor::Overnight }
 
     /// Validates the rate index definition.
-    ///
-    /// Checks that the currency matches the index type's currency.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if validation fails.
     pub fn validate(&self) -> Result<(), RateIndexDefError> {
         if self.id.is_empty() {
             return Err(RateIndexDefError::MissingField("id"));
         }
 
-        // Currency must match the index type's currency
         let expected_currency = self.index_type.currency();
         if self.currency != expected_currency {
             return Err(RateIndexDefError::CurrencyMismatch {
@@ -208,9 +172,6 @@ impl RateIndexDefinition {
     }
 
     /// Returns the effective day count convention.
-    ///
-    /// Uses the convention override if set, otherwise falls back to index
-    /// metadata.
     #[must_use]
     pub fn day_count(&self) -> DayCounter {
         self.conventions
@@ -220,9 +181,6 @@ impl RateIndexDefinition {
     }
 
     /// Returns the effective compounding method.
-    ///
-    /// Uses the convention override if set, otherwise falls back to index
-    /// metadata.
     #[must_use]
     pub fn compounding(&self) -> CompoundingMethod {
         self.conventions
@@ -232,9 +190,6 @@ impl RateIndexDefinition {
     }
 
     /// Returns the effective fixing lag.
-    ///
-    /// Uses the convention override if set, otherwise falls back to index
-    /// metadata.
     #[must_use]
     pub fn fixing_lag(&self) -> u8 {
         self.conventions
@@ -244,9 +199,6 @@ impl RateIndexDefinition {
     }
 
     /// Returns the effective settlement lag.
-    ///
-    /// Uses the convention override if set, otherwise falls back to index
-    /// metadata.
     #[must_use]
     pub fn settlement_lag(&self) -> u8 {
         self.conventions
@@ -256,9 +208,6 @@ impl RateIndexDefinition {
     }
 
     /// Returns the effective calendar.
-    ///
-    /// Uses the convention override if set, otherwise falls back to index
-    /// metadata.
     #[must_use]
     pub fn calendar(&self) -> CalendarId {
         self.conventions
@@ -396,11 +345,9 @@ mod tests {
         let def = RateIndexDefinition::new("USD-SOFR", Currency::USD, RateIndex::Sofr)
             .with_conventions(conventions);
 
-        // Overridden values
         assert_eq!(def.day_count(), DayCounter::Actual365Fixed);
         assert_eq!(def.settlement_lag(), 1);
 
-        // Defaults still used for non-overridden
         assert_eq!(def.fixing_lag(), 0);
         assert_eq!(def.compounding(), CompoundingMethod::Compounded);
     }
@@ -485,7 +432,6 @@ mod tests {
         let def = RateIndexDefinition::new("EUR-EURIBOR6M", Currency::EUR, RateIndex::Euribor6M);
         let json = serde_json::to_string(&def).unwrap();
 
-        // Should serialize tenor as "6M", not "SixMonths"
         assert!(json.contains(r#""tenor":"6M""#));
     }
 }

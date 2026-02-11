@@ -1,14 +1,9 @@
 //! Market event type definitions.
-//!
-//! This module provides the classification of market events used for
-//! calendar awareness and economic data tracking.
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Type of market event.
-///
-/// Categorises events that may impact market conditions or trading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
@@ -37,14 +32,6 @@ pub enum EventType {
 
 impl EventType {
     /// Get the display name for this event type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::events::EventType;
-    ///
-    /// assert_eq!(EventType::CentralBankMeeting.display_name(), "Central Bank Meeting");
-    /// ```
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::CentralBankMeeting => "Central Bank Meeting",
@@ -61,8 +48,6 @@ impl EventType {
     }
 
     /// Get the icon class name for this event type.
-    ///
-    /// Returns Font Awesome icon class names suitable for UI rendering.
     pub fn icon(&self) -> &'static str {
         match self {
             Self::CentralBankMeeting => "fa-landmark",

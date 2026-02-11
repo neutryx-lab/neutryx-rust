@@ -1,6 +1,4 @@
-//! Model service for stochastic model configuration and pricing
-//!
-//! Provides model CRUD and model-based pricing operations.
+//! Model service for stochastic model configuration and pricing.
 
 #[cfg(feature = "models")]
 use std::{sync::Arc, time::Instant};
@@ -20,13 +18,13 @@ use crate::{
     state::{AppState, ModelEntry, ModelType},
 };
 
-/// Service for stochastic model operations
+/// Service for stochastic model operations.
 #[cfg(feature = "models")]
 pub struct ModelService;
 
 #[cfg(feature = "models")]
 impl ModelService {
-    /// Create a new stochastic model
+    /// Create a new stochastic model.
     pub fn create_model(
         request: &CreateModelRequest,
         state: &Arc<AppState>,
@@ -75,7 +73,6 @@ impl ModelService {
             ),
         };
 
-        // Check if validation failed
         if !validation.valid {
             return Err(ServerError::InvalidRequest(validation.errors.join("; ")));
         }
@@ -97,7 +94,7 @@ impl ModelService {
         })
     }
 
-    /// Get a model by ID
+    /// Get a model by ID.
     pub fn get_model(
         model_id: &str,
         state: &Arc<AppState>,
@@ -116,7 +113,7 @@ impl ModelService {
         })
     }
 
-    /// Price an instrument using a cached model
+    /// Price an instrument using a cached model.
     pub fn price_with_model(
         model_id: &str,
         request: &ModelPricingRequest,
@@ -126,7 +123,6 @@ impl ModelService {
 
         let entry = helpers::resolve_cached(&state.model_cache, model_id, "Model")?;
 
-        // Extract pricing parameters
         let (price, greeks, num_paths, std_error) = match &request.instrument {
             InstrumentDto::VanillaOption {
                 spot,
@@ -151,7 +147,7 @@ impl ModelService {
                     None
                 };
                 let err = if matches!(request.method, PricingMethodDto::MonteCarlo) {
-                    Some(p * 0.01) // Placeholder std error
+                    Some(p * 0.01)
                 } else {
                     None
                 };
@@ -181,7 +177,6 @@ impl ModelService {
                 is_call,
                 ..
             } => {
-                // Simplified Asian pricing
                 let (p, g) = Self::price_vanilla_option(
                     entry.model_type,
                     &entry.params_json,
@@ -193,7 +188,6 @@ impl ModelService {
                     &PricingMethodDto::MonteCarlo,
                     request.num_paths.unwrap_or(10_000),
                 )?;
-                // Asian options typically worth less than vanilla
                 (
                     p * 0.85,
                     Some(g),
@@ -219,7 +213,6 @@ impl ModelService {
                     &PricingMethodDto::MonteCarlo,
                     request.num_paths.unwrap_or(10_000),
                 )?;
-                // Barrier options typically worth less
                 (
                     p * 0.7,
                     Some(g),
@@ -244,7 +237,7 @@ impl ModelService {
         })
     }
 
-    /// Price a vanilla option with the given model
+    /// Price a vanilla option with the given model.
     fn price_vanilla_option(
         model_type: ModelType,
         params_json: &str,
@@ -256,7 +249,6 @@ impl ModelService {
         method: &PricingMethodDto,
         _num_paths: usize,
     ) -> Result<(f64, PricingGreeksDto), ServerError> {
-        // Extract volatility from model params
         let vol = match model_type {
             ModelType::Gbm => {
                 let params: serde_json::Value = serde_json::from_str(params_json)
@@ -273,22 +265,19 @@ impl ModelService {
                     .map_err(|e| ServerError::Internal(format!("Parse error: {e}")))?;
                 params["alpha"].as_f64().unwrap_or(0.2)
             }
-            _ => 0.2, // Default for other models
+            _ => 0.2,
         };
 
-        // Use Black-Scholes for analytical, simplified formula for others
         let price = match method {
             PricingMethodDto::Analytical => {
                 Self::black_scholes(spot, strike, maturity, risk_free_rate, vol, is_call)
             }
             PricingMethodDto::MonteCarlo | PricingMethodDto::Tree => {
-                // Use same formula with small noise for simulation
                 let bs = Self::black_scholes(spot, strike, maturity, risk_free_rate, vol, is_call);
                 bs * (1.0 + 0.001 * (rand_simple() - 0.5))
             }
         };
 
-        // Calculate Greeks
         let d1 = ((spot / strike).ln() + (risk_free_rate + vol * vol / 2.0) * maturity)
             / (vol * maturity.sqrt());
         let d2 = d1 - vol * maturity.sqrt();
@@ -319,7 +308,7 @@ impl ModelService {
         ))
     }
 
-    /// Black-Scholes formula
+    /// Black-Scholes formula.
     fn black_scholes(
         spot: f64,
         strike: f64,
@@ -461,7 +450,7 @@ fn check_feller(warnings: &mut Vec<String>, kappa: f64, theta: f64, sigma: f64, 
     }
 }
 
-/// Simple random number for Monte Carlo noise
+/// Simple random number for Monte Carlo noise.
 fn rand_simple() -> f64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     let nanos = SystemTime::now()
@@ -471,15 +460,14 @@ fn rand_simple() -> f64 {
     (nanos / 1_000_000_000.0).fract()
 }
 
-/// Standard normal CDF approximation
+/// Standard normal CDF approximation.
 fn normal_cdf(x: f64) -> f64 { 0.5 * (1.0 + erf(x / std::f64::consts::SQRT_2)) }
 
-/// Standard normal PDF
+/// Standard normal PDF.
 fn normal_pdf(x: f64) -> f64 { (-x * x / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt() }
 
-/// Error function approximation
+/// Error function approximation.
 fn erf(x: f64) -> f64 {
-    // Horner form approximation
     let a1 = 0.254829592;
     let a2 = -0.284496736;
     let a3 = 1.421413741;
@@ -565,7 +553,7 @@ mod tests {
             name: None,
             params: GbmParamsDto {
                 drift: 0.05,
-                volatility: -0.2, // Invalid
+                volatility: -0.2,
             },
         };
 
@@ -638,13 +626,12 @@ mod tests {
         assert!(response.greeks.is_some());
 
         let greeks = response.greeks.unwrap();
-        assert!(greeks.delta > 0.0); // ATM call delta should be ~0.5
+        assert!(greeks.delta > 0.0);
         assert!(greeks.delta < 1.0);
     }
 
     #[test]
     fn test_black_scholes_call_put_parity() {
-        // Test call-put parity: C - P = S - K*e^(-rT)
         let spot = 100.0;
         let strike = 100.0;
         let maturity = 1.0;

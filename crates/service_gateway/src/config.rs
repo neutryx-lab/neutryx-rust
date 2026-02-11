@@ -1,4 +1,4 @@
-//! Server configuration
+//! Server configuration.
 
 use anyhow::Result;
 pub use infra_config::Settings;
@@ -6,16 +6,16 @@ pub use infra_config::Settings;
 /// Server configuration wrapper.
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
-    /// Enable REST API
+    /// Enable REST API.
     pub rest_enabled: bool,
-    /// REST API address
+    /// REST API address.
     pub rest_addr: String,
-    /// Enable gRPC API
+    /// Enable gRPC API.
     pub grpc_enabled: bool,
-    /// gRPC address (reserved for future gRPC implementation)
+    /// gRPC address (reserved for future gRPC implementation).
     #[allow(dead_code)]
     pub grpc_addr: String,
-    /// Number of worker threads (reserved for future thread pool configuration)
+    /// Number of worker threads (reserved for future thread pool configuration).
     #[allow(dead_code)]
     pub workers: usize,
 }

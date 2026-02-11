@@ -1,6 +1,4 @@
 //! Equity convention definitions.
-//!
-//! This module provides types for representing equity market conventions.
 
 use crate::time::CalendarId;
 
@@ -29,22 +27,6 @@ pub enum EquitySettlementType {
 }
 
 /// Convention for equity derivatives.
-///
-/// Represents the market conventions for pricing and settling equity
-/// derivatives.
-///
-/// # Example
-///
-/// ```rust
-/// use infra_domain::market::convention::{
-///     EquityConvention, DividendConvention, EquitySettlementType,
-/// };
-/// use infra_domain::time::CalendarId;
-///
-/// let conv = EquityConvention::us_equity();
-/// assert_eq!(conv.settlement_days, 2);
-/// assert_eq!(conv.dividend_convention, DividendConvention::DiscreteDividends);
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EquityConvention {
