@@ -2,10 +2,13 @@
 
 use super::error::XvaError;
 
-/// Funding spread parameters for FVA calculation (borrowing cost and lending benefit).
+/// Funding spread parameters for FVA calculation (borrowing cost and lending
+/// benefit).
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct FundingParams {
+    /// Borrowing spread (annualised decimal).
     pub spread_borrow: f64,
+    /// Lending spread (annualised decimal).
     pub spread_lend: f64,
 }
 
@@ -19,7 +22,8 @@ impl FundingParams {
         }
     }
 
-    /// Creates asymmetric funding spreads with different borrowing and lending rates.
+    /// Creates asymmetric funding spreads with different borrowing and lending
+    /// rates.
     #[inline]
     pub fn asymmetric(spread_borrow: f64, spread_lend: f64) -> Self {
         Self {
@@ -104,7 +108,8 @@ impl OwnCreditParams {
     #[inline]
     pub fn default_prob(&self, t: f64) -> f64 { 1.0 - self.survival_prob(t) }
 
-    /// Computes the marginal default probability between t1 and t2: PD(t1, t2) = Q(t1) - Q(t2).
+    /// Computes the marginal default probability between t1 and t2: PD(t1, t2)
+    /// = Q(t1) - Q(t2).
     #[inline]
     pub fn marginal_pd(&self, t1: f64, t2: f64) -> f64 {
         self.survival_prob(t1) - self.survival_prob(t2)

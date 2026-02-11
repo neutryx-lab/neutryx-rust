@@ -10,12 +10,19 @@ use crate::{greeks::GreeksResult, scenarios::RiskFactorId};
 /// Computed Greeks for a single trade.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputedGreeks {
+    /// Delta sensitivity.
     pub delta: Option<f64>,
+    /// Gamma sensitivity.
     pub gamma: Option<f64>,
+    /// Vega sensitivity.
     pub vega: Option<f64>,
+    /// Theta sensitivity.
     pub theta: Option<f64>,
+    /// Rho sensitivity.
     pub rho: Option<f64>,
+    /// Vanna (cross-gamma) sensitivity.
     pub vanna: Option<f64>,
+    /// Volga (vol-of-vol) sensitivity.
     pub volga: Option<f64>,
 }
 
@@ -81,7 +88,9 @@ impl Default for ComputedGreeks {
 /// Performance metrics for a calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PerformanceMetrics {
+    /// Computation time in milliseconds.
     pub computation_time_ms: f64,
+    /// Memory usage in bytes, if tracked.
     pub memory_usage_bytes: Option<usize>,
 }
 
@@ -106,10 +115,15 @@ impl PerformanceMetrics {
 /// Result of a single trade risk calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiskResult {
+    /// Trade identifier.
     pub trade_id: String,
+    /// Present value.
     pub pv: f64,
+    /// Computed Greeks.
     pub greeks: ComputedGreeks,
+    /// Calculation method used.
     pub method: GreeksMethod,
+    /// Performance metrics.
     pub metrics: PerformanceMetrics,
 }
 
@@ -135,9 +149,13 @@ impl RiskResult {
 /// Aggregated Greeks across a portfolio.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AggregatedGreeks {
+    /// Greeks aggregated by risk factor.
     pub by_risk_factor: HashMap<RiskFactorId, ComputedGreeks>,
+    /// Greeks aggregated by currency.
     pub by_currency: HashMap<String, ComputedGreeks>,
+    /// Greeks aggregated by tenor bucket.
     pub by_tenor_bucket: HashMap<String, ComputedGreeks>,
+    /// Total aggregated Greeks.
     pub total: ComputedGreeks,
 }
 
@@ -214,11 +232,17 @@ impl AggregatedGreeks {
 /// Execution statistics for portfolio risk calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionStats {
+    /// Total number of trades processed.
     pub total_trades: usize,
+    /// Number of successful calculations.
     pub successful: usize,
+    /// Number of failed calculations.
     pub failed: usize,
+    /// Total computation time in milliseconds.
     pub total_time_ms: f64,
+    /// Average time per trade in milliseconds.
     pub avg_time_per_trade_ms: f64,
+    /// Whether parallel execution was used.
     pub used_parallel: bool,
 }
 
@@ -260,7 +284,9 @@ impl ExecutionStats {
 /// A failed calculation entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FailedCalculation {
+    /// Trade identifier.
     pub trade_id: String,
+    /// Error message.
     pub error_message: String,
 }
 
@@ -277,9 +303,13 @@ impl FailedCalculation {
 /// Result of portfolio risk calculation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortfolioRiskResult {
+    /// Individual trade results.
     pub results: Vec<RiskResult>,
+    /// Failed calculation entries.
     pub failures: Vec<FailedCalculation>,
+    /// Aggregated Greeks across the portfolio.
     pub aggregations: AggregatedGreeks,
+    /// Execution statistics.
     pub stats: ExecutionStats,
 }
 

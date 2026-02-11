@@ -1,6 +1,4 @@
 //! Scenario execution engine.
-//!
-//! Provides infrastructure for running scenarios and collecting results.
 
 use std::collections::HashMap;
 
@@ -9,21 +7,17 @@ use pricer_core::traits::Float;
 use super::shifts::Scenario;
 
 /// P&L result from a single scenario.
-///
-/// # Requirements
-///
-/// - Requirements: 10.4
 #[derive(Clone, Debug)]
 pub struct ScenarioPnL<T: Float> {
-    /// Scenario name
+    /// Scenario name.
     pub scenario_name: String,
-    /// Base value before scenario
+    /// Base value before scenario.
     pub base_value: T,
-    /// Stressed value after scenario
+    /// Stressed value after scenario.
     pub stressed_value: T,
-    /// P&L (stressed - base)
+    /// P&L (stressed - base).
     pub pnl: T,
-    /// P&L as percentage of base
+    /// P&L as percentage of base.
     pub pnl_pct: T,
 }
 
@@ -55,11 +49,11 @@ impl<T: Float> ScenarioPnL<T> {
 /// Complete result from scenario execution.
 #[derive(Clone, Debug)]
 pub struct ScenarioResult<T: Float> {
-    /// Scenario that was executed
+    /// Scenario that was executed.
     pub scenario_name: String,
-    /// P&L by trade
+    /// P&L by trade.
     pub trade_pnls: HashMap<String, ScenarioPnL<T>>,
-    /// Portfolio-level P&L
+    /// Portfolio-level P&L.
     pub portfolio_pnl: ScenarioPnL<T>,
 }
 
@@ -92,15 +86,9 @@ impl<T: Float> ScenarioResult<T> {
 }
 
 /// Engine for executing scenarios against portfolios.
-///
-/// # Requirements
-///
-/// - Requirements: 10.4
 #[derive(Clone, Debug)]
 pub struct ScenarioEngine<T: Float> {
-    /// Registered scenarios
     scenarios: Vec<Scenario<T>>,
-    /// Results from executed scenarios
     results: Vec<ScenarioResult<T>>,
 }
 
@@ -132,19 +120,6 @@ impl<T: Float> ScenarioEngine<T> {
     pub fn scenario_count(&self) -> usize { self.scenarios.len() }
 
     /// Execute a single scenario.
-    ///
-    /// This is a simplified implementation that computes P&L based on
-    /// a pricing function provided by the caller.
-    ///
-    /// # Arguments
-    ///
-    /// * `scenario` - The scenario to execute
-    /// * `base_value` - The base portfolio value
-    /// * `pricer` - Function to compute stressed value given scenario name
-    ///
-    /// # Returns
-    ///
-    /// The scenario result with P&L.
     pub fn execute_scenario<F>(
         &mut self,
         scenario: &Scenario<T>,
@@ -162,15 +137,6 @@ impl<T: Float> ScenarioEngine<T> {
     }
 
     /// Execute all registered scenarios.
-    ///
-    /// # Arguments
-    ///
-    /// * `base_value` - The base portfolio value
-    /// * `pricer` - Function to compute stressed value given scenario name
-    ///
-    /// # Returns
-    ///
-    /// Vector of scenario results.
     pub fn execute_all<F>(&mut self, base_value: T, pricer: F) -> Vec<ScenarioResult<T>>
     where
         F: Fn(&str) -> T,
@@ -212,10 +178,6 @@ mod tests {
         super::shifts::{BumpScenario, RiskFactorShift},
         *,
     };
-
-    // ================================================================
-    // Task 11.4: ScenarioEngine tests (TDD)
-    // ================================================================
 
     #[test]
     fn test_scenario_pnl_new() {
@@ -264,8 +226,8 @@ mod tests {
         let pnl = ScenarioPnL::new("Test", 100.0_f64, 90.0);
         let mut result = ScenarioResult::new("Test", pnl);
 
-        result.add_trade_pnl("T001", ScenarioPnL::new("Test", 50.0, 48.0)); // PnL = -2
-        result.add_trade_pnl("T002", ScenarioPnL::new("Test", 50.0, 45.0)); // PnL = -5
+        result.add_trade_pnl("T001", ScenarioPnL::new("Test", 50.0, 48.0));
+        result.add_trade_pnl("T002", ScenarioPnL::new("Test", 50.0, 45.0));
 
         let worst = result.worst_trade_pnl().unwrap();
         assert!((worst.pnl - (-5.0)).abs() < 1e-10);
@@ -293,7 +255,6 @@ mod tests {
         let bumps = BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
         let scenario = Scenario::named("IR +1bp", bumps);
 
-        // Simple pricer that returns base - 1000 for any scenario
         let result = engine.execute_scenario(&scenario, 1_000_000.0, |_name| 999_000.0);
 
         assert_eq!(result.scenario_name, "IR +1bp");
@@ -340,9 +301,9 @@ mod tests {
 
         engine.execute_all(1_000_000.0, |name| {
             if name == "Small" {
-                999_000.0 // -1K loss
+                999_000.0
             } else {
-                900_000.0 // -100K loss
+                900_000.0
             }
         });
 

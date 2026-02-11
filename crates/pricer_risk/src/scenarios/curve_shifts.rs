@@ -23,8 +23,11 @@ pub enum CurveShiftError {
 /// Specification for a curve shift operation.
 #[derive(Clone, Debug, Serialize)]
 pub struct CurveShiftSpec {
+    /// Name of the curve to shift.
     pub curve_name: String,
+    /// Type of shift to apply.
     pub shift_type: CurveShiftType,
+    /// Reference tenor for twist/butterfly (years).
     pub pivot_tenor: Option<f64>,
 }
 
@@ -36,20 +39,27 @@ pub enum CurveShiftType {
 
     /// Linear twist (steepening/flattening).
     Twist {
+        /// Shift for short end.
         short_shift: f64,
+        /// Shift for long end.
         long_shift: f64,
     },
 
     /// Butterfly shift (curvature).
     Butterfly {
+        /// Shift for short and long ends.
         wing_shift: f64,
+        /// Shift for middle (belly).
         belly_shift: f64,
+        /// Belly tenor (default 5Y).
         belly_tenor: f64,
     },
 
     /// Custom tenor-specific shifts.
     TenorSpecific {
+        /// Tenors in years.
         tenors: Vec<f64>,
+        /// Shift amounts for each tenor.
         shifts: Vec<f64>,
     },
 }

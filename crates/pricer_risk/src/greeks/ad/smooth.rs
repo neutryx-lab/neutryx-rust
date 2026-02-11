@@ -5,7 +5,8 @@ use num_traits::Float;
 /// Default smoothing parameter (epsilon).
 pub const DEFAULT_EPSILON: f64 = 1e-6;
 
-/// Smooth approximation of `max(a, b)` using `(a + b + sqrt((a-b)^2 + e^2)) / 2`.
+/// Smooth approximation of `max(a, b)` using `(a + b + sqrt((a-b)^2 + e^2)) /
+/// 2`.
 #[inline]
 pub fn smooth_max<T: Float>(a: T, b: T, epsilon: T) -> T {
     let diff = a - b;

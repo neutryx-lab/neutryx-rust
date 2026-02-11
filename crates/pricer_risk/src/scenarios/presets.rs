@@ -1,19 +1,10 @@
 //! Preset scenarios for common stress tests.
-//!
-//! Provides ready-to-use scenarios for typical risk analysis:
-//! - Parallel rate shifts (+1bp, +10bp, +100bp)
-//! - Twist scenarios (steepening/flattening)
-//! - Butterfly scenarios (curvature)
 
 use pricer_core::traits::{risk::ShiftType, Float};
 
 use super::shifts::{BumpScenario, RiskFactorShift, Scenario};
 
 /// Types of preset scenarios.
-///
-/// # Requirements
-///
-/// - Requirements: 10.5
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum PresetScenarioType {
     /// Interest rate +1bp parallel shift
@@ -117,10 +108,6 @@ impl PresetScenarioType {
 }
 
 /// Generator for preset scenarios.
-///
-/// # Requirements
-///
-/// - Requirements: 10.5
 #[derive(Clone, Debug, Default)]
 pub struct PresetScenario<T: Float> {
     _phantom: std::marker::PhantomData<T>,
@@ -160,7 +147,6 @@ impl<T: Float> PresetScenario<T> {
         self.generate_all(&PresetScenarioType::stress_scenarios())
     }
 
-    /// Create bump scenario for a preset.
     fn create_bumps(&self, preset: PresetScenarioType) -> BumpScenario<T> {
         match preset {
             PresetScenarioType::RateUp1bp => {
@@ -269,10 +255,6 @@ impl<T: Float> PresetScenario<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ================================================================
-    // Task 11.5: Preset scenarios tests (TDD)
-    // ================================================================
 
     #[test]
     fn test_preset_scenario_type_name() {

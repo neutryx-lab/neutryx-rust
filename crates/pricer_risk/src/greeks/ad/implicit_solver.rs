@@ -107,16 +107,13 @@ impl ImplicitSolver {
         F: Fn(&DVector<T>) -> T,
     {
         match jacobian_inverse {
-            Some(j_inv) => {
-                match Self::compute_curve_sensitivities(j_inv, adjoint_x) {
-                    Ok(sens) => (sens, false),
-                    Err(_) => {
-                        let sens =
-                            Self::compute_curve_sensitivities_fd(loss_fn, curve_nodes, epsilon);
-                        (sens, true)
-                    }
+            Some(j_inv) => match Self::compute_curve_sensitivities(j_inv, adjoint_x) {
+                Ok(sens) => (sens, false),
+                Err(_) => {
+                    let sens = Self::compute_curve_sensitivities_fd(loss_fn, curve_nodes, epsilon);
+                    (sens, true)
                 }
-            }
+            },
             None => {
                 let sens = Self::compute_curve_sensitivities_fd(loss_fn, curve_nodes, epsilon);
                 (sens, true)
@@ -322,17 +319,12 @@ mod tests {
             n,
             n,
             &[
-                0.98, 0.01, 0.00, 0.00, 0.00,
-                0.01, 0.96, 0.02, 0.00, 0.00,
-                0.00, 0.02, 0.95, 0.02, 0.00,
-                0.00, 0.00, 0.02, 0.94, 0.03,
-                0.00, 0.00, 0.00, 0.03, 0.93,
+                0.98, 0.01, 0.00, 0.00, 0.00, 0.01, 0.96, 0.02, 0.00, 0.00, 0.00, 0.02, 0.95, 0.02,
+                0.00, 0.00, 0.00, 0.02, 0.94, 0.03, 0.00, 0.00, 0.00, 0.03, 0.93,
             ],
         );
 
-        let portfolio_dv01_to_nodes = DVector::from_vec(vec![
-            500.0, 300.0, 200.0, 150.0, 100.0,
-        ]);
+        let portfolio_dv01_to_nodes = DVector::from_vec(vec![500.0, 300.0, 200.0, 150.0, 100.0]);
 
         let market_dv01 = ImplicitSolver::compute_curve_sensitivities(
             &calibration_jacobian_inverse,
@@ -366,14 +358,7 @@ mod tests {
 
     #[test]
     fn test_financial_interpretation_of_sensitivities() {
-        let jacobian_inverse = DMatrix::from_row_slice(
-            2,
-            2,
-            &[
-                0.99, 0.0,
-                0.01, 0.98,
-            ],
-        );
+        let jacobian_inverse = DMatrix::from_row_slice(2, 2, &[0.99, 0.0, 0.01, 0.98]);
 
         let adjoint_x = DVector::from_vec(vec![100.0, 50.0]);
 
@@ -414,15 +399,7 @@ mod tests {
     fn test_implicit_vs_fd_accuracy_quadratic_with_non_identity_jacobian() {
         let n = 3;
 
-        let a = DMatrix::from_row_slice(
-            n,
-            n,
-            &[
-                2.0, 0.5, 0.1,
-                0.5, 3.0, 0.2,
-                0.1, 0.2, 4.0,
-            ],
-        );
+        let a = DMatrix::from_row_slice(n, n, &[2.0, 0.5, 0.1, 0.5, 3.0, 0.2, 0.1, 0.2, 4.0]);
 
         let nodes = DVector::from_vec(vec![1.0, 2.0, 3.0]);
         let adjoint = 2.0 * &a * &nodes;
@@ -485,17 +462,12 @@ mod tests {
             n,
             n,
             &[
-                0.98, 0.01, 0.00, 0.00, 0.00,
-                0.01, 0.96, 0.02, 0.00, 0.00,
-                0.00, 0.02, 0.95, 0.02, 0.00,
-                0.00, 0.00, 0.02, 0.94, 0.03,
-                0.00, 0.00, 0.00, 0.03, 0.93,
+                0.98, 0.01, 0.00, 0.00, 0.00, 0.01, 0.96, 0.02, 0.00, 0.00, 0.00, 0.02, 0.95, 0.02,
+                0.00, 0.00, 0.00, 0.02, 0.94, 0.03, 0.00, 0.00, 0.00, 0.03, 0.93,
             ],
         );
 
-        let portfolio_dv01_to_nodes = DVector::from_vec(vec![
-            500.0, 300.0, 200.0, 150.0, 100.0,
-        ]);
+        let portfolio_dv01_to_nodes = DVector::from_vec(vec![500.0, 300.0, 200.0, 150.0, 100.0]);
 
         let market_dv01 = ImplicitSolver::compute_curve_sensitivities(
             &calibration_jacobian_inverse,
@@ -509,7 +481,11 @@ mod tests {
         let j_inv_t = calibration_jacobian_inverse.transpose();
         let expected = &j_inv_t * &portfolio_dv01_to_nodes;
         for i in 0..3 {
-            assert_relative_eq!(market_dv01.market_sensitivities[i], expected[i], epsilon = 1e-10);
+            assert_relative_eq!(
+                market_dv01.market_sensitivities[i],
+                expected[i],
+                epsilon = 1e-10
+            );
         }
     }
 }

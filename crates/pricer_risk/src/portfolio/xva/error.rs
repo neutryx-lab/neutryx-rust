@@ -32,7 +32,9 @@ pub enum XvaError {
     /// Time grid mismatch between exposure profiles.
     #[error("Time grid mismatch: expected {expected} points, got {actual}")]
     TimeGridMismatch {
+        /// Expected number of time points.
         expected: usize,
+        /// Actual number of time points.
         actual: usize,
     },
 
@@ -43,7 +45,9 @@ pub enum XvaError {
     /// Discount factor mismatch with time grid.
     #[error("Discount factor count ({actual}) doesn't match time grid ({expected})")]
     DiscountFactorMismatch {
+        /// Expected count.
         expected: usize,
+        /// Actual count.
         actual: usize,
     },
 }

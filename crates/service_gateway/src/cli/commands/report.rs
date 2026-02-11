@@ -12,7 +12,9 @@ pub fn run(report_type: &str, portfolio: &str, output_dir: &str) -> Result<(), S
     info!("  Output directory: {}", output_dir);
 
     if !std::path::Path::new(portfolio).exists() {
-        return Err(ServerError::FileNotFound(portfolio.to_string()));
+        return Err(ServerError::NotFound(format!(
+            "File not found: {portfolio}"
+        )));
     }
 
     std::fs::create_dir_all(output_dir)?;
@@ -28,7 +30,7 @@ pub fn run(report_type: &str, portfolio: &str, output_dir: &str) -> Result<(), S
             info!("Generating Greeks report...");
         }
         other => {
-            return Err(ServerError::InvalidArgument(format!(
+            return Err(ServerError::InvalidRequest(format!(
                 "Unknown report type: {other}. Supported: xva, exposure, greeks"
             )));
         }

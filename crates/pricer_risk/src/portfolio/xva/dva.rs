@@ -2,7 +2,8 @@
 
 use super::params::OwnCreditParams;
 
-/// Computes DVA for a netting set using trapezoidal integration: DVA = LGD_own * integral(ENE(t) * dPD_own(t)).
+/// Computes DVA for a netting set using trapezoidal integration: DVA = LGD_own
+/// * integral(ENE(t) * dPD_own(t)).
 pub fn compute_dva(ene: &[f64], time_grid: &[f64], own_credit: &OwnCreditParams) -> f64 {
     if time_grid.len() < 2 || ene.len() != time_grid.len() {
         return 0.0;
@@ -24,7 +25,8 @@ pub fn compute_dva(ene: &[f64], time_grid: &[f64], own_credit: &OwnCreditParams)
     dva.max(0.0)
 }
 
-/// Computes DVA with counterparty survival weighting for bilateral DVA calculations.
+/// Computes DVA with counterparty survival weighting for bilateral DVA
+/// calculations.
 pub fn compute_dva_with_survival(
     ene: &[f64],
     time_grid: &[f64],

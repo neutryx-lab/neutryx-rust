@@ -18,9 +18,13 @@ use crate::{
 /// Configuration for the RiskEngine.
 #[derive(Debug, Clone)]
 pub struct RiskEngineConfig {
+    /// Risk configuration.
     pub risk_config: RiskConfig,
+    /// Minimum trade count for parallel execution.
     pub parallel_threshold: usize,
+    /// Batch size for parallel processing.
     pub batch_size: usize,
+    /// Whether to continue processing on individual trade errors.
     pub continue_on_error: bool,
 }
 
@@ -469,7 +473,9 @@ impl RiskEngine {
 /// Result of Greeks calculation under a specific scenario.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ScenarioGreeksResult {
+    /// Scenario name.
     pub scenario_name: String,
+    /// Risk result under this scenario.
     pub result: RiskResult,
 }
 
@@ -487,7 +493,9 @@ impl ScenarioGreeksResult {
 /// Result of portfolio Greeks calculation under a specific scenario.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ScenarioPortfolioResult {
+    /// Scenario name.
     pub scenario_name: String,
+    /// Portfolio risk result under this scenario.
     pub result: PortfolioRiskResult,
 }
 

@@ -10,8 +10,11 @@ pub enum RiskError {
     /// Calculation failed for a specific trade.
     #[error("Calculation failed for trade '{trade_id}': {reason}")]
     CalculationFailed {
+        /// Trade identifier.
         trade_id: String,
+        /// Failure reason.
         reason: String,
+        /// Partially computed Greeks, if any.
         partial_results: Option<PartialGreeksResult>,
     },
 
@@ -24,8 +27,11 @@ pub enum RiskError {
         "Numerical instability: {description} (value: {value}, suggestion: {suggested_mitigation})"
     )]
     NumericalInstability {
+        /// Description of the instability.
         description: String,
+        /// Problematic value.
         value: f64,
+        /// Suggested mitigation.
         suggested_mitigation: String,
     },
 
@@ -53,10 +59,15 @@ pub enum RiskError {
 /// Partial Greeks result when calculation partially succeeded.
 #[derive(Debug, Clone)]
 pub struct PartialGreeksResult {
+    /// Delta sensitivity.
     pub delta: Option<f64>,
+    /// Gamma sensitivity.
     pub gamma: Option<f64>,
+    /// Vega sensitivity.
     pub vega: Option<f64>,
+    /// Theta sensitivity.
     pub theta: Option<f64>,
+    /// Rho sensitivity.
     pub rho: Option<f64>,
 }
 

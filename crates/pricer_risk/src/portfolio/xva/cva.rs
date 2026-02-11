@@ -2,7 +2,8 @@
 
 use crate::portfolio::CreditParams;
 
-/// Computes unilateral CVA for a netting set using trapezoidal integration: CVA = LGD * integral(EE(t) * dPD(t)).
+/// Computes unilateral CVA for a netting set using trapezoidal integration: CVA
+/// = LGD * integral(EE(t) * dPD(t)).
 pub fn compute_cva(ee: &[f64], time_grid: &[f64], credit_params: &CreditParams) -> f64 {
     if time_grid.len() < 2 || ee.len() != time_grid.len() {
         return 0.0;
@@ -24,7 +25,8 @@ pub fn compute_cva(ee: &[f64], time_grid: &[f64], credit_params: &CreditParams) 
     cva.max(0.0)
 }
 
-/// Computes CVA with survival probability weighting for bilateral CVA calculations.
+/// Computes CVA with survival probability weighting for bilateral CVA
+/// calculations.
 pub fn compute_cva_with_survival(
     ee: &[f64],
     time_grid: &[f64],

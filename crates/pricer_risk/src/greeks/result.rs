@@ -9,14 +9,23 @@ fn from_f64<T: Float>(value: f64) -> T { T::from(value).unwrap_or_else(|| T::zer
 /// for AD compatibility.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GreeksResult<T: Float> {
+    /// Calculated price.
     pub price: T,
+    /// Standard error of the price estimate.
     pub std_error: T,
+    /// Delta sensitivity.
     pub delta: Option<T>,
+    /// Vega sensitivity.
     pub vega: Option<T>,
+    /// Theta sensitivity.
     pub theta: Option<T>,
+    /// Rho sensitivity.
     pub rho: Option<T>,
+    /// Gamma sensitivity.
     pub gamma: Option<T>,
+    /// Vanna (cross-gamma) sensitivity.
     pub vanna: Option<T>,
+    /// Volga (vol-of-vol) sensitivity.
     pub volga: Option<T>,
 }
 

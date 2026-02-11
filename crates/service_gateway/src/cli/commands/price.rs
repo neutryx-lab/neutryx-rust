@@ -18,7 +18,9 @@ pub fn run(
     info!("  Output format: {}", format);
 
     if !std::path::Path::new(portfolio).exists() {
-        return Err(ServerError::FileNotFound(portfolio.to_string()));
+        return Err(ServerError::NotFound(format!(
+            "File not found: {portfolio}"
+        )));
     }
 
     match format {
@@ -37,7 +39,7 @@ pub fn run(
             println!("└────────────┴────────────┴────────────┘");
         }
         other => {
-            return Err(ServerError::InvalidArgument(format!(
+            return Err(ServerError::InvalidRequest(format!(
                 "Unknown format: {other}. Supported: json, csv, table"
             )));
         }

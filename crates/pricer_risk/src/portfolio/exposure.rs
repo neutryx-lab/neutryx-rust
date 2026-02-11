@@ -2,7 +2,8 @@
 
 use rayon::prelude::*;
 
-/// Exposure calculation utilities for computing standard exposure metrics from simulated portfolio values.
+/// Exposure calculation utilities for computing standard exposure metrics from
+/// simulated portfolio values.
 pub struct ExposureCalculator;
 
 impl ExposureCalculator {
@@ -28,7 +29,8 @@ impl ExposureCalculator {
             .collect()
     }
 
-    /// Computes time-weighted Expected Positive Exposure using trapezoidal integration: EPE = (1/T) * integral(EE(t) dt).
+    /// Computes time-weighted Expected Positive Exposure using trapezoidal
+    /// integration: EPE = (1/T) * integral(EE(t) dt).
     pub fn expected_positive_exposure(ee: &[f64], time_grid: &[f64]) -> f64 {
         if time_grid.len() < 2 || ee.len() != time_grid.len() {
             return ee.first().copied().unwrap_or(0.0);
@@ -48,7 +50,8 @@ impl ExposureCalculator {
         }
     }
 
-    /// Computes Potential Future Exposure at specified confidence level: PFE(t, alpha) = Quantile_alpha(max(V(t), 0)).
+    /// Computes Potential Future Exposure at specified confidence level: PFE(t,
+    /// alpha) = Quantile_alpha(max(V(t), 0)).
     pub fn potential_future_exposure(values: &[Vec<f64>], confidence: f64) -> Vec<f64> {
         if values.is_empty() {
             return Vec::new();
@@ -81,14 +84,16 @@ impl ExposureCalculator {
         pfe.iter().copied().fold(0.0_f64, |max, val| max.max(val))
     }
 
-    /// Computes gross and net exposure from trade values, returning (gross_exposure, net_exposure).
+    /// Computes gross and net exposure from trade values, returning
+    /// (gross_exposure, net_exposure).
     pub fn netting_benefit(trade_values: &[f64]) -> (f64, f64) {
         let gross: f64 = trade_values.iter().map(|v| v.abs()).sum();
         let net: f64 = trade_values.iter().sum::<f64>().max(0.0);
         (gross, net)
     }
 
-    /// Computes the netting benefit ratio: 1 - (net/gross), ranging from 0 (no benefit) to 1 (full benefit).
+    /// Computes the netting benefit ratio: 1 - (net/gross), ranging from 0 (no
+    /// benefit) to 1 (full benefit).
     pub fn netting_benefit_ratio(trade_values: &[f64]) -> f64 {
         let (gross, net) = Self::netting_benefit(trade_values);
         if gross > 0.0 {
@@ -98,7 +103,8 @@ impl ExposureCalculator {
         }
     }
 
-    /// Computes Effective Expected Positive Exposure (EEPE) using non-decreasing EE for regulatory capital.
+    /// Computes Effective Expected Positive Exposure (EEPE) using
+    /// non-decreasing EE for regulatory capital.
     pub fn effective_epe(ee: &[f64], time_grid: &[f64], maturity_time: f64) -> f64 {
         if time_grid.is_empty() || ee.is_empty() {
             return 0.0;
@@ -136,7 +142,8 @@ impl ExposureCalculator {
         }
     }
 
-    /// Computes Expected Negative Exposure at each time point: ENE(t) = E[max(-V(t), 0)], used for DVA.
+    /// Computes Expected Negative Exposure at each time point: ENE(t) =
+    /// E[max(-V(t), 0)], used for DVA.
     pub fn expected_negative_exposure(values: &[Vec<f64>]) -> Vec<f64> {
         if values.is_empty() {
             return Vec::new();

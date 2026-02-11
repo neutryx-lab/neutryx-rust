@@ -1,26 +1,21 @@
 //! XVA result structures.
-//!
-//! Provides structured result types for XVA calculations at
-//! netting set, counterparty, and portfolio levels.
 
 use crate::portfolio::{CounterpartyId, NettingSetId};
 
-/// XVA results for a single netting set.
-///
-/// Contains CVA, DVA, and FVA (FCA/FBA) for one netting set.
+/// XVA results for a single netting set (CVA, DVA, FCA, FBA).
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct NettingSetXva {
     /// Netting set identifier.
     pub netting_set_id: NettingSetId,
     /// Counterparty identifier.
     pub counterparty_id: CounterpartyId,
-    /// Credit Valuation Adjustment (always non-negative).
+    /// Credit Valuation Adjustment.
     pub cva: f64,
-    /// Debit Valuation Adjustment (always non-negative).
+    /// Debit Valuation Adjustment.
     pub dva: f64,
-    /// Funding Cost Adjustment (always non-negative).
+    /// Funding Cost Adjustment.
     pub fca: f64,
-    /// Funding Benefit Adjustment (always non-negative).
+    /// Funding Benefit Adjustment.
     pub fba: f64,
 }
 
@@ -44,20 +39,11 @@ impl NettingSetXva {
         }
     }
 
-    /// Returns the net Funding Valuation Adjustment.
-    ///
-    /// FVA = FCA - FBA
-    ///
-    /// Positive FVA represents a cost, negative represents a benefit.
+    /// Returns the net Funding Valuation Adjustment: FVA = FCA - FBA.
     #[inline]
     pub fn fva(&self) -> f64 { self.fca - self.fba }
 
-    /// Returns the total XVA impact.
-    ///
-    /// Total XVA = CVA - DVA + FVA
-    ///
-    /// This represents the total valuation adjustment to apply
-    /// to the risk-free price.
+    /// Returns the total XVA impact: CVA - DVA + FVA.
     #[inline]
     pub fn total_xva(&self) -> f64 { self.cva - self.dva + self.fva() }
 
@@ -66,10 +52,7 @@ impl NettingSetXva {
     pub fn bilateral_cva(&self) -> f64 { self.cva - self.dva }
 }
 
-/// Aggregated XVA results for a counterparty.
-///
-/// Contains the sum of XVA metrics across all netting sets
-/// with this counterparty.
+/// Aggregated XVA results for a counterparty across all netting sets.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct CounterpartyXva {
     /// Counterparty identifier.
@@ -124,10 +107,7 @@ impl CounterpartyXva {
     pub fn netting_set_count(&self) -> usize { self.netting_set_xvas.len() }
 }
 
-/// Portfolio-level XVA results.
-///
-/// Contains aggregated XVA metrics across all counterparties
-/// in the portfolio.
+/// Portfolio-level XVA results aggregated across all counterparties.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct PortfolioXva {
     /// Total CVA across all counterparties.
@@ -193,13 +173,13 @@ mod tests {
         let xva = NettingSetXva::new(
             NettingSetId::new("NS001"),
             CounterpartyId::new("CP001"),
-            100.0, // CVA
-            20.0,  // DVA
-            50.0,  // FCA
-            10.0,  // FBA
+            100.0,
+            20.0,
+            50.0,
+            10.0,
         );
 
-        assert_eq!(xva.fva(), 40.0); // FCA - FBA = 50 - 10
+        assert_eq!(xva.fva(), 40.0);
     }
 
     #[test]
@@ -207,13 +187,12 @@ mod tests {
         let xva = NettingSetXva::new(
             NettingSetId::new("NS001"),
             CounterpartyId::new("CP001"),
-            100.0, // CVA
-            20.0,  // DVA
-            50.0,  // FCA
-            10.0,  // FBA
+            100.0,
+            20.0,
+            50.0,
+            10.0,
         );
 
-        // Total = CVA - DVA + FVA = 100 - 20 + 40 = 120
         assert_eq!(xva.total_xva(), 120.0);
     }
 
@@ -228,7 +207,7 @@ mod tests {
             0.0,
         );
 
-        assert_eq!(xva.bilateral_cva(), 80.0); // CVA - DVA
+        assert_eq!(xva.bilateral_cva(), 80.0);
     }
 
     #[test]
@@ -298,7 +277,6 @@ mod tests {
             by_counterparty: vec![],
         };
 
-        // Total = 100 - 30 + (40 - 10) = 100
         assert_eq!(portfolio.total_xva(), 100.0);
     }
 

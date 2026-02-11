@@ -11,7 +11,9 @@ pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<
     info!("  Model type: {}", model_type);
 
     if !std::path::Path::new(market_data).exists() {
-        return Err(ServerError::FileNotFound(market_data.to_string()));
+        return Err(ServerError::NotFound(format!(
+            "File not found: {market_data}"
+        )));
     }
 
     match model_type {
@@ -23,7 +25,7 @@ pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<
         }
         other => {
             warn!("Unknown model type: {}", other);
-            return Err(ServerError::InvalidArgument(format!(
+            return Err(ServerError::InvalidRequest(format!(
                 "Unknown model type: {other}. Supported: hull-white, cir"
             )));
         }

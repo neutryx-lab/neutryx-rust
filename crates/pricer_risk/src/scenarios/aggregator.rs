@@ -29,10 +29,15 @@ impl AggregationMethod {
 /// Portfolio-level Greeks container.
 #[derive(Clone, Debug)]
 pub struct PortfolioGreeks<T: Float> {
+    /// Delta sensitivity.
     pub delta: T,
+    /// Gamma sensitivity.
     pub gamma: T,
+    /// Vega sensitivity.
     pub vega: T,
+    /// Theta sensitivity.
     pub theta: T,
+    /// Rho sensitivity.
     pub rho: T,
     greeks_by_factor: HashMap<String, T>,
 }
@@ -184,9 +189,7 @@ impl<T: Float> GreeksAggregator<T> {
         match self.method {
             AggregationMethod::Simple => self.aggregate_simple(),
             AggregationMethod::NotionalWeighted => self.aggregate_notional_weighted(),
-            AggregationMethod::CorrelationAdjusted => {
-                self.aggregate_simple()
-            }
+            AggregationMethod::CorrelationAdjusted => self.aggregate_simple(),
         }
     }
 

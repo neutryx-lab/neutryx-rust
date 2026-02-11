@@ -1,6 +1,7 @@
 //! Funding Valuation Adjustment (FVA) calculation.
 
-/// Computes Funding Cost Adjustment (FCA): the cost of funding positive exposure via trapezoidal integration.
+/// Computes Funding Cost Adjustment (FCA): the cost of funding positive
+/// exposure via trapezoidal integration.
 pub fn compute_fca(
     ee: &[f64],
     time_grid: &[f64],
@@ -27,7 +28,8 @@ pub fn compute_fca(
     fca.max(0.0)
 }
 
-/// Computes Funding Benefit Adjustment (FBA): the benefit of investing negative exposure via trapezoidal integration.
+/// Computes Funding Benefit Adjustment (FBA): the benefit of investing negative
+/// exposure via trapezoidal integration.
 pub fn compute_fba(
     ene: &[f64],
     time_grid: &[f64],

@@ -2,7 +2,8 @@
 
 use crate::portfolio::NettingSetId;
 
-/// SoA representation of exposure profiles for efficient XVA calculations across time and netting sets.
+/// SoA representation of exposure profiles for efficient XVA calculations
+/// across time and netting sets.
 #[derive(Debug, Clone)]
 pub struct ExposureSoA {
     time_grid: Vec<f64>,
