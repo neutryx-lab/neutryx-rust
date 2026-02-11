@@ -6,7 +6,7 @@ use adapter_loader::{parse_instruments, InstrumentSpec};
 use infra_domain::time::parse_tenor_to_years;
 use pricer_models::{
     builder::{
-        vol::{SliceCalibrationConfig, VolCubeBuilder},
+        vol::{SliceCalibrationConfig, VolBuilder, VolCubeBuilder},
         BootstrapConfig, CurveBootstrapper,
     },
     market::{BootstrapInterpolation, YieldCurve},

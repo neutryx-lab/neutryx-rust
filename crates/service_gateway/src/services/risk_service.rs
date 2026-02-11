@@ -168,20 +168,7 @@ mod tests {
     use chrono::Utc;
 
     use super::*;
-    use crate::state::{AppStateConfig, PortfolioEntry};
-
-    fn create_test_state() -> Arc<AppState> {
-        let config = AppStateConfig {
-            curve_cache_size: 10,
-            fxvol_cache_size: 5,
-            portfolio_cache_size: 10,
-            #[cfg(feature = "models")]
-            model_cache_size: 10,
-            #[cfg(feature = "volatility")]
-            vol_surface_cache_size: 10,
-        };
-        Arc::new(AppState::with_config(config))
-    }
+    use crate::state::PortfolioEntry;
 
     fn create_portfolio(state: &Arc<AppState>, trade_count: usize) -> String {
         let entry = PortfolioEntry {
@@ -195,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_compute_greeks_success() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let portfolio_id = create_portfolio(&state, 5);
 
         let request = GreeksRequest {
@@ -215,7 +202,7 @@ mod tests {
 
     #[test]
     fn test_compute_greeks_portfolio_not_found() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = GreeksRequest {
             portfolio_id: uuid::Uuid::new_v4().to_string(),
@@ -231,7 +218,7 @@ mod tests {
 
     #[test]
     fn test_run_scenarios_preset() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let portfolio_id = create_portfolio(&state, 3);
 
         let request = ScenarioRequest {
@@ -261,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_run_scenarios_custom() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let portfolio_id = create_portfolio(&state, 2);
 
         let request = ScenarioRequest {
@@ -284,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_run_scenarios_empty() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let portfolio_id = create_portfolio(&state, 1);
 
         let request = ScenarioRequest {
@@ -302,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_run_scenarios_portfolio_not_found() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = ScenarioRequest {
             portfolio_id: uuid::Uuid::new_v4().to_string(),

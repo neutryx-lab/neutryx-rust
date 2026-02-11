@@ -451,27 +451,11 @@ impl VolatilityService {
 #[cfg(all(test, feature = "volatility"))]
 mod tests {
     use super::*;
-    use crate::{
-        rest::dto::{VolQuoteDto, VolQuoteTypeDto},
-        state::AppStateConfig,
-    };
-
-    fn create_test_state() -> Arc<AppState> {
-        let config = AppStateConfig {
-            curve_cache_size: 10,
-            fxvol_cache_size: 5,
-            #[cfg(feature = "risk")]
-            portfolio_cache_size: 10,
-            #[cfg(feature = "models")]
-            model_cache_size: 10,
-            vol_surface_cache_size: 10,
-        };
-        Arc::new(AppState::with_config(config))
-    }
+    use crate::rest::dto::{VolQuoteDto, VolQuoteTypeDto};
 
     #[test]
     fn test_build_fx_vol_surface() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = BuildFxVolSurfaceRequest {
             currency_pair: "USDJPY".to_string(),
@@ -511,7 +495,7 @@ mod tests {
 
     #[test]
     fn test_build_fx_vol_surface_empty_quotes() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = BuildFxVolSurfaceRequest {
             currency_pair: "EURUSD".to_string(),
@@ -528,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_build_vol_cube() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = BuildVolCubeRequest {
             index: "USD-SOFR".to_string(),
@@ -550,7 +534,7 @@ mod tests {
 
     #[test]
     fn test_get_implied_vol() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let build_request = BuildFxVolSurfaceRequest {
             currency_pair: "USDJPY".to_string(),
@@ -586,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_get_implied_vol_not_found() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = GetImpliedVolRequest {
             expiry: 0.5,

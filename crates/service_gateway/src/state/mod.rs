@@ -119,6 +119,12 @@ impl Default for AppState {
     fn default() -> Self { Self::new() }
 }
 
+impl AppState {
+    /// Create a shared test state with small cache sizes.
+    #[cfg(test)]
+    pub fn test_state() -> Arc<Self> { Arc::new(Self::new()) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

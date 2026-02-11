@@ -219,20 +219,7 @@ impl PortfolioService {
 #[cfg(all(test, feature = "risk"))]
 mod tests {
     use super::*;
-    use crate::{rest::dto::TradeDto, state::AppStateConfig};
-
-    fn create_test_state() -> Arc<AppState> {
-        let config = AppStateConfig {
-            curve_cache_size: 10,
-            fxvol_cache_size: 5,
-            portfolio_cache_size: 10,
-            #[cfg(feature = "models")]
-            model_cache_size: 10,
-            #[cfg(feature = "volatility")]
-            vol_surface_cache_size: 10,
-        };
-        Arc::new(AppState::with_config(config))
-    }
+    use crate::rest::dto::TradeDto;
 
     fn create_test_trade(id: &str) -> TradeDto {
         TradeDto {
@@ -249,7 +236,7 @@ mod tests {
 
     #[test]
     fn test_create_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = CreatePortfolioRequest {
             name: Some("Test Portfolio".to_string()),
@@ -266,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_get_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreatePortfolioRequest {
             name: Some("Test Portfolio".to_string()),
@@ -286,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_get_portfolio_not_found() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let result = PortfolioService::get_portfolio(&uuid::Uuid::new_v4().to_string(), &state);
 
@@ -296,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_add_trades() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreatePortfolioRequest {
             name: Some("Test".to_string()),
@@ -319,7 +306,7 @@ mod tests {
 
     #[test]
     fn test_delete_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreatePortfolioRequest {
             name: None,
@@ -338,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_price_portfolio() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreatePortfolioRequest {
             name: None,
@@ -359,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_compute_portfolio_greeks() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreatePortfolioRequest {
             name: None,

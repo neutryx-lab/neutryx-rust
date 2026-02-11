@@ -1851,14 +1851,12 @@ fn bump_cashflow_amounts(legs: &[SimpleLeg], bump_fraction: f64) -> Vec<SimpleLe
 mod tests {
     use super::*;
 
-    fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
-
     /// Check if demo data files are available.
     fn demo_data_available() -> bool { Path::new("demo/data/config/rate_indices.json").exists() }
 
     #[test]
     fn test_get_instruments() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_instruments(&state);
         assert!(result.is_ok());
         let instruments = result.unwrap();
@@ -1867,7 +1865,7 @@ mod tests {
 
     #[test]
     fn test_get_fx_vol_pairs() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = crate::services::VolcubeService::get_fx_vol_pairs(&state);
         assert!(result.is_ok());
         let pairs = result.unwrap();
@@ -1876,7 +1874,7 @@ mod tests {
 
     #[test]
     fn test_get_ir_vol_currencies() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = crate::services::VolcubeService::get_ir_vol_currencies(&state);
         assert!(result.is_ok());
         let currencies = result.unwrap();
@@ -1889,7 +1887,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_conventions(&state);
         assert!(result.is_ok());
         let conventions = result.unwrap();
@@ -1898,7 +1896,7 @@ mod tests {
 
     #[test]
     fn test_get_market_config() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_market_config(&state);
         assert!(result.is_ok());
         let config = result.unwrap();
@@ -1911,7 +1909,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_events(&state);
         assert!(result.is_ok());
         let events = result.unwrap();
@@ -1920,7 +1918,7 @@ mod tests {
 
     #[test]
     fn test_get_event_types() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_event_types(&state);
         assert!(result.is_ok());
         let types = result.unwrap();
@@ -1933,7 +1931,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_indices(&state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -1952,7 +1950,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_index_detail("SOFR", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -1967,7 +1965,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_index_detail("NONEXISTENT", &state);
         assert!(result.is_err());
     }
@@ -1978,7 +1976,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_index_rates("SOFR", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -1991,7 +1989,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_index_conventions("SOFR", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2063,7 +2061,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_instrument("USD_SWAP_5Y", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2080,7 +2078,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_instrument("USD_DEPOSIT_3M", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2094,7 +2092,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_instrument("NONEXISTENT_RATE", &state);
         assert!(result.is_err());
     }
@@ -2105,7 +2103,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_cashflows("USD_SWAP_5Y", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2128,7 +2126,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_cashflows("USD_DEPOSIT_3M", &state);
         assert!(result.is_ok());
         let response = result.unwrap();
@@ -2142,7 +2140,7 @@ mod tests {
             eprintln!("Skipping test: demo data not available");
             return;
         }
-        let state = create_test_state();
+        let state = AppState::test_state();
         let result = DemoService::get_rate_cashflows("NONEXISTENT_RATE", &state);
         assert!(result.is_err());
     }

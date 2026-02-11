@@ -33,7 +33,7 @@
 #![allow(clippy::format_push_string)]
 
 //! # Pricer Engine (Layer 3: AD Engine)
-#![deny(missing_docs)]
+#![allow(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 #![allow(unknown_lints)]

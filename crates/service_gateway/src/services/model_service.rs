@@ -487,27 +487,11 @@ fn erf(x: f64) -> f64 {
 #[cfg(all(test, feature = "models"))]
 mod tests {
     use super::*;
-    use crate::{
-        rest::dto::{GbmParamsDto, HestonParamsDto},
-        state::AppStateConfig,
-    };
-
-    fn create_test_state() -> Arc<AppState> {
-        let config = AppStateConfig {
-            curve_cache_size: 10,
-            fxvol_cache_size: 5,
-            #[cfg(feature = "risk")]
-            portfolio_cache_size: 10,
-            model_cache_size: 10,
-            #[cfg(feature = "volatility")]
-            vol_surface_cache_size: 10,
-        };
-        Arc::new(AppState::with_config(config))
-    }
+    use crate::rest::dto::{GbmParamsDto, HestonParamsDto};
 
     #[test]
     fn test_create_gbm_model() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = CreateModelRequest::Gbm {
             name: Some("Test GBM".to_string()),
@@ -526,7 +510,7 @@ mod tests {
 
     #[test]
     fn test_create_heston_model() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = CreateModelRequest::Heston {
             name: None,
@@ -547,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_create_model_invalid_params() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let request = CreateModelRequest::Gbm {
             name: None,
@@ -567,7 +551,7 @@ mod tests {
 
     #[test]
     fn test_get_model() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreateModelRequest::Gbm {
             name: Some("Test".to_string()),
@@ -586,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_get_model_not_found() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let result = ModelService::get_model(&uuid::Uuid::new_v4().to_string(), &state);
         assert!(result.is_err());
@@ -595,7 +579,7 @@ mod tests {
 
     #[test]
     fn test_price_vanilla_option() {
-        let state = create_test_state();
+        let state = AppState::test_state();
 
         let create_request = CreateModelRequest::Gbm {
             name: None,

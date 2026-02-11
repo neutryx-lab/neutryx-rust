@@ -438,8 +438,6 @@ impl CurveService {
 mod tests {
     use super::*;
 
-    fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
-
     fn inst(itype: &str, tenor: &str, rate: f64) -> CurveInstrumentInput {
         CurveInstrumentInput {
             instrument_type: itype.to_string(),
@@ -480,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_build_simple_curve() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let request = build_req(
             None,
             vec![
@@ -504,7 +502,7 @@ mod tests {
 
     #[test]
     fn test_build_curve_with_event() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let request = build_req(
             Some("2026-01-29"),
             vec![
@@ -524,7 +522,7 @@ mod tests {
 
     #[test]
     fn test_build_curve_with_turn_event() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let request = build_req(
             Some("2026-01-29"),
             vec![
@@ -577,7 +575,7 @@ mod tests {
 
     #[test]
     fn test_forward_rate_shift_no_spike() {
-        let state = create_test_state();
+        let state = AppState::test_state();
         let request = build_req(
             Some("2026-01-29"),
             vec![

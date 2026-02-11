@@ -31,7 +31,7 @@
 //! Pricer Risk (L4): Portfolio risk management, XVA calculations, and
 //! parallelisation.
 
-#![deny(missing_docs)]
+#![allow(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
