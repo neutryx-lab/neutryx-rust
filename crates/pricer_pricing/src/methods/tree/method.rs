@@ -34,9 +34,6 @@ pub struct TreePricingResult {
 }
 
 /// Tree-based pricing method.
-///
-/// Provides a high-level interface for pricing options using binomial
-/// or trinomial trees.
 #[derive(Debug, Clone)]
 pub struct TreeMethod {
     config: TreeConfig,
@@ -53,20 +50,6 @@ impl TreeMethod {
     pub fn config(&self) -> &TreeConfig { &self.config }
 
     /// Prices a vanilla option.
-    ///
-    /// # Arguments
-    ///
-    /// * `spot` - Current spot price
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiry in years
-    /// * `rate` - Risk-free rate (annualized)
-    /// * `volatility` - Volatility (annualized)
-    /// * `is_call` - True for call, false for put
-    /// * `is_american` - True for American, false for European
-    ///
-    /// # Errors
-    ///
-    /// Returns `PricingError` if pricing fails.
     pub fn price(
         &self,
         spot: f64,
@@ -156,14 +139,6 @@ impl TreeMethod {
     }
 
     /// Computes only Greeks (without full pricing result).
-    ///
-    /// # Arguments
-    ///
-    /// Same as `price()`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `PricingError` if computation fails.
     pub fn compute_greeks(
         &self,
         spot: f64,
@@ -219,8 +194,6 @@ impl TreeMethod {
     }
 
     /// Checks if this method supports the given parameters.
-    ///
-    /// Currently only vanilla options (call/put) are supported.
     pub fn supports_vanilla(&self) -> bool { true }
 }
 
@@ -249,7 +222,6 @@ mod tests {
 
         assert!(result.is_ok());
         let result = result.unwrap();
-        // ATM European call should be around 10-12 for these params
         assert!(result.pv > 8.0 && result.pv < 15.0);
         assert!(result.greeks.is_some());
         assert!(result.computation_time_ns > 0);
@@ -267,7 +239,6 @@ mod tests {
         let greeks = result.greeks.unwrap();
         assert!(greeks.delta.is_some());
         assert!(greeks.gamma.is_some());
-        // Put delta should be negative
         assert!(greeks.delta.unwrap() < 0.0);
     }
 
@@ -304,9 +275,7 @@ mod tests {
 
         assert!(greeks.delta.is_some());
         assert!(greeks.gamma.is_some());
-        // Call delta should be positive
         assert!(greeks.delta.unwrap() > 0.0);
-        // Gamma should be positive
         assert!(greeks.gamma.unwrap() > 0.0);
     }
 
@@ -322,7 +291,6 @@ mod tests {
         let result = method.price(100.0, 100.0, 1.0, 0.05, 0.2, true, false);
         assert!(result.is_ok());
         let result = result.unwrap();
-        // ATM European call should be around 10-12 for these params
         assert!(result.pv > 8.0 && result.pv < 15.0);
         assert_eq!(result.tree_type, TreeType::Trinomial);
         assert!(result.greeks.is_some());
@@ -344,9 +312,7 @@ mod tests {
 
         assert!(greeks.delta.is_some());
         assert!(greeks.gamma.is_some());
-        // Call delta should be positive
         assert!(greeks.delta.unwrap() > 0.0);
-        // Gamma should be positive
         assert!(greeks.gamma.unwrap() > 0.0);
     }
 

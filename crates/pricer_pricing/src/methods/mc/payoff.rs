@@ -1,24 +1,4 @@
 //! Smooth payoff functions for Monte Carlo pricing.
-//!
-//! This module provides differentiable payoff functions using smooth
-//! approximations to discontinuous max/min operations. Smoothing is
-//! essential for Enzyme automatic differentiation.
-//!
-//! # Smooth Approximations
-//!
-//! The soft-plus function approximates `max(x, 0)`:
-//! ```text
-//! softplus(x, ε) = ε × ln(1 + exp(x/ε))
-//! ```
-//!
-//! As ε → 0, softplus converges to max. The gradient is the sigmoid function.
-//!
-//! # Enzyme Compatibility
-//!
-//! All functions use smooth operations only (no `if`, `max`, `min` on floats).
-//! This ensures Enzyme can compute gradients correctly.
-//!
-//! This module uses smoothing functions from `pricer_core::math::smoothing`.
 
 use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
 
@@ -35,18 +15,6 @@ pub enum PayoffType {
 }
 
 /// Parameters for payoff computation.
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::mc::{PayoffParams, PayoffType};
-///
-/// let params = PayoffParams {
-///     strike: 100.0,
-///     payoff_type: PayoffType::Call,
-///     smoothing_epsilon: 1e-4,
-/// };
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PayoffParams {
     /// Strike price.
@@ -54,9 +22,6 @@ pub struct PayoffParams {
     /// Payoff type (Call or Put).
     pub payoff_type: PayoffType,
     /// Smoothing epsilon for soft approximation.
-    ///
-    /// Smaller values give sharper payoff but may cause numerical issues.
-    /// Recommended: 1e-4 for typical option pricing.
     pub smoothing_epsilon: f64,
 }
 
@@ -100,103 +65,30 @@ impl PayoffParams {
 }
 
 /// Soft-plus function: smooth approximation of max(x, 0).
-///
-/// ```text
-/// softplus(x, ε) = ε × ln(1 + exp(x/ε))
-/// ```
-///
-/// Delegates to `pricer_core::math::smoothing::smooth_max(x, 0, ε)`.
-///
-/// # Arguments
-///
-/// * `x` - Input value
-/// * `epsilon` - Smoothing parameter (smaller = sharper)
-///
-/// # Returns
-///
-/// Smooth approximation of max(x, 0).
 #[inline]
 pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
-    // Delegate to pricer_core's smooth_max for consistency
     smooth_max(x, 0.0, epsilon)
 }
 
 /// Derivative of soft-plus: the sigmoid function.
-///
-/// ```text
-/// d/dx softplus(x, ε) = sigmoid(x/ε) = 1 / (1 + exp(-x/ε))
-/// ```
-///
-/// Delegates to `pricer_core::math::smoothing::smooth_indicator(x, ε)`.
-///
-/// # Arguments
-///
-/// * `x` - Input value
-/// * `epsilon` - Smoothing parameter
-///
-/// # Returns
-///
-/// Value in (0, 1), approximating the Heaviside step function.
 #[inline]
 pub fn soft_plus_derivative(x: f64, epsilon: f64) -> f64 {
-    // Delegate to pricer_core's smooth_indicator for consistency
     smooth_indicator(x, epsilon)
 }
 
 /// Computes smooth European call payoff.
-///
-/// ```text
-/// payoff = softplus(S - K, ε)
-/// ```
-///
-/// As ε → 0, converges to max(S - K, 0).
-///
-/// # Arguments
-///
-/// * `terminal_price` - Asset price at expiry
-/// * `strike` - Strike price
-/// * `epsilon` - Smoothing parameter
-///
-/// # Returns
-///
-/// Smooth call payoff (always >= 0).
 #[inline]
 pub fn european_call_smooth(terminal_price: f64, strike: f64, epsilon: f64) -> f64 {
     soft_plus(terminal_price - strike, epsilon)
 }
 
 /// Computes smooth European put payoff.
-///
-/// ```text
-/// payoff = softplus(K - S, ε)
-/// ```
-///
-/// As ε → 0, converges to max(K - S, 0).
-///
-/// # Arguments
-///
-/// * `terminal_price` - Asset price at expiry
-/// * `strike` - Strike price
-/// * `epsilon` - Smoothing parameter
-///
-/// # Returns
-///
-/// Smooth put payoff (always >= 0).
 #[inline]
 pub fn european_put_smooth(terminal_price: f64, strike: f64, epsilon: f64) -> f64 {
     soft_plus(strike - terminal_price, epsilon)
 }
 
 /// Computes payoff for a single path.
-///
-/// # Arguments
-///
-/// * `terminal_price` - Asset price at expiry
-/// * `params` - Payoff parameters
-///
-/// # Returns
-///
-/// Smooth payoff value.
 #[inline]
 pub fn compute_payoff(terminal_price: f64, params: PayoffParams) -> f64 {
     match params.payoff_type {
@@ -210,19 +102,6 @@ pub fn compute_payoff(terminal_price: f64, params: PayoffParams) -> f64 {
 }
 
 /// Computes payoffs for all paths in workspace.
-///
-/// Reads terminal prices from paths and writes payoff values.
-///
-/// # Arguments
-///
-/// * `workspace` - Workspace with generated paths
-/// * `params` - Payoff parameters
-/// * `n_paths` - Number of paths
-/// * `n_steps` - Number of steps (to locate terminal prices)
-///
-/// # Side Effects
-///
-/// Writes payoff values to `workspace.payoffs_mut()`.
 pub fn compute_payoffs(
     workspace: &mut PathWorkspace,
     params: PayoffParams,
@@ -239,19 +118,6 @@ pub fn compute_payoffs(
 }
 
 /// Computes smooth Asian arithmetic average call payoff.
-///
-/// The arithmetic average is computed from all path points,
-/// then the payoff is `softplus(avg - K, ε)`.
-///
-/// # Arguments
-///
-/// * `path` - Slice of price path (all time points)
-/// * `strike` - Strike price
-/// * `epsilon` - Smoothing parameter
-///
-/// # Returns
-///
-/// Smooth Asian call payoff.
 #[inline]
 pub fn asian_arithmetic_call_smooth(path: &[f64], strike: f64, epsilon: f64) -> f64 {
     if path.is_empty() {
@@ -262,16 +128,6 @@ pub fn asian_arithmetic_call_smooth(path: &[f64], strike: f64, epsilon: f64) -> 
 }
 
 /// Computes smooth Asian arithmetic average put payoff.
-///
-/// # Arguments
-///
-/// * `path` - Slice of price path (all time points)
-/// * `strike` - Strike price
-/// * `epsilon` - Smoothing parameter
-///
-/// # Returns
-///
-/// Smooth Asian put payoff.
 #[inline]
 pub fn asian_arithmetic_put_smooth(path: &[f64], strike: f64, epsilon: f64) -> f64 {
     if path.is_empty() {
@@ -289,14 +145,12 @@ mod tests {
 
     #[test]
     fn test_soft_plus_positive() {
-        // For large positive x, softplus(x) ≈ x
         let result = soft_plus(10.0, 0.01);
         assert_relative_eq!(result, 10.0, epsilon = 0.01);
     }
 
     #[test]
     fn test_soft_plus_negative() {
-        // For large negative x, softplus(x) ≈ 0
         let result = soft_plus(-10.0, 0.01);
         assert!(result < 0.01);
         assert!(result >= 0.0);
@@ -304,7 +158,6 @@ mod tests {
 
     #[test]
     fn test_soft_plus_at_zero() {
-        // softplus(0) = ε × ln(2) ≈ 0.693 × ε
         let epsilon = 1.0;
         let result = soft_plus(0.0, epsilon);
         assert_relative_eq!(result, 2.0_f64.ln(), epsilon = 1e-10);
@@ -312,35 +165,30 @@ mod tests {
 
     #[test]
     fn test_soft_plus_derivative_positive() {
-        // For large positive x, derivative ≈ 1
         let result = soft_plus_derivative(10.0, 0.01);
         assert_relative_eq!(result, 1.0, epsilon = 1e-6);
     }
 
     #[test]
     fn test_soft_plus_derivative_negative() {
-        // For large negative x, derivative ≈ 0
         let result = soft_plus_derivative(-10.0, 0.01);
         assert!(result < 1e-6);
     }
 
     #[test]
     fn test_soft_plus_derivative_at_zero() {
-        // At zero, derivative = 0.5
         let result = soft_plus_derivative(0.0, 1.0);
         assert_relative_eq!(result, 0.5, epsilon = 1e-10);
     }
 
     #[test]
     fn test_european_call_itm() {
-        // Deep ITM call: payoff ≈ S - K
         let payoff = european_call_smooth(110.0, 100.0, 1e-4);
         assert_relative_eq!(payoff, 10.0, epsilon = 0.01);
     }
 
     #[test]
     fn test_european_call_otm() {
-        // Deep OTM call: payoff ≈ 0
         let payoff = european_call_smooth(90.0, 100.0, 1e-4);
         assert!(payoff < 0.01);
         assert!(payoff >= 0.0);
@@ -348,7 +196,6 @@ mod tests {
 
     #[test]
     fn test_european_call_atm() {
-        // ATM call: payoff ≈ 0.693 × ε
         let epsilon = 1e-4;
         let payoff = european_call_smooth(100.0, 100.0, epsilon);
         let expected = epsilon * 2.0_f64.ln();
@@ -357,14 +204,12 @@ mod tests {
 
     #[test]
     fn test_european_put_itm() {
-        // Deep ITM put: payoff ≈ K - S
         let payoff = european_put_smooth(90.0, 100.0, 1e-4);
         assert_relative_eq!(payoff, 10.0, epsilon = 0.01);
     }
 
     #[test]
     fn test_european_put_otm() {
-        // Deep OTM put: payoff ≈ 0
         let payoff = european_put_smooth(110.0, 100.0, 1e-4);
         assert!(payoff < 0.01);
         assert!(payoff >= 0.0);
@@ -372,17 +217,14 @@ mod tests {
 
     #[test]
     fn test_put_call_parity_smooth() {
-        // Smooth put-call parity: call - put ≈ S - K for deep ITM/OTM
         let strike = 100.0;
         let epsilon = 1e-6;
 
-        // ITM case
         let s_itm = 120.0;
         let call_itm = european_call_smooth(s_itm, strike, epsilon);
         let put_itm = european_put_smooth(s_itm, strike, epsilon);
         assert_relative_eq!(call_itm - put_itm, s_itm - strike, epsilon = 0.01);
 
-        // OTM case
         let s_otm = 80.0;
         let call_otm = european_call_smooth(s_otm, strike, epsilon);
         let put_otm = european_put_smooth(s_otm, strike, epsilon);
@@ -420,7 +262,7 @@ mod tests {
     #[test]
     fn test_asian_call_smooth() {
         let path = vec![100.0, 105.0, 110.0, 115.0, 120.0];
-        let avg = 110.0; // (100+105+110+115+120)/5
+        let avg = 110.0;
         let payoff = asian_arithmetic_call_smooth(&path, 100.0, 1e-4);
         assert_relative_eq!(payoff, avg - 100.0, epsilon = 0.01);
     }
@@ -428,7 +270,7 @@ mod tests {
     #[test]
     fn test_asian_put_smooth() {
         let path = vec![100.0, 95.0, 90.0, 85.0, 80.0];
-        let avg = 90.0; // (100+95+90+85+80)/5
+        let avg = 90.0;
         let payoff = asian_arithmetic_put_smooth(&path, 100.0, 1e-4);
         assert_relative_eq!(payoff, 100.0 - avg, epsilon = 0.01);
     }
@@ -442,9 +284,6 @@ mod tests {
     }
 
     /// Tests for pricer_core integration (Phase 4, Task 1.2).
-    ///
-    /// These tests verify that the soft_plus function (which delegates to
-    /// pricer_core) produces consistent results.
     mod core_integration_tests {
         use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
 
@@ -454,20 +293,19 @@ mod tests {
         #[test]
         fn test_soft_plus_delegates_to_smooth_max() {
             let test_cases = [
-                (10.0, 0.01),  // Large positive
-                (-10.0, 0.01), // Large negative
-                (0.0, 1.0),    // At zero
-                (1.0, 1e-4),   // Small positive
-                (-1.0, 1e-4),  // Small negative
-                (100.0, 1e-6), // Very large positive
-                (0.5, 0.1),    // Intermediate
+                (10.0, 0.01),
+                (-10.0, 0.01),
+                (0.0, 1.0),
+                (1.0, 1e-4),
+                (-1.0, 1e-4),
+                (100.0, 1e-6),
+                (0.5, 0.1),
             ];
 
             for (x, epsilon) in test_cases {
                 let soft_plus_result = soft_plus(x, epsilon);
                 let smooth_max_result = smooth_max(x, 0.0, epsilon);
 
-                // Results should be identical since soft_plus delegates to smooth_max
                 assert_relative_eq!(soft_plus_result, smooth_max_result, epsilon = 1e-10);
             }
         }
@@ -504,17 +342,15 @@ mod tests {
         #[test]
         fn test_soft_plus_derivative_delegates_to_smooth_indicator() {
             let test_cases = [
-                (10.0, 0.01),  // Large positive → ~1
-                (-10.0, 0.01), // Large negative → ~0
-                (0.0, 1.0),    // At zero → 0.5
+                (10.0, 0.01),
+                (-10.0, 0.01),
+                (0.0, 1.0),
             ];
 
             for (x, epsilon) in test_cases {
                 let deriv_result = soft_plus_derivative(x, epsilon);
                 let indicator_result = smooth_indicator(x, epsilon);
 
-                // Results should be identical since soft_plus_derivative delegates to
-                // smooth_indicator
                 assert_relative_eq!(deriv_result, indicator_result, epsilon = 1e-10);
             }
         }

@@ -1,17 +1,8 @@
 //! Configuration structures for Generic Pricer Engine.
-//!
-//! This module provides:
-//! - [`ModelConfig`]: Model selection and simulation parameters
-//! - [`PricerConfig`]: Pricer settings including Greeks mode and default
-//!   currency
 
 use infra_domain::market::Currency;
 
 use super::error::ConfigError;
-
-// =============================================================================
-// Greeks Configuration (local definitions)
-// =============================================================================
 
 /// Calculation mode for Greeks computation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
@@ -172,36 +163,6 @@ impl std::fmt::Display for GreeksConfigError {
 impl std::error::Error for GreeksConfigError {}
 
 /// Model configuration for Generic Pricer.
-///
-/// Contains model selection and simulation parameters (path count, steps,
-/// seed). Use [`ModelConfigBuilder`] for construction.
-///
-/// # Default Values
-///
-/// | Parameter | Default | Description |
-/// |-----------|---------|-------------|
-/// | `model` | `None` | Model selection (None = auto-select by instrument) |
-/// | `num_paths` | 10,000 | Number of Monte Carlo paths |
-/// | `num_steps` | 100 | Number of time steps per path |
-/// | `seed` | `None` | Random seed (None = non-deterministic) |
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_pricing::generic_pricer::ModelConfig;
-///
-/// // Use defaults
-/// let config = ModelConfig::default();
-/// assert_eq!(config.num_paths, 10_000);
-///
-/// // Use builder for custom values
-/// let config = ModelConfig::builder()
-///     .num_paths(50_000)
-///     .num_steps(200)
-///     .seed(42)
-///     .build()
-///     .unwrap();
-/// ```
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
     /// Number of Monte Carlo simulation paths.
@@ -229,10 +190,6 @@ impl ModelConfig {
     pub fn builder() -> ModelConfigBuilder { ModelConfigBuilder::default() }
 
     /// Validates the configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConfigError`] if any parameter is invalid.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.num_paths == 0 {
             return Err(ConfigError::invalid_model_parameter(
@@ -290,10 +247,6 @@ impl ModelConfigBuilder {
     }
 
     /// Builds the configuration, validating all parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConfigError`] if any parameter is invalid.
     pub fn build(self) -> Result<ModelConfig, ConfigError> {
         let config = ModelConfig {
             num_paths: self.num_paths.unwrap_or(10_000),
@@ -306,9 +259,6 @@ impl ModelConfigBuilder {
 }
 
 /// Default currency for standalone pricing (always available).
-///
-/// This type is always exported regardless of l1l2-integration feature.
-/// Use this for standalone pricing without full market data integration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr)]
 pub enum DefaultCurrency {
     /// US Dollar
@@ -326,8 +276,6 @@ pub enum DefaultCurrency {
 
 impl DefaultCurrency {
     /// Creates a currency from a string code.
-    ///
-    /// Returns USD for unknown codes.
     pub fn new(code: &str) -> Self {
         match code.to_uppercase().as_str() {
             "USD" => Self::USD,
@@ -335,7 +283,7 @@ impl DefaultCurrency {
             "GBP" => Self::GBP,
             "JPY" => Self::JPY,
             "CHF" => Self::CHF,
-            _ => Self::USD, // Default to USD for unknown codes
+            _ => Self::USD,
         }
     }
 
@@ -344,28 +292,6 @@ impl DefaultCurrency {
 }
 
 /// Pricer configuration for Generic Pricer.
-///
-/// Contains Greeks calculation settings and output preferences.
-/// Use [`PricerConfigBuilder`] for construction.
-///
-/// # Default Values
-///
-/// | Parameter | Default | Description |
-/// |-----------|---------|-------------|
-/// | `greeks_config` | `GreeksConfig::default()` | Greeks calculation settings |
-/// | `default_currency` | `Currency::USD` | Default reporting currency |
-/// | `use_thread_local_buffers` | `true` | Use thread-local buffer pool |
-///
-/// # Examples
-///
-/// ```rust,ignore
-/// use pricer_pricing::generic_pricer::{PricerConfig, GreeksMode};
-///
-/// let config = PricerConfig::builder()
-///     .use_thread_local_buffers(true)
-///     .build()
-///     .unwrap();
-/// ```
 #[derive(Debug, Clone)]
 pub struct PricerConfig {
     /// Greeks calculation configuration.
@@ -393,10 +319,6 @@ impl PricerConfig {
     pub fn builder() -> PricerConfigBuilder { PricerConfigBuilder::default() }
 
     /// Validates the configuration.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConfigError`] if any parameter is invalid.
     pub fn validate(&self) -> Result<(), ConfigError> {
         self.greeks_config
             .validate()
@@ -441,10 +363,6 @@ impl PricerConfigBuilder {
     }
 
     /// Builds the configuration, validating all parameters.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ConfigError`] if any parameter is invalid.
     pub fn build(self) -> Result<PricerConfig, ConfigError> {
         let config = PricerConfig {
             greeks_config: self.greeks_config.unwrap_or_default(),
@@ -459,10 +377,6 @@ impl PricerConfigBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // ModelConfig Tests (Task 2.1)
-    // =========================================================================
 
     #[test]
     fn test_model_config_default() {
@@ -545,10 +459,6 @@ mod tests {
         assert_eq!(config1.seed, config2.seed);
     }
 
-    // =========================================================================
-    // PricerConfig Tests (Task 2.2)
-    // =========================================================================
-
     #[test]
     fn test_pricer_config_default() {
         let config = PricerConfig::default();
@@ -585,7 +495,6 @@ mod tests {
 
     #[test]
     fn test_pricer_config_validate_invalid_greeks() {
-        // Create invalid greeks config manually
         let mut pricer_config = PricerConfig::default();
         pricer_config.greeks_config.spot_bump_relative = -1.0;
 
@@ -606,13 +515,8 @@ mod tests {
         );
     }
 
-    // =========================================================================
-    // Validation Tests (Task 2.3)
-    // =========================================================================
-
     #[test]
     fn test_model_config_boundary_values() {
-        // Minimum valid values
         let config = ModelConfig::builder()
             .num_paths(1)
             .num_steps(1)
@@ -621,7 +525,6 @@ mod tests {
         assert_eq!(config.num_paths, 1);
         assert_eq!(config.num_steps, 1);
 
-        // Maximum valid values
         let config = ModelConfig::builder()
             .num_paths(10_000_000)
             .num_steps(10_000)

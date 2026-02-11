@@ -1,7 +1,4 @@
 //! L1/L2 integration tests for pricer_kernel.
-//!
-//! These tests verify that pricer_kernel correctly integrates with
-//! pricer_core (L1) and pricer_models (L2).
 
 #[cfg(test)]
 mod tests {
@@ -19,25 +16,20 @@ mod tests {
 
         let result = smooth_max(a, b, epsilon);
 
-        // smooth_max should approximate max(a, b) = 5.0
         assert!((result - 5.0).abs() < 1e-3);
     }
 
     /// Test that smooth_indicator from pricer_core is accessible and works
-    /// correctly.
     #[test]
     fn test_smooth_indicator_integration() {
         let epsilon = 1e-6;
 
-        // At x=0, smooth_indicator should be approximately 0.5
         let at_zero = smooth_indicator(0.0_f64, epsilon);
         assert!((at_zero - 0.5).abs() < 1e-3);
 
-        // For large positive x, should be close to 1
         let positive = smooth_indicator(10.0_f64, epsilon);
         assert!(positive > 0.99);
 
-        // For large negative x, should be close to 0
         let negative = smooth_indicator(-10.0_f64, epsilon);
         assert!(negative < 0.01);
     }
@@ -61,21 +53,15 @@ mod pricer_models_tests {
     /// Test that StochasticModel trait from pricer_models is accessible.
     #[test]
     fn test_stochastic_model_trait_integration() {
-        // Verify the trait is importable and usable
         #[allow(dead_code)]
         fn accepts_stochastic_model<M: StochasticModel<f64>>(_model: &M) {
-            // Just verify the trait bound compiles
         }
 
-        // This test just verifies the import works
-        // Actual model usage will be tested in later phases
     }
 
     /// Test that StochasticModelEnum is accessible for static dispatch.
     #[test]
     fn test_stochastic_model_enum_accessible() {
-        // Verify the enum can be imported
-        // Full usage tests will be in later phases
         let _enum_type_check: Option<StochasticModelEnum<f64>> = None;
     }
 
@@ -89,10 +75,6 @@ mod pricer_models_tests {
 }
 
 /// Task 1.4: Instrument enum integration tests.
-///
-/// These tests verify that the Instrument enum from pricer_models can be
-/// used for static dispatch payoff calculations.
-// TODO: l1l2-integration feature disabled pending refactoring - instruments moved to infra_domain
 #[cfg(all(test, feature = "__disabled__"))]
 mod instrument_tests {
     use pricer_models::instruments::{
@@ -106,7 +88,6 @@ mod instrument_tests {
         let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
         let instrument = Instrument::Vanilla(call);
 
-        // Verify static dispatch payoff works
         let payoff = instrument.payoff(110.0);
         assert!((payoff - 10.0).abs() < 0.01);
     }
@@ -127,20 +108,16 @@ mod instrument_tests {
     /// Test that static dispatch is maintained (no Box<dyn>).
     #[test]
     fn test_static_dispatch_pattern() {
-        // Create different instruments
         let call_params = InstrumentParams::new(100.0_f64, 1.0, 1.0).unwrap();
         let call = VanillaOption::new(call_params, PayoffType::Call, ExerciseStyle::European, 1e-6);
         let forward = Forward::new(100.0_f64, 1.0, 1.0, Direction::Long).unwrap();
 
-        // Use enum for static dispatch
         let instruments: Vec<Instrument<f64>> =
             vec![Instrument::Vanilla(call), Instrument::Forward(forward)];
 
-        // Compute payoffs via static dispatch (no dynamic allocation)
         let spot = 110.0;
         let payoffs: Vec<f64> = instruments.iter().map(|inst| inst.payoff(spot)).collect();
 
-        // Both should have payoff of 10.0
         assert!((payoffs[0] - 10.0).abs() < 0.01);
         assert!((payoffs[1] - 10.0).abs() < 1e-10);
     }
@@ -174,9 +151,6 @@ mod instrument_tests {
 }
 
 /// Task 1.3: YieldCurve trait integration tests.
-///
-/// These tests verify that the Monte Carlo pricer can use YieldCurve
-/// from pricer_core for discount factor calculations.
 #[cfg(test)]
 mod yield_curve_tests {
     use pricer_models::market::curves::{FlatCurve, YieldCurve};
@@ -188,7 +162,6 @@ mod yield_curve_tests {
     fn test_flat_curve_accessible() {
         let curve = FlatCurve::new(0.05_f64);
 
-        // Discount factor at T=1: exp(-0.05 * 1) ≈ 0.9512
         let df = curve.discount_factor(1.0).unwrap();
         assert!((df - (-0.05_f64).exp()).abs() < 1e-10);
     }
@@ -212,19 +185,15 @@ mod yield_curve_tests {
         let payoff = PayoffParams::call(100.0);
         let curve = FlatCurve::new(0.05_f64);
 
-        // Use the new method that accepts a YieldCurve
         let mut pricer1 = MonteCarloPricer::new(config.clone()).unwrap();
         let result = pricer1.price_european_with_curve(gbm, payoff, &curve);
 
-        // Price should be positive
         assert!(result.price > 0.0);
 
-        // Compare with manual discount factor calculation using a fresh pricer
         let mut pricer2 = MonteCarloPricer::new(config).unwrap();
         let manual_df = curve.discount_factor(gbm.maturity).unwrap();
         let result_manual = pricer2.price_european(gbm, payoff, manual_df);
 
-        // Results should be identical (same seed, same discount factor calculation)
         assert!(
             (result.price - result_manual.price).abs() < 1e-10,
             "Prices differ: {} vs {}",
@@ -267,7 +236,6 @@ mod yield_curve_tests {
         let result = pricer.price_with_greeks_and_curve(gbm, payoff, &curve, &[Greek::Delta]);
 
         assert!(result.delta.is_some());
-        // Delta of ATM call should be around 0.5-0.6
         let delta = result.delta.unwrap();
         assert!(delta > 0.3 && delta < 0.8, "Delta = {}", delta);
     }

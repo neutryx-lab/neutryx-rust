@@ -1,16 +1,4 @@
 //! Barrier option payoff implementations.
-//!
-//! This module provides payoff implementations for barrier options:
-//!
-//! - **Up-and-In**: Option activates when price crosses barrier from below
-//! - **Up-and-Out**: Option deactivates when price crosses barrier from below
-//! - **Down-and-In**: Option activates when price crosses barrier from above
-//! - **Down-and-Out**: Option deactivates when price crosses barrier from above
-//!
-//! # Smooth Approximations
-//!
-//! Barrier conditions use smooth indicator functions for AD compatibility.
-//! The smooth indicator approximates the Heaviside step function.
 
 use num_traits::Float;
 
@@ -99,11 +87,6 @@ impl<T: Float> BarrierParams<T> {
 }
 
 /// Smooth indicator function: approximation of Heaviside step.
-///
-/// Returns a value in (0, 1) that smoothly transitions around x=0.
-/// - For x >> epsilon: returns ~1
-/// - For x << -epsilon: returns ~0
-/// - For x = 0: returns 0.5
 #[inline]
 fn smooth_indicator<T: Float>(x: T, epsilon: T) -> T {
     let scaled = x / epsilon;
@@ -132,10 +115,6 @@ fn soft_plus<T: Float>(x: T, epsilon: T) -> T {
 }
 
 /// Barrier option payoff.
-///
-/// Computes payoff for all four barrier types:
-/// - Up-and-In/Out: uses path maximum
-/// - Down-and-In/Out: uses path minimum
 #[derive(Clone, Copy, Debug)]
 pub struct BarrierPayoff<T: Float> {
     params: BarrierParams<T>,
@@ -176,22 +155,18 @@ impl<T: Float> BarrierPayoff<T> {
 
         match self.params.barrier_type {
             BarrierType::UpIn => {
-                // Barrier hit if max >= barrier
                 let max_price = observer.maximum();
                 smooth_indicator(max_price - self.params.barrier, epsilon)
             }
             BarrierType::UpOut => {
-                // Barrier NOT hit if max < barrier
                 let max_price = observer.maximum();
                 T::one() - smooth_indicator(max_price - self.params.barrier, epsilon)
             }
             BarrierType::DownIn => {
-                // Barrier hit if min <= barrier
                 let min_price = observer.minimum();
                 smooth_indicator(self.params.barrier - min_price, epsilon)
             }
             BarrierType::DownOut => {
-                // Barrier NOT hit if min > barrier
                 let min_price = observer.minimum();
                 T::one() - smooth_indicator(self.params.barrier - min_price, epsilon)
             }
@@ -216,7 +191,6 @@ impl<T: Float + Send + Sync> PathDependentPayoff<T> for BarrierPayoff<T> {
         let barrier_ind = self.barrier_indicator(observer);
         let vanilla = self.vanilla_payoff(terminal);
 
-        // Payoff = barrier_indicator × vanilla_payoff
         barrier_ind * vanilla
     }
 
@@ -233,10 +207,6 @@ mod tests {
 
     use super::*;
 
-    // ========================================================================
-    // BarrierType Tests
-    // ========================================================================
-
     #[test]
     fn test_barrier_type_is_up() {
         assert!(BarrierType::UpIn.is_up());
@@ -252,10 +222,6 @@ mod tests {
         assert!(BarrierType::DownIn.is_in());
         assert!(!BarrierType::DownOut.is_in());
     }
-
-    // ========================================================================
-    // Smooth Indicator Tests
-    // ========================================================================
 
     #[test]
     fn test_smooth_indicator_positive() {
@@ -275,16 +241,11 @@ mod tests {
         assert_relative_eq!(result, 0.5, epsilon = 1e-10);
     }
 
-    // ========================================================================
-    // Up-and-In Tests
-    // ========================================================================
-
     #[test]
     fn test_up_in_call_barrier_hit() {
         let payoff = BarrierPayoff::up_in_call(100.0_f64, 110.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 105, 115, 110] - barrier (110) hit at 115
         observer.observe(100.0);
         observer.observe(105.0);
         observer.observe(115.0);
@@ -292,7 +253,6 @@ mod tests {
         observer.set_terminal(110.0);
 
         let result = payoff.compute(&[], &observer);
-        // Terminal = 110, Strike = 100, Payoff ≈ 10
         assert_relative_eq!(result, 10.0, epsilon = 0.1);
     }
 
@@ -301,7 +261,6 @@ mod tests {
         let payoff = BarrierPayoff::up_in_call(100.0_f64, 120.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 105, 110, 108] - barrier (120) never hit
         observer.observe(100.0);
         observer.observe(105.0);
         observer.observe(110.0);
@@ -309,20 +268,14 @@ mod tests {
         observer.set_terminal(108.0);
 
         let result = payoff.compute(&[], &observer);
-        // Barrier not hit, payoff ≈ 0
         assert!(result < 0.1);
     }
-
-    // ========================================================================
-    // Up-and-Out Tests
-    // ========================================================================
 
     #[test]
     fn test_up_out_call_barrier_not_hit() {
         let payoff = BarrierPayoff::up_out_call(100.0_f64, 120.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 105, 115, 110] - barrier (120) never hit
         observer.observe(100.0);
         observer.observe(105.0);
         observer.observe(115.0);
@@ -330,7 +283,6 @@ mod tests {
         observer.set_terminal(110.0);
 
         let result = payoff.compute(&[], &observer);
-        // Terminal = 110, Strike = 100, Payoff ≈ 10
         assert_relative_eq!(result, 10.0, epsilon = 0.1);
     }
 
@@ -339,7 +291,6 @@ mod tests {
         let payoff = BarrierPayoff::up_out_call(100.0_f64, 110.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 105, 115, 112] - barrier (110) hit at 115
         observer.observe(100.0);
         observer.observe(105.0);
         observer.observe(115.0);
@@ -347,20 +298,14 @@ mod tests {
         observer.set_terminal(112.0);
 
         let result = payoff.compute(&[], &observer);
-        // Barrier hit, payoff ≈ 0
         assert!(result < 0.1);
     }
-
-    // ========================================================================
-    // Down-and-In Tests
-    // ========================================================================
 
     #[test]
     fn test_down_in_put_barrier_hit() {
         let payoff = BarrierPayoff::down_in_put(100.0_f64, 90.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 95, 85, 92] - barrier (90) hit at 85
         observer.observe(100.0);
         observer.observe(95.0);
         observer.observe(85.0);
@@ -368,7 +313,6 @@ mod tests {
         observer.set_terminal(92.0);
 
         let result = payoff.compute(&[], &observer);
-        // Terminal = 92, Strike = 100, Put Payoff ≈ 8
         assert_relative_eq!(result, 8.0, epsilon = 0.1);
     }
 
@@ -377,7 +321,6 @@ mod tests {
         let payoff = BarrierPayoff::down_in_put(100.0_f64, 80.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 95, 85, 92] - barrier (80) never hit
         observer.observe(100.0);
         observer.observe(95.0);
         observer.observe(85.0);
@@ -385,20 +328,14 @@ mod tests {
         observer.set_terminal(92.0);
 
         let result = payoff.compute(&[], &observer);
-        // Barrier not hit, payoff ≈ 0
         assert!(result < 0.1);
     }
-
-    // ========================================================================
-    // Down-and-Out Tests
-    // ========================================================================
 
     #[test]
     fn test_down_out_put_barrier_not_hit() {
         let payoff = BarrierPayoff::down_out_put(100.0_f64, 80.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 95, 85, 92] - barrier (80) never hit
         observer.observe(100.0);
         observer.observe(95.0);
         observer.observe(85.0);
@@ -406,7 +343,6 @@ mod tests {
         observer.set_terminal(92.0);
 
         let result = payoff.compute(&[], &observer);
-        // Terminal = 92, Strike = 100, Put Payoff ≈ 8
         assert_relative_eq!(result, 8.0, epsilon = 0.1);
     }
 
@@ -415,7 +351,6 @@ mod tests {
         let payoff = BarrierPayoff::down_out_put(100.0_f64, 90.0, 1e-6);
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Path: [100, 95, 85, 92] - barrier (90) hit at 85
         observer.observe(100.0);
         observer.observe(95.0);
         observer.observe(85.0);
@@ -423,13 +358,8 @@ mod tests {
         observer.set_terminal(92.0);
 
         let result = payoff.compute(&[], &observer);
-        // Barrier hit, payoff ≈ 0
         assert!(result < 0.1);
     }
-
-    // ========================================================================
-    // Required Observations Tests
-    // ========================================================================
 
     #[test]
     fn test_up_barrier_requires_max() {

@@ -1,5 +1,4 @@
 //! Binomial and Trinomial tree pricing methods for vanilla and American
-//! options.
 
 mod binomial;
 mod config;

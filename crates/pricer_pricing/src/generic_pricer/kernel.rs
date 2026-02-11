@@ -1,16 +1,6 @@
 //! Pricing kernel implementation.
-//!
-//! This module provides the core pricing computation logic for the Generic
-//! Pricer. It handles:
-//! - Cashflow-level discounting
-//! - Day count conventions
-//! - Business day adjustments
-//! - Year fraction calculations
 
 use infra_domain::time::Date;
-
-// Helper functions for Date operations that work with both infra_domain::Date
-// and local Date
 
 /// Returns the number of days between two dates.
 fn days_between(start: Date, end: Date) -> i32 {
@@ -19,7 +9,6 @@ fn days_between(start: Date, end: Date) -> i32 {
 
 /// Returns a date value suitable for date_to_ymd conversion.
 fn date_to_days(date: Date) -> i32 {
-    // Calculate days since 2000-01-01 for compatibility
     let epoch = chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap();
     (date.into_inner() - epoch).num_days() as i32
 }
@@ -33,41 +22,24 @@ fn add_days_to_date(date: Date, days: i32) -> Date {
 use chrono::Datelike;
 
 /// Day count convention for year fraction calculations.
-///
-/// Determines how to calculate the fraction of a year between two dates
-/// for accrual and discounting purposes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DayCountConvention {
     /// Actual/365 Fixed (ACT/365F)
-    /// Year fraction = actual days / 365
     #[default]
     Actual365Fixed,
 
     /// Actual/360 (ACT/360)
-    /// Year fraction = actual days / 360
-    /// Commonly used for money market instruments
     Actual360,
 
     /// 30/360 (Bond basis)
-    /// Assumes 30 days per month and 360 days per year
     Thirty360,
 
     /// Actual/Actual ISDA
-    /// Takes into account leap years
     ActualActualIsda,
 }
 
 impl DayCountConvention {
     /// Calculates the year fraction between two dates.
-    ///
-    /// # Arguments
-    ///
-    /// * `start` - Start date
-    /// * `end` - End date
-    ///
-    /// # Returns
-    ///
-    /// The year fraction as f64.
     pub fn year_fraction(&self, start: Date, end: Date) -> f64 {
         let days = self.day_count(start, end);
 
@@ -75,12 +47,9 @@ impl DayCountConvention {
             Self::Actual365Fixed => days as f64 / 365.0,
             Self::Actual360 => days as f64 / 360.0,
             Self::Thirty360 => {
-                // For 30/360, we already computed with 30-day months
                 days as f64 / 360.0
             }
             Self::ActualActualIsda => {
-                // Simplified: use actual/365.25 for now
-                // Full ISDA implementation would check leap years
                 days as f64 / 365.25
             }
         }
@@ -90,18 +59,15 @@ impl DayCountConvention {
     fn day_count(&self, start: Date, end: Date) -> i32 {
         match self {
             Self::Thirty360 => self.thirty360_days(start, end),
-            _ => days_between(start, end), // Actual days
+            _ => days_between(start, end),
         }
     }
 
     /// Calculates 30/360 day count.
     fn thirty360_days(&self, start: Date, end: Date) -> i32 {
-        // Extract year, month, day from dates
-        // For our simple Date type, we'll use a simplified approach
         let (y1, m1, d1) = date_to_ymd(start);
         let (y2, m2, d2) = date_to_ymd(end);
 
-        // Apply 30/360 adjustments
         let d1_adj = d1.min(30);
         let d2_adj = if d1_adj == 30 { d2.min(30) } else { d2 };
 
@@ -110,11 +76,7 @@ impl DayCountConvention {
 }
 
 /// Converts a Date to (year, month, day).
-///
-/// This is a simplified implementation that assumes dates are stored
-/// as days since an epoch (2000-01-01).
 fn date_to_ymd(date: Date) -> (i32, i32, i32) {
-    // Simple approximation: assume date is days since 2000-01-01
     let days = date_to_days(date);
     let year = 2000 + days / 365;
     let day_of_year = days % 365;
@@ -164,8 +126,6 @@ impl Frequency {
 }
 
 /// Business day adjustment convention.
-///
-/// Determines how to adjust a date that falls on a weekend or holiday.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BusinessDayConvention {
     /// No adjustment
@@ -176,18 +136,13 @@ pub enum BusinessDayConvention {
     /// Move to the previous business day
     Preceding,
     /// Move to the next business day unless it changes the month,
-    /// in which case use the previous business day
     ModifiedFollowing,
     /// Move to the previous business day unless it changes the month,
-    /// in which case use the following business day
     ModifiedPreceding,
 }
 
 impl BusinessDayConvention {
     /// Adjusts a date according to this convention.
-    ///
-    /// This is a simplified implementation that only handles weekends.
-    /// A full implementation would use a calendar with holidays.
     pub fn adjust(&self, date: Date) -> Date {
         match self {
             Self::None => date,
@@ -195,7 +150,6 @@ impl BusinessDayConvention {
             Self::Preceding => self.prev_business_day(date),
             Self::ModifiedFollowing => {
                 let adjusted = self.next_business_day(date);
-                // If month changed, use preceding instead
                 if month_of(adjusted) != month_of(date) {
                     self.prev_business_day(date)
                 } else {
@@ -204,7 +158,6 @@ impl BusinessDayConvention {
             }
             Self::ModifiedPreceding => {
                 let adjusted = self.prev_business_day(date);
-                // If month changed, use following instead
                 if month_of(adjusted) != month_of(date) {
                     self.next_business_day(date)
                 } else {
@@ -235,10 +188,8 @@ impl BusinessDayConvention {
 
 /// Checks if a date is a weekend (Saturday or Sunday).
 fn is_weekend(date: Date) -> bool {
-    // Assuming epoch is a Monday (2000-01-03 was a Monday)
-    // Adjust for our epoch (2000-01-01 which was a Saturday)
     let days = date_to_days(date);
-    let day_of_week = (days + 5) % 7; // 0=Monday, 5=Saturday, 6=Sunday
+    let day_of_week = (days + 5) % 7;
     day_of_week >= 5
 }
 
@@ -249,8 +200,6 @@ fn month_of(date: Date) -> i32 {
 }
 
 /// Discount factor calculator.
-///
-/// Provides methods to calculate discount factors from various inputs.
 #[derive(Debug, Clone, Copy)]
 pub struct DiscountCalculator {
     /// The continuously compounded rate.
@@ -262,8 +211,6 @@ impl DiscountCalculator {
     pub fn with_flat_rate(rate: f64) -> Self { Self { rate } }
 
     /// Calculates the discount factor for a given time to maturity.
-    ///
-    /// Uses continuous compounding: DF = exp(-r * t)
     pub fn discount_factor(&self, time_to_maturity: f64) -> f64 {
         (-self.rate * time_to_maturity).exp()
     }
@@ -281,18 +228,6 @@ impl DiscountCalculator {
 }
 
 /// Prices a single cashflow.
-///
-/// # Arguments
-///
-/// * `amount` - The notional amount of the cashflow
-/// * `payment_date` - When the cashflow is paid
-/// * `valuation_date` - The date to discount to
-/// * `discount_rate` - The continuously compounded discount rate
-/// * `day_count` - The day count convention to use
-///
-/// # Returns
-///
-/// The present value of the cashflow.
 pub fn price_cashflow(
     amount: f64,
     payment_date: Date,
@@ -300,7 +235,6 @@ pub fn price_cashflow(
     discount_rate: f64,
     day_count: DayCountConvention,
 ) -> f64 {
-    // Skip past cashflows
     if payment_date <= valuation_date {
         return 0.0;
     }
@@ -311,17 +245,6 @@ pub fn price_cashflow(
 }
 
 /// Prices a stream of cashflows.
-///
-/// # Arguments
-///
-/// * `cashflows` - Iterator of (amount, payment_date) tuples
-/// * `valuation_date` - The date to discount to
-/// * `discount_rate` - The continuously compounded discount rate
-/// * `day_count` - The day count convention to use
-///
-/// # Returns
-///
-/// The total present value of all future cashflows.
 pub fn price_cashflow_stream<I>(
     cashflows: I,
     valuation_date: Date,
@@ -351,7 +274,6 @@ mod tests {
     #[test]
     fn test_day_count_actual365() {
         let dc = DayCountConvention::Actual365Fixed;
-        // Use non-leap year (2023) for exactly 365 days with proper calendar
         let (start, end) = (
             Date::from_ymd(2023, 1, 1).unwrap(),
             Date::from_ymd(2024, 1, 1).unwrap(),
@@ -363,10 +285,9 @@ mod tests {
     #[test]
     fn test_day_count_actual360() {
         let dc = DayCountConvention::Actual360;
-        // Use dates exactly 360 days apart for proper calendar
         let (start, end) = (
             Date::from_ymd(2023, 1, 1).unwrap(),
-            Date::from_ymd(2023, 12, 27).unwrap(), // 360 days in non-leap year
+            Date::from_ymd(2023, 12, 27).unwrap(),
         );
         let yf = dc.year_fraction(start, end);
         assert!((yf - 1.0).abs() < 1e-10);
@@ -376,7 +297,7 @@ mod tests {
     fn test_day_count_half_year() {
         let dc = DayCountConvention::Actual365Fixed;
         let start = Date::from_ymd(2024, 1, 1).unwrap();
-        let end = Date::from_ymd(2024, 7, 1).unwrap(); // ~182 days
+        let end = Date::from_ymd(2024, 7, 1).unwrap();
         let yf = dc.year_fraction(start, end);
         assert!(yf > 0.49 && yf < 0.51);
     }
@@ -401,11 +322,9 @@ mod tests {
     fn test_discount_calculator_flat() {
         let calc = DiscountCalculator::with_flat_rate(0.05);
 
-        // 1 year at 5%: exp(-0.05) ≈ 0.9512
         let df = calc.discount_factor(1.0);
         assert!((df - 0.9512).abs() < 0.001);
 
-        // 0 years should be 1.0
         let df0 = calc.discount_factor(0.0);
         assert!((df0 - 1.0).abs() < 1e-10);
     }
@@ -432,21 +351,19 @@ mod tests {
 
         let pv = price_cashflow(amount, payment_date, valuation_date, rate, dc);
 
-        // 100k * exp(-0.05) ≈ 95,123
         assert!(pv > 95_000.0 && pv < 96_000.0);
     }
 
     #[test]
     fn test_price_cashflow_past() {
         let amount = 100_000.0;
-        let payment_date = Date::from_ymd(2024, 2, 20).unwrap(); // Past
+        let payment_date = Date::from_ymd(2024, 2, 20).unwrap();
         let valuation_date = Date::from_ymd(2024, 4, 10).unwrap();
         let rate = 0.05;
         let dc = DayCountConvention::Actual365Fixed;
 
         let pv = price_cashflow(amount, payment_date, valuation_date, rate, dc);
 
-        // Past cashflows have 0 PV
         assert!(pv.abs() < 1e-10);
     }
 
@@ -457,13 +374,12 @@ mod tests {
         let dc = DayCountConvention::Actual365Fixed;
 
         let cashflows = vec![
-            (100_000.0, Date::from_ymd(2025, 1, 1).unwrap()), // 1 year
-            (100_000.0, Date::from_ymd(2026, 1, 1).unwrap()), // 2 years
+            (100_000.0, Date::from_ymd(2025, 1, 1).unwrap()),
+            (100_000.0, Date::from_ymd(2026, 1, 1).unwrap()),
         ];
 
         let pv = price_cashflow_stream(cashflows.into_iter(), valuation_date, rate, dc);
 
-        // 100k * exp(-0.05) + 100k * exp(-0.10) ≈ 95,123 + 90,484 ≈ 185,607
         assert!(pv > 185_000.0 && pv < 186_500.0);
     }
 
@@ -471,7 +387,6 @@ mod tests {
     fn test_business_day_following() {
         let conv = BusinessDayConvention::Following;
 
-        // Monday should stay Monday (2024-01-08 is a Monday)
         let monday = Date::from_ymd(2024, 1, 8).unwrap();
         let adjusted = conv.adjust(monday);
         assert_eq!(adjusted, monday);
@@ -481,7 +396,6 @@ mod tests {
     fn test_business_day_none() {
         let conv = BusinessDayConvention::None;
 
-        // Any day should stay the same
         let date = Date::from_ymd(2024, 1, 1).unwrap();
         let adjusted = conv.adjust(date);
         assert_eq!(adjusted, date);

@@ -1,12 +1,4 @@
 //! Batch pricing for multiple trades.
-//!
-//! This module provides parallel batch pricing capabilities using Rayon.
-//! Features:
-//! - Parallel pricing of multiple trades
-//! - Partial error continuation (failed trades don't stop processing)
-//! - Arc-cached market data sharing
-//! - Processing statistics
-//! - Portfolio aggregations (by currency, netting set, book)
 
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
@@ -22,7 +14,6 @@ use super::{
     result::PricingResult,
 };
 
-// Type alias for batch pricing result type
 type BatchResultType = PricingResult;
 
 /// Unique identifier for a trade.
@@ -131,12 +122,10 @@ impl BatchPricingResult {
 
     /// Gets the result for a specific trade ID.
     pub fn get(&self, trade_id: &TradeId) -> Option<Result<&BatchResultType, &PricingError>> {
-        // Check successes first
         if let Some((_, result)) = self.successes.iter().find(|(id, _)| id == trade_id) {
             return Some(Ok(result));
         }
 
-        // Check failures
         if let Some((_, error)) = self.failures.iter().find(|(id, _)| id == trade_id) {
             return Some(Err(error));
         }
@@ -146,8 +135,6 @@ impl BatchPricingResult {
 }
 
 /// Batch pricer for processing multiple trades in parallel.
-///
-/// Uses Rayon for parallel processing and shares market data via Arc.
 #[derive(Debug, Clone)]
 pub struct BatchPricer {
     /// Model configuration.
@@ -171,10 +158,6 @@ impl BatchPricer {
     /// Returns the pricer configuration.
     pub fn pricer_config(&self) -> &PricerConfig { &self.pricer_config }
 }
-
-// =============================================================================
-// PortfolioPricer - Config-driven portfolio pricing with aggregations
-// =============================================================================
 
 /// Execution statistics for portfolio pricing.
 #[derive(Debug, Clone)]
@@ -307,22 +290,6 @@ impl PortfolioPricingResult {
 }
 
 /// Portfolio pricer for config-driven portfolio pricing.
-///
-/// Provides portfolio-level pricing with:
-/// - Parallel or sequential processing based on configuration
-/// - Aggregations by currency, netting set, and book
-/// - Partial failure handling (failed trades don't stop processing)
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use pricer_pricing::generic_pricer::PortfolioPricer;
-/// use infra_config::PricingConfig;
-///
-/// let config = PricingConfig::from_toml_str(toml)?;
-/// let pricer = PortfolioPricer::new(market, config)?;
-/// let result = pricer.price_portfolio(&trades)?;
-/// ```
 #[derive(Debug)]
 pub struct PortfolioPricer {
     /// Generic pricer instance.
@@ -333,15 +300,6 @@ pub struct PortfolioPricer {
 
 impl PortfolioPricer {
     /// Creates a new portfolio pricer from configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `market` - Arc-shared market data provider
-    /// * `config` - Pricing configuration
-    ///
-    /// # Errors
-    ///
-    /// Returns `PricingError` if configuration is invalid.
     pub fn new(market: Arc<MarketProvider>, config: PricingConfig) -> Result<Self, PricingError> {
         let pricer = GenericPricer::from_config(market, &config)?;
         Ok(Self { pricer, config })
@@ -359,18 +317,6 @@ impl PortfolioPricer {
     pub fn pricer(&self) -> &GenericPricer { &self.pricer }
 
     /// Prices a portfolio of trades.
-    ///
-    /// Uses parallel processing if `parallel_enabled` is true in config.
-    /// Failed trades are recorded but don't abort the entire portfolio.
-    ///
-    /// # Arguments
-    ///
-    /// * `trades` - Slice of trades to price (with their IDs)
-    ///
-    /// # Returns
-    ///
-    /// `PortfolioPricingResult` containing successes, failures, stats, and
-    /// aggregations.
     pub fn price_portfolio(
         &self,
         trades: &[(TradeId, Trade)],
@@ -384,7 +330,6 @@ impl PortfolioPricer {
                 self.price_sequential(trades)
             };
 
-        // Partition into successes and failures
         let mut successes = Vec::new();
         let mut failures = Vec::new();
         let mut aggregations = PortfolioAggregations::new();
@@ -392,14 +337,11 @@ impl PortfolioPricer {
         for (id, result) in results {
             match result {
                 Ok(pricing_result) => {
-                    // Update aggregations
                     aggregations.add_by_currency(
                         pricing_result.reporting_currency.code(),
                         pricing_result.total_pv,
                     );
 
-                    // TODO: Add netting_set and book from trade metadata when available
-                    // For now, use "default" as placeholder
                     aggregations.add_by_netting_set("default", pricing_result.total_pv);
                     aggregations.add_by_book("default", pricing_result.total_pv);
 

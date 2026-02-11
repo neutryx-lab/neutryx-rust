@@ -1,10 +1,4 @@
 //! Payoff evaluation for cashflow calculations.
-//!
-//! This module provides the `PayoffEvaluator` struct for computing
-//! cashflow amounts based on different payoff types (Fixed, Linear,
-//! VanillaOption, Digital).
-//!
-//! **Requires the `l1l2-integration` feature.**
 
 use infra_domain::trade::{IndexType, OptionType, Payoff};
 use num_traits::Float;
@@ -13,30 +7,6 @@ use pricer_models::market::CurveSet;
 use super::error::PricingError;
 
 /// Payoff evaluator for computing cashflow amounts.
-///
-/// This struct evaluates different payoff types (Fixed, Linear, VanillaOption,
-/// Digital) to compute the actual cashflow amount given market data.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type (e.g., `f64`, `Dual64`)
-///
-/// # Example
-///
-/// ```
-/// use pricer_pricing::generic_pricer::PayoffEvaluator;
-/// use pricer_models::market::curves::{CurveSet, CurveName, CurveEnum};
-/// use infra_domain::trade::Payoff;
-///
-/// let mut curves = CurveSet::new();
-/// curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
-///
-/// let evaluator = PayoffEvaluator::new(&curves);
-///
-/// let payoff = Payoff::fixed(0.03);
-/// let amount = evaluator.evaluate(&payoff, 1_000_000.0, 0.5, 0.0, 0.5).unwrap();
-/// assert!((amount - 15_000.0).abs() < 1e-6); // 1M * 0.03 * 0.5
-/// ```
 pub struct PayoffEvaluator<'a, T: Float> {
     curve_set: &'a CurveSet<T>,
 }
@@ -46,27 +16,6 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
     pub fn new(curve_set: &'a CurveSet<T>) -> Self { Self { curve_set } }
 
     /// Evaluates a payoff and returns the cashflow amount.
-    ///
-    /// # Arguments
-    ///
-    /// * `payoff` - The payoff type to evaluate
-    /// * `notional` - The notional principal amount
-    /// * `year_fraction` - The accrual period year fraction
-    /// * `start_time` - Start time (year fraction from valuation date)
-    /// * `end_time` - End time (year fraction from valuation date)
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(T)` - The computed cashflow amount
-    /// * `Err(PricingError)` - If evaluation fails (e.g., missing curve)
-    ///
-    /// # Payoff Types
-    ///
-    /// - **Fixed**: `notional * rate * year_fraction`
-    /// - **Linear**: `notional * (forward_rate + spread) * multiplier *
-    ///   year_fraction`
-    /// - **VanillaOption**: Cap/Floor pricing (using Black's model)
-    /// - **Digital**: Binary option (not yet implemented, returns 0)
     pub fn evaluate(
         &self,
         payoff: &Payoff,
@@ -104,7 +53,6 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
                 option_type,
             ),
             Payoff::Digital { .. } => {
-                // Digital options not yet implemented
                 Ok(T::zero())
             }
         }
@@ -152,10 +100,6 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
     }
 
     /// Evaluates a vanilla option (cap/floor) payoff using Black's model.
-    ///
-    /// For caps/floors, this computes the intrinsic value (max(rate - strike,
-    /// 0) for caps, max(strike - rate, 0) for floors) when no vol surface
-    /// is available.
     fn evaluate_vanilla_option(
         &self,
         index: &IndexType,
@@ -181,10 +125,8 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
             reason: "Failed to convert strike to T".to_string(),
         })?;
 
-        // Compute intrinsic value (simplified - no time value without vol surface)
         let intrinsic = match option_type {
             OptionType::Call => {
-                // Cap: max(rate - strike, 0)
                 if fwd_rate > strike_t {
                     fwd_rate - strike_t
                 } else {
@@ -192,7 +134,6 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
                 }
             }
             OptionType::Put => {
-                // Floor: max(strike - rate, 0)
                 if strike_t > fwd_rate {
                     strike_t - fwd_rate
                 } else {
@@ -200,7 +141,6 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
                 }
             }
             OptionType::DigitalCall => {
-                // Digital call: 1 if rate > strike, else 0
                 if fwd_rate > strike_t {
                     T::one()
                 } else {
@@ -208,7 +148,6 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
                 }
             }
             OptionType::DigitalPut => {
-                // Digital put: 1 if rate < strike, else 0
                 if fwd_rate < strike_t {
                     T::one()
                 } else {
@@ -236,10 +175,6 @@ mod tests {
         curves
     }
 
-    // ========================================
-    // Fixed Payoff Tests
-    // ========================================
-
     #[test]
     fn test_evaluate_fixed_payoff() {
         let curves = create_curve_set();
@@ -250,7 +185,6 @@ mod tests {
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.0, 0.5)
             .unwrap();
 
-        // 1M * 0.03 * 0.5 = 15,000
         assert!((amount - 15_000.0).abs() < 1e-6);
     }
 
@@ -267,10 +201,6 @@ mod tests {
         assert!((amount - 0.0).abs() < 1e-10);
     }
 
-    // ========================================
-    // Linear Payoff Tests
-    // ========================================
-
     #[test]
     fn test_evaluate_linear_payoff_no_spread() {
         let curves = create_curve_set();
@@ -281,7 +211,6 @@ mod tests {
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.5, 1.0)
             .unwrap();
 
-        // 1M * 0.035 * 1.0 * 0.5 = 17,500
         assert!((amount - 17_500.0).abs() < 1.0);
     }
 
@@ -290,12 +219,11 @@ mod tests {
         let curves = create_curve_set();
         let evaluator = PayoffEvaluator::new(&curves);
 
-        let payoff = Payoff::floating_with_spread(IndexType::Rate(RateIndex::Sofr), 0.005); // 50bp spread
+        let payoff = Payoff::floating_with_spread(IndexType::Rate(RateIndex::Sofr), 0.005);
         let amount = evaluator
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.5, 1.0)
             .unwrap();
 
-        // 1M * (0.035 + 0.005) * 1.0 * 0.5 = 20,000
         assert!((amount - 20_000.0).abs() < 1.0);
     }
 
@@ -309,13 +237,12 @@ mod tests {
             .evaluate(&payoff, 1_000_000.0, 0.25, 0.25, 0.5)
             .unwrap();
 
-        // 1M * 0.04 * 1.0 * 0.25 = 10,000
         assert!((amount - 10_000.0).abs() < 1.0);
     }
 
     #[test]
     fn test_evaluate_linear_payoff_missing_curve() {
-        let curves = CurveSet::<f64>::new(); // Empty curve set
+        let curves = CurveSet::<f64>::new();
         let evaluator = PayoffEvaluator::new(&curves);
 
         let payoff = Payoff::floating(IndexType::Rate(RateIndex::Sofr));
@@ -324,22 +251,16 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // ========================================
-    // VanillaOption Payoff Tests (Cap/Floor)
-    // ========================================
-
     #[test]
     fn test_evaluate_cap_in_the_money() {
         let curves = create_curve_set();
         let evaluator = PayoffEvaluator::new(&curves);
 
-        // Cap with strike 3% (SOFR is 3.5%, so ITM)
         let payoff = Payoff::cap(IndexType::Rate(RateIndex::Sofr), 0.03);
         let amount = evaluator
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.5, 1.0)
             .unwrap();
 
-        // 1M * (0.035 - 0.03) * 0.5 = 2,500 (intrinsic only)
         assert!((amount - 2_500.0).abs() < 100.0);
     }
 
@@ -348,13 +269,11 @@ mod tests {
         let curves = create_curve_set();
         let evaluator = PayoffEvaluator::new(&curves);
 
-        // Cap with strike 4% (SOFR is 3.5%, so OTM)
         let payoff = Payoff::cap(IndexType::Rate(RateIndex::Sofr), 0.04);
         let amount = evaluator
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.5, 1.0)
             .unwrap();
 
-        // OTM cap has zero intrinsic value
         assert!((amount - 0.0).abs() < 1e-6);
     }
 
@@ -363,13 +282,11 @@ mod tests {
         let curves = create_curve_set();
         let evaluator = PayoffEvaluator::new(&curves);
 
-        // Floor with strike 4% (SOFR is 3.5%, so ITM)
         let payoff = Payoff::floor(IndexType::Rate(RateIndex::Sofr), 0.04);
         let amount = evaluator
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.5, 1.0)
             .unwrap();
 
-        // 1M * (0.04 - 0.035) * 0.5 = 2,500 (intrinsic only)
         assert!((amount - 2_500.0).abs() < 100.0);
     }
 
@@ -378,19 +295,13 @@ mod tests {
         let curves = create_curve_set();
         let evaluator = PayoffEvaluator::new(&curves);
 
-        // Floor with strike 3% (SOFR is 3.5%, so OTM)
         let payoff = Payoff::floor(IndexType::Rate(RateIndex::Sofr), 0.03);
         let amount = evaluator
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.5, 1.0)
             .unwrap();
 
-        // OTM floor has zero intrinsic value
         assert!((amount - 0.0).abs() < 1e-6);
     }
-
-    // ========================================
-    // Digital Payoff Tests
-    // ========================================
 
     #[test]
     fn test_evaluate_digital_returns_zero() {
@@ -407,7 +318,6 @@ mod tests {
             .evaluate(&payoff, 1_000_000.0, 0.5, 0.5, 1.0)
             .unwrap();
 
-        // Digital not implemented, returns zero
         assert!((amount - 0.0).abs() < 1e-10);
     }
 }

@@ -1,22 +1,4 @@
 //! Path-dependent option pricing infrastructure.
-//!
-//! This module provides the core infrastructure for pricing path-dependent
-//! derivatives such as Asian, barrier, and lookback options.
-//!
-//! # Key Components
-//!
-//! - [`PathObserver`]: Streaming statistics accumulation for path observations
-//! - [`PathDependentPayoff`]: Trait for path-dependent payoff computation
-//! - [`ObservationType`]: Flags specifying required path statistics
-//!
-//! # Design Philosophy
-//!
-//! - **Streaming accumulation**: Statistics are computed incrementally as
-//!   prices are observed, avoiding full path storage when possible
-//! - **Enzyme AD compatible**: All computations use smooth approximations and
-//!   avoid branches on floating-point values
-//! - **Static dispatch**: Enum-based dispatch for payoff types ensures
-//!   LLVM-level optimisation
 
 mod asian;
 mod barrier;
@@ -37,10 +19,6 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-
-    // ========================================================================
-    // PathObserver Tests (TDD)
-    // ========================================================================
 
     #[test]
     fn test_path_observer_new() {
@@ -71,13 +49,10 @@ mod tests {
 
         assert_eq!(observer.count(), 5);
 
-        // Arithmetic average: (100 + 105 + 110 + 95 + 100) / 5 = 510 / 5 = 102
         assert_relative_eq!(observer.arithmetic_average(), 102.0, epsilon = 1e-10);
 
-        // Maximum: 110
         assert_relative_eq!(observer.maximum(), 110.0, epsilon = 1e-10);
 
-        // Minimum: 95
         assert_relative_eq!(observer.minimum(), 95.0, epsilon = 1e-10);
     }
 
@@ -85,7 +60,6 @@ mod tests {
     fn test_path_observer_geometric_average() {
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Geometric mean of [100, 100, 100] = 100
         observer.observe(100.0);
         observer.observe(100.0);
         observer.observe(100.0);
@@ -97,7 +71,6 @@ mod tests {
     fn test_path_observer_geometric_average_varied() {
         let mut observer: PathObserver<f64> = PathObserver::new();
 
-        // Geometric mean of [2, 8] = sqrt(16) = 4
         observer.observe(2.0);
         observer.observe(8.0);
 
@@ -128,7 +101,6 @@ mod tests {
         observer.reset();
 
         assert_eq!(observer.count(), 0);
-        // After reset, max/min should be initial values (inf/-inf)
     }
 
     #[test]
@@ -155,7 +127,6 @@ mod tests {
 
         let state = observer1.snapshot();
 
-        // Create a new observer and restore from state
         let mut observer2: PathObserver<f64> = PathObserver::new();
         observer2.restore(&state);
 
@@ -167,13 +138,11 @@ mod tests {
     fn test_path_observer_empty_average() {
         let observer: PathObserver<f64> = PathObserver::new();
 
-        // Empty observer should return 0 for arithmetic average
         assert_eq!(observer.arithmetic_average(), 0.0);
     }
 
     #[test]
     fn test_path_observer_f32() {
-        // Test generic Float support
         let mut observer: PathObserver<f32> = PathObserver::new();
         observer.observe(100.0_f32);
         observer.observe(200.0_f32);
