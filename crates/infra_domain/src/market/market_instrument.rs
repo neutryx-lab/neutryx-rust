@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-use super::{convention::MarketConvention, Currency, QuoteId, QuoteCategory};
+use super::{convention::MarketConvention, Currency, QuoteCategory, QuoteId};
 use crate::{
     time::{Date, Tenor},
     trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},

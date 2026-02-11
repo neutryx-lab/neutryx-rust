@@ -6,7 +6,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    market::{Currency, QuoteId, QuoteCategory},
+    market::{Currency, QuoteCategory, QuoteId},
     time::{parse_fra_tenor, parse_tenor_to_years, CalendarId, DayCounter, Frequency, Tenor},
 };
 
@@ -31,7 +31,11 @@ pub struct InstrumentDefinition {
     /// Instrument type - derived from convention if not explicitly set.
     #[cfg_attr(
         feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none", alias = "quoteCategory")
+        serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            alias = "quoteCategory"
+        )
     )]
     quote_category_override: Option<QuoteCategory>,
 
@@ -364,7 +368,9 @@ impl InstrumentDefinition {
         }
 
         if self.convention.is_none() && self.quote_category_override.is_none() {
-            return Err(InstrumentDefError::MissingField("convention or quoteCategory"));
+            return Err(InstrumentDefError::MissingField(
+                "convention or quoteCategory",
+            ));
         }
 
         if self.quote_category() == QuoteCategory::Event {
@@ -673,7 +679,8 @@ mod tests {
 
     #[test]
     fn test_instrument_definition_new() {
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
+        let def =
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
 
         assert_eq!(def.id, "USD-Depo-ON");
         assert_eq!(def.currency, Currency::USD);
@@ -776,8 +783,9 @@ mod tests {
             .with_day_count(DayCounter::Actual360)
             .with_spot_lag(2);
 
-        let def = InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M")
-            .with_conventions(conventions.clone());
+        let def =
+            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M")
+                .with_conventions(conventions.clone());
 
         assert_eq!(def.conventions, Some(conventions));
     }
@@ -787,22 +795,26 @@ mod tests {
         let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y");
         assert!((def.tenor_years().unwrap() - 5.0).abs() < 1e-10);
 
-        let def = InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M");
+        let def =
+            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M");
         assert!((def.tenor_years().unwrap() - 0.25).abs() < 1e-10);
 
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
+        let def =
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
         assert!((def.tenor_years().unwrap() - 1.0 / 365.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_tenor_years_fra() {
-        let def = InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
+        let def =
+            InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
         assert!((def.tenor_years().unwrap() - 0.5).abs() < 1e-10);
     }
 
     #[test]
     fn test_fra_tenors() {
-        let def = InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
+        let def =
+            InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
         let (start, end) = def.fra_tenors().unwrap();
         assert!((start - 0.25).abs() < 1e-10);
         assert!((end - 0.5).abs() < 1e-10);
@@ -867,8 +879,12 @@ mod tests {
 
     #[test]
     fn test_validate_invalid_tenor() {
-        let def =
-            InstrumentDefinition::new("USD-OIS-INVALID", Currency::USD, QuoteCategory::Ois, "INVALID");
+        let def = InstrumentDefinition::new(
+            "USD-OIS-INVALID",
+            Currency::USD,
+            QuoteCategory::Ois,
+            "INVALID",
+        );
         assert!(matches!(
             def.validate(),
             Err(InstrumentDefError::InvalidTenor(_))
@@ -977,8 +993,12 @@ mod tests {
 
     #[test]
     fn test_event_instrument_validate_missing_date() {
-        let event =
-            InstrumentDefinition::new("USD-FOMC-2024-03", Currency::USD, QuoteCategory::Event, "EVENT");
+        let event = InstrumentDefinition::new(
+            "USD-FOMC-2024-03",
+            Currency::USD,
+            QuoteCategory::Event,
+            "EVENT",
+        );
         assert!(matches!(
             event.validate(),
             Err(InstrumentDefError::MissingEventDate)

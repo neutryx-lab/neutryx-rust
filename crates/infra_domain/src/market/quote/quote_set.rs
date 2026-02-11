@@ -64,7 +64,10 @@ impl MarketQuoteSet {
     }
 
     /// Returns an iterator over quotes of a specific rate type.
-    pub fn quotes_by_type(&self, quote_category: QuoteCategory) -> impl Iterator<Item = &MarketQuote> {
+    pub fn quotes_by_type(
+        &self,
+        quote_category: QuoteCategory,
+    ) -> impl Iterator<Item = &MarketQuote> {
         self.quotes
             .values()
             .filter(move |quote| quote.id.quote_category == quote_category)
@@ -259,7 +262,13 @@ mod tests {
     use super::*;
     use crate::{market::DataSource, time::Tenor};
 
-    fn make(ccy: Currency, tenor: Tenor, rt: QuoteCategory, qt: QuoteType, val: f64) -> MarketQuote {
+    fn make(
+        ccy: Currency,
+        tenor: Tenor,
+        rt: QuoteCategory,
+        qt: QuoteType,
+        val: f64,
+    ) -> MarketQuote {
         MarketQuote::new(
             QuoteId::new(ccy, tenor, rt),
             qt,

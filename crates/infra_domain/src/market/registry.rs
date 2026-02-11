@@ -297,7 +297,7 @@ impl DefinitionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::{Currency, RateIndex, QuoteCategory};
+    use crate::market::{Currency, QuoteCategory, RateIndex};
 
     fn inst(id: &str) -> InstrumentDefinition {
         InstrumentDefinition::new(id, Currency::USD, QuoteCategory::Deposit, "ON")

@@ -248,7 +248,7 @@ impl LinearProductsCompiler {
                             .map_err(|_| CompileError::UnknownCurrency(currency.clone()))?;
                         let swap_tenor = tenor
                             .parse::<Tenor>()
-                            .map_err(|e| CompileError::InvalidSchedule(e.to_string()))?;
+                            .map_err(CompileError::InvalidSchedule)?;
 
                         let cms_index = CmsIndex::new(ccy, swap_tenor);
                         self.mapper.get_or_register_cms_index(cms_index)

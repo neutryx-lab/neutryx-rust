@@ -307,7 +307,7 @@ mod market_instrument_integration_tests {
                 ConventionRegistry, DepositConvention, FraConvention, MarketConvention,
                 SwapConvention,
             },
-            Currency, MarketInstrument, QuoteId, QuoteCategory,
+            Currency, MarketInstrument, QuoteCategory, QuoteId,
         },
         time::{Date, Tenor},
         trade::{LegType, TradeType},
@@ -423,11 +423,15 @@ mod market_instrument_integration_tests {
         );
 
         // Lookup should succeed for registered conventions
-        assert!(registry.get(Currency::USD, QuoteCategory::Deposit).is_some());
+        assert!(registry
+            .get(Currency::USD, QuoteCategory::Deposit)
+            .is_some());
         assert!(registry.get(Currency::USD, QuoteCategory::Swap).is_some());
 
         // Lookup should fail for unregistered conventions
-        assert!(registry.get(Currency::EUR, QuoteCategory::Deposit).is_none());
+        assert!(registry
+            .get(Currency::EUR, QuoteCategory::Deposit)
+            .is_none());
     }
 
     /// Test multiple currency conventions

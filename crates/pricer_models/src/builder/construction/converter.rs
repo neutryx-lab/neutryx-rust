@@ -148,7 +148,9 @@ pub fn definition_to_instrument(
         }
 
         // These rate types are not directly mappable to calibration instruments
-        other => Err(ConstructionError::UnsupportedQuoteCategory { quote_category: other }),
+        other => Err(ConstructionError::UnsupportedQuoteCategory {
+            quote_category: other,
+        }),
     }
 }
 
@@ -210,7 +212,8 @@ mod tests {
 
     #[test]
     fn test_convert_deposit() {
-        let def = InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M");
+        let def =
+            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M");
 
         let inst = definition_to_instrument(&def, 0.05, None).unwrap();
 
@@ -240,7 +243,8 @@ mod tests {
 
     #[test]
     fn test_convert_swap() {
-        let def = InstrumentDefinition::new("USD-Swap-10Y", Currency::USD, QuoteCategory::Swap, "10Y");
+        let def =
+            InstrumentDefinition::new("USD-Swap-10Y", Currency::USD, QuoteCategory::Swap, "10Y");
 
         let inst = definition_to_instrument(&def, 0.035, None).unwrap();
 
@@ -260,7 +264,8 @@ mod tests {
 
     #[test]
     fn test_convert_fra() {
-        let def = InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
+        let def =
+            InstrumentDefinition::new("USD-FRA-3x6", Currency::USD, QuoteCategory::Fra, "3x6");
 
         let inst = definition_to_instrument(&def, 0.045, None).unwrap();
 
@@ -276,7 +281,8 @@ mod tests {
 
     #[test]
     fn test_convert_futures() {
-        let def = InstrumentDefinition::new("USD-Fut-3M", Currency::USD, QuoteCategory::Futures, "3M");
+        let def =
+            InstrumentDefinition::new("USD-Fut-3M", Currency::USD, QuoteCategory::Futures, "3M");
 
         let inst = definition_to_instrument(&def, 0.042, None).unwrap();
 
@@ -327,7 +333,8 @@ mod tests {
 
     #[test]
     fn test_convert_overnight_deposit() {
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
+        let def =
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON");
 
         let inst = definition_to_instrument(&def, 0.055, None).unwrap();
 

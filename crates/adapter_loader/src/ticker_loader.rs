@@ -26,7 +26,9 @@ pub struct TickerMappingEntry {
 impl TickerMappingEntry {
     /// Converts this entry to a [`QuoteId`].
     #[must_use]
-    pub fn to_quote_id(&self) -> QuoteId { QuoteId::new(self.currency, self.tenor, self.quote_category) }
+    pub fn to_quote_id(&self) -> QuoteId {
+        QuoteId::new(self.currency, self.tenor, self.quote_category)
+    }
 }
 
 /// Loader for ticker mapping files.

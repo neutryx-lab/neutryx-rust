@@ -341,7 +341,8 @@ fn map_bootstrap_error(err: BootstrapError) -> ConstructionError {
 mod tests {
     use infra_domain::{
         market::{
-            Currency, DataSource, MarketQuote, QuoteId, QuoteCategory, RateIndex, RateIndexDefinition,
+            Currency, DataSource, MarketQuote, QuoteCategory, QuoteId, RateIndex,
+            RateIndexDefinition,
         },
         time::Tenor,
     };

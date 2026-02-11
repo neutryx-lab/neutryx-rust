@@ -97,9 +97,11 @@ mod tests {
         assert!(MarketQuoteError::out_of_bounds(1.5, 0.0, 1.0)
             .to_string()
             .contains("between"));
-        assert!(MarketQuoteError::unsupported_quote_category(QuoteCategory::Vol)
-            .to_string()
-            .contains("Vol"));
+        assert!(
+            MarketQuoteError::unsupported_quote_category(QuoteCategory::Vol)
+                .to_string()
+                .contains("Vol")
+        );
         assert!(MarketQuoteError::ValidationFailed("msg".into())
             .to_string()
             .contains("msg"));

@@ -99,8 +99,11 @@ impl ConventionRegistry {
 
         for currency in currencies {
             for quote_category in quote_categories {
-                let quote_id =
-                    crate::market::QuoteId::new(currency, crate::time::Tenor::OneYear, quote_category);
+                let quote_id = crate::market::QuoteId::new(
+                    currency,
+                    crate::time::Tenor::OneYear,
+                    quote_category,
+                );
                 if let Some(convention) = MarketConvention::for_quote_id(&quote_id) {
                     registry.register(currency, quote_category, convention);
                 }
@@ -123,7 +126,11 @@ impl ConventionRegistry {
 
     /// Gets a convention from the registry.
     #[must_use]
-    pub fn get(&self, currency: Currency, quote_category: QuoteCategory) -> Option<&MarketConvention> {
+    pub fn get(
+        &self,
+        currency: Currency,
+        quote_category: QuoteCategory,
+    ) -> Option<&MarketConvention> {
         let key = ConventionKey::new(currency, quote_category);
         self.conventions.get(&key)
     }
@@ -161,7 +168,11 @@ impl ConventionRegistry {
     pub fn is_empty(&self) -> bool { self.conventions.is_empty() }
 
     /// Removes a convention from the registry.
-    pub fn remove(&mut self, currency: Currency, quote_category: QuoteCategory) -> Option<MarketConvention> {
+    pub fn remove(
+        &mut self,
+        currency: Currency,
+        quote_category: QuoteCategory,
+    ) -> Option<MarketConvention> {
         let key = ConventionKey::new(currency, quote_category);
         self.conventions.remove(&key)
     }
@@ -178,10 +189,12 @@ impl ConventionRegistry {
         currencies
     }
 
-    /// Returns all quote categories that have at least one registered convention.
+    /// Returns all quote categories that have at least one registered
+    /// convention.
     #[must_use]
     pub fn quote_categories(&self) -> Vec<QuoteCategory> {
-        let mut quote_categories: Vec<QuoteCategory> = self.conventions.keys().map(|k| k.quote_category).collect();
+        let mut quote_categories: Vec<QuoteCategory> =
+            self.conventions.keys().map(|k| k.quote_category).collect();
         quote_categories.sort_by_key(|rt| rt.code());
         quote_categories.dedup();
         quote_categories
@@ -236,7 +249,9 @@ mod tests {
     fn test_with_defaults() {
         let registry = ConventionRegistry::with_defaults();
         assert!(registry.len() > 10);
-        assert!(registry.get(Currency::USD, QuoteCategory::Deposit).is_some());
+        assert!(registry
+            .get(Currency::USD, QuoteCategory::Deposit)
+            .is_some());
         assert!(registry.get(Currency::EUR, QuoteCategory::Swap).is_some());
         assert!(registry.get(Currency::USD, QuoteCategory::Vol).is_none());
 

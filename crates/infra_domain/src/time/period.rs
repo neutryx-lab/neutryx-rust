@@ -125,11 +125,13 @@ pub enum EndOfMonthRule {
 /// - Special "ON" (Overnight) display and parsing for 1D periods
 /// - Predefined constants for standard market tenors
 /// - Serde as human-readable strings ("ON", "3M", "1Y", "42D", etc.)
-/// - Support for arbitrary tenors (e.g., `Tenor::months(18)`, `Tenor::days(42)`)
+/// - Support for arbitrary tenors (e.g., `Tenor::months(18)`,
+///   `Tenor::days(42)`)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Tenor(pub Period);
 
-/// Standard tenor constants (PascalCase for backward compatibility with former enum variants).
+/// Standard tenor constants (PascalCase for backward compatibility with former
+/// enum variants).
 #[allow(non_upper_case_globals)]
 impl Tenor {
     /// Overnight (1D).
@@ -234,7 +236,8 @@ impl Tenor {
         ]
     }
 
-    /// Returns all standard tenor codes in their canonical order (including FRA codes).
+    /// Returns all standard tenor codes in their canonical order (including FRA
+    /// codes).
     #[must_use]
     pub const fn all_codes() -> [&'static str; 21] {
         [
@@ -247,7 +250,8 @@ impl Tenor {
     #[must_use]
     pub fn code(&self) -> String { self.to_string() }
 
-    /// Returns the number of months for this tenor (approximate for day/week tenors).
+    /// Returns the number of months for this tenor (approximate for day/week
+    /// tenors).
     #[must_use]
     pub const fn to_months(&self) -> u32 {
         match self.0.units {
@@ -324,9 +328,7 @@ impl FromStr for Tenor {
             return Err(format!("Invalid tenor: {s}"));
         }
         let (num, unit) = upper.split_at(upper.len() - 1);
-        let length: i32 = num
-            .parse()
-            .map_err(|_| format!("Invalid tenor: {s}"))?;
+        let length: i32 = num.parse().map_err(|_| format!("Invalid tenor: {s}"))?;
         let units = match unit {
             "D" => TimeUnit::Days,
             "W" => TimeUnit::Weeks,

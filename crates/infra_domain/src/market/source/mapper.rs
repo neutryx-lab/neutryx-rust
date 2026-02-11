@@ -154,9 +154,12 @@ impl InstrumentMapper for StandardInstrumentMapper {
             QuoteCategory::Swap => Ok(self.map_swap(quote, valuation_date)),
             QuoteCategory::Ois => Ok(self.map_ois(quote, valuation_date)),
             QuoteCategory::BasisSwap => Ok(self.map_basis_swap(quote, valuation_date)),
-            QuoteCategory::FxSpot | QuoteCategory::FxForward | QuoteCategory::Vol | QuoteCategory::Event => {
-                Err(MarketQuoteError::unsupported_quote_category(quote.id.quote_category))
-            }
+            QuoteCategory::FxSpot
+            | QuoteCategory::FxForward
+            | QuoteCategory::Vol
+            | QuoteCategory::Event => Err(MarketQuoteError::unsupported_quote_category(
+                quote.id.quote_category,
+            )),
         }
     }
 }

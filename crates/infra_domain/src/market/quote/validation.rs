@@ -170,11 +170,21 @@ mod tests {
     #[test]
     fn test_fx_and_vol_bounds() {
         let v = StandardQuoteValidator::default();
-        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 1.2345)).is_ok());
-        assert!(v.validate(&make_quote(QuoteCategory::FxForward, 1.2345)).is_ok());
-        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 0.0001)).is_ok());
-        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 100_000.0)).is_ok());
-        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 0.00001)).is_err());
+        assert!(v
+            .validate(&make_quote(QuoteCategory::FxSpot, 1.2345))
+            .is_ok());
+        assert!(v
+            .validate(&make_quote(QuoteCategory::FxForward, 1.2345))
+            .is_ok());
+        assert!(v
+            .validate(&make_quote(QuoteCategory::FxSpot, 0.0001))
+            .is_ok());
+        assert!(v
+            .validate(&make_quote(QuoteCategory::FxSpot, 100_000.0))
+            .is_ok());
+        assert!(v
+            .validate(&make_quote(QuoteCategory::FxSpot, 0.00001))
+            .is_err());
         assert!(v
             .validate(&make_quote(QuoteCategory::FxSpot, 200_000.0))
             .is_err());
@@ -197,7 +207,10 @@ mod tests {
             .validate(&make_quote_unchecked(QuoteCategory::Swap, f64::INFINITY))
             .is_err());
         assert!(v
-            .validate(&make_quote_unchecked(QuoteCategory::Swap, f64::NEG_INFINITY))
+            .validate(&make_quote_unchecked(
+                QuoteCategory::Swap,
+                f64::NEG_INFINITY
+            ))
             .is_err());
     }
 }

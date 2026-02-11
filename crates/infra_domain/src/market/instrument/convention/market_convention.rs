@@ -4,7 +4,7 @@ use super::{
     DepositConvention, FraConvention, FuturesConvention, FxConvention, FxSwapConvention,
     SwapConvention, XCcyBasisConvention,
 };
-use crate::market::{Currency, QuoteId, QuoteCategory};
+use crate::market::{Currency, QuoteCategory, QuoteId};
 
 /// Unified market convention enum for all instrument types.
 #[derive(Debug, Clone, PartialEq)]

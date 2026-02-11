@@ -66,7 +66,9 @@ impl QuoteCategory {
 
     /// Returns true if this is an FX category.
     #[must_use]
-    pub const fn is_fx(&self) -> bool { matches!(self, QuoteCategory::FxSpot | QuoteCategory::FxForward) }
+    pub const fn is_fx(&self) -> bool {
+        matches!(self, QuoteCategory::FxSpot | QuoteCategory::FxForward)
+    }
 
     /// Returns true if this is a volatility quote.
     #[must_use]
