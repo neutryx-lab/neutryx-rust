@@ -21,6 +21,7 @@ pub enum BootstrapMethod {
 
 /// Single instrument input for curve building.
 #[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurveInstrumentInput {
     /// Instrument type (e.g., "deposit", "fra", "swap", "event").
     #[serde(alias = "type")]
@@ -46,6 +47,7 @@ pub struct CurveInstrumentInput {
 
 /// Request to build a yield curve.
 #[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurveBuildRequest {
     /// Index name (e.g., "USD-SOFR", "EUR-EURIBOR-6M").
     #[validate(length(min = 1))]
@@ -82,6 +84,7 @@ fn default_max_iterations() -> usize { 100 }
 
 /// Pillar point in a bootstrapped curve.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurvePillar {
     /// Date (ISO 8601, e.g.
     pub date: String,
@@ -97,6 +100,7 @@ pub struct CurvePillar {
 
 /// Forward rate point on a daily grid.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardRatePoint {
     /// Date (ISO 8601).
     pub date: String,
@@ -108,6 +112,7 @@ pub struct ForwardRatePoint {
 
 /// A single point on a pre-computed chart display grid.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ChartGridPoint {
     /// Date (ISO 8601, e.g.
     pub date: String,
@@ -123,6 +128,7 @@ pub struct ChartGridPoint {
 
 /// Jacobian matrix data for curve sensitivity analysis.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct JacobianData {
     /// Row labels (pillar descriptions, e.g., "Depo-1M", "IRS-5Y").
     pub row_labels: Vec<String>,
@@ -136,6 +142,7 @@ pub struct JacobianData {
 
 /// Response for curve building.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct CurveBuildResponse {
     /// Generated curve ID for caching.
     pub curve_id: String,
@@ -168,6 +175,7 @@ pub struct CurveBuildResponse {
 
 /// Request to get discount factor from a cached curve.
 #[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct DiscountFactorRequest {
     /// Curve ID from previous build.
     #[validate(length(min = 1))]
@@ -179,6 +187,7 @@ pub struct DiscountFactorRequest {
 
 /// Response with discount factor.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct DiscountFactorResponse {
     /// Curve ID used for the lookup.
     pub curve_id: String,
@@ -192,6 +201,7 @@ pub struct DiscountFactorResponse {
 
 /// Request to get forward rate from a cached curve.
 #[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardRateRequest {
     /// Curve ID from previous build.
     #[validate(length(min = 1))]
@@ -206,6 +216,7 @@ pub struct ForwardRateRequest {
 
 /// Response with forward rate.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardRateResponse {
     /// Curve ID used for the lookup.
     pub curve_id: String,
@@ -219,6 +230,7 @@ pub struct ForwardRateResponse {
 
 /// Request to compute forward swap rates from a cached curve.
 #[derive(Debug, Clone, Deserialize, Validate)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardSwapRateRequest {
     /// Curve ID from previous build.
     #[validate(length(min = 1))]
@@ -233,6 +245,7 @@ pub struct ForwardSwapRateRequest {
 
 /// Response with forward swap rate matrix.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
 pub struct ForwardSwapRateResponse {
     /// Curve ID used.
     pub curve_id: String,
