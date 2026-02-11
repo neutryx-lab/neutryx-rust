@@ -432,7 +432,7 @@ mod tests {
     #[test]
     fn test_parse_tenor_weeks() {
         assert!((parse_tenor_string("1W").unwrap() - 7.0 / 365.0).abs() < 1e-10);
-        assert!((parse_tenor_string("4W").unwrap() - 4.0 / 52.0).abs() < 1e-10);
+        assert!((parse_tenor_string("4W").unwrap() - 28.0 / 365.0).abs() < 1e-10);
     }
 
     #[test]

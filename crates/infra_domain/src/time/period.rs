@@ -25,7 +25,7 @@ pub enum TimeUnit {
 }
 
 /// A generic time period.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Period {
     /// Number of units (can be negative).
@@ -37,23 +37,23 @@ pub struct Period {
 impl Period {
     /// Create a new period.
     #[must_use]
-    pub fn new(length: i32, units: TimeUnit) -> Self { Self { length, units } }
+    pub const fn new(length: i32, units: TimeUnit) -> Self { Self { length, units } }
 
     /// Create a period in days.
     #[must_use]
-    pub fn days(n: i32) -> Self { Self::new(n, TimeUnit::Days) }
+    pub const fn days(n: i32) -> Self { Self::new(n, TimeUnit::Days) }
 
     /// Create a period in weeks.
     #[must_use]
-    pub fn weeks(n: i32) -> Self { Self::new(n, TimeUnit::Weeks) }
+    pub const fn weeks(n: i32) -> Self { Self::new(n, TimeUnit::Weeks) }
 
     /// Create a period in months.
     #[must_use]
-    pub fn months(n: i32) -> Self { Self::new(n, TimeUnit::Months) }
+    pub const fn months(n: i32) -> Self { Self::new(n, TimeUnit::Months) }
 
     /// Create a period in years.
     #[must_use]
-    pub fn years(n: i32) -> Self { Self::new(n, TimeUnit::Years) }
+    pub const fn years(n: i32) -> Self { Self::new(n, TimeUnit::Years) }
 }
 
 impl fmt::Display for Period {
@@ -120,109 +120,121 @@ pub enum EndOfMonthRule {
 }
 
 /// Financial tenor (period) representation.
-#[non_exhaustive]
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr, strum::EnumString,
-)]
-#[strum(ascii_case_insensitive)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum Tenor {
-    /// Overnight.
-    #[cfg_attr(feature = "serde", serde(rename = "ON"))]
-    #[strum(to_string = "ON")]
-    Overnight,
+///
+/// A newtype wrapper around [`Period`] that adds financial tenor semantics:
+/// - Special "ON" (Overnight) display and parsing for 1D periods
+/// - Predefined constants for standard market tenors
+/// - Serde as human-readable strings ("ON", "3M", "1Y", "42D", etc.)
+/// - Support for arbitrary tenors (e.g., `Tenor::months(18)`, `Tenor::days(42)`)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Tenor(pub Period);
+
+/// Standard tenor constants (PascalCase for backward compatibility with former enum variants).
+#[allow(non_upper_case_globals)]
+impl Tenor {
+    /// Overnight (1D).
+    pub const Overnight: Self = Self::new(Period::days(1));
     /// One week (1W).
-    #[cfg_attr(feature = "serde", serde(rename = "1W"))]
-    #[strum(to_string = "1W")]
-    OneWeek,
+    pub const OneWeek: Self = Self::new(Period::weeks(1));
     /// Two weeks (2W).
-    #[cfg_attr(feature = "serde", serde(rename = "2W"))]
-    #[strum(to_string = "2W")]
-    TwoWeeks,
+    pub const TwoWeeks: Self = Self::new(Period::weeks(2));
     /// One month (1M).
-    #[cfg_attr(feature = "serde", serde(rename = "1M"))]
-    #[strum(to_string = "1M")]
-    OneMonth,
+    pub const OneMonth: Self = Self::new(Period::months(1));
     /// Two months (2M).
-    #[cfg_attr(feature = "serde", serde(rename = "2M"))]
-    #[strum(to_string = "2M")]
-    TwoMonths,
+    pub const TwoMonths: Self = Self::new(Period::months(2));
     /// Three months (3M).
-    #[cfg_attr(feature = "serde", serde(rename = "3M"))]
-    #[strum(to_string = "3M")]
-    ThreeMonths,
+    pub const ThreeMonths: Self = Self::new(Period::months(3));
     /// Six months (6M).
-    #[cfg_attr(feature = "serde", serde(rename = "6M"))]
-    #[strum(to_string = "6M")]
-    SixMonths,
+    pub const SixMonths: Self = Self::new(Period::months(6));
     /// Nine months (9M).
-    #[cfg_attr(feature = "serde", serde(rename = "9M"))]
-    #[strum(to_string = "9M")]
-    NineMonths,
+    pub const NineMonths: Self = Self::new(Period::months(9));
     /// One year (1Y).
-    #[cfg_attr(feature = "serde", serde(rename = "1Y"))]
-    #[strum(to_string = "1Y")]
-    OneYear,
+    pub const OneYear: Self = Self::new(Period::years(1));
     /// Two years (2Y).
-    #[cfg_attr(feature = "serde", serde(rename = "2Y"))]
-    #[strum(to_string = "2Y")]
-    TwoYears,
+    pub const TwoYears: Self = Self::new(Period::years(2));
     /// Three years (3Y).
-    #[cfg_attr(feature = "serde", serde(rename = "3Y"))]
-    #[strum(to_string = "3Y")]
-    ThreeYears,
+    pub const ThreeYears: Self = Self::new(Period::years(3));
     /// Five years (5Y).
-    #[cfg_attr(feature = "serde", serde(rename = "5Y"))]
-    #[strum(to_string = "5Y")]
-    FiveYears,
+    pub const FiveYears: Self = Self::new(Period::years(5));
     /// Seven years (7Y).
-    #[cfg_attr(feature = "serde", serde(rename = "7Y"))]
-    #[strum(to_string = "7Y")]
-    SevenYears,
+    pub const SevenYears: Self = Self::new(Period::years(7));
     /// Ten years (10Y).
-    #[cfg_attr(feature = "serde", serde(rename = "10Y"))]
-    #[strum(to_string = "10Y")]
-    TenYears,
+    pub const TenYears: Self = Self::new(Period::years(10));
     /// Fifteen years (15Y).
-    #[cfg_attr(feature = "serde", serde(rename = "15Y"))]
-    #[strum(to_string = "15Y")]
-    FifteenYears,
+    pub const FifteenYears: Self = Self::new(Period::years(15));
     /// Twenty years (20Y).
-    #[cfg_attr(feature = "serde", serde(rename = "20Y"))]
-    #[strum(to_string = "20Y")]
-    TwentyYears,
+    pub const TwentyYears: Self = Self::new(Period::years(20));
     /// Thirty years (30Y).
-    #[cfg_attr(feature = "serde", serde(rename = "30Y"))]
-    #[strum(to_string = "30Y")]
-    ThirtyYears,
+    pub const ThirtyYears: Self = Self::new(Period::years(30));
 }
 
 impl Tenor {
-    /// Returns all tenors in their canonical order.
+    /// Normalise a period to its canonical unit.
+    ///
+    /// - Days divisible by 7 are promoted to weeks (7D → 1W).
+    /// - Months divisible by 12 are promoted to years (12M → 1Y).
+    #[must_use]
+    const fn normalize(period: Period) -> Period {
+        match period.units {
+            TimeUnit::Days if period.length > 0 && period.length % 7 == 0 => {
+                Period::weeks(period.length / 7)
+            }
+            TimeUnit::Months if period.length > 0 && period.length % 12 == 0 => {
+                Period::years(period.length / 12)
+            }
+            _ => period,
+        }
+    }
+
+    /// Create a tenor from a [`Period`], normalising to canonical units.
+    #[must_use]
+    pub const fn new(period: Period) -> Self { Self(Self::normalize(period)) }
+
+    /// Create a tenor in days.
+    #[must_use]
+    pub const fn days(n: i32) -> Self { Self::new(Period::days(n)) }
+
+    /// Create a tenor in weeks.
+    #[must_use]
+    pub const fn weeks(n: i32) -> Self { Self::new(Period::weeks(n)) }
+
+    /// Create a tenor in months.
+    #[must_use]
+    pub const fn months(n: i32) -> Self { Self::new(Period::months(n)) }
+
+    /// Create a tenor in years.
+    #[must_use]
+    pub const fn years(n: i32) -> Self { Self::new(Period::years(n)) }
+
+    /// Returns the underlying [`Period`].
+    #[must_use]
+    pub const fn period(&self) -> Period { self.0 }
+
+    /// Returns all standard tenors in their canonical order.
     #[must_use]
     pub const fn all() -> [Tenor; 17] {
         [
-            Tenor::Overnight,
-            Tenor::OneWeek,
-            Tenor::TwoWeeks,
-            Tenor::OneMonth,
-            Tenor::TwoMonths,
-            Tenor::ThreeMonths,
-            Tenor::SixMonths,
-            Tenor::NineMonths,
-            Tenor::OneYear,
-            Tenor::TwoYears,
-            Tenor::ThreeYears,
-            Tenor::FiveYears,
-            Tenor::SevenYears,
-            Tenor::TenYears,
-            Tenor::FifteenYears,
-            Tenor::TwentyYears,
-            Tenor::ThirtyYears,
+            Self::Overnight,
+            Self::OneWeek,
+            Self::TwoWeeks,
+            Self::OneMonth,
+            Self::TwoMonths,
+            Self::ThreeMonths,
+            Self::SixMonths,
+            Self::NineMonths,
+            Self::OneYear,
+            Self::TwoYears,
+            Self::ThreeYears,
+            Self::FiveYears,
+            Self::SevenYears,
+            Self::TenYears,
+            Self::FifteenYears,
+            Self::TwentyYears,
+            Self::ThirtyYears,
         ]
     }
 
-    /// Returns all tenor codes in their canonical order.
+    /// Returns all standard tenor codes in their canonical order (including FRA codes).
     #[must_use]
     pub const fn all_codes() -> [&'static str; 21] {
         [
@@ -233,118 +245,111 @@ impl Tenor {
 
     /// Returns the standard code for this tenor.
     #[must_use]
-    pub fn code(&self) -> &str { self.as_ref() }
+    pub fn code(&self) -> String { self.to_string() }
 
-    /// Returns the number of months for this tenor.
+    /// Returns the number of months for this tenor (approximate for day/week tenors).
     #[must_use]
-    pub fn to_months(&self) -> u32 {
-        match self {
-            Tenor::Overnight | Tenor::OneWeek | Tenor::TwoWeeks => 0,
-            Tenor::OneMonth => 1,
-            Tenor::TwoMonths => 2,
-            Tenor::ThreeMonths => 3,
-            Tenor::SixMonths => 6,
-            Tenor::NineMonths => 9,
-            Tenor::OneYear => 12,
-            Tenor::TwoYears => 24,
-            Tenor::ThreeYears => 36,
-            Tenor::FiveYears => 60,
-            Tenor::SevenYears => 84,
-            Tenor::TenYears => 120,
-            Tenor::FifteenYears => 180,
-            Tenor::TwentyYears => 240,
-            Tenor::ThirtyYears => 360,
+    pub const fn to_months(&self) -> u32 {
+        match self.0.units {
+            TimeUnit::Days | TimeUnit::Weeks => 0,
+            TimeUnit::Months => self.0.length as u32,
+            TimeUnit::Years => (self.0.length * 12) as u32,
         }
     }
 
     /// Returns the tenor as a fraction of a year.
     #[must_use]
     pub fn to_years(&self) -> f64 {
-        match self {
-            Tenor::Overnight => 1.0 / 365.0,
-            Tenor::OneWeek => 7.0 / 365.0,
-            Tenor::TwoWeeks => 14.0 / 365.0,
-            Tenor::OneMonth => 1.0 / 12.0,
-            Tenor::TwoMonths => 2.0 / 12.0,
-            Tenor::ThreeMonths => 3.0 / 12.0,
-            Tenor::SixMonths => 6.0 / 12.0,
-            Tenor::NineMonths => 9.0 / 12.0,
-            Tenor::OneYear => 1.0,
-            Tenor::TwoYears => 2.0,
-            Tenor::ThreeYears => 3.0,
-            Tenor::FiveYears => 5.0,
-            Tenor::SevenYears => 7.0,
-            Tenor::TenYears => 10.0,
-            Tenor::FifteenYears => 15.0,
-            Tenor::TwentyYears => 20.0,
-            Tenor::ThirtyYears => 30.0,
+        match self.0.units {
+            TimeUnit::Days => self.0.length as f64 / 365.0,
+            TimeUnit::Weeks => (self.0.length * 7) as f64 / 365.0,
+            TimeUnit::Months => self.0.length as f64 / 12.0,
+            TimeUnit::Years => self.0.length as f64,
         }
     }
 
     /// Returns the approximate number of days for this tenor.
     #[must_use]
-    pub fn to_days(&self) -> u32 {
-        match self {
-            Tenor::Overnight => 1,
-            Tenor::OneWeek => 7,
-            Tenor::TwoWeeks => 14,
-            Tenor::OneMonth => 30,
-            Tenor::TwoMonths => 60,
-            Tenor::ThreeMonths => 90,
-            Tenor::SixMonths => 180,
-            Tenor::NineMonths => 270,
-            Tenor::OneYear => 365,
-            Tenor::TwoYears => 730,
-            Tenor::ThreeYears => 1095,
-            Tenor::FiveYears => 1825,
-            Tenor::SevenYears => 2555,
-            Tenor::TenYears => 3650,
-            Tenor::FifteenYears => 5475,
-            Tenor::TwentyYears => 7300,
-            Tenor::ThirtyYears => 10950,
+    pub const fn to_days(&self) -> u32 {
+        match self.0.units {
+            TimeUnit::Days => self.0.length as u32,
+            TimeUnit::Weeks => (self.0.length * 7) as u32,
+            TimeUnit::Months => (self.0.length * 30) as u32,
+            TimeUnit::Years => (self.0.length * 365) as u32,
         }
     }
 
-    /// Convert to a generic Period.
+    /// Convert to a generic [`Period`].
     #[must_use]
-    pub fn to_period(&self) -> Period {
-        match self {
-            Tenor::Overnight => Period::days(1),
-            Tenor::OneWeek => Period::weeks(1),
-            Tenor::TwoWeeks => Period::weeks(2),
-            Tenor::OneMonth => Period::months(1),
-            Tenor::TwoMonths => Period::months(2),
-            Tenor::ThreeMonths => Period::months(3),
-            Tenor::SixMonths => Period::months(6),
-            Tenor::NineMonths => Period::months(9),
-            Tenor::OneYear => Period::years(1),
-            Tenor::TwoYears => Period::years(2),
-            Tenor::ThreeYears => Period::years(3),
-            Tenor::FiveYears => Period::years(5),
-            Tenor::SevenYears => Period::years(7),
-            Tenor::TenYears => Period::years(10),
-            Tenor::FifteenYears => Period::years(15),
-            Tenor::TwentyYears => Period::years(20),
-            Tenor::ThirtyYears => Period::years(30),
-        }
-    }
+    pub const fn to_period(&self) -> Period { self.0 }
 
     /// Adds this tenor to a date.
     #[must_use]
     pub fn add_to_date(&self, date: Date, eom_rule: EndOfMonthRule) -> Date {
         let naive = date.into_inner();
 
-        let result = match self {
-            Tenor::Overnight => naive.succ_opt().unwrap_or(naive),
-            Tenor::OneWeek => add_days(naive, 7),
-            Tenor::TwoWeeks => add_days(naive, 14),
-            _ => {
+        let result = match self.0.units {
+            TimeUnit::Days => add_days(naive, self.0.length as u32),
+            TimeUnit::Weeks => add_days(naive, (self.0.length * 7) as u32),
+            TimeUnit::Months | TimeUnit::Years => {
                 let months = self.to_months();
                 add_months_with_eom(naive, months, eom_rule)
             }
         };
 
         Date::from_naive(result)
+    }
+}
+
+impl fmt::Display for Tenor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if *self == Self::Overnight {
+            write!(f, "ON")
+        } else {
+            write!(f, "{}", self.0)
+        }
+    }
+}
+
+impl FromStr for Tenor {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim();
+        if s.eq_ignore_ascii_case("ON") {
+            return Ok(Self::Overnight);
+        }
+        let upper = s.to_uppercase();
+        if upper.len() < 2 {
+            return Err(format!("Invalid tenor: {s}"));
+        }
+        let (num, unit) = upper.split_at(upper.len() - 1);
+        let length: i32 = num
+            .parse()
+            .map_err(|_| format!("Invalid tenor: {s}"))?;
+        let units = match unit {
+            "D" => TimeUnit::Days,
+            "W" => TimeUnit::Weeks,
+            "M" => TimeUnit::Months,
+            "Y" => TimeUnit::Years,
+            _ => return Err(format!("Invalid tenor unit: {s}")),
+        };
+        Ok(Self::new(Period::new(length, units)))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Tenor {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Tenor {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
 
@@ -667,14 +672,53 @@ mod tests {
     }
 
     #[test]
+    fn test_tenor_from_str_arbitrary() {
+        // Arbitrary tenors are now supported
+        let t18m = "18M".parse::<Tenor>().unwrap();
+        assert_eq!(t18m, Tenor::months(18));
+        assert_eq!(format!("{t18m}"), "18M");
+
+        // 42D normalises to 6W (42 = 7 × 6)
+        let t42d = "42D".parse::<Tenor>().unwrap();
+        assert_eq!(t42d, Tenor::weeks(6));
+        assert_eq!(format!("{t42d}"), "6W");
+
+        // 10D stays as days (not divisible by 7)
+        let t10d = "10D".parse::<Tenor>().unwrap();
+        assert_eq!(t10d, Tenor::days(10));
+        assert_eq!(format!("{t10d}"), "10D");
+    }
+
+    #[test]
+    fn test_tenor_normalisation() {
+        // 12M normalises to 1Y
+        assert_eq!(Tenor::months(12), Tenor::OneYear);
+        assert_eq!("12M".parse::<Tenor>().unwrap(), Tenor::OneYear);
+        assert_eq!(format!("{}", Tenor::months(12)), "1Y");
+
+        // 24M normalises to 2Y
+        assert_eq!(Tenor::months(24), Tenor::TwoYears);
+
+        // 7D normalises to 1W
+        assert_eq!(Tenor::days(7), Tenor::OneWeek);
+        assert_eq!(format!("{}", Tenor::days(7)), "1W");
+
+        // 14D normalises to 2W
+        assert_eq!(Tenor::days(14), Tenor::TwoWeeks);
+
+        // Non-divisible values stay as-is
+        assert_eq!(Tenor::months(18).0.units, TimeUnit::Months);
+        assert_eq!(Tenor::days(10).0.units, TimeUnit::Days);
+    }
+
+    #[test]
     fn test_tenor_from_str_invalid() {
         assert!("INVALID".parse::<Tenor>().is_err());
-        assert!("18M".parse::<Tenor>().is_err());
-        // Former aliases are no longer accepted as Tenor variants
-        assert!("12M".parse::<Tenor>().is_err());
-        assert!("24M".parse::<Tenor>().is_err());
         assert!("OVERNIGHT".parse::<Tenor>().is_err());
         assert!("O/N".parse::<Tenor>().is_err());
+        assert!("".parse::<Tenor>().is_err());
+        assert!("X".parse::<Tenor>().is_err());
+        assert!("3X".parse::<Tenor>().is_err());
     }
 
     #[test]
