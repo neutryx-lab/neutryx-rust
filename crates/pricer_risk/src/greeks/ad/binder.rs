@@ -12,11 +12,19 @@ use super::{
 pub enum ShadowAadError {
     /// Input slices have mismatched lengths.
     #[error("Length mismatch: expected {expected}, got {actual}")]
-    LengthMismatch { expected: usize, actual: usize },
+    LengthMismatch {
+        /// Number of elements expected.
+        expected: usize,
+        /// Number of elements actually provided.
+        actual: usize,
+    },
 
     /// Input slice is empty when non-empty is required.
     #[error("Empty slice: {field}")]
-    EmptySlice { field: &'static str },
+    EmptySlice {
+        /// Name of the field that was empty.
+        field: &'static str,
+    },
 
     /// Enzyme AD is not available (feature not enabled).
     #[error("Enzyme AD not available, using finite difference fallback")]
@@ -24,14 +32,20 @@ pub enum ShadowAadError {
 
     /// Invalid market data.
     #[error("Invalid market data: {message}")]
-    InvalidMarketData { message: String },
+    InvalidMarketData {
+        /// Description of the market data issue.
+        message: String,
+    },
 }
 
 /// Activity mask for partial differentiation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ActivityMask {
+    /// Whether rate inputs are active for differentiation.
     pub rates_active: bool,
+    /// Whether volatility inputs are active for differentiation.
     pub volatilities_active: bool,
+    /// Whether FX rate inputs are active for differentiation.
     pub fx_rates_active: bool,
 }
 
@@ -105,8 +119,11 @@ impl<M: Shadow> RiskResult<M> {
 /// Parameters for an Interest Rate Swap trade.
 #[derive(Debug, Clone)]
 pub struct IrsTradeParams {
+    /// Per-period notional amounts.
     pub notionals: Vec<f64>,
+    /// Per-period year fractions (accrual factors).
     pub year_fractions: Vec<f64>,
+    /// Fixed coupon rate of the swap.
     pub fixed_rate: f64,
 }
 
@@ -133,6 +150,7 @@ impl IrsTradeParams {
 /// Calculator for market risk using Shadow Object AAD.
 #[derive(Debug, Clone)]
 pub struct MarketRiskCalculator {
+    /// Finite-difference bump size for numerical gradient computation.
     pub bump_size: f64,
 }
 
@@ -627,7 +645,12 @@ mod global_bootstrap_integration {
 
         /// Curve mismatch - trade references different curve than provided.
         #[error("Curve mismatch: trade expects {expected}, got {actual}")]
-        CurveMismatch { expected: String, actual: String },
+        CurveMismatch {
+            /// Curve identifier expected by the trade.
+            expected: String,
+            /// Curve identifier actually provided.
+            actual: String,
+        },
 
         /// Empty trade batch provided.
         #[error("Empty trade batch")]
@@ -635,7 +658,10 @@ mod global_bootstrap_integration {
 
         /// Dimension mismatch in batch processing.
         #[error("Batch dimension mismatch: {message}")]
-        BatchDimensionMismatch { message: String },
+        BatchDimensionMismatch {
+            /// Description of the dimension mismatch.
+            message: String,
+        },
 
         /// Shadow AAD error during computation.
         #[error("Shadow AAD error: {0}")]
@@ -645,16 +671,22 @@ mod global_bootstrap_integration {
     /// Result of IFT-based curve sensitivity calculation.
     #[derive(Debug, Clone)]
     pub struct IftRiskResult {
+        /// Present value of the trade.
         pub pv: f64,
+        /// Sensitivities with respect to discount factors (dPV/dDF).
         pub df_sensitivities: Vec<f64>,
+        /// Sensitivities with respect to market quotes (dPV/dQuote).
         pub market_sensitivities: Vec<f64>,
     }
 
     /// Result of batched IFT risk calculation across multiple trades.
     #[derive(Debug, Clone)]
     pub struct BatchIftRiskResult {
+        /// Per-trade risk results.
         pub trade_results: Vec<IftRiskResult>,
+        /// Aggregated market sensitivities across all trades.
         pub total_market_sensitivities: Vec<f64>,
+        /// Sum of present values across all trades.
         pub total_pv: f64,
     }
 

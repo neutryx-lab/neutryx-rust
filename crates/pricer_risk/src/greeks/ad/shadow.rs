@@ -168,8 +168,11 @@ impl Shadow for SimpleVolSurface {
 /// Combined market data for Shadow Object AAD.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SimpleMarketData {
+    /// Shadow discount curve.
     pub discount_curve: SimpleYieldCurve,
+    /// Shadow forward curve.
     pub forward_curve: Option<SimpleYieldCurve>,
+    /// Shadow volatility surface.
     pub vol_surface: Option<SimpleVolSurface>,
 }
 
@@ -235,6 +238,7 @@ mod global_bootstrap_shadow {
     }
 }
 
+#[allow(unused_imports)]
 pub use global_bootstrap_shadow::*;
 
 #[cfg(test)]

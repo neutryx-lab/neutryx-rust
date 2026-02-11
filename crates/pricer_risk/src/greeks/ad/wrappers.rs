@@ -1,5 +1,6 @@
 //! Enzyme autodiff wrapper functions.
 
+/// Prices a European call option using Black-Scholes.
 #[inline]
 pub fn price_european_call(spot: f64, strike: f64, rate: f64, vol: f64, time: f64) -> f64 {
     if time <= 0.0 {
@@ -83,10 +84,15 @@ pub fn price_european_vega(spot: f64, strike: f64, rate: f64, vol: f64, time: f6
 /// All Greeks computed via reverse mode AD.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AllGreeks {
+    /// Option price.
     pub price: f64,
+    /// Delta.
     pub delta: f64,
+    /// Rho.
     pub rho: f64,
+    /// Vega.
     pub vega: f64,
+    /// Theta.
     pub theta: f64,
 }
 

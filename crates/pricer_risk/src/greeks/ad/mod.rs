@@ -18,9 +18,12 @@ pub mod wrappers;
 /// AD mode (automatic differentiation mode).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum ADMode {
+    /// No differentiation; the function is evaluated without AD.
     #[default]
     Inactive,
+    /// Forward-mode AD (tangent propagation).
     Forward,
+    /// Reverse-mode AD (adjoint/back-propagation).
     Reverse,
 }
 
@@ -41,10 +44,15 @@ impl ADMode {
 /// Activity annotations for autodiff parameters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Activity {
+    /// Parameter is constant and excluded from differentiation.
     Const,
+    /// Forward-mode dual number: carries both primal and tangent values.
     Dual,
+    /// Reverse-mode active scalar: receives an adjoint during back-propagation.
     Active,
+    /// Reverse-mode duplicated pointer: shadow allocation stores the adjoint.
     Duplicated,
+    /// Like `Duplicated`, but only the shadow (adjoint) is returned.
     DuplicatedOnly,
 }
 

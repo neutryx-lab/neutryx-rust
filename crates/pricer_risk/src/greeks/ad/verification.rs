@@ -7,10 +7,15 @@ use super::enzyme_greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
 /// Configuration for verification tests.
 #[derive(Clone, Debug)]
 pub struct VerificationConfig {
+    /// Tolerance for Enzyme vs finite-difference comparison.
     pub enzyme_fd_tolerance: f64,
+    /// Tolerance for analytical comparison.
     pub analytical_tolerance: f64,
+    /// Number of Monte Carlo paths.
     pub n_paths: usize,
+    /// Random seed.
     pub seed: u64,
+    /// Whether to print verbose output.
     pub verbose: bool,
 }
 
@@ -62,11 +67,17 @@ impl VerificationConfig {
 /// Result of a single Greek verification.
 #[derive(Clone, Debug)]
 pub struct GreekVerification {
+    /// Greek name.
     pub name: &'static str,
+    /// Value from Enzyme AD.
     pub enzyme_value: f64,
+    /// Value from finite differences.
     pub fd_value: f64,
+    /// Analytical reference value.
     pub analytical_value: Option<f64>,
+    /// Whether Enzyme vs FD comparison passed.
     pub enzyme_fd_passed: bool,
+    /// Whether analytical comparison passed.
     pub analytical_passed: Option<bool>,
 }
 
@@ -104,17 +115,29 @@ impl GreekVerification {
 /// Result of a complete verification run.
 #[derive(Clone, Debug)]
 pub struct VerificationResult {
+    /// Spot price used.
     pub spot: f64,
+    /// Strike price.
     pub strike: f64,
+    /// Risk-free rate.
     pub rate: f64,
+    /// Volatility.
     pub volatility: f64,
+    /// Time to maturity.
     pub maturity: f64,
+    /// Whether the option is a call.
     pub is_call: bool,
+    /// Enzyme Greeks result.
     pub enzyme_result: EnzymeGreeksResult,
+    /// Delta verification.
     pub delta: GreekVerification,
+    /// Gamma verification.
     pub gamma: GreekVerification,
+    /// Vega verification.
     pub vega: GreekVerification,
+    /// Theta verification.
     pub theta: GreekVerification,
+    /// Rho verification.
     pub rho: GreekVerification,
 }
 

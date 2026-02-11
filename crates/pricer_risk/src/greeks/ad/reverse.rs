@@ -5,24 +5,38 @@ use num_traits::Float;
 /// Greeks calculation result with optional sensitivities.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GreeksResult<T: Float> {
+    /// Option price.
     pub price: T,
+    /// Standard error.
     pub std_error: T,
+    /// Delta.
     pub delta: Option<T>,
+    /// Vega.
     pub vega: Option<T>,
+    /// Theta.
     pub theta: Option<T>,
+    /// Rho.
     pub rho: Option<T>,
+    /// Gamma.
     pub gamma: Option<T>,
+    /// Vanna.
     pub vanna: Option<T>,
+    /// Volga.
     pub volga: Option<T>,
 }
 
 /// Reverse mode AD result containing all first-order Greeks.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReverseAD<T: Float> {
+    /// Computed price.
     pub price: T,
+    /// Delta sensitivity.
     pub delta: T,
+    /// Rho sensitivity.
     pub rho: T,
+    /// Vega sensitivity.
     pub vega: T,
+    /// Theta sensitivity.
     pub theta: T,
 }
 
@@ -75,8 +89,11 @@ impl<T: Float> Default for ReverseAD<T> {
 /// Second-order derivative container for Gamma computation.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GammaAD<T: Float> {
+    /// Gamma sensitivity.
     pub gamma: T,
+    /// Vanna cross-Greek.
     pub vanna: Option<T>,
+    /// Volga cross-Greek.
     pub volga: Option<T>,
 }
 
@@ -123,7 +140,9 @@ impl<T: Float> Default for GammaAD<T> {
 /// Complete Greeks result combining first and second order sensitivities.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CompleteGreeks<T: Float> {
+    /// First-order sensitivities.
     pub first_order: ReverseAD<T>,
+    /// Second-order sensitivities.
     pub second_order: GammaAD<T>,
 }
 

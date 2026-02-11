@@ -10,8 +10,11 @@ use super::loops::AdjointAccumulator;
 /// Configuration for parallel Greeks computation.
 #[derive(Clone, Copy, Debug)]
 pub struct ParallelGreeksConfig {
+    /// Minimum paths per thread.
     pub min_paths_per_thread: usize,
+    /// Whether to use thread-local storage.
     pub use_thread_local: bool,
+    /// Chunk size for parallel iteration.
     pub chunk_size: usize,
 }
 
@@ -176,12 +179,19 @@ impl ParallelGreeksComputer {
 /// Result of parallel Greeks computation with averaged values and statistics.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ParallelGreeksResult<T: Float> {
+    /// Delta sensitivity.
     pub delta: T,
+    /// Gamma sensitivity.
     pub gamma: T,
+    /// Vega sensitivity.
     pub vega: T,
+    /// Theta sensitivity.
     pub theta: T,
+    /// Rho sensitivity.
     pub rho: T,
+    /// Number of paths used.
     pub n_paths: usize,
+    /// Standard error of the delta estimate.
     pub delta_std_error: T,
 }
 

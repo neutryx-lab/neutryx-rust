@@ -337,12 +337,10 @@ impl StreamingObserver for BarrierObserver {
                     } else {
                         vanilla
                     }
+                } else if breached {
+                    vanilla
                 } else {
-                    if breached {
-                        vanilla
-                    } else {
-                        0.0
-                    }
+                    0.0
                 }
             })
             .collect()

@@ -75,10 +75,15 @@ impl CheckpointADConfig {
 /// State saved at a checkpoint for AD reverse pass.
 #[derive(Clone, Debug)]
 pub struct ADCheckpointState<T: Float> {
+    /// Current simulation step.
     pub step: usize,
+    /// Spot prices at this checkpoint.
     pub spots: Vec<T>,
+    /// Running average for Asian options.
     pub running_avg: Option<Vec<T>>,
+    /// Barrier alive flags per path.
     pub barrier_alive: Option<Vec<bool>>,
+    /// Random variates from this step onward.
     pub randoms_from_step: Vec<T>,
 }
 
@@ -200,11 +205,17 @@ pub trait PathDependentAD<T: Float> {
 /// Path data collected during simulation.
 #[derive(Clone, Debug, Default)]
 pub struct PathData<T: Float> {
+    /// Running sum of observations.
     pub running_sum: T,
+    /// Number of observations so far.
     pub n_observations: usize,
+    /// Maximum spot observed.
     pub max_spot: T,
+    /// Minimum spot observed.
     pub min_spot: T,
+    /// Whether barrier has been breached.
     pub barrier_breached: bool,
+    /// Step at which barrier was breached.
     pub breach_step: Option<usize>,
 }
 
@@ -263,13 +274,21 @@ impl<T: Float> PathData<T> {
 /// Result of checkpointed AD computation.
 #[derive(Clone, Debug)]
 pub struct CheckpointedGreeks<T: Float> {
+    /// Delta sensitivity.
     pub delta: T,
+    /// Gamma sensitivity.
     pub gamma: Option<T>,
+    /// Vega sensitivity.
     pub vega: T,
+    /// Theta sensitivity.
     pub theta: T,
+    /// Rho sensitivity.
     pub rho: T,
+    /// Number of Monte Carlo paths used.
     pub n_paths: usize,
+    /// Peak number of checkpoints stored.
     pub peak_checkpoints: usize,
+    /// Number of recomputation steps.
     pub recomputation_steps: usize,
 }
 

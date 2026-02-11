@@ -7,15 +7,20 @@ use thiserror::Error;
 /// Errors that can occur during implicit solver operations.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum ImplicitSolverError {
+    /// Jacobian and adjoint dimensions do not match.
     #[error("Dimension mismatch: Jacobian inverse has {jacobian_cols} columns but adjoint has {adjoint_len} elements")]
     DimensionMismatch {
+        /// Number of Jacobian columns.
         jacobian_cols: usize,
+        /// Length of the adjoint vector.
         adjoint_len: usize,
     },
 
+    /// Jacobian inverse could not be computed.
     #[error("Jacobian inverse not available; use finite difference fallback")]
     JacobianInverseNotAvailable,
 
+    /// Function evaluation failed.
     #[error("Function evaluation failed: {0}")]
     FunctionEvaluationFailed(String),
 }
@@ -23,18 +28,22 @@ pub enum ImplicitSolverError {
 /// Curve sensitivity computation result containing dL/dm.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CurveSensitivities<T: RealField + Copy> {
+    /// Sensitivities with respect to market inputs.
     pub market_sensitivities: DVector<T>,
 }
 
 impl<T: RealField + Copy> CurveSensitivities<T> {
+    /// Creates a new implicit function result.
     pub fn new(market_sensitivities: DVector<T>) -> Self {
         Self {
             market_sensitivities,
         }
     }
 
+    /// Returns the number of market sensitivities.
     pub fn dimension(&self) -> usize { self.market_sensitivities.len() }
 
+    /// Checks whether all sensitivities are finite.
     pub fn is_finite(&self) -> bool
     where
         T: Float,

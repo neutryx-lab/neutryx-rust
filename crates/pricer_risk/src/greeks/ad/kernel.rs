@@ -40,6 +40,7 @@ pub fn pricing_kernel_irs(
     *output = pv;
 }
 
+/// IRS pricing kernel computing PV from discount rates.
 #[cfg(not(feature = "enzyme-ad"))]
 pub fn pricing_kernel_irs(
     rates: &[f64],
@@ -73,6 +74,7 @@ pub fn discount_kernel(rate: &f64, time: f64, cashflow: f64, output: &mut f64) {
     *output = cashflow * (-*rate * time).exp();
 }
 
+/// Single cashflow discounting kernel.
 #[cfg(not(feature = "enzyme-ad"))]
 pub fn discount_kernel(rate: &f64, time: f64, cashflow: f64, output: &mut f64) {
     *output = cashflow * (-*rate * time).exp();
@@ -114,6 +116,7 @@ pub fn bond_pricing_kernel(
     *output = pv;
 }
 
+/// Bond pricing kernel computing PV of coupon and principal flows.
 #[cfg(not(feature = "enzyme-ad"))]
 pub fn bond_pricing_kernel(
     rates: &[f64],
@@ -170,6 +173,7 @@ pub fn fra_pricing_kernel(
     *output = notional * (forward_rate - fra_rate) * accrual * df_long;
 }
 
+/// FRA pricing kernel.
 #[cfg(not(feature = "enzyme-ad"))]
 pub fn fra_pricing_kernel(
     rates: &[f64],

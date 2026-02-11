@@ -5,6 +5,7 @@ use super::enzyme_greeks::GreeksMode as EnzymeGreeksMode;
 /// Core Greeks calculation mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum CoreGreeksMode {
+    /// Bump-and-revalue finite differences.
     #[default]
     BumpRevalue,
 }
@@ -12,11 +13,17 @@ pub enum CoreGreeksMode {
 /// Configuration for Greeks calculation.
 #[derive(Clone, Debug)]
 pub struct GreeksConfig {
+    /// Computation mode.
     pub mode: CoreGreeksMode,
+    /// Relative spot bump size.
     pub spot_bump_relative: f64,
+    /// Absolute volatility bump.
     pub vol_bump_absolute: f64,
+    /// Time bump in years.
     pub time_bump_years: f64,
+    /// Absolute rate bump.
     pub rate_bump_absolute: f64,
+    /// Verification tolerance.
     pub verification_tolerance: f64,
 }
 
@@ -36,8 +43,11 @@ impl Default for GreeksConfig {
 /// Configuration for fallback behaviour.
 #[derive(Clone, Debug)]
 pub struct FallbackConfig {
+    /// Whether to log a warning on fallback.
     pub warn_on_fallback: bool,
+    /// If true, fail instead of falling back.
     pub strict_enzyme_only: bool,
+    /// Greeks configuration to use.
     pub greeks_config: GreeksConfig,
 }
 
@@ -162,8 +172,11 @@ impl Default for FallbackResolver {
 /// Result of mode resolution.
 #[derive(Clone, Debug)]
 pub struct ResolvedMode {
+    /// Method actually used.
     pub method: ComputationMethod,
+    /// Whether fallback was triggered.
     pub is_fallback: bool,
+    /// Error if fallback failed.
     pub error: Option<FallbackError>,
 }
 
@@ -217,15 +230,20 @@ impl ResolvedMode {
 /// The resolved computation method.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ComputationMethod {
+    /// Enzyme AD method.
     Enzyme(EnzymeGreeksMode),
+    /// Fallback bump-revalue method.
     Fallback(CoreGreeksMode),
+    /// Computation failed.
     Error,
 }
 
 /// Errors that can occur during fallback resolution.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FallbackError {
+    /// Enzyme AD not available.
     EnzymeNotAvailable,
+    /// Unsupported computation mode.
     UnsupportedMode,
 }
 

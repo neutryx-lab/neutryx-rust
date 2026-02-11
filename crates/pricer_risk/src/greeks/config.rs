@@ -20,11 +20,17 @@ pub enum GreeksMode {
 /// verification tolerances.
 #[derive(Clone, Debug)]
 pub struct GreeksConfig {
+    /// Calculation mode (BumpRevalue or EnzymeAAD).
     pub mode: GreeksMode,
+    /// Relative spot bump size (e.g. 0.01 = 1%).
     pub spot_bump_relative: f64,
+    /// Absolute volatility bump size.
     pub vol_bump_absolute: f64,
+    /// Time bump size in years (e.g. 1/252 for one business day).
     pub time_bump_years: f64,
+    /// Absolute rate bump size.
     pub rate_bump_absolute: f64,
+    /// Tolerance for verification of AD vs bump-revalue.
     pub verification_tolerance: f64,
 }
 

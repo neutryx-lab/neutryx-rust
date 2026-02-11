@@ -5,14 +5,23 @@ use pricer_pricing::methods::mc::{GbmParams, MonteCarloPricer, PayoffParams, Pri
 /// Greeks calculation result with optional sensitivities.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GreeksResult<T> {
+    /// Option price.
     pub price: T,
+    /// Standard error of the Monte Carlo estimate.
     pub std_error: T,
+    /// Delta (dPrice/dSpot).
     pub delta: Option<T>,
+    /// Vega (dPrice/dVol).
     pub vega: Option<T>,
+    /// Theta (dPrice/dTime).
     pub theta: Option<T>,
+    /// Rho (dPrice/dRate).
     pub rho: Option<T>,
+    /// Gamma (d²Price/dSpot²).
     pub gamma: Option<T>,
+    /// Vanna (d²Price/dSpot·dVol).
     pub vanna: Option<T>,
+    /// Volga (d²Price/dVol²).
     pub volga: Option<T>,
 }
 
@@ -116,14 +125,23 @@ impl GreeksMode {
 /// Result of Enzyme-based Greeks computation.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct EnzymeGreeksResult {
+    /// Option price.
     pub price: f64,
+    /// Standard error.
     pub std_error: f64,
+    /// Delta.
     pub delta: f64,
+    /// Vega.
     pub vega: f64,
+    /// Theta.
     pub theta: f64,
+    /// Rho.
     pub rho: f64,
+    /// Gamma.
     pub gamma: f64,
+    /// Vanna.
     pub vanna: f64,
+    /// Volga.
     pub volga: f64,
 }
 
