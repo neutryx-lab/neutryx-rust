@@ -45,8 +45,8 @@ use crate::{
         stochastic::{RatesModel, SingleState, StochasticModel},
         validation::ParamValidationError,
     },
+    validate_params,
 };
-use crate::validate_params;
 
 // ================================================================
 // Task 2.1: ThetaFunction 型の実装

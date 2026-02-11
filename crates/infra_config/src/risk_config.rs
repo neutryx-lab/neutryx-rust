@@ -79,17 +79,11 @@ pub struct BumpSizes {
     pub spot: f64,
 }
 
-fn default_rate_bump() -> f64 {
-    0.0001
-}
+fn default_rate_bump() -> f64 { 0.0001 }
 
-fn default_vol_bump() -> f64 {
-    0.01
-}
+fn default_vol_bump() -> f64 { 0.01 }
 
-fn default_spot_bump() -> f64 {
-    0.01
-}
+fn default_spot_bump() -> f64 { 0.01 }
 
 impl Default for BumpSizes {
     fn default() -> Self {

@@ -192,7 +192,8 @@ pub struct CdsOption {
     pub notional: f64,
     /// Currency.
     pub currency: Currency,
-    /// Payer option (right to buy protection) or receiver option (right to sell.
+    /// Payer option (right to buy protection) or receiver option (right to
+    /// sell.
     pub is_payer: bool,
 }
 

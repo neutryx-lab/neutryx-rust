@@ -11,9 +11,8 @@ use infra_domain::{
 };
 use pricer_models::market::{MarketProvider, YieldCurve};
 
-use super::config::DefaultCurrency;
 use super::{
-    config::{ModelConfig, PricerConfig},
+    config::{DefaultCurrency, ModelConfig, PricerConfig},
     error::PricingError,
     payoff_evaluator::PayoffEvaluator,
     result::{CashflowPricingResult, LegPricingResult, PricingResult, SimpleDate, SimpleDirection},

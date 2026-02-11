@@ -208,12 +208,10 @@ pub fn terminal_prices_generic(workspace: &WorkspaceEnum) -> Vec<f64> {
                 Vec::new()
             }
         }
-        PathLayout::TimeStepFirst => {
-            workspace
-                .get_step_slice(n_steps)
-                .map(|slice| slice.to_vec())
-                .unwrap_or_default()
-        }
+        PathLayout::TimeStepFirst => workspace
+            .get_step_slice(n_steps)
+            .map(|slice| slice.to_vec())
+            .unwrap_or_default(),
     }
 }
 

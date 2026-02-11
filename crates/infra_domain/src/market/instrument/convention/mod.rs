@@ -38,31 +38,14 @@ pub use convention_set::ConventionSet;
 pub use credit::CdsConvention;
 pub use equity::{DividendConvention, EquityConvention, EquitySettlementType};
 pub use fx::{
-    CutOffTime,
-    DeltaConvention,
-    FxConvention,
-    FxOptionConvention,
-    FxSettlementType,
-    FxSwapConvention,
-    NearLegType,
-    PremiumCurrency,
+    CutOffTime, DeltaConvention, FxConvention, FxOptionConvention, FxSettlementType,
+    FxSwapConvention, NearLegType, PremiumCurrency,
 };
 pub use market_convention::MarketConvention;
 pub use rates::{
-    BasisSpreadLeg,
-    BondConvention,
-    CapFloorConvention,
-    DepositConvention,
-    FraConvention,
-    FuturesConvention,
-    InflationIndex,
-    InflationInterpolation,
-    InflationSwapConvention,
-    SettlementConvention,
-    SwapConvention,
-    SwapLegConvention,
-    SwaptionConvention,
-    XCcyBasisConvention,
-    XCcyLegConvention,
+    BasisSpreadLeg, BondConvention, CapFloorConvention, DepositConvention, FraConvention,
+    FuturesConvention, InflationIndex, InflationInterpolation, InflationSwapConvention,
+    SettlementConvention, SwapConvention, SwapLegConvention, SwaptionConvention,
+    XCcyBasisConvention, XCcyLegConvention,
 };
 pub use registry::{ConventionKey, ConventionRegistry, RegistryError};

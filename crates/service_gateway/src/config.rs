@@ -15,7 +15,8 @@ pub struct ServerConfig {
     /// gRPC address (reserved for future gRPC implementation).
     #[allow(dead_code)]
     pub grpc_addr: String,
-    /// Number of worker threads (reserved for future thread pool configuration).
+    /// Number of worker threads (reserved for future thread pool
+    /// configuration).
     #[allow(dead_code)]
     pub workers: usize,
 }

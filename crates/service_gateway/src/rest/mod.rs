@@ -80,39 +80,96 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/pricer/greeks", post(handlers::demo::calculate_greeks))
         .route("/curves", get(handlers::demo::get_available_curves))
         .route("/curves/indices", get(handlers::demo::get_curve_indices))
-        .route("/curves/instruments/:index", get(handlers::demo::get_curve_instruments))
+        .route(
+            "/curves/instruments/:index",
+            get(handlers::demo::get_curve_instruments),
+        )
         .route("/curves/build", post(handlers::build_curve))
-        .route("/curves/discount-factor", post(handlers::get_discount_factor))
+        .route(
+            "/curves/discount-factor",
+            post(handlers::get_discount_factor),
+        )
         .route("/curves/forward-rate", post(handlers::get_forward_rate))
-        .route("/curves/forward-swap-rates", post(handlers::get_forward_swap_rates))
+        .route(
+            "/curves/forward-swap-rates",
+            post(handlers::get_forward_swap_rates),
+        )
         .route("/volcube/indices", get(handlers::demo::get_volcube_indices))
         .route("/volcube/models", get(handlers::demo::get_volcube_models))
-        .route("/volcube/instruments/:currency", get(handlers::demo::get_volcube_instruments))
-        .route("/volcube/calibrate", post(handlers::demo::calibrate_volcube))
-        .route("/volcube/implied-pdf", post(handlers::demo::compute_implied_pdf))
-        .route("/volcube/sabr-smile", post(handlers::demo::compute_sabr_smile))
+        .route(
+            "/volcube/instruments/:currency",
+            get(handlers::demo::get_volcube_instruments),
+        )
+        .route(
+            "/volcube/calibrate",
+            post(handlers::demo::calibrate_volcube),
+        )
+        .route(
+            "/volcube/implied-pdf",
+            post(handlers::demo::compute_implied_pdf),
+        )
+        .route(
+            "/volcube/sabr-smile",
+            post(handlers::demo::compute_sabr_smile),
+        )
         .route("/fxvol/calibrate", post(handlers::demo::calibrate_fxvol))
         .route("/market/rates", get(handlers::demo::get_market_rates))
         .route("/market/config", get(handlers::demo::get_market_config))
-        .route("/market/rates/refresh", post(handlers::demo::refresh_market_rates))
-        .route("/market/rates/:rate_id/instrument", get(handlers::demo::get_rate_instrument))
-        .route("/market/rates/:rate_id/cashflows", get(handlers::demo::get_rate_cashflows))
-        .route("/market/rates/:rate_id", get(handlers::demo::get_rate_detail))
+        .route(
+            "/market/rates/refresh",
+            post(handlers::demo::refresh_market_rates),
+        )
+        .route(
+            "/market/rates/:rate_id/instrument",
+            get(handlers::demo::get_rate_instrument),
+        )
+        .route(
+            "/market/rates/:rate_id/cashflows",
+            get(handlers::demo::get_rate_cashflows),
+        )
+        .route(
+            "/market/rates/:rate_id",
+            get(handlers::demo::get_rate_detail),
+        )
         .route("/market/indices", get(handlers::demo::get_rate_indices))
-        .route("/market/indices/:code/rates", get(handlers::demo::get_index_rates))
-        .route("/market/indices/:code/conventions", get(handlers::demo::get_index_conventions))
-        .route("/market/indices/:code", get(handlers::demo::get_rate_index_detail))
+        .route(
+            "/market/indices/:code/rates",
+            get(handlers::demo::get_index_rates),
+        )
+        .route(
+            "/market/indices/:code/conventions",
+            get(handlers::demo::get_index_conventions),
+        )
+        .route(
+            "/market/indices/:code",
+            get(handlers::demo::get_rate_index_detail),
+        )
         .route("/market/conventions", get(handlers::demo::get_conventions))
-        .route("/market/conventions/:id", get(handlers::demo::get_convention_detail))
+        .route(
+            "/market/conventions/:id",
+            get(handlers::demo::get_convention_detail),
+        )
         .route("/market/events", get(handlers::demo::get_events))
         .route("/market/events/types", get(handlers::demo::get_event_types))
         .route("/market/holidays", get(handlers::demo::get_holidays))
         .route("/market/export/csv", get(handlers::demo::export_market_csv))
-        .route("/market/export/json", get(handlers::demo::export_market_json))
-        .route("/irvol/currencies", get(handlers::demo::get_ir_vol_currencies))
-        .route("/irvol/quotes/:currency", get(handlers::demo::get_ir_vol_quotes))
+        .route(
+            "/market/export/json",
+            get(handlers::demo::export_market_json),
+        )
+        .route(
+            "/irvol/currencies",
+            get(handlers::demo::get_ir_vol_currencies),
+        )
+        .route(
+            "/irvol/quotes/:currency",
+            get(handlers::demo::get_ir_vol_quotes),
+        )
         .route("/fxvol/pairs", get(handlers::demo::get_fx_vol_pairs))
-        .route("/fxvol/quotes/:pair", get(handlers::demo::get_fx_vol_quotes))
+        .route(
+            "/fxvol/quotes/:pair",
+            get(handlers::demo::get_fx_vol_quotes),
+        )
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))
         .with_state(state)
@@ -131,9 +188,15 @@ fn api_routes(state: Arc<AppState>) -> Router {
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))
         .route("/curves/build", post(handlers::build_curve))
-        .route("/curves/discount-factor", post(handlers::get_discount_factor))
+        .route(
+            "/curves/discount-factor",
+            post(handlers::get_discount_factor),
+        )
         .route("/curves/forward-rate", post(handlers::get_forward_rate))
-        .route("/curves/forward-swap-rates", post(handlers::get_forward_swap_rates))
+        .route(
+            "/curves/forward-swap-rates",
+            post(handlers::get_forward_swap_rates),
+        )
         .with_state(state)
 }
 
@@ -145,9 +208,15 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))
         .route("/curves/build", post(handlers::build_curve))
-        .route("/curves/discount-factor", post(handlers::get_discount_factor))
+        .route(
+            "/curves/discount-factor",
+            post(handlers::get_discount_factor),
+        )
         .route("/curves/forward-rate", post(handlers::get_forward_rate))
-        .route("/curves/forward-swap-rates", post(handlers::get_forward_swap_rates));
+        .route(
+            "/curves/forward-swap-rates",
+            post(handlers::get_forward_swap_rates),
+        );
 
     #[cfg(feature = "risk")]
     {
@@ -159,7 +228,10 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
             .route("/portfolios/:id", delete(handlers::delete_portfolio))
             .route("/portfolios/:id/trades", put(handlers::add_trades))
             .route("/portfolios/:id/price", post(handlers::price_portfolio_id))
-            .route("/portfolios/:id/greeks", post(handlers::compute_portfolio_greeks));
+            .route(
+                "/portfolios/:id/greeks",
+                post(handlers::compute_portfolio_greeks),
+            );
     }
 
     #[cfg(feature = "models")]

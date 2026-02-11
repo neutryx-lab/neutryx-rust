@@ -49,11 +49,13 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::stochastic::{
-    stochastic::{RatesModel, SingleState, StochasticModel},
-    validation::ParamValidationError,
+use crate::{
+    stochastic::{
+        stochastic::{RatesModel, SingleState, StochasticModel},
+        validation::ParamValidationError,
+    },
+    validate_params,
 };
-use crate::validate_params;
 
 /// CIR model parameters.
 ///

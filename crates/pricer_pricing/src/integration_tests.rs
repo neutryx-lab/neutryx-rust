@@ -54,9 +54,7 @@ mod pricer_models_tests {
     #[test]
     fn test_stochastic_model_trait_integration() {
         #[allow(dead_code)]
-        fn accepts_stochastic_model<M: StochasticModel<f64>>(_model: &M) {
-        }
-
+        fn accepts_stochastic_model<M: StochasticModel<f64>>(_model: &M) {}
     }
 
     /// Test that StochasticModelEnum is accessible for static dispatch.

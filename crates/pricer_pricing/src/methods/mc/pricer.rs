@@ -443,13 +443,8 @@ impl MonteCarloPricer {
 
         self.rng.fill_normal(self.workspace.randoms_mut());
 
-        let tangent_paths = generate_gbm_paths_tangent_spot(
-            &mut self.workspace,
-            gbm,
-            1.0,
-            n_paths,
-            n_steps,
-        );
+        let tangent_paths =
+            generate_gbm_paths_tangent_spot(&mut self.workspace, gbm, 1.0, n_paths, n_steps);
 
         let paths = self.workspace.paths();
         let n_steps_plus_1 = n_steps + 1;

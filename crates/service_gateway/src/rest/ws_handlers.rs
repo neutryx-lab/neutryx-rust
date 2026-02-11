@@ -208,21 +208,19 @@ fn handle_client_message(
                 }
             }
         }
-        ClientMessage::GetFullGraph => {
-            match extract_subgraph_for_ws(&state.graph_state, &[]) {
-                Ok(data) => {
-                    let response = ServerMessage::SubgraphUpdate { data };
-                    let _ = state.broadcast_tx.send(response);
-                }
-                Err(e) => {
-                    let response = ServerMessage::Error {
-                        message: e.to_string(),
-                        code: 500,
-                    };
-                    let _ = state.broadcast_tx.send(response);
-                }
+        ClientMessage::GetFullGraph => match extract_subgraph_for_ws(&state.graph_state, &[]) {
+            Ok(data) => {
+                let response = ServerMessage::SubgraphUpdate { data };
+                let _ = state.broadcast_tx.send(response);
             }
-        }
+            Err(e) => {
+                let response = ServerMessage::Error {
+                    message: e.to_string(),
+                    code: 500,
+                };
+                let _ = state.broadcast_tx.send(response);
+            }
+        },
         ClientMessage::Ping => {
             let _ = state.broadcast_tx.send(ServerMessage::Pong);
         }

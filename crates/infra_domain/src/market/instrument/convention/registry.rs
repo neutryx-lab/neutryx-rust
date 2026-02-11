@@ -99,11 +99,8 @@ impl ConventionRegistry {
 
         for currency in currencies {
             for rate_type in rate_types {
-                let quote_id = crate::market::QuoteId::new(
-                    currency,
-                    crate::time::Tenor::OneYear,
-                    rate_type,
-                );
+                let quote_id =
+                    crate::market::QuoteId::new(currency, crate::time::Tenor::OneYear, rate_type);
                 if let Some(convention) = MarketConvention::for_quote_id(&quote_id) {
                     registry.register(currency, rate_type, convention);
                 }

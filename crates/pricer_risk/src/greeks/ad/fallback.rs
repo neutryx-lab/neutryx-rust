@@ -1,49 +1,10 @@
 //! Fallback implementation for when Enzyme AD is disabled.
-//!
-//! This module provides the bridge between the Enzyme AD module and the
-//! existing Greeks calculation infrastructure. When the `enzyme-ad` feature
-//! is disabled, all AD-based Greeks computations fall back to bump-and-revalue
-//! finite difference methods.
-//!
-//! # Mode Resolution
-//!
-//! The [`FallbackResolver`] handles the mapping between enzyme-specific modes
-//! and the general Greeks calculation modes:
-//!
-//! | Enzyme Mode | Enzyme Enabled | Enzyme Disabled |
-//! |-------------|----------------|-----------------|
-//! | Auto | ReverseMode | BumpRevalue |
-//! | EnzymeOnly | Enzyme AD | panic! |
-//! | FiniteDifference | BumpRevalue | BumpRevalue |
-//! | ForwardMode | Enzyme Forward | BumpRevalue |
-//! | ReverseMode | Enzyme Reverse | BumpRevalue |
-//!
-//! # Usage
-//!
-//! ```rust
-//! use pricer_risk::greeks::ad::fallback::{FallbackResolver, FallbackConfig};
-//! use pricer_risk::greeks::ad::enzyme_greeks::GreeksMode as EnzymeMode;
-//!
-//! let config = FallbackConfig::default();
-//! let resolver = FallbackResolver::new(config);
-//!
-//! // Check if enzyme is available
-//! if !resolver.enzyme_available() {
-//!     println!("Falling back to finite differences");
-//! }
-//!
-//! // Resolve mode
-//! let resolved = resolver.resolve_mode(EnzymeMode::Auto);
-//! ```
 
 use super::enzyme_greeks::GreeksMode as EnzymeGreeksMode;
-
-// Local definitions (previously from crate::greeks)
 
 /// Core Greeks calculation mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub enum CoreGreeksMode {
-    /// Bump-and-revalue using finite differences.
     #[default]
     BumpRevalue,
 }
@@ -51,17 +12,11 @@ pub enum CoreGreeksMode {
 /// Configuration for Greeks calculation.
 #[derive(Clone, Debug)]
 pub struct GreeksConfig {
-    /// Calculation mode.
     pub mode: CoreGreeksMode,
-    /// Relative bump for spot price.
     pub spot_bump_relative: f64,
-    /// Absolute bump for volatility.
     pub vol_bump_absolute: f64,
-    /// Time bump in years.
     pub time_bump_years: f64,
-    /// Absolute bump for interest rate.
     pub rate_bump_absolute: f64,
-    /// Tolerance for verification.
     pub verification_tolerance: f64,
 }
 
@@ -81,13 +36,8 @@ impl Default for GreeksConfig {
 /// Configuration for fallback behaviour.
 #[derive(Clone, Debug)]
 pub struct FallbackConfig {
-    /// Whether to warn when falling back from Enzyme to FD.
     pub warn_on_fallback: bool,
-
-    /// Whether to allow EnzymeOnly mode to fall back (or panic).
     pub strict_enzyme_only: bool,
-
-    /// Configuration for bump-and-revalue calculations.
     pub greeks_config: GreeksConfig,
 }
 
@@ -128,10 +78,6 @@ impl FallbackConfig {
 }
 
 /// Resolves Enzyme AD modes to fallback implementations.
-///
-/// This struct provides the logic for determining whether to use Enzyme AD
-/// or fall back to finite differences based on feature availability and
-/// requested mode.
 #[derive(Clone, Debug)]
 pub struct FallbackResolver {
     config: FallbackConfig,
@@ -152,8 +98,6 @@ impl FallbackResolver {
     pub fn enzyme_available(&self) -> bool { cfg!(feature = "enzyme-ad") }
 
     /// Resolves an Enzyme mode to a concrete implementation mode.
-    ///
-    /// Returns the resolved mode and whether fallback was used.
     pub fn resolve_mode(&self, mode: EnzymeGreeksMode) -> ResolvedMode {
         let enzyme_available = self.enzyme_available();
 
@@ -218,19 +162,13 @@ impl Default for FallbackResolver {
 /// Result of mode resolution.
 #[derive(Clone, Debug)]
 pub struct ResolvedMode {
-    /// The resolved computation method.
     pub method: ComputationMethod,
-
-    /// Whether this is a fallback from the requested mode.
     pub is_fallback: bool,
-
-    /// Error if resolution failed.
     pub error: Option<FallbackError>,
 }
 
 #[allow(deprecated)]
 impl ResolvedMode {
-    /// Creates a resolved mode using Enzyme AD.
     fn enzyme(mode: EnzymeGreeksMode) -> Self {
         Self {
             method: ComputationMethod::Enzyme(mode),
@@ -239,7 +177,6 @@ impl ResolvedMode {
         }
     }
 
-    /// Creates a resolved mode using fallback.
     fn fallback(mode: CoreGreeksMode) -> Self {
         Self {
             method: ComputationMethod::Fallback(mode),
@@ -248,7 +185,6 @@ impl ResolvedMode {
         }
     }
 
-    /// Creates an error result.
     fn error(err: FallbackError) -> Self {
         Self {
             method: ComputationMethod::Error,
@@ -281,23 +217,15 @@ impl ResolvedMode {
 /// The resolved computation method.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ComputationMethod {
-    /// Use Enzyme AD with the specified mode.
     Enzyme(EnzymeGreeksMode),
-
-    /// Use fallback with the specified Greeks mode.
     Fallback(CoreGreeksMode),
-
-    /// Error - no valid method available.
     Error,
 }
 
 /// Errors that can occur during fallback resolution.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FallbackError {
-    /// EnzymeOnly was requested but Enzyme is not available.
     EnzymeNotAvailable,
-
-    /// The requested mode is not supported.
     UnsupportedMode,
 }
 
@@ -381,7 +309,6 @@ mod tests {
     fn test_fallback_resolver_new() {
         let resolver = FallbackResolver::default();
 
-        // Enzyme availability depends on feature flag
         let _available = resolver.enzyme_available();
     }
 
@@ -390,7 +317,6 @@ mod tests {
         let resolver = FallbackResolver::default();
         let resolved = resolver.resolve_mode(EnzymeGreeksMode::Auto);
 
-        // Without enzyme-ad feature, should fall back
         #[cfg(not(feature = "enzyme-ad"))]
         {
             assert!(resolved.is_fallback);
@@ -409,7 +335,6 @@ mod tests {
         let resolver = FallbackResolver::default();
         let resolved = resolver.resolve_mode(EnzymeGreeksMode::FiniteDifference);
 
-        // Always uses fallback
         assert!(resolved.uses_fallback());
         assert_eq!(
             resolved.method,
@@ -444,7 +369,6 @@ mod tests {
 
         #[cfg(not(feature = "enzyme-ad"))]
         {
-            // Should fall back instead of error
             assert!(resolved.uses_fallback());
             assert!(!resolved.is_error());
         }
@@ -525,7 +449,6 @@ mod tests {
         let resolver = FallbackResolver::default();
         let config = resolver.greeks_config();
 
-        // Should have default bump values
         assert!((config.spot_bump_relative - 0.01).abs() < 1e-10);
     }
 

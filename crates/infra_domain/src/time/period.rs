@@ -361,17 +361,14 @@ fn add_months_with_eom(date: NaiveDate, months: u32, eom_rule: EndOfMonthRule) -
     let result = date.checked_add_months(Months::new(months)).unwrap_or(date);
 
     match eom_rule {
-        EndOfMonthRule::Adjust if is_eom => {
-            end_of_month(result)
-        }
+        EndOfMonthRule::Adjust if is_eom => end_of_month(result),
         EndOfMonthRule::Preserve | EndOfMonthRule::None => {
             let target_year = result.year();
             let target_month = result.month();
             let original_day = date.day();
 
-            NaiveDate::from_ymd_opt(target_year, target_month, original_day).unwrap_or_else(|| {
-                end_of_month(result)
-            })
+            NaiveDate::from_ymd_opt(target_year, target_month, original_day)
+                .unwrap_or_else(|| end_of_month(result))
         }
         EndOfMonthRule::Adjust => result,
     }

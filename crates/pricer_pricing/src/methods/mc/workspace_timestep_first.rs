@@ -129,8 +129,7 @@ impl TimeStepFirstWorkspace {
 
     /// Fast reset that preserves data.
     #[inline]
-    pub fn reset_fast(&mut self) {
-    }
+    pub fn reset_fast(&mut self) {}
 }
 
 impl PathWorkspaceTrait for TimeStepFirstWorkspace {
@@ -166,14 +165,10 @@ impl PathWorkspaceTrait for TimeStepFirstWorkspace {
     }
 
     #[inline]
-    fn get_path_slice(&self, _path_idx: usize) -> Option<&[f64]> {
-        None
-    }
+    fn get_path_slice(&self, _path_idx: usize) -> Option<&[f64]> { None }
 
     #[inline]
-    fn get_path_slice_mut(&mut self, _path_idx: usize) -> Option<&mut [f64]> {
-        None
-    }
+    fn get_path_slice_mut(&mut self, _path_idx: usize) -> Option<&mut [f64]> { None }
 
     fn clear(&mut self) {
         self.paths.clear();

@@ -1,93 +1,8 @@
 //! Enzyme-compatible loop patterns for automatic differentiation.
-//!
-//! This module provides fixed-size iteration patterns that are compatible
-//! with Enzyme LLVM-level automatic differentiation. Enzyme requires
-//! deterministic control flow at compile time, which means:
-//!
-//! - **Fixed-size `for` loops**: Use `for i in 0..N` where N is known
-//! - **No `while` loops**: Enzyme cannot analyse dynamic loop bounds
-//! - **No iterator adaptors with dynamic termination**: Avoid `take_while`,
-//!   `skip_while`
-//!
-//! # Enzyme Compatibility Guidelines
-//!
-//! ## Compatible Patterns
-//!
-//! ```rust,ignore
-//! // Fixed-size for loop - GOOD
-//! for i in 0..n_steps {
-//!     // process step i
-//! }
-//!
-//! // Range-based iteration with known bounds - GOOD
-//! for (idx, value) in data.iter().enumerate().take(n_steps) {
-//!     // process value at idx
-//! }
-//! ```
-//!
-//! ## Incompatible Patterns
-//!
-//! ```rust,ignore
-//! // while loop - BAD (dynamic termination)
-//! while condition {
-//!     // ...
-//! }
-//!
-//! // take_while - BAD (dynamic termination)
-//! for x in iter.take_while(|x| x.is_valid()) {
-//!     // ...
-//! }
-//!
-//! // Early return in loop - BAD (breaks Enzyme analysis)
-//! for i in 0..n {
-//!     if should_stop() { break; }
-//! }
-//! ```
-//!
-//! # Provided Types
-//!
-//! - [`FixedSteps`]: Iterator for fixed-size path simulation steps
-//! - [`FixedPaths`]: Iterator for fixed-size path batch iteration
-//! - [`EnzymeLoop`]: Wrapper ensuring Enzyme-compatible iteration
-//!
-//! # Example: Enzyme-Compatible Path Generation
-//!
-//! ```rust
-//! use pricer_risk::greeks::ad::loops::{FixedSteps, FixedPaths, EnzymeLoop};
-//!
-//! // Simulate paths with fixed step count
-//! let n_paths = 1000usize;
-//! let n_steps = 252usize;
-//!
-//! for path_idx in FixedPaths::new(n_paths) {
-//!     let mut spot = 100.0f64;
-//!     for step_idx in FixedSteps::new(n_steps) {
-//!         // GBM step - all operations are Enzyme-compatible
-//!         spot *= 1.0 + 0.05 / 252.0 + 0.2 * (1.0 / 252.0_f64).sqrt() * 0.1;
-//!     }
-//! }
-//! ```
 
 use num_traits::Float;
 
 /// Fixed-size iterator for simulation time steps.
-///
-/// This iterator provides Enzyme-compatible iteration over time steps
-/// in a path simulation. Unlike `0..n`, this type carries semantic
-/// meaning and can be used with Enzyme's activity analysis.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_risk::greeks::ad::loops::FixedSteps;
-///
-/// let steps = FixedSteps::new(252);
-/// assert_eq!(steps.len(), 252);
-///
-/// for step in steps {
-///     // Process step
-/// }
-/// ```
 #[derive(Clone, Debug)]
 pub struct FixedSteps {
     current: usize,
@@ -96,11 +11,6 @@ pub struct FixedSteps {
 
 impl FixedSteps {
     /// Creates a new fixed-step iterator.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_steps` - Total number of steps (must be > 0 for meaningful
-    ///   iteration)
     #[inline]
     pub fn new(n_steps: usize) -> Self {
         Self {
@@ -146,23 +56,6 @@ impl Iterator for FixedSteps {
 impl ExactSizeIterator for FixedSteps {}
 
 /// Fixed-size iterator for path batch iteration.
-///
-/// This iterator provides Enzyme-compatible iteration over simulation
-/// paths. It guarantees that the loop bound is fixed at construction
-/// time, enabling Enzyme's static analysis.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_risk::greeks::ad::loops::FixedPaths;
-///
-/// let paths = FixedPaths::new(10000);
-/// assert_eq!(paths.len(), 10000);
-///
-/// for path_idx in paths {
-///     // Simulate path
-/// }
-/// ```
 #[derive(Clone, Debug)]
 pub struct FixedPaths {
     current: usize,
@@ -171,11 +64,6 @@ pub struct FixedPaths {
 
 impl FixedPaths {
     /// Creates a new fixed-path iterator.
-    ///
-    /// # Arguments
-    ///
-    /// * `n_paths` - Total number of paths (must be > 0 for meaningful
-    ///   iteration)
     #[inline]
     pub fn new(n_paths: usize) -> Self {
         Self {
@@ -221,23 +109,6 @@ impl Iterator for FixedPaths {
 impl ExactSizeIterator for FixedPaths {}
 
 /// Wrapper type ensuring Enzyme-compatible iteration.
-///
-/// This type wraps any `ExactSizeIterator` and provides guarantees
-/// that the iteration count is fixed. It prevents accidental use
-/// of dynamic termination patterns.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_risk::greeks::ad::loops::EnzymeLoop;
-///
-/// // Wrap a standard range in EnzymeLoop for clarity
-/// let enzyme_iter = EnzymeLoop::from_range(0..100);
-///
-/// for i in enzyme_iter {
-///     // Enzyme-compatible iteration
-/// }
-/// ```
 #[derive(Clone, Debug)]
 pub struct EnzymeLoop<I: ExactSizeIterator> {
     inner: I,
@@ -246,10 +117,6 @@ pub struct EnzymeLoop<I: ExactSizeIterator> {
 
 impl<I: ExactSizeIterator> EnzymeLoop<I> {
     /// Creates a new Enzyme-compatible loop from an exact-size iterator.
-    ///
-    /// # Arguments
-    ///
-    /// * `iter` - Any iterator implementing `ExactSizeIterator`
     #[inline]
     pub fn new(iter: I) -> Self {
         let total = iter.len();
@@ -270,15 +137,6 @@ where
     std::ops::Range<T>: ExactSizeIterator,
 {
     /// Creates an EnzymeLoop from a range.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use pricer_risk::greeks::ad::loops::EnzymeLoop;
-    ///
-    /// let iter = EnzymeLoop::from_range(0..10);
-    /// assert_eq!(iter.len(), 10);
-    /// ```
     #[inline]
     pub fn from_range(range: std::ops::Range<T>) -> Self { Self::new(range) }
 }
@@ -296,43 +154,15 @@ impl<I: ExactSizeIterator> Iterator for EnzymeLoop<I> {
 impl<I: ExactSizeIterator> ExactSizeIterator for EnzymeLoop<I> {}
 
 /// Trait for Enzyme-compatible aggregation operations.
-///
-/// This trait provides accumulation methods that are compatible with
-/// Enzyme's reverse mode AD. It ensures that reduction operations
-/// can be properly differentiated.
 pub trait EnzymeAccumulate<T: Float> {
     /// Accumulates values using addition (Enzyme-compatible).
-    ///
-    /// This is the preferred method for summing values in AD contexts
-    /// as it uses a simple addition which Enzyme can differentiate.
     fn enzyme_sum(&mut self, value: T);
 
     /// Accumulates values using weighted addition.
-    ///
-    /// Useful for weighted averages where the weight is a constant
-    /// (not differentiated).
     fn enzyme_weighted_sum(&mut self, value: T, weight: T);
 }
 
 /// Thread-local accumulator for parallel AD computations.
-///
-/// This struct provides a thread-safe way to accumulate adjoint values
-/// during parallel Monte Carlo simulations. Each thread maintains its
-/// own accumulator, which are later reduced.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_risk::greeks::ad::loops::AdjointAccumulator;
-///
-/// let mut acc: AdjointAccumulator<f64> = AdjointAccumulator::new();
-///
-/// // Accumulate delta contributions
-/// acc.add_delta(0.5);
-/// acc.add_delta(0.3);
-///
-/// assert!((acc.delta() - 0.8).abs() < 1e-10);
-/// ```
 #[derive(Clone, Copy, Debug, Default)]
 pub struct AdjointAccumulator<T: Float> {
     delta: T,
@@ -447,21 +277,6 @@ impl<T: Float> AdjointAccumulator<T> {
 }
 
 /// Enzyme-compatible GBM path generator with fixed iterations.
-///
-/// This struct generates Geometric Brownian Motion paths using only
-/// fixed-size for loops, making it compatible with Enzyme AD.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_risk::greeks::ad::loops::EnzymeGbmGenerator;
-///
-/// let gen = EnzymeGbmGenerator::new(100.0, 0.05, 0.2, 1.0, 252);
-///
-/// // Generate terminal spots (would use actual random numbers in practice)
-/// let randoms = vec![0.1; 252];
-/// let terminal = gen.generate_terminal(&randoms);
-/// ```
 #[derive(Clone, Copy, Debug)]
 pub struct EnzymeGbmGenerator<T: Float> {
     spot: T,
@@ -472,14 +287,6 @@ pub struct EnzymeGbmGenerator<T: Float> {
 
 impl<T: Float> EnzymeGbmGenerator<T> {
     /// Creates a new Enzyme-compatible GBM generator.
-    ///
-    /// # Arguments
-    ///
-    /// * `spot` - Initial spot price
-    /// * `rate` - Risk-free rate (annual)
-    /// * `vol` - Volatility (annual)
-    /// * `maturity` - Time to maturity (years)
-    /// * `n_steps` - Number of time steps (fixed)
     #[inline]
     pub fn new(spot: T, rate: T, vol: T, maturity: T, n_steps: usize) -> Self {
         let dt = maturity / T::from(n_steps).unwrap();
@@ -499,18 +306,6 @@ impl<T: Float> EnzymeGbmGenerator<T> {
     pub fn n_steps(&self) -> usize { self.n_steps }
 
     /// Generates a terminal spot price using provided random numbers.
-    ///
-    /// This method uses a fixed-size for loop internally, making it
-    /// compatible with Enzyme AD.
-    ///
-    /// # Arguments
-    ///
-    /// * `randoms` - Slice of standard normal random numbers (length must equal
-    ///   n_steps)
-    ///
-    /// # Panics
-    ///
-    /// Panics if `randoms.len() != self.n_steps`
     #[inline]
     pub fn generate_terminal(&self, randoms: &[T]) -> T {
         assert_eq!(
@@ -521,7 +316,6 @@ impl<T: Float> EnzymeGbmGenerator<T> {
 
         let mut log_spot = self.spot.ln();
 
-        // Fixed-size for loop - Enzyme compatible
         for random in randoms.iter().take(self.n_steps) {
             log_spot = log_spot + self.drift + self.vol_sqrt_dt * *random;
         }
@@ -530,17 +324,6 @@ impl<T: Float> EnzymeGbmGenerator<T> {
     }
 
     /// Generates a full path using provided random numbers.
-    ///
-    /// Returns a vector of spot prices at each time step.
-    ///
-    /// # Arguments
-    ///
-    /// * `randoms` - Slice of standard normal random numbers (length must equal
-    ///   n_steps)
-    ///
-    /// # Panics
-    ///
-    /// Panics if `randoms.len() != self.n_steps`
     pub fn generate_path(&self, randoms: &[T]) -> Vec<T> {
         assert_eq!(
             randoms.len(),
@@ -553,7 +336,6 @@ impl<T: Float> EnzymeGbmGenerator<T> {
 
         path.push(self.spot);
 
-        // Fixed-size for loop - Enzyme compatible
         for random in randoms.iter().take(self.n_steps) {
             log_spot = log_spot + self.drift + self.vol_sqrt_dt * *random;
             path.push(log_spot.exp());
@@ -563,17 +345,6 @@ impl<T: Float> EnzymeGbmGenerator<T> {
     }
 
     /// Generates terminal spot and writes path to provided buffer.
-    ///
-    /// This is the most efficient variant as it avoids allocation.
-    ///
-    /// # Arguments
-    ///
-    /// * `randoms` - Slice of standard normal random numbers
-    /// * `path_buffer` - Buffer to write path into (will be resized)
-    ///
-    /// # Returns
-    ///
-    /// Terminal spot price
     #[inline]
     pub fn generate_terminal_with_path(&self, randoms: &[T], path_buffer: &mut Vec<T>) -> T {
         assert_eq!(
@@ -588,7 +359,6 @@ impl<T: Float> EnzymeGbmGenerator<T> {
         let mut log_spot = self.spot.ln();
         path_buffer.push(self.spot);
 
-        // Fixed-size for loop - Enzyme compatible
         for random in randoms.iter().take(self.n_steps) {
             log_spot = log_spot + self.drift + self.vol_sqrt_dt * *random;
             path_buffer.push(log_spot.exp());
@@ -599,52 +369,12 @@ impl<T: Float> EnzymeGbmGenerator<T> {
 }
 
 /// Marker trait for Enzyme-compatible functions.
-///
-/// This trait serves as documentation that a function follows
-/// Enzyme compatibility guidelines:
-///
-/// 1. Uses only fixed-size for loops
-/// 2. Has no dynamic control flow (while loops, early returns)
-/// 3. Uses smooth approximations for discontinuities
-/// 4. Has differentiable mathematical operations
-///
-/// # Implementation Note
-///
-/// This is a marker trait with no methods. It exists to document
-/// intent and can be used with compile-time assertions.
 pub trait EnzymeCompatible {}
 
 /// Compile-time assertion macro for Enzyme compatibility.
-///
-/// This macro provides documentation that a code block is designed
-/// for Enzyme compatibility. While it cannot enforce all rules at
-/// compile time, it serves as a reminder for code reviewers.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_risk::enzyme_compatible;
-///
-/// fn price_option(spot: f64, strike: f64, vol: f64, n_steps: usize) -> f64 {
-///     enzyme_compatible! {
-///         let mut sum = 0.0;
-///         // Fixed-size for loop
-///         for i in 0..n_steps {
-///             sum += vol * (i as f64);
-///         }
-///         sum
-///     }
-/// }
-/// ```
 #[macro_export]
 macro_rules! enzyme_compatible {
     ($($body:tt)*) => {{
-        // This block is marked as Enzyme-compatible.
-        // Reviewers should verify:
-        // 1. No while loops
-        // 2. No early returns or breaks
-        // 3. Fixed-size for loops only
-        // 4. Smooth approximations for discontinuities
         $($body)*
     }};
 }
@@ -769,12 +499,9 @@ mod tests {
     fn test_enzyme_gbm_generator_terminal() {
         let gen = EnzymeGbmGenerator::new(100.0, 0.05, 0.2, 1.0, 10);
 
-        // Use zero random numbers (deterministic drift only)
         let randoms = vec![0.0; 10];
         let terminal = gen.generate_terminal(&randoms);
 
-        // With zero volatility shocks, expect pure drift
-        // log(S_T) = log(S_0) + (r - σ²/2) * T
         let expected = 100.0 * ((0.05 - 0.02) * 1.0).exp();
         assert!((terminal - expected).abs() < 1e-10);
     }
@@ -786,8 +513,8 @@ mod tests {
         let randoms = vec![0.0; 5];
         let path = gen.generate_path(&randoms);
 
-        assert_eq!(path.len(), 6); // n_steps + 1
-        assert_eq!(path[0], 100.0); // Initial spot
+        assert_eq!(path.len(), 6);
+        assert_eq!(path[0], 100.0);
     }
 
     #[test]
@@ -800,7 +527,7 @@ mod tests {
     #[should_panic(expected = "Random numbers must match step count")]
     fn test_enzyme_gbm_generator_wrong_randoms_length() {
         let gen = EnzymeGbmGenerator::new(100.0_f64, 0.05, 0.2, 1.0, 10);
-        let randoms = vec![0.0; 5]; // Wrong length
+        let randoms = vec![0.0; 5];
         gen.generate_terminal(&randoms);
     }
 

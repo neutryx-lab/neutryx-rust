@@ -217,13 +217,7 @@ impl CheckpointPricer {
             PathObserverState::default()
         };
 
-        let state = SimulationState::new(
-            step,
-            self.rng.seed(),
-            0,
-            observer_state,
-            current_prices,
-        );
+        let state = SimulationState::new(step, self.rng.seed(), 0, observer_state, current_prices);
 
         self.checkpoint_manager.save_state(step, state)
     }
@@ -269,9 +263,7 @@ impl CheckpointPricer {
     }
 
     /// Reverse pass placeholder for gradient computation.
-    pub fn reverse_pass_placeholder(&self) -> f64 {
-        0.0
-    }
+    pub fn reverse_pass_placeholder(&self) -> f64 { 0.0 }
 }
 
 #[cfg(test)]
@@ -490,7 +482,6 @@ mod tests {
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
         assert!(result.price > 0.0);
-
     }
 
     #[test]

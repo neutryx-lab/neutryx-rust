@@ -26,7 +26,8 @@ pub struct CurveInstrumentInput {
     /// Par rate (as decimal, e.g., 0.05 for 5%) - optional for event type.
     #[serde(default)]
     pub rate: f64,
-    /// Event date for CB meetings/turn-of-year (ISO format, e.g., "2026-03-18").
+    /// Event date for CB meetings/turn-of-year (ISO format, e.g.,
+    /// "2026-03-18").
     #[serde(default)]
     pub event_date: Option<String>,
     /// Expected rate spike at event (e.g., -0.0025 for -25bp cut).

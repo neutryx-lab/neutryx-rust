@@ -1,7 +1,7 @@
 //! Levenberg-Marquardt nonlinear least-squares solver.
 //!
-//! Thin wrapper around the [`levenberg_marquardt`](::levenberg_marquardt) crate,
-//! preserving a closure-based API for easy use in calibration routines.
+//! Thin wrapper around the [`levenberg_marquardt`](::levenberg_marquardt)
+//! crate, preserving a closure-based API for easy use in calibration routines.
 
 use levenberg_marquardt::{LeastSquaresProblem, LevenbergMarquardt};
 use nalgebra::{DMatrix, DVector, Dyn, Owned};
@@ -51,12 +51,20 @@ impl Default for LMConfig {
 impl LMConfig {
     /// Create configuration with specified tolerance and iteration limit.
     pub fn new(tolerance: f64, max_iterations: usize) -> Self {
-        Self { tolerance, max_iterations, ..Default::default() }
+        Self {
+            tolerance,
+            max_iterations,
+            ..Default::default()
+        }
     }
 
     /// Relaxed tolerances for fast calibration.
     pub fn fast() -> Self {
-        Self { tolerance: 1e-6, max_iterations: 50, ..Default::default() }
+        Self {
+            tolerance: 1e-6,
+            max_iterations: 50,
+            ..Default::default()
+        }
     }
 
     /// Tight tolerances for high-precision calibration.
@@ -98,12 +106,22 @@ impl LMResult {
         converged: bool,
         final_lambda: f64,
     ) -> Self {
-        Self { params, residual_ss, iterations, converged, final_lambda }
+        Self {
+            params,
+            residual_ss,
+            iterations,
+            converged,
+            final_lambda,
+        }
     }
 
     /// Root mean square error.
     pub fn rmse(&self, n_observations: usize) -> f64 {
-        if n_observations == 0 { 0.0 } else { (self.residual_ss / n_observations as f64).sqrt() }
+        if n_observations == 0 {
+            0.0
+        } else {
+            (self.residual_ss / n_observations as f64).sqrt()
+        }
     }
 }
 
@@ -129,7 +147,11 @@ where
 
     fn residuals(&self) -> Option<DVector<f64>> {
         let r = (self.residuals_fn)(self.params.as_slice());
-        if r.is_empty() { None } else { Some(DVector::from_vec(r)) }
+        if r.is_empty() {
+            None
+        } else {
+            Some(DVector::from_vec(r))
+        }
     }
 
     fn jacobian(&self) -> Option<DMatrix<f64>> {
@@ -168,7 +190,11 @@ impl LevenbergMarquardtSolver {
     pub fn new(config: LMConfig) -> Self { Self { config } }
 
     /// Create a solver with default configuration.
-    pub fn with_defaults() -> Self { Self { config: LMConfig::default() } }
+    pub fn with_defaults() -> Self {
+        Self {
+            config: LMConfig::default(),
+        }
+    }
 
     /// Get the solver configuration.
     pub fn config(&self) -> &LMConfig { &self.config }
@@ -179,18 +205,26 @@ impl LevenbergMarquardtSolver {
         F: Fn(&[f64]) -> Vec<f64>,
     {
         if initial_params.is_empty() {
-            return Err(SolverError::NumericalInstability("Empty parameter vector".into()));
+            return Err(SolverError::NumericalInstability(
+                "Empty parameter vector".into(),
+            ));
         }
 
         let r0 = residuals(&initial_params);
         if r0.is_empty() {
-            return Err(SolverError::NumericalInstability("Empty residual vector".into()));
+            return Err(SolverError::NumericalInstability(
+                "Empty residual vector".into(),
+            ));
         }
 
         let initial_ss: f64 = r0.iter().map(|x| x * x).sum();
         if initial_ss.sqrt() < self.config.tolerance {
             return Ok(LMResult::new(
-                initial_params, initial_ss, 0, true, self.config.initial_lambda,
+                initial_params,
+                initial_ss,
+                0,
+                true,
+                self.config.initial_lambda,
             ));
         }
 
@@ -217,7 +251,13 @@ impl LevenbergMarquardtSolver {
                 | levenberg_marquardt::TerminationReason::Orthogonal
         ) || final_ss.sqrt() < self.config.tolerance;
 
-        Ok(LMResult::new(final_params, final_ss, report.number_of_evaluations, converged, 0.0))
+        Ok(LMResult::new(
+            final_params,
+            final_ss,
+            report.number_of_evaluations,
+            converged,
+            0.0,
+        ))
     }
 }
 
@@ -263,13 +303,18 @@ mod tests {
     #[test]
     fn test_solve_quadratic() {
         let solver = LevenbergMarquardtSolver::with_defaults();
-        let res = solver.solve(|p: &[f64]| vec![p[0] - 3.0], vec![10.0]).unwrap();
+        let res = solver
+            .solve(|p: &[f64]| vec![p[0] - 3.0], vec![10.0])
+            .unwrap();
         assert!(res.converged && (res.params[0] - 3.0).abs() < 1e-6);
     }
 
     #[test]
     fn test_solve_rosenbrock() {
-        let config = LMConfig { max_iterations: 200, ..Default::default() };
+        let config = LMConfig {
+            max_iterations: 200,
+            ..Default::default()
+        };
         let solver = LevenbergMarquardtSolver::new(config);
         let res = solver
             .solve(
@@ -283,7 +328,9 @@ mod tests {
     #[test]
     fn test_solve_already_optimal() {
         let solver = LevenbergMarquardtSolver::with_defaults();
-        let res = solver.solve(|p: &[f64]| vec![p[0] - 5.0], vec![5.0]).unwrap();
+        let res = solver
+            .solve(|p: &[f64]| vec![p[0] - 5.0], vec![5.0])
+            .unwrap();
         assert!(res.converged && res.iterations <= 1);
     }
 

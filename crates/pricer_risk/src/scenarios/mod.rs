@@ -1,23 +1,4 @@
 //! Scenario analysis and risk factor management.
-//!
-//! This module provides infrastructure for:
-//! - Risk factor shifts (parallel, twist, butterfly)
-//! - Scenario definition and execution
-//! - Greeks aggregation
-//! - Preset stress scenarios
-//!
-//! ## Architecture
-//!
-//! ```text
-//! ┌──────────────────────────────────────────────┐
-//! │              Scenario Engine                  │
-//! ├──────────────────────────────────────────────┤
-//! │  RiskFactorShift  - Individual factor shifts │
-//! │  Scenario         - Named set of shifts      │
-//! │  ScenarioEngine   - Execution & results      │
-//! │  GreeksAggregator - Portfolio-level Greeks   │
-//! └──────────────────────────────────────────────┘
-//! ```
 
 mod aggregator;
 mod curve_shifts;

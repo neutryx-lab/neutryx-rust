@@ -690,7 +690,8 @@ pub struct CalibrationParameters {
     pub nu: f64,
 }
 
-/// Request to compute SABR smile and implied density from calibrated parameters.
+/// Request to compute SABR smile and implied density from calibrated
+/// parameters.
 #[derive(Debug, Clone, Deserialize)]
 pub struct SabrSmileRequest {
     /// SABR alpha (vol-of-vol backbone).

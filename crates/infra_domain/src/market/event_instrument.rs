@@ -137,9 +137,7 @@ impl EventInstrument {
 
     /// Calculates the impact on the curve at the event date.
     #[must_use]
-    pub fn impact_on_curve(&self) -> f64 {
-        self.expected_spread
-    }
+    pub fn impact_on_curve(&self) -> f64 { self.expected_spread }
 
     /// Calculates the confidence-weighted impact on the curve.
     #[must_use]

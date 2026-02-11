@@ -1,57 +1,4 @@
 //! XVA calculations (CVA, DVA, FVA).
-//!
-//! This module provides valuation adjustments for counterparty credit risk
-//! and funding costs.
-//!
-//! # Supported Metrics
-//!
-//! - **CVA** (Credit Valuation Adjustment): Expected loss from counterparty
-//!   default
-//! - **DVA** (Debit Valuation Adjustment): Benefit from own default risk
-//! - **FVA** (Funding Valuation Adjustment): Cost/benefit of funding exposures
-//!   - FCA (Funding Cost Adjustment): Cost of funding positive exposure
-//!   - FBA (Funding Benefit Adjustment): Benefit from negative exposure
-//!
-//! # Architecture
-//!
-//! ```text
-//! ┌─────────────────────────────────────────────────────┐
-//! │                  XvaCalculator                       │
-//! ├─────────────────────────────────────────────────────┤
-//! │  Inputs:                                            │
-//! │    - Portfolio (trades, counterparties, netting)   │
-//! │    - ExposureSoA (EE/ENE profiles)                 │
-//! │    - OwnCreditParams (own hazard rate, LGD)        │
-//! │    - FundingParams (borrow/lend spreads)           │
-//! │    - DiscountFactors (risk-free)                   │
-//! ├─────────────────────────────────────────────────────┤
-//! │  Outputs:                                           │
-//! │    - NettingSetXva (per netting set)               │
-//! │    - CounterpartyXva (aggregated per counterparty) │
-//! │    - PortfolioXva (total portfolio XVA)            │
-//! └─────────────────────────────────────────────────────┘
-//! ```
-//!
-//! # Example
-//!
-//! ```ignore
-//! use pricer_risk::{XvaCalculator, FundingParams, OwnCreditParams, ExposureSoA};
-//!
-//! let calculator = XvaCalculator::new()
-//!     .with_own_credit(OwnCreditParams::new(0.02, 0.4).unwrap())
-//!     .with_funding(FundingParams::from_bps(50.0, 30.0));
-//!
-//! let xva = calculator.compute_portfolio_xva(
-//!     &portfolio,
-//!     &ee_profiles,
-//!     &ene_profiles,
-//!     &discount_factors,
-//! )?;
-//!
-//! println!("Total CVA: {}", xva.cva);
-//! println!("Total DVA: {}", xva.dva);
-//! println!("Net FVA: {}", xva.fva());
-//! ```
 
 mod cva;
 mod dva;
@@ -74,9 +21,8 @@ pub use result::{CounterpartyXva, NettingSetXva, PortfolioXva};
 
 use crate::portfolio::{CounterpartyId, CreditParams, NettingSetId, Portfolio};
 
-/// Configuration for XVA calculations.
-///
-/// Holds parameters that apply across all netting sets and counterparties.
+/// Configuration for XVA calculations holding parameters across all netting
+/// sets and counterparties.
 #[derive(Clone, Debug, Default)]
 pub struct XvaConfig {
     /// Own credit parameters for DVA calculation.
@@ -110,16 +56,8 @@ impl XvaConfig {
     }
 }
 
-/// XVA calculator for portfolio-level valuation adjustments.
-///
-/// Computes CVA, DVA, and FVA for netting sets, counterparties, and
-/// the entire portfolio using parallel processing.
-///
-/// # Performance
-///
-/// Uses Rayon for parallel computation across netting sets and
-/// counterparties. Performance scales well with core count for
-/// large portfolios.
+/// XVA calculator for portfolio-level valuation adjustments using parallel
+/// processing via Rayon.
 #[derive(Clone, Debug)]
 pub struct XvaCalculator {
     config: XvaConfig,
@@ -162,20 +100,6 @@ impl XvaCalculator {
     pub fn config(&self) -> &XvaConfig { &self.config }
 
     /// Computes XVA for a single netting set.
-    ///
-    /// # Arguments
-    ///
-    /// * `netting_set_id` - Netting set identifier
-    /// * `counterparty_id` - Counterparty identifier
-    /// * `ee` - Expected Exposure profile
-    /// * `ene` - Expected Negative Exposure profile
-    /// * `time_grid` - Time points in years
-    /// * `credit_params` - Counterparty credit parameters
-    /// * `discount_factors` - Risk-free discount factors
-    ///
-    /// # Returns
-    ///
-    /// XVA result for the netting set.
     #[allow(clippy::too_many_arguments)]
     pub fn compute_netting_set_xva(
         &self,
@@ -187,10 +111,8 @@ impl XvaCalculator {
         credit_params: &CreditParams,
         discount_factors: &[f64],
     ) -> NettingSetXva {
-        // Compute CVA
         let cva = compute_cva(ee, time_grid, credit_params);
 
-        // Compute DVA if own credit parameters are available
         let dva = self
             .config
             .own_credit
@@ -198,7 +120,6 @@ impl XvaCalculator {
             .map(|own| compute_dva(ene, time_grid, own))
             .unwrap_or(0.0);
 
-        // Compute FVA components
         let (fca, fba, _fva) = compute_fva(
             ee,
             ene,
@@ -212,20 +133,6 @@ impl XvaCalculator {
     }
 
     /// Computes XVA for all netting sets of a counterparty.
-    ///
-    /// # Arguments
-    ///
-    /// * `counterparty_id` - Counterparty identifier
-    /// * `netting_set_ids` - IDs of netting sets for this counterparty
-    /// * `ee_profiles` - Expected Exposure profiles by netting set
-    /// * `ene_profiles` - Expected Negative Exposure profiles by netting set
-    /// * `time_grid` - Shared time grid
-    /// * `credit_params` - Counterparty credit parameters
-    /// * `discount_factors` - Risk-free discount factors
-    ///
-    /// # Returns
-    ///
-    /// Aggregated XVA for the counterparty.
     #[allow(clippy::too_many_arguments)]
     pub fn compute_counterparty_xva(
         &self,
@@ -258,21 +165,8 @@ impl XvaCalculator {
         CounterpartyXva::from_netting_sets(counterparty_id, netting_set_xvas)
     }
 
-    /// Computes XVA for the entire portfolio.
-    ///
-    /// Uses parallel processing across counterparties for efficiency.
-    ///
-    /// # Arguments
-    ///
-    /// * `portfolio` - Portfolio containing counterparties and netting sets
-    /// * `ee_profiles` - Expected Exposure profiles by netting set
-    /// * `ene_profiles` - Expected Negative Exposure profiles by netting set
-    /// * `time_grid` - Shared time grid
-    /// * `discount_factors` - Risk-free discount factors
-    ///
-    /// # Returns
-    ///
-    /// Portfolio-level XVA result, or error if required data is missing.
+    /// Computes XVA for the entire portfolio using parallel processing across
+    /// counterparties.
     pub fn compute_portfolio_xva(
         &self,
         portfolio: &Portfolio,
@@ -281,7 +175,6 @@ impl XvaCalculator {
         time_grid: &[f64],
         discount_factors: &[f64],
     ) -> Result<PortfolioXva, XvaError> {
-        // Validate inputs
         if time_grid.is_empty() {
             return Err(XvaError::EmptyTimeGrid);
         }
@@ -293,7 +186,6 @@ impl XvaCalculator {
             });
         }
 
-        // Group netting sets by counterparty
         let mut ns_by_counterparty: HashMap<CounterpartyId, Vec<NettingSetId>> = HashMap::new();
         for ns in portfolio.netting_sets() {
             ns_by_counterparty
@@ -302,11 +194,9 @@ impl XvaCalculator {
                 .push(ns.id().clone());
         }
 
-        // Process counterparties in parallel
         let counterparty_xvas: Vec<CounterpartyXva> = ns_by_counterparty
             .par_iter()
             .filter_map(|(cp_id, ns_ids)| {
-                // Get credit parameters for this counterparty
                 let counterparty = portfolio.counterparty(cp_id)?;
                 let credit_params = counterparty.credit_params();
 
@@ -325,20 +215,8 @@ impl XvaCalculator {
         Ok(PortfolioXva::from_counterparties(counterparty_xvas))
     }
 
-    /// Computes XVA using ExposureSoA for efficient memory access.
-    ///
-    /// This method is optimised for large portfolios with many netting sets.
-    ///
-    /// # Arguments
-    ///
-    /// * `portfolio` - Portfolio containing counterparties and netting sets
-    /// * `ee_soa` - Expected Exposure in SoA format
-    /// * `ene_soa` - Expected Negative Exposure in SoA format
-    /// * `discount_factors` - Risk-free discount factors
-    ///
-    /// # Returns
-    ///
-    /// Portfolio-level XVA result.
+    /// Computes XVA using ExposureSoA for efficient memory access, optimised
+    /// for large portfolios.
     pub fn compute_portfolio_xva_soa(
         &self,
         portfolio: &Portfolio,
@@ -348,7 +226,6 @@ impl XvaCalculator {
     ) -> Result<PortfolioXva, XvaError> {
         let time_grid = ee_soa.time_grid();
 
-        // Validate inputs
         if time_grid.is_empty() {
             return Err(XvaError::EmptyTimeGrid);
         }
@@ -360,7 +237,6 @@ impl XvaCalculator {
             });
         }
 
-        // Validate ENE has same time grid
         if ene_soa.n_times() != ee_soa.n_times() {
             return Err(XvaError::TimeGridMismatch {
                 expected: ee_soa.n_times(),
@@ -368,7 +244,6 @@ impl XvaCalculator {
             });
         }
 
-        // Build lookup maps for netting set indices
         let ee_lookup: HashMap<&NettingSetId, usize> = ee_soa
             .netting_set_ids()
             .iter()
@@ -383,7 +258,6 @@ impl XvaCalculator {
             .map(|(i, id)| (id, i))
             .collect();
 
-        // Group netting sets by counterparty
         let mut ns_by_counterparty: HashMap<CounterpartyId, Vec<&NettingSetId>> = HashMap::new();
         for ns in portfolio.netting_sets() {
             ns_by_counterparty
@@ -392,7 +266,6 @@ impl XvaCalculator {
                 .push(ns.id());
         }
 
-        // Process counterparties in parallel
         let counterparty_xvas: Vec<CounterpartyXva> = ns_by_counterparty
             .par_iter()
             .filter_map(|(cp_id, ns_ids)| {
@@ -431,30 +304,8 @@ impl XvaCalculator {
     }
 }
 
-/// Generates flat discount factors for a given rate and time grid.
-///
-/// Useful for testing and simple cases with flat yield curves.
-///
-/// # Arguments
-///
-/// * `rate` - Flat interest rate (annualised)
-/// * `time_grid` - Time points in years
-///
-/// # Returns
-///
-/// Discount factors at each time point.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::generate_flat_discount_factors;
-///
-/// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
-/// let df = generate_flat_discount_factors(0.05, &time_grid);
-///
-/// assert!((df[0] - 1.0).abs() < 1e-10); // df(0) = 1
-/// assert!(df[4] < 1.0); // df(1) < 1
-/// ```
+/// Generates flat discount factors for a given rate and time grid, useful for
+/// testing.
 pub fn generate_flat_discount_factors(rate: f64, time_grid: &[f64]) -> Vec<f64> {
     time_grid.iter().map(|&t| (-rate * t).exp()).collect()
 }
@@ -592,7 +443,7 @@ mod tests {
         );
 
         assert!(xva.cva > 0.0);
-        assert_eq!(xva.dva, 0.0); // No own credit params
+        assert_eq!(xva.dva, 0.0);
     }
 
     #[test]
@@ -638,7 +489,7 @@ mod tests {
         let time_grid = create_test_time_grid();
         let ee_profiles = create_test_ee_profiles();
         let ene_profiles = create_test_ene_profiles();
-        let df = vec![1.0, 0.99]; // Wrong length
+        let df = vec![1.0, 0.99];
 
         let calc = XvaCalculator::new();
         let result =
@@ -656,7 +507,6 @@ mod tests {
         let time_grid = create_test_time_grid();
         let df = generate_flat_discount_factors(0.05, &time_grid);
 
-        // Create ExposureSoA for EE
         let ns_ids = vec![
             NettingSetId::new("NS001"),
             NettingSetId::new("NS002"),
@@ -665,7 +515,6 @@ mod tests {
         let mut ee_soa = ExposureSoA::new(time_grid.clone(), ns_ids.clone());
         let mut ene_soa = ExposureSoA::new(time_grid.clone(), ns_ids);
 
-        // Set exposure values
         for (t, &val) in [0.0, 100.0, 150.0, 100.0, 50.0].iter().enumerate() {
             ee_soa.set_exposure(0, t, val);
         }
@@ -729,7 +578,6 @@ mod tests {
             .compute_portfolio_xva(&portfolio, &ee_profiles, &ene_profiles, &time_grid, &df)
             .unwrap();
 
-        // Verify that portfolio totals equal sum of counterparty totals
         let sum_cva: f64 = xva.by_counterparty.iter().map(|c| c.cva).sum();
         let sum_dva: f64 = xva.by_counterparty.iter().map(|c| c.dva).sum();
         let sum_fca: f64 = xva.by_counterparty.iter().map(|c| c.fca).sum();

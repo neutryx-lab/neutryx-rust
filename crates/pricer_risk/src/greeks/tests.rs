@@ -2,10 +2,6 @@
 
 use super::*;
 
-// =============================================================================
-// GreeksConfig Tests
-// =============================================================================
-
 #[test]
 fn test_greeks_config_default() {
     let config = GreeksConfig::default();
@@ -44,12 +40,8 @@ fn test_greeks_config_validate_invalid_spot_bump_too_large() {
 fn test_greeks_config_compute_spot_bump() {
     let config = GreeksConfig::default();
     let bump = config.compute_spot_bump(100.0);
-    assert!((bump - 1.0).abs() < 1e-10); // 1% of 100
+    assert!((bump - 1.0).abs() < 1e-10);
 }
-
-// =============================================================================
-// GreeksError Tests
-// =============================================================================
 
 #[test]
 fn test_greeks_error_invalid_spot_bump() {
@@ -80,10 +72,6 @@ fn test_greeks_error_clone_and_equality() {
     let err2 = err1.clone();
     assert_eq!(err1, err2);
 }
-
-// =============================================================================
-// GreeksResult Tests
-// =============================================================================
 
 #[test]
 fn test_greeks_result_default() {

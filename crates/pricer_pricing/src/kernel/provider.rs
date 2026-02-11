@@ -70,9 +70,7 @@ impl CurveProvider for FlatCurveProvider {
         }
     }
 
-    fn fx_rate(&self, _fx_id: u16) -> f64 {
-        1.0
-    }
+    fn fx_rate(&self, _fx_id: u16) -> f64 { 1.0 }
 
     fn valuation_date_days(&self) -> i32 { self.valuation_date_days }
 }

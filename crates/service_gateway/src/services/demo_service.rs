@@ -844,13 +844,11 @@ impl DemoService {
                 let index = rate.rate_index.as_deref().unwrap_or("SWAP");
                 Some(format!("{}-{}-SWAP", rate.currency, index))
             }
-            "fra" | "future" => {
-                Some(format!(
-                    "{}-{}-OIS",
-                    rate.currency,
-                    rate.rate_index.as_deref().unwrap_or("OIS")
-                ))
-            }
+            "fra" | "future" => Some(format!(
+                "{}-{}-OIS",
+                rate.currency,
+                rate.rate_index.as_deref().unwrap_or("OIS")
+            )),
             "fxspot" => Some("FX-SPOT".to_string()),
             "fxforward" => Some("FX-SPOT".to_string()),
             "xccybasis" => {
@@ -879,9 +877,7 @@ impl DemoService {
     }
 
     /// Refresh market rates (mock - just returns success).
-    pub fn refresh_market_rates(_state: &Arc<AppState>) -> Result<(), ServerError> {
-        Ok(())
-    }
+    pub fn refresh_market_rates(_state: &Arc<AppState>) -> Result<(), ServerError> { Ok(()) }
 
     /// Get conventions.
     pub fn get_conventions(_state: &Arc<AppState>) -> Result<ConventionsResponse, ServerError> {

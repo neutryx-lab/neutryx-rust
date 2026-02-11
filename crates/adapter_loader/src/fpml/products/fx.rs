@@ -274,8 +274,9 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use infra_domain::prelude::Currency;
+
+    use super::*;
 
     const SAMPLE_FX_FORWARD_XML: &str = r#"
         <trade>

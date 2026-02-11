@@ -1,13 +1,9 @@
 //! Counterparty structures with credit parameters.
-//!
-//! This module provides counterparty definitions with credit risk parameters
-//! for CVA/DVA calculations.
 
 use super::{error::PortfolioError, ids::CounterpartyId};
 
-/// Credit rating enum following standard rating agencies.
-///
-/// Ratings range from AAA (highest quality) to D (default).
+/// Credit rating enum following standard rating agencies, from AAA (highest) to
+/// D (default).
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
@@ -44,74 +40,36 @@ impl CreditRating {
         )
     }
 
-    /// Returns a typical hazard rate for this rating (annual, indicative only).
-    ///
-    /// These are rough estimates and should be replaced with actual
-    /// credit spreads/CDS quotes in production.
+    /// Returns a typical indicative hazard rate for this rating (should be
+    /// replaced with actual CDS quotes in production).
     pub fn indicative_hazard_rate(&self) -> f64 {
         match self {
-            CreditRating::AAA => 0.0001, // 1 bp
-            CreditRating::AA => 0.0005,  // 5 bp
-            CreditRating::A => 0.001,    // 10 bp
-            CreditRating::BBB => 0.002,  // 20 bp
-            CreditRating::BB => 0.01,    // 100 bp
-            CreditRating::B => 0.03,     // 300 bp
-            CreditRating::CCC => 0.10,   // 1000 bp
-            CreditRating::CC => 0.20,    // 2000 bp
-            CreditRating::C => 0.40,     // 4000 bp
-            CreditRating::D => 1.0,      // Default
+            CreditRating::AAA => 0.0001,
+            CreditRating::AA => 0.0005,
+            CreditRating::A => 0.001,
+            CreditRating::BBB => 0.002,
+            CreditRating::BB => 0.01,
+            CreditRating::B => 0.03,
+            CreditRating::CCC => 0.10,
+            CreditRating::CC => 0.20,
+            CreditRating::C => 0.40,
+            CreditRating::D => 1.0,
         }
     }
 }
 
-/// Credit parameters for a counterparty.
-///
-/// Contains hazard rate and Loss Given Default (LGD) for
-/// computing survival probabilities and expected losses.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::CreditParams;
-///
-/// let params = CreditParams::new(0.02, 0.4).unwrap();
-/// assert_eq!(params.recovery_rate(), 0.6);
-///
-/// // Survival probability decreases over time
-/// assert!(params.survival_prob(1.0) < 1.0);
-/// assert!(params.survival_prob(2.0) < params.survival_prob(1.0));
-/// ```
+/// Credit parameters for a counterparty containing hazard rate and LGD for
+/// survival probabilities and expected losses.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CreditParams {
-    /// Hazard rate (annualised intensity)
     hazard_rate: f64,
-    /// Loss Given Default as fraction [0, 1]
     lgd: f64,
-    /// Optional credit rating
     rating: Option<CreditRating>,
 }
 
 impl CreditParams {
-    /// Creates new credit parameters.
-    ///
-    /// # Arguments
-    ///
-    /// * `hazard_rate` - Annualised hazard rate (must be non-negative)
-    /// * `lgd` - Loss Given Default, must be in range [0, 1]
-    ///
-    /// # Errors
-    ///
-    /// Returns `PortfolioError::InvalidCreditParams` if:
-    /// - LGD is outside [0, 1]
-    /// - Hazard rate is negative
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_risk::portfolio::CreditParams;
-    ///
-    /// let params = CreditParams::new(0.02, 0.4).unwrap();
-    /// ```
+    /// Creates new credit parameters with validated hazard rate (non-negative)
+    /// and LGD (in [0, 1]).
     pub fn new(hazard_rate: f64, lgd: f64) -> Result<Self, PortfolioError> {
         if hazard_rate < 0.0 {
             return Err(PortfolioError::InvalidCreditParams(
@@ -138,11 +96,6 @@ impl CreditParams {
     }
 
     /// Creates credit parameters from a rating with typical values.
-    ///
-    /// # Arguments
-    ///
-    /// * `rating` - Credit rating
-    /// * `lgd` - Loss Given Default
     pub fn from_rating(rating: CreditRating, lgd: f64) -> Result<Self, PortfolioError> {
         let params = Self::new(rating.indicative_hazard_rate(), lgd)?;
         Ok(params.with_rating(rating))
@@ -164,44 +117,16 @@ impl CreditParams {
     #[inline]
     pub fn rating(&self) -> Option<CreditRating> { self.rating }
 
-    /// Computes the survival probability to time t.
-    ///
-    /// Q(t) = exp(-λ * t)
-    ///
-    /// # Arguments
-    ///
-    /// * `t` - Time in years
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_risk::portfolio::CreditParams;
-    ///
-    /// let params = CreditParams::new(0.02, 0.4).unwrap();
-    /// let surv_1y = params.survival_prob(1.0);
-    /// assert!((surv_1y - 0.9802).abs() < 0.001);
-    /// ```
+    /// Computes the survival probability to time t: Q(t) = exp(-lambda * t).
     #[inline]
     pub fn survival_prob(&self, t: f64) -> f64 { (-self.hazard_rate * t).exp() }
 
-    /// Computes the default probability to time t.
-    ///
-    /// PD(t) = 1 - Q(t) = 1 - exp(-λ * t)
-    ///
-    /// # Arguments
-    ///
-    /// * `t` - Time in years
+    /// Computes the default probability to time t: PD(t) = 1 - Q(t).
     #[inline]
     pub fn default_prob(&self, t: f64) -> f64 { 1.0 - self.survival_prob(t) }
 
-    /// Computes the marginal default probability between times t1 and t2.
-    ///
-    /// PD(t1, t2) = Q(t1) - Q(t2)
-    ///
-    /// # Arguments
-    ///
-    /// * `t1` - Start time
-    /// * `t2` - End time (must be >= t1)
+    /// Computes the marginal default probability between t1 and t2: PD(t1, t2)
+    /// = Q(t1) - Q(t2).
     #[inline]
     pub fn marginal_default_prob(&self, t1: f64, t2: f64) -> f64 {
         self.survival_prob(t1) - self.survival_prob(t2)
@@ -209,21 +134,6 @@ impl CreditParams {
 }
 
 /// Counterparty entity with credit parameters.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::{Counterparty, CounterpartyId, CreditParams};
-///
-/// let credit = CreditParams::new(0.02, 0.4).unwrap();
-/// let cp = Counterparty::new(
-///     CounterpartyId::new("CP001"),
-///     credit,
-/// ).with_name("Acme Corp");
-///
-/// assert_eq!(cp.id().as_str(), "CP001");
-/// assert_eq!(cp.name(), Some("Acme Corp"));
-/// ```
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Counterparty {
     id: CounterpartyId,
@@ -330,9 +240,7 @@ mod tests {
 
     #[test]
     fn test_credit_params_lgd_boundary() {
-        // Zero LGD is valid
         assert!(CreditParams::new(0.02, 0.0).is_ok());
-        // LGD = 1 is valid
         assert!(CreditParams::new(0.02, 1.0).is_ok());
     }
 
@@ -340,17 +248,12 @@ mod tests {
     fn test_survival_probability() {
         let params = CreditParams::new(0.02, 0.4).unwrap();
 
-        // At t=0, survival prob = 1
         assert_relative_eq!(params.survival_prob(0.0), 1.0, epsilon = 1e-10);
-
-        // At t=1, survival prob = exp(-0.02) ≈ 0.9802
         assert_relative_eq!(
             params.survival_prob(1.0),
             (-0.02_f64).exp(),
             epsilon = 1e-10
         );
-
-        // Survival probability decreases over time
         assert!(params.survival_prob(5.0) < params.survival_prob(1.0));
     }
 
@@ -358,10 +261,8 @@ mod tests {
     fn test_default_probability() {
         let params = CreditParams::new(0.02, 0.4).unwrap();
 
-        // At t=0, default prob = 0
         assert_relative_eq!(params.default_prob(0.0), 0.0, epsilon = 1e-10);
 
-        // PD + Q = 1
         let t = 1.0;
         assert_relative_eq!(
             params.default_prob(t) + params.survival_prob(t),

@@ -381,9 +381,6 @@ impl InstrumentDefinition {
 
         let _ = self.tenor_years()?;
 
-        if self.rate_type() == RateType::Fra && !self.is_fra_tenor() {
-        }
-
         Ok(())
     }
 

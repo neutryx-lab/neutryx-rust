@@ -267,7 +267,6 @@ mod tests {
         ws.set_path_value(0, 0, 100.0);
 
         ws.reset();
-
     }
 
     #[test]

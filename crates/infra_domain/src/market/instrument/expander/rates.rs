@@ -454,7 +454,6 @@ impl InstrumentExpander for Ois {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-
         let payment_dates =
             generate_payment_dates(self.start_date, self.end_date, self.payment_frequency);
 

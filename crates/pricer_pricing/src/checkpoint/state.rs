@@ -37,9 +37,7 @@ impl MinimalState {
     pub fn memory_size(&self) -> usize { std::mem::size_of::<Self>() }
 
     /// Validates that this state can be used to resume simulation.
-    pub fn is_valid(&self) -> bool {
-        true
-    }
+    pub fn is_valid(&self) -> bool { true }
 }
 
 /// Complete simulation state at a checkpoint.
@@ -258,13 +256,7 @@ mod tests {
         let mut storage: CheckpointStorage<f64> = CheckpointStorage::new(10);
 
         let state1 = SimulationState::new(100, 42, 1000, PathObserverState::default(), vec![100.0]);
-        let state2 = SimulationState::new(
-            100,
-            42,
-            2000,
-            PathObserverState::default(),
-            vec![200.0],
-        );
+        let state2 = SimulationState::new(100, 42, 2000, PathObserverState::default(), vec![200.0]);
 
         storage.save(100, state1);
         storage.save(100, state2);

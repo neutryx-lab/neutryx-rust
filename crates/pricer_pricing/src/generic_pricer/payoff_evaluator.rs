@@ -52,9 +52,7 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
                 *strike,
                 option_type,
             ),
-            Payoff::Digital { .. } => {
-                Ok(T::zero())
-            }
+            Payoff::Digital { .. } => Ok(T::zero()),
         }
     }
 

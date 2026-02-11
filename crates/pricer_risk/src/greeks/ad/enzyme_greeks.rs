@@ -1,56 +1,18 @@
 //! Enzyme-based Greeks calculation for Monte Carlo pricing.
-//!
-//! This module provides the `GreeksEnzyme` trait for integrating Enzyme
-//! automatic differentiation with the Monte Carlo pricer. When the `enzyme-ad`
-//! feature is enabled, it uses LLVM-level AD; otherwise, it falls back to
-//! finite difference approximations.
-//!
-//! # Usage
-//!
-//! ```rust,no_run
-//! use pricer_risk::greeks::ad::enzyme_greeks::{GreeksEnzyme, GreeksMode, EnzymeGreeksResult};
-//! use pricer_pricing::methods::mc::{GbmParams, PayoffParams, MonteCarloPricer, MonteCarloConfig};
-//!
-//! let config = MonteCarloConfig::builder()
-//!     .n_paths(10_000)
-//!     .n_steps(1)
-//!     .build()
-//!     .unwrap();
-//! let mut pricer = MonteCarloPricer::new(config).unwrap();
-//!
-//! let gbm = GbmParams::new(100.0, 0.05, 0.2, 1.0);
-//! let payoff = PayoffParams::call(100.0);
-//! let df = (-0.05_f64 * 1.0).exp();
-//!
-//! // Compute all Greeks using automatic differentiation
-//! let result = pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::Auto);
-//! println!("Price: {:.4}, Delta: {:.4}", result.price, result.delta);
-//! ```
 
 use pricer_pricing::methods::mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult};
-
-// Local definition (previously from crate::greeks)
 
 /// Greeks calculation result with optional sensitivities.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GreeksResult<T> {
-    /// Present value.
     pub price: T,
-    /// Standard error.
     pub std_error: T,
-    /// Delta.
     pub delta: Option<T>,
-    /// Vega.
     pub vega: Option<T>,
-    /// Theta.
     pub theta: Option<T>,
-    /// Rho.
     pub rho: Option<T>,
-    /// Gamma.
     pub gamma: Option<T>,
-    /// Vanna.
     pub vanna: Option<T>,
-    /// Volga.
     pub volga: Option<T>,
 }
 
@@ -102,13 +64,9 @@ impl<T: Default> GreeksResult<T> {
 }
 
 /// Mode for Greeks computation.
-///
-/// Controls which method is used for computing sensitivities.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum GreeksMode {
     /// Automatically select the best available method.
-    ///
-    /// Uses Enzyme AD when available, falls back to finite differences.
     #[default]
     Auto,
 
@@ -119,13 +77,9 @@ pub enum GreeksMode {
     FiniteDifference,
 
     /// Use forward mode AD for single Greeks.
-    ///
-    /// Efficient for computing one Greek at a time.
     ForwardMode,
 
     /// Use reverse mode AD for all Greeks at once.
-    ///
-    /// Most efficient when computing multiple Greeks.
     ReverseMode,
 }
 
@@ -160,32 +114,16 @@ impl GreeksMode {
 }
 
 /// Result of Enzyme-based Greeks computation.
-///
-/// Contains price and all first/second-order Greeks computed via AD.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct EnzymeGreeksResult {
-    /// Computed price.
     pub price: f64,
-
-    /// Standard error of price estimate.
     pub std_error: f64,
-
-    // First-order Greeks
-    /// Delta: ∂V/∂S
     pub delta: f64,
-    /// Vega: ∂V/∂σ
     pub vega: f64,
-    /// Theta: ∂V/∂τ
     pub theta: f64,
-    /// Rho: ∂V/∂r
     pub rho: f64,
-
-    // Second-order Greeks
-    /// Gamma: ∂²V/∂S²
     pub gamma: f64,
-    /// Vanna: ∂²V/∂S∂σ
     pub vanna: f64,
-    /// Volga: ∂²V/∂σ²
     pub volga: f64,
 }
 
@@ -284,29 +222,8 @@ impl From<EnzymeGreeksResult> for PricingResult {
 }
 
 /// Trait for Enzyme-based Greeks computation on Monte Carlo pricers.
-///
-/// This trait provides methods for computing Greeks using automatic
-/// differentiation. Implementations can use Enzyme AD when available
-/// or fall back to finite differences.
-///
-/// # Implementation Note
-///
-/// When `enzyme-ad` feature is enabled, the trait methods use LLVM-level
-/// AD via Enzyme. Otherwise, they fall back to bump-and-revalue with
-/// the same interface.
 pub trait GreeksEnzyme {
     /// Computes price and all first-order Greeks.
-    ///
-    /// # Arguments
-    ///
-    /// * `gbm` - GBM parameters (spot, rate, volatility, maturity)
-    /// * `payoff` - Payoff specification (call/put, strike)
-    /// * `discount_factor` - Discount factor for present value
-    /// * `mode` - Computation mode (Auto, EnzymeOnly, FiniteDifference)
-    ///
-    /// # Returns
-    ///
-    /// `EnzymeGreeksResult` containing price and all Greeks.
     fn price_with_enzyme_greeks(
         &mut self,
         gbm: GbmParams,
@@ -316,9 +233,6 @@ pub trait GreeksEnzyme {
     ) -> EnzymeGreeksResult;
 
     /// Computes only Delta using forward mode AD.
-    ///
-    /// This is more efficient than computing all Greeks when only
-    /// Delta is needed.
     fn compute_delta_ad(
         &mut self,
         gbm: GbmParams,
@@ -355,10 +269,6 @@ pub trait GreeksEnzyme {
         -> f64;
 }
 
-/// Implementation of GreeksEnzyme for MonteCarloPricer.
-///
-/// When `enzyme-ad` feature is enabled, uses Enzyme LLVM-level AD.
-/// Otherwise, falls back to finite difference approximations.
 impl GreeksEnzyme for MonteCarloPricer {
     fn price_with_enzyme_greeks(
         &mut self,
@@ -371,19 +281,11 @@ impl GreeksEnzyme for MonteCarloPricer {
 
         match resolved_mode {
             GreeksMode::FiniteDifference | GreeksMode::Auto => {
-                // Fall back to finite differences
                 compute_greeks_fd(self, gbm, payoff, discount_factor)
             }
-            GreeksMode::ForwardMode => {
-                // Use forward mode for individual Greeks
-                compute_greeks_forward(self, gbm, payoff, discount_factor)
-            }
-            GreeksMode::ReverseMode => {
-                // Use reverse mode for all Greeks at once
-                compute_greeks_reverse(self, gbm, payoff, discount_factor)
-            }
+            GreeksMode::ForwardMode => compute_greeks_forward(self, gbm, payoff, discount_factor),
+            GreeksMode::ReverseMode => compute_greeks_reverse(self, gbm, payoff, discount_factor),
             GreeksMode::EnzymeOnly => {
-                // EnzymeOnly mode - use reverse if available
                 #[cfg(feature = "enzyme-ad")]
                 {
                     compute_greeks_reverse(self, gbm, payoff, discount_factor)
@@ -404,8 +306,6 @@ impl GreeksEnzyme for MonteCarloPricer {
     ) -> f64 {
         #[cfg(feature = "enzyme-ad")]
         {
-            // Enzyme forward mode would go here
-            // For now, use the existing price_with_delta_ad method
             let result = self.price_with_delta_ad(gbm, payoff, discount_factor);
             result.delta.unwrap_or(0.0)
         }
@@ -421,8 +321,6 @@ impl GreeksEnzyme for MonteCarloPricer {
         payoff: PayoffParams,
         discount_factor: f64,
     ) -> f64 {
-        // Gamma requires nested AD or finite differences on Delta
-        // For now, use finite differences
         compute_gamma_fd(self, gbm, payoff, discount_factor)
     }
 
@@ -434,7 +332,6 @@ impl GreeksEnzyme for MonteCarloPricer {
     ) -> f64 {
         #[cfg(feature = "enzyme-ad")]
         {
-            // Enzyme would compute this via reverse mode
             compute_vega_fd(self, gbm, payoff, discount_factor)
         }
         #[cfg(not(feature = "enzyme-ad"))]
@@ -462,19 +359,14 @@ impl GreeksEnzyme for MonteCarloPricer {
     }
 }
 
-// Helper functions for Greeks computation (used by GreeksEnzyme trait impl)
-
-/// Computes all Greeks using finite differences.
 fn compute_greeks_fd(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
     payoff: PayoffParams,
     discount_factor: f64,
 ) -> EnzymeGreeksResult {
-    // Base price
     let base_result = pricer.price_european(gbm, payoff, discount_factor);
 
-    // Compute all Greeks
     let delta = compute_delta_fd(pricer, gbm, payoff, discount_factor);
     let gamma = compute_gamma_fd(pricer, gbm, payoff, discount_factor);
     let vega = compute_vega_fd(pricer, gbm, payoff, discount_factor);
@@ -492,14 +384,12 @@ fn compute_greeks_fd(
     )
 }
 
-/// Computes Greeks using forward mode AD.
 fn compute_greeks_forward(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
     payoff: PayoffParams,
     discount_factor: f64,
 ) -> EnzymeGreeksResult {
-    // Forward mode computes one Greek at a time
     let base_result = pricer.price_european(gbm, payoff, discount_factor);
 
     let (_, delta) = pricer.price_with_delta_ad(gbm, payoff, discount_factor);
@@ -519,10 +409,6 @@ fn compute_greeks_forward(
     )
 }
 
-/// Computes Greeks using reverse mode AD.
-///
-/// In a full Enzyme implementation, this would compute all Greeks
-/// in a single reverse pass. Currently falls back to finite differences.
 fn compute_greeks_reverse(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
@@ -531,9 +417,6 @@ fn compute_greeks_reverse(
 ) -> EnzymeGreeksResult {
     #[cfg(feature = "enzyme-ad")]
     {
-        // When Enzyme is enabled, this would use #[autodiff_reverse]
-        // to compute all Greeks in one reverse pass.
-        // For now, use finite differences as placeholder.
         compute_greeks_fd(pricer, gbm, payoff, discount_factor)
     }
     #[cfg(not(feature = "enzyme-ad"))]
@@ -542,7 +425,6 @@ fn compute_greeks_reverse(
     }
 }
 
-/// Computes Delta using finite differences (central difference).
 fn compute_delta_fd(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
@@ -552,7 +434,6 @@ fn compute_delta_fd(
     let bump = (0.01 * gbm.spot).max(0.01);
     let seed = pricer.current_seed();
 
-    // Price at S + bump
     pricer.reset_with_seed(seed);
     let gbm_up = GbmParams {
         spot: gbm.spot + bump,
@@ -560,7 +441,6 @@ fn compute_delta_fd(
     };
     let price_up = pricer.price_european(gbm_up, payoff, discount_factor).price;
 
-    // Price at S - bump
     pricer.reset_with_seed(seed);
     let gbm_down = GbmParams {
         spot: gbm.spot - bump,
@@ -573,7 +453,6 @@ fn compute_delta_fd(
     (price_up - price_down) / (2.0 * bump)
 }
 
-/// Computes Gamma using finite differences.
 fn compute_gamma_fd(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
@@ -583,11 +462,9 @@ fn compute_gamma_fd(
     let bump = (0.01 * gbm.spot).max(0.01);
     let seed = pricer.current_seed();
 
-    // Price at S
     pricer.reset_with_seed(seed);
     let price_mid = pricer.price_european(gbm, payoff, discount_factor).price;
 
-    // Price at S + bump
     pricer.reset_with_seed(seed);
     let gbm_up = GbmParams {
         spot: gbm.spot + bump,
@@ -595,7 +472,6 @@ fn compute_gamma_fd(
     };
     let price_up = pricer.price_european(gbm_up, payoff, discount_factor).price;
 
-    // Price at S - bump
     pricer.reset_with_seed(seed);
     let gbm_down = GbmParams {
         spot: gbm.spot - bump,
@@ -608,7 +484,6 @@ fn compute_gamma_fd(
     (price_up - 2.0 * price_mid + price_down) / (bump * bump)
 }
 
-/// Computes Vega using finite differences.
 fn compute_vega_fd(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
@@ -618,7 +493,6 @@ fn compute_vega_fd(
     let bump = 0.01;
     let seed = pricer.current_seed();
 
-    // Price at vol + bump
     pricer.reset_with_seed(seed);
     let gbm_up = GbmParams {
         volatility: gbm.volatility + bump,
@@ -626,7 +500,6 @@ fn compute_vega_fd(
     };
     let price_up = pricer.price_european(gbm_up, payoff, discount_factor).price;
 
-    // Price at vol - bump
     pricer.reset_with_seed(seed);
     let gbm_down = GbmParams {
         volatility: (gbm.volatility - bump).max(0.001),
@@ -639,21 +512,18 @@ fn compute_vega_fd(
     (price_up - price_down) / (2.0 * bump)
 }
 
-/// Computes Theta using finite differences.
 fn compute_theta_fd(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
     payoff: PayoffParams,
     discount_factor: f64,
 ) -> f64 {
-    let bump = 1.0 / 252.0; // 1 day
+    let bump = 1.0 / 252.0;
     let seed = pricer.current_seed();
 
-    // Price at T
     pricer.reset_with_seed(seed);
     let price_now = pricer.price_european(gbm, payoff, discount_factor).price;
 
-    // Price at T - bump
     pricer.reset_with_seed(seed);
     let gbm_short = GbmParams {
         maturity: (gbm.maturity - bump).max(0.001),
@@ -663,22 +533,18 @@ fn compute_theta_fd(
         .price_european(gbm_short, payoff, discount_factor)
         .price;
 
-    // Theta is typically negative (time decay)
-    // Convention: dV/dT where T decreases
     -(price_now - price_short) / bump
 }
 
-/// Computes Rho using finite differences.
 fn compute_rho_fd(
     pricer: &mut MonteCarloPricer,
     gbm: GbmParams,
     payoff: PayoffParams,
     discount_factor: f64,
 ) -> f64 {
-    let bump = 0.0001; // 1 basis point
+    let bump = 0.0001;
     let seed = pricer.current_seed();
 
-    // Price at r + bump (with adjusted discount factor)
     pricer.reset_with_seed(seed);
     let gbm_up = GbmParams {
         rate: gbm.rate + bump,
@@ -687,7 +553,6 @@ fn compute_rho_fd(
     let df_up = discount_factor * (-bump * gbm.maturity).exp();
     let price_up = pricer.price_european(gbm_up, payoff, df_up).price;
 
-    // Price at r - bump
     pricer.reset_with_seed(seed);
     let gbm_down = GbmParams {
         rate: gbm.rate - bump,
@@ -696,7 +561,6 @@ fn compute_rho_fd(
     let df_down = discount_factor * (bump * gbm.maturity).exp();
     let price_down = pricer.price_european(gbm_down, payoff, df_down).price;
 
-    // Scaled to 1% rate move
     (price_up - price_down) / (2.0 * bump) * 0.01
 }
 
@@ -735,7 +599,6 @@ mod tests {
     #[test]
     fn test_greeks_mode_resolve() {
         let auto = GreeksMode::Auto.resolve();
-        // Without enzyme-ad feature, should resolve to FiniteDifference
         #[cfg(not(feature = "enzyme-ad"))]
         assert_eq!(auto, GreeksMode::FiniteDifference);
 
@@ -802,16 +665,9 @@ mod tests {
 
         let result = pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::Auto);
 
-        // Price should be reasonable for ATM call
         assert!(result.price > 5.0 && result.price < 20.0);
-
-        // Delta should be around 0.5-0.7 for ATM call
         assert!(result.delta > 0.4 && result.delta < 0.8);
-
-        // Gamma should be positive
         assert!(result.gamma > 0.0);
-
-        // Vega should be positive
         assert!(result.vega > 0.0);
     }
 
@@ -834,7 +690,6 @@ mod tests {
 
         let delta = pricer.compute_delta_ad(gbm, payoff, df);
 
-        // ATM call delta should be around 0.5-0.7
         assert!(delta > 0.4 && delta < 0.8);
     }
 
@@ -845,7 +700,6 @@ mod tests {
 
         let gamma = pricer.compute_gamma_ad(gbm, payoff, df);
 
-        // Gamma should be positive for options
         assert!(gamma > 0.0);
     }
 
@@ -856,7 +710,6 @@ mod tests {
 
         let vega = pricer.compute_vega_ad(gbm, payoff, df);
 
-        // Vega should be positive for long options
         assert!(vega > 0.0);
     }
 
@@ -867,10 +720,7 @@ mod tests {
 
         let theta = pricer.compute_theta_ad(gbm, payoff, df);
 
-        // Theta should be negative for long options (time decay)
-        // Note: Our convention makes it negative
-        // For ATM options, theta can be significantly negative
-        assert!(theta < 10.0); // Just check it's reasonable
+        assert!(theta < 10.0);
     }
 
     #[test]
@@ -880,8 +730,7 @@ mod tests {
 
         let rho = pricer.compute_rho_ad(gbm, payoff, df);
 
-        // Rho for call should be positive
-        assert!(rho > -1.0 && rho < 1.0); // Reasonable range for scaled rho
+        assert!(rho > -1.0 && rho < 1.0);
     }
 
     #[test]

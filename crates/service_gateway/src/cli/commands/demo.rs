@@ -17,7 +17,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_demo_run() {
-        run();
-    }
+    fn test_demo_run() { run(); }
 }

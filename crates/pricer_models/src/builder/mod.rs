@@ -151,7 +151,6 @@ pub enum BootstrapError {
     },
 }
 
-
 /// Result of a successful bootstrap operation.
 #[derive(Debug, Clone)]
 pub struct BootstrapResult {

@@ -110,7 +110,8 @@ impl MarketQuoteSet {
         result
     }
 
-    /// Returns a new `MarketQuoteSet` containing only quotes valid at the given.
+    /// Returns a new `MarketQuoteSet` containing only quotes valid at the
+    /// given.
     #[must_use]
     pub fn as_of(&self, timestamp_ms: i64) -> MarketQuoteSet {
         let mut result = MarketQuoteSet::new();

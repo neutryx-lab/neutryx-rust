@@ -1,7 +1,4 @@
 //! Trade structure with instrument reference.
-//!
-//! This module provides the Trade structure that wraps instruments
-//! with metadata for portfolio management.
 
 use infra_domain::{
     market::Currency,
@@ -10,36 +7,8 @@ use infra_domain::{
 
 use super::ids::{CounterpartyId, NettingSetId, TradeId};
 
-/// Trade with instrument and metadata.
-///
-/// A trade represents a single financial instrument with associated
-/// metadata for portfolio management and XVA calculations.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::{Trade, TradeId, CounterpartyId, NettingSetId};
-/// use infra_domain::market::Currency;
-/// use infra_domain::trade::{
-///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
-/// };
-///
-/// let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
-/// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-/// let instrument = PricingInstrument::Vanilla(call);
-///
-/// let trade = Trade::new(
-///     TradeId::new("T001"),
-///     instrument,
-///     Currency::USD,
-///     CounterpartyId::new("CP001"),
-///     NettingSetId::new("NS001"),
-///     1_000_000.0,
-/// );
-///
-/// assert_eq!(trade.id().as_str(), "T001");
-/// assert_eq!(trade.notional(), 1_000_000.0);
-/// ```
+/// Trade with instrument and metadata for portfolio management and XVA
+/// calculations.
 #[derive(Clone, Debug)]
 pub struct Trade {
     id: TradeId,
@@ -52,15 +21,6 @@ pub struct Trade {
 
 impl Trade {
     /// Creates a new trade.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique trade identifier
-    /// * `instrument` - Underlying financial instrument
-    /// * `currency` - Trade currency
-    /// * `counterparty_id` - Counterparty identifier
-    /// * `netting_set_id` - Netting set identifier
-    /// * `notional` - Notional amount
     #[inline]
     pub fn new(
         id: TradeId,
@@ -104,17 +64,7 @@ impl Trade {
     #[inline]
     pub fn notional(&self) -> f64 { self.notional }
 
-    /// Computes the payoff at given spot price.
-    ///
-    /// The payoff is scaled by the notional amount.
-    ///
-    /// # Arguments
-    ///
-    /// * `spot` - Current spot price
-    ///
-    /// # Returns
-    ///
-    /// Notional-scaled payoff value.
+    /// Computes the notional-scaled payoff at given spot price.
     #[inline]
     pub fn payoff(&self, spot: f64) -> f64 { self.instrument.payoff(spot) * self.notional }
 
@@ -209,11 +159,7 @@ impl TradeBuilder {
         self
     }
 
-    /// Builds the trade.
-    ///
-    /// # Panics
-    ///
-    /// Panics if any required field is not set.
+    /// Builds the trade, panicking if any required field is not set.
     pub fn build(self) -> Trade {
         Trade::new(
             self.id.expect("Trade ID is required"),
@@ -290,13 +236,11 @@ mod tests {
             1_000_000.0,
         );
 
-        // ITM call: spot = 110, strike = 100, payoff ≈ 10 * 1_000_000
         let payoff = trade.payoff(110.0);
         assert_relative_eq!(payoff, 10_000_000.0, max_relative = 0.01);
 
-        // OTM call: payoff ≈ 0
         let payoff_otm = trade.payoff(90.0);
-        assert!(payoff_otm < 1.0); // Nearly zero due to smoothing
+        assert!(payoff_otm < 1.0);
     }
 
     #[test]
@@ -409,7 +353,6 @@ mod tests {
     fn test_trade_builder_try_build() {
         let instrument = create_test_call();
 
-        // Complete builder
         let trade = TradeBuilder::new()
             .id("T001")
             .instrument(instrument.clone())
@@ -420,7 +363,6 @@ mod tests {
             .try_build();
         assert!(trade.is_some());
 
-        // Incomplete builder
         let trade = TradeBuilder::new()
             .id("T001")
             .instrument(instrument)

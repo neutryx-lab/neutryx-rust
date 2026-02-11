@@ -1,115 +1,33 @@
 //! Reverse mode automatic differentiation types.
-//!
-//! This module provides:
-//! - `ReverseAD<T>`: Holds all first-order Greeks computed via reverse mode AD
-//! - `GammaAD<T>`: Holds second-order derivative (Gamma) via nested AD
-//!
-//! # Reverse Mode AD
-//!
-//! Reverse mode AD (adjoint mode) computes gradients by propagating adjoint
-//! values from outputs back to inputs. This is efficient when computing
-//! derivatives with respect to many inputs (all Greeks in one pass).
-//!
-//! # Requirements Coverage
-//!
-//! - Requirement 3.4: spot, rate, vol, time の勾配フィールド
-//! - Requirement 3.5: GreeksResult<T> への変換
-//! - Requirement 4.2: Gamma 計算 (nested AD or finite difference)
-//!
-//! # Usage
-//!
-//! ```rust
-//! use pricer_risk::greeks::ad::reverse::{ReverseAD, GammaAD};
-//!
-//! // Compute all first-order Greeks
-//! let greeks = ReverseAD::new(
-//!     10.45,  // price
-//!     0.637,  // delta
-//!     55.0,   // rho
-//!     37.5,   // vega
-//!     -6.41,  // theta
-//! );
-//!
-//! // Compute Gamma
-//! let gamma = GammaAD::new(0.0188);
-//! ```
 
 use num_traits::Float;
-
-// Local definition (previously from crate::greeks)
 
 /// Greeks calculation result with optional sensitivities.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GreeksResult<T: Float> {
-    /// Present value of the instrument.
     pub price: T,
-    /// Standard error of the Monte Carlo estimate.
     pub std_error: T,
-    /// Delta: ∂V/∂S (sensitivity to spot price).
     pub delta: Option<T>,
-    /// Vega: ∂V/∂σ (sensitivity to volatility).
     pub vega: Option<T>,
-    /// Theta: ∂V/∂τ (sensitivity to time, time decay).
     pub theta: Option<T>,
-    /// Rho: ∂V/∂r (sensitivity to interest rate).
     pub rho: Option<T>,
-    /// Gamma: ∂²V/∂S² (convexity with respect to spot).
     pub gamma: Option<T>,
-    /// Vanna: ∂²V/∂S∂σ (cross sensitivity between spot and volatility).
     pub vanna: Option<T>,
-    /// Volga: ∂²V/∂σ² (volatility convexity).
     pub volga: Option<T>,
 }
 
 /// Reverse mode AD result containing all first-order Greeks.
-///
-/// This struct holds the results of a reverse mode AD pass where all
-/// first-order sensitivities are computed simultaneously by propagating
-/// adjoint values from the output back through the computation graph.
-///
-/// # Mathematical Background
-///
-/// In reverse mode AD:
-/// - Set output adjoint to 1.0 (seed)
-/// - Propagate adjoints backward: adj(x) = Σ (adj(y) × ∂y/∂x)
-/// - Collect adjoints at inputs → gradients
-///
-/// # Type Parameter
-///
-/// * `T` - Floating point type (typically `f64`)
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_risk::greeks::ad::reverse::ReverseAD;
-///
-/// let greeks = ReverseAD::new(10.45, 0.637, 55.0, 37.5, -6.41);
-/// println!("Price: {}, Delta: {}", greeks.price, greeks.delta);
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReverseAD<T: Float> {
-    /// Option price (primal value)
     pub price: T,
-    /// Delta: ∂V/∂S (sensitivity to spot)
     pub delta: T,
-    /// Rho: ∂V/∂r (sensitivity to rate)
     pub rho: T,
-    /// Vega: ∂V/∂σ (sensitivity to volatility)
     pub vega: T,
-    /// Theta: ∂V/∂T (sensitivity to time, typically negative)
     pub theta: T,
 }
 
 impl<T: Float> ReverseAD<T> {
     /// Creates a new ReverseAD result with all Greeks.
-    ///
-    /// # Arguments
-    ///
-    /// * `price` - Option price
-    /// * `delta` - ∂V/∂S
-    /// * `rho` - ∂V/∂r
-    /// * `vega` - ∂V/∂σ
-    /// * `theta` - ∂V/∂T
     #[inline]
     pub fn new(price: T, delta: T, rho: T, vega: T, theta: T) -> Self {
         Self {
@@ -134,8 +52,6 @@ impl<T: Float> ReverseAD<T> {
     }
 
     /// Converts to GreeksResult<T> for compatibility with existing API.
-    ///
-    /// Note: Standard error is set to zero as AD doesn't compute MC error.
     #[inline]
     pub fn to_greeks_result(self) -> GreeksResult<T> {
         GreeksResult {
@@ -157,31 +73,10 @@ impl<T: Float> Default for ReverseAD<T> {
 }
 
 /// Second-order derivative container for Gamma computation.
-///
-/// Gamma (∂²V/∂S²) measures the rate of change of Delta with respect to
-/// spot price. It can be computed via:
-/// 1. Nested AD (forward-over-reverse or reverse-over-forward)
-/// 2. Finite difference on Delta
-///
-/// # Requirements Coverage
-///
-/// - Requirement 4.2: Gamma 計算
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_risk::greeks::ad::reverse::GammaAD;
-///
-/// let gamma = GammaAD::new(0.0188);
-/// println!("Gamma: {}", gamma.gamma);
-/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GammaAD<T: Float> {
-    /// Gamma: ∂²V/∂S² (convexity with respect to spot)
     pub gamma: T,
-    /// Vanna: ∂²V/∂S∂σ (cross sensitivity, optional)
     pub vanna: Option<T>,
-    /// Volga: ∂²V/∂σ² (volatility convexity, optional)
     pub volga: Option<T>,
 }
 
@@ -206,19 +101,8 @@ impl<T: Float> GammaAD<T> {
         }
     }
 
-    /// Computes Gamma using finite difference on Delta function.
-    ///
-    /// Gamma ≈ (Delta(S+h) - Delta(S-h)) / (2h)
-    ///
-    /// # Arguments
-    ///
-    /// * `delta_fn` - Function that computes Delta for a given spot
-    /// * `spot` - Current spot price
-    /// * `bump` - Finite difference bump size
-    ///
-    /// # Type Parameters
-    ///
-    /// * `F` - Delta function type
+    /// Computes Gamma using finite difference on Delta: Gamma = (Delta(S+h) -
+    /// Delta(S-h)) / (2h).
     #[inline]
     pub fn from_delta_fd<F>(delta_fn: F, spot: T, bump: T) -> Self
     where
@@ -237,14 +121,9 @@ impl<T: Float> Default for GammaAD<T> {
 }
 
 /// Complete Greeks result combining first and second order sensitivities.
-///
-/// This struct combines ReverseAD (first-order) and GammaAD (second-order)
-/// into a single container for comprehensive risk management.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CompleteGreeks<T: Float> {
-    /// First-order Greeks (Delta, Rho, Vega, Theta)
     pub first_order: ReverseAD<T>,
-    /// Second-order Greeks (Gamma, Vanna, Volga)
     pub second_order: GammaAD<T>,
 }
 
@@ -353,8 +232,6 @@ mod tests {
 
     #[test]
     fn test_gamma_ad_from_delta_fd() {
-        // Delta(S) = S / 100 (linear for testing)
-        // Gamma = d(Delta)/dS = 1/100 = 0.01
         let delta_fn = |s: f64| s / 100.0;
         let gamma = GammaAD::from_delta_fd(delta_fn, 100.0, 1.0);
 
@@ -363,8 +240,6 @@ mod tests {
 
     #[test]
     fn test_gamma_ad_from_quadratic_delta() {
-        // If V(S) = S^2, then Delta = 2S, Gamma = 2
-        // Delta(S) = 2*S
         let delta_fn = |s: f64| 2.0 * s;
         let gamma = GammaAD::from_delta_fd(delta_fn, 100.0, 1.0);
 

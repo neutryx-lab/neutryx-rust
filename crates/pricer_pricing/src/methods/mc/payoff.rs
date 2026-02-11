@@ -66,15 +66,11 @@ impl PayoffParams {
 
 /// Soft-plus function: smooth approximation of max(x, 0).
 #[inline]
-pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
-    smooth_max(x, 0.0, epsilon)
-}
+pub fn soft_plus(x: f64, epsilon: f64) -> f64 { smooth_max(x, 0.0, epsilon) }
 
 /// Derivative of soft-plus: the sigmoid function.
 #[inline]
-pub fn soft_plus_derivative(x: f64, epsilon: f64) -> f64 {
-    smooth_indicator(x, epsilon)
-}
+pub fn soft_plus_derivative(x: f64, epsilon: f64) -> f64 { smooth_indicator(x, epsilon) }
 
 /// Computes smooth European call payoff.
 #[inline]
@@ -341,11 +337,7 @@ mod tests {
         /// Verify soft_plus_derivative delegates to smooth_indicator.
         #[test]
         fn test_soft_plus_derivative_delegates_to_smooth_indicator() {
-            let test_cases = [
-                (10.0, 0.01),
-                (-10.0, 0.01),
-                (0.0, 1.0),
-            ];
+            let test_cases = [(10.0, 0.01), (-10.0, 0.01), (0.0, 1.0)];
 
             for (x, epsilon) in test_cases {
                 let deriv_result = soft_plus_derivative(x, epsilon);

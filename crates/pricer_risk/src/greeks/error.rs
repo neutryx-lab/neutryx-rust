@@ -1,47 +1,10 @@
 //! Unified error types for Greeks calculation.
-//!
-//! This module provides a consolidated error hierarchy for all Greeks-related
-//! operations including configuration, calculation, and benchmarking.
-//!
-//! # Migration
-//!
-//! The following types are now aliases to variants of [`GreeksError`]:
-//! - `GreeksConfigError` → [`GreeksError::Config`]
-//! - `IrsGreeksError` → [`GreeksError::Calculation`] (with l1l2-integration)
-//! - `BenchmarkError` → [`GreeksError::Benchmark`] (with l1l2-integration)
 
 use thiserror::Error;
 
 /// Unified error type for Greeks calculation operations.
-///
-/// Consolidates configuration, calculation, and benchmarking errors
-/// into a single error hierarchy for consistent error handling.
-///
-/// # Variants
-///
-/// - Configuration errors: Invalid bump widths, tolerances, or modes
-/// - Calculation errors: Swap validation, curve lookup, AAD failures
-/// - Benchmark errors: Configuration and execution failures
-///
-/// # Examples
-///
-/// ```rust
-/// use pricer_risk::greeks::GreeksError;
-///
-/// fn validate_spot_bump(bump: f64) -> Result<(), GreeksError> {
-///     if bump <= 0.0 {
-///         return Err(GreeksError::InvalidSpotBump(
-///             "spot bump must be positive".to_string(),
-///         ));
-///     }
-///     Ok(())
-/// }
-/// ```
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum GreeksError {
-    // =========================================================================
-    // Configuration errors (from GreeksConfigError)
-    // =========================================================================
     /// Invalid spot bump value.
     #[error("Invalid spot bump: {0}")]
     InvalidSpotBump(String),
@@ -62,9 +25,6 @@ pub enum GreeksError {
     #[error("Invalid tolerance: {0}")]
     InvalidTolerance(String),
 
-    // =========================================================================
-    // Calculation errors (from IrsGreeksError)
-    // =========================================================================
     /// Invalid swap parameters.
     #[error("Invalid swap parameters: {0}")]
     InvalidSwap(String),
@@ -85,9 +45,6 @@ pub enum GreeksError {
     #[error("Invalid configuration: {0}")]
     InvalidConfig(String),
 
-    // =========================================================================
-    // Benchmark errors (from BenchmarkError)
-    // =========================================================================
     /// Invalid benchmark configuration.
     #[error("Invalid benchmark configuration: {0}")]
     InvalidBenchmarkConfig(String),

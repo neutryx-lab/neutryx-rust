@@ -696,7 +696,6 @@ mod tests {
 
     #[test]
     fn test_streaming_vs_batch_consistency() {
-
         use pricer_core::math::rng::PricerRng;
 
         use super::super::{

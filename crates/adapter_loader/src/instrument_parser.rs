@@ -15,7 +15,8 @@ pub struct InstrumentSpec {
     pub rate: f64,
     /// Event date in ISO format (YYYY-MM-DD).
     pub event_date: Option<String>,
-    /// Expected rate spike for Event instruments (as decimal, e.g., -0.0025 for.
+    /// Expected rate spike for Event instruments (as decimal, e.g., -0.0025
+    /// for.
     pub expected_rate_spike: Option<f64>,
 }
 
@@ -326,7 +327,6 @@ mod tests {
 
         let instruments = parse_instruments(&specs).unwrap();
         assert_eq!(instruments.len(), 3);
-
     }
 
     #[test]

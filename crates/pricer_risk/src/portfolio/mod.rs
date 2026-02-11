@@ -1,68 +1,4 @@
 //! Portfolio and trade structures for XVA calculations.
-//!
-//! This module provides:
-//! - Trade structures with instrument references
-//! - Counterparty definitions with credit parameters
-//! - Netting sets for exposure aggregation
-//! - Portfolio container with parallel iteration support
-//!
-//! # Architecture
-//!
-//! The portfolio module is organised around three core entities:
-//!
-//! - **Trade**: Individual financial instrument with metadata
-//! - **Counterparty**: Credit entity with default risk parameters
-//! - **NettingSet**: Group of trades for exposure netting
-//!
-//! # Examples
-//!
-//! ```
-//! use pricer_risk::portfolio::{
-//!     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
-//!     NettingSet, NettingSetId, CreditParams,
-//! };
-//! use infra_domain::market::Currency;
-//! use infra_domain::trade::{
-//!     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
-//! };
-//!
-//! // Create counterparty with credit parameters
-//! let credit = CreditParams::new(0.02, 0.4).unwrap();
-//! let counterparty = Counterparty::new(CounterpartyId::new("CP001"), credit)
-//!     .with_name("Acme Corp");
-//!
-//! // Create netting set
-//! let mut netting_set = NettingSet::new(
-//!     NettingSetId::new("NS001"),
-//!     CounterpartyId::new("CP001"),
-//! );
-//!
-//! // Create trade
-//! let params = InstrumentParams::new(100.0, 1.0, 1_000_000.0).unwrap();
-//! let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-//! let instrument = PricingInstrument::Vanilla(call);
-//!
-//! let trade = Trade::new(
-//!     TradeId::new("T001"),
-//!     instrument,
-//!     Currency::USD,
-//!     CounterpartyId::new("CP001"),
-//!     NettingSetId::new("NS001"),
-//!     1.0,
-//! );
-//!
-//! netting_set.add_trade(TradeId::new("T001"));
-//!
-//! // Build portfolio
-//! let portfolio = PortfolioBuilder::new()
-//!     .add_counterparty(counterparty)
-//!     .add_netting_set(netting_set)
-//!     .add_trade(trade)
-//!     .build()
-//!     .unwrap();
-//!
-//! assert_eq!(portfolio.trade_count(), 1);
-//! ```
 
 mod builder;
 mod counterparty;
@@ -76,7 +12,6 @@ mod trade;
 /// XVA calculations (CVA, DVA, FVA).
 pub mod xva;
 
-// Re-export public types
 use std::collections::HashMap;
 
 pub use builder::PortfolioBuilder;
@@ -89,53 +24,8 @@ use rayon::prelude::*;
 pub use sample_builder::{AssetMix, SamplePortfolioBuilder};
 pub use trade::{Trade, TradeBuilder};
 
-/// Portfolio container for trades, counterparties, and netting sets.
-///
-/// Provides O(1) lookup by ID and supports parallel iteration via Rayon.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::{
-///     Portfolio, PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
-///     NettingSet, NettingSetId, CreditParams,
-/// };
-/// use infra_domain::market::Currency;
-/// use infra_domain::trade::{
-///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
-/// };
-///
-/// let credit = CreditParams::new(0.02, 0.4).unwrap();
-/// let counterparty = Counterparty::new(CounterpartyId::new("CP001"), credit);
-///
-/// let netting_set = NettingSet::new(
-///     NettingSetId::new("NS001"),
-///     CounterpartyId::new("CP001"),
-/// );
-///
-/// let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
-/// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-///
-/// let trade = Trade::new(
-///     TradeId::new("T001"),
-///     PricingInstrument::Vanilla(call),
-///     Currency::USD,
-///     CounterpartyId::new("CP001"),
-///     NettingSetId::new("NS001"),
-///     1_000_000.0,
-/// );
-///
-/// let portfolio = PortfolioBuilder::new()
-///     .add_counterparty(counterparty)
-///     .add_netting_set(netting_set)
-///     .add_trade(trade)
-///     .build()
-///     .unwrap();
-///
-/// // Access by ID
-/// let t = portfolio.trade(&TradeId::new("T001"));
-/// assert!(t.is_some());
-/// ```
+/// Portfolio container for trades, counterparties, and netting sets with O(1)
+/// lookup and Rayon parallel iteration.
 #[derive(Debug)]
 pub struct Portfolio {
     trades: HashMap<TradeId, Trade>,
@@ -207,14 +97,6 @@ impl Portfolio {
     }
 
     /// Gets all trades in a netting set.
-    ///
-    /// # Arguments
-    ///
-    /// * `ns_id` - Netting set ID
-    ///
-    /// # Returns
-    ///
-    /// Vector of trade references in the netting set.
     pub fn trades_in_netting_set(&self, ns_id: &NettingSetId) -> Vec<&Trade> {
         self.netting_sets
             .get(ns_id)
@@ -228,14 +110,6 @@ impl Portfolio {
     }
 
     /// Gets all trades for a counterparty.
-    ///
-    /// # Arguments
-    ///
-    /// * `cp_id` - Counterparty ID
-    ///
-    /// # Returns
-    ///
-    /// Vector of trade references for the counterparty.
     pub fn trades_for_counterparty(&self, cp_id: &CounterpartyId) -> Vec<&Trade> {
         self.trades
             .values()
@@ -252,8 +126,6 @@ impl Portfolio {
     }
 
     /// Returns a parallel iterator over trades.
-    ///
-    /// Uses Rayon for parallel iteration across multiple threads.
     #[inline]
     pub fn trades_par_iter(&self) -> impl ParallelIterator<Item = (&TradeId, &Trade)> {
         self.trades.par_iter()
@@ -276,24 +148,6 @@ impl Portfolio {
     }
 
     /// Prices all trades in parallel using the provided pricing function.
-    ///
-    /// # Arguments
-    ///
-    /// * `pricer_fn` - Function that takes a trade reference and returns a
-    ///   price
-    ///
-    /// # Returns
-    ///
-    /// HashMap mapping trade IDs to prices.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// let prices = portfolio.price_all_trades(|trade| {
-    ///     // Use MC pricer or analytical formula
-    ///     10.0 // Placeholder price
-    /// });
-    /// ```
     pub fn price_all_trades<F>(&self, pricer_fn: F) -> HashMap<TradeId, f64>
     where
         F: Fn(&Trade) -> f64 + Sync,
@@ -305,15 +159,6 @@ impl Portfolio {
     }
 
     /// Aggregates values by netting set in parallel.
-    ///
-    /// # Arguments
-    ///
-    /// * `agg_fn` - Function that takes a slice of trades and returns an
-    ///   aggregated value
-    ///
-    /// # Returns
-    ///
-    /// HashMap mapping netting set IDs to aggregated values.
     pub fn aggregate_by_netting_set<F>(&self, agg_fn: F) -> HashMap<NettingSetId, f64>
     where
         F: Fn(&[&Trade]) -> f64 + Sync,
@@ -513,7 +358,6 @@ mod tests {
     fn test_parallel_iteration() {
         let portfolio = create_test_portfolio();
 
-        // Ensure parallel iteration works
         let total: f64 = portfolio.trades_par_iter().map(|(_, t)| t.notional()).sum();
 
         assert_eq!(total, 3_500_000.0);

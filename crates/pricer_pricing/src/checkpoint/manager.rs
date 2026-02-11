@@ -110,21 +110,19 @@ impl<T: Float> CheckpointManager<T> {
             Some(budget) => {
                 budget.recommended_interval(n_paths, self.total_steps, state_size_per_path)
             }
-            None => {
-                match self.strategy {
-                    CheckpointStrategy::Uniform { interval } => interval,
-                    CheckpointStrategy::Logarithmic { base_interval } => base_interval,
-                    CheckpointStrategy::Adaptive { .. } => (self.total_steps / 10).max(1),
-                    CheckpointStrategy::None => self.total_steps,
-                    CheckpointStrategy::Binomial { memory_slots } => {
-                        let interval = ((self.total_steps as f64).sqrt().ceil() as usize).max(1);
-                        self.total_steps
-                            .checked_div(memory_slots)
-                            .map(|v| v.max(1))
-                            .unwrap_or(interval)
-                    }
+            None => match self.strategy {
+                CheckpointStrategy::Uniform { interval } => interval,
+                CheckpointStrategy::Logarithmic { base_interval } => base_interval,
+                CheckpointStrategy::Adaptive { .. } => (self.total_steps / 10).max(1),
+                CheckpointStrategy::None => self.total_steps,
+                CheckpointStrategy::Binomial { memory_slots } => {
+                    let interval = ((self.total_steps as f64).sqrt().ceil() as usize).max(1);
+                    self.total_steps
+                        .checked_div(memory_slots)
+                        .map(|v| v.max(1))
+                        .unwrap_or(interval)
                 }
-            }
+            },
         }
     }
 

@@ -1,13 +1,4 @@
 //! Risk engine error types.
-//!
-//! Provides [`RiskError`] for comprehensive error handling in risk
-//! calculations.
-//!
-//! # Requirements
-//!
-//! - Requirement 8.2: RiskError with calculation failure details
-//! - Requirement 8.4: AAD not available error
-//! - Requirement 8.5: Numerical instability handling
 
 use thiserror::Error;
 
@@ -19,18 +10,12 @@ pub enum RiskError {
     /// Calculation failed for a specific trade.
     #[error("Calculation failed for trade '{trade_id}': {reason}")]
     CalculationFailed {
-        /// Trade identifier.
         trade_id: String,
-        /// Failure reason.
         reason: String,
-        /// Partial results if any Greeks were computed.
         partial_results: Option<PartialGreeksResult>,
     },
 
-    /// AAD (Automatic Adjoint Differentiation) is not available.
-    ///
-    /// This error occurs when `enzyme-ad` feature is not enabled
-    /// but AAD method is requested.
+    /// AAD is not available (enzyme-ad feature not enabled).
     #[error("AAD is not available: enzyme-ad feature is not enabled")]
     AadNotAvailable,
 
@@ -39,11 +24,8 @@ pub enum RiskError {
         "Numerical instability: {description} (value: {value}, suggestion: {suggested_mitigation})"
     )]
     NumericalInstability {
-        /// Description of the instability.
         description: String,
-        /// The problematic value.
         value: f64,
-        /// Suggested mitigation action.
         suggested_mitigation: String,
     },
 
@@ -71,15 +53,10 @@ pub enum RiskError {
 /// Partial Greeks result when calculation partially succeeded.
 #[derive(Debug, Clone)]
 pub struct PartialGreeksResult {
-    /// Computed delta if available.
     pub delta: Option<f64>,
-    /// Computed gamma if available.
     pub gamma: Option<f64>,
-    /// Computed vega if available.
     pub vega: Option<f64>,
-    /// Computed theta if available.
     pub theta: Option<f64>,
-    /// Computed rho if available.
     pub rho: Option<f64>,
 }
 

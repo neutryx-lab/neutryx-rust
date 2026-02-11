@@ -103,9 +103,7 @@ impl CheckpointStrategy {
                     }
                 }
             }
-            CheckpointStrategy::Adaptive { .. } => {
-                11
-            }
+            CheckpointStrategy::Adaptive { .. } => 11,
             CheckpointStrategy::None => 0,
             CheckpointStrategy::Binomial { memory_slots } => {
                 let sqrt_n = (total_steps as f64).sqrt().ceil() as usize;
@@ -114,7 +112,8 @@ impl CheckpointStrategy {
         }
     }
 
-    /// Creates a Binomial strategy with optimal memory slots for the given step count.
+    /// Creates a Binomial strategy with optimal memory slots for the given step
+    /// count.
     pub fn binomial_optimal(total_steps: usize) -> Self {
         let memory_slots = (total_steps as f64).sqrt().ceil() as usize;
         CheckpointStrategy::Binomial {

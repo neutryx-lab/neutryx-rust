@@ -39,5 +39,4 @@ pub use trade::{
     TradeType,
 };
 
-pub use crate::ids::TradeId;
-pub use crate::market::instrument::AssetClass;
+pub use crate::{ids::TradeId, market::instrument::AssetClass};

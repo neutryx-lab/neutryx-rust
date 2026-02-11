@@ -46,12 +46,8 @@ impl DayCountConvention {
         match self {
             Self::Actual365Fixed => days as f64 / 365.0,
             Self::Actual360 => days as f64 / 360.0,
-            Self::Thirty360 => {
-                days as f64 / 360.0
-            }
-            Self::ActualActualIsda => {
-                days as f64 / 365.25
-            }
+            Self::Thirty360 => days as f64 / 360.0,
+            Self::ActualActualIsda => days as f64 / 365.25,
         }
     }
 

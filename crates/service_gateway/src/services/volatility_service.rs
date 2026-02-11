@@ -285,7 +285,6 @@ impl VolatilityService {
         beta: f64,
         _expiry: f64,
     ) -> (f64, f64, f64, f64) {
-
         let alpha = atm_vol;
 
         let rho = quotes

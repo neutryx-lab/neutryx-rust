@@ -253,13 +253,7 @@ mod tests {
 
     #[test]
     fn test_cashflow_pricing_result_creation() {
-        let cf = CashflowPricingResult::new(
-            100.0,
-            95.0,
-            sample_date(),
-            0.95,
-            Currency::USD,
-        );
+        let cf = CashflowPricingResult::new(100.0, 95.0, sample_date(), 0.95, Currency::USD);
 
         assert!((cf.pv - 100.0).abs() < 1e-10);
         assert!((cf.pv_original - 95.0).abs() < 1e-10);
@@ -478,5 +472,4 @@ mod tests {
         assert!((result1.total_pv - result2.total_pv).abs() < 1e-10);
         assert_eq!(result1.leg_count(), result2.leg_count());
     }
-
 }

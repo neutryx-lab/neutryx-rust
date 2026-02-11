@@ -192,9 +192,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
     /// Compute all cashflow DFs from pillar DFs using vector product.
     ///
     /// # Requirement 4.1, 4.3
-    pub fn apply(&self, pillar_dfs: &DVector<T>) -> DVector<T> {
-        &self.inner * pillar_dfs
-    }
+    pub fn apply(&self, pillar_dfs: &DVector<T>) -> DVector<T> { &self.inner * pillar_dfs }
 
     /// Compute all cashflow DFs using log-linear interpolation.
     ///

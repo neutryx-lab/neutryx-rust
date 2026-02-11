@@ -28,8 +28,10 @@ pub use definition::{
     InterpolationMethod, RateIndexDefError, RateIndexDefinition, StrikeAxisType,
 };
 pub use event_instrument::EventInstrument;
-pub use index::{FxFixingSource, FxIndex, FxIndexMetadata, IndexMetadata, RateIndex};
-pub use index::{SwapIndex, SwapIndexMetadata};
+pub use index::{
+    FxFixingSource, FxIndex, FxIndexMetadata, IndexMetadata, RateIndex, SwapIndex,
+    SwapIndexMetadata,
+};
 pub use instrument::convention;
 pub use market_instrument::{MarketInstrument, MarketInstrumentError};
 pub use quote::{
@@ -39,5 +41,6 @@ pub use quote::{
 #[cfg(feature = "serde")]
 pub use registry::DefinitionBundle;
 pub use registry::{DefinitionRegistry, RegistryError};
-pub use source::TickerMapping;
-pub use source::{DataSource, InstrumentMapper, SourcePriority, StandardInstrumentMapper};
+pub use source::{
+    DataSource, InstrumentMapper, SourcePriority, StandardInstrumentMapper, TickerMapping,
+};

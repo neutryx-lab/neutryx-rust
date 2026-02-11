@@ -120,9 +120,7 @@ impl ExecutionState {
     }
 
     #[inline]
-    fn should_pay(&self) -> bool {
-        self.is_alive && (!self.has_knock_in || self.is_knocked_in)
-    }
+    fn should_pay(&self) -> bool { self.is_alive && (!self.has_knock_in || self.is_knocked_in) }
 }
 
 /// Script engine for exotic products.
@@ -406,9 +404,7 @@ impl ScriptEngine {
                     }
                 }
 
-                _ => {
-                    TraceStep::executed(op_idx, format!("{op:?}"), state.current_value, &state)
-                }
+                _ => TraceStep::executed(op_idx, format!("{op:?}"), state.current_value, &state),
             };
 
             trace.steps.push(step);
@@ -901,7 +897,9 @@ mod tests {
         let notional_idx = builder.add_constant(1.0);
 
         let kernel = builder
-            .push_op(ScriptOp::CalcFixed { amount_idx: value_idx })
+            .push_op(ScriptOp::CalcFixed {
+                amount_idx: value_idx,
+            })
             .push_op(ScriptOp::Store { register: 0 })
             .push_op(ScriptOp::CalcFixed {
                 amount_idx: notional_idx,

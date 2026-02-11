@@ -23,7 +23,6 @@ pub enum PathPayoffType<T: Float + Send + Sync> {
 }
 
 impl<T: Float + Send + Sync> PathPayoffType<T> {
-
     /// Creates an arithmetic average Asian call option.
     #[inline]
     pub fn asian_arithmetic_call(strike: T, epsilon: T) -> Self {

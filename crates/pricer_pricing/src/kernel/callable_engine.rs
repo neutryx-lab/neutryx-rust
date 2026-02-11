@@ -128,7 +128,8 @@ impl SimulatedPaths {
 pub struct CallableEngine;
 
 impl CallableEngine {
-    /// Performs the forward pass: accumulate cashflow values to exercise points.
+    /// Performs the forward pass: accumulate cashflow values to exercise
+    /// points.
     pub fn forward_pass<P: CurveProvider>(
         kernel: &CallableKernel,
         context: &KernelContext<P>,

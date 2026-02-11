@@ -12,7 +12,8 @@ macro_rules! xml_text {
     };
 }
 
-/// Extract a decimal (f64) field from an `XmlNavigator`, returning a default if.
+/// Extract a decimal (f64) field from an `XmlNavigator`, returning a default
+/// if.
 macro_rules! xml_decimal {
     ($nav:expr, $elem:expr, $default:expr) => {
         $nav.find_text($elem)

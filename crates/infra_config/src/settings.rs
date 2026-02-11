@@ -107,9 +107,7 @@ impl Default for EngineConfig {
 
 fn default_thread_pool_size() -> usize { num_cpus::get() }
 
-fn default_memory_limit_mb() -> usize {
-    1024
-}
+fn default_memory_limit_mb() -> usize { 1024 }
 
 fn default_mc_paths() -> usize { 10_000 }
 
