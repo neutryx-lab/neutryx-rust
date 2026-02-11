@@ -10,14 +10,14 @@
       "name": "Secured Overnight Financing Rate",
       "currency": "USD",
       "indexType": "Sofr",
-      "tenor": "O/N"
+      "tenor": "ON"
     },
     {
       "id": "EUR-ESTR",
       "name": "Euro Short-Term Rate",
       "currency": "EUR",
       "indexType": "Estr",
-      "tenor": "O/N"
+      "tenor": "ON"
     },
     {
       "id": "EUR-EURIBOR3M",
@@ -46,7 +46,7 @@
       "name": "Sterling Overnight Index Average",
       "currency": "GBP",
       "indexType": "Sonia",
-      "tenor": "O/N",
+      "tenor": "ON",
       "conventions": {
         "settlementLag": 0
       }
@@ -56,14 +56,14 @@
       "name": "Tokyo Overnight Average Rate",
       "currency": "JPY",
       "indexType": "Tonar",
-      "tenor": "O/N"
+      "tenor": "ON"
     },
     {
       "id": "CHF-SARON",
       "name": "Swiss Average Rate Overnight",
       "currency": "CHF",
       "indexType": "Saron",
-      "tenor": "O/N"
+      "tenor": "ON"
     }
   ]
 }

@@ -7,7 +7,7 @@ use std::fmt;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum RateType {
-    /// Money market deposit rate (short-dated, O/N to 1Y).
+    /// Money market deposit rate (short-dated, ON to 1Y).
     Deposit,
     /// Forward rate agreement (short to medium, 1M to 2Y).
     Fra,

@@ -17,7 +17,7 @@
       "currency": "USD",
       "convention": "USD-DEPO",
       "rateIndex": "USD-SOFR",
-      "tenors": ["O/N", "T/N", "1W", "2W", "1M", "2M", "3M"]
+      "tenors": ["ON", "TN", "1W", "2W", "1M", "2M", "3M"]
     },
     {
       "idPattern": "{currency}-OIS-{tenor}",
@@ -38,7 +38,7 @@
       "currency": "EUR",
       "convention": "EUR-DEPO",
       "rateIndex": "EUR-ESTR",
-      "tenors": ["O/N", "T/N", "1W", "1M"]
+      "tenors": ["ON", "TN", "1W", "1M"]
     },
     {
       "idPattern": "{currency}-OIS-{tenor}",
@@ -69,7 +69,7 @@
       "currency": "GBP",
       "convention": "GBP-DEPO",
       "rateIndex": "GBP-SONIA",
-      "tenors": ["O/N", "T/N", "1W", "1M"]
+      "tenors": ["ON", "TN", "1W", "1M"]
     },
     {
       "idPattern": "{currency}-OIS-{tenor}",
@@ -83,7 +83,7 @@
       "currency": "JPY",
       "convention": "JPY-DEPO",
       "rateIndex": "JPY-TONA",
-      "tenors": ["O/N", "T/N", "1W", "1M"]
+      "tenors": ["ON", "TN", "1W", "1M"]
     },
     {
       "idPattern": "{currency}-OIS-{tenor}",
@@ -97,7 +97,7 @@
       "currency": "CHF",
       "convention": "CHF-DEPO",
       "rateIndex": "CHF-SARON",
-      "tenors": ["O/N", "T/N", "1W", "1M"]
+      "tenors": ["ON", "TN", "1W", "1M"]
     },
     {
       "idPattern": "{currency}-OIS-{tenor}",

@@ -844,7 +844,7 @@ pub struct RateIndexInfo {
     pub name: String,
     /// Currency.
     pub currency: String,
-    /// Tenor (e.g., "O/N", "3M").
+    /// Tenor (e.g., "ON", "3M").
     pub tenor: String,
     /// Day counter.
     #[serde(skip_serializing_if = "Option::is_none")]

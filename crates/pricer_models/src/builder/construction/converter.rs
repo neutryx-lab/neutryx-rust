@@ -327,13 +327,13 @@ mod tests {
 
     #[test]
     fn test_convert_overnight_deposit() {
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N");
+        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "ON");
 
         let inst = definition_to_instrument(&def, 0.055, None).unwrap();
 
         match inst {
             MarketInstrument::Ois { maturity, rate, .. } => {
-                // O/N is approximately 1/365 years
+                // ON is approximately 1/365 years
                 assert!((maturity - 1.0 / 365.0).abs() < 1e-6);
                 assert!((rate - 0.055).abs() < 1e-10);
             }

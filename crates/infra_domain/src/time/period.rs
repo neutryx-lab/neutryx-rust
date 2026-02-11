@@ -127,9 +127,9 @@ pub enum EndOfMonthRule {
 #[strum(ascii_case_insensitive)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Tenor {
-    /// Overnight (O/N).
-    #[cfg_attr(feature = "serde", serde(rename = "O/N"))]
-    #[strum(to_string = "ON", serialize = "O/N")]
+    /// Overnight.
+    #[cfg_attr(feature = "serde", serde(rename = "ON"))]
+    #[strum(to_string = "ON")]
     Overnight,
     /// One week (1W).
     #[cfg_attr(feature = "serde", serde(rename = "1W"))]
@@ -405,8 +405,8 @@ pub fn parse_tenor_to_years(s: &str) -> Result<f64, String> {
     }
 
     match s.as_str() {
-        "T/N" | "TN" => return Ok(2.0 / 365.0),
-        "S/N" | "SN" | "SPOT" => return Ok(2.0 / 365.0),
+        "TN" => return Ok(1.0 / 365.0),
+        "SN" => return Ok(1.0 / 365.0),
         _ => {}
     }
 
@@ -670,10 +670,11 @@ mod tests {
     fn test_tenor_from_str_invalid() {
         assert!("INVALID".parse::<Tenor>().is_err());
         assert!("18M".parse::<Tenor>().is_err());
-        // Former month-based aliases are no longer accepted as Tenor variants
+        // Former aliases are no longer accepted as Tenor variants
         assert!("12M".parse::<Tenor>().is_err());
         assert!("24M".parse::<Tenor>().is_err());
         assert!("OVERNIGHT".parse::<Tenor>().is_err());
+        assert!("O/N".parse::<Tenor>().is_err());
     }
 
     #[test]

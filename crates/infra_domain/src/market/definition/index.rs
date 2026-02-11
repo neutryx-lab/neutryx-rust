@@ -29,7 +29,7 @@ pub struct RateIndexDefinition {
     /// Index type from the enum.
     pub index_type: RateIndex,
 
-    /// Tenor of the index (e.g., O/N for SOFR, 6M for EURIBOR6M).
+    /// Tenor of the index (e.g., ON for SOFR, 6M for EURIBOR6M).
     pub tenor: Tenor,
 
     /// Convention overrides (optional, defaults derived from index_type).
@@ -371,7 +371,7 @@ mod tests {
             "id": "EUR-ESTR",
             "currency": "EUR",
             "indexType": "Estr",
-            "tenor": "O/N"
+            "tenor": "ON"
         }"#;
 
         let def: RateIndexDefinition = serde_json::from_str(json).unwrap();
@@ -407,7 +407,7 @@ mod tests {
             "id": "USD-SOFR",
             "currency": "USD",
             "indexType": "Sofr",
-            "tenor": "O/N",
+            "tenor": "ON",
             "conventions": {
                 "dayCount": "Actual365Fixed",
                 "compounding": "Compounded",

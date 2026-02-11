@@ -1503,7 +1503,7 @@ impl DemoService {
 
         let t = tenor.to_uppercase();
         let maturity_date = match t.as_str() {
-            "ON" | "O/N" | "TN" | "T/N" => effective_date + chrono::Duration::days(1),
+            "ON" | "TN" => effective_date + chrono::Duration::days(1),
             "SPOT" => effective_date,
             _ => {
                 if let Some(years) = t.strip_suffix('Y').and_then(|s| s.parse::<i32>().ok()) {
@@ -1591,13 +1591,13 @@ impl DemoService {
                 let tenor = item
                     .get("tenor")
                     .and_then(|t| t.as_str())
-                    .unwrap_or("O/N")
+                    .unwrap_or("ON")
                     .to_string();
                 let day_counter = item
                     .get("dayCounter")
                     .and_then(|d| d.as_str())
                     .map(String::from);
-                let is_overnight = tenor == "O/N" || tenor == "ON";
+                let is_overnight = tenor == "ON";
 
                 let associated_rates_count = rates_response
                     .as_ref()
@@ -1672,7 +1672,7 @@ impl DemoService {
         let tenor = item
             .get("tenor")
             .and_then(|t| t.as_str())
-            .unwrap_or("O/N")
+            .unwrap_or("ON")
             .to_string();
         let name = format!("{} ({})", code, currency);
 

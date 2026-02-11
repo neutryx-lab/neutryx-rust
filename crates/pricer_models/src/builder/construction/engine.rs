@@ -353,7 +353,7 @@ mod tests {
 
         // Register instruments
         let instruments = vec![
-            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N"),
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "ON"),
             InstrumentDefinition::new("USD-Depo-1M", Currency::USD, RateType::Deposit, "1M"),
             InstrumentDefinition::new("USD-Depo-3M", Currency::USD, RateType::Deposit, "3M"),
             InstrumentDefinition::new("USD-OIS-1Y", Currency::USD, RateType::Ois, "1Y"),
@@ -546,7 +546,7 @@ mod tests {
 
         // Add a second curve
         let eur_instruments = vec![
-            InstrumentDefinition::new("EUR-Depo-ON", Currency::EUR, RateType::Deposit, "O/N"),
+            InstrumentDefinition::new("EUR-Depo-ON", Currency::EUR, RateType::Deposit, "ON"),
             InstrumentDefinition::new("EUR-OIS-1Y", Currency::EUR, RateType::Ois, "1Y"),
         ];
         for inst in eur_instruments {

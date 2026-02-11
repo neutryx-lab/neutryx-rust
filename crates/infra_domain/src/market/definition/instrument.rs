@@ -35,7 +35,7 @@ pub struct InstrumentDefinition {
     )]
     rate_type_override: Option<RateType>,
 
-    /// Tenor specification (e.g., "O/N", "3M", "5Y", or FRA format "3x6").
+    /// Tenor specification (e.g., "ON", "3M", "5Y", or FRA format "3x6").
     pub tenor: String,
 
     /// Related rate index ID (e.g., "USD-SOFR") - optional.
@@ -628,11 +628,11 @@ mod tests {
             "{currency}-{type}-{tenor}",
             Currency::EUR,
             "EUR-DEPO",
-            vec!["O/N".into(), "1W".into()],
+            vec!["ON".into(), "1W".into()],
         );
 
         let instruments = template.expand();
-        assert_eq!(instruments[0].id, "EUR-Depo-O/N");
+        assert_eq!(instruments[0].id, "EUR-Depo-ON");
         assert_eq!(instruments[1].id, "EUR-Depo-1W");
     }
 
@@ -673,12 +673,12 @@ mod tests {
 
     #[test]
     fn test_instrument_definition_new() {
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N");
+        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "ON");
 
         assert_eq!(def.id, "USD-Depo-ON");
         assert_eq!(def.currency, Currency::USD);
         assert_eq!(def.rate_type(), RateType::Deposit);
-        assert_eq!(def.tenor, "O/N");
+        assert_eq!(def.tenor, "ON");
         assert!(def.rate_index.is_none());
         assert!(def.conventions.is_none());
     }
@@ -790,7 +790,7 @@ mod tests {
         let def = InstrumentDefinition::new("USD-Depo-3M", Currency::USD, RateType::Deposit, "3M");
         assert!((def.tenor_years().unwrap() - 0.25).abs() < 1e-10);
 
-        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "O/N");
+        let def = InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "ON");
         assert!((def.tenor_years().unwrap() - 1.0 / 365.0).abs() < 1e-10);
     }
 
@@ -895,14 +895,14 @@ mod tests {
             "id": "USD-Depo-ON",
             "currency": "USD",
             "rateType": "Deposit",
-            "tenor": "O/N"
+            "tenor": "ON"
         }"#;
 
         let def: InstrumentDefinition = serde_json::from_str(json).unwrap();
         assert_eq!(def.id, "USD-Depo-ON");
         assert_eq!(def.currency, Currency::USD);
         assert_eq!(def.rate_type(), RateType::Deposit);
-        assert_eq!(def.tenor, "O/N");
+        assert_eq!(def.tenor, "ON");
     }
 
     #[cfg(feature = "serde")]
