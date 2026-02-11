@@ -2,7 +2,7 @@
 
 use thiserror::Error;
 
-use crate::market::core::RateType;
+use crate::market::core::QuoteCategory;
 
 /// Errors that can occur during market quote operations.
 #[derive(Error, Debug, Clone, PartialEq)]
@@ -33,10 +33,10 @@ pub enum MarketQuoteError {
     },
 
     /// Failed to map a quote to an instrument.
-    #[error("Mapping failed: cannot convert {rate_type:?} to Instrument ({reason})")]
+    #[error("Mapping failed: cannot convert {quote_category:?} to Instrument ({reason})")]
     MappingFailed {
-        /// The rate type that could not be mapped.
-        rate_type: RateType,
+        /// The quote category that could not be mapped.
+        quote_category: QuoteCategory,
         /// Reason for the mapping failure.
         reason: String,
     },
@@ -74,12 +74,12 @@ impl MarketQuoteError {
         }
     }
 
-    /// Creates a `MappingFailed` error for an unsupported rate type.
+    /// Creates a `MappingFailed` error for an unsupported quote category.
     #[must_use]
-    pub fn unsupported_rate_type(rate_type: RateType) -> Self {
+    pub fn unsupported_quote_category(quote_category: QuoteCategory) -> Self {
         Self::MappingFailed {
-            rate_type,
-            reason: "Unsupported rate type for instrument mapping".to_string(),
+            quote_category,
+            reason: "Unsupported quote category for instrument mapping".to_string(),
         }
     }
 }
@@ -97,7 +97,7 @@ mod tests {
         assert!(MarketQuoteError::out_of_bounds(1.5, 0.0, 1.0)
             .to_string()
             .contains("between"));
-        assert!(MarketQuoteError::unsupported_rate_type(RateType::Vol)
+        assert!(MarketQuoteError::unsupported_quote_category(QuoteCategory::Vol)
             .to_string()
             .contains("Vol"));
         assert!(MarketQuoteError::ValidationFailed("msg".into())
@@ -131,8 +131,8 @@ mod tests {
             MarketQuoteError::InvalidQuote { value, .. } if (value - 1.5).abs() < f64::EPSILON
         ));
         assert!(matches!(
-            MarketQuoteError::unsupported_rate_type(RateType::BasisSwap),
-            MarketQuoteError::MappingFailed { rate_type, .. } if rate_type == RateType::BasisSwap
+            MarketQuoteError::unsupported_quote_category(QuoteCategory::BasisSwap),
+            MarketQuoteError::MappingFailed { quote_category, .. } if quote_category == QuoteCategory::BasisSwap
         ));
     }
 }

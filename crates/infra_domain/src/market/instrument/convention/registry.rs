@@ -3,31 +3,31 @@
 use std::collections::HashMap;
 
 use super::MarketConvention;
-use crate::market::{Currency, RateType};
+use crate::market::{Currency, QuoteCategory};
 
 /// A key for looking up conventions in the registry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConventionKey {
     /// Currency of the convention.
     pub currency: Currency,
-    /// Rate type of the convention.
-    pub rate_type: RateType,
+    /// Quote category of the convention.
+    pub quote_category: QuoteCategory,
 }
 
 impl ConventionKey {
     /// Creates a new convention key.
     #[must_use]
-    pub fn new(currency: Currency, rate_type: RateType) -> Self {
+    pub fn new(currency: Currency, quote_category: QuoteCategory) -> Self {
         Self {
             currency,
-            rate_type,
+            quote_category,
         }
     }
 }
 
 impl std::fmt::Display for ConventionKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {}", self.currency.code(), self.rate_type.code())
+        write!(f, "{} {}", self.currency.code(), self.quote_category.code())
     }
 }
 
@@ -88,21 +88,21 @@ impl ConventionRegistry {
             Currency::JPY,
             Currency::CHF,
         ];
-        let rate_types = [
-            RateType::Deposit,
-            RateType::Swap,
-            RateType::Ois,
-            RateType::Fra,
-            RateType::Futures,
-            RateType::FxForward,
+        let quote_categories = [
+            QuoteCategory::Deposit,
+            QuoteCategory::Swap,
+            QuoteCategory::Ois,
+            QuoteCategory::Fra,
+            QuoteCategory::Futures,
+            QuoteCategory::FxForward,
         ];
 
         for currency in currencies {
-            for rate_type in rate_types {
+            for quote_category in quote_categories {
                 let quote_id =
-                    crate::market::QuoteId::new(currency, crate::time::Tenor::OneYear, rate_type);
+                    crate::market::QuoteId::new(currency, crate::time::Tenor::OneYear, quote_category);
                 if let Some(convention) = MarketConvention::for_quote_id(&quote_id) {
-                    registry.register(currency, rate_type, convention);
+                    registry.register(currency, quote_category, convention);
                 }
             }
         }
@@ -114,17 +114,17 @@ impl ConventionRegistry {
     pub fn register(
         &mut self,
         currency: Currency,
-        rate_type: RateType,
+        quote_category: QuoteCategory,
         convention: MarketConvention,
     ) {
-        let key = ConventionKey::new(currency, rate_type);
+        let key = ConventionKey::new(currency, quote_category);
         self.conventions.insert(key, convention);
     }
 
     /// Gets a convention from the registry.
     #[must_use]
-    pub fn get(&self, currency: Currency, rate_type: RateType) -> Option<&MarketConvention> {
-        let key = ConventionKey::new(currency, rate_type);
+    pub fn get(&self, currency: Currency, quote_category: QuoteCategory) -> Option<&MarketConvention> {
+        let key = ConventionKey::new(currency, quote_category);
         self.conventions.get(&key)
     }
 
@@ -136,8 +136,8 @@ impl ConventionRegistry {
 
     /// Returns true if the registry contains a convention for the given key.
     #[must_use]
-    pub fn contains(&self, currency: Currency, rate_type: RateType) -> bool {
-        let key = ConventionKey::new(currency, rate_type);
+    pub fn contains(&self, currency: Currency, quote_category: QuoteCategory) -> bool {
+        let key = ConventionKey::new(currency, quote_category);
         self.conventions.contains_key(&key)
     }
 
@@ -161,8 +161,8 @@ impl ConventionRegistry {
     pub fn is_empty(&self) -> bool { self.conventions.is_empty() }
 
     /// Removes a convention from the registry.
-    pub fn remove(&mut self, currency: Currency, rate_type: RateType) -> Option<MarketConvention> {
-        let key = ConventionKey::new(currency, rate_type);
+    pub fn remove(&mut self, currency: Currency, quote_category: QuoteCategory) -> Option<MarketConvention> {
+        let key = ConventionKey::new(currency, quote_category);
         self.conventions.remove(&key)
     }
 
@@ -178,34 +178,34 @@ impl ConventionRegistry {
         currencies
     }
 
-    /// Returns all rate types that have at least one registered convention.
+    /// Returns all quote categories that have at least one registered convention.
     #[must_use]
-    pub fn rate_types(&self) -> Vec<RateType> {
-        let mut rate_types: Vec<RateType> = self.conventions.keys().map(|k| k.rate_type).collect();
-        rate_types.sort_by_key(|rt| rt.code());
-        rate_types.dedup();
-        rate_types
+    pub fn quote_categories(&self) -> Vec<QuoteCategory> {
+        let mut quote_categories: Vec<QuoteCategory> = self.conventions.keys().map(|k| k.quote_category).collect();
+        quote_categories.sort_by_key(|rt| rt.code());
+        quote_categories.dedup();
+        quote_categories
     }
 
     /// Returns all conventions for a given currency.
     pub fn conventions_for_currency(
         &self,
         currency: Currency,
-    ) -> impl Iterator<Item = (&RateType, &MarketConvention)> {
+    ) -> impl Iterator<Item = (&QuoteCategory, &MarketConvention)> {
         self.conventions
             .iter()
             .filter(move |(k, _)| k.currency == currency)
-            .map(|(k, v)| (&k.rate_type, v))
+            .map(|(k, v)| (&k.quote_category, v))
     }
 
-    /// Returns all conventions for a given rate type.
-    pub fn conventions_for_rate_type(
+    /// Returns all conventions for a given quote category.
+    pub fn conventions_for_quote_category(
         &self,
-        rate_type: RateType,
+        quote_category: QuoteCategory,
     ) -> impl Iterator<Item = (&Currency, &MarketConvention)> {
         self.conventions
             .iter()
-            .filter(move |(k, _)| k.rate_type == rate_type)
+            .filter(move |(k, _)| k.quote_category == quote_category)
             .map(|(k, v)| (&k.currency, v))
     }
 }
@@ -221,13 +221,13 @@ mod tests {
         assert!(registry.is_empty());
 
         let conv = MarketConvention::Deposit(DepositConvention::usd());
-        registry.register(Currency::USD, RateType::Deposit, conv.clone());
+        registry.register(Currency::USD, QuoteCategory::Deposit, conv.clone());
 
         assert_eq!(registry.len(), 1);
-        assert!(registry.contains(Currency::USD, RateType::Deposit));
-        assert!(!registry.contains(Currency::EUR, RateType::Deposit));
+        assert!(registry.contains(Currency::USD, QuoteCategory::Deposit));
+        assert!(!registry.contains(Currency::EUR, QuoteCategory::Deposit));
         assert_eq!(
-            registry.get(Currency::USD, RateType::Deposit).unwrap(),
+            registry.get(Currency::USD, QuoteCategory::Deposit).unwrap(),
             &conv
         );
     }
@@ -236,9 +236,9 @@ mod tests {
     fn test_with_defaults() {
         let registry = ConventionRegistry::with_defaults();
         assert!(registry.len() > 10);
-        assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
-        assert!(registry.get(Currency::EUR, RateType::Swap).is_some());
-        assert!(registry.get(Currency::USD, RateType::Vol).is_none());
+        assert!(registry.get(Currency::USD, QuoteCategory::Deposit).is_some());
+        assert!(registry.get(Currency::EUR, QuoteCategory::Swap).is_some());
+        assert!(registry.get(Currency::USD, QuoteCategory::Vol).is_none());
 
         let currencies = registry.currencies();
         assert!(currencies.contains(&Currency::USD));
@@ -253,7 +253,7 @@ mod tests {
         let mut registry = ConventionRegistry::with_defaults();
         let initial_len = registry.len();
 
-        let removed = registry.remove(Currency::USD, RateType::Deposit);
+        let removed = registry.remove(Currency::USD, QuoteCategory::Deposit);
         assert!(removed.is_some());
         assert_eq!(registry.len(), initial_len - 1);
 
@@ -263,9 +263,9 @@ mod tests {
 
     #[test]
     fn test_convention_key() {
-        let key1 = ConventionKey::new(Currency::USD, RateType::Swap);
-        let key2 = ConventionKey::new(Currency::USD, RateType::Swap);
-        let key3 = ConventionKey::new(Currency::EUR, RateType::Deposit);
+        let key1 = ConventionKey::new(Currency::USD, QuoteCategory::Swap);
+        let key2 = ConventionKey::new(Currency::USD, QuoteCategory::Swap);
+        let key3 = ConventionKey::new(Currency::EUR, QuoteCategory::Deposit);
         assert_eq!(key1, key2);
         assert_ne!(key1, key3);
         assert_eq!(key3.to_string(), "EUR DEPO");

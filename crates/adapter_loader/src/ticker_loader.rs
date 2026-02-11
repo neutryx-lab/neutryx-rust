@@ -3,7 +3,7 @@
 use std::{fs::File, io::BufReader, path::Path};
 
 use infra_domain::{
-    market::{core::RateType, quote::QuoteId, Currency, TickerMapping},
+    market::{core::QuoteCategory, quote::QuoteId, Currency, TickerMapping},
     time::Tenor,
 };
 use serde::Deserialize;
@@ -20,13 +20,13 @@ pub struct TickerMappingEntry {
     /// Tenor (e.g., "3M", "5Y").
     pub tenor: Tenor,
     /// Rate type.
-    pub rate_type: RateType,
+    pub quote_category: QuoteCategory,
 }
 
 impl TickerMappingEntry {
     /// Converts this entry to a [`QuoteId`].
     #[must_use]
-    pub fn to_quote_id(&self) -> QuoteId { QuoteId::new(self.currency, self.tenor, self.rate_type) }
+    pub fn to_quote_id(&self) -> QuoteId { QuoteId::new(self.currency, self.tenor, self.quote_category) }
 }
 
 /// Loader for ticker mapping files.
@@ -134,13 +134,13 @@ mod tests {
                     "ticker": "USD3MD=",
                     "currency": "USD",
                     "tenor": "3M",
-                    "rate_type": "Deposit"
+                    "quote_category": "Deposit"
                 }},
                 {{
                     "ticker": "USSW5 Curncy",
                     "currency": "USD",
                     "tenor": "5Y",
-                    "rate_type": "Swap"
+                    "quote_category": "Swap"
                 }}
             ]"#
         )
@@ -155,7 +155,7 @@ mod tests {
         let quote_id = mapping.lookup("USD3MD=").unwrap();
         assert_eq!(quote_id.currency, Currency::USD);
         assert_eq!(quote_id.tenor, Tenor::ThreeMonths);
-        assert_eq!(quote_id.rate_type, RateType::Deposit);
+        assert_eq!(quote_id.quote_category, QuoteCategory::Deposit);
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
                     "ticker": "CUSTOM_TICKER",
                     "currency": "EUR",
                     "tenor": "10Y",
-                    "rate_type": "Swap"
+                    "quote_category": "Swap"
                 }}
             ]"#
         )
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn test_load_csv() {
         let mut file = NamedTempFile::with_suffix(".csv").unwrap();
-        writeln!(file, "ticker,currency,tenor,rate_type").unwrap();
+        writeln!(file, "ticker,currency,tenor,quote_category").unwrap();
         writeln!(file, "GBP6MD=,GBP,6M,Deposit").unwrap();
         writeln!(file, "BPSW10 Curncy,GBP,10Y,Swap").unwrap();
 
@@ -202,13 +202,13 @@ mod tests {
         let quote_id = mapping.lookup("GBP6MD=").unwrap();
         assert_eq!(quote_id.currency, Currency::GBP);
         assert_eq!(quote_id.tenor, Tenor::SixMonths);
-        assert_eq!(quote_id.rate_type, RateType::Deposit);
+        assert_eq!(quote_id.quote_category, QuoteCategory::Deposit);
     }
 
     #[test]
     fn test_load_csv_with_defaults() {
         let mut file = NamedTempFile::with_suffix(".csv").unwrap();
-        writeln!(file, "ticker,currency,tenor,rate_type").unwrap();
+        writeln!(file, "ticker,currency,tenor,quote_category").unwrap();
         writeln!(file, "JYSW10 Curncy,JPY,10Y,Swap").unwrap();
 
         let mapping = TickerMappingLoader::load_csv_with_defaults(file.path()).unwrap();
@@ -224,13 +224,13 @@ mod tests {
             ticker: "TEST".to_string(),
             currency: Currency::CHF,
             tenor: Tenor::TwoYears,
-            rate_type: RateType::Ois,
+            quote_category: QuoteCategory::Ois,
         };
 
         let quote_id = entry.to_quote_id();
         assert_eq!(quote_id.currency, Currency::CHF);
         assert_eq!(quote_id.tenor, Tenor::TwoYears);
-        assert_eq!(quote_id.rate_type, RateType::Ois);
+        assert_eq!(quote_id.quote_category, QuoteCategory::Ois);
     }
 
     #[test]
@@ -258,13 +258,13 @@ mod tests {
                     "ticker": "DUPLICATE",
                     "currency": "USD",
                     "tenor": "1M",
-                    "rate_type": "Deposit"
+                    "quote_category": "Deposit"
                 }},
                 {{
                     "ticker": "DUPLICATE",
                     "currency": "EUR",
                     "tenor": "5Y",
-                    "rate_type": "Swap"
+                    "quote_category": "Swap"
                 }}
             ]"#
         )

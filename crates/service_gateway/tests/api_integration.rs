@@ -307,7 +307,7 @@ mod market_instrument_integration_tests {
                 ConventionRegistry, DepositConvention, FraConvention, MarketConvention,
                 SwapConvention,
             },
-            Currency, MarketInstrument, QuoteId, RateType,
+            Currency, MarketInstrument, QuoteId, QuoteCategory,
         },
         time::{Date, Tenor},
         trade::{LegType, TradeType},
@@ -316,7 +316,7 @@ mod market_instrument_integration_tests {
     /// Test full pipeline: Rate → Convention lookup → Instrument → Trade
     #[test]
     fn test_convention_to_instrument_to_trade_pipeline_deposit() {
-        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit);
         let convention = MarketConvention::Deposit(DepositConvention::usd());
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
@@ -350,7 +350,7 @@ mod market_instrument_integration_tests {
     /// Test full pipeline for swap instruments
     #[test]
     fn test_convention_to_instrument_to_trade_pipeline_swap() {
-        let rate_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::FiveYears, QuoteCategory::Swap);
         let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
@@ -393,7 +393,7 @@ mod market_instrument_integration_tests {
     /// Test full pipeline for FRA instruments
     #[test]
     fn test_convention_to_instrument_to_trade_pipeline_fra() {
-        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Fra);
         let convention = MarketConvention::Fra(FraConvention::usd_sofr());
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
@@ -413,21 +413,21 @@ mod market_instrument_integration_tests {
         let mut registry = ConventionRegistry::new();
         registry.register(
             Currency::USD,
-            RateType::Deposit,
+            QuoteCategory::Deposit,
             MarketConvention::Deposit(DepositConvention::usd()),
         );
         registry.register(
             Currency::USD,
-            RateType::Swap,
+            QuoteCategory::Swap,
             MarketConvention::Swap(SwapConvention::usd_sofr()),
         );
 
         // Lookup should succeed for registered conventions
-        assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
-        assert!(registry.get(Currency::USD, RateType::Swap).is_some());
+        assert!(registry.get(Currency::USD, QuoteCategory::Deposit).is_some());
+        assert!(registry.get(Currency::USD, QuoteCategory::Swap).is_some());
 
         // Lookup should fail for unregistered conventions
-        assert!(registry.get(Currency::EUR, RateType::Deposit).is_none());
+        assert!(registry.get(Currency::EUR, QuoteCategory::Deposit).is_none());
     }
 
     /// Test multiple currency conventions
@@ -443,7 +443,7 @@ mod market_instrument_integration_tests {
         ];
 
         for (currency, conv) in currencies {
-            let rate_id = QuoteId::new(currency, Tenor::ThreeMonths, RateType::Deposit);
+            let rate_id = QuoteId::new(currency, Tenor::ThreeMonths, QuoteCategory::Deposit);
             let convention = MarketConvention::Deposit(conv);
 
             let instrument =
@@ -462,7 +462,7 @@ mod market_instrument_integration_tests {
     /// Test error handling for invalid rate values
     #[test]
     fn test_invalid_rate_value_error() {
-        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit);
         let convention = MarketConvention::Deposit(DepositConvention::usd());
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
@@ -498,7 +498,7 @@ mod market_instrument_integration_tests {
         ];
 
         for (tenor, expected_yf, tolerance) in tenors {
-            let rate_id = QuoteId::new(Currency::USD, tenor, RateType::Deposit);
+            let rate_id = QuoteId::new(Currency::USD, tenor, QuoteCategory::Deposit);
             let convention = MarketConvention::Deposit(DepositConvention::usd());
             let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 
@@ -520,7 +520,7 @@ mod market_instrument_integration_tests {
     /// Test instrument clone and equality
     #[test]
     fn test_instrument_clone_and_equality() {
-        let rate_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Swap);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::OneYear, QuoteCategory::Swap);
         let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
         let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
 

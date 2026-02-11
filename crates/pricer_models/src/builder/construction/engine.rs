@@ -341,7 +341,7 @@ fn map_bootstrap_error(err: BootstrapError) -> ConstructionError {
 mod tests {
     use infra_domain::{
         market::{
-            Currency, DataSource, MarketQuote, QuoteId, RateIndex, RateIndexDefinition, RateType,
+            Currency, DataSource, MarketQuote, QuoteId, QuoteCategory, RateIndex, RateIndexDefinition,
         },
         time::Tenor,
     };
@@ -353,12 +353,12 @@ mod tests {
 
         // Register instruments
         let instruments = vec![
-            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, RateType::Deposit, "ON"),
-            InstrumentDefinition::new("USD-Depo-1M", Currency::USD, RateType::Deposit, "1M"),
-            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, RateType::Deposit, "3M"),
-            InstrumentDefinition::new("USD-OIS-1Y", Currency::USD, RateType::Ois, "1Y"),
-            InstrumentDefinition::new("USD-OIS-2Y", Currency::USD, RateType::Ois, "2Y"),
-            InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y"),
+            InstrumentDefinition::new("USD-Depo-ON", Currency::USD, QuoteCategory::Deposit, "ON"),
+            InstrumentDefinition::new("USD-Depo-1M", Currency::USD, QuoteCategory::Deposit, "1M"),
+            InstrumentDefinition::new("USD-Depo-3M", Currency::USD, QuoteCategory::Deposit, "3M"),
+            InstrumentDefinition::new("USD-OIS-1Y", Currency::USD, QuoteCategory::Ois, "1Y"),
+            InstrumentDefinition::new("USD-OIS-2Y", Currency::USD, QuoteCategory::Ois, "2Y"),
+            InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y"),
         ];
 
         for inst in instruments {
@@ -392,16 +392,16 @@ mod tests {
         let ts = 1700000000000_i64;
 
         let data = vec![
-            (Tenor::Overnight, RateType::Deposit, 0.0530),
-            (Tenor::OneMonth, RateType::Deposit, 0.0535),
-            (Tenor::ThreeMonths, RateType::Deposit, 0.0540),
-            (Tenor::OneYear, RateType::Ois, 0.0450),
-            (Tenor::TwoYears, RateType::Ois, 0.0420),
-            (Tenor::FiveYears, RateType::Ois, 0.0400),
+            (Tenor::Overnight, QuoteCategory::Deposit, 0.0530),
+            (Tenor::OneMonth, QuoteCategory::Deposit, 0.0535),
+            (Tenor::ThreeMonths, QuoteCategory::Deposit, 0.0540),
+            (Tenor::OneYear, QuoteCategory::Ois, 0.0450),
+            (Tenor::TwoYears, QuoteCategory::Ois, 0.0420),
+            (Tenor::FiveYears, QuoteCategory::Ois, 0.0400),
         ];
 
-        for (tenor, rate_type, value) in data {
-            let rate_id = QuoteId::new(Currency::USD, tenor, rate_type);
+        for (tenor, quote_category, value) in data {
+            let rate_id = QuoteId::new(Currency::USD, tenor, quote_category);
             let rate = MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg)
                 .unwrap();
             rates.insert(rate);
@@ -478,7 +478,7 @@ mod tests {
         let _ = registry.register_instrument(InstrumentDefinition::new(
             "USD-OIS-30Y",
             Currency::USD,
-            RateType::Ois,
+            QuoteCategory::Ois,
             "30Y",
         ));
 
@@ -513,16 +513,16 @@ mod tests {
         let ts = 1700000000000_i64;
 
         let data = vec![
-            (Tenor::Overnight, RateType::Deposit, 0.0530),
-            (Tenor::OneMonth, RateType::Deposit, 0.0535),
-            (Tenor::ThreeMonths, RateType::Deposit, 0.0540),
-            (Tenor::OneYear, RateType::Ois, 0.0450),
-            (Tenor::TwoYears, RateType::Ois, 0.0420),
+            (Tenor::Overnight, QuoteCategory::Deposit, 0.0530),
+            (Tenor::OneMonth, QuoteCategory::Deposit, 0.0535),
+            (Tenor::ThreeMonths, QuoteCategory::Deposit, 0.0540),
+            (Tenor::OneYear, QuoteCategory::Ois, 0.0450),
+            (Tenor::TwoYears, QuoteCategory::Ois, 0.0420),
             // USD-OIS-5Y is missing
         ];
 
-        for (tenor, rate_type, value) in data {
-            let rate_id = QuoteId::new(Currency::USD, tenor, rate_type);
+        for (tenor, quote_category, value) in data {
+            let rate_id = QuoteId::new(Currency::USD, tenor, quote_category);
             let rate = MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg)
                 .unwrap();
             market_rates.insert(rate);
@@ -546,8 +546,8 @@ mod tests {
 
         // Add a second curve
         let eur_instruments = vec![
-            InstrumentDefinition::new("EUR-Depo-ON", Currency::EUR, RateType::Deposit, "ON"),
-            InstrumentDefinition::new("EUR-OIS-1Y", Currency::EUR, RateType::Ois, "1Y"),
+            InstrumentDefinition::new("EUR-Depo-ON", Currency::EUR, QuoteCategory::Deposit, "ON"),
+            InstrumentDefinition::new("EUR-OIS-1Y", Currency::EUR, QuoteCategory::Ois, "1Y"),
         ];
         for inst in eur_instruments {
             let _ = registry.register_instrument(inst);
@@ -569,7 +569,7 @@ mod tests {
 
         market_rates.insert(
             MarketQuote::new(
-                QuoteId::new(Currency::EUR, Tenor::Overnight, RateType::Deposit),
+                QuoteId::new(Currency::EUR, Tenor::Overnight, QuoteCategory::Deposit),
                 QuoteType::Mid,
                 0.0390,
                 ts,
@@ -579,7 +579,7 @@ mod tests {
         );
         market_rates.insert(
             MarketQuote::new(
-                QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Ois),
+                QuoteId::new(Currency::EUR, Tenor::OneYear, QuoteCategory::Ois),
                 QuoteType::Mid,
                 0.0350,
                 ts,

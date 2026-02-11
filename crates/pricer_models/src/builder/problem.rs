@@ -1381,7 +1381,7 @@ mod tests {
     use infra_domain::{
         market::{
             convention::{DepositConvention, MarketConvention, SwapConvention},
-            Currency, MarketInstrument as InfraMasterInstrument, QuoteId, RateType,
+            Currency, MarketInstrument as InfraMasterInstrument, QuoteCategory, QuoteId,
         },
         time::{Date, Tenor},
     };
@@ -1391,7 +1391,7 @@ mod tests {
 
         let instruments = vec![
             InfraMasterInstrument::new(
-                QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
+                QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit),
                 0.05,
                 MarketConvention::Deposit(DepositConvention::usd()),
                 valuation_date,
@@ -1399,7 +1399,7 @@ mod tests {
             )
             .unwrap(),
             InfraMasterInstrument::new(
-                QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois),
+                QuoteId::new(Currency::USD, Tenor::OneYear, QuoteCategory::Ois),
                 0.052,
                 MarketConvention::Ois(SwapConvention::usd_sofr()),
                 valuation_date,
@@ -1407,7 +1407,7 @@ mod tests {
             )
             .unwrap(),
             InfraMasterInstrument::new(
-                QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap),
+                QuoteId::new(Currency::USD, Tenor::FiveYears, QuoteCategory::Swap),
                 0.055,
                 MarketConvention::Swap(SwapConvention::usd_sofr()),
                 valuation_date,

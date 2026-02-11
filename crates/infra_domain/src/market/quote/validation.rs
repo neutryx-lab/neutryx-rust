@@ -1,7 +1,7 @@
 //! Quote validation traits and implementations.
 
 use super::{error::MarketQuoteError, market_quote::MarketQuote};
-use crate::market::core::RateType;
+use crate::market::core::QuoteCategory;
 
 /// Trait for validating market quotes.
 pub trait QuoteValidator {
@@ -93,20 +93,20 @@ impl StandardQuoteValidator {
 impl QuoteValidator for StandardQuoteValidator {
     fn validate(&self, quote: &MarketQuote) -> Result<(), MarketQuoteError> {
         let value = quote.value;
-        let rate_type = quote.id.rate_type;
+        let quote_category = quote.id.quote_category;
 
-        match rate_type {
-            RateType::Deposit
-            | RateType::Fra
-            | RateType::Futures
-            | RateType::Swap
-            | RateType::Ois
-            | RateType::BasisSwap
-            | RateType::Event => self.validate_interest_rate(value),
+        match quote_category {
+            QuoteCategory::Deposit
+            | QuoteCategory::Fra
+            | QuoteCategory::Futures
+            | QuoteCategory::Swap
+            | QuoteCategory::Ois
+            | QuoteCategory::BasisSwap
+            | QuoteCategory::Event => self.validate_interest_rate(value),
 
-            RateType::FxSpot | RateType::FxForward => self.validate_fx_rate(value),
+            QuoteCategory::FxSpot | QuoteCategory::FxForward => self.validate_fx_rate(value),
 
-            RateType::Vol => self.validate_volatility(value),
+            QuoteCategory::Vol => self.validate_volatility(value),
         }
     }
 }
@@ -119,8 +119,8 @@ mod tests {
         time::Tenor,
     };
 
-    fn make_quote(rate_type: RateType, value: f64) -> MarketQuote {
-        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
+    fn make_quote(quote_category: QuoteCategory, value: f64) -> MarketQuote {
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, quote_category);
         MarketQuote::new(
             id,
             QuoteType::Mid,
@@ -131,8 +131,8 @@ mod tests {
         .unwrap()
     }
 
-    fn make_quote_unchecked(rate_type: RateType, value: f64) -> MarketQuote {
-        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
+    fn make_quote_unchecked(quote_category: QuoteCategory, value: f64) -> MarketQuote {
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, quote_category);
         MarketQuote {
             id,
             quote_type: QuoteType::Mid,
@@ -146,12 +146,12 @@ mod tests {
     fn test_interest_rate_bounds() {
         let v = StandardQuoteValidator::default();
         for rt in [
-            RateType::Deposit,
-            RateType::Fra,
-            RateType::Futures,
-            RateType::Swap,
-            RateType::Ois,
-            RateType::BasisSwap,
+            QuoteCategory::Deposit,
+            QuoteCategory::Fra,
+            QuoteCategory::Futures,
+            QuoteCategory::Swap,
+            QuoteCategory::Ois,
+            QuoteCategory::BasisSwap,
         ] {
             assert!(
                 v.validate(&make_quote(rt, 0.05)).is_ok(),
@@ -159,45 +159,45 @@ mod tests {
                 rt
             );
         }
-        assert!(v.validate(&make_quote(RateType::Swap, -0.10)).is_ok());
-        assert!(v.validate(&make_quote(RateType::Swap, 1.0)).is_ok());
-        assert!(v.validate(&make_quote(RateType::Swap, 0.0)).is_ok());
-        assert!(v.validate(&make_quote(RateType::Swap, -0.005)).is_ok());
-        assert!(v.validate(&make_quote(RateType::Swap, -0.15)).is_err());
-        assert!(v.validate(&make_quote(RateType::Swap, 1.5)).is_err());
+        assert!(v.validate(&make_quote(QuoteCategory::Swap, -0.10)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::Swap, 1.0)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::Swap, 0.0)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::Swap, -0.005)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::Swap, -0.15)).is_err());
+        assert!(v.validate(&make_quote(QuoteCategory::Swap, 1.5)).is_err());
     }
 
     #[test]
     fn test_fx_and_vol_bounds() {
         let v = StandardQuoteValidator::default();
-        assert!(v.validate(&make_quote(RateType::FxSpot, 1.2345)).is_ok());
-        assert!(v.validate(&make_quote(RateType::FxForward, 1.2345)).is_ok());
-        assert!(v.validate(&make_quote(RateType::FxSpot, 0.0001)).is_ok());
-        assert!(v.validate(&make_quote(RateType::FxSpot, 100_000.0)).is_ok());
-        assert!(v.validate(&make_quote(RateType::FxSpot, 0.00001)).is_err());
+        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 1.2345)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::FxForward, 1.2345)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 0.0001)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 100_000.0)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::FxSpot, 0.00001)).is_err());
         assert!(v
-            .validate(&make_quote(RateType::FxSpot, 200_000.0))
+            .validate(&make_quote(QuoteCategory::FxSpot, 200_000.0))
             .is_err());
-        assert!(v.validate(&make_quote(RateType::Vol, 0.20)).is_ok());
-        assert!(v.validate(&make_quote(RateType::Vol, 0.0)).is_ok());
-        assert!(v.validate(&make_quote(RateType::Vol, 5.0)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::Vol, 0.20)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::Vol, 0.0)).is_ok());
+        assert!(v.validate(&make_quote(QuoteCategory::Vol, 5.0)).is_ok());
         assert!(v
-            .validate(&make_quote_unchecked(RateType::Vol, -0.01))
+            .validate(&make_quote_unchecked(QuoteCategory::Vol, -0.01))
             .is_err());
-        assert!(v.validate(&make_quote(RateType::Vol, 6.0)).is_err());
+        assert!(v.validate(&make_quote(QuoteCategory::Vol, 6.0)).is_err());
     }
 
     #[test]
     fn test_nan_and_infinity() {
         let v = StandardQuoteValidator::default();
         assert!(v
-            .validate(&make_quote_unchecked(RateType::Swap, f64::NAN))
+            .validate(&make_quote_unchecked(QuoteCategory::Swap, f64::NAN))
             .is_err());
         assert!(v
-            .validate(&make_quote_unchecked(RateType::Swap, f64::INFINITY))
+            .validate(&make_quote_unchecked(QuoteCategory::Swap, f64::INFINITY))
             .is_err());
         assert!(v
-            .validate(&make_quote_unchecked(RateType::Swap, f64::NEG_INFINITY))
+            .validate(&make_quote_unchecked(QuoteCategory::Swap, f64::NEG_INFINITY))
             .is_err());
     }
 }

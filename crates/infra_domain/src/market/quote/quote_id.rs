@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::{
     market::{
-        core::{Currency, RateType},
+        core::{Currency, QuoteCategory},
         index::RateIndex,
     },
     time::Tenor,
@@ -18,8 +18,8 @@ pub struct QuoteId {
     pub currency: Currency,
     /// Tenor of the quote.
     pub tenor: Tenor,
-    /// Type of the rate (Deposit, Swap, etc.).
-    pub rate_type: RateType,
+    /// Quote category (Deposit, Swap, etc.).
+    pub quote_category: QuoteCategory,
     /// Optional rate index (SOFR, EURIBOR, etc.).
     pub rate_index: Option<RateIndex>,
 }
@@ -27,11 +27,11 @@ pub struct QuoteId {
 impl QuoteId {
     /// Creates a new `QuoteId`.
     #[must_use]
-    pub fn new(currency: Currency, tenor: Tenor, rate_type: RateType) -> Self {
+    pub fn new(currency: Currency, tenor: Tenor, quote_category: QuoteCategory) -> Self {
         Self {
             currency,
             tenor,
-            rate_type,
+            quote_category,
             rate_index: None,
         }
     }
@@ -50,7 +50,7 @@ impl QuoteId {
             "{} {} {}",
             self.currency.code(),
             self.tenor.code(),
-            self.rate_type.code()
+            self.quote_category.code()
         )
     }
 }
@@ -63,7 +63,7 @@ impl fmt::Display for QuoteId {
                 "{} {} {} ({})",
                 self.currency.code(),
                 self.tenor.code(),
-                self.rate_type.code(),
+                self.quote_category.code(),
                 index.code()
             )
         } else {
@@ -72,7 +72,7 @@ impl fmt::Display for QuoteId {
                 "{} {} {}",
                 self.currency.code(),
                 self.tenor.code(),
-                self.rate_type.code()
+                self.quote_category.code()
             )
         }
     }
@@ -86,23 +86,23 @@ mod tests {
 
     #[test]
     fn test_construction_and_display() {
-        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Swap);
         assert_eq!(id.currency, Currency::USD);
         assert_eq!(id.rate_index, None);
         assert_eq!(id.description(), "USD 3M SWAP");
         assert_eq!(format!("{}", id), "USD 3M SWAP");
 
         let with_idx =
-            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
+            QuoteId::new(Currency::USD, Tenor::OneYear, QuoteCategory::Ois).with_index(RateIndex::Sofr);
         assert_eq!(with_idx.rate_index, Some(RateIndex::Sofr));
         assert_eq!(format!("{}", with_idx), "USD 1Y OIS (SOFR)");
     }
 
     #[test]
     fn test_equality_and_hash() {
-        let id1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
-        let id2 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
-        let id3 = QuoteId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Swap);
+        let id1 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Swap);
+        let id2 = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Swap);
+        let id3 = QuoteId::new(Currency::EUR, Tenor::ThreeMonths, QuoteCategory::Swap);
         assert_eq!(id1, id2);
         assert_ne!(id1, id3);
 

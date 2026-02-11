@@ -8,7 +8,7 @@ use super::{
 use crate::{
     market::{
         convention::MarketConvention,
-        core::{Currency, RateType},
+        core::{Currency, QuoteCategory},
         source::{InstrumentMapper, SourcePriority},
         MarketInstrument,
     },
@@ -64,10 +64,10 @@ impl MarketQuoteSet {
     }
 
     /// Returns an iterator over quotes of a specific rate type.
-    pub fn quotes_by_type(&self, rate_type: RateType) -> impl Iterator<Item = &MarketQuote> {
+    pub fn quotes_by_type(&self, quote_category: QuoteCategory) -> impl Iterator<Item = &MarketQuote> {
         self.quotes
             .values()
-            .filter(move |quote| quote.id.rate_type == rate_type)
+            .filter(move |quote| quote.id.quote_category == quote_category)
     }
 
     /// Returns quote IDs with stale timestamps.
@@ -259,7 +259,7 @@ mod tests {
     use super::*;
     use crate::{market::DataSource, time::Tenor};
 
-    fn make(ccy: Currency, tenor: Tenor, rt: RateType, qt: QuoteType, val: f64) -> MarketQuote {
+    fn make(ccy: Currency, tenor: Tenor, rt: QuoteCategory, qt: QuoteType, val: f64) -> MarketQuote {
         MarketQuote::new(
             QuoteId::new(ccy, tenor, rt),
             qt,
@@ -278,13 +278,13 @@ mod tests {
         qs.insert(make(
             Currency::USD,
             Tenor::ThreeMonths,
-            RateType::Deposit,
+            QuoteCategory::Deposit,
             QuoteType::Mid,
             0.05,
         ));
         assert_eq!(qs.len(), 1);
 
-        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit);
         assert!(qs.get_quote(&id, QuoteType::Mid).is_some());
         assert!(qs.get_quote(&id, QuoteType::Bid).is_none());
 
@@ -299,26 +299,26 @@ mod tests {
         qs.insert(make(
             Currency::USD,
             Tenor::ThreeMonths,
-            RateType::Deposit,
+            QuoteCategory::Deposit,
             QuoteType::Bid,
             0.049,
         ));
         qs.insert(make(
             Currency::USD,
             Tenor::ThreeMonths,
-            RateType::Deposit,
+            QuoteCategory::Deposit,
             QuoteType::Ask,
             0.051,
         ));
         qs.insert(make(
             Currency::EUR,
             Tenor::ThreeMonths,
-            RateType::Deposit,
+            QuoteCategory::Deposit,
             QuoteType::Mid,
             0.04,
         ));
 
-        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, QuoteCategory::Deposit);
         let mid = qs.get_mid_quote(&id).unwrap();
         assert!((mid - 0.05).abs() < 1e-10);
 
@@ -329,7 +329,7 @@ mod tests {
         other.insert(make(
             Currency::GBP,
             Tenor::SixMonths,
-            RateType::Swap,
+            QuoteCategory::Swap,
             QuoteType::Mid,
             0.03,
         ));

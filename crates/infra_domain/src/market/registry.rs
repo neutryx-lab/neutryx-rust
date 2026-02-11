@@ -297,10 +297,10 @@ impl DefinitionRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::{Currency, RateIndex, RateType};
+    use crate::market::{Currency, RateIndex, QuoteCategory};
 
     fn inst(id: &str) -> InstrumentDefinition {
-        InstrumentDefinition::new(id, Currency::USD, RateType::Deposit, "ON")
+        InstrumentDefinition::new(id, Currency::USD, QuoteCategory::Deposit, "ON")
     }
     fn idx(id: &str) -> RateIndexDefinition {
         RateIndexDefinition::new(id, Currency::USD, RateIndex::Sofr)
@@ -369,7 +369,7 @@ mod tests {
         r4.register_instrument(InstrumentDefinition::new(
             "USD-OIS-5Y",
             Currency::USD,
-            RateType::Ois,
+            QuoteCategory::Ois,
             "5Y",
         ))
         .unwrap();
@@ -399,15 +399,15 @@ mod tests {
         assert_eq!(r.rate_index_count(), 1);
         assert_eq!(r.curve_count(), 1);
         assert_eq!(
-            r.get_instrument("USD-Depo-ON").unwrap().rate_type(),
-            RateType::Deposit
+            r.get_instrument("USD-Depo-ON").unwrap().quote_category(),
+            QuoteCategory::Deposit
         );
         assert_eq!(
-            r.get_instrument("USD-OIS-5Y").unwrap().rate_type(),
-            RateType::Ois
+            r.get_instrument("USD-OIS-5Y").unwrap().quote_category(),
+            QuoteCategory::Ois
         );
 
-        let legacy = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","rateTypeOverride":"Deposit","tenor":"ON"}],
+        let legacy = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","quoteCategoryOverride":"Deposit","tenor":"ON"}],
             "rateIndices":[{"id":"USD-SOFR","currency":"USD","indexType":"Sofr","tenor":"ON"}],
             "curves":[{"name":"c","rateIndex":"USD-SOFR","instruments":["USD-Depo-ON"]}]}"#;
         assert_eq!(
@@ -415,8 +415,8 @@ mod tests {
                 .unwrap()
                 .get_instrument("USD-Depo-ON")
                 .unwrap()
-                .rate_type(),
-            RateType::Deposit
+                .quote_category(),
+            QuoteCategory::Deposit
         );
 
         let bad = r#"{"instruments":[{"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"ON"}],
@@ -436,13 +436,13 @@ mod tests {
         let r = DefinitionRegistry::load_from_json(json).unwrap();
         assert_eq!(r.instrument_count(), 8);
         assert_eq!(
-            r.get_instrument("USD-OIS-1M").unwrap().rate_type(),
-            RateType::Ois
+            r.get_instrument("USD-OIS-1M").unwrap().quote_category(),
+            QuoteCategory::Ois
         );
         assert_eq!(r.get_instrument("USD-OIS-5Y").unwrap().tenor, "5Y");
         assert_eq!(
-            r.get_instrument("USD-Depo-ON").unwrap().rate_type(),
-            RateType::Deposit
+            r.get_instrument("USD-Depo-ON").unwrap().quote_category(),
+            QuoteCategory::Deposit
         );
         assert_eq!(r.get_instrument("USD-Custom").unwrap().tenor, "2W");
         assert_eq!(
@@ -476,8 +476,8 @@ mod tests {
         let r2 = DefinitionRegistry::load_from_json(fra_json).unwrap();
         assert_eq!(r2.instrument_count(), 3);
         assert_eq!(
-            r2.get_instrument("USD-FRA-1x4").unwrap().rate_type(),
-            RateType::Fra
+            r2.get_instrument("USD-FRA-1x4").unwrap().quote_category(),
+            QuoteCategory::Fra
         );
     }
 }
