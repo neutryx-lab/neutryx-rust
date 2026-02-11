@@ -1,6 +1,6 @@
 //! Credit instrument expansion implementations.
 
-use super::{settlement_trade, InstrumentExpander};
+use super::{credit_premium_leg, settlement_trade, InstrumentExpander};
 use crate::{
     ids::TradeId,
     market::{
@@ -20,20 +20,11 @@ impl InstrumentExpander for Cds {
     ) -> Result<Trade, InstrumentError> {
         let _cds_conv = conventions.get_cds()?;
 
-        let premium_cf = Cashflow::new(
-            CashflowType::Coupon,
-            self.maturity,
+        let premium_leg = credit_premium_leg(
             self.start_date,
             self.maturity,
-            1.0,
             self.notional,
-            Payoff::fixed(self.spread),
-            self.currency,
-        );
-        let premium_leg = Leg::new(
-            vec![premium_cf],
-            Direction::Payer,
-            LegType::Fixed,
+            self.spread,
             self.currency,
         );
 
@@ -71,20 +62,11 @@ impl InstrumentExpander for CdsIndex {
     ) -> Result<Trade, InstrumentError> {
         let _cds_conv = conventions.get_cds()?;
 
-        let premium_cf = Cashflow::new(
-            CashflowType::Coupon,
-            self.maturity,
+        let premium_leg = credit_premium_leg(
             self.start_date,
             self.maturity,
-            1.0,
             self.notional,
-            Payoff::fixed(self.spread),
-            self.currency,
-        );
-        let premium_leg = Leg::new(
-            vec![premium_cf],
-            Direction::Payer,
-            LegType::Fixed,
+            self.spread,
             self.currency,
         );
 
@@ -118,20 +100,11 @@ impl InstrumentExpander for NtdBasket {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let premium_cf = Cashflow::new(
-            CashflowType::Coupon,
-            self.maturity,
+        let premium_leg = credit_premium_leg(
             self.start_date,
             self.maturity,
-            1.0,
             self.notional,
-            Payoff::fixed(self.spread),
-            self.currency,
-        );
-        let premium_leg = Leg::new(
-            vec![premium_cf],
-            Direction::Payer,
-            LegType::Fixed,
+            self.spread,
             self.currency,
         );
 

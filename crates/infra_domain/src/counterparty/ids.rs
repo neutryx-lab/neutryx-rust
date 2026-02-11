@@ -4,27 +4,11 @@
 
 use std::fmt;
 
-use derive_more::{AsRef, Display, From};
-
 use super::CounterPartyError;
 
-/// Type-safe CounterParty identifier.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
-#[as_ref(str)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-pub struct CounterPartyId(String);
-
-impl CounterPartyId {
-    /// Creates a new CounterParty ID.
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl From<&str> for CounterPartyId {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
+define_id! {
+    /// Type-safe CounterParty identifier.
+    CounterPartyId
 }
 
 /// Legal Entity Identifier (LEI) per ISO 17442.
@@ -58,99 +42,29 @@ impl AsRef<str> for LegalEntityId {
     fn as_ref(&self) -> &str { &self.0 }
 }
 
-/// Type-safe NettingSet identifier.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
-#[as_ref(str)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-pub struct NettingSetId(String);
-
-impl NettingSetId {
-    /// Creates a new NettingSet ID.
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    pub fn as_str(&self) -> &str { &self.0 }
+define_id! {
+    /// Type-safe NettingSet identifier.
+    NettingSetId
 }
 
-impl From<&str> for NettingSetId {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
+define_id! {
+    /// Type-safe CCP (Central Counterparty Clearing House) identifier.
+    CcpId
 }
 
-/// Type-safe CCP (Central Counterparty Clearing House) identifier.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Display, From, AsRef)]
-#[as_ref(str)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-pub struct CcpId(String);
-
-impl CcpId {
-    /// Creates a new CCP ID.
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    pub fn as_str(&self) -> &str { &self.0 }
+define_id! {
+    /// Type-safe ISDA Master Agreement identifier.
+    IsdaAgreementId
 }
 
-impl From<&str> for CcpId {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
+define_id! {
+    /// Type-safe Variation Margin Agreement identifier.
+    VariationMarginAgreementId
 }
 
-/// Type-safe ISDA Master Agreement identifier.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
-#[as_ref(str)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-pub struct IsdaAgreementId(String);
-
-impl IsdaAgreementId {
-    /// Creates a new ISDA Agreement ID.
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl From<&str> for IsdaAgreementId {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
-}
-
-/// Type-safe Variation Margin Agreement identifier.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
-#[as_ref(str)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-pub struct VariationMarginAgreementId(String);
-
-impl VariationMarginAgreementId {
-    /// Creates a new Variation Margin Agreement ID.
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl From<&str> for VariationMarginAgreementId {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
-}
-
-/// Type-safe Cross-Book Netting Agreement identifier.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
-#[as_ref(str)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-pub struct CrossBookNettingAgreementId(String);
-
-impl CrossBookNettingAgreementId {
-    /// Creates a new Cross-Book Netting Agreement ID.
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl From<&str> for CrossBookNettingAgreementId {
-    fn from(s: &str) -> Self { Self(s.to_string()) }
+define_id! {
+    /// Type-safe Cross-Book Netting Agreement identifier.
+    CrossBookNettingAgreementId
 }
 
 #[cfg(test)]

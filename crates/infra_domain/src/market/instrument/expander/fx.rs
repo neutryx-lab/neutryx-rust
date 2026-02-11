@@ -1,7 +1,8 @@
 //! FX instrument expansion implementations.
 
 use super::{
-    fx_exchange_trade, rates::generate_payment_dates, settlement_trade, InstrumentExpander,
+    fx_exchange_trade, generate_floating_leg_cashflows, rates::generate_payment_dates,
+    settlement_trade, InstrumentExpander,
 };
 use crate::{
     ids::TradeId,
@@ -192,8 +193,6 @@ impl InstrumentExpander for CrossCurrencyBasisSwap {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        use crate::trade::IndexType;
-
         self.validate()
             .map_err(|e| InstrumentError::invalid_parameter(e.to_string()))?;
 
@@ -208,37 +207,18 @@ impl InstrumentExpander for CrossCurrencyBasisSwap {
             self.foreign_leg.payment_frequency,
         );
 
-        let domestic_cashflows: Vec<_> = (0..domestic_dates.len().saturating_sub(1))
-            .map(|i| {
-                let (start, end) = (domestic_dates[i], domestic_dates[i + 1]);
-                Cashflow::new(
-                    CashflowType::Coupon,
-                    end,
-                    start,
-                    end,
-                    (end - start) as f64 / 360.0,
-                    self.notional,
-                    Payoff::floating(IndexType::Rate(self.domestic_leg.rate_index)),
-                    self.domestic_currency,
-                )
-            })
-            .collect();
-
-        let foreign_cashflows: Vec<_> = (0..foreign_dates.len().saturating_sub(1))
-            .map(|i| {
-                let (start, end) = (foreign_dates[i], foreign_dates[i + 1]);
-                Cashflow::new(
-                    CashflowType::Coupon,
-                    end,
-                    start,
-                    end,
-                    (end - start) as f64 / 360.0,
-                    self.notional,
-                    Payoff::floating(IndexType::Rate(self.foreign_leg.rate_index)),
-                    self.foreign_currency,
-                )
-            })
-            .collect();
+        let domestic_cashflows = generate_floating_leg_cashflows(
+            &domestic_dates,
+            self.domestic_leg.rate_index,
+            self.notional,
+            self.domestic_currency,
+        );
+        let foreign_cashflows = generate_floating_leg_cashflows(
+            &foreign_dates,
+            self.foreign_leg.rate_index,
+            self.notional,
+            self.foreign_currency,
+        );
 
         let domestic_leg = Leg::new(
             domestic_cashflows,
