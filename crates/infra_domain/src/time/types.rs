@@ -11,7 +11,7 @@ use chrono::{Datelike, Days, Local, NaiveDate};
 use super::error::TimeError;
 
 /// Type-safe date wrapper around chrono::NaiveDate.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct Date(NaiveDate);
@@ -130,10 +130,6 @@ impl fmt::Display for Date {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.format("%Y-%m-%d"))
     }
-}
-
-impl From<NaiveDate> for Date {
-    fn from(date: NaiveDate) -> Self { Date(date) }
 }
 
 impl From<Date> for NaiveDate {

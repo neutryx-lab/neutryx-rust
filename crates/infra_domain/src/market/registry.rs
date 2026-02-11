@@ -13,7 +13,7 @@ use super::definition::{
 };
 
 /// Error type for registry operations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, derive_more::From)]
 pub enum RegistryError {
     /// Instrument definition error.
     Instrument(InstrumentDefError),
@@ -61,17 +61,6 @@ impl std::fmt::Display for RegistryError {
 
 impl std::error::Error for RegistryError {}
 
-impl From<InstrumentDefError> for RegistryError {
-    fn from(e: InstrumentDefError) -> Self { Self::Instrument(e) }
-}
-
-impl From<RateIndexDefError> for RegistryError {
-    fn from(e: RateIndexDefError) -> Self { Self::RateIndex(e) }
-}
-
-impl From<CurveDefError> for RegistryError {
-    fn from(e: CurveDefError) -> Self { Self::Curve(e) }
-}
 
 /// Registry for curve construction definitions.
 #[derive(Debug, Clone, Default)]

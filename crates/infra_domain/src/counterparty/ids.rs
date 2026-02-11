@@ -2,8 +2,6 @@
 
 #![allow(clippy::must_use_candidate)]
 
-use std::fmt;
-
 use super::CounterPartyError;
 
 define_id! {
@@ -12,7 +10,8 @@ define_id! {
 }
 
 /// Legal Entity Identifier (LEI) per ISO 17442.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, derive_more::Display, derive_more::AsRef)]
+#[as_ref(str)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct LegalEntityId(String);
@@ -34,13 +33,6 @@ impl LegalEntityId {
     pub fn as_str(&self) -> &str { &self.0 }
 }
 
-impl fmt::Display for LegalEntityId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl AsRef<str> for LegalEntityId {
-    fn as_ref(&self) -> &str { &self.0 }
-}
 
 define_id! {
     /// Type-safe NettingSet identifier.
