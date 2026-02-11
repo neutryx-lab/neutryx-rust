@@ -222,11 +222,11 @@ impl<'a> XmlNavigator<'a> {
             let start_pos = reader.buffer_position() as usize;
             match reader.read_event() {
                 Ok(Event::Start(e)) => {
-                    if name_matches(e.name().as_ref(), target) {
-                        if reader.read_to_end(e.to_end().name()).is_ok() {
-                            let end_pos = reader.buffer_position() as usize;
-                            results.push(self.content[start_pos..end_pos].to_string());
-                        }
+                    if name_matches(e.name().as_ref(), target)
+                        && reader.read_to_end(e.to_end().name()).is_ok()
+                    {
+                        let end_pos = reader.buffer_position() as usize;
+                        results.push(self.content[start_pos..end_pos].to_string());
                     }
                 }
                 Ok(Event::Eof) => break,
@@ -247,11 +247,9 @@ impl<'a> XmlNavigator<'a> {
             match reader.read_event() {
                 Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
                     if name_matches(e.name().as_ref(), target) {
-                        for attr_result in e.attributes() {
-                            if let Ok(attr) = attr_result {
-                                if attr.key.as_ref() == attr_target {
-                                    return attr.unescape_value().ok().map(|v| v.to_string());
-                                }
+                        for attr in e.attributes().flatten() {
+                            if attr.key.as_ref() == attr_target {
+                                return attr.unescape_value().ok().map(|v| v.to_string());
                             }
                         }
                         return None;
