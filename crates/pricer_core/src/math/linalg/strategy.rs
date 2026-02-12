@@ -40,8 +40,7 @@ use crate::math::numeric::from_f64;
 
 /// Extract the stored matrix or return "not decomposed" error.
 fn require_decomposed<T: Clone>(matrix: Option<&T>) -> Result<&T, LinearAlgebraError> {
-    matrix
-        .ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))
+    matrix.ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))
 }
 
 /// Strategy trait for linear system solvers in calibration problems.
