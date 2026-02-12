@@ -10,15 +10,7 @@ use crate::{
     market::curves::BootstrapInterpolation,
 };
 
-// =============================================================================
-// Configuration
-// =============================================================================
-
 /// Configuration for global bootstrapping.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for tolerance values
 #[derive(Debug, Clone, PartialEq)]
 pub struct GlobalBootstrapConfig<T: Float> {
     /// Convergence tolerance for residual norm (||F(x)||).
@@ -216,35 +208,12 @@ impl<T: Float> GlobalBootstrapConfig<T> {
     }
 
     /// Set the jump configuration for CB meeting dates.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Jump configuration with meeting dates and expected jumps
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use pricer_models::builder::{GlobalBootstrapConfig, JumpConfig, JumpPillar};
-    ///
-    /// let config = GlobalBootstrapConfig::default()
-    ///     .with_jump_config(JumpConfig::with_pillars(vec![
-    ///         JumpPillar::new(0.5, 25.0),
-    ///         JumpPillar::new(1.0, 25.0),
-    ///     ]));
-    /// ```
     pub fn with_jump_config(mut self, config: JumpConfig<T>) -> Self {
         self.jump_config = Some(config);
         self
     }
 
     /// Set jump pillars directly (convenience method).
-    ///
-    /// Creates a `JumpConfig` with the provided pillars and enables jump
-    /// calibration.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - Vector of jump pillars at CB meeting dates
     pub fn with_jumps(mut self, pillars: Vec<JumpPillar<T>>) -> Self {
         self.jump_config = Some(JumpConfig::with_pillars(pillars));
         self
@@ -256,28 +225,9 @@ impl<T: Float> GlobalBootstrapConfig<T> {
     /// Get the number of configured jump pillars.
     pub fn num_jumps(&self) -> usize { self.jump_config.as_ref().map_or(0, |jc| jc.num_jumps()) }
 
-    // =========================================================================
-    // Enzyme AD Configuration (Task 5.2, Requirement 6.2)
-    // =========================================================================
-
     /// Enable Automatic Differentiation for Jacobian computation.
     ///
-    /// Sets the Jacobian method to `AutomaticDifferentiation` and enables
-    /// AD-specific optimisations.
-    ///
-    /// # Requirement: 6.2
-    ///
-    /// This method is only available when the `enzyme-ad` feature is enabled.
-    /// If called without the feature, a compile-time error will occur.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use pricer_models::builder::GlobalBootstrapConfig;
-    ///
-    /// let config = GlobalBootstrapConfig::default()
-    ///     .with_automatic_differentiation();
-    /// ```
+    /// Only available when the `enzyme-ad` feature is enabled.
     #[cfg(feature = "enzyme-ad")]
     pub fn with_automatic_differentiation(mut self) -> Self {
         self.jacobian_method = JacobianMethod::AutomaticDifferentiation;
@@ -285,16 +235,6 @@ impl<T: Float> GlobalBootstrapConfig<T> {
     }
 
     /// Set the AD variance threshold for instability detection.
-    ///
-    /// When the variance between AD Jacobian and finite difference
-    /// approximation exceeds this threshold, the system automatically
-    /// falls back to central difference method.
-    ///
-    /// # Arguments
-    ///
-    /// * `threshold` - Variance threshold (default: 1e6)
-    ///
-    /// # Requirement: 5.4
     #[cfg(feature = "enzyme-ad")]
     pub fn with_ad_variance_threshold(mut self, threshold: T) -> Self {
         self.ad_variance_threshold = threshold;
@@ -302,12 +242,6 @@ impl<T: Float> GlobalBootstrapConfig<T> {
     }
 
     /// Set the AD checkpointing interval.
-    ///
-    /// Controls memory vs re-computation trade-off during reverse-mode AD.
-    ///
-    /// # Arguments
-    ///
-    /// * `interval` - Number of operations between checkpoints
     #[cfg(feature = "enzyme-ad")]
     pub fn with_ad_checkpoint_interval(mut self, interval: usize) -> Self {
         self.ad_checkpoint_interval = Some(interval);

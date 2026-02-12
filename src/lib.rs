@@ -42,60 +42,27 @@
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 
-// =============================================================================
-// Infra Layer (I) - Always available
-// =============================================================================
-
 /// System configuration: pricing parameters, risk settings, service config.
 #[cfg(feature = "full")]
 pub use infra_config as config;
+
 /// Static master data: dates, currencies, calendars, trade definitions.
-///
-/// This module provides the foundational types used throughout Neutryx:
-/// - [`Date`](master::time::Date), [`Calendar`](master::time::Calendar),
-///   [`DayCounter`](master::time::DayCounter)
-/// - [`Currency`](master::market::Currency),
-///   [`RateIndex`](master::market::RateIndex)
-/// - Trade builders and ID types
 pub use infra_domain as master;
-// =============================================================================
-// Pricer Layer (P) - Feature-gated
-// =============================================================================
+
 /// Mathematical foundation: smoothing functions, kernels, numerical traits.
-///
-/// Layer 1 of the pricing stack, providing:
-/// - Differentiable smoothing functions
-/// - Pricing kernels with SIMD support
-/// - Numerical traits for generic computation
 #[cfg(feature = "analytics")]
 pub use pricer_core as core;
+
 /// Financial models: yield curves, volatility surfaces, stochastic processes.
-///
-/// Layer 2 of the pricing stack, providing:
-/// - Yield curve bootstrapping and interpolation
-/// - Volatility surface calibration
-/// - Stochastic models (GBM, Heston, Hull-White)
 #[cfg(feature = "analytics")]
 pub use pricer_models as models;
+
 /// Pricing engines: Monte Carlo, binomial trees, analytical formulas.
-///
-/// Layer 3 of the pricing stack, providing:
-/// - Monte Carlo simulation with variance reduction
-/// - Tree-based pricing (CRR, Jarrow-Rudd)
-/// - Computation graph for automatic differentiation
 #[cfg(feature = "full")]
 pub use pricer_pricing as pricing;
+
 /// Risk analytics: Greeks, XVA, scenario analysis.
-///
-/// Layer 4 (application layer) of the pricing stack, providing:
-/// - Greeks calculation (Delta, Gamma, Vega, etc.)
-/// - XVA metrics (CVA, DVA, FVA)
-/// - Scenario engine for stress testing
 #[cfg(feature = "full")]
 pub use pricer_risk as risk;
-
-// =============================================================================
-// Prelude - Convenient imports
-// =============================================================================
 
 pub mod prelude;

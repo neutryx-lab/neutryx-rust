@@ -37,27 +37,7 @@ use super::{
 };
 use crate::market::{FxCurve, FxCurveEnum};
 
-// =============================================================================
-// FxVolBuilder
-// =============================================================================
-
-/// Builder for FX volatility surfaces.
-///
-/// Calibrates SABR parameters for each expiry slice independently,
-/// then aggregates into a complete parameter surface.
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_models::builder::vol::FxVolBuilder;
-///
-/// let mut builder = FxVolBuilder::new();
-/// builder.add_quote(0.25, 1.10, 0.08, 1.10);  // 3M expiry
-/// builder.add_quote(0.25, 1.05, 0.085, 1.10);
-/// builder.add_quote(1.0, 1.10, 0.10, 1.10);   // 1Y expiry
-///
-/// let surface = builder.calibrate()?;
-/// ```
+/// Builder for FX volatility surfaces using slice-wise SABR calibration.
 #[derive(Debug, Clone)]
 pub struct FxVolBuilder<T: Float> {
     /// Quotes organised by expiry
@@ -137,15 +117,6 @@ impl<T: Float> FxVolBuilder<T> {
     /// Converts delta-based quotes to strike-based quotes using the configured
     /// FX curve and convention. Requires `with_fx_curve` and `with_convention`
     /// to be called first.
-    ///
-    /// # Arguments
-    ///
-    /// * `slice` - Delta-quoted volatility slice
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(&mut Self)` - On success
-    /// * `Err(CalibrationError)` - If FX curve or convention not set
     pub fn add_delta_vol_slice(
         &mut self,
         slice: DeltaVolSlice<T>,
@@ -248,10 +219,6 @@ impl<T: Float> VolBuilder<T> for FxVolBuilder<T> {
     }
 }
 
-// =============================================================================
-// FxVolResult
-// =============================================================================
-
 /// Result of FX vol surface calibration.
 #[derive(Debug, Clone)]
 pub struct FxVolResult<T: Float> {
@@ -310,10 +277,6 @@ impl<T: Float> FxVolResult<T> {
         self.diagnostics.values().map(|d| d.iterations).sum()
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -490,10 +453,6 @@ mod tests {
         assert!(params.rho > -1.0 && params.rho < 1.0);
         assert!(params.nu > 0.0);
     }
-
-    // =========================================================================
-    // Diagnostics Tests
-    // =========================================================================
 
     #[test]
     fn test_fxvol_result_diagnostics() {

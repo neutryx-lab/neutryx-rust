@@ -32,34 +32,7 @@ pub enum DistributionError {
     NumericalError(String),
 }
 
-/// Standard normal cumulative distribution function (CDF).
-///
-/// Computes P(X ≤ x) where X ~ N(0, 1) using a high-precision
-/// polynomial approximation (Abramowitz & Stegun 26.2.17).
-///
-/// # Arguments
-///
-/// * `x` - The upper bound for the probability
-///
-/// # Returns
-///
-/// The probability P(X ≤ x) in the range [0, 1]
-///
-/// # Precision
-///
-/// Absolute error < 7.5e-8 for all x
-///
-/// # Example
-///
-/// ```
-/// use pricer_core::math::normal_dist::norm_cdf;
-///
-/// let p = norm_cdf(0.0_f64);
-/// assert!((p - 0.5).abs() < 1e-7);
-///
-/// let p = norm_cdf(1.96_f64);
-/// assert!((p - 0.975).abs() < 1e-3);
-/// ```
+/// Standard normal CDF via Abramowitz & Stegun 26.2.17 (absolute error < 7.5e-8).
 #[inline]
 #[allow(clippy::excessive_precision)]
 pub fn norm_cdf<T: Float>(x: T) -> T {
@@ -102,27 +75,7 @@ pub fn norm_cdf<T: Float>(x: T) -> T {
     }
 }
 
-/// Standard normal probability density function (PDF).
-///
-/// Computes φ(x) = (1/√(2π)) * exp(-x²/2).
-///
-/// # Arguments
-///
-/// * `x` - The point at which to evaluate the density
-///
-/// # Returns
-///
-/// The probability density at x
-///
-/// # Example
-///
-/// ```
-/// use pricer_core::math::normal_dist::norm_pdf;
-///
-/// let pdf_at_zero = norm_pdf(0.0_f64);
-/// let expected = 1.0 / (2.0 * std::f64::consts::PI).sqrt();
-/// assert!((pdf_at_zero - expected).abs() < 1e-15);
-/// ```
+/// Standard normal PDF: phi(x) = exp(-x^2/2) / sqrt(2*pi).
 #[inline]
 pub fn norm_pdf<T: Float>(x: T) -> T {
     let half = T::from(0.5).unwrap();
@@ -131,38 +84,9 @@ pub fn norm_pdf<T: Float>(x: T) -> T {
     (-half * x * x).exp() / two_pi.sqrt()
 }
 
-/// Standard normal inverse cumulative distribution function (quantile).
+/// Standard normal inverse CDF (quantile) via Acklam's approximation (relative error < 1e-9).
 ///
-/// Computes the value x such that P(X ≤ x) = p, where X ~ N(0, 1).
-/// Uses Acklam's approximation with precision < 1e-9.
-///
-/// # Arguments
-///
-/// * `p` - The probability value in (0, 1)
-///
-/// # Returns
-///
-/// The quantile x such that Φ(x) = p
-///
-/// # Errors
-///
-/// Returns [`DistributionError::InvalidProbability`] if p ≤ 0 or p ≥ 1.
-///
-/// # Precision
-///
-/// Relative error < 1e-9 for all p in (0, 1)
-///
-/// # Example
-///
-/// ```
-/// use pricer_core::math::normal_dist::norm_inv_cdf;
-///
-/// let x = norm_inv_cdf(0.5_f64).unwrap();
-/// assert!(x.abs() < 1e-10);
-///
-/// let x = norm_inv_cdf(0.975_f64).unwrap();
-/// assert!((x - 1.96).abs() < 0.01);
-/// ```
+/// Returns `Err(InvalidProbability)` if p is outside (0, 1).
 #[allow(clippy::excessive_precision)]
 pub fn norm_inv_cdf<T: Float>(p: T) -> Result<T, DistributionError> {
     let _zero = T::zero();
@@ -243,10 +167,6 @@ mod tests {
 
     use super::*;
 
-    // ==========================================================================
-    // norm_pdf tests
-    // ==========================================================================
-
     #[test]
     fn test_norm_pdf_at_zero() {
         let pdf = norm_pdf(0.0_f64);
@@ -291,10 +211,6 @@ mod tests {
             assert_relative_eq!(pdf, expected, epsilon = 1e-12);
         }
     }
-
-    // ==========================================================================
-    // norm_cdf tests
-    // ==========================================================================
 
     #[test]
     fn test_norm_cdf_at_zero() {
@@ -362,10 +278,6 @@ mod tests {
         let cdf_small = norm_cdf(-10.0_f64);
         assert!(cdf_small < 1e-9);
     }
-
-    // ==========================================================================
-    // norm_inv_cdf tests
-    // ==========================================================================
 
     #[test]
     fn test_norm_inv_cdf_at_half() {

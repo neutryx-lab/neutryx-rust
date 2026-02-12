@@ -36,10 +36,6 @@ use pricer_core::{kernel::CompileError, types::FxPair};
 
 /// CMS (Constant Maturity Swap) index definition.
 ///
-/// Represents a CMS rate index for a specific currency and swap tenor.
-/// CMS rates require convexity adjustment when used in pricing, which
-/// is handled transparently by the `CurveProvider`.
-///
 /// # Examples
 ///
 /// ```
@@ -65,11 +61,6 @@ pub struct CmsIndex {
 
 impl CmsIndex {
     /// Creates a new CMS index.
-    ///
-    /// # Arguments
-    ///
-    /// * `currency` - Currency of the underlying swap
-    /// * `swap_tenor` - Tenor of the underlying swap rate (e.g., 10Y)
     #[must_use]
     pub const fn new(currency: Currency, swap_tenor: Tenor) -> Self {
         Self {
@@ -102,9 +93,6 @@ impl std::fmt::Display for CmsIndex {
 }
 
 /// Forward index type: either a standard rate index or a CMS index.
-///
-/// This enum allows unified handling of both simple forward rates and
-/// CMS rates in the `IndexMapper`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ForwardIndexType {
     /// Standard rate index (SOFR, EURIBOR, etc.)
@@ -211,21 +199,7 @@ impl IndexMapper {
         mapper
     }
 
-    // =========================================================================
-    // Forward Index Methods
-    // =========================================================================
-
-    /// Registers a forward rate index and returns its ID.
-    ///
-    /// If the index is already registered, returns the existing ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `index` - The rate index to register
-    ///
-    /// # Returns
-    ///
-    /// The numeric ID assigned to this index (1+, 0 is reserved).
+    /// Registers a forward rate index and returns its ID (idempotent).
     pub fn register_forward_index(&mut self, index: RateIndex) -> u16 {
         if let Some(&id) = self.fwd_index_to_id.get(&index) {
             return id;
@@ -237,24 +211,13 @@ impl IndexMapper {
         id
     }
 
-    /// Gets the ID for a forward rate index.
-    ///
-    /// # Arguments
-    ///
-    /// * `index` - The rate index to look up
-    ///
-    /// # Returns
-    ///
-    /// * `Some(id)` - The index's ID
-    /// * `None` - Index not registered
+    /// Gets the ID for a forward rate index, or `None` if not registered.
     #[must_use]
     pub fn get_forward_index_id(&self, index: RateIndex) -> Option<u16> {
         self.fwd_index_to_id.get(&index).copied()
     }
 
     /// Gets or registers a forward rate index.
-    ///
-    /// If not registered, registers it first.
     pub fn get_or_register_forward_index(&mut self, index: RateIndex) -> u16 {
         if let Some(&id) = self.fwd_index_to_id.get(&index) {
             id
@@ -263,16 +226,7 @@ impl IndexMapper {
         }
     }
 
-    /// Gets the rate index for a given ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The ID to look up
-    ///
-    /// # Returns
-    ///
-    /// * `Some(RateIndex)` - The index (None for ID 0 = dummy)
-    /// * `None` - ID out of range
+    /// Gets the rate index for a given ID (`None` inner value for ID 0 = dummy).
     #[must_use]
     pub fn get_forward_index(&self, id: u16) -> Option<Option<RateIndex>> {
         self.id_to_fwd_index.get(id as usize).copied()
@@ -290,24 +244,7 @@ impl IndexMapper {
         0 // Dummy index
     }
 
-    // =========================================================================
-    // CMS Index Methods
-    // =========================================================================
-
-    /// Registers a CMS index and returns its ID.
-    ///
-    /// CMS indices share the same ID space as forward indices, allowing
-    /// unified processing. The `CurveProvider` is responsible for returning
-    /// convexity-adjusted rates for CMS index IDs.
-    ///
-    /// # Arguments
-    ///
-    /// * `cms_index` - The CMS index to register
-    ///
-    /// # Returns
-    ///
-    /// The numeric ID assigned to this CMS index (shares space with forward
-    /// indices).
+    /// Registers a CMS index and returns its ID (shares forward index ID space).
     ///
     /// # Examples
     ///
@@ -333,24 +270,13 @@ impl IndexMapper {
         id
     }
 
-    /// Gets the ID for a CMS index.
-    ///
-    /// # Arguments
-    ///
-    /// * `cms_index` - The CMS index to look up
-    ///
-    /// # Returns
-    ///
-    /// * `Some(id)` - The CMS index's ID
-    /// * `None` - CMS index not registered
+    /// Gets the ID for a CMS index, or `None` if not registered.
     #[must_use]
     pub fn get_cms_index_id(&self, cms_index: CmsIndex) -> Option<u16> {
         self.cms_index_to_id.get(&cms_index).copied()
     }
 
     /// Gets or registers a CMS index.
-    ///
-    /// If not registered, registers it first.
     pub fn get_or_register_cms_index(&mut self, cms_index: CmsIndex) -> u16 {
         if let Some(&id) = self.cms_index_to_id.get(&cms_index) {
             id
@@ -359,24 +285,13 @@ impl IndexMapper {
         }
     }
 
-    /// Gets the CMS index for a given ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The ID to look up
-    ///
-    /// # Returns
-    ///
-    /// * `Some(CmsIndex)` - The CMS index
-    /// * `None` - ID is not a CMS index
+    /// Gets the CMS index for a given ID, or `None` if not a CMS index.
     #[must_use]
     pub fn get_cms_index(&self, id: u16) -> Option<CmsIndex> {
         self.id_to_cms_index.get(&id).copied()
     }
 
     /// Returns true if the given ID refers to a CMS index.
-    ///
-    /// CMS indices require convexity adjustment in the market data provider.
     #[must_use]
     pub fn is_cms_index(&self, id: u16) -> bool { self.id_to_cms_index.contains_key(&id) }
 
@@ -384,19 +299,7 @@ impl IndexMapper {
     #[must_use]
     pub fn cms_index_count(&self) -> usize { self.cms_index_to_id.len() }
 
-    /// Gets the forward index type for a given ID.
-    ///
-    /// Returns the appropriate type (Rate or CMS) for unified handling.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The forward index ID
-    ///
-    /// # Returns
-    ///
-    /// * `Some(ForwardIndexType::Rate(..))` - Standard rate index
-    /// * `Some(ForwardIndexType::Cms(..))` - CMS index
-    /// * `None` - ID is dummy (0) or out of range
+    /// Gets the forward index type (Rate or CMS) for a given ID.
     #[must_use]
     pub fn get_forward_index_type(&self, id: u16) -> Option<ForwardIndexType> {
         if id == 0 {
@@ -416,22 +319,7 @@ impl IndexMapper {
         None
     }
 
-    // =========================================================================
-    // Currency Methods
-    // =========================================================================
-
-    /// Registers a currency and returns its ID.
-    ///
-    /// If the currency is already registered, returns the existing ID.
-    /// The first registered currency becomes the base currency (ID 0).
-    ///
-    /// # Arguments
-    ///
-    /// * `currency` - The currency to register
-    ///
-    /// # Returns
-    ///
-    /// The numeric ID assigned to this currency.
+    /// Registers a currency and returns its ID (first registered becomes base, ID 0).
     pub fn register_currency(&mut self, currency: Currency) -> u8 {
         if let Some(&id) = self.currency_to_id.get(&currency) {
             return id;
@@ -468,19 +356,7 @@ impl IndexMapper {
     #[must_use]
     pub fn currency_count(&self) -> usize { self.id_to_currency.len() }
 
-    // =========================================================================
-    // Discount Curve Methods
-    // =========================================================================
-
-    /// Registers a discount curve and returns its ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `curve_name` - The curve name to register
-    ///
-    /// # Returns
-    ///
-    /// The numeric ID assigned to this curve.
+    /// Registers a discount curve and returns its ID (idempotent).
     pub fn register_discount_curve(&mut self, curve_name: impl Into<String>) -> u8 {
         let name = curve_name.into();
         if let Some(&id) = self.discount_curve_to_id.get(&name) {
@@ -521,22 +397,7 @@ impl IndexMapper {
     #[must_use]
     pub fn discount_curve_count(&self) -> usize { self.id_to_discount_curve.len() }
 
-    // =========================================================================
-    // FX Pair Methods
-    // =========================================================================
-
-    /// Registers an FX pair and returns its ID.
-    ///
-    /// If the pair is already registered, returns the existing ID.
-    /// ID 0 is reserved for dummy (no FX conversion).
-    ///
-    /// # Arguments
-    ///
-    /// * `fx_pair` - The FX pair to register (e.g., EUR/USD)
-    ///
-    /// # Returns
-    ///
-    /// The numeric ID assigned to this FX pair (1+, 0 is reserved).
+    /// Registers an FX pair and returns its ID (idempotent, 0 is reserved for dummy).
     pub fn register_fx_pair(&mut self, fx_pair: FxPair) -> u16 {
         if let Some(&id) = self.fx_pair_to_id.get(&fx_pair) {
             return id;
@@ -548,24 +409,13 @@ impl IndexMapper {
         id
     }
 
-    /// Gets the ID for an FX pair.
-    ///
-    /// # Arguments
-    ///
-    /// * `fx_pair` - The FX pair to look up
-    ///
-    /// # Returns
-    ///
-    /// * `Some(id)` - The pair's ID
-    /// * `None` - Pair not registered
+    /// Gets the ID for an FX pair, or `None` if not registered.
     #[must_use]
     pub fn get_fx_pair_id(&self, fx_pair: FxPair) -> Option<u16> {
         self.fx_pair_to_id.get(&fx_pair).copied()
     }
 
     /// Gets or registers an FX pair.
-    ///
-    /// If not registered, registers it first.
     pub fn get_or_register_fx_pair(&mut self, fx_pair: FxPair) -> u16 {
         if let Some(&id) = self.fx_pair_to_id.get(&fx_pair) {
             id
@@ -574,16 +424,7 @@ impl IndexMapper {
         }
     }
 
-    /// Gets the FX pair for a given ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - The ID to look up
-    ///
-    /// # Returns
-    ///
-    /// * `Some(FxPair)` - The FX pair (None for ID 0 = dummy)
-    /// * `None` - ID out of range
+    /// Gets the FX pair for a given ID (`None` inner value for ID 0 = dummy).
     #[must_use]
     pub fn get_fx_pair(&self, id: u16) -> Option<Option<FxPair>> {
         self.id_to_fx_pair.get(id as usize).copied()
@@ -601,33 +442,13 @@ impl IndexMapper {
         0 // Dummy FX
     }
 
-    /// Registers an FX pair from two currencies.
-    ///
-    /// Convenience method that creates an FxPair from base and quote
-    /// currencies.
-    ///
-    /// # Arguments
-    ///
-    /// * `base` - Base currency (e.g., EUR)
-    /// * `quote` - Quote currency (e.g., USD)
-    ///
-    /// # Returns
-    ///
-    /// The numeric ID assigned to this FX pair.
+    /// Registers an FX pair from base and quote currencies.
     pub fn register_fx_pair_from_currencies(&mut self, base: Currency, quote: Currency) -> u16 {
         let fx_pair = FxPair::new(base, quote);
         self.register_fx_pair(fx_pair)
     }
 
-    // =========================================================================
-    // Validation
-    // =========================================================================
-
     /// Validates that a forward index ID is valid.
-    ///
-    /// # Errors
-    ///
-    /// Returns `CompileError::UnknownIndex` if the ID is out of range.
     pub fn validate_forward_index_id(&self, id: u16) -> Result<(), CompileError> {
         if (id as usize) < self.id_to_fwd_index.len() {
             Ok(())
@@ -639,10 +460,6 @@ impl IndexMapper {
     }
 
     /// Validates that a currency ID is valid.
-    ///
-    /// # Errors
-    ///
-    /// Returns `CompileError::UnknownCurrency` if the ID is out of range.
     pub fn validate_currency_id(&self, id: u8) -> Result<(), CompileError> {
         if (id as usize) < self.id_to_currency.len() {
             Ok(())
@@ -654,10 +471,6 @@ impl IndexMapper {
     }
 
     /// Validates that an FX pair ID is valid.
-    ///
-    /// # Errors
-    ///
-    /// Returns `CompileError::UnknownIndex` if the ID is out of range.
     pub fn validate_fx_pair_id(&self, id: u16) -> Result<(), CompileError> {
         if (id as usize) < self.id_to_fx_pair.len() {
             Ok(())
@@ -860,10 +673,6 @@ mod tests {
         assert_eq!(cloned.currency_count(), 1);
     }
 
-    // =========================================================================
-    // FX Pair Tests (Task 7.1)
-    // =========================================================================
-
     use pricer_core::types::FxPair;
 
     #[test]
@@ -974,10 +783,6 @@ mod tests {
         );
         assert_eq!(mapper.fx_pair_count(), 2);
     }
-
-    // =========================================================================
-    // CMS Index Tests (Task 8.1)
-    // =========================================================================
 
     use infra_domain::time::Tenor;
 

@@ -17,16 +17,7 @@ use crate::{
     market::{curves::YieldCurve, MarketDataError},
 };
 
-// =============================================================================
-// InstrumentType Enumeration (Requirement 1.4)
-// =============================================================================
-
-/// Enumeration of supported instrument types for compilation.
-///
-/// # Requirement 1.4
-///
-/// The Compiler shall support Deposit, Swap, OIS, FRA, Futures instrument
-/// types. XCcyBasis, FxForward, FxSwap are explicitly unsupported.
+/// Supported instrument types for compilation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr)]
 pub enum InstrumentType {
     /// Simple deposit/money market instrument.
@@ -47,40 +38,13 @@ pub enum InstrumentType {
 
 impl InstrumentType {
     /// Returns the string representation of the instrument type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_models::builder::compile::InstrumentType;
-    ///
-    /// assert_eq!(InstrumentType::Deposit.as_str(), "Deposit");
-    /// assert_eq!(InstrumentType::Swap.as_str(), "Swap");
-    /// ```
     pub fn as_str(&self) -> &str { self.as_ref() }
 }
 
-// =============================================================================
-// CompileError Type (Requirements 8.1-8.5, 1.3, 1.5)
-// =============================================================================
-
 /// Errors that can occur during instrument compilation.
-///
-/// # Requirement 8.4
-///
-/// The CompileError shall use `thiserror` to provide structured errors.
-///
-/// # Requirement 8.5
-///
-/// When an error occurs, the system shall include the problematic
-/// instrument's index and rate ID.
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum CompileError {
     /// Invalid maturity - maturity date is before the valuation date.
-    ///
-    /// # Requirement 8.1
-    ///
-    /// When the maturity date is before the valuation date, the Compiler
-    /// shall return this error.
     #[error("Invalid maturity for instrument {index}: {rate_id}")]
     InvalidMaturity {
         /// Index of the problematic instrument (0-based).
@@ -90,11 +54,6 @@ pub enum CompileError {
     },
 
     /// Invalid year fraction - cashflow has negative year fraction.
-    ///
-    /// # Requirement 8.2
-    ///
-    /// When a cashflow date has a negative year fraction, the Compiler
-    /// shall return this error.
     #[error("Invalid year fraction at index {index} for instrument {rate_id}")]
     InvalidYearFraction {
         /// Index of the problematic instrument (0-based).
@@ -104,11 +63,6 @@ pub enum CompileError {
     },
 
     /// Convention mismatch - convention and instrument type are inconsistent.
-    ///
-    /// # Requirement 8.3
-    ///
-    /// When the convention and instrument type are inconsistent, the Compiler
-    /// shall return this error.
     #[error("Convention mismatch for instrument {index}: {rate_id}")]
     ConventionMismatch {
         /// Index of the problematic instrument (0-based).
@@ -118,11 +72,6 @@ pub enum CompileError {
     },
 
     /// Invalid convention detected during compilation.
-    ///
-    /// # Requirement 1.3
-    ///
-    /// When an invalid convention is detected at compile time, the Compiler
-    /// shall return this error.
     #[error("Invalid convention for instrument {index}: {rate_id}")]
     InvalidConvention {
         /// Index of the problematic instrument (0-based).
@@ -131,12 +80,7 @@ pub enum CompileError {
         rate_id: String,
     },
 
-    /// Unsupported instrument type.
-    ///
-    /// # Requirement 1.5
-    ///
-    /// When the MarketConvention is XCcyBasis, FxForward, or FxSwap,
-    /// the Compiler shall return this error.
+    /// Unsupported instrument type (XCcyBasis, FxForward, FxSwap).
     #[error("Unsupported instrument type at index {index}: {instrument_type}")]
     UnsupportedInstrument {
         /// Index of the problematic instrument (0-based).
@@ -146,28 +90,7 @@ pub enum CompileError {
     },
 }
 
-// =============================================================================
-// CompiledInstrument Structure (Requirements 1.2, 2.5, 3.5)
-// =============================================================================
-
 /// Pre-compiled calibration instrument with static cashflow data.
-///
-/// # Requirement 1.2
-///
-/// The CompiledInstrument shall hold pre-computed fields:
-/// - cashflow_dates (`Vec<T>` as times)
-/// - year_fractions (`Vec<T>`)
-/// - notionals (`Vec<T>`)
-/// - discount_factor_indices (`Vec<usize>`)
-///
-/// # Requirement 2.5
-///
-/// The CompiledInstrument shall implement Clone and Debug traits.
-///
-/// # Requirement 3.5
-///
-/// During calibration iteration, the System shall not cause memory allocations.
-/// This is achieved by pre-allocating all vectors at compile time.
 #[derive(Debug, Clone)]
 pub struct CompiledInstrument<T: Float> {
     /// Instrument type identifier.
@@ -190,23 +113,6 @@ pub struct CompiledInstrument<T: Float> {
 
 impl<T: Float> CompiledInstrument<T> {
     /// Creates a new CompiledInstrument with validation.
-    ///
-    /// # Arguments
-    ///
-    /// * `instrument_type` - Type of the instrument
-    /// * `market_rate` - Market-quoted rate
-    /// * `maturity` - Maturity in year fraction
-    /// * `cashflow_times` - Cashflow times (must be ascending and positive)
-    /// * `year_fractions` - Year fractions (must be positive)
-    /// * `notionals` - Notional amounts
-    /// * `fixed_rate` - Optional fixed rate for swaps
-    ///
-    /// # Errors
-    ///
-    /// Returns error if:
-    /// - Arrays have different lengths
-    /// - cashflow_times is not ascending
-    /// - year_fractions contains non-positive values
     pub fn new(
         instrument_type: InstrumentType,
         market_rate: T,
@@ -253,11 +159,6 @@ impl<T: Float> CompiledInstrument<T> {
     }
 
     /// Creates a simple deposit instrument.
-    ///
-    /// # Arguments
-    ///
-    /// * `market_rate` - Market-quoted rate
-    /// * `maturity` - Maturity in year fraction
     pub fn deposit(market_rate: T, maturity: T) -> Result<Self, String> {
         if maturity <= T::zero() {
             return Err("maturity must be positive".to_string());
@@ -274,12 +175,6 @@ impl<T: Float> CompiledInstrument<T> {
     }
 
     /// Creates a FRA instrument.
-    ///
-    /// # Arguments
-    ///
-    /// * `market_rate` - Market-quoted rate
-    /// * `start` - Start time in year fraction
-    /// * `end` - End time in year fraction
     pub fn fra(market_rate: T, start: T, end: T) -> Result<Self, String> {
         if end <= start {
             return Err("end must be greater than start".to_string());
@@ -300,11 +195,6 @@ impl<T: Float> CompiledInstrument<T> {
     }
 
     /// Creates an Event instrument (CB meeting, year-end turn).
-    ///
-    /// # Arguments
-    ///
-    /// * `expected_spike` - Expected rate spike at the event date
-    /// * `event_time` - Event time in year fraction from valuation date
     pub fn event(expected_spike: T, event_time: T) -> Result<Self, String> {
         if event_time <= T::zero() {
             return Err("event_time must be positive".to_string());
@@ -345,29 +235,11 @@ impl<T: Float> CompiledInstrument<T> {
     pub fn num_cashflows(&self) -> usize { self.cashflow_times.len() }
 }
 
-// =============================================================================
-// CalibrationInstrument Implementation (Requirements 3.1-3.4)
-// =============================================================================
-
 impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
     /// Returns the market-quoted rate.
-    ///
-    /// # Requirement 3.1
-    ///
-    /// market_rate() returns the stored value directly.
     fn market_rate(&self) -> T { self.market_rate }
 
-    /// Computes the theoretical rate from the yield curve.
-    ///
-    /// # Requirement 3.1
-    ///
-    /// theoretical_rate() computes using DF retrieval and vector products only,
-    /// without calendar operations.
-    ///
-    /// # Requirement 3.2
-    ///
-    /// The computation maintains O(n) time complexity where n = number of
-    /// cashflows.
+    /// Computes the theoretical rate from the yield curve in O(n) time.
     fn theoretical_rate<C: YieldCurve<T>>(&self, curve: &C) -> Result<T, MarketDataError> {
         match self.instrument_type {
             InstrumentType::Deposit => {
@@ -485,10 +357,6 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
     }
 }
 
-// =============================================================================
-// InstrumentCompiler (Requirements 1.1, 5.1, 5.2)
-// =============================================================================
-
 use std::marker::PhantomData;
 
 use infra_domain::{
@@ -497,17 +365,7 @@ use infra_domain::{
 };
 use pricer_core::math::numeric::from_f64;
 
-/// Compiler for converting `infra_domain::market::MarketInstrument` to
-/// `CompiledInstrument<T>`.
-///
-/// # Requirement 5.1
-///
-/// The InstrumentCompiler shall be placed in `pricer_models::builder` module.
-///
-/// # Requirement 5.2
-///
-/// The Compiler shall receive `infra_domain::market::MarketInstrument` as input
-/// and output `pricer_models` specific types.
+/// Compiler for converting `infra_domain::market::MarketInstrument` to `CompiledInstrument<T>`.
 #[derive(Debug, Clone)]
 pub struct InstrumentCompiler<T: Float> {
     /// Valuation date for year fraction calculations.
@@ -518,10 +376,6 @@ pub struct InstrumentCompiler<T: Float> {
 
 impl<T: Float> InstrumentCompiler<T> {
     /// Creates a new InstrumentCompiler.
-    ///
-    /// # Arguments
-    ///
-    /// * `valuation_date` - The valuation date for year fraction calculations
     pub fn new(valuation_date: Date) -> Self {
         Self {
             valuation_date,
@@ -533,24 +387,6 @@ impl<T: Float> InstrumentCompiler<T> {
     pub fn valuation_date(&self) -> Date { self.valuation_date }
 
     /// Compiles a single MarketInstrument to a CompiledInstrument.
-    ///
-    /// # Requirement 1.1
-    ///
-    /// When `compile()` is called, the Compiler shall convert
-    /// `MarketInstrument` to `CompiledInstrument`, pre-computing all
-    /// cashflow dates, year fractions, and notionals.
-    ///
-    /// # Arguments
-    ///
-    /// * `instrument` - The MarketInstrument to compile
-    /// * `index` - The instrument index for error reporting
-    ///
-    /// # Errors
-    ///
-    /// Returns `CompileError` if:
-    /// - Maturity is before valuation date (InvalidMaturity)
-    /// - Year fraction is negative (InvalidYearFraction)
-    /// - Convention is unsupported (UnsupportedInstrument)
     pub fn compile(
         &self,
         instrument: &InfraMasterInstrument,
@@ -603,14 +439,6 @@ impl<T: Float> InstrumentCompiler<T> {
     }
 
     /// Batch compiles multiple MarketInstruments.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Iterator of MarketInstruments to compile
-    ///
-    /// # Errors
-    ///
-    /// Returns the first compilation error encountered.
     pub fn compile_batch<'a, I>(
         &self,
         instruments: I,
@@ -836,17 +664,9 @@ impl<T: Float> InstrumentCompiler<T> {
     }
 }
 
-// =============================================================================
-// Tests
-// =============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // InstrumentType Tests (Requirement 1.4)
-    // =========================================================================
 
     #[test]
     fn test_instrument_type_as_str() {
@@ -897,10 +717,6 @@ mod tests {
         set.insert(InstrumentType::Deposit); // Duplicate
         assert_eq!(set.len(), 2);
     }
-
-    // =========================================================================
-    // CompileError Tests (Requirements 8.1-8.5)
-    // =========================================================================
 
     #[test]
     fn test_invalid_maturity_error() {
@@ -1000,10 +816,6 @@ mod tests {
         let cloned = original.clone();
         assert_eq!(original, cloned);
     }
-
-    // =========================================================================
-    // CompiledInstrument Tests (Requirements 1.2, 2.5, 3.5)
-    // =========================================================================
 
     #[test]
     fn test_compiled_instrument_deposit_creation() {
@@ -1116,10 +928,6 @@ mod tests {
         assert!(result2.is_err());
     }
 
-    // =========================================================================
-    // CalibrationInstrument Implementation Tests (Requirements 3.1-3.4)
-    // =========================================================================
-
     use approx::assert_relative_eq;
 
     use crate::{
@@ -1223,10 +1031,6 @@ mod tests {
         // For a flat curve, par swap rate should be close to the zero rate
         assert_relative_eq!(theoretical, 0.04, epsilon = 5e-3);
     }
-
-    // =========================================================================
-    // InstrumentCompiler Tests (Requirements 3.1-3.5)
-    // =========================================================================
 
     use infra_domain::{
         market::{

@@ -42,14 +42,6 @@ pub struct GBMParams<T: Float> {
 
 impl<T: Float> GBMParams<T> {
     /// Create new GBM parameters with validation.
-    ///
-    /// # Arguments
-    /// * `spot` - Initial spot price (must be positive)
-    /// * `rate` - Risk-free rate
-    /// * `volatility` - Volatility (must be non-negative)
-    ///
-    /// # Returns
-    /// `Some(GBMParams)` if valid, `None` otherwise
     pub fn new(spot: T, rate: T, volatility: T) -> Option<Self> {
         let params = Self {
             spot,
@@ -88,10 +80,7 @@ impl<T: Float> Default for GBMParams<T> {
     }
 }
 
-/// Geometric Brownian Motion model.
-///
-/// A single-factor model for asset price simulation using log-space formulation
-/// for numerical stability.
+/// Geometric Brownian Motion model (log-space formulation for numerical stability).
 #[derive(Clone, Debug, Default)]
 pub struct GBMModel<T: Float> {
     _phantom: std::marker::PhantomData<T>,
@@ -146,10 +135,6 @@ impl<T: Float + Default> EquityModel<T> for GBMModel<T> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ================================================================
-    // Task 2.2: GBM Model Tests (TDD)
-    // ================================================================
 
     #[test]
     fn test_gbm_params_new_valid() {

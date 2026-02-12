@@ -38,9 +38,6 @@ use super::{
 };
 
 /// Unified state type for all models.
-///
-/// This enum wraps model-specific state types, allowing uniform handling
-/// of simulation results across different models.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ModelState<T: Float> {
     /// Single-factor state (GBM, etc.)
@@ -91,8 +88,6 @@ impl<T: Float + Default> ModelState<T> {
 }
 
 /// Unified parameter type for all stochastic models.
-///
-/// This enum wraps model-specific parameter types.
 #[derive(Clone, Debug)]
 pub enum ModelParams<T: Float> {
     /// GBM model parameters
@@ -118,10 +113,7 @@ impl<T: Float> ModelParams<T> {
         }
     }
 
-    /// Get the rate parameter.
-    ///
-    /// For interest rate models, this returns the mean reversion speed.
-    /// For Heston, this returns the risk-free rate.
+    /// Get the rate parameter (mean reversion speed for rate models).
     pub fn rate(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.rate,
@@ -131,9 +123,7 @@ impl<T: Float> ModelParams<T> {
         }
     }
 
-    /// Get the volatility parameter (primary volatility for all models).
-    ///
-    /// For Heston, this returns the initial volatility (sqrt of v0).
+    /// Get the volatility parameter (sqrt(v0) for Heston).
     pub fn volatility(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.volatility,
@@ -152,25 +142,7 @@ impl<T: Float> ModelParams<T> {
     }
 }
 
-/// Stochastic models ordered by increasing complexity.
-///
-/// This enum enables zero-cost abstraction over different stochastic models.
-/// Use this instead of `Box<dyn StochasticModel>` for Enzyme LLVM
-/// compatibility.
-///
-/// # Ordering Rationale
-///
-/// Variants are ordered by model complexity (simplest to most specialised):
-///
-/// - **Level 1 (Basic)**: `GBM` - 1-factor, constant volatility
-/// - **Level 2 (Intermediate)**: `Heston` - 2-factor, stochastic vol
-/// - **Level 3 (Specialised)**: `HullWhite`, `CIR` - Rate models with mean
-///   reversion
-///
-/// This ordering helps users understand model sophistication and choose
-/// appropriately for their use case.
-///
-/// # Supported Models
+/// Stochastic models ordered by increasing complexity (static dispatch for Enzyme LLVM compatibility).
 ///
 /// | Model | Factors | Type |
 /// |-------|---------|------|
@@ -178,45 +150,15 @@ impl<T: Float> ModelParams<T> {
 /// | `Heston` | 2 | Equity (SV) |
 /// | `HullWhite` | 1 | Rates |
 /// | `CIR` | 1 | Rates |
-///
-/// # Adding New Models
-///
-/// When adding new models, place them according to complexity:
-/// - Simple 1-factor models near `GBM`
-/// - Stochastic volatility models near `Heston`
-/// - Rate models near `HullWhite`/`CIR`
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::model_enum::StochasticModelEnum;
-///
-/// let model = StochasticModelEnum::<f64>::gbm();
-///
-/// match &model {
-///     StochasticModelEnum::GBM(_) => println!("Using GBM model"),
-///     StochasticModelEnum::Heston(_) => println!("Using Heston model"),
-///     _ => println!("Using rate model"),
-/// }
-/// ```
 #[derive(Clone, Debug)]
 pub enum StochasticModelEnum<T: Float> {
-    // === Level 1: Basic (1-factor, constant parameters) ===
-    /// Geometric Brownian Motion (simplest, 1-factor, constant volatility).
-    /// Complexity level: 1 (baseline).
+    /// Geometric Brownian Motion (1-factor, constant volatility).
     GBM(GBMModel<T>),
-
-    // === Level 2: Intermediate (2-factor, stochastic volatility) ===
     /// Heston stochastic volatility model (2-factor, mean-reverting variance).
-    /// Complexity level: 2 (intermediate).
     Heston(HestonModel<T>),
-
-    // === Level 3: Specialised (rate models with mean reversion) ===
     /// Hull-White one-factor model (rates, mean reversion to forward curve).
-    /// Complexity level: 3 (specialised).
     HullWhite(HullWhiteModel<T>),
     /// Cox-Ingersoll-Ross model (rates, positive rates guaranteed).
-    /// Complexity level: 3 (specialised).
     CIR(CIRModel<T>),
 }
 
@@ -229,13 +171,6 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn gbm() -> Self { StochasticModelEnum::GBM(GBMModel::new()) }
 
     /// Create a new Heston model with given parameters.
-    ///
-    /// # Arguments
-    /// * `params` - Heston model parameters
-    ///
-    /// # Returns
-    /// `Some(StochasticModelEnum::Heston)` if parameters are valid, `None`
-    /// otherwise
     pub fn heston(params: HestonParams<T>) -> Option<Self> {
         HestonModel::new(params)
             .ok()
@@ -375,16 +310,11 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     }
 }
 
-// Import StochasticModel trait for use in implementations
 use super::stochastic::StochasticModel;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ================================================================
-    // StochasticModelEnum Tests
-    // ================================================================
 
     #[test]
     fn test_model_enum_gbm_creation() {

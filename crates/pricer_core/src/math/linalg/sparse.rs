@@ -31,37 +31,12 @@ use nalgebra::{DMatrix, RealField};
 use num_traits::Float;
 
 /// CSR (Compressed Sparse Row) matrix type alias.
-///
-/// CSR is efficient for row slicing and matrix-vector products.
 pub type CsrMatrix<T> = nalgebra_sparse::CsrMatrix<T>;
 
 /// CSC (Compressed Sparse Column) matrix type alias.
-///
-/// CSC is efficient for column slicing and transpose operations.
 pub type CscMatrix<T> = nalgebra_sparse::CscMatrix<T>;
 
-/// Convert a dense matrix to CSR (Compressed Sparse Row) format.
-///
-/// Elements with absolute value below the threshold are treated as zero.
-///
-/// # Arguments
-///
-/// * `dense` - The dense matrix to convert
-/// * `threshold` - Absolute value threshold for zero detection
-///
-/// # Returns
-///
-/// A CSR matrix containing only non-zero elements.
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_core::math::linalg::sparse::to_csr;
-///
-/// let dense = DMatrix::from_row_slice(2, 2, &[1.0, 0.0, 0.0, 2.0]);
-/// let sparse = to_csr(&dense, 1e-10);
-/// assert_eq!(sparse.nnz(), 2); // 2 non-zero elements
-/// ```
+/// Convert a dense matrix to CSR format. Elements below `threshold` are treated as zero.
 pub fn to_csr<T: RealField + Copy + Float>(dense: &DMatrix<T>, threshold: T) -> CsrMatrix<T> {
     let nrows = dense.nrows();
     let ncols = dense.ncols();
@@ -89,14 +64,6 @@ pub fn to_csr<T: RealField + Copy + Float>(dense: &DMatrix<T>, threshold: T) -> 
 }
 
 /// Convert a CSR matrix back to dense format.
-///
-/// # Arguments
-///
-/// * `sparse` - The CSR matrix to convert
-///
-/// # Returns
-///
-/// A dense matrix with all elements (including zeros).
 pub fn to_dense<T: RealField + Copy>(sparse: &CsrMatrix<T>) -> DMatrix<T> {
     let nrows = sparse.nrows();
     let ncols = sparse.ncols();
@@ -111,29 +78,7 @@ pub fn to_dense<T: RealField + Copy>(sparse: &CsrMatrix<T>) -> DMatrix<T> {
     dense
 }
 
-/// Calculate the sparsity ratio of a matrix.
-///
-/// The sparsity ratio is the proportion of zero (or near-zero) elements.
-/// A ratio of 0.7 means 70% of elements are zero.
-///
-/// # Arguments
-///
-/// * `matrix` - The matrix to analyse
-/// * `threshold` - Absolute value threshold for zero detection
-///
-/// # Returns
-///
-/// Sparsity ratio in range [0, 1].
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_core::math::linalg::sparse::sparsity_ratio;
-///
-/// let diagonal = DMatrix::from_diagonal(&DVector::from_vec(vec![1.0, 2.0, 3.0]));
-/// let ratio = sparsity_ratio(&diagonal, 1e-10);
-/// // 6 zeros out of 9 elements = 0.6667
-/// ```
+/// Calculate the sparsity ratio (proportion of near-zero elements) in `[0, 1]`.
 pub fn sparsity_ratio<T: RealField + Copy + Float>(matrix: &DMatrix<T>, threshold: T) -> f64 {
     let total = matrix.nrows() * matrix.ncols();
     if total == 0 {
@@ -149,20 +94,7 @@ pub fn sparsity_ratio<T: RealField + Copy + Float>(matrix: &DMatrix<T>, threshol
     (zero_count as f64) / (total as f64)
 }
 
-/// Check if a matrix is sufficiently sparse to benefit from sparse algorithms.
-///
-/// Generally, sparse algorithms are beneficial when sparsity exceeds 70%.
-///
-/// # Arguments
-///
-/// * `matrix` - The matrix to analyse
-/// * `threshold` - Absolute value threshold for zero detection
-/// * `sparsity_threshold` - Minimum sparsity ratio for sparse algorithms
-///   (default: 0.7)
-///
-/// # Returns
-///
-/// `true` if the matrix is sparse enough to benefit from sparse algorithms.
+/// Returns `true` if the matrix sparsity ratio exceeds `sparsity_threshold`.
 pub fn is_sparse_beneficial<T: RealField + Copy + Float>(
     matrix: &DMatrix<T>,
     threshold: T,
@@ -171,26 +103,13 @@ pub fn is_sparse_beneficial<T: RealField + Copy + Float>(
     sparsity_ratio(matrix, threshold) >= sparsity_threshold
 }
 
-/// Count non-zero elements in a matrix.
-///
-/// # Arguments
-///
-/// * `matrix` - The matrix to analyse
-/// * `threshold` - Absolute value threshold for zero detection
-///
-/// # Returns
-///
-/// Number of elements with absolute value above threshold.
+/// Count elements with absolute value above `threshold`.
 pub fn count_nonzeros<T: RealField + Copy + Float>(matrix: &DMatrix<T>, threshold: T) -> usize {
     matrix
         .iter()
         .filter(|&&x| Float::abs(x) > threshold)
         .count()
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

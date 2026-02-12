@@ -19,18 +19,7 @@ use pricer_core::math::numeric::from_f64;
 
 use super::CalibrationError;
 
-// =============================================================================
-// JumpPillar
-// =============================================================================
-
-/// Jump pillar for CB meeting date.
-///
-/// Represents a forward rate jump at a central bank meeting date.
-/// The jump is modelled as a discrete shift in the forward rate curve.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for numerical values
+/// Jump pillar for a CB meeting date (discrete forward rate shift).
 ///
 /// # Example
 ///
@@ -54,16 +43,7 @@ pub struct JumpPillar<T: Float> {
 }
 
 impl<T: Float> JumpPillar<T> {
-    /// Create a new jump pillar.
-    ///
-    /// # Arguments
-    ///
-    /// * `time` - Time to jump date in years
-    /// * `expected_jump_bps` - Expected jump size in basis points
-    ///
-    /// # Returns
-    ///
-    /// A new `JumpPillar` with expected jump converted to absolute rate.
+    /// Create a new jump pillar (expected jump in basis points).
     pub fn new(time: T, expected_jump_bps: T) -> Self {
         Self {
             time,
@@ -73,12 +53,7 @@ impl<T: Float> JumpPillar<T> {
         }
     }
 
-    /// Create a jump pillar with an already-converted rate.
-    ///
-    /// # Arguments
-    ///
-    /// * `time` - Time to jump date in years
-    /// * `expected_jump_rate` - Expected jump size in absolute rate
+    /// Create a jump pillar with an already-converted absolute rate.
     pub fn with_rate(time: T, expected_jump_rate: T) -> Self {
         Self {
             time,
@@ -88,26 +63,10 @@ impl<T: Float> JumpPillar<T> {
         }
     }
 
-    /// Convert basis points to absolute rate.
-    ///
-    /// # Arguments
-    ///
-    /// * `bps` - Value in basis points
-    ///
-    /// # Returns
-    ///
-    /// Value converted to absolute rate (bps * 0.0001).
+    /// Convert basis points to absolute rate (`bps * 0.0001`).
     pub fn bps_to_rate(bps: T) -> T { bps * from_f64::<T>(0.0001) }
 
-    /// Convert absolute rate to basis points.
-    ///
-    /// # Arguments
-    ///
-    /// * `rate` - Value in absolute rate
-    ///
-    /// # Returns
-    ///
-    /// Value converted to basis points (rate * 10000).
+    /// Convert absolute rate to basis points (`rate * 10000`).
     pub fn rate_to_bps(rate: T) -> T { rate * from_f64::<T>(10000.0) }
 
     /// Get the expected jump in absolute rate.
@@ -131,17 +90,7 @@ impl<T: Float> JumpPillar<T> {
     /// Check if this jump pillar has a realised value.
     pub fn is_calibrated(&self) -> bool { self.realised_jump.is_some() }
 
-    /// Create from date strings and expected jump in bps.
-    ///
-    /// # Arguments
-    ///
-    /// * `reference_date` - Reference date string (YYYY-MM-DD)
-    /// * `jump_date` - Jump date string (YYYY-MM-DD)
-    /// * `expected_bps` - Expected jump in basis points
-    ///
-    /// # Returns
-    ///
-    /// A `JumpPillar` with time calculated from date difference.
+    /// Create from date strings (YYYY-MM-DD) and expected jump in bps.
     pub fn from_date_bps(
         reference_date: &str,
         jump_date: &str,
@@ -172,18 +121,7 @@ fn parse_date_diff_years(reference: &str, target: &str) -> Result<f64, Calibrati
     Ok(days as f64 / 365.0)
 }
 
-// =============================================================================
-// JumpConfig
-// =============================================================================
-
 /// Configuration for jump-aware calibration.
-///
-/// Controls how the GlobalBootstrapper handles forward rate jumps
-/// at central bank meeting dates.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for numerical values
 ///
 /// # Example
 ///
@@ -208,18 +146,12 @@ pub struct JumpConfig<T: Float> {
     pub jump_pillars: Vec<JumpPillar<T>>,
     /// Fallback to non-jump calibration on convergence failure.
     pub fallback_on_failure: bool,
-    /// Damping factor for jump parameters (0.0 to 1.0).
-    /// Lower values reduce step size for jump parameters.
+    /// Damping factor for jump parameters (0.0 to 1.0; lower = smaller step).
     pub jump_damping: Option<T>,
 }
 
 impl<T: Float> Default for JumpConfig<T> {
-    /// Create a default JumpConfig with jumps disabled.
-    ///
-    /// # Requirement 7.5
-    ///
-    /// The default configuration has jumps disabled to ensure
-    /// backward compatibility with existing workflows.
+    /// Create a default JumpConfig with jumps disabled (Requirement 7.5).
     fn default() -> Self {
         Self {
             enabled: false,
@@ -292,9 +224,7 @@ impl<T: Float> JumpConfig<T> {
         pillars
     }
 
-    /// Validate the jump configuration.
-    ///
-    /// Checks that all jump pillars have valid parameters.
+    /// Validate that all jump pillars have valid parameters.
     pub fn validate(&self) -> Result<(), CalibrationError> {
         for (i, pillar) in self.jump_pillars.iter().enumerate() {
             // Check time is positive
@@ -324,10 +254,6 @@ impl<T: Float> JumpConfig<T> {
         Ok(())
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

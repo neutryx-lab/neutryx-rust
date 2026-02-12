@@ -58,17 +58,6 @@ use crate::{
 };
 
 /// CIR model parameters.
-///
-/// # Type Parameters
-///
-/// * `T` - Float type (f64 or DualNumber for AD compatibility)
-///
-/// # Fields
-///
-/// * `mean_reversion` - Mean reversion speed (a > 0)
-/// * `long_term_mean` - Long-term mean rate (b > 0)
-/// * `volatility` - Short rate volatility (sigma > 0)
-/// * `initial_rate` - Initial short rate r(0) > 0
 #[derive(Clone, Debug)]
 pub struct CIRParams<T: Float> {
     /// Mean reversion speed (a > 0)
@@ -82,31 +71,7 @@ pub struct CIRParams<T: Float> {
 }
 
 impl<T: Float> CIRParams<T> {
-    /// Create new CIR parameters with validation.
-    ///
-    /// # Arguments
-    ///
-    /// * `mean_reversion` - Mean reversion speed (must be positive)
-    /// * `long_term_mean` - Long-term mean rate (must be positive)
-    /// * `volatility` - Short rate volatility (must be positive)
-    /// * `initial_rate` - Initial short rate (must be positive)
-    ///
-    /// # Returns
-    ///
-    /// `Some(CIRParams)` if parameters are valid, `None` otherwise.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use pricer_models::stochastic::CIRParams;
-    ///
-    /// let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03);
-    /// assert!(params.is_some());
-    ///
-    /// // Invalid: negative mean reversion
-    /// let invalid = CIRParams::new(-0.1_f64, 0.05, 0.05, 0.03);
-    /// assert!(invalid.is_none());
-    /// ```
+    /// Creates new CIR parameters with validation. Returns `None` if any parameter is non-positive.
     pub fn new(
         mean_reversion: T,
         long_term_mean: T,
@@ -131,29 +96,7 @@ impl<T: Float> CIRParams<T> {
         }
     }
 
-    /// Check if the Feller condition is satisfied.
-    ///
-    /// The Feller condition is: 2 * a * b >= sigma^2
-    ///
-    /// When satisfied, the CIR process remains strictly positive.
-    ///
-    /// # Returns
-    ///
-    /// `true` if Feller condition holds, `false` otherwise.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use pricer_models::stochastic::CIRParams;
-    ///
-    /// // Satisfies Feller: 2 * 0.1 * 0.05 = 0.01 >= 0.05^2 = 0.0025
-    /// let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
-    /// assert!(params.satisfies_feller());
-    ///
-    /// // Violates Feller: 2 * 0.01 * 0.02 = 0.0004 < 0.1^2 = 0.01
-    /// let params2 = CIRParams::new(0.01_f64, 0.02, 0.1, 0.03).unwrap();
-    /// assert!(!params2.satisfies_feller());
-    /// ```
+    /// Returns true if the Feller condition holds: `2ab >= sigma^2`.
     pub fn satisfies_feller(&self) -> bool {
         let two = T::from(2.0).unwrap_or(T::one());
         let lhs = two * self.mean_reversion * self.long_term_mean;
@@ -161,9 +104,7 @@ impl<T: Float> CIRParams<T> {
         lhs >= rhs
     }
 
-    /// Calculate the Feller ratio: 2ab / sigma^2.
-    ///
-    /// Values >= 1.0 indicate Feller condition is satisfied.
+    /// Returns the Feller ratio `2ab / sigma^2` (>= 1.0 means condition is satisfied).
     pub fn feller_ratio(&self) -> T {
         let two = T::from(2.0).unwrap_or(T::one());
         let numerator = two * self.mean_reversion * self.long_term_mean;
@@ -178,16 +119,8 @@ impl<T: Float> CIRParams<T> {
 
 /// Cox-Ingersoll-Ross model for short rate dynamics.
 ///
-/// Implements the StochasticModel trait for Monte Carlo simulation.
-///
-/// # Discretization
-///
-/// Uses Euler-Maruyama discretization with truncation for numerical stability:
-/// ```text
-/// r(t+dt) = r(t) + a * (b - r(t)) * dt + sigma * sqrt(max(r(t), 0)) * sqrt(dt) * dW
-/// ```
-///
-/// The max(r(t), 0) ensures numerical stability even when r approaches zero.
+/// Uses Euler-Maruyama discretisation with truncation:
+/// `r(t+dt) = r(t) + a(b - r(t))dt + sigma * sqrt(max(r(t),0)) * sqrt(dt) * dW`
 #[derive(Clone, Debug, Default)]
 pub struct CIRModel<T: Float> {
     _phantom: std::marker::PhantomData<T>,
@@ -253,11 +186,6 @@ impl<T: Float + Default> RatesModel<T> for CIRModel<T> {}
 mod tests {
     use super::*;
 
-    // ================================================================
-    // Task 9.3: CIR Model Tests (TDD)
-    // ================================================================
-
-    // Test: Parameter validation
     #[test]
     fn test_cir_params_new_valid() {
         let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03);
@@ -313,7 +241,6 @@ mod tests {
         assert!(params.is_none());
     }
 
-    // Test: Feller condition
     #[test]
     fn test_cir_params_satisfies_feller() {
         // 2 * 0.1 * 0.05 = 0.01 >= 0.05^2 = 0.0025
@@ -336,7 +263,6 @@ mod tests {
         assert!((ratio - 4.0).abs() < 1e-10);
     }
 
-    // Test: Model properties
     #[test]
     fn test_cir_model_new() {
         let model: CIRModel<f64> = CIRModel::new();
@@ -353,7 +279,6 @@ mod tests {
         assert_eq!(state.0, 0.03);
     }
 
-    // Test: Evolution step
     #[test]
     fn test_cir_evolve_step_no_shock() {
         let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
@@ -425,7 +350,6 @@ mod tests {
         assert!(next_state.0 > 0.0);
     }
 
-    // Test: Multiple steps path generation
     #[test]
     fn test_cir_path_generation() {
         let params = CIRParams::new(0.1_f64, 0.05, 0.03, 0.04).unwrap();
@@ -443,14 +367,12 @@ mod tests {
         assert!(state.0 > 0.0);
     }
 
-    // Test: Differentiable marker
     #[test]
     fn test_cir_is_differentiable() {
         let model: CIRModel<f64> = CIRModel::new();
         let _: &dyn Differentiable = &model;
     }
 
-    // Test: f32 compatibility
     #[test]
     fn test_cir_f32_compatibility() {
         let params = CIRParams::new(0.1_f32, 0.05, 0.05, 0.03).unwrap();
@@ -464,7 +386,6 @@ mod tests {
         assert!(next_state.0 > 0.0_f32);
     }
 
-    // Test: Clone
     #[test]
     fn test_cir_params_clone() {
         let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();

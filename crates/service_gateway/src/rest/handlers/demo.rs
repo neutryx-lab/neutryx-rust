@@ -27,11 +27,7 @@ use crate::{
     state::AppState,
 };
 
-// ---------------------------------------------------------------------------
-// Handler generation macros — eliminate repetitive pass-through boilerplate.
-// ---------------------------------------------------------------------------
-
-/// Handler: State → Json<Response>.
+/// Handler: State -> Json<Response>.
 macro_rules! state_handler {
     ($(#[$doc:meta])* $fn:ident, $svc:ident :: $method:ident -> $res:ty) => {
         $(#[$doc])*
@@ -43,7 +39,7 @@ macro_rules! state_handler {
     };
 }
 
-/// Handler: State + Path<String> → Json<Response>.
+/// Handler: State + Path<String> -> Json<Response>.
 macro_rules! state_path_handler {
     ($(#[$doc:meta])* $fn:ident, $svc:ident :: $method:ident -> $res:ty) => {
         $(#[$doc])*
@@ -56,7 +52,7 @@ macro_rules! state_path_handler {
     };
 }
 
-/// Handler: State + `ValidatedJson<Request>` → `Json<Response>`.
+/// Handler: State + `ValidatedJson<Request>` -> `Json<Response>`.
 macro_rules! state_body_handler {
     ($(#[$doc:meta])* $fn:ident, $svc:ident :: $method:ident($req:ty) -> $res:ty) => {
         $(#[$doc])*
@@ -69,7 +65,7 @@ macro_rules! state_body_handler {
     };
 }
 
-/// Handler: `ValidatedJson<Request>` → `Json<Response>` (no state).
+/// Handler: `ValidatedJson<Request>` -> `Json<Response>` (no state).
 macro_rules! body_handler {
     ($(#[$doc:meta])* $fn:ident, $svc:ident :: $method:ident($req:ty) -> $res:ty) => {
         $(#[$doc])*
@@ -80,10 +76,6 @@ macro_rules! body_handler {
         }
     };
 }
-
-// ---------------------------------------------------------------------------
-// State-only handlers
-// ---------------------------------------------------------------------------
 
 state_handler!(/// GET /api/config.
     get_config, DemoService::get_config -> AppConfigResponse);
@@ -116,10 +108,6 @@ state_handler!(/// GET /api/volcube/indices.
 state_handler!(/// GET /api/volcube/models.
     get_volcube_models, VolcubeService::get_volcube_models -> VolcubeModelsResponse);
 
-// ---------------------------------------------------------------------------
-// State + Path handlers
-// ---------------------------------------------------------------------------
-
 state_path_handler!(/// GET /api/market/rates/:rate_id.
     get_rate_detail, DemoService::get_rate_detail -> MarketRateDetailResponse);
 state_path_handler!(/// GET /api/market/conventions/:id.
@@ -143,10 +131,6 @@ state_path_handler!(/// GET /api/fxvol/quotes/:pair.
 state_path_handler!(/// GET /api/volcube/instruments/:currency.
     get_volcube_instruments, VolcubeService::get_volcube_instruments -> VolcubeInstrumentsResponse);
 
-// ---------------------------------------------------------------------------
-// State + Body handlers
-// ---------------------------------------------------------------------------
-
 state_body_handler!(/// POST /api/trade/expand.
     expand_trade, DemoService::expand_trade(TradeExpandRequest) -> ExpandedTrade);
 state_body_handler!(/// POST /api/pricer/price.
@@ -158,18 +142,10 @@ state_body_handler!(/// POST /api/volcube/calibrate.
 state_body_handler!(/// POST /api/fxvol/calibrate.
     calibrate_fxvol, VolcubeService::calibrate_fxvol(FxVolCalibrateRequest) -> VolcubeCalibrateResponse);
 
-// ---------------------------------------------------------------------------
-// Body-only handlers (no state)
-// ---------------------------------------------------------------------------
-
 body_handler!(/// POST /api/volcube/implied-pdf.
     compute_implied_pdf, VolcubeService::compute_implied_pdf(ImpliedPdfRequest) -> ImpliedPdfResponse);
 body_handler!(/// POST /api/volcube/sabr-smile.
     compute_sabr_smile, VolcubeService::compute_sabr_smile(SabrSmileRequest) -> SabrSmileResponse);
-
-// ---------------------------------------------------------------------------
-// Special handlers (non-trivial response construction)
-// ---------------------------------------------------------------------------
 
 /// POST /api/market/rates/refresh.
 pub async fn refresh_market_rates(

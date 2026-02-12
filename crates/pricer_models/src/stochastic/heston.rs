@@ -21,10 +21,6 @@ use thiserror::Error;
 use super::validation::{ComputationError, ParamValidationError, DEFAULT_SMOOTHING_EPSILON};
 use crate::validate_params;
 
-// ================================================================
-// エラー型
-// ================================================================
-
 /// Hestonモデルエラー型
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum HestonError {
@@ -48,14 +44,7 @@ impl From<HestonError> for pricer_core::types::PricingError {
     }
 }
 
-// ================================================================
-// パラメータ
-// ================================================================
-
 /// Hestonモデルパラメータ
-///
-/// # 型パラメータ
-/// * `T` - Float型（f64またはAD互換のDualNumber）
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HestonParams<T: Float> {
     /// スポット価格 (S0 > 0)
@@ -173,14 +162,7 @@ impl<T: Float> Default for HestonParams<T> {
     }
 }
 
-// ================================================================
-// モデル
-// ================================================================
-
-/// Hestonモデル
-///
-/// QE離散化スキーム (Andersen 2008) による2ファクターモデル。
-/// AD互換のジェネリックFloat型をサポート。
+/// Hestonモデル (QE離散化スキーム, Andersen 2008).
 #[derive(Clone)]
 pub struct HestonModel<T: Float> {
     params: HestonParams<T>,
@@ -236,13 +218,7 @@ impl<T: Float> HestonModel<T> {
         self
     }
 
-    // ================================================================
-    // QE離散化スキーム (Andersen 2008)
-    // ================================================================
-
     /// QEモーメント計算: (m, s2, psi) = (条件付き平均, 条件付き分散, s2/m²)
-    ///
-    /// CIR分散過程: E[V_{t+dt}|V_t] = theta + (V_t - theta) * exp(-kappa * dt)
     pub fn compute_qe_moments(&self, v_current: T, dt: T) -> (T, T, T) {
         let kappa = self.params.kappa;
         let theta = self.params.theta;
@@ -332,7 +308,7 @@ impl<T: Float> HestonModel<T> {
         smooth_max(v_next, self.variance_floor, eps)
     }
 
-    /// 相関ブラウン運動生成 (Cholesky): dW_V = rho * z1 + sqrt(1 - rho^2) * z2
+    /// 相関ブラウン運動生成 (Cholesky).
     pub fn generate_correlated_brownian(&self, z1: T, z2: T) -> (T, T) {
         let rho = self.params.rho;
         let eps = self.params.smoothing_epsilon;
@@ -341,9 +317,7 @@ impl<T: Float> HestonModel<T> {
         (z1, rho * z1 + sqrt_term * z2)
     }
 
-    /// QE価格ステップ (中間点規則)
-    ///
-    /// ln(S_{t+dt}) = ln(S_t) + (r - V_avg/2) * dt + sqrt(V_avg * dt) * dW_S
+    /// QE価格ステップ (中間点規則).
     pub fn qe_price_step(&self, s_current: T, v_current: T, v_next: T, dt: T, dw_s: T) -> T {
         let rate = self.params.rate;
         let eps = self.params.smoothing_epsilon;
@@ -368,10 +342,6 @@ impl<T: Float> HestonModel<T> {
         (s_next, v_next)
     }
 }
-
-// ================================================================
-// トレイト実装
-// ================================================================
 
 impl<T: Float> Differentiable for HestonModel<T> {}
 
@@ -416,28 +386,16 @@ impl<T: Float + Default> StochasticModel<T> for HestonModel<T> {
 
 impl<T: Float + Default> EquityModel<T> for HestonModel<T> {}
 
-// ================================================================
-// テスト
-// ================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::stochastic::stochastic::{StochasticModel, StochasticState, TwoFactorState};
-
-    // ----------------------------------------------------------------
-    // ヘルパー
-    // ----------------------------------------------------------------
 
     fn default_params() -> HestonParams<f64> {
         HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap()
     }
 
     fn default_model() -> HestonModel<f64> { HestonModel::new(default_params()).unwrap() }
-
-    // ----------------------------------------------------------------
-    // エラー型
-    // ----------------------------------------------------------------
 
     #[test]
     fn test_heston_error_display() {
@@ -465,10 +423,6 @@ mod tests {
             pricer_core::types::PricingError::NumericalInstability(_)
         ));
     }
-
-    // ----------------------------------------------------------------
-    // HestonParams
-    // ----------------------------------------------------------------
 
     #[test]
     fn test_params_new_valid() {
@@ -572,10 +526,6 @@ mod tests {
         assert!(p.is_ok());
     }
 
-    // ----------------------------------------------------------------
-    // HestonModel
-    // ----------------------------------------------------------------
-
     #[test]
     fn test_model_new_valid_and_invalid() {
         assert!(HestonModel::new(default_params()).is_ok());
@@ -594,10 +544,6 @@ mod tests {
         assert!(!model.check_feller_condition());
         assert!(model.variance_floor() > 0.0);
     }
-
-    // ----------------------------------------------------------------
-    // QEモーメント
-    // ----------------------------------------------------------------
 
     #[test]
     fn test_qe_moments_computation() {
@@ -643,10 +589,6 @@ mod tests {
             assert!(psi.is_finite() && psi >= 0.0, "Psi invalid for v={v}");
         }
     }
-
-    // ----------------------------------------------------------------
-    // QEスキーム
-    // ----------------------------------------------------------------
 
     #[test]
     fn test_qe_quadratic_scheme() {
@@ -695,10 +637,6 @@ mod tests {
         }
     }
 
-    // ----------------------------------------------------------------
-    // 相関ブラウン運動
-    // ----------------------------------------------------------------
-
     #[test]
     fn test_correlated_brownian() {
         let model = default_model();
@@ -732,10 +670,6 @@ mod tests {
         let (_, dw_v3) = model_zero.generate_correlated_brownian(0.5, -0.3);
         assert!((dw_v3 - (-0.3)).abs() < 1e-8);
     }
-
-    // ----------------------------------------------------------------
-    // QEフルステップ
-    // ----------------------------------------------------------------
 
     #[test]
     fn test_qe_full_step() {
@@ -784,10 +718,6 @@ mod tests {
         let expected = 100.0 * ((0.05 - 0.5 * v_avg) * dt + v_avg.sqrt() * dt.sqrt() * 0.5).exp();
         assert!((s_next - expected).abs() < 1e-7);
     }
-
-    // ----------------------------------------------------------------
-    // StochasticModel トレイト
-    // ----------------------------------------------------------------
 
     #[test]
     fn test_stochastic_model_basics() {
@@ -863,10 +793,6 @@ mod tests {
         let next = HestonModel::evolve_step(state, 1.0_f32 / 252.0, &[0.5_f32, 0.0, 0.5], &params);
         assert!(next.first > 0.0_f32 && next.second >= 0.0_f32);
     }
-
-    // ----------------------------------------------------------------
-    // ロバストネス・安定性
-    // ----------------------------------------------------------------
 
     #[test]
     fn test_feller_violation_variance_floor() {

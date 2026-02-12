@@ -12,27 +12,9 @@ use std::fmt;
 use thiserror::Error;
 
 use crate::math::linalg::LinearAlgebraError;
-// Import math errors for From implementations
 use crate::math::normal_dist::DistributionError;
 
 /// Categorised pricing errors.
-///
-/// Provides structured error handling for pricing operations with
-/// descriptive context for each failure mode.
-///
-/// # Variants
-/// - `InvalidInput`: Invalid market data or parameters
-/// - `NumericalInstability`: Computation failed to converge
-/// - `ModelFailure`: Model assumptions violated
-/// - `UnsupportedInstrument`: Instrument type not supported by model
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::PricingError;
-///
-/// let err = PricingError::InvalidInput("Negative spot price".to_string());
-/// assert_eq!(format!("{}", err), "Invalid input: Negative spot price");
-/// ```
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum PricingError {
     /// Invalid input data or parameters
@@ -53,48 +35,23 @@ pub enum PricingError {
 }
 
 /// Root-finding solver errors.
-///
-/// Provides structured error handling for root-finding solver operations
-/// with descriptive context for each failure mode.
-///
-/// # Variants
-/// - `MaxIterationsExceeded`: Solver failed to converge within iteration limit
-/// - `DerivativeNearZero`: Derivative too small for Newton-Raphson
-/// - `NoBracket`: Function values at bracket endpoints have same sign
-/// - `SingularJacobian`: Jacobian matrix is singular (multi-dimensional
-///   solvers)
-/// - `DimensionMismatch`: Input/output dimensions do not match expected values
-/// - `NumericalInstability`: General numerical instability
-/// - `External`: Error from external crate (argmin, roots, levenberg-marquardt)
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::SolverError;
-///
-/// let err = SolverError::MaxIterationsExceeded { iterations: 100 };
-/// assert!(format!("{}", err).contains("100 iterations"));
-///
-/// // Multi-dimensional solver errors
-/// let err = SolverError::SingularJacobian { min_pivot: 1e-15 };
-/// assert!(format!("{}", err).contains("Singular Jacobian"));
-/// ```
 #[derive(Error, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SolverError {
-    /// Solver failed to converge within maximum iterations.
+    /// Solver failed to converge within maximum iterations
     #[error("Failed to converge after {iterations} iterations")]
     MaxIterationsExceeded {
         /// Number of iterations attempted
         iterations: usize,
     },
 
-    /// Derivative near zero (division by zero risk in Newton-Raphson).
+    /// Derivative near zero (division by zero risk in Newton-Raphson)
     #[error("Derivative near zero at x = {x}")]
     DerivativeNearZero {
         /// The x value where derivative was near zero
         x: f64,
     },
 
-    /// No valid bracket (function values at endpoints have same sign).
+    /// No valid bracket (function values at endpoints have same sign)
     #[error("No bracket: f({a}) and f({b}) have same sign")]
     NoBracket {
         /// Left bracket endpoint
@@ -103,12 +60,7 @@ pub enum SolverError {
         b: f64,
     },
 
-    /// Jacobian matrix is singular or near-singular (multi-dimensional
-    /// solvers).
-    ///
-    /// This occurs when the Jacobian matrix cannot be inverted, typically
-    /// indicating the problem is ill-conditioned or the current iterate
-    /// is at a singular point.
+    /// Jacobian matrix is singular or near-singular.
     #[error("Singular Jacobian: min pivot = {min_pivot:.2e}")]
     SingularJacobian {
         /// Smallest pivot value encountered during LU decomposition
@@ -116,9 +68,6 @@ pub enum SolverError {
     },
 
     /// Dimension mismatch between input and expected values.
-    ///
-    /// This occurs when the residual vector or Jacobian matrix dimensions
-    /// do not match the expected problem dimension.
     #[error("Dimension mismatch: expected {expected}, got {got}")]
     DimensionMismatch {
         /// Expected dimension
@@ -137,9 +86,6 @@ pub enum SolverError {
 }
 
 /// Convert linear algebra errors to solver errors.
-///
-/// This conversion enables seamless error propagation from linear algebra
-/// operations (matrix decomposition, inversion) to solver error handling.
 impl From<LinearAlgebraError> for SolverError {
     fn from(err: LinearAlgebraError) -> Self {
         match err {
@@ -166,15 +112,6 @@ impl From<LinearAlgebraError> for SolverError {
 }
 
 /// Calibration error kind.
-///
-/// Categorises the type of calibration failure.
-///
-/// # Variants
-/// - `NotConverged`: Calibration failed to converge within iteration limit
-/// - `InvalidConstraint`: Parameter constraints were violated
-/// - `NumericalInstability`: Numerical issues during calibration
-/// - `InsufficientData`: Not enough market data for calibration
-/// - `InvalidParameter`: Invalid parameter value during calibration
 #[derive(Error, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum CalibrationErrorKind {
     /// Calibration did not converge within iteration limit.
@@ -204,29 +141,6 @@ pub enum CalibrationErrorKind {
 }
 
 /// Calibration error with detailed diagnostics.
-///
-/// Provides comprehensive information about calibration failures including
-/// residuals, iteration count, and convergence metrics.
-///
-/// # Fields
-/// - `kind`: The type of calibration error
-/// - `residual_ss`: Final residual sum of squares
-/// - `iterations`: Number of iterations performed
-/// - `message`: Optional detailed error message
-/// - `parameter_values`: Optional final parameter values
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::{CalibrationError, CalibrationErrorKind};
-///
-/// // Create a not-converged error
-/// let err = CalibrationError::not_converged(100, 0.01);
-/// assert_eq!(err.iterations, 100);
-///
-/// // Create a constraint violation error
-/// let err = CalibrationError::constraint_violation("alpha must be positive");
-/// assert!(format!("{}", err).contains("constraint violation"));
-/// ```
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CalibrationError {
     /// The type of calibration error.
@@ -258,10 +172,6 @@ impl CalibrationError {
     }
 
     /// Create a not-converged error.
-    ///
-    /// # Arguments
-    /// * `iterations` - Number of iterations performed
-    /// * `residual_ss` - Final residual sum of squares
     pub fn not_converged(iterations: usize, residual_ss: f64) -> Self {
         Self {
             kind: CalibrationErrorKind::NotConverged,
@@ -276,9 +186,6 @@ impl CalibrationError {
     }
 
     /// Create a constraint violation error.
-    ///
-    /// # Arguments
-    /// * `constraint` - Description of violated constraint
     pub fn constraint_violation(constraint: impl Into<String>) -> Self {
         let msg = constraint.into();
         Self {
@@ -291,9 +198,6 @@ impl CalibrationError {
     }
 
     /// Create a numerical instability error.
-    ///
-    /// # Arguments
-    /// * `message` - Description of the numerical issue
     pub fn numerical_instability(message: impl Into<String>) -> Self {
         Self {
             kind: CalibrationErrorKind::NumericalInstability,
@@ -305,10 +209,6 @@ impl CalibrationError {
     }
 
     /// Create an insufficient data error.
-    ///
-    /// # Arguments
-    /// * `got` - Number of data points provided
-    /// * `need` - Minimum required data points
     pub fn insufficient_data(got: usize, need: usize) -> Self {
         Self {
             kind: CalibrationErrorKind::InsufficientData { got, need },
@@ -323,9 +223,6 @@ impl CalibrationError {
     }
 
     /// Create an invalid parameter error.
-    ///
-    /// # Arguments
-    /// * `message` - Description of the invalid parameter
     pub fn invalid_parameter(message: impl Into<String>) -> Self {
         let msg = message.into();
         Self {
@@ -440,16 +337,7 @@ impl From<SolverError> for CalibrationError {
     }
 }
 
-// =============================================================================
-// Error Conversions: Math Errors → Domain Errors
-// =============================================================================
-// These conversions enable seamless error propagation from mathematical
-// operations to domain-level error types (PricingError, CalibrationError).
-
 /// Convert distribution errors to pricing errors.
-///
-/// Probability distributions are fundamental to option pricing, so this
-/// conversion enables natural error propagation.
 impl From<DistributionError> for PricingError {
     fn from(err: DistributionError) -> Self {
         match err {
@@ -466,10 +354,6 @@ mod tests {
     use super::*;
     use crate::math::normal_dist::DistributionError;
 
-    // ==========================================================================
-    // Distribution Error Conversion Tests
-    // ==========================================================================
-
     #[test]
     fn test_distribution_error_to_pricing_invalid_probability() {
         let dist_err = DistributionError::InvalidProbability { p: 1.5 };
@@ -484,10 +368,6 @@ mod tests {
         let pricing_err: PricingError = dist_err.into();
         assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
     }
-
-    // ==========================================================================
-    // PricingError Tests
-    // ==========================================================================
 
     #[test]
     fn test_invalid_input_display() {
@@ -529,10 +409,6 @@ mod tests {
         let err2 = err1.clone();
         assert_eq!(err1, err2);
     }
-
-    // Note: DateError and CurrencyError tests are in infra_domain
-
-    // SolverError tests - Multi-dimensional solver extensions (Task 1.1)
 
     #[test]
     fn test_solver_error_singular_jacobian_display() {
@@ -612,8 +488,6 @@ mod tests {
         ));
     }
 
-    // Original SolverError tests
-
     #[test]
     fn test_solver_error_max_iterations_display() {
         let err = SolverError::MaxIterationsExceeded { iterations: 100 };
@@ -666,8 +540,6 @@ mod tests {
         assert!(format!("{}", err).contains("External"));
         assert!(format!("{}", err).contains("levenberg-marquardt"));
     }
-
-    // CalibrationError tests
 
     #[test]
     fn test_calibration_error_new() {
@@ -839,7 +711,6 @@ mod tests {
         let _: &dyn std::error::Error = &err;
     }
 
-    // Serde tests
     mod serde_tests {
         use super::*;
 

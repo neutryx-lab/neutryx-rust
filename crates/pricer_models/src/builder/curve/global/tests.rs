@@ -186,10 +186,6 @@ fn test_convergence_quality() {
     assert!(quality == "excellent" || quality == "good");
 }
 
-// =========================================================================
-// Jump Configuration Tests
-// =========================================================================
-
 #[test]
 fn test_config_default_no_jumps() {
     let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default();
@@ -248,10 +244,6 @@ fn test_config_with_disabled_jump_config() {
     assert!(!config.has_jumps()); // Not active because disabled
     assert_eq!(config.num_jumps(), 1); // But pillars still counted
 }
-
-// =========================================================================
-// Jump calibration tests
-// =========================================================================
 
 #[allow(dead_code)]
 fn create_jump_pillars() -> Vec<JumpPillar<f64>> {
@@ -358,10 +350,6 @@ fn test_result_jump_helpers() {
     assert_eq!(result.num_jumps(), 0);
     assert_eq!(result.total_jump_bps(), 0.0);
 }
-
-// =========================================================================
-// IFT Sensitivity Tests (Requirement 3.1-3.5)
-// =========================================================================
 
 #[test]
 fn test_can_compute_ift_with_jacobian_inverse() {

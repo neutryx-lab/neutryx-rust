@@ -34,77 +34,18 @@ use num_traits::Float;
 use super::{error::LinearAlgebraError, lu_solve};
 use crate::math::numeric::from_f64;
 
-// =============================================================================
-// LinearSolveStrategy Trait
-// =============================================================================
-
 /// Strategy trait for linear system solvers in calibration problems.
-///
-/// Implementations handle different Jacobian matrix structures:
-/// - Full dense matrices (LU decomposition)
-/// - Lower triangular matrices (forward substitution)
-/// - Block diagonal matrices (future extension)
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type satisfying `RealField + Copy + Float`
 pub trait LinearSolveStrategy<T: RealField + Copy + Float>: Clone + Default {
-    /// Decompose the matrix and store internal state for later use.
-    ///
-    /// This method prepares the matrix for efficient solving and inverse
-    /// computation. The exact operation depends on the strategy:
-    /// - LU: Computes LU factorisation
-    /// - Lower Triangular: Validates structure and stores matrix
-    ///
-    /// # Arguments
-    ///
-    /// * `matrix` - The Jacobian matrix to decompose
-    ///
-    /// # Errors
-    ///
-    /// Returns error if the matrix is singular or has invalid structure.
+    /// Decompose the matrix and store internal state for solving and inverse computation.
     fn decompose(&mut self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError>;
 
-    /// Solve the linear system M * x = b using the stored decomposition.
-    ///
-    /// # Arguments
-    ///
-    /// * `b` - Right-hand side vector
-    ///
-    /// # Returns
-    ///
-    /// Solution vector x
-    ///
-    /// # Errors
-    ///
-    /// Returns error if decompose() hasn't been called or system is singular.
+    /// Solve the linear system `M * x = b` using the stored decomposition.
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError>;
 
-    /// Compute the inverse of the stored matrix.
-    ///
-    /// Used for AAD sensitivity computation via implicit function theorem.
-    ///
-    /// # Returns
-    ///
-    /// The inverse matrix M^{-1}
-    ///
-    /// # Errors
-    ///
-    /// Returns error if decompose() hasn't been called or matrix is singular.
+    /// Compute the inverse of the stored matrix (for AAD via implicit function theorem).
     fn inverse(&self) -> Result<DMatrix<T>, LinearAlgebraError>;
 
-    /// Validate that the matrix has the expected structure.
-    ///
-    /// Override this for strategies that require specific matrix structures
-    /// (e.g., lower triangular).
-    ///
-    /// # Arguments
-    ///
-    /// * `matrix` - The matrix to validate
-    ///
-    /// # Errors
-    ///
-    /// Returns error if matrix doesn't satisfy structural requirements.
+    /// Validate that the matrix has the expected structure (e.g., lower triangular).
     fn validate_structure(&self, _matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
         Ok(()) // Default: no validation
     }
@@ -113,17 +54,9 @@ pub trait LinearSolveStrategy<T: RealField + Copy + Float>: Clone + Default {
     fn name(&self) -> &'static str;
 }
 
-// =============================================================================
-// LU Strategy (Full Dense Matrix)
-// =============================================================================
-
-/// LU decomposition-based strategy for full dense matrices.
-///
-/// Used by Global Bootstrap where the Jacobian is a general dense matrix.
-/// Computational complexity: O(n^3) for decomposition, O(n^2) for solve.
+/// LU decomposition strategy for full dense matrices. O(n^3) decompose, O(n^2) solve.
 #[derive(Debug, Clone)]
 pub struct LUStrategy<T: RealField + Copy> {
-    /// Stored matrix for solving and inverse computation.
     matrix: Option<DMatrix<T>>,
 }
 
@@ -165,21 +98,10 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LUStrategy<T> {
     fn name(&self) -> &'static str { "LU Decomposition" }
 }
 
-// =============================================================================
-// Lower Triangular Strategy (Sequential Bootstrap)
-// =============================================================================
-
-/// Forward substitution strategy for lower triangular matrices.
-///
-/// Used by Sequential Bootstrap where instruments are sorted by maturity,
-/// making the Jacobian lower triangular.
-///
-/// Computational complexity: O(n^2) for both solve and inverse.
+/// Forward substitution strategy for lower triangular matrices. O(n^2) solve and inverse.
 #[derive(Debug, Clone)]
 pub struct LowerTriangularStrategy<T: RealField + Copy> {
-    /// Stored lower triangular matrix.
     matrix: Option<DMatrix<T>>,
-    /// Tolerance for triangularity check.
     tolerance: T,
 }
 
@@ -254,36 +176,12 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
     fn name(&self) -> &'static str { "Forward Substitution (Lower Triangular)" }
 }
 
-// =============================================================================
-// Forward Substitution Algorithm
-// =============================================================================
-
-/// Solve a lower triangular system L * x = b using forward substitution.
+/// Solve `L * x = b` via forward substitution (O(n^2)).
 ///
-/// # Algorithm
-///
-/// For a lower triangular matrix L:
 /// ```text
 /// x[0] = b[0] / L[0,0]
 /// x[i] = (b[i] - sum_{j=0}^{i-1} L[i,j] * x[j]) / L[i,i]
 /// ```
-///
-/// # Complexity
-///
-/// O(n^2) operations.
-///
-/// # Arguments
-///
-/// * `l` - Lower triangular matrix (n x n)
-/// * `b` - Right-hand side vector (length n)
-///
-/// # Returns
-///
-/// Solution vector x (length n)
-///
-/// # Errors
-///
-/// Returns error if matrix has zero diagonal (singular).
 pub fn forward_substitution<T: RealField + Copy + Float>(
     l: &DMatrix<T>,
     b: &[T],
@@ -323,30 +221,7 @@ pub fn forward_substitution<T: RealField + Copy + Float>(
     Ok(x)
 }
 
-/// Compute the inverse of a lower triangular matrix.
-///
-/// # Algorithm
-///
-/// Solves L * L^{-1} = I by computing each column of L^{-1}
-/// via forward substitution with e_j (unit vectors).
-///
-/// # Complexity
-///
-/// O(n^3) operations total (n forward substitutions of O(n^2) each).
-/// However, exploiting triangular structure, this is more efficient
-/// than general matrix inversion.
-///
-/// # Arguments
-///
-/// * `l` - Lower triangular matrix (n x n)
-///
-/// # Returns
-///
-/// Inverse matrix L^{-1} (also lower triangular)
-///
-/// # Errors
-///
-/// Returns error if matrix is singular.
+/// Compute L^{-1} by solving `L * col_j = e_j` for each unit vector (O(n^3)).
 pub fn lower_triangular_inverse<T: RealField + Copy + Float>(
     l: &DMatrix<T>,
 ) -> Result<DMatrix<T>, LinearAlgebraError> {
@@ -376,10 +251,6 @@ pub fn lower_triangular_inverse<T: RealField + Copy + Float>(
 
     Ok(inv)
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

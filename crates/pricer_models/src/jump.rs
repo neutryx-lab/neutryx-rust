@@ -45,18 +45,11 @@ use infra_domain::{
 use num_traits::Float;
 
 /// A jump event converted to time coordinates.
-///
-/// Contains the time (in year fractions) and the cumulative log-space offset
-/// to apply to discount factors after this point.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct JumpTime<T> {
     /// Time in year fractions from valuation date.
     pub time: T,
-    /// Cumulative jump offset in log-space.
-    ///
-    /// This is the sum of all jump effects up to and including this point.
-    /// For a discount factor DF, the adjusted DF at time t is:
-    /// `DF_adjusted = DF * exp(cumulative_offset)`
+    /// Cumulative jump offset in log-space: `DF_adjusted = DF * exp(cumulative_offset)`.
     pub cumulative_offset: T,
 }
 
@@ -72,28 +65,8 @@ impl<T: Float> JumpTime<T> {
 
 /// Converts a slice of JumpPillars to time-based jump representations.
 ///
-/// This function transforms date-based JumpPillar definitions into time
-/// coordinates (year fractions) suitable for curve interpolation. The
-/// cumulative offsets are calculated in log-space to be applied to discount
-/// factors.
-///
-/// # Arguments
-///
-/// * `pillars` - Slice of JumpPillar definitions
-/// * `valuation_date` - The curve's valuation date
-/// * `day_counter` - Day count convention for year fraction calculation
-///
-/// # Returns
-///
-/// A vector of `JumpTime<f64>` sorted by time, with cumulative offsets.
-///
-/// # Details
-///
-/// - Pillars with jump dates before or on the valuation date are excluded
-/// - Results are sorted by time (ascending)
-/// - Cumulative offsets use weighted jump (expected_jump_bps * confidence)
-/// - The offset is converted from basis points to log-space: `offset =
-///   -weighted_jump_bps / 10000`
+/// Pillars before or on valuation date are excluded. Results are sorted by
+/// time with cumulative log-space offsets (`-weighted_jump_bps / 10000`).
 ///
 /// # Examples
 ///
@@ -124,10 +97,6 @@ pub fn convert_jump_pillars_to_times(
 }
 
 /// Generic version of `convert_jump_pillars_to_times` for any Float type.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating point type (e.g., f64, f32, or AD-compatible types)
 pub fn convert_jump_pillars_to_times_generic<T: Float>(
     pillars: &[JumpPillar],
     valuation_date: Date,
@@ -174,19 +143,9 @@ pub fn convert_jump_pillars_to_times_generic<T: Float>(
         .collect()
 }
 
-/// Finds the cumulative jump offset at a given time.
+/// Finds the cumulative jump offset at a given time via binary search.
 ///
-/// Uses binary search for O(log n) lookup.
-///
-/// # Arguments
-///
-/// * `jumps` - Sorted slice of JumpTime entries
-/// * `t` - Time to query
-///
-/// # Returns
-///
-/// The cumulative offset at time `t`. Returns zero if there are no jumps
-/// before or at time `t`.
+/// Returns zero if there are no jumps before or at time `t`.
 ///
 /// # Examples
 ///
@@ -222,20 +181,7 @@ pub fn effective_jump_offset_at<T: Float>(jumps: &[JumpTime<T>], t: T) -> T {
     }
 }
 
-/// Returns the jump offset specifically at time `t` (right limit minus left
-/// limit).
-///
-/// This is useful for determining the discontinuity magnitude at a jump date.
-///
-/// # Arguments
-///
-/// * `jumps` - Sorted slice of JumpTime entries
-/// * `t` - Time to query
-/// * `tolerance` - Time tolerance for matching jump dates
-///
-/// # Returns
-///
-/// The instantaneous jump offset at time `t`, or zero if no jump exists there.
+/// Returns the discontinuity magnitude at time `t` (right limit minus left limit).
 pub fn jump_offset_at<T: Float>(jumps: &[JumpTime<T>], t: T, tolerance: T) -> T {
     for (i, jump) in jumps.iter().enumerate() {
         if (jump.time - t).abs() <= tolerance {
@@ -251,20 +197,12 @@ pub fn jump_offset_at<T: Float>(jumps: &[JumpTime<T>], t: T, tolerance: T) -> T 
     T::zero()
 }
 
-/// Checks if there is a jump at the given time.
-///
-/// # Arguments
-///
-/// * `jumps` - Sorted slice of JumpTime entries
-/// * `t` - Time to check
-/// * `tolerance` - Time tolerance for matching (typically 1e-10)
+/// Checks if there is a jump at the given time (within `tolerance`).
 pub fn has_jump_at<T: Float>(jumps: &[JumpTime<T>], t: T, tolerance: T) -> bool {
     jumps.iter().any(|j| (j.time - t).abs() <= tolerance)
 }
 
-/// Converts a vector of (time, cumulative_offset) tuples to JumpTime vector.
-///
-/// This is a convenience function for creating jump data from raw tuples.
+/// Converts `(time, cumulative_offset)` tuples to a `JumpTime` vector.
 pub fn from_tuples<T: Float>(data: Vec<(T, T)>) -> Vec<JumpTime<T>> {
     data.into_iter()
         .map(|(time, offset)| JumpTime::new(time, offset))
@@ -463,10 +401,6 @@ mod tests {
         // -(-25bp) = +0.0025
         assert_relative_eq!(result[0].cumulative_offset, 0.0025, epsilon = 1e-10);
     }
-
-    // =========================================================================
-    // Turn event tests
-    // =========================================================================
 
     #[test]
     fn test_convert_turn_pillar_generates_paired_entries() {

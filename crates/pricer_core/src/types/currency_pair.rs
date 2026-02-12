@@ -34,31 +34,7 @@ use std::fmt;
 use infra_domain::{error::CurrencyError, market::Currency};
 use num_traits::Float;
 
-/// An FX rate for foreign exchange calculations.
-///
-/// Represents a pair of currencies with a spot exchange rate.
-/// The convention is BASE/QUOTE, meaning 1 unit of BASE = spot units of QUOTE.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type implementing `Float` (e.g., `f64`, `Dual64`)
-///
-/// # Distinction from `infra_domain::CurrencyPair`
-///
-/// - `infra_domain::CurrencyPair`: Instrument definition (static, no spot rate)
-/// - `FxRate<T>`: Pricing type (dynamic spot rate, AD-compatible)
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::Currency;
-/// use pricer_core::types::FxRate;
-///
-/// // EUR/USD = 1.10 means 1 EUR = 1.10 USD
-/// let eurusd = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-/// assert_eq!(eurusd.base(), Currency::EUR);
-/// assert_eq!(eurusd.quote(), Currency::USD);
-/// ```
+/// An FX rate (BASE/QUOTE convention: 1 BASE = spot QUOTE). AD-compatible via generic `T`.
 #[derive(Debug, Clone, Copy)]
 pub struct FxRate<T: Float> {
     /// Base currency (the numerator in the exchange rate)
@@ -70,28 +46,7 @@ pub struct FxRate<T: Float> {
 }
 
 impl<T: Float> FxRate<T> {
-    /// Creates a new FX rate.
-    ///
-    /// # Arguments
-    ///
-    /// * `base` - The base currency
-    /// * `quote` - The quote currency
-    /// * `spot` - The spot exchange rate (must be positive)
-    ///
-    /// # Errors
-    ///
-    /// Returns `CurrencyError::InvalidSpotRate` if spot is not positive.
-    /// Returns `CurrencyError::SameCurrency` if base and quote are the same.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// assert_eq!(rate.spot(), 1.10);
-    /// ```
+    /// Creates a new FX rate. Returns error if spot <= 0 or base == quote.
     pub fn new(base: Currency, quote: Currency, spot: T) -> Result<Self, CurrencyError> {
         if base == quote {
             return Err(CurrencyError::SameCurrency(base.code().to_string()));
@@ -103,80 +58,21 @@ impl<T: Float> FxRate<T> {
     }
 
     /// Returns the base currency.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// assert_eq!(rate.base(), Currency::EUR);
-    /// ```
     #[inline]
     pub fn base(&self) -> Currency { self.base }
 
     /// Returns the quote currency.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// assert_eq!(rate.quote(), Currency::USD);
-    /// ```
     #[inline]
     pub fn quote(&self) -> Currency { self.quote }
 
     /// Returns the spot exchange rate.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// assert_eq!(rate.spot(), 1.10);
-    /// ```
     #[inline]
     pub fn spot(&self) -> T { self.spot }
 
     /// Returns the currency pair code in standard format (BASE/QUOTE).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// assert_eq!(rate.code(), "EUR/USD");
-    /// ```
     pub fn code(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
 
-    /// Updates the spot rate.
-    ///
-    /// # Arguments
-    ///
-    /// * `new_spot` - The new spot exchange rate (must be positive)
-    ///
-    /// # Errors
-    ///
-    /// Returns `CurrencyError::InvalidSpotRate` if new_spot is not positive.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let mut rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// rate.set_spot(1.15).unwrap();
-    /// assert_eq!(rate.spot(), 1.15);
-    /// ```
+    /// Updates the spot rate. Returns error if new_spot <= 0.
     pub fn set_spot(&mut self, new_spot: T) -> Result<(), CurrencyError> {
         if new_spot <= T::zero() {
             return Err(CurrencyError::InvalidSpotRate);
@@ -185,23 +81,7 @@ impl<T: Float> FxRate<T> {
         Ok(())
     }
 
-    /// Creates an inverted FX rate (swaps base and quote).
-    ///
-    /// The spot rate is inverted: new_spot = 1 / old_spot.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let eurusd: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// let usdeur = eurusd.invert();
-    ///
-    /// assert_eq!(usdeur.base(), Currency::USD);
-    /// assert_eq!(usdeur.quote(), Currency::EUR);
-    /// assert!((usdeur.spot() - 1.0_f64 / 1.10_f64).abs() < 1e-10);
-    /// ```
+    /// Creates an inverted FX rate (swaps base and quote, spot = 1/old_spot).
     pub fn invert(&self) -> Self {
         Self {
             base: self.quote,
@@ -211,70 +91,14 @@ impl<T: Float> FxRate<T> {
     }
 
     /// Converts an amount from base currency to quote currency.
-    ///
-    /// # Arguments
-    ///
-    /// * `base_amount` - Amount in base currency
-    ///
-    /// # Returns
-    ///
-    /// Amount in quote currency.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// // EUR/USD = 1.10
-    /// let rate: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    ///
-    /// // 100 EUR = 110 USD
-    /// let usd_amount = rate.convert_to_quote(100.0_f64);
-    /// assert!((usd_amount - 110.0_f64).abs() < 1e-10);
-    /// ```
     #[inline]
     pub fn convert_to_quote(&self, base_amount: T) -> T { base_amount * self.spot }
 
     /// Converts an amount from quote currency to base currency.
-    ///
-    /// # Arguments
-    ///
-    /// * `quote_amount` - Amount in quote currency
-    ///
-    /// # Returns
-    ///
-    /// Amount in base currency.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// // EUR/USD = 1.10
-    /// let rate: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    ///
-    /// // 110 USD = 100 EUR
-    /// let eur_amount = rate.convert_to_base(110.0_f64);
-    /// assert!((eur_amount - 100.0_f64).abs() < 1e-10);
-    /// ```
     #[inline]
     pub fn convert_to_base(&self, quote_amount: T) -> T { quote_amount / self.spot }
 
     /// Checks if this rate contains the given currency.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxRate;
-    ///
-    /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    /// assert!(rate.contains(Currency::EUR));
-    /// assert!(rate.contains(Currency::USD));
-    /// assert!(!rate.contains(Currency::JPY));
-    /// ```
     #[inline]
     pub fn contains(&self, currency: Currency) -> bool {
         self.base == currency || self.quote == currency
@@ -304,32 +128,7 @@ impl<T: Float> std::hash::Hash for FxRate<T> {
 #[deprecated(since = "0.9.0", note = "renamed to FxRate")]
 pub type CurrencyPair<T> = FxRate<T>;
 
-/// A simple FX pair identifier (without spot rate).
-///
-/// Used as a key for FX index mapping in `IndexMapper`. Unlike `FxRate<T>`,
-/// this type doesn't carry a spot rate, making it suitable for use as
-/// a HashMap key or index identifier.
-///
-/// # Convention
-///
-/// BASE/QUOTE means converting from BASE to QUOTE currency.
-/// For example, EUR/USD means 1 EUR = X USD.
-///
-/// # Examples
-///
-/// ```
-/// use infra_domain::market::Currency;
-/// use pricer_core::types::FxPair;
-///
-/// let eurusd = FxPair::new(Currency::EUR, Currency::USD);
-/// assert_eq!(eurusd.base(), Currency::EUR);
-/// assert_eq!(eurusd.quote(), Currency::USD);
-/// assert_eq!(eurusd.code(), "EUR/USD");
-///
-/// // EUR/USD and USD/EUR are different pairs
-/// let usdeur = FxPair::new(Currency::USD, Currency::EUR);
-/// assert_ne!(eurusd, usdeur);
-/// ```
+/// A simple FX pair identifier (without spot rate), suitable for use as a HashMap key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FxPair {
     /// Base currency (the numerator in the exchange rate)
@@ -340,21 +139,6 @@ pub struct FxPair {
 
 impl FxPair {
     /// Creates a new FX pair.
-    ///
-    /// # Arguments
-    ///
-    /// * `base` - The base currency
-    /// * `quote` - The quote currency
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxPair;
-    ///
-    /// let pair = FxPair::new(Currency::EUR, Currency::USD);
-    /// assert_eq!(pair.base(), Currency::EUR);
-    /// ```
     #[must_use]
     pub fn new(base: Currency, quote: Currency) -> Self { Self { base, quote } }
 
@@ -369,32 +153,10 @@ impl FxPair {
     pub fn quote(&self) -> Currency { self.quote }
 
     /// Returns the currency pair code in standard format (BASE/QUOTE).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxPair;
-    ///
-    /// let pair = FxPair::new(Currency::EUR, Currency::USD);
-    /// assert_eq!(pair.code(), "EUR/USD");
-    /// ```
     #[must_use]
     pub fn code(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
 
     /// Creates an inverted FX pair (swaps base and quote).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxPair;
-    ///
-    /// let eurusd = FxPair::new(Currency::EUR, Currency::USD);
-    /// let usdeur = eurusd.invert();
-    /// assert_eq!(usdeur.base(), Currency::USD);
-    /// assert_eq!(usdeur.quote(), Currency::EUR);
-    /// ```
     #[must_use]
     pub fn invert(&self) -> Self {
         Self {
@@ -404,18 +166,6 @@ impl FxPair {
     }
 
     /// Checks if this pair contains the given currency.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_domain::market::Currency;
-    /// use pricer_core::types::FxPair;
-    ///
-    /// let pair = FxPair::new(Currency::EUR, Currency::USD);
-    /// assert!(pair.contains(Currency::EUR));
-    /// assert!(pair.contains(Currency::USD));
-    /// assert!(!pair.contains(Currency::JPY));
-    /// ```
     #[inline]
     #[must_use]
     pub fn contains(&self, currency: Currency) -> bool {
@@ -423,9 +173,6 @@ impl FxPair {
     }
 
     /// Checks if this is a same-currency pair (base == quote).
-    ///
-    /// Note: Such pairs are typically invalid for FX operations
-    /// but can be useful for validation.
     #[inline]
     #[must_use]
     pub fn is_same_currency(&self) -> bool { self.base == self.quote }
@@ -438,10 +185,7 @@ impl fmt::Display for FxPair {
 }
 
 impl Default for FxPair {
-    /// Returns a dummy FX pair (USD/USD) for use as a placeholder.
-    ///
-    /// Note: This creates a same-currency pair which is typically invalid
-    /// for actual FX operations.
+    /// Returns a dummy FX pair (USD/USD) as a placeholder.
     fn default() -> Self {
         Self {
             base: Currency::USD,
@@ -622,10 +366,6 @@ mod tests {
             CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
         assert_eq!(rate.base(), Currency::EUR);
     }
-
-    // =========================================================================
-    // FxPair Tests
-    // =========================================================================
 
     #[test]
     fn test_fx_pair_new() {

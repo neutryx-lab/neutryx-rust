@@ -51,9 +51,7 @@
 
 use std::fmt;
 
-/// Configuration for calibration process.
-///
-/// Controls convergence criteria and iteration limits.
+/// Configuration for calibration convergence criteria and iteration limits.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CalibrationConfig {
     /// Maximum number of iterations.
@@ -114,9 +112,7 @@ impl CalibrationConfig {
     }
 }
 
-/// Result of a calibration run.
-///
-/// Contains the final parameters, convergence status, and diagnostics.
+/// Result of a calibration run with final parameters, convergence status, and diagnostics.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CalibrationResult<P> {
     /// Final calibrated parameters.
@@ -371,52 +367,7 @@ impl Constraint {
     }
 }
 
-/// Trait for model calibrators.
-///
-/// Defines the interface for calibrating model parameters to market data.
-///
-/// # Type Parameters
-///
-/// * `MarketData` - The type of market data used for calibration
-/// * `ModelParams` - The type of model parameters being calibrated
-///
-/// # Example
-///
-/// ```
-/// use pricer_core::traits::calibration::{
-///     Calibrator, CalibrationResult, CalibrationConfig, Constraint,
-/// };
-///
-/// struct MyCalibrator;
-///
-/// impl Calibrator for MyCalibrator {
-///     type MarketData = Vec<f64>;
-///     type ModelParams = [f64; 2];
-///
-///     fn calibrate(
-///         &self,
-///         market_data: &Self::MarketData,
-///         initial_params: Self::ModelParams,
-///         config: &CalibrationConfig,
-///     ) -> CalibrationResult<Self::ModelParams> {
-///         // Calibration logic here...
-///         CalibrationResult::converged(initial_params, 0, 0.0)
-///     }
-///
-///     fn objective_function(
-///         &self,
-///         params: &Self::ModelParams,
-///         market_data: &Self::MarketData,
-///     ) -> Vec<f64> {
-///         // Return residuals
-///         vec![0.0; market_data.len()]
-///     }
-///
-///     fn constraints(&self) -> Vec<Constraint> {
-///         vec![]
-///     }
-/// }
-/// ```
+/// Trait for calibrating model parameters to market data.
 pub trait Calibrator {
     /// Type of market data used for calibration.
     type MarketData;
@@ -424,16 +375,6 @@ pub trait Calibrator {
     type ModelParams;
 
     /// Calibrate model parameters to match market data.
-    ///
-    /// # Arguments
-    ///
-    /// * `market_data` - Market observations to fit
-    /// * `initial_params` - Starting point for optimisation
-    /// * `config` - Calibration configuration
-    ///
-    /// # Returns
-    ///
-    /// Calibration result with final parameters and diagnostics.
     fn calibrate(
         &self,
         market_data: &Self::MarketData,
@@ -441,27 +382,14 @@ pub trait Calibrator {
         config: &CalibrationConfig,
     ) -> CalibrationResult<Self::ModelParams>;
 
-    /// Compute the objective function residuals.
-    ///
-    /// Returns a vector of residuals (model - market) for each observation.
-    ///
-    /// # Arguments
-    ///
-    /// * `params` - Current model parameters
-    /// * `market_data` - Market observations
-    ///
-    /// # Returns
-    ///
-    /// Vector of residuals.
+    /// Compute residuals (model - market) for each observation.
     fn objective_function(
         &self,
         params: &Self::ModelParams,
         market_data: &Self::MarketData,
     ) -> Vec<f64>;
 
-    /// Get parameter constraints.
-    ///
-    /// Returns a vector of constraints that must be satisfied.
+    /// Get parameter constraints that must be satisfied.
     fn constraints(&self) -> Vec<Constraint>;
 
     /// Calibrate with default configuration.
@@ -477,10 +405,6 @@ pub trait Calibrator {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ========================================
-    // CalibrationConfig Tests
-    // ========================================
 
     #[test]
     fn test_config_default() {
@@ -509,10 +433,6 @@ mod tests {
         assert!(config.max_iterations >= 500);
         assert!(config.tolerance <= 1e-10);
     }
-
-    // ========================================
-    // CalibrationResult Tests
-    // ========================================
 
     #[test]
     fn test_result_converged() {
@@ -571,10 +491,6 @@ mod tests {
         assert!(display.contains("iterations: 10"));
     }
 
-    // ========================================
-    // ParameterBounds Tests
-    // ========================================
-
     #[test]
     fn test_bounds_new() {
         let bounds = ParameterBounds::new(0.0, 1.0);
@@ -625,10 +541,6 @@ mod tests {
         assert_eq!(bounds.clamp(-0.5), 0.0);
         assert_eq!(bounds.clamp(1.5), 1.0);
     }
-
-    // ========================================
-    // Constraint Tests
-    // ========================================
 
     #[test]
     fn test_constraint_bounds() {
@@ -698,10 +610,6 @@ mod tests {
         assert!((c.violation(&[1.5]) - 0.5).abs() < 1e-10);
         assert!((c.violation(&[-0.5]) - 0.5).abs() < 1e-10);
     }
-
-    // ========================================
-    // Calibrator Trait Tests
-    // ========================================
 
     struct MockCalibrator {
         #[allow(dead_code)]

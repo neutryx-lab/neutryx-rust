@@ -12,34 +12,10 @@ use num_traits::Float;
 
 use crate::math::numeric::from_f64;
 
-/// Differentiable maximum function using LogSumExp.
+/// Differentiable approximation of `max(a, b)` using LogSumExp.
 ///
-/// # Mathematical Definition
-/// ```text
-/// smooth_max(a, b, ε) = ε * log(exp(a/ε) + exp(b/ε))
-/// ```
-///
-/// # Convergence
-/// As ε → 0, smooth_max(a, b, ε) → max(a, b)
-///
-/// # Arguments
-/// * `a` - First argument
-/// * `b` - Second argument
-/// * `epsilon` - Smoothing parameter (recommended range: 1e-8 to 1e-3)
-///
-/// # Returns
-/// Differentiable approximation of max(a, b)
-///
-/// # Panics
-/// Panics if epsilon <= 0
-///
-/// # Examples
-/// ```
-/// use pricer_core::math::smoothing::smooth_max;
-///
-/// let result = smooth_max(3.0_f64, 5.0_f64, 1e-6);
-/// assert!((result - 5.0).abs() < 1e-3);
-/// ```
+/// `smooth_max(a, b, ε) = ε * log(exp(a/ε) + exp(b/ε))` converges to
+/// `max(a, b)` as ε -> 0. Panics if `epsilon <= 0`.
 #[inline]
 pub fn smooth_max<T: Float>(a: T, b: T, epsilon: T) -> T {
     assert!(epsilon > T::zero(), "epsilon must be positive");
@@ -54,26 +30,9 @@ pub fn smooth_max<T: Float>(a: T, b: T, epsilon: T) -> T {
     m + epsilon * (exp_a + exp_b).ln()
 }
 
-/// Differentiable minimum function as dual of smooth_max.
+/// Differentiable approximation of `min(a, b)` as `-smooth_max(-a, -b, ε)`.
 ///
-/// # Mathematical Definition
-/// ```text
-/// smooth_min(a, b, ε) = -smooth_max(-a, -b, ε)
-/// ```
-///
-/// # Convergence
-/// As ε → 0, smooth_min(a, b, ε) → min(a, b)
-///
-/// # Arguments
-/// * `a` - First argument
-/// * `b` - Second argument
-/// * `epsilon` - Smoothing parameter (recommended range: 1e-8 to 1e-3)
-///
-/// # Returns
-/// Differentiable approximation of min(a, b)
-///
-/// # Panics
-/// Panics if epsilon <= 0
+/// Panics if `epsilon <= 0`.
 #[inline]
 pub fn smooth_min<T: Float>(a: T, b: T, epsilon: T) -> T {
     assert!(epsilon > T::zero(), "epsilon must be positive");
@@ -82,28 +41,10 @@ pub fn smooth_min<T: Float>(a: T, b: T, epsilon: T) -> T {
     -smooth_max(-a, -b, epsilon)
 }
 
-/// Differentiable Heaviside function using sigmoid.
+/// Differentiable Heaviside step via sigmoid: `1 / (1 + exp(-x/ε))`.
 ///
-/// # Mathematical Definition
-/// ```text
-/// smooth_indicator(x, ε) = 1 / (1 + exp(-x/ε))
-/// ```
-///
-/// # Convergence
-/// As ε → 0:
-/// - x < 0 → 0
-/// - x = 0 → 0.5
-/// - x > 0 → 1
-///
-/// # Arguments
-/// * `x` - Input value
-/// * `epsilon` - Smoothing parameter (recommended range: 1e-8 to 1e-3)
-///
-/// # Returns
-/// Differentiable approximation of Heaviside step function
-///
-/// # Panics
-/// Panics if epsilon <= 0
+/// Converges to 0 (x<0), 0.5 (x=0), 1 (x>0) as ε -> 0.
+/// Panics if `epsilon <= 0`.
 #[inline]
 pub fn smooth_indicator<T: Float>(x: T, epsilon: T) -> T {
     assert!(epsilon > T::zero(), "epsilon must be positive");
@@ -113,25 +54,9 @@ pub fn smooth_indicator<T: Float>(x: T, epsilon: T) -> T {
     one / (one + (-x / epsilon).exp())
 }
 
-/// Differentiable absolute value function using Softplus.
+/// Differentiable `|x|` via Softplus: `ε * log(exp(x/ε) + exp(-x/ε))`.
 ///
-/// # Mathematical Definition
-/// ```text
-/// smooth_abs(x, ε) = ε * log(exp(x/ε) + exp(-x/ε))
-/// ```
-///
-/// # Convergence
-/// As ε → 0, smooth_abs(x, ε) → |x|
-///
-/// # Arguments
-/// * `x` - Input value
-/// * `epsilon` - Smoothing parameter (recommended range: 1e-8 to 1e-3)
-///
-/// # Returns
-/// Differentiable approximation of |x|
-///
-/// # Panics
-/// Panics if epsilon <= 0
+/// Panics if `epsilon <= 0`.
 #[inline]
 pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T {
     assert!(epsilon > T::zero(), "epsilon must be positive");
@@ -146,43 +71,10 @@ pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T {
     abs_x + epsilon * (T::one() + term).ln()
 }
 
-/// Differentiable square root function.
+/// Differentiable `sqrt(x)` via `sqrt(x + ε^2) - ε`.
 ///
-/// # Mathematical Definition
-/// ```text
-/// smooth_sqrt(x, ε) = sqrt(x + ε²) - ε
-/// ```
-///
-/// This formula provides:
-/// - smooth_sqrt(0, ε) = 0 (exact at zero)
-/// - smooth_sqrt(x, ε) → sqrt(x) as ε → 0 for x > 0
-/// - Always non-negative for any x (even x < 0 due to ε² term)
-/// - Differentiable everywhere including at x = 0
-///
-/// # Convergence
-/// As ε → 0, smooth_sqrt(x, ε) → sqrt(x) for x >= 0
-///
-/// # Arguments
-/// * `x` - Input value (can be slightly negative due to numerical errors)
-/// * `epsilon` - Smoothing parameter (recommended range: 1e-8 to 1e-3)
-///
-/// # Returns
-/// Differentiable approximation of sqrt(max(x, 0))
-///
-/// # Panics
-/// Panics if epsilon <= 0
-///
-/// # Examples
-/// ```
-/// use pricer_core::math::smoothing::smooth_sqrt;
-///
-/// let result = smooth_sqrt(4.0_f64, 1e-6);
-/// assert!((result - 2.0).abs() < 1e-4);
-///
-/// // Handles zero smoothly
-/// let at_zero = smooth_sqrt(0.0_f64, 1e-6);
-/// assert!(at_zero.abs() < 1e-10);
-/// ```
+/// Exact at zero, always non-negative, differentiable everywhere.
+/// Panics if `epsilon <= 0`.
 #[inline]
 pub fn smooth_sqrt<T: Float>(x: T, epsilon: T) -> T {
     assert!(epsilon > T::zero(), "epsilon must be positive");
@@ -203,43 +95,9 @@ pub fn smooth_sqrt<T: Float>(x: T, epsilon: T) -> T {
     safe_radicand.sqrt() - epsilon
 }
 
-/// Differentiable natural logarithm function.
+/// Differentiable `ln(x)` via `ln(x + ε)`, avoiding the singularity at zero.
 ///
-/// # Mathematical Definition
-/// ```text
-/// smooth_log(x, ε) = ln(x + ε)
-/// ```
-///
-/// This formula provides:
-/// - Avoids the singularity at x = 0 by shifting the argument by ε
-/// - smooth_log(x, ε) → ln(x) as ε → 0 for x > 0
-/// - Returns finite values even for x ≈ 0 or x < 0
-/// - Differentiable everywhere
-///
-/// # Convergence
-/// As ε → 0, smooth_log(x, ε) → ln(x) for x > 0
-///
-/// # Arguments
-/// * `x` - Input value (should typically be positive)
-/// * `epsilon` - Smoothing parameter (recommended range: 1e-8 to 1e-3)
-///
-/// # Returns
-/// Differentiable approximation of ln(x)
-///
-/// # Panics
-/// Panics if epsilon <= 0
-///
-/// # Examples
-/// ```
-/// use pricer_core::math::smoothing::smooth_log;
-///
-/// let result = smooth_log(std::f64::consts::E, 1e-10);
-/// assert!((result - 1.0).abs() < 1e-8);
-///
-/// // Handles near-zero smoothly
-/// let near_zero = smooth_log(1e-10_f64, 1e-6);
-/// assert!(near_zero.is_finite());
-/// ```
+/// Panics if `epsilon <= 0`.
 #[inline]
 pub fn smooth_log<T: Float>(x: T, epsilon: T) -> T {
     assert!(epsilon > T::zero(), "epsilon must be positive");
@@ -252,54 +110,10 @@ pub fn smooth_log<T: Float>(x: T, epsilon: T) -> T {
     (x + epsilon).ln()
 }
 
-/// Differentiable power function for non-integer exponents.
+/// Differentiable `x^p` via `exp(p * ln(|x| + ε))`.
 ///
-/// # Mathematical Definition
-/// ```text
-/// smooth_pow(x, p, ε) = exp(p * smooth_log(smooth_abs(x, ε) + ε, ε))
-/// ```
-///
-/// For positive x (the common case):
-/// ```text
-/// smooth_pow(x, p, ε) ≈ exp(p * ln(x + ε)) = (x + ε)^p
-/// ```
-///
-/// This formula provides:
-/// - Handles x near zero smoothly
-/// - Works for any real exponent p (integer or fractional)
-/// - Differentiable everywhere
-/// - Uses smooth_abs for robustness with slightly negative x
-///
-/// # Convergence
-/// As ε → 0, smooth_pow(x, p, ε) → x^p for x > 0
-///
-/// # Arguments
-/// * `x` - Base value (should typically be positive)
-/// * `p` - Exponent (can be any real number)
-/// * `epsilon` - Smoothing parameter (recommended range: 1e-8 to 1e-3)
-///
-/// # Returns
-/// Differentiable approximation of x^p
-///
-/// # Panics
-/// Panics if epsilon <= 0
-///
-/// # Examples
-/// ```
-/// use pricer_core::math::smoothing::smooth_pow;
-///
-/// // x^2
-/// let result = smooth_pow(3.0_f64, 2.0, 1e-8);
-/// assert!((result - 9.0).abs() < 1e-4);
-///
-/// // x^0.5 (square root)
-/// let sqrt_result = smooth_pow(4.0_f64, 0.5, 1e-8);
-/// assert!((sqrt_result - 2.0).abs() < 1e-4);
-///
-/// // x^0 = 1
-/// let zero_exp = smooth_pow(5.0_f64, 0.0, 1e-8);
-/// assert!((zero_exp - 1.0).abs() < 1e-4);
-/// ```
+/// Works for any real exponent, handles x near zero smoothly.
+/// Panics if `epsilon <= 0`.
 #[inline]
 pub fn smooth_pow<T: Float>(x: T, p: T, epsilon: T) -> T {
     assert!(epsilon > T::zero(), "epsilon must be positive");
@@ -328,8 +142,6 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-
-    // Task 2.5: Smoothing function unit tests
 
     #[test]
     fn test_smooth_max_convergence() {
@@ -454,7 +266,6 @@ mod tests {
     #[should_panic(expected = "epsilon must be positive")]
     fn test_smooth_abs_panics_on_zero_epsilon() { smooth_abs(3.0_f64, 0.0); }
 
-    // Task 1.1: smooth_sqrt tests
     #[test]
     fn test_smooth_sqrt_convergence() {
         // Test convergence to true sqrt as epsilon decreases
@@ -528,7 +339,6 @@ mod tests {
     #[should_panic(expected = "epsilon must be positive")]
     fn test_smooth_sqrt_panics_on_negative_epsilon() { smooth_sqrt(4.0_f64, -1e-6); }
 
-    // Task 1.2: smooth_log tests
     #[test]
     fn test_smooth_log_convergence() {
         // Test convergence to true log as epsilon decreases
@@ -601,7 +411,6 @@ mod tests {
     #[should_panic(expected = "epsilon must be positive")]
     fn test_smooth_log_panics_on_negative_epsilon() { smooth_log(2.0_f64, -1e-6); }
 
-    // Task 1.3: smooth_pow tests
     #[test]
     fn test_smooth_pow_convergence_integer_exponent() {
         // Test convergence to true power for integer exponent
@@ -703,12 +512,7 @@ mod tests {
     #[should_panic(expected = "epsilon must be positive")]
     fn test_smooth_pow_panics_on_negative_epsilon() { smooth_pow(4.0_f64, 0.5, -1e-6); }
 
-    // ================================================================
-    // Task 5.2: Gradient verification tests
-    // Verify AD compatibility via finite difference comparison
-    // ================================================================
-
-    /// Compute numerical gradient using central difference
+    /// Compute numerical gradient using central difference.
     fn finite_diff<F>(f: F, x: f64, h: f64) -> f64
     where
         F: Fn(f64) -> f64,
@@ -955,7 +759,6 @@ mod tests {
         }
     }
 
-    // Task 6.1: Property-based tests for smoothing functions
     #[cfg(test)]
     mod property_tests {
         use proptest::prelude::*;
@@ -1114,7 +917,6 @@ mod tests {
                 assert!(abs_result.is_finite());
             }
 
-            // Task 1.1: Property-based tests for smooth_sqrt
             #[test]
             fn test_smooth_sqrt_non_negative(
                 x in finite_f64_strategy(),
@@ -1159,7 +961,6 @@ mod tests {
                 assert!(result.is_finite(), "smooth_sqrt({}, {}) should be finite", x, epsilon);
             }
 
-            // Task 1.2: Property-based tests for smooth_log
             #[test]
             fn test_smooth_log_monotonicity(
                 x1 in 0.01f64..1000.0,
@@ -1189,7 +990,6 @@ mod tests {
                 assert!(result.is_finite(), "smooth_log({}, {}) should be finite", x, epsilon);
             }
 
-            // Task 1.3: Property-based tests for smooth_pow
             #[test]
             fn test_smooth_pow_positive_base_positive_result(
                 x in 0.01f64..100.0,

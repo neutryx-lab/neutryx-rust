@@ -125,7 +125,7 @@ impl Default for PricingConfig {
 }
 
 impl PricingConfig {
-    /// Validates the configuration and returns errors for invalid values.
+    /// Validates the configuration.
     pub fn validate(&self) -> Result<(), ConfigError> {
         if self.reporting_currency.is_empty() {
             return Err(ConfigError::InvalidValue {

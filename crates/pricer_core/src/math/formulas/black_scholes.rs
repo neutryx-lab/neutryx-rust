@@ -16,26 +16,7 @@ use num_traits::Float;
 use super::{error::FormulaError, generalised_bsm::GeneralisedBSM};
 use crate::math::numeric::from_f64;
 
-/// Black-Scholes model for European option pricing.
-///
-/// Provides closed-form pricing and Greeks calculations for European
-/// options under lognormal dynamics.
-///
-/// # Type Parameters
-/// * `T` - Floating-point type implementing `Float` (e.g., `f64`, `Dual64`)
-///
-/// # Examples
-/// ```
-/// use pricer_core::math::formulas::BlackScholes;
-///
-/// let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
-/// let call_price = bs.price_call(100.0, 1.0);
-/// let put_price = bs.price_put(100.0, 1.0);
-///
-/// // Put-call parity: C - P = S - K*exp(-rT)
-/// let parity = call_price - put_price - (100.0 - 100.0 * (-0.05_f64).exp());
-/// assert!(parity.abs() < 1e-10);
-/// ```
+/// Black-Scholes model for European option pricing and Greeks.
 #[derive(Debug, Clone)]
 pub struct BlackScholes<T: Float> {
     /// Spot price (S)
@@ -47,29 +28,7 @@ pub struct BlackScholes<T: Float> {
 }
 
 impl<T: Float> BlackScholes<T> {
-    /// Creates a new Black-Scholes model.
-    ///
-    /// # Arguments
-    /// * `spot` - Current spot price (must be positive)
-    /// * `rate` - Risk-free interest rate (annualised)
-    /// * `volatility` - Volatility (must be positive)
-    ///
-    /// # Errors
-    /// - `FormulaError::InvalidSpot` if spot <= 0
-    /// - `FormulaError::InvalidVolatility` if volatility <= 0
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::math::formulas::BlackScholes;
-    ///
-    /// let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
-    ///
-    /// // Invalid spot
-    /// assert!(BlackScholes::new(-100.0_f64, 0.05, 0.2).is_err());
-    ///
-    /// // Invalid volatility
-    /// assert!(BlackScholes::new(100.0_f64, 0.05, 0.0).is_err());
-    /// ```
+    /// Creates a new Black-Scholes model. Returns error if spot or volatility <= 0.
     pub fn new(spot: T, rate: T, volatility: T) -> Result<Self, FormulaError> {
         let zero = T::zero();
 
@@ -123,16 +82,7 @@ impl<T: Float> BlackScholes<T> {
         .ok()
     }
 
-    /// Computes the d1 term of the Black-Scholes formula.
-    ///
-    /// d₁ = (ln(S/K) + (r + σ²/2)T) / (σ√T)
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price (K)
-    /// * `expiry` - Time to expiration in years (T)
-    ///
-    /// # Returns
-    /// The d1 term. Returns large positive/negative values for limiting cases.
+    /// Computes d₁ = (ln(S/K) + (r + σ²/2)T) / (σ√T).
     #[inline]
     pub fn d1(&self, strike: T, expiry: T) -> T {
         match self.bsm(strike, expiry) {
@@ -150,16 +100,7 @@ impl<T: Float> BlackScholes<T> {
         }
     }
 
-    /// Computes the d2 term of the Black-Scholes formula.
-    ///
-    /// d₂ = d₁ - σ√T
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price (K)
-    /// * `expiry` - Time to expiration in years (T)
-    ///
-    /// # Returns
-    /// The d2 term.
+    /// Computes d₂ = d₁ - σ√T.
     #[inline]
     pub fn d2(&self, strike: T, expiry: T) -> T {
         match self.bsm(strike, expiry) {
@@ -168,27 +109,7 @@ impl<T: Float> BlackScholes<T> {
         }
     }
 
-    /// Computes European call option price.
-    ///
-    /// C = S·N(d₁) - K·e^(-rT)·N(d₂)
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price (K)
-    /// * `expiry` - Time to expiration in years (T)
-    ///
-    /// # Returns
-    /// The theoretical call option price.
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::math::formulas::BlackScholes;
-    ///
-    /// let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
-    /// let price = bs.price_call(100.0, 1.0);
-    ///
-    /// // ATM call should have positive value
-    /// assert!(price > 0.0);
-    /// ```
+    /// Computes European call price: C = S·N(d₁) - K·e^(-rT)·N(d₂).
     #[inline]
     pub fn price_call(&self, strike: T, expiry: T) -> T {
         match self.bsm(strike, expiry) {
@@ -205,27 +126,7 @@ impl<T: Float> BlackScholes<T> {
         }
     }
 
-    /// Computes European put option price.
-    ///
-    /// P = K·e^(-rT)·N(-d₂) - S·N(-d₁)
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price (K)
-    /// * `expiry` - Time to expiration in years (T)
-    ///
-    /// # Returns
-    /// The theoretical put option price.
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::math::formulas::BlackScholes;
-    ///
-    /// let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
-    /// let price = bs.price_put(100.0, 1.0);
-    ///
-    /// // ATM put should have positive value
-    /// assert!(price > 0.0);
-    /// ```
+    /// Computes European put price: P = K·e^(-rT)·N(-d₂) - S·N(-d₁).
     #[inline]
     pub fn price_put(&self, strike: T, expiry: T) -> T {
         match self.bsm(strike, expiry) {
@@ -321,10 +222,6 @@ mod tests {
 
     use super::*;
 
-    // ==========================================================
-    // Constructor Tests
-    // ==========================================================
-
     #[test]
     fn test_new_valid_parameters() {
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2);
@@ -386,10 +283,6 @@ mod tests {
         assert!(bs.is_ok());
     }
 
-    // ==========================================================
-    // d1/d2 Tests
-    // ==========================================================
-
     #[test]
     fn test_d1_atm() {
         // ATM with r=0: d1 = σ√T / 2
@@ -423,10 +316,6 @@ mod tests {
         let d1_otm = bs.d1(120.0, 0.0);
         assert!(d1_otm < -50.0);
     }
-
-    // ==========================================================
-    // Price Tests
-    // ==========================================================
 
     #[test]
     fn test_call_price_positive() {
@@ -463,10 +352,6 @@ mod tests {
         assert_eq!(bs.price(100.0, 1.0, false), bs.price_put(100.0, 1.0));
     }
 
-    // ==========================================================
-    // Put-Call Parity Tests
-    // ==========================================================
-
     #[test]
     fn test_put_call_parity() {
         let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
@@ -486,10 +371,6 @@ mod tests {
             assert_relative_eq!(call - put, forward, epsilon = 1e-10);
         }
     }
-
-    // ==========================================================
-    // Greeks Tests
-    // ==========================================================
 
     #[test]
     fn test_delta_call_bounds() {
@@ -553,10 +434,6 @@ mod tests {
         assert!(bs.rho(100.0, 1.0, false) < 0.0);
     }
 
-    // ==========================================================
-    // Clone and Debug Tests
-    // ==========================================================
-
     #[test]
     fn test_clone() {
         let bs1 = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
@@ -573,10 +450,6 @@ mod tests {
         assert!(debug_str.contains("BlackScholes"));
         assert!(debug_str.contains("spot"));
     }
-
-    // ==========================================================
-    // f32 Compatibility Tests
-    // ==========================================================
 
     #[test]
     fn test_f32_compatibility() {

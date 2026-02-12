@@ -8,10 +8,6 @@ use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 use thiserror::Error;
 
-// =============================================================================
-// Error Types
-// =============================================================================
-
 /// Errors that can occur during market data operations.
 #[derive(Debug, Clone, Error)]
 pub enum MarketDataError {
@@ -45,10 +41,6 @@ pub enum MarketDataError {
         max_maturity: f64,
     },
 }
-
-// =============================================================================
-// Curves Module
-// =============================================================================
 
 /// Yield curve traits and implementations.
 pub mod curves {
@@ -126,10 +118,6 @@ pub mod curves {
             Ok(self.rate)
         }
     }
-
-    // =========================================================================
-    // Bootstrapping Types
-    // =========================================================================
 
     /// Payment frequency for financial instruments.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -624,10 +612,6 @@ pub mod curves {
             })
         }
 
-        // =====================================================================
-        // Analytical Gradient Support
-        // =====================================================================
-
         /// Returns the discount factor and its gradient w.r.t. pillar DFs.
         pub fn discount_factor_with_gradient(&self, t: T) -> Result<(T, Vec<T>), MarketDataError> {
             self.discount_factor_gradient_impl(t, false)
@@ -736,10 +720,7 @@ pub mod curves {
         }
     }
 
-    /// Enum wrapper for different curve types (static dispatch).
-    ///
-    /// Uses `enum_dispatch` to automatically implement `YieldCurve<T>` trait
-    /// by forwarding method calls to the inner variant types.
+    /// Enum wrapper for different curve types (static dispatch via `enum_dispatch`).
     #[derive(Debug, Clone)]
     #[enum_dispatch(YieldCurve<T>)]
     pub enum CurveEnum<T: Float> {
@@ -760,10 +741,6 @@ pub mod curves {
     // Re-export from parent module for compatibility with curves:: path
     pub use super::{CurveName, CurveSet};
 }
-
-// =============================================================================
-// Curve Identification and Collections
-// =============================================================================
 
 /// Named curve identifiers for common rate indices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -861,14 +838,7 @@ impl<T: Float + 'static> CurveSet<T> {
     }
 }
 
-// =============================================================================
-// Market Provider (Placeholder)
-// =============================================================================
-
-/// Market data provider for pricing operations.
-///
-/// This is a placeholder type that will be fully implemented
-/// when the market data infrastructure is complete.
+/// Market data provider for pricing operations (placeholder).
 #[derive(Debug, Clone, Default)]
 pub struct MarketProvider {
     curve_set: CurveSet<f64>,
@@ -891,10 +861,6 @@ impl MarketProvider {
     /// Returns the curve set.
     pub fn curve_set(&self) -> &CurveSet<f64> { &self.curve_set }
 }
-
-// =============================================================================
-// FX Curves Module
-// =============================================================================
 
 /// FX forward curve traits and implementations.
 pub mod fx_curves {
@@ -1023,10 +989,7 @@ pub mod fx_curves {
     // Import CurveEnum from curves module for use in FxCurveEnum
     use super::curves::{CurveEnum, FlatCurve};
 
-    /// Enum wrapper for different FX curve types (static dispatch).
-    ///
-    /// Uses `enum_dispatch` to automatically implement `FxCurve<T>` trait
-    /// by forwarding method calls to the inner variant types.
+    /// Enum wrapper for different FX curve types (static dispatch via `enum_dispatch`).
     #[derive(Debug, Clone)]
     #[enum_dispatch(FxCurve<T>)]
     pub enum FxCurveEnum<T: Float> {
@@ -1084,10 +1047,6 @@ pub use curves::{
 };
 pub use fx_curves::{FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
 
-// =============================================================================
-// Jump Conversion Utilities
-// =============================================================================
-
 /// Utilities for converting JumpPillar definitions to curve-compatible format.
 pub mod jumps {
     use infra_domain::{
@@ -1095,10 +1054,7 @@ pub mod jumps {
         time::{Date, DayCounter},
     };
 
-    /// A jump entry for use in bootstrapped curves.
-    ///
-    /// Contains the time of the jump (in years from valuation date) and
-    /// the cumulative offset to apply to the log of the discount factor.
+    /// A jump entry (time in years, cumulative log-DF offset) for bootstrapped curves.
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct JumpEntry {
         /// Time of the jump in years from valuation date.
@@ -1450,10 +1406,6 @@ pub mod jumps {
             assert!((tuples[0].1 - (-0.002)).abs() < 1e-10);
         }
 
-        // =================================================================
-        // Turn event tests
-        // =================================================================
-
         #[test]
         fn test_convert_single_turn_pillar() {
             let valuation = test_valuation_date();
@@ -1579,10 +1531,6 @@ mod tests {
         let df = curve.discount_factor(1.5).unwrap();
         assert!(df > 0.0 && df < 1.0);
     }
-
-    // =========================================================================
-    // Jump-Aware BootstrappedCurve Tests
-    // =========================================================================
 
     #[test]
     fn test_bootstrapped_curve_no_jumps_same_as_base() {
@@ -1811,10 +1759,6 @@ mod tests {
         let expected = ((rate * 0.5).exp() - 1.0) / 0.5;
         assert!((fwd - expected).abs() < 1e-10);
     }
-
-    // =========================================================================
-    // FX Curve Tests
-    // =========================================================================
 
     #[test]
     fn test_flat_fx_curve() {

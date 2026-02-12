@@ -36,30 +36,7 @@ use std::fmt;
 
 use thiserror::Error;
 
-// =============================================================================
-// ParamValidationError - Unified parameter validation error
-// =============================================================================
-
 /// Unified parameter validation error.
-///
-/// Provides structured error information for parameter validation failures
-/// with consistent formatting across all models.
-///
-/// # Fields
-///
-/// - `param`: Name of the invalid parameter (e.g., "spot", "rho", "kappa")
-/// - `value`: The invalid value that was provided
-/// - `constraint`: Human-readable description of the constraint
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::ParamValidationError;
-///
-/// let err = ParamValidationError::new("spot", -100.0, "must be positive");
-/// assert!(err.to_string().contains("spot"));
-/// assert!(err.to_string().contains("-100"));
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParamValidationError {
     /// Parameter name
@@ -124,30 +101,7 @@ impl fmt::Display for ParamValidationError {
 
 impl std::error::Error for ParamValidationError {}
 
-// =============================================================================
-// ComputationError - Common numerical computation errors
-// =============================================================================
-
 /// Common numerical computation errors.
-///
-/// Provides unified error handling for numerical issues that can occur
-/// across different models during computation.
-///
-/// # Variants
-///
-/// - `NumericalInstability`: General numerical issues (overflow, underflow,
-///   etc.)
-/// - `NonFinite`: NaN or infinity detected in computation
-/// - `ConvergenceFailure`: Iterative algorithm failed to converge
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::ComputationError;
-///
-/// let err = ComputationError::non_finite("variance calculation");
-/// assert!(err.to_string().contains("NaN"));
-/// ```
 #[derive(Error, Debug, Clone, PartialEq)]
 pub enum ComputationError {
     /// Numerical instability detected during computation.
@@ -189,21 +143,7 @@ impl ComputationError {
     }
 }
 
-// =============================================================================
-// Validation helper functions
-// =============================================================================
-
 /// Validate that a parameter is positive (> 0).
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::validate_positive;
-///
-/// assert!(validate_positive("spot", 100.0).is_ok());
-/// assert!(validate_positive("spot", 0.0).is_err());
-/// assert!(validate_positive("spot", -1.0).is_err());
-/// ```
 #[inline]
 pub fn validate_positive(param: &'static str, value: f64) -> Result<(), ParamValidationError> {
     if value > 0.0 {
@@ -214,16 +154,6 @@ pub fn validate_positive(param: &'static str, value: f64) -> Result<(), ParamVal
 }
 
 /// Validate that a parameter is non-negative (>= 0).
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::validate_non_negative;
-///
-/// assert!(validate_non_negative("nu", 0.0).is_ok());
-/// assert!(validate_non_negative("nu", 0.5).is_ok());
-/// assert!(validate_non_negative("nu", -0.1).is_err());
-/// ```
 #[inline]
 pub fn validate_non_negative(param: &'static str, value: f64) -> Result<(), ParamValidationError> {
     if value >= 0.0 {
@@ -234,17 +164,6 @@ pub fn validate_non_negative(param: &'static str, value: f64) -> Result<(), Para
 }
 
 /// Validate that a parameter is in the closed interval [-1, 1].
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::validate_correlation;
-///
-/// assert!(validate_correlation("rho", 0.5).is_ok());
-/// assert!(validate_correlation("rho", -1.0).is_ok());
-/// assert!(validate_correlation("rho", 1.0).is_ok());
-/// assert!(validate_correlation("rho", 1.1).is_err());
-/// ```
 #[inline]
 pub fn validate_correlation(param: &'static str, value: f64) -> Result<(), ParamValidationError> {
     if (-1.0..=1.0).contains(&value) {
@@ -254,20 +173,7 @@ pub fn validate_correlation(param: &'static str, value: f64) -> Result<(), Param
     }
 }
 
-/// Validate that a parameter is in the open interval (-1, 1).
-///
-/// Used for parameters like SABR rho where boundary values cause singularities.
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::validate_strict_correlation;
-///
-/// assert!(validate_strict_correlation("rho", 0.5).is_ok());
-/// assert!(validate_strict_correlation("rho", -0.99).is_ok());
-/// assert!(validate_strict_correlation("rho", -1.0).is_err());
-/// assert!(validate_strict_correlation("rho", 1.0).is_err());
-/// ```
+/// Validate that a parameter is in the open interval (-1, 1) (e.g. SABR rho).
 #[inline]
 pub fn validate_strict_correlation(
     param: &'static str,
@@ -283,17 +189,6 @@ pub fn validate_strict_correlation(
 }
 
 /// Validate that a parameter is in the closed interval [0, 1].
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::validate_unit_interval;
-///
-/// assert!(validate_unit_interval("beta", 0.5).is_ok());
-/// assert!(validate_unit_interval("beta", 0.0).is_ok());
-/// assert!(validate_unit_interval("beta", 1.0).is_ok());
-/// assert!(validate_unit_interval("beta", 1.1).is_err());
-/// ```
 #[inline]
 pub fn validate_unit_interval(param: &'static str, value: f64) -> Result<(), ParamValidationError> {
     if (0.0..=1.0).contains(&value) {
@@ -304,16 +199,6 @@ pub fn validate_unit_interval(param: &'static str, value: f64) -> Result<(), Par
 }
 
 /// Validate that a value is finite (not NaN or infinity).
-///
-/// # Example
-///
-/// ```
-/// use pricer_models::stochastic::validation::validate_finite;
-///
-/// assert!(validate_finite("result", 1.0).is_ok());
-/// assert!(validate_finite("result", f64::NAN).is_err());
-/// assert!(validate_finite("result", f64::INFINITY).is_err());
-/// ```
 #[inline]
 pub fn validate_finite(context: &'static str, value: f64) -> Result<(), ComputationError> {
     if value.is_finite() {
@@ -323,61 +208,9 @@ pub fn validate_finite(context: &'static str, value: f64) -> Result<(), Computat
     }
 }
 
-// =============================================================================
-// Default smoothing epsilon
-// =============================================================================
-
-/// Default smoothing epsilon value used across stochastic models.
-///
-/// This constant consolidates the `1e-8` epsilon value used in GBM, Heston,
-/// and other models for smooth approximations (AD compatibility).
+/// Default smoothing epsilon (1e-8) used across stochastic models for AD-compatible smooth approximations.
 pub const DEFAULT_SMOOTHING_EPSILON: f64 = 1e-8;
 
-// =============================================================================
-// validate_params! macro
-// =============================================================================
-
-/// Macro to generate a `validate()` method body for stochastic model
-/// parameters.
-///
-/// Eliminates repetitive sequences of `validate_positive`,
-/// `validate_correlation`, etc. calls across model parameter types.
-///
-/// # Syntax
-///
-/// ```ignore
-/// validate_params! {
-///     self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
-///     positive: [spot, v0, theta, kappa, xi, maturity, psi_c, smoothing_epsilon],
-///     correlation: [rho],
-/// }
-/// ```
-///
-/// # Supported rules
-///
-/// - `positive`: calls `validate_positive` for each field
-/// - `non_negative`: calls `validate_non_negative` for each field
-/// - `correlation`: calls `validate_correlation` for each field (closed [-1,
-///   1])
-/// - `strict_correlation`: calls `validate_strict_correlation` for each field
-///   (open (-1, 1))
-/// - `unit_interval`: calls `validate_unit_interval` for each field ([0, 1])
-///
-/// # Example
-///
-/// ```ignore
-/// use crate::stochastic::validation::{validate_params, ParamValidationError};
-///
-/// impl<T: Float> HestonParams<T> {
-///     pub fn validate(&self) -> Result<(), ParamValidationError> {
-///         validate_params! {
-///             self_val = self, f64_conv = |v: T| v.to_f64().unwrap_or(f64::NAN),
-///             positive: [spot, v0, theta, kappa, xi, maturity, psi_c, smoothing_epsilon],
-///             correlation: [rho],
-///         }
-///     }
-/// }
-/// ```
 /// Internal helper: dispatch a single validation rule.
 #[doc(hidden)]
 #[macro_export]
@@ -415,8 +248,6 @@ macro_rules! __validate_rule {
 pub use __validate_rule;
 
 /// Macro to generate parameter validation from declarative rules.
-///
-/// See [`validate_params`] module-level docs for syntax and examples.
 #[macro_export]
 macro_rules! validate_params {
     (
@@ -434,17 +265,9 @@ macro_rules! validate_params {
 // Re-export the macro at crate level for use in submodules
 pub use validate_params;
 
-// =============================================================================
-// Tests
-// =============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // -------------------------------------------------------------------------
-    // ParamValidationError tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_param_validation_error_display() {
@@ -469,10 +292,6 @@ mod tests {
         assert!(err.to_string().contains("[-1, 1]"));
     }
 
-    // -------------------------------------------------------------------------
-    // ComputationError tests
-    // -------------------------------------------------------------------------
-
     #[test]
     fn test_computation_error_numerical_instability() {
         let err = ComputationError::numerical_instability("overflow in exp");
@@ -494,10 +313,6 @@ mod tests {
         assert!(msg.contains("100"));
         assert!(msg.contains("iterations"));
     }
-
-    // -------------------------------------------------------------------------
-    // Validation function tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_validate_positive() {
@@ -552,10 +367,6 @@ mod tests {
         assert!(validate_finite("result", f64::INFINITY).is_err());
         assert!(validate_finite("result", f64::NEG_INFINITY).is_err());
     }
-
-    // -------------------------------------------------------------------------
-    // Error trait implementation tests
-    // -------------------------------------------------------------------------
 
     #[test]
     fn test_param_validation_error_is_error() {

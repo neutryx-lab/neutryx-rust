@@ -32,14 +32,7 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-/// State representation for stochastic models.
-///
-/// Different models have different state dimensions:
-/// - GBM: Single value (price)
-/// - Heston: Two values (price, variance)
-/// - Multi-factor models: Multiple values
-///
-/// This trait provides a unified interface for state manipulation.
+/// State representation for stochastic models (unified interface for state manipulation).
 pub trait StochasticState<T: Float>: Clone + Copy + Default {
     /// Number of state variables
     fn dimension() -> usize;
@@ -142,140 +135,47 @@ impl<T: Float + Default> StochasticState<T> for TwoFactorState<T> {
 
 /// Unified trait interface for stochastic process models.
 ///
-/// This trait defines the core methods required for Monte Carlo simulation:
-/// - `evolve_step`: Advance state by one time step
-/// - `initial_state`: Get starting state from parameters
-/// - `brownian_dim`: Number of Brownian motion increments needed
-///
-/// # Type Parameters
-/// * `T` - Float type (f64 or DualNumber)
-///
-/// # Type Safety
-/// - T: Float bound ensures numeric operations available
-/// - State type is model-specific (e.g., f64 for GBM, (f64, f64) for Heston)
-///
-/// # Static Dispatch Only
 /// **IMPORTANT**: Do NOT use `Box<dyn StochasticModel>`. Use enum-based
 /// dispatch via `StochasticModelEnum` for Enzyme LLVM compatibility.
-///
-/// # Example
-/// ```ignore
-/// use pricer_models::stochastic::stochastic::StochasticModel;
-///
-/// // Correct: enum-based dispatch
-/// match model {
-///     StochasticModelEnum::GBM(gbm) => gbm.evolve_step(state, dt, &dw),
-///     StochasticModelEnum::Heston(heston) => heston.evolve_step(state, dt, &dw),
-/// }
-///
-/// // WRONG: dynamic dispatch - incompatible with Enzyme
-/// // let model: Box<dyn StochasticModel<f64>> = ...
-/// ```
 pub trait StochasticModel<T: Float>: Differentiable {
-    /// Model-specific state type (GBM: `SingleState<T>`, Heston:
-    /// `TwoFactorState<T>`)
+    /// Model-specific state type.
     type State: StochasticState<T>;
 
     /// Model parameters type
     type Params: Clone;
 
-    /// Evolve state by one time step.
-    ///
-    /// # Arguments
-    /// * `state` - Current state
-    /// * `dt` - Time step size (must be positive)
-    /// * `dw` - Brownian motion increments (length must equal `brownian_dim()`)
-    /// * `params` - Model parameters
-    ///
-    /// # Returns
-    /// Next state after one time step
-    ///
-    /// # Preconditions
-    /// - `dt > 0`
-    /// - `dw.len() == Self::brownian_dim()`
-    ///
-    /// # Postconditions
-    /// - Returned state is finite (no NaN/Inf)
+    /// Evolve state by one time step (`dw.len()` must equal `brownian_dim()`).
     fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State;
 
     /// Get initial state from model parameters.
-    ///
-    /// # Arguments
-    /// * `params` - Model parameters containing initial values
-    ///
-    /// # Returns
-    /// Initial state for simulation
     fn initial_state(params: &Self::Params) -> Self::State;
 
     /// Number of Brownian motion increments required per step.
-    ///
-    /// # Returns
-    /// - 1 for single-factor models (GBM)
-    /// - 2 for two-factor models (Heston with correlated Brownian)
     fn brownian_dim() -> usize;
 
     /// Model name for logging and debugging.
     fn model_name() -> &'static str;
 
-    /// Number of stochastic factors in the model.
-    ///
-    /// This method returns the number of independent risk factors in the model:
-    /// - 1 for single-factor models (GBM, Hull-White 1F, CIR)
-    /// - 2 for two-factor models (G2++, Heston with separate volatility)
-    /// - n for multi-factor models (LMM, hybrid models)
-    ///
-    /// # Returns
-    ///
-    /// Number of stochastic factors (must be >= 1)
-    ///
-    /// # Note
-    ///
-    /// This is distinct from `brownian_dim()` which returns the number of
-    /// Brownian motion increments required. For correlated models, these
-    /// may differ (e.g., Heston has 2 factors but may use 2 correlated
-    /// Brownians).
+    /// Number of independent stochastic factors (distinct from `brownian_dim()`).
     fn num_factors() -> usize;
 }
 
-// ============================================================================
-// Asset Class Marker Traits
-// ============================================================================
-// These marker traits allow models to declare which asset classes they support.
-// A single model can implement multiple markers.
-
-/// Marker trait for equity models.
-///
-/// Equity models typically simulate spot price dynamics with optional
-/// stochastic volatility. Examples: GBM, Heston.
+/// Marker trait for equity models (e.g., GBM, Heston).
 pub trait EquityModel<T: Float>: StochasticModel<T> {}
 
-/// Marker trait for interest rate models.
-///
-/// Rate models simulate short rate or forward rate dynamics.
-/// Examples: Hull-White, CIR, G2++.
+/// Marker trait for interest rate models (e.g., Hull-White, CIR, G2++).
 pub trait RatesModel<T: Float>: StochasticModel<T> {}
 
-/// Marker trait for FX models.
-///
-/// FX models simulate currency pair dynamics, often with
-/// stochastic volatility. Examples: Garman-Kohlhagen.
+/// Marker trait for FX models (e.g., Garman-Kohlhagen).
 pub trait FxModel<T: Float>: StochasticModel<T> {}
 
 /// Marker trait for hybrid/exotic models.
-///
-/// Hybrid models combine multiple asset classes or use
-/// advanced correlation structures.
 pub trait HybridModel {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // ================================================================
-    // Task 2.1: StochasticModel Trait Tests (TDD - RED phase)
-    // ================================================================
-
-    // Test: SingleState basic operations
     #[test]
     fn test_single_state_dimension() {
         assert_eq!(SingleState::<f64>::dimension(), 1);
@@ -309,7 +209,6 @@ mod tests {
         assert_eq!(arr, vec![100.0]);
     }
 
-    // Test: TwoFactorState basic operations
     #[test]
     fn test_two_factor_state_dimension() {
         assert_eq!(TwoFactorState::<f64>::dimension(), 2);
@@ -354,7 +253,6 @@ mod tests {
         assert_eq!(arr, vec![100.0, 0.04]);
     }
 
-    // Test: StochasticModel trait implementation with mock model
     struct MockGBM {
         _smoothing_epsilon: f64,
     }
@@ -478,7 +376,6 @@ mod tests {
         assert!(next_state.0 < state.0);
     }
 
-    // Test: Differentiable marker trait requirement
     #[test]
     fn test_stochastic_model_requires_differentiable() {
         // This test verifies at compile time that StochasticModel requires
@@ -489,7 +386,6 @@ mod tests {
         // If this compiles, the trait bound is satisfied
     }
 
-    // Test: Generic Float type support (compile-time verification)
     #[test]
     fn test_stochastic_model_generic_float() {
         // Verify that SingleState works with f32 as well
@@ -500,7 +396,6 @@ mod tests {
         assert_eq!(state_f64.get(0), Some(100.0_f64));
     }
 
-    // Test: State is Clone + Copy (required for efficient simulation)
     #[test]
     fn test_state_clone_copy() {
         let state1 = SingleState(100.0_f64);
@@ -521,7 +416,6 @@ mod tests {
         assert_eq!(two_factor1.first, two_factor3.first);
     }
 
-    // Test: Default implementation for state types
     #[test]
     fn test_state_default() {
         let single: SingleState<f64> = Default::default();

@@ -50,10 +50,6 @@ fn vec_norm<T: Float>(v: &[T]) -> T {
     Float::sqrt(v.iter().map(|&x| x * x).fold(T::zero(), |acc, x| acc + x))
 }
 
-// =============================================================================
-// CalibrationEngineConfig
-// =============================================================================
-
 /// Configuration for the calibration engine.
 #[derive(Debug, Clone)]
 pub struct CalibrationEngineConfig<T: Float> {
@@ -148,10 +144,6 @@ impl<T: Float> CalibrationEngineConfig<T> {
     }
 }
 
-// =============================================================================
-// CalibrationResult
-// =============================================================================
-
 /// Result of calibration.
 #[derive(Debug, Clone)]
 pub struct CalibrationResult<T: Float> {
@@ -177,16 +169,7 @@ pub struct CalibrationResult<T: Float> {
     pub strategy_name: &'static str,
 }
 
-// =============================================================================
-// CalibrationEngine
-// =============================================================================
-
 /// Unified calibration engine with pluggable linear solve strategy.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type
-/// * `S` - Linear solve strategy (`LUStrategy` or `LowerTriangularStrategy`)
 #[derive(Debug, Clone)]
 pub struct CalibrationEngine<T: Float + RealField + Copy, S: LinearSolveStrategy<T>> {
     config: CalibrationEngineConfig<T>,
@@ -231,14 +214,6 @@ where
     pub fn strategy_name(&self) -> &'static str { self.strategy.name() }
 
     /// Calibrate a curve from instruments.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Market instruments to calibrate
-    ///
-    /// # Returns
-    ///
-    /// Calibration result containing the curve and diagnostics.
     pub fn calibrate<I>(
         &mut self,
         instruments: &[I],
@@ -259,15 +234,6 @@ where
     }
 
     /// Calibrate with jump pillars.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Market instruments
-    /// * `jump_pillars` - Jump pillars for CB meeting dates
-    ///
-    /// # Returns
-    ///
-    /// Calibration result with realised jumps.
     pub fn calibrate_with_jumps<I>(
         &mut self,
         instruments: &[I],
@@ -556,19 +522,11 @@ where
     }
 }
 
-// =============================================================================
-// Type Aliases for Convenience
-// =============================================================================
-
 /// Calibration engine with LU strategy (Global Bootstrap).
 pub type GlobalCalibrationEngine<T> = CalibrationEngine<T, LUStrategy<T>>;
 
 /// Calibration engine with lower triangular strategy (Sequential Bootstrap).
 pub type SequentialCalibrationEngine<T> = CalibrationEngine<T, LowerTriangularStrategy<T>>;
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

@@ -85,12 +85,6 @@ pub enum CorrelationError {
 }
 
 /// Correlation matrix with validation and Cholesky decomposition.
-///
-/// A correlation matrix must satisfy:
-/// - Square and symmetric
-/// - Diagonal elements equal to 1.0
-/// - Off-diagonal elements in [-1, 1]
-/// - Positive semi-definite (for Cholesky: positive definite)
 #[derive(Clone, Debug)]
 pub struct CorrelationMatrix<T: Float> {
     /// Matrix elements in row-major order
@@ -100,8 +94,7 @@ pub struct CorrelationMatrix<T: Float> {
 }
 
 impl<T: Float> CorrelationMatrix<T> {
-    /// Create a new correlation matrix from flat array (row-major, dim*dim
-    /// elements).
+    /// Create a new correlation matrix from flat array (row-major).
     pub fn new(data: &[T], dim: usize) -> Result<Self, CorrelationError> {
         let expected = dim * dim;
         if data.len() != expected {
@@ -211,8 +204,6 @@ impl<T: Float> CorrelationMatrix<T> {
 }
 
 /// Lower triangular Cholesky factor of a correlation matrix.
-///
-/// Used to transform independent standard normals into correlated normals.
 #[derive(Clone, Debug)]
 pub struct CholeskyFactor<T: Float> {
     /// Lower triangular matrix elements (row-major)
@@ -234,8 +225,7 @@ impl<T: Float> CholeskyFactor<T> {
         }
     }
 
-    /// Transform independent standard normals Z to correlated normals W = L *
-    /// Z.
+    /// Transform independent standard normals Z to correlated normals W = L * Z.
     pub fn transform(&self, z: &[T]) -> Vec<T> {
         assert!(
             z.len() >= self.dim,
@@ -284,21 +274,7 @@ impl<T: Float> CholeskyFactor<T> {
     }
 }
 
-/// Container for multiple correlated stochastic models.
-///
-/// This struct manages multiple stochastic models that share correlated
-/// Brownian motion drivers. The correlation is implemented via Cholesky
-/// decomposition of the correlation matrix.
-///
-/// # Design
-///
-/// Rather than coupling specific model types, this struct provides:
-/// - Storage for the Cholesky factor
-/// - Methods to transform independent randoms to correlated randoms
-/// - Model-agnostic correlation handling
-///
-/// The actual model evolution is handled by the caller using the
-/// transformed random numbers.
+/// Container for multiple correlated stochastic models via Cholesky decomposition.
 #[derive(Clone, Debug)]
 pub struct CorrelatedModels<T: Float> {
     /// Number of factors/models
@@ -350,11 +326,6 @@ impl<T: Float> CorrelatedModels<T> {
 mod tests {
     use super::*;
 
-    // ================================================================
-    // Task 9.5: CorrelatedModels Tests (TDD)
-    // ================================================================
-
-    // Test: CorrelationMatrix validation
     #[test]
     fn test_correlation_matrix_valid() {
         let data = [1.0_f64, 0.5, 0.5, 1.0];
@@ -413,7 +384,6 @@ mod tests {
         assert_eq!(identity.get(2, 2), 1.0);
     }
 
-    // Test: Cholesky decomposition
     #[test]
     fn test_cholesky_identity() {
         let identity: CorrelationMatrix<f64> = CorrelationMatrix::identity(2);
@@ -479,7 +449,6 @@ mod tests {
         ));
     }
 
-    // Test: CholeskyFactor transform
     #[test]
     fn test_cholesky_transform_identity() {
         let identity: CorrelationMatrix<f64> = CorrelationMatrix::identity(2);
@@ -521,7 +490,6 @@ mod tests {
         assert!((z[1] - 0.5).abs() < 1e-10);
     }
 
-    // Test: CorrelatedModels
     #[test]
     fn test_correlated_models_new() {
         let data = [1.0_f64, 0.5, 0.5, 1.0];
@@ -565,7 +533,6 @@ mod tests {
         assert!((dw[1] - 0.5).abs() < 1e-10);
     }
 
-    // Test: 3x3 correlation matrix
     #[test]
     fn test_correlation_matrix_3x3() {
         #[rustfmt::skip]
@@ -582,7 +549,6 @@ mod tests {
         assert!(cholesky.is_ok());
     }
 
-    // Test: f32 compatibility
     #[test]
     fn test_correlation_matrix_f32() {
         let data = [1.0_f32, 0.5, 0.5, 1.0];
@@ -599,7 +565,6 @@ mod tests {
         assert!((w[0] - 1.0_f32).abs() < 1e-6);
     }
 
-    // Test: Error display
     #[test]
     fn test_correlation_error_display() {
         let err = CorrelationError::NotPositiveDefinite;
