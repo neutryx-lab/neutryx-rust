@@ -99,14 +99,15 @@ pub enum PricingError {
     },
 }
 
-/// Generates a pair of error factory methods: a base method (with `trade_id: None`)
-/// and a `_with_trade` variant (with `trade_id: Some(...)`).
+/// Generates a pair of error factory methods: a base method (with `trade_id:
+/// None`) and a `_with_trade` variant (with `trade_id: Some(...)`).
 ///
 /// # Parameters
 /// - `$base_fn`: Name of the base factory method.
 /// - `$with_trade_fn`: Name of the variant that accepts a trade ID.
 /// - `$variant`: Enum variant to construct.
-/// - `$field`: The primary field name (e.g. `description`, `instrument_type`, `reason`).
+/// - `$field`: The primary field name (e.g. `description`, `instrument_type`,
+///   `reason`).
 /// - `$base_doc`: Doc string for the base method.
 /// - `$trade_doc`: Doc string for the `_with_trade` method.
 macro_rules! error_factory_with_trade {
@@ -124,10 +125,7 @@ macro_rules! error_factory_with_trade {
         }
 
         #[doc = $trade_doc]
-        pub fn $with_trade_fn(
-            $field: impl Into<String>,
-            trade_id: impl Into<String>,
-        ) -> Self {
+        pub fn $with_trade_fn($field: impl Into<String>, trade_id: impl Into<String>) -> Self {
             Self::$variant {
                 $field: $field.into(),
                 trade_id: Some(trade_id.into()),
@@ -138,22 +136,28 @@ macro_rules! error_factory_with_trade {
 
 impl PricingError {
     error_factory_with_trade!(
-        missing_market_data, missing_market_data_with_trade,
-        MissingMarketData, description,
+        missing_market_data,
+        missing_market_data_with_trade,
+        MissingMarketData,
+        description,
         "Creates a missing market data error.",
         "Creates a missing market data error with trade ID."
     );
 
     error_factory_with_trade!(
-        unsupported_instrument, unsupported_instrument_with_trade,
-        UnsupportedInstrument, instrument_type,
+        unsupported_instrument,
+        unsupported_instrument_with_trade,
+        UnsupportedInstrument,
+        instrument_type,
         "Creates an unsupported instrument error.",
         "Creates an unsupported instrument error with trade ID."
     );
 
     error_factory_with_trade!(
-        invalid_trade, invalid_trade_with_id,
-        InvalidTrade, reason,
+        invalid_trade,
+        invalid_trade_with_id,
+        InvalidTrade,
+        reason,
         "Creates an invalid trade error.",
         "Creates an invalid trade error with trade ID."
     );

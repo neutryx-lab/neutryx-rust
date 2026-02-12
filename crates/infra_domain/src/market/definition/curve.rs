@@ -720,7 +720,7 @@ mod tests {
         assert!(!jump.is_turn());
     }
 
-        #[test]
+    #[test]
     fn test_jump_pillar_serde_roundtrip() {
         let jump = JumpPillar::new(test_date(), 25.0, 0.85).with_event_reference("FOMC-2024-03");
 
@@ -730,7 +730,7 @@ mod tests {
         assert_eq!(jump, parsed);
     }
 
-        #[test]
+    #[test]
     fn test_jump_pillar_serde_without_event_reference() {
         let jump = JumpPillar::new(test_date(), 25.0, 0.85);
 
@@ -742,7 +742,7 @@ mod tests {
         assert_eq!(jump, parsed);
     }
 
-        #[test]
+    #[test]
     fn test_jump_pillar_serde_camel_case() {
         let json = r#"{
             "jumpDate": "2024-03-20",
@@ -757,7 +757,7 @@ mod tests {
         assert_eq!(jump.event_reference(), Some("FOMC-2024-03"));
     }
 
-        #[test]
+    #[test]
     fn test_jump_pillar_serde_defaults() {
         let json = r#"{
             "jumpDate": "2024-03-20",
@@ -1137,7 +1137,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn test_serde_roundtrip() {
         let curve = CurveDefinition::new(
             "USD-SOFR-Discount",
@@ -1152,7 +1152,7 @@ mod tests {
         assert_eq!(curve, parsed);
     }
 
-        #[test]
+    #[test]
     fn test_serde_from_json() {
         let json = r#"{
             "name": "USD-SOFR-Discount",
@@ -1172,7 +1172,7 @@ mod tests {
         assert!(curve.allow_extrapolation);
     }
 
-        #[test]
+    #[test]
     fn test_serde_defaults_applied() {
         let json = r#"{
             "name": "EUR-ESTR",
@@ -1294,7 +1294,7 @@ mod tests {
         ));
     }
 
-        #[test]
+    #[test]
     fn test_serde_with_jump_pillars() {
         let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
             .with_jump_pillar(JumpPillar::new(
@@ -1310,7 +1310,7 @@ mod tests {
         assert_eq!(parsed.jump_pillar_count(), 1);
     }
 
-        #[test]
+    #[test]
     fn test_serde_empty_jump_pillars_omitted() {
         let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()]);
 
@@ -1318,7 +1318,7 @@ mod tests {
         assert!(!json.contains("jumpPillars"));
     }
 
-        #[test]
+    #[test]
     fn test_serde_backward_compatibility() {
         let json = r#"{
             "name": "USD-SOFR",

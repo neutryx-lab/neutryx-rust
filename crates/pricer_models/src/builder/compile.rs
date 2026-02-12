@@ -365,7 +365,8 @@ use infra_domain::{
 };
 use pricer_core::math::numeric::from_f64;
 
-/// Compiler for converting `infra_domain::market::MarketInstrument` to `CompiledInstrument<T>`.
+/// Compiler for converting `infra_domain::market::MarketInstrument` to
+/// `CompiledInstrument<T>`.
 #[derive(Debug, Clone)]
 pub struct InstrumentCompiler<T: Float> {
     /// Valuation date for year fraction calculations.

@@ -46,7 +46,16 @@ impl BinomialTree {
         is_call: bool,
         is_american: bool,
     ) -> Result<Self, ConfigError> {
-        let base = TreeBase::new(spot, strike, expiry, rate, volatility, num_steps, is_call, is_american)?;
+        let base = TreeBase::new(
+            spot,
+            strike,
+            expiry,
+            rate,
+            volatility,
+            num_steps,
+            is_call,
+            is_american,
+        )?;
         let params = CrrParams::compute(volatility, rate, base.dt());
         Ok(Self { base, params })
     }

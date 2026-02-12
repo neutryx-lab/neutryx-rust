@@ -31,26 +31,35 @@
 use nalgebra::{DMatrix, RealField};
 use num_traits::Float;
 
-use super::{error::LinearAlgebraError, lu_solve, wrappers::{require_square, require_dims}};
+use super::{
+    error::LinearAlgebraError,
+    lu_solve,
+    wrappers::{require_dims, require_square},
+};
 use crate::math::numeric::from_f64;
 
 /// Extract the stored matrix or return "not decomposed" error.
 fn require_decomposed<T: Clone>(matrix: &Option<T>) -> Result<&T, LinearAlgebraError> {
-    matrix.as_ref().ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))
+    matrix
+        .as_ref()
+        .ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))
 }
 
 /// Strategy trait for linear system solvers in calibration problems.
 pub trait LinearSolveStrategy<T: RealField + Copy + Float>: Clone + Default {
-    /// Decompose the matrix and store internal state for solving and inverse computation.
+    /// Decompose the matrix and store internal state for solving and inverse
+    /// computation.
     fn decompose(&mut self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError>;
 
     /// Solve the linear system `M * x = b` using the stored decomposition.
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError>;
 
-    /// Compute the inverse of the stored matrix (for AAD via implicit function theorem).
+    /// Compute the inverse of the stored matrix (for AAD via implicit function
+    /// theorem).
     fn inverse(&self) -> Result<DMatrix<T>, LinearAlgebraError>;
 
-    /// Validate that the matrix has the expected structure (e.g., lower triangular).
+    /// Validate that the matrix has the expected structure (e.g., lower
+    /// triangular).
     fn validate_structure(&self, _matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
         Ok(()) // Default: no validation
     }
@@ -59,7 +68,8 @@ pub trait LinearSolveStrategy<T: RealField + Copy + Float>: Clone + Default {
     fn name(&self) -> &'static str;
 }
 
-/// LU decomposition strategy for full dense matrices. O(n^3) decompose, O(n^2) solve.
+/// LU decomposition strategy for full dense matrices. O(n^3) decompose, O(n^2)
+/// solve.
 #[derive(Debug, Clone)]
 pub struct LUStrategy<T: RealField + Copy> {
     matrix: Option<DMatrix<T>>,
@@ -90,7 +100,8 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LUStrategy<T> {
     fn name(&self) -> &'static str { "LU Decomposition" }
 }
 
-/// Forward substitution strategy for lower triangular matrices. O(n^2) solve and inverse.
+/// Forward substitution strategy for lower triangular matrices. O(n^2) solve
+/// and inverse.
 #[derive(Debug, Clone)]
 pub struct LowerTriangularStrategy<T: RealField + Copy> {
     matrix: Option<DMatrix<T>>,
@@ -141,7 +152,9 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
                 if Float::abs(matrix[(i, j)]) > self.tolerance {
                     return Err(LinearAlgebraError::InvalidInput(format!(
                         "Matrix is not lower triangular: element ({}, {}) = {:?}",
-                        i, j, matrix[(i, j)]
+                        i,
+                        j,
+                        matrix[(i, j)]
                     )));
                 }
             }

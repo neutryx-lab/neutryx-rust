@@ -36,9 +36,10 @@ pub mod model_enum;
 pub mod stochastic;
 pub mod validation;
 
-/// Generates a PhantomData-based stochastic model struct with `StochasticModel` trait
-/// implementation and a marker trait. Eliminates boilerplate for single-state models
-/// (GBM, CIR, Hull-White) that share the same structural pattern.
+/// Generates a PhantomData-based stochastic model struct with `StochasticModel`
+/// trait implementation and a marker trait. Eliminates boilerplate for
+/// single-state models (GBM, CIR, Hull-White) that share the same structural
+/// pattern.
 macro_rules! define_phantom_model {
     (
         $(#[$model_meta:meta])*

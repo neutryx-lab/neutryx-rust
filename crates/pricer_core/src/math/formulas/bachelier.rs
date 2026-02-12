@@ -24,7 +24,8 @@ use crate::math::{
 
 /// Bachelier (normal) model for European option pricing.
 ///
-/// Supports negative forward prices, making it suitable for interest rate markets.
+/// Supports negative forward prices, making it suitable for interest rate
+/// markets.
 #[derive(Debug, Clone)]
 pub struct Bachelier<T: Float> {
     /// Forward price (F) - can be negative
@@ -37,7 +38,10 @@ impl<T: Float> Bachelier<T> {
     /// Creates a new Bachelier model. Returns error if volatility <= 0.
     pub fn new(forward: T, volatility: T) -> Result<Self, FormulaError> {
         require_positive_vol(volatility)?;
-        Ok(Self { forward, volatility })
+        Ok(Self {
+            forward,
+            volatility,
+        })
     }
 
     /// Returns the forward price.

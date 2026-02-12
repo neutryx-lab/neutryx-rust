@@ -160,9 +160,7 @@ pub enum CapFloorType {
     Collar,
 }
 
-impl CapFloorType {
-}
-
+impl CapFloorType {}
 
 /// Interest rate cap or floor.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

@@ -56,9 +56,11 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     }
 }
 
-/// Interpolation matrix (M grid points x P pillars) mapping pillar values to grid points.
+/// Interpolation matrix (M grid points x P pillars) mapping pillar values to
+/// grid points.
 ///
-/// For log-linear interpolation: `log(DF(t)) = (1-w)*log(DF(t_k)) + w*log(DF(t_{k+1}))`
+/// For log-linear interpolation: `log(DF(t)) = (1-w)*log(DF(t_k)) +
+/// w*log(DF(t_{k+1}))`
 #[derive(Debug, Clone)]
 pub struct InterpolationMatrix<T: Float + RealField + Copy> {
     /// The underlying matrix (M grid points x P pillars).
@@ -66,7 +68,8 @@ pub struct InterpolationMatrix<T: Float + RealField + Copy> {
 }
 
 impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
-    /// Creates an interpolation matrix from pillar positions and a grid using linear interpolation.
+    /// Creates an interpolation matrix from pillar positions and a grid using
+    /// linear interpolation.
     pub fn from_pillars(pillars: &[T], grid: &CalibrationGrid<T>) -> Self {
         let points = grid.points();
         let num_points = points.len();
@@ -175,7 +178,8 @@ impl<T: Float> JumpInfo<T> {
 }
 
 impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
-    /// Creates an interpolation matrix treating jump times as segment boundaries.
+    /// Creates an interpolation matrix treating jump times as segment
+    /// boundaries.
     pub fn with_jump_pillars(pillars: &[T], jump_times: &[T], grid: &CalibrationGrid<T>) -> Self {
         // Merge pillars and jump times into sorted unique list
         let mut all_breaks: Vec<T> = pillars.to_vec();
@@ -195,7 +199,8 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
 
     /// Interpolates log discount factors with jump adjustments.
     ///
-    /// Applies: `DF(t) = DF_smooth(t) * prod(1 - jump_i * dt_i)` for jumps before t.
+    /// Applies: `DF(t) = DF_smooth(t) * prod(1 - jump_i * dt_i)` for jumps
+    /// before t.
     pub fn interpolate_with_jumps(
         &self,
         log_df_pillars: &[T],

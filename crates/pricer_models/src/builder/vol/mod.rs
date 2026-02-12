@@ -31,7 +31,8 @@ use pricer_core::math::{
 };
 pub use surface::{FxVolBuilder, FxVolResult};
 
-/// Trait for volatility surface/cube builders (configure -> validate -> calibrate).
+/// Trait for volatility surface/cube builders (configure -> validate ->
+/// calibrate).
 pub trait VolBuilder<T: Float> {
     /// The calibration result type.
     type Result;
@@ -166,7 +167,8 @@ impl<T: Float> SabrParams<T> {
         }
     }
 
-    /// Creates parameters with typical defaults for rates (β=0.5, ρ=-0.3, ν=0.4).
+    /// Creates parameters with typical defaults for rates (β=0.5, ρ=-0.3,
+    /// ν=0.4).
     pub fn default_rates(alpha: T) -> Self {
         Self {
             alpha,
@@ -420,7 +422,6 @@ impl<T: Float> SliceCalibrationConfig<T> {
             ..Self::default()
         }
     }
-
 }
 
 /// SABR model slice calibrator using Levenberg-Marquardt optimisation.
@@ -739,7 +740,8 @@ impl<T: Float> DeltaVolSlice<T> {
         result
     }
 
-    /// Converts to strike-based [`VolQuote`]s using the given delta-to-strike closure.
+    /// Converts to strike-based [`VolQuote`]s using the given delta-to-strike
+    /// closure.
     pub fn to_strike_vol_quotes<F>(&self, delta_to_strike: F) -> Vec<VolQuote<T>>
     where
         F: Fn(T, bool, T) -> T,

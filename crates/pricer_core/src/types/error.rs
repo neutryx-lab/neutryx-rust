@@ -11,8 +11,7 @@ use std::fmt;
 
 use thiserror::Error;
 
-use crate::math::linalg::LinearAlgebraError;
-use crate::math::normal_dist::DistributionError;
+use crate::math::{linalg::LinearAlgebraError, normal_dist::DistributionError};
 
 /// Categorised pricing errors.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -160,10 +159,17 @@ pub struct CalibrationError {
 }
 
 impl CalibrationError {
-    /// Create a new calibration error with auto-generated message from the kind.
+    /// Create a new calibration error with auto-generated message from the
+    /// kind.
     pub fn new(kind: CalibrationErrorKind) -> Self {
         let message = Some(format!("{kind}"));
-        Self { kind, residual_ss: f64::NAN, iterations: 0, message, parameter_values: None }
+        Self {
+            kind,
+            residual_ss: f64::NAN,
+            iterations: 0,
+            message,
+            parameter_values: None,
+        }
     }
 
     /// Create a not-converged error with iteration and residual context.
@@ -202,34 +208,57 @@ impl CalibrationError {
     }
 
     /// Set the final parameter values.
-    pub fn with_parameters(mut self, params: Vec<f64>) -> Self { self.parameter_values = Some(params); self }
+    pub fn with_parameters(mut self, params: Vec<f64>) -> Self {
+        self.parameter_values = Some(params);
+        self
+    }
 
     /// Set the residual sum of squares.
-    pub fn with_residual(mut self, residual_ss: f64) -> Self { self.residual_ss = residual_ss; self }
+    pub fn with_residual(mut self, residual_ss: f64) -> Self {
+        self.residual_ss = residual_ss;
+        self
+    }
 
     /// Set the iteration count.
-    pub fn with_iterations(mut self, iterations: usize) -> Self { self.iterations = iterations; self }
+    pub fn with_iterations(mut self, iterations: usize) -> Self {
+        self.iterations = iterations;
+        self
+    }
 
     /// Set a detailed message.
-    pub fn with_message(mut self, message: impl Into<String>) -> Self { self.message = Some(message.into()); self }
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.message = Some(message.into());
+        self
+    }
 
     /// Get the root mean square error (if residual count is known).
     pub fn rmse(&self, n_observations: usize) -> f64 {
-        if n_observations == 0 || self.residual_ss.is_nan() { f64::NAN }
-        else { (self.residual_ss / n_observations as f64).sqrt() }
+        if n_observations == 0 || self.residual_ss.is_nan() {
+            f64::NAN
+        } else {
+            (self.residual_ss / n_observations as f64).sqrt()
+        }
     }
 
     /// Check if the error is due to non-convergence.
-    pub fn is_not_converged(&self) -> bool { matches!(self.kind, CalibrationErrorKind::NotConverged) }
+    pub fn is_not_converged(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::NotConverged)
+    }
 
     /// Check if the error is due to a constraint violation.
-    pub fn is_constraint_violation(&self) -> bool { matches!(self.kind, CalibrationErrorKind::InvalidConstraint(_)) }
+    pub fn is_constraint_violation(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::InvalidConstraint(_))
+    }
 
     /// Check if the error is due to numerical instability.
-    pub fn is_numerical_instability(&self) -> bool { matches!(self.kind, CalibrationErrorKind::NumericalInstability) }
+    pub fn is_numerical_instability(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::NumericalInstability)
+    }
 
     /// Check if the error is due to insufficient data.
-    pub fn is_insufficient_data(&self) -> bool { matches!(self.kind, CalibrationErrorKind::InsufficientData { .. }) }
+    pub fn is_insufficient_data(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::InsufficientData { .. })
+    }
 }
 
 impl fmt::Display for CalibrationError {
@@ -317,10 +346,22 @@ mod tests {
 
     #[test]
     fn pricing_error_display() {
-        assert_display!(PricingError::InvalidInput("Test error".into()), "Invalid input: Test error");
-        assert_display!(PricingError::NumericalInstability("Failed".into()), "Numerical instability: Failed");
-        assert_display!(PricingError::ModelFailure("Vol OOR".into()), "Model failure: Vol OOR");
-        assert_display!(PricingError::UnsupportedInstrument("Asian".into()), "Unsupported instrument: Asian");
+        assert_display!(
+            PricingError::InvalidInput("Test error".into()),
+            "Invalid input: Test error"
+        );
+        assert_display!(
+            PricingError::NumericalInstability("Failed".into()),
+            "Numerical instability: Failed"
+        );
+        assert_display!(
+            PricingError::ModelFailure("Vol OOR".into()),
+            "Model failure: Vol OOR"
+        );
+        assert_display!(
+            PricingError::UnsupportedInstrument("Asian".into()),
+            "Unsupported instrument: Asian"
+        );
     }
 
     #[test]
@@ -344,20 +385,41 @@ mod tests {
 
     #[test]
     fn solver_error_display() {
-        assert_display!(SolverError::MaxIterationsExceeded { iterations: 100 },
-            "Failed to converge after 100 iterations");
-        assert_display!(SolverError::DerivativeNearZero { x: 1.5 },
-            "Derivative near zero at x = 1.5");
-        assert_display!(SolverError::NoBracket { a: 0.0, b: 1.0 },
-            "No bracket: f(0) and f(1) have same sign");
-        assert_display!(SolverError::NumericalInstability("overflow detected".into()),
-            "Numerical instability: overflow detected");
-        assert_display_contains!(SolverError::SingularJacobian { min_pivot: 1e-15 },
-            "Singular Jacobian", "1.00e-15");
-        assert_display_contains!(SolverError::DimensionMismatch { expected: 10, got: 5 },
-            "Dimension mismatch", "10", "5");
-        assert_display_contains!(SolverError::External("lm failed".into()),
-            "External", "lm failed");
+        assert_display!(
+            SolverError::MaxIterationsExceeded { iterations: 100 },
+            "Failed to converge after 100 iterations"
+        );
+        assert_display!(
+            SolverError::DerivativeNearZero { x: 1.5 },
+            "Derivative near zero at x = 1.5"
+        );
+        assert_display!(
+            SolverError::NoBracket { a: 0.0, b: 1.0 },
+            "No bracket: f(0) and f(1) have same sign"
+        );
+        assert_display!(
+            SolverError::NumericalInstability("overflow detected".into()),
+            "Numerical instability: overflow detected"
+        );
+        assert_display_contains!(
+            SolverError::SingularJacobian { min_pivot: 1e-15 },
+            "Singular Jacobian",
+            "1.00e-15"
+        );
+        assert_display_contains!(
+            SolverError::DimensionMismatch {
+                expected: 10,
+                got: 5
+            },
+            "Dimension mismatch",
+            "10",
+            "5"
+        );
+        assert_display_contains!(
+            SolverError::External("lm failed".into()),
+            "External",
+            "lm failed"
+        );
     }
 
     #[test]
@@ -365,7 +427,10 @@ mod tests {
         let cases: Vec<SolverError> = vec![
             SolverError::NoBracket { a: 0.0, b: 1.0 },
             SolverError::SingularJacobian { min_pivot: 1e-12 },
-            SolverError::DimensionMismatch { expected: 5, got: 3 },
+            SolverError::DimensionMismatch {
+                expected: 5,
+                got: 3,
+            },
         ];
         for err in &cases {
             assert_eq!(err.clone(), *err);
@@ -381,8 +446,10 @@ mod tests {
         assert!(matches!(s, SolverError::SingularJacobian { .. }));
 
         let s: SolverError = LinearAlgebraError::DimensionMismatch {
-            expected: "3x3".into(), got: "2x3".into(),
-        }.into();
+            expected: "3x3".into(),
+            got: "2x3".into(),
+        }
+        .into();
         assert!(matches!(s, SolverError::NumericalInstability(_)));
     }
 
@@ -398,10 +465,22 @@ mod tests {
 
     #[test]
     fn calibration_kind_display() {
-        assert_display!(CalibrationErrorKind::NotConverged, "calibration did not converge");
-        assert_display!(CalibrationErrorKind::NumericalInstability, "numerical instability");
-        assert_display_contains!(CalibrationErrorKind::InvalidConstraint("test".into()), "constraint violation");
-        assert_display_contains!(CalibrationErrorKind::InsufficientData { got: 3, need: 10 }, "insufficient data");
+        assert_display!(
+            CalibrationErrorKind::NotConverged,
+            "calibration did not converge"
+        );
+        assert_display!(
+            CalibrationErrorKind::NumericalInstability,
+            "numerical instability"
+        );
+        assert_display_contains!(
+            CalibrationErrorKind::InvalidConstraint("test".into()),
+            "constraint violation"
+        );
+        assert_display_contains!(
+            CalibrationErrorKind::InsufficientData { got: 3, need: 10 },
+            "insufficient data"
+        );
     }
 
     // ── CalibrationError factories ───────────────────────────────
@@ -441,13 +520,19 @@ mod tests {
     fn calibration_insufficient_data() {
         let err = CalibrationError::insufficient_data(3, 10);
         assert!(err.is_insufficient_data());
-        assert!(matches!(err.kind, CalibrationErrorKind::InsufficientData { got: 3, need: 10 }));
+        assert!(matches!(
+            err.kind,
+            CalibrationErrorKind::InsufficientData { got: 3, need: 10 }
+        ));
     }
 
     #[test]
     fn calibration_invalid_parameter() {
         let err = CalibrationError::invalid_parameter("vol < 0");
-        assert!(matches!(err.kind, CalibrationErrorKind::InvalidParameter(_)));
+        assert!(matches!(
+            err.kind,
+            CalibrationErrorKind::InvalidParameter(_)
+        ));
     }
 
     // ── CalibrationError builders ────────────────────────────────
@@ -473,7 +558,11 @@ mod tests {
     fn calibration_rmse() {
         let err = CalibrationError::not_converged(10, 4.0);
         assert!((err.rmse(4) - 1.0).abs() < 1e-10);
-        assert!(CalibrationError::new(CalibrationErrorKind::NumericalInstability).rmse(10).is_nan());
+        assert!(
+            CalibrationError::new(CalibrationErrorKind::NumericalInstability)
+                .rmse(10)
+                .is_nan()
+        );
         assert!(CalibrationError::not_converged(10, 1.0).rmse(0).is_nan());
     }
 
@@ -513,7 +602,11 @@ mod tests {
         assert!(c.is_numerical_instability());
         assert!(c.message.as_ref().unwrap().contains("Singular"));
 
-        let c: CalibrationError = SolverError::DimensionMismatch { expected: 10, got: 5 }.into();
+        let c: CalibrationError = SolverError::DimensionMismatch {
+            expected: 10,
+            got: 5,
+        }
+        .into();
         assert!(matches!(c.kind, CalibrationErrorKind::InvalidParameter(_)));
 
         let c: CalibrationError = SolverError::External("roots crate error".into()).into();

@@ -1,7 +1,9 @@
 //! XVA calculation configuration types (stub for future XVA integration).
 
 /// XVA calculation aggregation level.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum XvaCalculationLevel {
     /// Trade-level calculation (no aggregation).
     Trade,
@@ -17,7 +19,9 @@ pub enum XvaCalculationLevel {
 }
 
 /// Regulatory capital calculation method.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum RegulatoryCapitalMethod {
     /// Standardised Approach for Counterparty Credit Risk.
     #[default]
@@ -27,7 +31,9 @@ pub enum RegulatoryCapitalMethod {
 }
 
 /// Wrong-Way Risk model type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum WwrModelType {
     /// No WWR adjustment.
     #[default]

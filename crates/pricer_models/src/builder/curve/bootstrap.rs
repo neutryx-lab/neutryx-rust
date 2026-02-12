@@ -269,7 +269,8 @@ impl CurveBootstrapper {
         self.bootstrap_instruments(&instruments)
     }
 
-    /// Bootstrap with Jacobian inverse computation using `CalibrationEngine<LUStrategy>`.
+    /// Bootstrap with Jacobian inverse computation using
+    /// `CalibrationEngine<LUStrategy>`.
     pub fn bootstrap_with_jacobian<I>(
         &self,
         instruments: &[I],
@@ -344,7 +345,8 @@ pub struct JacobianMatrix {
 }
 
 impl CurveBootstrapper {
-    /// Compute the finite-difference Jacobian d(log DF_i) / dr_j for sequential bootstrap.
+    /// Compute the finite-difference Jacobian d(log DF_i) / dr_j for sequential
+    /// bootstrap.
     pub fn compute_fd_jacobian(
         &self,
         instruments: &[MarketInstrument<f64>],

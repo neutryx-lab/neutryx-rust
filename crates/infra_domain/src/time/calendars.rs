@@ -8,7 +8,18 @@ use super::types::Date;
 
 /// Business day adjustment convention.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
+    strum::AsRefStr,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum BusinessDayConvention {
     /// Move to the next business day.
     Following,

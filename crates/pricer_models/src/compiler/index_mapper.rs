@@ -226,7 +226,8 @@ impl IndexMapper {
         }
     }
 
-    /// Gets the rate index for a given ID (`None` inner value for ID 0 = dummy).
+    /// Gets the rate index for a given ID (`None` inner value for ID 0 =
+    /// dummy).
     #[must_use]
     pub fn get_forward_index(&self, id: u16) -> Option<Option<RateIndex>> {
         self.id_to_fwd_index.get(id as usize).copied()
@@ -244,7 +245,8 @@ impl IndexMapper {
         0 // Dummy index
     }
 
-    /// Registers a CMS index and returns its ID (shares forward index ID space).
+    /// Registers a CMS index and returns its ID (shares forward index ID
+    /// space).
     ///
     /// # Examples
     ///
@@ -319,7 +321,8 @@ impl IndexMapper {
         None
     }
 
-    /// Registers a currency and returns its ID (first registered becomes base, ID 0).
+    /// Registers a currency and returns its ID (first registered becomes base,
+    /// ID 0).
     pub fn register_currency(&mut self, currency: Currency) -> u8 {
         if let Some(&id) = self.currency_to_id.get(&currency) {
             return id;
@@ -397,7 +400,8 @@ impl IndexMapper {
     #[must_use]
     pub fn discount_curve_count(&self) -> usize { self.id_to_discount_curve.len() }
 
-    /// Registers an FX pair and returns its ID (idempotent, 0 is reserved for dummy).
+    /// Registers an FX pair and returns its ID (idempotent, 0 is reserved for
+    /// dummy).
     pub fn register_fx_pair(&mut self, fx_pair: FxPair) -> u16 {
         if let Some(&id) = self.fx_pair_to_id.get(&fx_pair) {
             return id;

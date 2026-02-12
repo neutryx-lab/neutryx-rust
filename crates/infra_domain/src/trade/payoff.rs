@@ -3,7 +3,9 @@
 use super::index::IndexType;
 
 /// Option type for vanilla options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum OptionType {
     /// Call option (right to buy).

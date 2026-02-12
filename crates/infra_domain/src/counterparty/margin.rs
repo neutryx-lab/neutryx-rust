@@ -7,7 +7,9 @@ use super::CallFrequency;
 use crate::market::Currency;
 
 /// Margin type classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum MarginType {
     /// No margin requirements (uncollateralised).
     #[default]
@@ -19,7 +21,9 @@ pub enum MarginType {
 }
 
 /// Initial Margin model type.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum ImModel {
     /// ISDA SIMM (Standard Initial Margin Model).
     #[default]
@@ -33,7 +37,18 @@ pub enum ImModel {
 }
 
 /// SIMM version.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, strum::Display, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum SimmVersion {
     /// SIMM v2.5 (December 2021).
     #[strum(serialize = "SIMM v2.5")]

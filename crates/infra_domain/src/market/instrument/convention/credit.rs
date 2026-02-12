@@ -17,7 +17,6 @@ pub struct CdsConvention {
     pub recovery_rate: f64,
 }
 
-
 super::define_convention_factories! {
     for CdsConvention;
     /// Returns the ISDA standard CDS convention (North America, 40% recovery).

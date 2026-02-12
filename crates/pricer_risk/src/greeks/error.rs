@@ -50,7 +50,8 @@ pub enum GreeksError {
     InvalidBenchmarkConfig(String),
 }
 
-/// Generate `snake_case` constructor helpers for `GreeksError(String)` variants.
+/// Generate `snake_case` constructor helpers for `GreeksError(String)`
+/// variants.
 macro_rules! greeks_error_ctor {
     ($($method:ident => $variant:ident),* $(,)?) => {
         $(

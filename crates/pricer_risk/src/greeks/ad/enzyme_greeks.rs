@@ -279,8 +279,20 @@ fn compute_delta_fd(
     fd_central(
         pricer,
         payoff,
-        (GbmParams { spot: gbm.spot + h, ..gbm }, df),
-        (GbmParams { spot: gbm.spot - h, ..gbm }, df),
+        (
+            GbmParams {
+                spot: gbm.spot + h,
+                ..gbm
+            },
+            df,
+        ),
+        (
+            GbmParams {
+                spot: gbm.spot - h,
+                ..gbm
+            },
+            df,
+        ),
         2.0 * h,
     )
 }
@@ -298,11 +310,25 @@ fn compute_gamma_fd(
     let price_mid = pricer.price_european(gbm, payoff, df).price;
     pricer.reset_with_seed(seed);
     let price_up = pricer
-        .price_european(GbmParams { spot: gbm.spot + h, ..gbm }, payoff, df)
+        .price_european(
+            GbmParams {
+                spot: gbm.spot + h,
+                ..gbm
+            },
+            payoff,
+            df,
+        )
         .price;
     pricer.reset_with_seed(seed);
     let price_down = pricer
-        .price_european(GbmParams { spot: gbm.spot - h, ..gbm }, payoff, df)
+        .price_european(
+            GbmParams {
+                spot: gbm.spot - h,
+                ..gbm
+            },
+            payoff,
+            df,
+        )
         .price;
 
     (price_up - 2.0 * price_mid + price_down) / (h * h)
@@ -318,8 +344,20 @@ fn compute_vega_fd(
     fd_central(
         pricer,
         payoff,
-        (GbmParams { volatility: gbm.volatility + h, ..gbm }, df),
-        (GbmParams { volatility: (gbm.volatility - h).max(0.001), ..gbm }, df),
+        (
+            GbmParams {
+                volatility: gbm.volatility + h,
+                ..gbm
+            },
+            df,
+        ),
+        (
+            GbmParams {
+                volatility: (gbm.volatility - h).max(0.001),
+                ..gbm
+            },
+            df,
+        ),
         2.0 * h,
     )
 }
@@ -337,7 +375,14 @@ fn compute_theta_fd(
     let price_now = pricer.price_european(gbm, payoff, df).price;
     pricer.reset_with_seed(seed);
     let price_short = pricer
-        .price_european(GbmParams { maturity: (gbm.maturity - h).max(0.001), ..gbm }, payoff, df)
+        .price_european(
+            GbmParams {
+                maturity: (gbm.maturity - h).max(0.001),
+                ..gbm
+            },
+            payoff,
+            df,
+        )
         .price;
 
     -(price_now - price_short) / h
@@ -353,8 +398,20 @@ fn compute_rho_fd(
     fd_central(
         pricer,
         payoff,
-        (GbmParams { rate: gbm.rate + h, ..gbm }, df * (-h * gbm.maturity).exp()),
-        (GbmParams { rate: gbm.rate - h, ..gbm }, df * (h * gbm.maturity).exp()),
+        (
+            GbmParams {
+                rate: gbm.rate + h,
+                ..gbm
+            },
+            df * (-h * gbm.maturity).exp(),
+        ),
+        (
+            GbmParams {
+                rate: gbm.rate - h,
+                ..gbm
+            },
+            df * (h * gbm.maturity).exp(),
+        ),
         2.0 * h,
     ) * 0.01
 }
@@ -496,5 +553,4 @@ mod tests {
 
         assert!(rho > -1.0 && rho < 1.0);
     }
-
 }

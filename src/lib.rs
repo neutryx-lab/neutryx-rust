@@ -45,22 +45,17 @@
 /// System configuration: pricing parameters, risk settings, service config.
 #[cfg(feature = "full")]
 pub use infra_config as config;
-
 /// Static master data: dates, currencies, calendars, trade definitions.
 pub use infra_domain as master;
-
 /// Mathematical foundation: smoothing functions, kernels, numerical traits.
 #[cfg(feature = "analytics")]
 pub use pricer_core as core;
-
 /// Financial models: yield curves, volatility surfaces, stochastic processes.
 #[cfg(feature = "analytics")]
 pub use pricer_models as models;
-
 /// Pricing engines: Monte Carlo, binomial trees, analytical formulas.
 #[cfg(feature = "full")]
 pub use pricer_pricing as pricing;
-
 /// Risk analytics: Greeks, XVA, scenario analysis.
 #[cfg(feature = "full")]
 pub use pricer_risk as risk;

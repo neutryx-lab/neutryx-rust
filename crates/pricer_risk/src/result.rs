@@ -37,7 +37,11 @@ macro_rules! aggregate_greek {
                 has = true;
             }
         }
-        if has { Some(total) } else { None }
+        if has {
+            Some(total)
+        } else {
+            None
+        }
     }};
 }
 

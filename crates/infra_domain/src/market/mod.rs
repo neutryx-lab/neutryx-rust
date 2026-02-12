@@ -38,8 +38,7 @@ pub use quote::{
     MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType, QuoteValidator,
     StandardQuoteValidator, StrikeType, VolQuoteType,
 };
-pub use registry::DefinitionBundle;
-pub use registry::{DefinitionRegistry, RegistryError};
+pub use registry::{DefinitionBundle, DefinitionRegistry, RegistryError};
 pub use source::{
     DataSource, InstrumentMapper, SourcePriority, StandardInstrumentMapper, TickerMapping,
 };

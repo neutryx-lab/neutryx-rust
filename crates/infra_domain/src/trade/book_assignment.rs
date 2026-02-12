@@ -6,7 +6,9 @@ use crate::{
 };
 
 /// Reason for a trade's book assignment or transfer.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum BookTransferReason {
     /// Initial assignment when trade is created.

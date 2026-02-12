@@ -220,24 +220,63 @@ impl<T: Float> GarmanKohlhagen<T> {
 
 /// Convenience function to price an FX option.
 pub fn fx_option_price<T: Float>(
-    spot: T, strike: T, rate_domestic: T, rate_foreign: T, volatility: T, expiry: T, is_call: bool,
+    spot: T,
+    strike: T,
+    rate_domestic: T,
+    rate_foreign: T,
+    volatility: T,
+    expiry: T,
+    is_call: bool,
 ) -> Result<T, FormulaError> {
-    let params = GarmanKohlhagenParams::new(spot, strike, rate_domestic, rate_foreign, volatility, expiry)?;
+    let params = GarmanKohlhagenParams::new(
+        spot,
+        strike,
+        rate_domestic,
+        rate_foreign,
+        volatility,
+        expiry,
+    )?;
     Ok(GarmanKohlhagen::new(params).price(is_call))
 }
 
 /// Convenience function to price an FX call option.
 pub fn fx_call_price<T: Float>(
-    spot: T, strike: T, rate_domestic: T, rate_foreign: T, volatility: T, expiry: T,
+    spot: T,
+    strike: T,
+    rate_domestic: T,
+    rate_foreign: T,
+    volatility: T,
+    expiry: T,
 ) -> Result<T, FormulaError> {
-    fx_option_price(spot, strike, rate_domestic, rate_foreign, volatility, expiry, true)
+    fx_option_price(
+        spot,
+        strike,
+        rate_domestic,
+        rate_foreign,
+        volatility,
+        expiry,
+        true,
+    )
 }
 
 /// Convenience function to price an FX put option.
 pub fn fx_put_price<T: Float>(
-    spot: T, strike: T, rate_domestic: T, rate_foreign: T, volatility: T, expiry: T,
+    spot: T,
+    strike: T,
+    rate_domestic: T,
+    rate_foreign: T,
+    volatility: T,
+    expiry: T,
 ) -> Result<T, FormulaError> {
-    fx_option_price(spot, strike, rate_domestic, rate_foreign, volatility, expiry, false)
+    fx_option_price(
+        spot,
+        strike,
+        rate_domestic,
+        rate_foreign,
+        volatility,
+        expiry,
+        false,
+    )
 }
 
 #[cfg(test)]

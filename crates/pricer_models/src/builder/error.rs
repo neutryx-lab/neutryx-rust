@@ -114,7 +114,8 @@ impl<T: Float + std::fmt::Display> std::fmt::Display for RegularisationType<T> {
     }
 }
 
-/// Numerical diagnostics for calibration (condition numbers, residuals, regularisation).
+/// Numerical diagnostics for calibration (condition numbers, residuals,
+/// regularisation).
 #[derive(Debug, Clone)]
 pub struct NumericalDiagnostics<T: Float> {
     /// Estimated condition number of the Jacobian matrix.

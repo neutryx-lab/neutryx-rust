@@ -178,7 +178,11 @@ impl CommoditySwap {
         InstrumentError::check_positive(self.quantity_per_period, "Quantity per period")?;
         InstrumentError::check_positive(self.fixed_price, "Fixed price")?;
         InstrumentError::check_not_empty(&self.floating_index, "Floating Index")?;
-        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         Ok(())
     }
 }
@@ -245,7 +249,11 @@ impl CommodityAsianOption {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         InstrumentError::check_positive(self.quantity, "Quantity")?;
         InstrumentError::check_positive(self.strike, "Strike")?;
-        InstrumentError::check_date_order(self.averaging_start, self.averaging_end, "Averaging end must be after averaging start")?;
+        InstrumentError::check_date_order(
+            self.averaging_start,
+            self.averaging_end,
+            "Averaging end must be after averaging start",
+        )?;
         if self.expiry < self.averaging_end {
             return Err(InstrumentError::invalid_date(
                 "Expiry must be on or after averaging end",

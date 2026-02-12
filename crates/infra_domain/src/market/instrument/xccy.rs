@@ -42,7 +42,9 @@ impl std::fmt::Display for BasisSpread {
 }
 
 /// Notional exchange type for XCCY swaps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum NotionalExchange {
     /// Exchange notionals at trade inception only.
     Initial,
@@ -56,7 +58,9 @@ pub enum NotionalExchange {
 }
 
 /// Indicates which leg receives the basis spread.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum SpreadLeg {
     /// Spread applied to domestic leg.
     Domestic,

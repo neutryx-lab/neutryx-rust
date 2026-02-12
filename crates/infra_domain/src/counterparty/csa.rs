@@ -26,7 +26,9 @@ pub enum EligibleCollateral {
 }
 
 /// Collateral segregation type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum SegregationType {
     /// Collateral held in segregated account (protected from bankruptcy).
     #[default]
@@ -36,7 +38,9 @@ pub enum SegregationType {
 }
 
 /// Margin call frequency.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CallFrequency {
     /// Daily margin calls (standard for most CSAs).
     #[default]

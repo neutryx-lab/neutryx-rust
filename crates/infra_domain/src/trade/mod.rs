@@ -35,8 +35,7 @@ pub use pricing_instrument::{
     PricingInstrument, VanillaOption,
 };
 pub use trade::{
-    ExerciseType, ProtectionSide, SettlementType, Trade, TradeBuilder, TradeMetadata,
-    TradeType,
+    ExerciseType, ProtectionSide, SettlementType, Trade, TradeBuilder, TradeMetadata, TradeType,
 };
 
 pub use crate::{ids::TradeId, market::instrument::AssetClass};

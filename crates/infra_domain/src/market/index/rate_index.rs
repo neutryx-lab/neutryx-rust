@@ -69,16 +69,75 @@ impl RateIndex {
         ]
     }
 
-    /// Returns consolidated info: (currency, tenor, day_counter, name, code, api_code).
-    const fn info(&self) -> (Currency, Tenor, DayCounter, &'static str, &'static str, &'static str) {
+    /// Returns consolidated info: (currency, tenor, day_counter, name, code,
+    /// api_code).
+    const fn info(
+        &self,
+    ) -> (
+        Currency,
+        Tenor,
+        DayCounter,
+        &'static str,
+        &'static str,
+        &'static str,
+    ) {
         match self {
-            Self::Sofr      => (Currency::USD, Tenor::Overnight,   DayCounter::Actual360,      "SOFR",       "SOFR",   "SOFR"),
-            Self::Tonar     => (Currency::JPY, Tenor::Overnight,   DayCounter::Actual365Fixed,  "TONAR",      "TONAR",  "TONAR"),
-            Self::Estr      => (Currency::EUR, Tenor::Overnight,   DayCounter::Actual360,      "ESTR",       "ESTR",   "ESTR"),
-            Self::Euribor3M => (Currency::EUR, Tenor::ThreeMonths, DayCounter::Actual360,      "EURIBOR 3M", "EUR3M",  "EURIBOR3M"),
-            Self::Euribor6M => (Currency::EUR, Tenor::SixMonths,   DayCounter::Actual360,      "EURIBOR 6M", "EUR6M",  "EURIBOR6M"),
-            Self::Sonia     => (Currency::GBP, Tenor::Overnight,   DayCounter::Actual365Fixed,  "SONIA",      "SONIA",  "SONIA"),
-            Self::Saron     => (Currency::CHF, Tenor::Overnight,   DayCounter::Actual360,      "SARON",      "SARON",  "SARON"),
+            Self::Sofr => (
+                Currency::USD,
+                Tenor::Overnight,
+                DayCounter::Actual360,
+                "SOFR",
+                "SOFR",
+                "SOFR",
+            ),
+            Self::Tonar => (
+                Currency::JPY,
+                Tenor::Overnight,
+                DayCounter::Actual365Fixed,
+                "TONAR",
+                "TONAR",
+                "TONAR",
+            ),
+            Self::Estr => (
+                Currency::EUR,
+                Tenor::Overnight,
+                DayCounter::Actual360,
+                "ESTR",
+                "ESTR",
+                "ESTR",
+            ),
+            Self::Euribor3M => (
+                Currency::EUR,
+                Tenor::ThreeMonths,
+                DayCounter::Actual360,
+                "EURIBOR 3M",
+                "EUR3M",
+                "EURIBOR3M",
+            ),
+            Self::Euribor6M => (
+                Currency::EUR,
+                Tenor::SixMonths,
+                DayCounter::Actual360,
+                "EURIBOR 6M",
+                "EUR6M",
+                "EURIBOR6M",
+            ),
+            Self::Sonia => (
+                Currency::GBP,
+                Tenor::Overnight,
+                DayCounter::Actual365Fixed,
+                "SONIA",
+                "SONIA",
+                "SONIA",
+            ),
+            Self::Saron => (
+                Currency::CHF,
+                Tenor::Overnight,
+                DayCounter::Actual360,
+                "SARON",
+                "SARON",
+                "SARON",
+            ),
         }
     }
 

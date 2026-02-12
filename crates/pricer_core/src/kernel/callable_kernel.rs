@@ -60,7 +60,8 @@ pub enum ExerciseStyle {
     American,
 }
 
-/// Exercise opportunity definition for a single decision point in a callable product.
+/// Exercise opportunity definition for a single decision point in a callable
+/// product.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ExerciseDef {
     /// Exercise date (days from Unix epoch).
@@ -103,7 +104,8 @@ impl ExerciseDef {
     }
 }
 
-/// A period between exercise dates with underlying cashflows and an optional exercise opportunity.
+/// A period between exercise dates with underlying cashflows and an optional
+/// exercise opportunity.
 #[derive(Clone, Debug)]
 pub struct CallableBlock {
     /// Block start date (days from epoch).

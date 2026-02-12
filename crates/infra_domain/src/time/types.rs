@@ -11,7 +11,19 @@ use chrono::{Datelike, Days, Local, NaiveDate};
 use super::error::TimeError;
 
 /// Type-safe date wrapper around chrono::NaiveDate.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    derive_more::From,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[serde(transparent)]
 pub struct Date(NaiveDate);
 

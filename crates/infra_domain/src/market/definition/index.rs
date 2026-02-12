@@ -328,7 +328,7 @@ mod tests {
         assert_eq!(def.compounding(), CompoundingMethod::Compounded);
     }
 
-        #[test]
+    #[test]
     fn test_serde_roundtrip() {
         let def = RateIndexDefinition::new("USD-SOFR", Currency::USD, RateIndex::Sofr)
             .with_name("Secured Overnight Financing Rate");
@@ -339,7 +339,7 @@ mod tests {
         assert_eq!(def, parsed);
     }
 
-        #[test]
+    #[test]
     fn test_serde_from_json_overnight() {
         let json = r#"{
             "id": "EUR-ESTR",
@@ -356,7 +356,7 @@ mod tests {
         assert!(def.is_overnight());
     }
 
-        #[test]
+    #[test]
     fn test_serde_from_json_term() {
         let json = r#"{
             "id": "EUR-EURIBOR6M",
@@ -373,7 +373,7 @@ mod tests {
         assert!(!def.is_overnight());
     }
 
-        #[test]
+    #[test]
     fn test_serde_with_conventions() {
         let json = r#"{
             "id": "USD-SOFR",
@@ -398,7 +398,7 @@ mod tests {
         assert_eq!(conv.fixing_lag, Some(1));
     }
 
-        #[test]
+    #[test]
     fn test_serde_tenor_serializes_as_code() {
         let def = RateIndexDefinition::new("EUR-EURIBOR6M", Currency::EUR, RateIndex::Euribor6M);
         let json = serde_json::to_string(&def).unwrap();

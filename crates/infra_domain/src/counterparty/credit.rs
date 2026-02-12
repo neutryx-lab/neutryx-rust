@@ -5,7 +5,19 @@
 use super::CounterPartyError;
 
 /// Credit rating with +/- notches (20 grades).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize, strum::Display)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    strum::Display,
+)]
 pub enum CreditRating {
     /// AAA - Highest quality.
     #[strum(serialize = "AAA")]
@@ -129,7 +141,6 @@ impl CreditRating {
         ]
     }
 }
-
 
 /// Credit parameters for XVA calculations.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]

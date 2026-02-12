@@ -3,7 +3,18 @@
 use crate::time::{AccrualPeriod, Date, EndOfMonthRule, Frequency, Period, Tenor, TimeUnit};
 
 /// Asset class categorisation for financial instruments.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
+    strum::AsRefStr,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum AssetClass {
     /// Interest rate instruments (swaps, swaptions, caps/floors, etc.).
@@ -20,7 +31,9 @@ pub enum AssetClass {
 }
 
 /// Exercise style for option instruments.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, serde::Serialize, serde::Deserialize,
+)]
 pub enum ExerciseStyle {
     /// European: exercise only at expiry.
     European,

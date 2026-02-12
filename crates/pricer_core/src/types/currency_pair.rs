@@ -34,7 +34,8 @@ use std::fmt;
 use infra_domain::{error::CurrencyError, market::Currency};
 use num_traits::Float;
 
-/// An FX rate (BASE/QUOTE convention: 1 BASE = spot QUOTE). AD-compatible via generic `T`.
+/// An FX rate (BASE/QUOTE convention: 1 BASE = spot QUOTE). AD-compatible via
+/// generic `T`.
 #[derive(Debug, Clone, Copy)]
 pub struct FxRate<T: Float> {
     /// Base currency (the numerator in the exchange rate)
@@ -128,7 +129,8 @@ impl<T: Float> std::hash::Hash for FxRate<T> {
 #[deprecated(since = "0.9.0", note = "renamed to FxRate")]
 pub type CurrencyPair<T> = FxRate<T>;
 
-/// A simple FX pair identifier (without spot rate), suitable for use as a HashMap key.
+/// A simple FX pair identifier (without spot rate), suitable for use as a
+/// HashMap key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FxPair {
     /// Base currency (the numerator in the exchange rate)

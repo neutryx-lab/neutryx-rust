@@ -10,7 +10,18 @@ use super::{
 use crate::{ids::BookId, time::Date};
 
 /// Netting type classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, strum::Display, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    strum::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum NettingType {
     /// Bilateral (OTC) - direct with counterparty.
     #[default]

@@ -53,17 +53,26 @@ impl<T: Float + Default> Default for ModelState<T> {
 impl<T: Float + Default> ModelState<T> {
     /// Get state dimension.
     pub fn dimension(&self) -> usize {
-        match self { Self::Single(_) => 1, Self::TwoFactor(_) => 2 }
+        match self {
+            Self::Single(_) => 1,
+            Self::TwoFactor(_) => 2,
+        }
     }
 
     /// Get state component by index.
     pub fn get(&self, index: usize) -> Option<T> {
-        match self { Self::Single(s) => s.get(index), Self::TwoFactor(s) => s.get(index) }
+        match self {
+            Self::Single(s) => s.get(index),
+            Self::TwoFactor(s) => s.get(index),
+        }
     }
 
     /// Convert to vector representation.
     pub fn to_vec(&self) -> Vec<T> {
-        match self { Self::Single(s) => s.to_array(), Self::TwoFactor(s) => s.to_array() }
+        match self {
+            Self::Single(s) => s.to_array(),
+            Self::TwoFactor(s) => s.to_array(),
+        }
     }
 
     /// Get the price component (always first element).
@@ -71,7 +80,10 @@ impl<T: Float + Default> ModelState<T> {
 
     /// Get variance component if available (second element for two-factor).
     pub fn variance(&self) -> Option<T> {
-        match self { Self::Single(_) => None, Self::TwoFactor(s) => Some(s.second) }
+        match self {
+            Self::Single(_) => None,
+            Self::TwoFactor(s) => Some(s.second),
+        }
     }
 }
 
@@ -130,7 +142,8 @@ impl<T: Float> ModelParams<T> {
     }
 }
 
-/// Stochastic models ordered by increasing complexity (static dispatch for Enzyme LLVM compatibility).
+/// Stochastic models ordered by increasing complexity (static dispatch for
+/// Enzyme LLVM compatibility).
 ///
 /// | Model | Factors | Type |
 /// |-------|---------|------|
@@ -200,8 +213,12 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn initial_state(&self, params: &ModelParams<T>) -> ModelState<T> {
         match (self, params) {
             (Self::GBM(_), ModelParams::GBM(p)) => ModelState::Single(GBMModel::initial_state(p)),
-            (Self::Heston(_), ModelParams::Heston(p)) => ModelState::TwoFactor(HestonModel::initial_state(p)),
-            (Self::HullWhite(_), ModelParams::HullWhite(p)) => ModelState::Single(HullWhiteModel::initial_state(p)),
+            (Self::Heston(_), ModelParams::Heston(p)) => {
+                ModelState::TwoFactor(HestonModel::initial_state(p))
+            }
+            (Self::HullWhite(_), ModelParams::HullWhite(p)) => {
+                ModelState::Single(HullWhiteModel::initial_state(p))
+            }
             (Self::CIR(_), ModelParams::CIR(p)) => ModelState::Single(CIRModel::initial_state(p)),
             #[allow(unreachable_patterns)]
             _ => ModelState::default(),
@@ -209,12 +226,26 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     }
 
     /// Evolve state by one time step.
-    pub fn evolve_step(&self, state: ModelState<T>, dt: T, dw: &[T], params: &ModelParams<T>) -> ModelState<T> {
+    pub fn evolve_step(
+        &self,
+        state: ModelState<T>,
+        dt: T,
+        dw: &[T],
+        params: &ModelParams<T>,
+    ) -> ModelState<T> {
         match (self, &state, params) {
-            (Self::GBM(_), ModelState::Single(s), ModelParams::GBM(p)) => ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p)),
-            (Self::Heston(_), ModelState::TwoFactor(s), ModelParams::Heston(p)) => ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p)),
-            (Self::HullWhite(_), ModelState::Single(s), ModelParams::HullWhite(p)) => ModelState::Single(HullWhiteModel::evolve_step(*s, dt, dw, p)),
-            (Self::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p)),
+            (Self::GBM(_), ModelState::Single(s), ModelParams::GBM(p)) => {
+                ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p))
+            }
+            (Self::Heston(_), ModelState::TwoFactor(s), ModelParams::Heston(p)) => {
+                ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p))
+            }
+            (Self::HullWhite(_), ModelState::Single(s), ModelParams::HullWhite(p)) => {
+                ModelState::Single(HullWhiteModel::evolve_step(*s, dt, dw, p))
+            }
+            (Self::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => {
+                ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p))
+            }
             #[allow(unreachable_patterns)]
             _ => state,
         }

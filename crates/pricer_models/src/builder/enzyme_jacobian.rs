@@ -324,7 +324,8 @@ pub mod kernels {
         gradient
     }
 
-    /// Compute the full Jacobian matrix (n_instruments x n_pillars) using Enzyme reverse mode.
+    /// Compute the full Jacobian matrix (n_instruments x n_pillars) using
+    /// Enzyme reverse mode.
     pub fn compute_jacobian_enzyme(
         instrument_types: &[u32],
         instrument_params: &[Vec<f64>],

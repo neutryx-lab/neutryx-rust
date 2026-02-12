@@ -22,7 +22,10 @@ macro_rules! greek_builder {
 /// Greeks calculation result with optional sensitivities, generic over Float
 /// for AD compatibility.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(bound(serialize = "T: Float + Serialize", deserialize = "T: Float + Deserialize<'de>"))]
+#[serde(bound(
+    serialize = "T: Float + Serialize",
+    deserialize = "T: Float + Deserialize<'de>"
+))]
 pub struct GreeksResult<T: Float> {
     /// Calculated price.
     pub price: T,

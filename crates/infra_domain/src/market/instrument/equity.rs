@@ -289,7 +289,11 @@ impl EquitySwap {
     /// Validates the equity swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         InstrumentError::check_positive(self.notional, "Notional")?;
-        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         InstrumentError::check_not_empty(&self.funding_index, "Funding Index")?;
         Ok(())
     }

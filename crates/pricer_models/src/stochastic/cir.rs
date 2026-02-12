@@ -71,7 +71,8 @@ pub struct CIRParams<T: Float> {
 }
 
 impl<T: Float> CIRParams<T> {
-    /// Creates new CIR parameters with validation. Returns `None` if any parameter is non-positive.
+    /// Creates new CIR parameters with validation. Returns `None` if any
+    /// parameter is non-positive.
     pub fn new(
         mean_reversion: T,
         long_term_mean: T,
@@ -104,7 +105,8 @@ impl<T: Float> CIRParams<T> {
         lhs >= rhs
     }
 
-    /// Returns the Feller ratio `2ab / sigma^2` (>= 1.0 means condition is satisfied).
+    /// Returns the Feller ratio `2ab / sigma^2` (>= 1.0 means condition is
+    /// satisfied).
     pub fn feller_ratio(&self) -> T {
         let two = T::from(2.0).unwrap_or(T::one());
         let numerator = two * self.mean_reversion * self.long_term_mean;

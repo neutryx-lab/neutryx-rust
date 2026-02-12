@@ -161,9 +161,17 @@ impl PricingKernel {
         fx_index_ids: Vec<u16>,
     ) -> Result<Self, CompileError> {
         let len = payment_dates.len();
-        check_len!(len,
-            fixing_dates, year_fractions, notionals, spreads, gearings,
-            currency_ids, discount_curve_ids, fwd_index_ids, fx_index_ids,
+        check_len!(
+            len,
+            fixing_dates,
+            year_fractions,
+            notionals,
+            spreads,
+            gearings,
+            currency_ids,
+            discount_curve_ids,
+            fwd_index_ids,
+            fx_index_ids,
         );
 
         Ok(Self {
@@ -226,11 +234,18 @@ impl PricingKernel {
     /// Returns `CompileError::LengthMismatch` if arrays are inconsistent.
     pub fn validate(&self) -> Result<(), CompileError> {
         let len = self.len;
-        check_len!(len,
-            self.payment_dates, self.fixing_dates, self.year_fractions,
-            self.notionals, self.spreads, self.gearings,
-            self.currency_ids, self.discount_curve_ids,
-            self.fwd_index_ids, self.fx_index_ids,
+        check_len!(
+            len,
+            self.payment_dates,
+            self.fixing_dates,
+            self.year_fractions,
+            self.notionals,
+            self.spreads,
+            self.gearings,
+            self.currency_ids,
+            self.discount_curve_ids,
+            self.fwd_index_ids,
+            self.fx_index_ids,
         );
         Ok(())
     }
@@ -408,11 +423,18 @@ impl PricingKernelBuilder {
         let mut indices: Vec<usize> = (0..self.payment_dates.len()).collect();
         indices.sort_by_key(|&i| self.payment_dates[i]);
 
-        permute_vecs!(indices,
-            self.payment_dates, self.fixing_dates,
-            self.year_fractions, self.notionals, self.spreads, self.gearings,
-            self.currency_ids, self.discount_curve_ids,
-            self.fwd_index_ids, self.fx_index_ids,
+        permute_vecs!(
+            indices,
+            self.payment_dates,
+            self.fixing_dates,
+            self.year_fractions,
+            self.notionals,
+            self.spreads,
+            self.gearings,
+            self.currency_ids,
+            self.discount_curve_ids,
+            self.fwd_index_ids,
+            self.fx_index_ids,
         );
 
         self

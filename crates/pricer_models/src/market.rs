@@ -720,7 +720,8 @@ pub mod curves {
         }
     }
 
-    /// Enum wrapper for different curve types (static dispatch via `enum_dispatch`).
+    /// Enum wrapper for different curve types (static dispatch via
+    /// `enum_dispatch`).
     #[derive(Debug, Clone)]
     #[enum_dispatch(YieldCurve<T>)]
     pub enum CurveEnum<T: Float> {
@@ -989,7 +990,8 @@ pub mod fx_curves {
     // Import CurveEnum from curves module for use in FxCurveEnum
     use super::curves::{CurveEnum, FlatCurve};
 
-    /// Enum wrapper for different FX curve types (static dispatch via `enum_dispatch`).
+    /// Enum wrapper for different FX curve types (static dispatch via
+    /// `enum_dispatch`).
     #[derive(Debug, Clone)]
     #[enum_dispatch(FxCurve<T>)]
     pub enum FxCurveEnum<T: Float> {
@@ -1054,7 +1056,8 @@ pub mod jumps {
         time::{Date, DayCounter},
     };
 
-    /// A jump entry (time in years, cumulative log-DF offset) for bootstrapped curves.
+    /// A jump entry (time in years, cumulative log-DF offset) for bootstrapped
+    /// curves.
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct JumpEntry {
         /// Time of the jump in years from valuation date.

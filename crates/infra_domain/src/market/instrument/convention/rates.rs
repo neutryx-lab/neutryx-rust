@@ -18,7 +18,6 @@ pub struct DepositConvention {
     pub spot_lag: u32,
 }
 
-
 super::define_convention_factories! {
     for DepositConvention;
     /// Returns the USD deposit convention (ACT/360, NY, ModFol, T+2).
@@ -71,7 +70,6 @@ pub struct FraConvention {
     pub index: RateIndex,
 }
 
-
 super::define_convention_factories! {
     for FraConvention;
     /// Returns the USD SOFR FRA convention.
@@ -98,7 +96,6 @@ pub struct FuturesConvention {
     /// Calendar for settlement.
     pub calendar: CalendarId,
 }
-
 
 super::define_convention_factories! {
     for FuturesConvention;
@@ -133,7 +130,6 @@ pub struct SwapLegConvention {
     /// Number of days between end of accrual and payment.
     pub payment_lag: u32,
 }
-
 
 /// Convention for an interest rate swap.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -296,7 +292,6 @@ pub struct BondConvention {
     pub settlement_days: u32,
 }
 
-
 super::define_convention_factories! {
     for BondConvention;
     /// Returns the US Treasury bond convention.
@@ -339,7 +334,6 @@ pub struct CapFloorConvention {
     /// Reference rate index.
     pub index: RateIndex,
 }
-
 
 super::define_convention_factories! {
     for CapFloorConvention;

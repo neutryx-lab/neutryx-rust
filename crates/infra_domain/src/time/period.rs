@@ -7,7 +7,9 @@ use chrono::{Datelike, Months, NaiveDate};
 use super::{day_counters::DayCounter, types::Date};
 
 /// Time unit for period calculations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, serde::Serialize, serde::Deserialize,
+)]
 pub enum TimeUnit {
     /// Days.
     #[strum(serialize = "D")]
@@ -103,7 +105,9 @@ impl Add<Period> for Date {
 }
 
 /// End of month handling rule for tenor calculations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum EndOfMonthRule {
     /// Month-end to month-end adjustment.
     #[default]

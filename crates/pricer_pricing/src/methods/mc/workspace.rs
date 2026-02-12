@@ -2,7 +2,10 @@
 
 use std::marker::PhantomData;
 
-use super::{capacity::calculate_growth_capacity, layout_config::PathLayout, workspace_trait::PathWorkspaceTrait};
+use super::{
+    capacity::calculate_growth_capacity, layout_config::PathLayout,
+    workspace_trait::PathWorkspaceTrait,
+};
 
 /// Index calculation strategy for workspace memory layout.
 pub trait LayoutStrategy: Send + Sync + Clone + 'static {

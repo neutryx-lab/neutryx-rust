@@ -16,7 +16,6 @@ pub struct FxConvention {
     pub business_day_convention: BusinessDayConvention,
 }
 
-
 super::define_convention_factories! {
     for FxConvention;
     /// Returns the USD/JPY FX convention.

@@ -3,7 +3,20 @@
 use serde::{Deserialize, Serialize};
 
 /// Importance level of a market event.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default, Serialize, Deserialize, strum::Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Default,
+    Serialize,
+    Deserialize,
+    strum::Display,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum EventImportance {
     /// Low importance - minimal market impact expected.
@@ -18,7 +31,6 @@ pub enum EventImportance {
 }
 
 impl EventImportance {
-
     /// Get the CSS class suffix for styling.
     pub fn css_class(&self) -> &'static str {
         match self {
@@ -39,7 +51,6 @@ impl EventImportance {
         ]
     }
 }
-
 
 #[cfg(test)]
 mod tests {

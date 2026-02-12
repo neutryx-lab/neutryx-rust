@@ -32,7 +32,8 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-/// State representation for stochastic models (unified interface for state manipulation).
+/// State representation for stochastic models (unified interface for state
+/// manipulation).
 pub trait StochasticState<T: Float>: Clone + Copy + Default {
     /// Number of state variables
     fn dimension() -> usize;
@@ -156,7 +157,8 @@ pub trait StochasticModel<T: Float>: Differentiable {
     /// Model name for logging and debugging.
     fn model_name() -> &'static str;
 
-    /// Number of independent stochastic factors (distinct from `brownian_dim()`).
+    /// Number of independent stochastic factors (distinct from
+    /// `brownian_dim()`).
     fn num_factors() -> usize;
 }
 

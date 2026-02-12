@@ -112,7 +112,8 @@ impl CalibrationConfig {
     }
 }
 
-/// Result of a calibration run with final parameters, convergence status, and diagnostics.
+/// Result of a calibration run with final parameters, convergence status, and
+/// diagnostics.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CalibrationResult<P> {
     /// Final calibrated parameters.

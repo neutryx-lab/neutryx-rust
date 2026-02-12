@@ -1,4 +1,5 @@
-//! Common tree pricing infrastructure shared between binomial and trinomial trees.
+//! Common tree pricing infrastructure shared between binomial and trinomial
+//! trees.
 
 use crate::generic_pricer::ConfigError;
 

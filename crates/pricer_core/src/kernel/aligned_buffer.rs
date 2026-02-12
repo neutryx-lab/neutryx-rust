@@ -57,7 +57,8 @@ unsafe impl<T: Send> Send for AlignedBuffer<T> {}
 unsafe impl<T: Sync> Sync for AlignedBuffer<T> {}
 
 impl<T: Clone + Default> AlignedBuffer<T> {
-    /// Creates a new aligned buffer with `capacity` elements initialised to `T::default()`.
+    /// Creates a new aligned buffer with `capacity` elements initialised to
+    /// `T::default()`.
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         if capacity == 0 {
@@ -175,7 +176,8 @@ impl<T> AlignedBuffer<T> {
     #[must_use]
     pub fn as_ptr(&self) -> *const T { self.ptr.as_ptr() }
 
-    /// Returns a mutable raw pointer to the buffer data, valid for `len()` elements.
+    /// Returns a mutable raw pointer to the buffer data, valid for `len()`
+    /// elements.
     #[inline]
     #[must_use]
     pub fn as_mut_ptr(&mut self) -> *mut T { self.ptr.as_ptr() }

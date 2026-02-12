@@ -8,7 +8,18 @@ use bon::Builder;
 use super::{CounterPartyId, CreditParams, CreditRating, LegalEntityId};
 
 /// CounterParty sector classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, strum::Display, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    strum::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum CounterPartySector {
     /// Commercial or investment bank.
     Banking,

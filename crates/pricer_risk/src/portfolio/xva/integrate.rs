@@ -7,7 +7,8 @@
 /// # Arguments
 /// * `exposure` - Exposure profile values at each time point
 /// * `time_grid` - Time points (must have same length as `exposure`)
-/// * `weight_fn` - Callback `(index, t_start, t_end) -> weight` applied to each interval
+/// * `weight_fn` - Callback `(index, t_start, t_end) -> weight` applied to each
+///   interval
 #[inline]
 pub fn trapezoidal_xva(
     exposure: &[f64],
@@ -36,9 +37,7 @@ pub fn trapezoidal_xva_with_survival(
     survival: &[f64],
     weight_fn: impl Fn(usize, f64, f64) -> f64,
 ) -> f64 {
-    if time_grid.len() < 2
-        || exposure.len() != time_grid.len()
-        || survival.len() != time_grid.len()
+    if time_grid.len() < 2 || exposure.len() != time_grid.len() || survival.len() != time_grid.len()
     {
         return 0.0;
     }

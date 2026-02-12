@@ -36,7 +36,8 @@ pub type CsrMatrix<T> = nalgebra_sparse::CsrMatrix<T>;
 /// CSC (Compressed Sparse Column) matrix type alias.
 pub type CscMatrix<T> = nalgebra_sparse::CscMatrix<T>;
 
-/// Convert a dense matrix to CSR format. Elements below `threshold` are treated as zero.
+/// Convert a dense matrix to CSR format. Elements below `threshold` are treated
+/// as zero.
 pub fn to_csr<T: RealField + Copy + Float>(dense: &DMatrix<T>, threshold: T) -> CsrMatrix<T> {
     let nrows = dense.nrows();
     let ncols = dense.ncols();

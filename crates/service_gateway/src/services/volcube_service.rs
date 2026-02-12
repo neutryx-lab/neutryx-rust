@@ -837,8 +837,7 @@ impl VolcubeService {
         let market_instruments = parse_instruments(&specs)
             .map_err(|e| ServerError::Internal(format!("Instrument parsing failed: {e}")))?;
 
-        let config =
-            BootstrapConfig::new(1e-10, 100);
+        let config = BootstrapConfig::new(1e-10, 100);
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, _) = bootstrapper

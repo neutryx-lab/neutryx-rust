@@ -57,7 +57,8 @@ pub enum ThetaFunction<T: Float> {
         value: T,
     },
 
-    /// フラットカーブからの時間依存 theta: theta(t) = a * r* + (sigma^2 / 2a) * (1 - exp(-2at))
+    /// フラットカーブからの時間依存 theta: theta(t) = a * r* + (sigma^2 / 2a) *
+    /// (1 - exp(-2at))
     TimeDependentFlat {
         /// 平均回帰速度
         mean_reversion: T,

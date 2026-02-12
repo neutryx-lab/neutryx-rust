@@ -225,7 +225,8 @@ impl<T: Float> CholeskyFactor<T> {
         }
     }
 
-    /// Transform independent standard normals Z to correlated normals W = L * Z.
+    /// Transform independent standard normals Z to correlated normals W = L *
+    /// Z.
     pub fn transform(&self, z: &[T]) -> Vec<T> {
         assert!(
             z.len() >= self.dim,
@@ -274,7 +275,8 @@ impl<T: Float> CholeskyFactor<T> {
     }
 }
 
-/// Container for multiple correlated stochastic models via Cholesky decomposition.
+/// Container for multiple correlated stochastic models via Cholesky
+/// decomposition.
 #[derive(Clone, Debug)]
 pub struct CorrelatedModels<T: Float> {
     /// Number of factors/models

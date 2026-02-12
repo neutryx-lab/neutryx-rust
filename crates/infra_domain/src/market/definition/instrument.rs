@@ -25,10 +25,10 @@ pub struct InstrumentDefinition {
 
     /// Instrument type - derived from convention if not explicitly set.
     #[serde(
-            default,
-            skip_serializing_if = "Option::is_none",
-            alias = "quoteCategory"
-        )]
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "quoteCategory"
+    )]
     quote_category_override: Option<QuoteCategory>,
 
     /// Tenor specification (e.g., "ON", "3M", "5Y", or FRA format "3x6").
@@ -854,7 +854,7 @@ mod tests {
         ));
     }
 
-        #[test]
+    #[test]
     fn test_serde_roundtrip() {
         let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y")
             .with_rate_index("USD-SOFR");
@@ -866,7 +866,7 @@ mod tests {
         assert_eq!(def.id, parsed.id);
     }
 
-        #[test]
+    #[test]
     fn test_serde_from_json_legacy() {
         let json = r#"{
             "id": "USD-Depo-ON",
@@ -882,7 +882,7 @@ mod tests {
         assert_eq!(def.tenor, "ON");
     }
 
-        #[test]
+    #[test]
     fn test_serde_from_json_convention() {
         let json = r#"{
             "id": "USD-OIS-5Y",
@@ -900,7 +900,7 @@ mod tests {
         assert_eq!(def.tenor, "5Y");
     }
 
-        #[test]
+    #[test]
     fn test_serde_with_conventions() {
         let json = r#"{
             "id": "USD-OIS-5Y",
@@ -979,7 +979,7 @@ mod tests {
         ));
     }
 
-        #[test]
+    #[test]
     fn test_serde_event_instrument() {
         let json = r#"{
             "id": "USD-FOMC-2024-03",

@@ -9,7 +9,9 @@ use crate::{
 };
 
 /// Scope of a portfolio.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum PortfolioScope {
     /// Internal management portfolio.

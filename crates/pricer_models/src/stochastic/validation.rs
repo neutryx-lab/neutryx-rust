@@ -208,7 +208,8 @@ pub fn validate_finite(context: &'static str, value: f64) -> Result<(), Computat
     }
 }
 
-/// Default smoothing epsilon (1e-8) used across stochastic models for AD-compatible smooth approximations.
+/// Default smoothing epsilon (1e-8) used across stochastic models for
+/// AD-compatible smooth approximations.
 pub const DEFAULT_SMOOTHING_EPSILON: f64 = 1e-8;
 
 /// Internal helper: dispatch a single validation rule.

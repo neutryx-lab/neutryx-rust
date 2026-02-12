@@ -1,7 +1,9 @@
 //! Counterparty portfolio hierarchy (stub for future XVA integration).
 
 /// ISDA payment method for collateral.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum IsdaPaymentMethod {
     /// Full bilateral exchange.
     #[default]
@@ -15,7 +17,9 @@ pub enum IsdaPaymentMethod {
 }
 
 /// Collateral call frequency for VM agreements.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CollateralCallFrequency {
     /// Daily margin calls (standard).
     #[default]

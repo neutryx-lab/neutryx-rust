@@ -62,7 +62,11 @@ impl Cds {
         InstrumentError::check_not_empty(&self.reference_entity, "Reference Entity")?;
         InstrumentError::check_positive(self.notional, "Notional")?;
         InstrumentError::check_non_negative(self.spread, "Spread")?;
-        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         if let Some(recovery) = self.recovery_rate {
             if !(0.0..=1.0).contains(&recovery) {
                 return Err(InstrumentError::invalid_parameter(
@@ -130,7 +134,11 @@ impl CdsIndex {
         }
         InstrumentError::check_positive(self.notional, "Notional")?;
         InstrumentError::check_non_negative(self.spread, "Spread")?;
-        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         Ok(())
     }
 
@@ -166,7 +174,11 @@ impl CdsOption {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         InstrumentError::check_not_empty(&self.reference_entity, "Reference Entity")?;
         InstrumentError::check_non_negative(self.strike_spread, "Strike spread")?;
-        InstrumentError::check_date_order(self.exercise_date, self.underlying_maturity, "Underlying maturity must be after exercise date")?;
+        InstrumentError::check_date_order(
+            self.exercise_date,
+            self.underlying_maturity,
+            "Underlying maturity must be after exercise date",
+        )?;
         InstrumentError::check_positive(self.notional, "Notional")?;
         Ok(())
     }
@@ -213,7 +225,11 @@ impl NtdBasket {
         }
         InstrumentError::check_positive(self.notional, "Notional")?;
         InstrumentError::check_non_negative(self.spread, "Spread")?;
-        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         if let Some(corr) = self.correlation_parameter {
             if !(-1.0..=1.0).contains(&corr) {
                 return Err(InstrumentError::invalid_parameter(

@@ -83,7 +83,8 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
         }
     }
 
-    /// Get the sparsity ratio of the decomposed matrix, or `None` if not yet decomposed.
+    /// Get the sparsity ratio of the decomposed matrix, or `None` if not yet
+    /// decomposed.
     pub fn sparsity(&self) -> Option<f64> { self.cached_sparsity }
 
     /// Check if the strategy is currently using sparse storage.
@@ -103,7 +104,10 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
     /// Decompose a sparse matrix directly from CSR input.
     pub fn decompose_sparse(&mut self, csr: CsrMatrix<T>) -> Result<(), LinearAlgebraError> {
         if csr.nrows() != csr.ncols() {
-            return Err(LinearAlgebraError::NotSquare { rows: csr.nrows(), cols: csr.ncols() });
+            return Err(LinearAlgebraError::NotSquare {
+                rows: csr.nrows(),
+                cols: csr.ncols(),
+            });
         }
 
         let total = csr.nrows() * csr.ncols();
@@ -122,7 +126,8 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
         Ok(())
     }
 
-    /// Get the stored matrix as dense format, converting from sparse if necessary.
+    /// Get the stored matrix as dense format, converting from sparse if
+    /// necessary.
     fn get_dense(&self) -> Result<DMatrix<T>, LinearAlgebraError> {
         if let Some(ref dense) = self.dense_matrix {
             Ok(dense.clone())

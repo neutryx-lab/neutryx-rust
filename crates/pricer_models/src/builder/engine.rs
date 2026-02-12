@@ -572,7 +572,10 @@ mod tests {
     #[test]
     fn test_calibration_result_fields() {
         let instruments = create_test_instruments();
-        let config = CalibrationEngineConfig { debug_logging: true, ..Default::default() };
+        let config = CalibrationEngineConfig {
+            debug_logging: true,
+            ..Default::default()
+        };
 
         let mut engine = CalibrationEngine::with_lu_strategy(config);
         let result = engine.calibrate(&instruments).unwrap();

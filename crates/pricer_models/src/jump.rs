@@ -49,7 +49,8 @@ use num_traits::Float;
 pub struct JumpTime<T> {
     /// Time in year fractions from valuation date.
     pub time: T,
-    /// Cumulative jump offset in log-space: `DF_adjusted = DF * exp(cumulative_offset)`.
+    /// Cumulative jump offset in log-space: `DF_adjusted = DF *
+    /// exp(cumulative_offset)`.
     pub cumulative_offset: T,
 }
 
@@ -181,7 +182,8 @@ pub fn effective_jump_offset_at<T: Float>(jumps: &[JumpTime<T>], t: T) -> T {
     }
 }
 
-/// Returns the discontinuity magnitude at time `t` (right limit minus left limit).
+/// Returns the discontinuity magnitude at time `t` (right limit minus left
+/// limit).
 pub fn jump_offset_at<T: Float>(jumps: &[JumpTime<T>], t: T, tolerance: T) -> T {
     for (i, jump) in jumps.iter().enumerate() {
         if (jump.time - t).abs() <= tolerance {

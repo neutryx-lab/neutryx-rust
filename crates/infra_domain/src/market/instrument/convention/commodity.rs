@@ -47,7 +47,6 @@ pub struct CommodityConvention {
     pub contract_size: f64,
 }
 
-
 super::define_convention_factories! {
     for CommodityConvention;
     /// Returns the WTI Crude Oil convention (Physical, Cushing OK, 1000 bbl).

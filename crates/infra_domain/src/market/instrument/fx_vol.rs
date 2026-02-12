@@ -24,7 +24,9 @@ pub enum FxVolInstrumentError {
 }
 
 /// Delta type convention for FX options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum DeltaType {
     /// Spot delta (standard for most G10 pairs like EURUSD).
@@ -59,7 +61,9 @@ impl DeltaType {
 }
 
 /// Cut-off time for option expiry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CutOffTime {
     /// New York 10:00 AM (standard for most FX options).
     #[default]

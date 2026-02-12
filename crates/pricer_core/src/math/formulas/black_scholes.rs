@@ -31,11 +31,16 @@ pub struct BlackScholes<T: Float> {
 }
 
 impl<T: Float> BlackScholes<T> {
-    /// Creates a new Black-Scholes model. Returns error if spot or volatility <= 0.
+    /// Creates a new Black-Scholes model. Returns error if spot or volatility
+    /// <= 0.
     pub fn new(spot: T, rate: T, volatility: T) -> Result<Self, FormulaError> {
         require_positive_spot(spot)?;
         require_positive_vol(volatility)?;
-        Ok(Self { spot, rate, volatility })
+        Ok(Self {
+            spot,
+            rate,
+            volatility,
+        })
     }
 
     /// Returns the spot price.
@@ -69,30 +74,47 @@ impl<T: Float> BlackScholes<T> {
         .ok()
     }
 
-    /// Moneyness direction for expired option: +large (ITM), -large (OTM), 0 (ATM).
+    /// Moneyness direction for expired option: +large (ITM), -large (OTM), 0
+    /// (ATM).
     #[inline]
     fn expired_sign(&self, strike: T) -> T {
         let large: T = from_f64(100.0);
-        if self.spot > strike { large } else if self.spot < strike { -large } else { T::zero() }
+        if self.spot > strike {
+            large
+        } else if self.spot < strike {
+            -large
+        } else {
+            T::zero()
+        }
     }
 
     /// Expired intrinsic value: max(φ·(S−K), 0) where φ = +1 call / −1 put.
     #[inline]
     fn expired_intrinsic(&self, strike: T, is_call: bool) -> T {
-        let diff = if is_call { self.spot - strike } else { strike - self.spot };
-        if diff > T::zero() { diff } else { T::zero() }
+        let diff = if is_call {
+            self.spot - strike
+        } else {
+            strike - self.spot
+        };
+        if diff > T::zero() {
+            diff
+        } else {
+            T::zero()
+        }
     }
 
     /// Computes d₁ = (ln(S/K) + (r + σ²/2)T) / (σ√T).
     #[inline]
     pub fn d1(&self, strike: T, expiry: T) -> T {
-        self.bsm(strike, expiry).map_or_else(|| self.expired_sign(strike), |m| m.d1())
+        self.bsm(strike, expiry)
+            .map_or_else(|| self.expired_sign(strike), |m| m.d1())
     }
 
     /// Computes d₂ = d₁ - σ√T.
     #[inline]
     pub fn d2(&self, strike: T, expiry: T) -> T {
-        self.bsm(strike, expiry).map_or_else(|| self.expired_sign(strike), |m| m.d2())
+        self.bsm(strike, expiry)
+            .map_or_else(|| self.expired_sign(strike), |m| m.d2())
     }
 
     /// Computes European call price: C = S·N(d₁) - K·e^(-rT)·N(d₂).
@@ -106,8 +128,10 @@ impl<T: Float> BlackScholes<T> {
     /// Computes option price based on call/put flag.
     #[inline]
     pub fn price(&self, strike: T, expiry: T, is_call: bool) -> T {
-        self.bsm(strike, expiry)
-            .map_or_else(|| self.expired_intrinsic(strike, is_call), |m| m.price(is_call))
+        self.bsm(strike, expiry).map_or_else(
+            || self.expired_intrinsic(strike, is_call),
+            |m| m.price(is_call),
+        )
     }
 
     /// Computes Delta (∂V/∂S).
@@ -117,8 +141,16 @@ impl<T: Float> BlackScholes<T> {
             || {
                 let (one, zero) = (T::one(), T::zero());
                 if is_call {
-                    if self.spot > strike { one } else { zero }
-                } else if self.spot < strike { -one } else { zero }
+                    if self.spot > strike {
+                        one
+                    } else {
+                        zero
+                    }
+                } else if self.spot < strike {
+                    -one
+                } else {
+                    zero
+                }
             },
             |m| m.delta(is_call),
         )
@@ -139,13 +171,15 @@ impl<T: Float> BlackScholes<T> {
     /// Computes Theta (∂V/∂t).
     #[inline]
     pub fn theta(&self, strike: T, expiry: T, is_call: bool) -> T {
-        self.bsm(strike, expiry).map_or(T::zero(), |m| m.theta(is_call))
+        self.bsm(strike, expiry)
+            .map_or(T::zero(), |m| m.theta(is_call))
     }
 
     /// Computes Rho (∂V/∂r).
     #[inline]
     pub fn rho(&self, strike: T, expiry: T, is_call: bool) -> T {
-        self.bsm(strike, expiry).map_or(T::zero(), |m| m.rho(is_call))
+        self.bsm(strike, expiry)
+            .map_or(T::zero(), |m| m.rho(is_call))
     }
 }
 
@@ -167,10 +201,22 @@ mod tests {
 
     #[test]
     fn validation() {
-        assert!(matches!(BlackScholes::new(-100.0_f64, 0.05, 0.2).unwrap_err(), FormulaError::InvalidSpot { .. }));
-        assert!(matches!(BlackScholes::new(0.0_f64, 0.05, 0.2).unwrap_err(), FormulaError::InvalidSpot { .. }));
-        assert!(matches!(BlackScholes::new(100.0_f64, 0.05, -0.2).unwrap_err(), FormulaError::InvalidVolatility { .. }));
-        assert!(matches!(BlackScholes::new(100.0_f64, 0.05, 0.0).unwrap_err(), FormulaError::InvalidVolatility { .. }));
+        assert!(matches!(
+            BlackScholes::new(-100.0_f64, 0.05, 0.2).unwrap_err(),
+            FormulaError::InvalidSpot { .. }
+        ));
+        assert!(matches!(
+            BlackScholes::new(0.0_f64, 0.05, 0.2).unwrap_err(),
+            FormulaError::InvalidSpot { .. }
+        ));
+        assert!(matches!(
+            BlackScholes::new(100.0_f64, 0.05, -0.2).unwrap_err(),
+            FormulaError::InvalidVolatility { .. }
+        ));
+        assert!(matches!(
+            BlackScholes::new(100.0_f64, 0.05, 0.0).unwrap_err(),
+            FormulaError::InvalidVolatility { .. }
+        ));
         assert!(BlackScholes::new(100.0_f64, -0.02, 0.2).is_ok());
     }
 
@@ -216,7 +262,11 @@ mod tests {
         let m = bs();
         for k in [80.0, 90.0, 100.0, 110.0, 120.0] {
             let forward = 100.0 - k * (-0.05_f64).exp();
-            assert_relative_eq!(m.price_call(k, 1.0) - m.price_put(k, 1.0), forward, epsilon = 1e-10);
+            assert_relative_eq!(
+                m.price_call(k, 1.0) - m.price_put(k, 1.0),
+                forward,
+                epsilon = 1e-10
+            );
         }
     }
 
@@ -229,7 +279,11 @@ mod tests {
             assert!((0.0..=1.0).contains(&cd), "Call delta OOB at K={k}");
             assert!((-1.0..=0.0).contains(&pd), "Put delta OOB at K={k}");
         }
-        assert_relative_eq!(m.delta(100.0, 1.0, false), m.delta(100.0, 1.0, true) - 1.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            m.delta(100.0, 1.0, false),
+            m.delta(100.0, 1.0, true) - 1.0,
+            epsilon = 1e-10
+        );
     }
 
     #[test]

@@ -158,33 +158,61 @@ mod tests {
         };
     }
 
-    test_convergence!(smooth_max_convergence,
-        |eps| smooth_max(3.0_f64, 5.0, eps), 5.0_f64,
-        eps = [1e-2, 1e-4, 1e-6], tol = [1e-1, 1e-2, 1e-3]);
+    test_convergence!(
+        smooth_max_convergence,
+        |eps| smooth_max(3.0_f64, 5.0, eps),
+        5.0_f64,
+        eps = [1e-2, 1e-4, 1e-6],
+        tol = [1e-1, 1e-2, 1e-3]
+    );
 
-    test_convergence!(smooth_min_convergence,
-        |eps| smooth_min(3.0_f64, 5.0, eps), 3.0_f64,
-        eps = [1e-2, 1e-4, 1e-6], tol = [1e-1, 1e-2, 1e-3]);
+    test_convergence!(
+        smooth_min_convergence,
+        |eps| smooth_min(3.0_f64, 5.0, eps),
+        3.0_f64,
+        eps = [1e-2, 1e-4, 1e-6],
+        tol = [1e-1, 1e-2, 1e-3]
+    );
 
-    test_convergence!(smooth_abs_convergence,
-        |eps| smooth_abs(3.5_f64, eps), 3.5_f64,
-        eps = [1e-2, 1e-4, 1e-6], tol = [1e-1, 1e-2, 1e-3]);
+    test_convergence!(
+        smooth_abs_convergence,
+        |eps| smooth_abs(3.5_f64, eps),
+        3.5_f64,
+        eps = [1e-2, 1e-4, 1e-6],
+        tol = [1e-1, 1e-2, 1e-3]
+    );
 
-    test_convergence!(smooth_sqrt_convergence,
-        |eps| smooth_sqrt(4.0_f64, eps), 2.0_f64,
-        eps = [1e-2, 1e-4, 1e-6], tol = [1e-1, 1e-3, 1e-5]);
+    test_convergence!(
+        smooth_sqrt_convergence,
+        |eps| smooth_sqrt(4.0_f64, eps),
+        2.0_f64,
+        eps = [1e-2, 1e-4, 1e-6],
+        tol = [1e-1, 1e-3, 1e-5]
+    );
 
-    test_convergence!(smooth_log_convergence,
-        |eps| smooth_log(2.0_f64, eps), 2.0_f64.ln(),
-        eps = [1e-2, 1e-4, 1e-6], tol = [1e-1, 1e-3, 1e-5]);
+    test_convergence!(
+        smooth_log_convergence,
+        |eps| smooth_log(2.0_f64, eps),
+        2.0_f64.ln(),
+        eps = [1e-2, 1e-4, 1e-6],
+        tol = [1e-1, 1e-3, 1e-5]
+    );
 
-    test_convergence!(smooth_pow_integer_exp_convergence,
-        |eps| smooth_pow(3.0_f64, 2.0, eps), 9.0_f64,
-        eps = [1e-2, 1e-4, 1e-6], tol = [1e-1, 1e-3, 1e-4]);
+    test_convergence!(
+        smooth_pow_integer_exp_convergence,
+        |eps| smooth_pow(3.0_f64, 2.0, eps),
+        9.0_f64,
+        eps = [1e-2, 1e-4, 1e-6],
+        tol = [1e-1, 1e-3, 1e-4]
+    );
 
-    test_convergence!(smooth_pow_fractional_exp_convergence,
-        |eps| smooth_pow(4.0_f64, 0.5, eps), 2.0_f64,
-        eps = [1e-2, 1e-4, 1e-6], tol = [1e-1, 1e-3, 1e-4]);
+    test_convergence!(
+        smooth_pow_fractional_exp_convergence,
+        |eps| smooth_pow(4.0_f64, 0.5, eps),
+        2.0_f64,
+        eps = [1e-2, 1e-4, 1e-6],
+        tol = [1e-1, 1e-3, 1e-4]
+    );
 
     // ── Panic test macro ────────────────────────────────────────────────
     macro_rules! test_epsilon_panic {
@@ -195,17 +223,17 @@ mod tests {
         };
     }
 
-    test_epsilon_panic!(smooth_max_zero_eps,    smooth_max(3.0_f64, 5.0, 0.0));
-    test_epsilon_panic!(smooth_max_neg_eps,     smooth_max(3.0_f64, 5.0, -1e-6));
-    test_epsilon_panic!(smooth_min_zero_eps,    smooth_min(3.0_f64, 5.0, 0.0));
+    test_epsilon_panic!(smooth_max_zero_eps, smooth_max(3.0_f64, 5.0, 0.0));
+    test_epsilon_panic!(smooth_max_neg_eps, smooth_max(3.0_f64, 5.0, -1e-6));
+    test_epsilon_panic!(smooth_min_zero_eps, smooth_min(3.0_f64, 5.0, 0.0));
     test_epsilon_panic!(smooth_indicator_zero_eps, smooth_indicator(0.0_f64, 0.0));
-    test_epsilon_panic!(smooth_abs_zero_eps,    smooth_abs(3.0_f64, 0.0));
-    test_epsilon_panic!(smooth_sqrt_zero_eps,   smooth_sqrt(4.0_f64, 0.0));
-    test_epsilon_panic!(smooth_sqrt_neg_eps,    smooth_sqrt(4.0_f64, -1e-6));
-    test_epsilon_panic!(smooth_log_zero_eps,    smooth_log(2.0_f64, 0.0));
-    test_epsilon_panic!(smooth_log_neg_eps,     smooth_log(2.0_f64, -1e-6));
-    test_epsilon_panic!(smooth_pow_zero_eps,    smooth_pow(4.0_f64, 0.5, 0.0));
-    test_epsilon_panic!(smooth_pow_neg_eps,     smooth_pow(4.0_f64, 0.5, -1e-6));
+    test_epsilon_panic!(smooth_abs_zero_eps, smooth_abs(3.0_f64, 0.0));
+    test_epsilon_panic!(smooth_sqrt_zero_eps, smooth_sqrt(4.0_f64, 0.0));
+    test_epsilon_panic!(smooth_sqrt_neg_eps, smooth_sqrt(4.0_f64, -1e-6));
+    test_epsilon_panic!(smooth_log_zero_eps, smooth_log(2.0_f64, 0.0));
+    test_epsilon_panic!(smooth_log_neg_eps, smooth_log(2.0_f64, -1e-6));
+    test_epsilon_panic!(smooth_pow_zero_eps, smooth_pow(4.0_f64, 0.5, 0.0));
+    test_epsilon_panic!(smooth_pow_neg_eps, smooth_pow(4.0_f64, 0.5, -1e-6));
 
     // ── Symmetry / identity tests ───────────────────────────────────────
     #[test]
@@ -257,7 +285,10 @@ mod tests {
     fn smooth_sqrt_always_non_negative() {
         let eps = 1e-6;
         for x in [-1.0, 0.0, 1.0, 4.0, 100.0] {
-            assert!(smooth_sqrt(x, eps) >= -eps, "smooth_sqrt({x}) should be >= -eps");
+            assert!(
+                smooth_sqrt(x, eps) >= -eps,
+                "smooth_sqrt({x}) should be >= -eps"
+            );
         }
     }
 
@@ -324,21 +355,36 @@ mod tests {
         } else {
             (num - expected).abs()
         };
-        assert!(err < tol, "{label} gradient mismatch at x={x}: numerical={num}, expected={expected}, err={err}");
+        assert!(
+            err < tol,
+            "{label} gradient mismatch at x={x}: numerical={num}, expected={expected}, err={err}"
+        );
     }
 
     /// Verify convex-combination gradient property for binary smooth functions.
     fn assert_binary_gradient_sums_to_one(
-        f: impl Fn(f64, f64) -> f64, a_vals: &[f64], b_vals: &[f64], label: &str,
+        f: impl Fn(f64, f64) -> f64,
+        a_vals: &[f64],
+        b_vals: &[f64],
+        label: &str,
     ) {
         let h = 1e-8_f64;
         for &a in a_vals {
             for &b in b_vals {
                 let ga = finite_diff(|x| f(x, b), a, h);
                 let gb = finite_diff(|x| f(a, x), b, h);
-                assert!(ga >= -1e-6 && ga <= 1.0 + 1e-6, "{label} grad_a OOB at a={a}, b={b}");
-                assert!(gb >= -1e-6 && gb <= 1.0 + 1e-6, "{label} grad_b OOB at a={a}, b={b}");
-                assert!((ga + gb - 1.0).abs() < 1e-4, "{label} grads don't sum to 1 at a={a}, b={b}");
+                assert!(
+                    ga >= -1e-6 && ga <= 1.0 + 1e-6,
+                    "{label} grad_a OOB at a={a}, b={b}"
+                );
+                assert!(
+                    gb >= -1e-6 && gb <= 1.0 + 1e-6,
+                    "{label} grad_b OOB at a={a}, b={b}"
+                );
+                assert!(
+                    (ga + gb - 1.0).abs() < 1e-4,
+                    "{label} grads don't sum to 1 at a={a}, b={b}"
+                );
             }
         }
     }
@@ -348,7 +394,9 @@ mod tests {
         let eps = 1e-6;
         assert_binary_gradient_sums_to_one(
             |a, b| smooth_max(a, b, eps),
-            &[0.5, 1.0, 2.0, 5.0], &[0.3, 1.0, 2.5, 4.0], "smooth_max",
+            &[0.5, 1.0, 2.0, 5.0],
+            &[0.3, 1.0, 2.5, 4.0],
+            "smooth_max",
         );
     }
 
@@ -357,7 +405,9 @@ mod tests {
         let eps = 1e-6;
         assert_binary_gradient_sums_to_one(
             |a, b| smooth_min(a, b, eps),
-            &[0.5, 1.0, 2.0], &[0.3, 1.0, 2.5], "smooth_min",
+            &[0.5, 1.0, 2.0],
+            &[0.3, 1.0, 2.5],
+            "smooth_min",
         );
     }
 
@@ -365,7 +415,13 @@ mod tests {
     fn smooth_sqrt_gradient() {
         let eps = 1e-6;
         for x in [0.01, 0.1, 1.0, 4.0, 9.0] {
-            assert_gradient(|t| smooth_sqrt(t, eps), x, 0.5 / x.sqrt(), 1e-4, "smooth_sqrt");
+            assert_gradient(
+                |t| smooth_sqrt(t, eps),
+                x,
+                0.5 / x.sqrt(),
+                1e-4,
+                "smooth_sqrt",
+            );
         }
     }
 
@@ -374,7 +430,13 @@ mod tests {
         let eps = 1e-6;
         for x in [-1.0, -0.5, 0.0, 0.5, 1.0] {
             let sig = 1.0 / (1.0 + (-x / eps).exp());
-            assert_gradient(|t| smooth_indicator(t, eps), x, sig * (1.0 - sig) / eps, 1e-4, "smooth_indicator");
+            assert_gradient(
+                |t| smooth_indicator(t, eps),
+                x,
+                sig * (1.0 - sig) / eps,
+                1e-4,
+                "smooth_indicator",
+            );
         }
     }
 
@@ -393,7 +455,13 @@ mod tests {
         let eps = 1e-6;
         for x in [0.5, 1.0, 2.0, 4.0] {
             for p in [0.5, 1.0, 2.0] {
-                assert_gradient(|t| smooth_pow(t, p, eps), x, p * x.powf(p - 1.0), 1e-3, "smooth_pow");
+                assert_gradient(
+                    |t| smooth_pow(t, p, eps),
+                    x,
+                    p * x.powf(p - 1.0),
+                    1e-3,
+                    "smooth_pow",
+                );
             }
         }
     }
@@ -402,7 +470,13 @@ mod tests {
     fn smooth_log_gradient() {
         let eps = 1e-6;
         for x in [0.1, 0.5, 1.0, 2.0, 10.0] {
-            assert_gradient(|t| smooth_log(t, eps), x, 1.0 / (x + eps), 1e-6, "smooth_log");
+            assert_gradient(
+                |t| smooth_log(t, eps),
+                x,
+                1.0 / (x + eps),
+                1e-6,
+                "smooth_log",
+            );
         }
     }
 

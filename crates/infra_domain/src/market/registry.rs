@@ -4,10 +4,9 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::definition::InstrumentTemplate;
 use super::definition::{
-    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition, RateIndexDefError,
-    RateIndexDefinition,
+    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition, InstrumentTemplate,
+    RateIndexDefError, RateIndexDefinition,
 };
 
 /// Error type for registry operations.
@@ -244,7 +243,7 @@ impl DefinitionRegistry {
     }
 
     /// Loads definitions from a JSON bundle.
-        pub fn load_bundle(&mut self, bundle: DefinitionBundle) -> Result<(), RegistryError> {
+    pub fn load_bundle(&mut self, bundle: DefinitionBundle) -> Result<(), RegistryError> {
         for template in &bundle.templates {
             template.validate()?;
             for inst in template.expand() {
@@ -268,7 +267,7 @@ impl DefinitionRegistry {
     }
 
     /// Loads definitions from a JSON string.
-        pub fn load_from_json(json: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load_from_json(json: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let bundle: DefinitionBundle = serde_json::from_str(json)?;
         let mut registry = Self::new();
         registry.load_bundle(bundle)?;
@@ -368,7 +367,7 @@ mod tests {
         assert_eq!(insts[1].id, "USD-OIS-5Y");
     }
 
-        #[test]
+    #[test]
     fn test_registry_json() {
         let json = r#"{"instruments":[
             {"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"ON"},
@@ -405,7 +404,7 @@ mod tests {
         assert!(DefinitionRegistry::load_from_json(bad).is_err());
     }
 
-        #[test]
+    #[test]
     fn test_registry_templates() {
         let json = r#"{"templates":[
             {"idPattern":"{currency}-OIS-{tenor}","currency":"USD","convention":"USD-SOFR-OIS","rateIndex":"USD-SOFR","tenors":["1M","3M","6M","1Y","5Y"]},

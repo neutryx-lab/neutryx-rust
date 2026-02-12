@@ -168,7 +168,11 @@ impl FxSwap {
         if self.near_rate <= 0.0 || self.far_rate <= 0.0 {
             return Err(InstrumentError::invalid_parameter("Rates must be positive"));
         }
-        InstrumentError::check_date_order(self.near_leg_date, self.far_leg_date, "Far leg date must be after near leg date")?;
+        InstrumentError::check_date_order(
+            self.near_leg_date,
+            self.far_leg_date,
+            "Far leg date must be after near leg date",
+        )?;
         Ok(())
     }
 

@@ -1,7 +1,18 @@
 //! Netting agreement types (stub for future XVA integration).
 
 /// Netting agreement type classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, strum::Display, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    strum::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum NettingAgreementType {
     /// ISDA Master Agreement (derivatives).
     #[default]
@@ -21,7 +32,9 @@ pub enum NettingAgreementType {
 }
 
 /// Close-out calculation method.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CloseoutCalculationMethod {
     /// Market quotation (2002 ISDA).
     #[default]
@@ -33,7 +46,9 @@ pub enum CloseoutCalculationMethod {
 }
 
 /// Payment netting frequency.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum PaymentNettingFrequency {
     /// Daily netting.
     Daily,

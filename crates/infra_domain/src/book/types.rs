@@ -5,7 +5,9 @@ use chrono::{DateTime, Utc};
 use crate::counterparty::LegalEntityId;
 
 /// Type of trading book.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum BookType {
     /// Trading book for market-making and proprietary trading.

@@ -42,26 +42,46 @@ pub enum FormulaError {
 
 /// Validate that spot > 0.
 pub fn require_positive_spot<T: Float>(spot: T) -> Result<(), FormulaError> {
-    if spot > T::zero() { Ok(()) }
-    else { Err(FormulaError::InvalidSpot { spot: spot.to_f64().unwrap_or(0.0) }) }
+    if spot > T::zero() {
+        Ok(())
+    } else {
+        Err(FormulaError::InvalidSpot {
+            spot: spot.to_f64().unwrap_or(0.0),
+        })
+    }
 }
 
 /// Validate that strike > 0.
 pub fn require_positive_strike<T: Float>(strike: T) -> Result<(), FormulaError> {
-    if strike > T::zero() { Ok(()) }
-    else { Err(FormulaError::InvalidStrike { strike: strike.to_f64().unwrap_or(0.0) }) }
+    if strike > T::zero() {
+        Ok(())
+    } else {
+        Err(FormulaError::InvalidStrike {
+            strike: strike.to_f64().unwrap_or(0.0),
+        })
+    }
 }
 
 /// Validate that volatility > 0.
 pub fn require_positive_vol<T: Float>(volatility: T) -> Result<(), FormulaError> {
-    if volatility > T::zero() { Ok(()) }
-    else { Err(FormulaError::InvalidVolatility { volatility: volatility.to_f64().unwrap_or(0.0) }) }
+    if volatility > T::zero() {
+        Ok(())
+    } else {
+        Err(FormulaError::InvalidVolatility {
+            volatility: volatility.to_f64().unwrap_or(0.0),
+        })
+    }
 }
 
 /// Validate that expiry > 0.
 pub fn require_positive_expiry<T: Float>(expiry: T) -> Result<(), FormulaError> {
-    if expiry > T::zero() { Ok(()) }
-    else { Err(FormulaError::InvalidExpiry { expiry: expiry.to_f64().unwrap_or(0.0) }) }
+    if expiry > T::zero() {
+        Ok(())
+    } else {
+        Err(FormulaError::InvalidExpiry {
+            expiry: expiry.to_f64().unwrap_or(0.0),
+        })
+    }
 }
 
 #[cfg(test)]
@@ -70,16 +90,31 @@ mod tests {
 
     #[test]
     fn error_display() {
-        assert_eq!(format!("{}", FormulaError::InvalidVolatility { volatility: -0.2 }),
-            "Invalid volatility: σ = -0.2");
-        assert_eq!(format!("{}", FormulaError::InvalidSpot { spot: -100.0 }),
-            "Invalid spot price: S = -100");
-        assert_eq!(format!("{}", FormulaError::InvalidStrike { strike: -50.0 }),
-            "Invalid strike price: K = -50");
-        assert_eq!(format!("{}", FormulaError::InvalidExpiry { expiry: -1.0 }),
-            "Invalid expiry: T = -1");
-        assert_eq!(format!("{}", FormulaError::NumericalInstability { message: "Division by zero".into() }),
-            "Numerical instability: Division by zero");
+        assert_eq!(
+            format!("{}", FormulaError::InvalidVolatility { volatility: -0.2 }),
+            "Invalid volatility: σ = -0.2"
+        );
+        assert_eq!(
+            format!("{}", FormulaError::InvalidSpot { spot: -100.0 }),
+            "Invalid spot price: S = -100"
+        );
+        assert_eq!(
+            format!("{}", FormulaError::InvalidStrike { strike: -50.0 }),
+            "Invalid strike price: K = -50"
+        );
+        assert_eq!(
+            format!("{}", FormulaError::InvalidExpiry { expiry: -1.0 }),
+            "Invalid expiry: T = -1"
+        );
+        assert_eq!(
+            format!(
+                "{}",
+                FormulaError::NumericalInstability {
+                    message: "Division by zero".into()
+                }
+            ),
+            "Numerical instability: Division by zero"
+        );
     }
 
     #[test]

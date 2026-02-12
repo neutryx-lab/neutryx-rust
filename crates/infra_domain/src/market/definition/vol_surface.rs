@@ -450,7 +450,7 @@ mod tests {
         assert_eq!(StrikeInterpolation::Sabr.name(), "SABR");
     }
 
-        #[test]
+    #[test]
     fn test_vol_surface_serde_roundtrip() {
         let surface =
             VolSurfaceDefinition::new("USD-SOFR-Vol", vec!["USD-SOFR-1Y1Y-ATM".to_string()])
@@ -463,7 +463,7 @@ mod tests {
         assert_eq!(surface, parsed);
     }
 
-        #[test]
+    #[test]
     fn test_vol_surface_serde_from_json() {
         let json = r#"{
             "name": "EURUSD-FX-Vol",

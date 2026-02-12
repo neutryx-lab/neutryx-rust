@@ -34,7 +34,6 @@ pub enum EventType {
 }
 
 impl EventType {
-
     /// Get the icon class name for this event type.
     pub fn icon(&self) -> &'static str {
         match self {
@@ -74,7 +73,6 @@ impl EventType {
         ]
     }
 }
-
 
 #[cfg(test)]
 mod tests {

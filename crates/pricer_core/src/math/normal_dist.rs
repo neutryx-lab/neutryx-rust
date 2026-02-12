@@ -32,7 +32,8 @@ pub enum DistributionError {
     NumericalError(String),
 }
 
-/// Standard normal CDF via Abramowitz & Stegun 26.2.17 (absolute error < 7.5e-8).
+/// Standard normal CDF via Abramowitz & Stegun 26.2.17 (absolute error <
+/// 7.5e-8).
 #[inline]
 #[allow(clippy::excessive_precision)]
 pub fn norm_cdf<T: Float>(x: T) -> T {
@@ -84,7 +85,8 @@ pub fn norm_pdf<T: Float>(x: T) -> T {
     (-half * x * x).exp() / two_pi.sqrt()
 }
 
-/// Standard normal inverse CDF (quantile) via Acklam's approximation (relative error < 1e-9).
+/// Standard normal inverse CDF (quantile) via Acklam's approximation (relative
+/// error < 1e-9).
 ///
 /// Returns `Err(InvalidProbability)` if p is outside (0, 1).
 #[allow(clippy::excessive_precision)]

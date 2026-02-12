@@ -41,7 +41,6 @@ pub struct EquityConvention {
     pub borrow_spread: f64,
 }
 
-
 super::define_convention_factories! {
     for EquityConvention;
     /// Returns the standard US equity convention (T+2, NY, Discrete, Cash).

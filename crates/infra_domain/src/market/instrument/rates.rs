@@ -31,7 +31,11 @@ pub struct Frn {
 impl Frn {
     /// Validates the FRN parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         Ok(())
     }
 }
@@ -96,7 +100,11 @@ pub struct InflationSwap {
 impl InflationSwap {
     /// Validates the inflation swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         InstrumentError::check_positive(self.notional, "Notional")?;
         InstrumentError::check_not_empty(&self.inflation_index, "Inflation Index")?;
         Ok(())
@@ -128,7 +136,11 @@ impl Ois {
     /// Validates the OIS parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
         InstrumentError::check_positive(self.notional, "Notional")?;
-        InstrumentError::check_date_order(self.start_date, self.end_date, "End date must be after start date")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.end_date,
+            "End date must be after start date",
+        )?;
         Ok(())
     }
 

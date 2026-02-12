@@ -15,7 +15,10 @@ pub(crate) fn require_square<T: RealField>(m: &DMatrix<T>) -> Result<(), LinearA
     if m.nrows() == m.ncols() {
         Ok(())
     } else {
-        Err(LinearAlgebraError::NotSquare { rows: m.nrows(), cols: m.ncols() })
+        Err(LinearAlgebraError::NotSquare {
+            rows: m.nrows(),
+            cols: m.ncols(),
+        })
     }
 }
 
@@ -100,7 +103,9 @@ pub fn lu_solve<T: RealField + Copy>(
     require_dims(a.nrows(), b.len())?;
 
     let lu = LU::new(a.clone());
-    let x = lu.solve(&DVector::from_column_slice(b)).ok_or(LinearAlgebraError::SingularMatrix)?;
+    let x = lu
+        .solve(&DVector::from_column_slice(b))
+        .ok_or(LinearAlgebraError::SingularMatrix)?;
     Ok(dvec_to_vec(&x))
 }
 
@@ -222,7 +227,9 @@ pub fn determinant<T: RealField + Copy>(a: &DMatrix<T>) -> Result<T, LinearAlgeb
 /// Returns `NotSquare` if the matrix is not square.
 pub fn inverse<T: RealField + Copy>(a: &DMatrix<T>) -> Result<DMatrix<T>, LinearAlgebraError> {
     require_square(a)?;
-    a.clone().try_inverse().ok_or(LinearAlgebraError::SingularMatrix)
+    a.clone()
+        .try_inverse()
+        .ok_or(LinearAlgebraError::SingularMatrix)
 }
 
 /// Perform Cholesky decomposition.
