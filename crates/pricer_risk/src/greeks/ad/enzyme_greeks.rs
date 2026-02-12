@@ -469,14 +469,14 @@ mod tests {
             .with_vanna(1.5)
             .with_volga(2.0);
 
-        assert!((result.price - 10.5).abs() < 1e-10);
-        assert!((result.delta.unwrap() - 0.55).abs() < 1e-10);
-        assert!((result.gamma.unwrap() - 0.02).abs() < 1e-10);
-        assert!((result.vega.unwrap() - 25.0).abs() < 1e-10);
-        assert!((result.theta.unwrap() - (-10.0)).abs() < 1e-10);
-        assert!((result.rho.unwrap() - 15.0).abs() < 1e-10);
-        assert!((result.vanna.unwrap() - 1.5).abs() < 1e-10);
-        assert!((result.volga.unwrap() - 2.0).abs() < 1e-10);
+        assert!((result.price - 10.5_f64).abs() < 1e-10);
+        assert!((result.delta.unwrap() - 0.55_f64).abs() < 1e-10);
+        assert!((result.gamma.unwrap() - 0.02_f64).abs() < 1e-10);
+        assert!((result.vega.unwrap() - 25.0_f64).abs() < 1e-10);
+        assert!((result.theta.unwrap() - (-10.0_f64)).abs() < 1e-10);
+        assert!((result.rho.unwrap() - 15.0_f64).abs() < 1e-10);
+        assert!((result.vanna.unwrap() - 1.5_f64).abs() < 1e-10);
+        assert!((result.volga.unwrap() - 2.0_f64).abs() < 1e-10);
     }
 
     #[test]
