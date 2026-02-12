@@ -3,8 +3,7 @@
 use std::fmt;
 
 /// Classification of market quote types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum QuoteType {
     /// Bid price - the highest price a buyer is willing to pay.
     Bid,

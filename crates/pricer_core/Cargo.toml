@@ -11,7 +11,7 @@ num-traits.workspace = true
 chrono.workspace = true
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"] }
-infra_domain = { path = "../infra_domain", features = ["serde"] }
+infra_domain = { path = "../infra_domain" }
 rayon.workspace = true
 nalgebra.workspace = true
 nalgebra-sparse.workspace = true

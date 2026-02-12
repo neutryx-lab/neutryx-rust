@@ -236,62 +236,26 @@ impl<T: Float> HullWhiteParams<T> {
     pub fn current_time(&self) -> T { self.current_time }
 }
 
-/// Hull-White one-factor model for short rate dynamics (Euler-Maruyama discretisation).
-#[derive(Clone, Debug, Default)]
-pub struct HullWhiteModel<T: Float> {
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: Float> HullWhiteModel<T> {
-    /// Create a new Hull-White model instance.
-    pub fn new() -> Self {
-        Self {
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<T: Float> Differentiable for HullWhiteModel<T> {}
-
-impl<T: Float + Default> StochasticModel<T> for HullWhiteModel<T> {
-    type State = SingleState<T>;
-    type Params = HullWhiteParams<T>;
-
-    /// Hull-White の 1 ステップ時間発展 (Euler-Maruyama).
-    fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State {
-        // Euler-Maruyama discretization:
-        // r(t+dt) = r(t) + [theta(t) - a * r(t)] * dt + sigma * sqrt(dt) * dW
+define_phantom_model! {
+    /// Hull-White one-factor model for short rate dynamics (Euler-Maruyama discretisation).
+    model HullWhiteModel,
+    params: HullWhiteParams<T>,
+    state: SingleState<T>,
+    marker: RatesModel,
+    brownian_dim: 1,
+    num_factors: 1,
+    name: "HullWhite1F",
+    evolve_step(state, dt, dw, params) {
         let r = state.0;
         let a = params.mean_reversion;
         let sigma = params.volatility;
-
-        // Use time-dependent theta evaluated at current simulation time
-        // Requirement 4.2: Time-dependent theta for yield curve fitting
         let theta = params.theta(params.current_time);
-
-        // Drift: [theta - a * r] * dt
         let drift = (theta - a * r) * dt;
-
-        // Diffusion: sigma * sqrt(dt) * dW
         let diffusion = sigma * dt.sqrt() * dw[0];
-
         SingleState(r + drift + diffusion)
-    }
-
-    fn initial_state(params: &Self::Params) -> Self::State {
-        SingleState(params.initial_short_rate)
-    }
-
-    fn brownian_dim() -> usize { 1 }
-
-    fn model_name() -> &'static str { "HullWhite1F" }
-
-    fn num_factors() -> usize {
-        1 // Hull-White 1F is a single-factor model
-    }
+    },
+    initial_state(params) { SingleState(params.initial_short_rate) },
 }
-
-impl<T: Float + Default> RatesModel<T> for HullWhiteModel<T> {}
 
 #[cfg(test)]
 mod tests {

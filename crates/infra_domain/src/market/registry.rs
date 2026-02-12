@@ -2,10 +2,8 @@
 
 use std::collections::HashMap;
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "serde")]
 use super::definition::InstrumentTemplate;
 use super::definition::{
     CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition, RateIndexDefError,
@@ -70,7 +68,6 @@ pub struct DefinitionRegistry {
 }
 
 /// JSON-serializable bundle of all definitions for loading.
-#[cfg(feature = "serde")]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DefinitionBundle {
@@ -91,7 +88,6 @@ pub struct DefinitionBundle {
     pub curves: Vec<CurveDefinition>,
 }
 
-#[cfg(feature = "serde")]
 impl DefinitionBundle {
     /// Expands all templates and returns the combined list of instruments.
     #[must_use]
@@ -248,8 +244,7 @@ impl DefinitionRegistry {
     }
 
     /// Loads definitions from a JSON bundle.
-    #[cfg(feature = "serde")]
-    pub fn load_bundle(&mut self, bundle: DefinitionBundle) -> Result<(), RegistryError> {
+        pub fn load_bundle(&mut self, bundle: DefinitionBundle) -> Result<(), RegistryError> {
         for template in &bundle.templates {
             template.validate()?;
             for inst in template.expand() {
@@ -273,8 +268,7 @@ impl DefinitionRegistry {
     }
 
     /// Loads definitions from a JSON string.
-    #[cfg(feature = "serde")]
-    pub fn load_from_json(json: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        pub fn load_from_json(json: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let bundle: DefinitionBundle = serde_json::from_str(json)?;
         let mut registry = Self::new();
         registry.load_bundle(bundle)?;
@@ -374,8 +368,7 @@ mod tests {
         assert_eq!(insts[1].id, "USD-OIS-5Y");
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_registry_json() {
         let json = r#"{"instruments":[
             {"id":"USD-Depo-ON","currency":"USD","convention":"USD-DEPO","tenor":"ON"},
@@ -412,8 +405,7 @@ mod tests {
         assert!(DefinitionRegistry::load_from_json(bad).is_err());
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_registry_templates() {
         let json = r#"{"templates":[
             {"idPattern":"{currency}-OIS-{tenor}","currency":"USD","convention":"USD-SOFR-OIS","rateIndex":"USD-SOFR","tenors":["1M","3M","6M","1Y","5Y"]},

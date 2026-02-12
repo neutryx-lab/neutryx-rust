@@ -56,7 +56,10 @@
 use infra_domain::trade::instrument_def::DeltaType;
 use num_traits::Float;
 
-use super::error::FormulaError;
+use super::error::{
+    require_positive_expiry, require_positive_spot, require_positive_strike, require_positive_vol,
+    FormulaError,
+};
 use crate::math::{
     normal_dist::{norm_cdf, norm_inv_cdf, norm_pdf},
     numeric::from_f64,
@@ -73,22 +76,9 @@ pub fn delta_to_strike<T: Float>(
     volatility: T,
     delta_type: DeltaType,
 ) -> Result<T, FormulaError> {
-    // Validate inputs
-    if spot <= T::zero() {
-        return Err(FormulaError::InvalidSpot {
-            spot: spot.to_f64().unwrap_or(0.0),
-        });
-    }
-    if volatility <= T::zero() {
-        return Err(FormulaError::InvalidVolatility {
-            volatility: volatility.to_f64().unwrap_or(0.0),
-        });
-    }
-    if expiry <= T::zero() {
-        return Err(FormulaError::InvalidExpiry {
-            expiry: expiry.to_f64().unwrap_or(0.0),
-        });
-    }
+    require_positive_spot(spot)?;
+    require_positive_vol(volatility)?;
+    require_positive_expiry(expiry)?;
 
     let abs_delta = delta.abs();
     let is_call = delta > T::zero();
@@ -242,27 +232,10 @@ pub fn strike_to_delta<T: Float>(
     is_call: bool,
     delta_type: DeltaType,
 ) -> Result<T, FormulaError> {
-    // Validate inputs
-    if spot <= T::zero() {
-        return Err(FormulaError::InvalidSpot {
-            spot: spot.to_f64().unwrap_or(0.0),
-        });
-    }
-    if strike <= T::zero() {
-        return Err(FormulaError::InvalidSpot {
-            spot: strike.to_f64().unwrap_or(0.0),
-        });
-    }
-    if volatility <= T::zero() {
-        return Err(FormulaError::InvalidVolatility {
-            volatility: volatility.to_f64().unwrap_or(0.0),
-        });
-    }
-    if expiry <= T::zero() {
-        return Err(FormulaError::InvalidExpiry {
-            expiry: expiry.to_f64().unwrap_or(0.0),
-        });
-    }
+    require_positive_spot(spot)?;
+    require_positive_strike(strike)?;
+    require_positive_vol(volatility)?;
+    require_positive_expiry(expiry)?;
 
     // Forward price: F = S × exp((rd - rf) × T)
     let drift = (domestic_rate - foreign_rate) * expiry;
@@ -456,7 +429,7 @@ mod tests {
     #[test]
     fn test_strike_to_delta_invalid_strike() {
         let result = strike_to_delta(0.0, 1.10, 0.03, 0.01, 1.0, 0.10, true, DeltaType::SpotDelta);
-        assert!(matches!(result, Err(FormulaError::InvalidSpot { .. })));
+        assert!(matches!(result, Err(FormulaError::InvalidStrike { .. })));
     }
 
     #[test]

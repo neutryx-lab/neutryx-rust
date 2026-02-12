@@ -258,10 +258,11 @@ impl CurveConstructionEngine {
         };
 
         // Configure bootstrapper
-        let bootstrap_config =
-            BootstrapConfig::new(self.config.tolerance, self.config.max_iterations)
-                .with_interpolation(interpolation)
-                .with_fd_epsilon(self.config.fd_epsilon);
+        let bootstrap_config = BootstrapConfig {
+            interpolation,
+            fd_epsilon: self.config.fd_epsilon,
+            ..BootstrapConfig::new(self.config.tolerance, self.config.max_iterations)
+        };
 
         let bootstrapper = CurveBootstrapper::with_config(bootstrap_config);
 

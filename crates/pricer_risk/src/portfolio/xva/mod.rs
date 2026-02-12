@@ -5,6 +5,7 @@ mod dva;
 mod error;
 mod exposure_soa;
 mod fva;
+mod integrate;
 mod params;
 mod result;
 

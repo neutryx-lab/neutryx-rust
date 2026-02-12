@@ -117,70 +117,32 @@ impl<T: Float> CIRParams<T> {
     }
 }
 
-/// Cox-Ingersoll-Ross model for short rate dynamics.
-///
-/// Uses Euler-Maruyama discretisation with truncation:
-/// `r(t+dt) = r(t) + a(b - r(t))dt + sigma * sqrt(max(r(t),0)) * sqrt(dt) * dW`
-#[derive(Clone, Debug, Default)]
-pub struct CIRModel<T: Float> {
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: Float> CIRModel<T> {
-    /// Create a new CIR model instance.
-    pub fn new() -> Self {
-        Self {
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<T: Float> Differentiable for CIRModel<T> {}
-
-impl<T: Float + Default> StochasticModel<T> for CIRModel<T> {
-    type State = SingleState<T>;
-    type Params = CIRParams<T>;
-
-    fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State {
-        // Euler-Maruyama discretization:
-        // r(t+dt) = r(t) + a * (b - r(t)) * dt + sigma * sqrt(max(r(t), 0)) * sqrt(dt)
-        // * dW
+define_phantom_model! {
+    /// Cox-Ingersoll-Ross model for short rate dynamics.
+    ///
+    /// Uses Euler-Maruyama discretisation with truncation:
+    /// `r(t+dt) = r(t) + a(b - r(t))dt + sigma * sqrt(max(r(t),0)) * sqrt(dt) * dW`
+    model CIRModel,
+    params: CIRParams<T>,
+    state: SingleState<T>,
+    marker: RatesModel,
+    brownian_dim: 1,
+    num_factors: 1,
+    name: "CIR",
+    evolve_step(state, dt, dw, params) {
         let r = state.0;
         let a = params.mean_reversion;
         let b = params.long_term_mean;
         let sigma = params.volatility;
-
-        // Drift: a * (b - r) * dt
         let drift = a * (b - r) * dt;
-
-        // Diffusion: sigma * sqrt(max(r, 0)) * sqrt(dt) * dW
-        // Use max(r, 0) for numerical stability
         let r_pos = if r > T::zero() { r } else { T::zero() };
         let diffusion = sigma * r_pos.sqrt() * dt.sqrt() * dw[0];
-
-        // New rate (with floor at zero for numerical stability)
         let new_r = r + drift + diffusion;
-
-        // Optionally floor at small positive value (full truncation scheme)
-        // This is a simple approach; more sophisticated schemes exist (QE, etc.)
         let epsilon = T::from(1e-10).unwrap_or(T::zero());
-        let floored = if new_r < epsilon { epsilon } else { new_r };
-
-        SingleState(floored)
-    }
-
-    fn initial_state(params: &Self::Params) -> Self::State { SingleState(params.initial_rate) }
-
-    fn brownian_dim() -> usize { 1 }
-
-    fn model_name() -> &'static str { "CIR" }
-
-    fn num_factors() -> usize {
-        1 // CIR is a single-factor model
-    }
+        SingleState(if new_r < epsilon { epsilon } else { new_r })
+    },
+    initial_state(params) { SingleState(params.initial_rate) },
 }
-
-impl<T: Float + Default> RatesModel<T> for CIRModel<T> {}
 
 #[cfg(test)]
 mod tests {

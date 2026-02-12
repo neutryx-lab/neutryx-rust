@@ -14,16 +14,6 @@ pub struct ConventionKey {
     pub quote_category: QuoteCategory,
 }
 
-impl ConventionKey {
-    /// Creates a new convention key.
-    #[must_use]
-    pub fn new(currency: Currency, quote_category: QuoteCategory) -> Self {
-        Self {
-            currency,
-            quote_category,
-        }
-    }
-}
 
 impl std::fmt::Display for ConventionKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -120,7 +110,7 @@ impl ConventionRegistry {
         quote_category: QuoteCategory,
         convention: MarketConvention,
     ) {
-        let key = ConventionKey::new(currency, quote_category);
+        let key = ConventionKey { currency, quote_category };
         self.conventions.insert(key, convention);
     }
 
@@ -131,7 +121,7 @@ impl ConventionRegistry {
         currency: Currency,
         quote_category: QuoteCategory,
     ) -> Option<&MarketConvention> {
-        let key = ConventionKey::new(currency, quote_category);
+        let key = ConventionKey { currency, quote_category };
         self.conventions.get(&key)
     }
 
@@ -144,7 +134,7 @@ impl ConventionRegistry {
     /// Returns true if the registry contains a convention for the given key.
     #[must_use]
     pub fn contains(&self, currency: Currency, quote_category: QuoteCategory) -> bool {
-        let key = ConventionKey::new(currency, quote_category);
+        let key = ConventionKey { currency, quote_category };
         self.conventions.contains_key(&key)
     }
 
@@ -173,7 +163,7 @@ impl ConventionRegistry {
         currency: Currency,
         quote_category: QuoteCategory,
     ) -> Option<MarketConvention> {
-        let key = ConventionKey::new(currency, quote_category);
+        let key = ConventionKey { currency, quote_category };
         self.conventions.remove(&key)
     }
 
@@ -278,9 +268,9 @@ mod tests {
 
     #[test]
     fn test_convention_key() {
-        let key1 = ConventionKey::new(Currency::USD, QuoteCategory::Swap);
-        let key2 = ConventionKey::new(Currency::USD, QuoteCategory::Swap);
-        let key3 = ConventionKey::new(Currency::EUR, QuoteCategory::Deposit);
+        let key1 = ConventionKey { currency: Currency::USD, quote_category: QuoteCategory::Swap };
+        let key2 = ConventionKey { currency: Currency::USD, quote_category: QuoteCategory::Swap };
+        let key3 = ConventionKey { currency: Currency::EUR, quote_category: QuoteCategory::Deposit };
         assert_eq!(key1, key2);
         assert_ne!(key1, key3);
         assert_eq!(key3.to_string(), "EUR DEPO");

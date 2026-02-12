@@ -12,8 +12,8 @@ define_id! {
 /// Legal Entity Identifier (LEI) per ISO 17442.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, derive_more::Display, derive_more::AsRef)]
 #[as_ref(str)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 pub struct LegalEntityId(String);
 
 impl LegalEntityId {

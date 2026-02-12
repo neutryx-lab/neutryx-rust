@@ -2,11 +2,7 @@ use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 
 use crate::{
-    builder::{
-        jump::{JumpConfig, JumpPillar},
-        problem::JacobianMethod,
-        CalibrationProblemConfig,
-    },
+    builder::{jump::JumpConfig, problem::JacobianMethod, CalibrationProblemConfig},
     market::curves::BootstrapInterpolation,
 };
 
@@ -114,19 +110,11 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             param_tolerance: from_f64(1e-14),
             max_iterations: 500,
             jacobian_epsilon: from_f64(1e-10),
-            store_jacobian_inverse: true,
-            interpolation: BootstrapInterpolation::LogLinear,
-            allow_extrapolation: true,
             jacobian_method: JacobianMethod::CentralDifference,
-            enable_telescoping: true,
-            damping_factor: None,
-            debug_logging: false,
             max_condition_number: from_f64(1e14),
-            jump_config: None,
             #[cfg(feature = "enzyme-ad")]
-            ad_variance_threshold: from_f64(1e8), // Higher threshold for high-precision
-            #[cfg(feature = "enzyme-ad")]
-            ad_checkpoint_interval: None,
+            ad_variance_threshold: from_f64(1e8),
+            ..Default::default()
         }
     }
 
@@ -138,85 +126,10 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             max_iterations: 50,
             jacobian_epsilon: from_f64(1e-6),
             store_jacobian_inverse: false,
-            interpolation: BootstrapInterpolation::LogLinear,
-            allow_extrapolation: true,
             jacobian_method: JacobianMethod::FiniteDifference,
-            enable_telescoping: true,
-            damping_factor: None,
-            debug_logging: false,
             max_condition_number: from_f64(1e10),
-            jump_config: None,
-            #[cfg(feature = "enzyme-ad")]
-            ad_variance_threshold: from_f64(1e6),
-            #[cfg(feature = "enzyme-ad")]
-            ad_checkpoint_interval: None,
+            ..Default::default()
         }
-    }
-
-    /// Set the interpolation method.
-    pub fn with_interpolation(mut self, method: BootstrapInterpolation) -> Self {
-        self.interpolation = method;
-        self
-    }
-
-    /// Enable or disable Jacobian inverse storage.
-    pub fn with_jacobian_inverse(mut self, store: bool) -> Self {
-        self.store_jacobian_inverse = store;
-        self
-    }
-
-    /// Set the Jacobian calculation method.
-    pub fn with_jacobian_method(mut self, method: JacobianMethod) -> Self {
-        self.jacobian_method = method;
-        self
-    }
-
-    /// Enable or disable telescoping for OIS/SOFR instruments.
-    pub fn with_telescoping(mut self, enable: bool) -> Self {
-        self.enable_telescoping = enable;
-        self
-    }
-
-    /// Set the damping factor for Levenberg-Marquardt regularisation.
-    pub fn with_damping(mut self, factor: T) -> Self {
-        self.damping_factor = Some(factor);
-        self
-    }
-
-    /// Enable or disable debug logging.
-    pub fn with_debug_logging(mut self, enable: bool) -> Self {
-        self.debug_logging = enable;
-        self
-    }
-
-    /// Set the maximum allowed condition number.
-    pub fn with_max_condition_number(mut self, max_cond: T) -> Self {
-        self.max_condition_number = max_cond;
-        self
-    }
-
-    /// Set the tolerance.
-    pub fn with_tolerance(mut self, tol: T) -> Self {
-        self.tolerance = tol;
-        self
-    }
-
-    /// Set the maximum iterations.
-    pub fn with_max_iterations(mut self, max_iter: usize) -> Self {
-        self.max_iterations = max_iter;
-        self
-    }
-
-    /// Set the jump configuration for CB meeting dates.
-    pub fn with_jump_config(mut self, config: JumpConfig<T>) -> Self {
-        self.jump_config = Some(config);
-        self
-    }
-
-    /// Set jump pillars directly (convenience method).
-    pub fn with_jumps(mut self, pillars: Vec<JumpPillar<T>>) -> Self {
-        self.jump_config = Some(JumpConfig::with_pillars(pillars));
-        self
     }
 
     /// Check if jump calibration is configured and active.
@@ -224,29 +137,6 @@ impl<T: Float> GlobalBootstrapConfig<T> {
 
     /// Get the number of configured jump pillars.
     pub fn num_jumps(&self) -> usize { self.jump_config.as_ref().map_or(0, |jc| jc.num_jumps()) }
-
-    /// Enable Automatic Differentiation for Jacobian computation.
-    ///
-    /// Only available when the `enzyme-ad` feature is enabled.
-    #[cfg(feature = "enzyme-ad")]
-    pub fn with_automatic_differentiation(mut self) -> Self {
-        self.jacobian_method = JacobianMethod::AutomaticDifferentiation;
-        self
-    }
-
-    /// Set the AD variance threshold for instability detection.
-    #[cfg(feature = "enzyme-ad")]
-    pub fn with_ad_variance_threshold(mut self, threshold: T) -> Self {
-        self.ad_variance_threshold = threshold;
-        self
-    }
-
-    /// Set the AD checkpointing interval.
-    #[cfg(feature = "enzyme-ad")]
-    pub fn with_ad_checkpoint_interval(mut self, interval: usize) -> Self {
-        self.ad_checkpoint_interval = Some(interval);
-        self
-    }
 }
 
 // Conversion to CalibrationProblemConfig

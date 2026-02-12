@@ -1,8 +1,7 @@
 //! Trade direction definitions.
 
 /// Generic trade direction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum TradeDirection {
     /// Long position (buying).
     Long,
@@ -11,8 +10,7 @@ pub enum TradeDirection {
 }
 
 /// Swap trade direction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum SwapDirection {
     /// Pay fixed rate, receive floating rate.
     PayFixed,

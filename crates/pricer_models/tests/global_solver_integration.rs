@@ -371,7 +371,10 @@ fn test_debug_logging_residual_history() {
         MarketInstrument::ois(5.0, 0.04),
     ];
 
-    let config = GlobalBootstrapConfig::default().with_debug_logging(true);
+    let config = GlobalBootstrapConfig {
+        debug_logging: true,
+        ..Default::default()
+    };
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -585,7 +588,10 @@ fn test_ift_error_without_jacobian_inverse() {
         MarketInstrument::ois(2.0, 0.035),
     ];
 
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(false);
+    let config = GlobalBootstrapConfig {
+        store_jacobian_inverse: false,
+        ..Default::default()
+    };
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -839,14 +845,15 @@ fn test_jacobian_method_consistency() {
     ];
 
     // Test finite difference method
-    let config_fd =
-        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::FiniteDifference);
+    let config_fd = GlobalBootstrapConfig::default();
     let bootstrapper_fd = GlobalBootstrapper::new(config_fd);
     let result_fd = bootstrapper_fd.calibrate(&instruments).unwrap();
 
     // Test central difference method
-    let config_cd =
-        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::CentralDifference);
+    let config_cd = GlobalBootstrapConfig {
+        jacobian_method: JacobianMethod::CentralDifference,
+        ..Default::default()
+    };
     let bootstrapper_cd = GlobalBootstrapper::new(config_cd);
     let result_cd = bootstrapper_cd.calibrate(&instruments).unwrap();
 
@@ -900,7 +907,7 @@ fn test_condition_number_in_calibration_result() {
 
     // Configure to store Jacobian inverse (which enables condition number
     // computation)
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
     let result = bootstrapper.calibrate(&instruments).unwrap();
 
@@ -930,7 +937,10 @@ fn test_max_condition_number_config_integration() {
     ];
 
     // Configure with specific max condition number
-    let config = GlobalBootstrapConfig::default().with_max_condition_number(1e15);
+    let config = GlobalBootstrapConfig {
+        max_condition_number: 1e15,
+        ..Default::default()
+    };
 
     let bootstrapper = GlobalBootstrapper::new(config);
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -1004,14 +1014,15 @@ fn test_jacobian_method_consistency_for_ad_variance() {
     ];
 
     // Test with finite difference
-    let config_fd =
-        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::FiniteDifference);
+    let config_fd = GlobalBootstrapConfig::default();
     let bootstrapper_fd = GlobalBootstrapper::new(config_fd);
     let result_fd = bootstrapper_fd.calibrate(&instruments).unwrap();
 
     // Test with central difference
-    let config_cd =
-        GlobalBootstrapConfig::default().with_jacobian_method(JacobianMethod::CentralDifference);
+    let config_cd = GlobalBootstrapConfig {
+        jacobian_method: JacobianMethod::CentralDifference,
+        ..Default::default()
+    };
     let bootstrapper_cd = GlobalBootstrapper::new(config_cd);
     let result_cd = bootstrapper_cd.calibrate(&instruments).unwrap();
 

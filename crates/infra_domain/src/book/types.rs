@@ -5,9 +5,8 @@ use chrono::{DateTime, Utc};
 use crate::counterparty::LegalEntityId;
 
 /// Type of trading book.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum BookType {
     /// Trading book for market-making and proprietary trading.
     #[default]
@@ -43,8 +42,7 @@ impl BookType {
 }
 
 /// Regulatory classification of a trading book.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum RegulatoryBookType {
     /// Trading Book - subject to market risk capital requirements.
     TB,
@@ -72,9 +70,8 @@ impl RegulatoryBookType {
 }
 
 /// Ownership information for a trading book.
-#[derive(Clone, Debug, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BookOwnership {
     desk: Option<String>,
     division: Option<String>,
@@ -124,9 +121,8 @@ impl BookOwnership {
 }
 
 /// Metadata for a trading book.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BookMetadata {
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,

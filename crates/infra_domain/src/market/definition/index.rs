@@ -1,6 +1,5 @@
 //! Rate index definition for curve construction.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -9,18 +8,14 @@ use crate::{
 };
 
 /// Rate index definition for curve construction.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RateIndexDefinition {
     /// Unique identifier (e.g., "USD-SOFR", "EUR-ESTR").
     pub id: String,
 
     /// Display name (optional).
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
 
     /// Currency of the index.
@@ -33,51 +28,32 @@ pub struct RateIndexDefinition {
     pub tenor: Tenor,
 
     /// Convention overrides (optional, defaults derived from index_type).
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conventions: Option<IndexConventions>,
 }
 
 /// Market conventions for a rate index.
-#[derive(Debug, Clone, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct IndexConventions {
     /// Day count convention.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub day_count: Option<DayCounter>,
 
     /// Compounding method.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compounding: Option<CompoundingMethod>,
 
     /// Fixing lag in business days.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fixing_lag: Option<u8>,
 
     /// Settlement lag in business days.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub settlement_lag: Option<u8>,
 
     /// Holiday calendar.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calendar: Option<CalendarId>,
 }
 
@@ -352,8 +328,7 @@ mod tests {
         assert_eq!(def.compounding(), CompoundingMethod::Compounded);
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_roundtrip() {
         let def = RateIndexDefinition::new("USD-SOFR", Currency::USD, RateIndex::Sofr)
             .with_name("Secured Overnight Financing Rate");
@@ -364,8 +339,7 @@ mod tests {
         assert_eq!(def, parsed);
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_from_json_overnight() {
         let json = r#"{
             "id": "EUR-ESTR",
@@ -382,8 +356,7 @@ mod tests {
         assert!(def.is_overnight());
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_from_json_term() {
         let json = r#"{
             "id": "EUR-EURIBOR6M",
@@ -400,8 +373,7 @@ mod tests {
         assert!(!def.is_overnight());
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_with_conventions() {
         let json = r#"{
             "id": "USD-SOFR",
@@ -426,8 +398,7 @@ mod tests {
         assert_eq!(conv.fixing_lag, Some(1));
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_tenor_serializes_as_code() {
         let def = RateIndexDefinition::new("EUR-EURIBOR6M", Currency::EUR, RateIndex::Euribor6M);
         let json = serde_json::to_string(&def).unwrap();

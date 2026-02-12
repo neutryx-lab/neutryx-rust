@@ -1,6 +1,7 @@
 //! Binomial and Trinomial tree pricing methods for vanilla and American
 
 mod binomial;
+pub(crate) mod common;
 mod config;
 mod method;
 mod trinomial;

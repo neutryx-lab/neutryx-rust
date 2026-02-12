@@ -31,8 +31,7 @@ pub enum IrVolInstrumentError {
 }
 
 /// Swaption (option on an interest rate swap).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Swaption {
     /// Tenor of the underlying swap.
     pub underlying_swap_tenor: Tenor,
@@ -55,16 +54,8 @@ pub struct Swaption {
 impl Swaption {
     /// Validates the swaption parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.strike < 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be non-negative",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_non_negative(self.strike, "Strike")?;
         if self.strike > 0.5 {
             return Err(InstrumentError::invalid_parameter(
                 "Strike rate exceeds reasonable bounds (>50%)",
@@ -158,9 +149,8 @@ impl std::fmt::Display for Swaption {
 }
 
 /// Cap or Floor type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CapFloorType {
     /// Cap (call option on interest rates).
     Cap,
@@ -171,26 +161,11 @@ pub enum CapFloorType {
 }
 
 impl CapFloorType {
-    /// Returns the display name for this cap/floor type.
-    #[must_use]
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Cap => "Cap",
-            Self::Floor => "Floor",
-            Self::Collar => "Collar",
-        }
-    }
 }
 
-impl std::fmt::Display for CapFloorType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.display_name())
-    }
-}
 
 /// Interest rate cap or floor.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CapFloor {
     /// Type of cap/floor (Cap, Floor, or Collar).
     pub cap_floor_type: CapFloorType,
@@ -215,7 +190,7 @@ impl CapFloor {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.strikes.is_empty() {
             return Err(InstrumentError::invalid_parameter(
-                "At least one strike required",
+                "Strikes must not be empty",
             ));
         }
 
@@ -362,8 +337,7 @@ impl std::fmt::Display for CapFloor {
 }
 
 /// IR Volatility Instrument variants.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum IrVolInstrument {
     /// Swaption instrument.
     Swaption(Swaption),

@@ -6,8 +6,7 @@ use crate::error::CurrencyError;
 
 /// ISO 4217 currency codes with decimal precision metadata.
 #[non_exhaustive]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr, serde::Serialize, serde::Deserialize)]
 pub enum Currency {
     /// United States Dollar (2 dp).
     #[default]

@@ -38,7 +38,6 @@ pub use quote::{
     MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType, QuoteValidator,
     StandardQuoteValidator, StrikeType, VolQuoteType,
 };
-#[cfg(feature = "serde")]
 pub use registry::DefinitionBundle;
 pub use registry::{DefinitionRegistry, RegistryError};
 pub use source::{

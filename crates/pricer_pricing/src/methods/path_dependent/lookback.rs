@@ -2,7 +2,7 @@
 
 use num_traits::Float;
 
-use super::{ObservationType, PathDependentPayoff, PathObserver};
+use super::{smooth_math::soft_plus, ObservationType, PathDependentPayoff, PathObserver};
 
 /// Lookback option type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,20 +75,6 @@ impl<T: Float> LookbackParams<T> {
     #[inline]
     pub fn floating_put(epsilon: T) -> Self {
         Self::new(T::zero(), LookbackType::FloatingPut, epsilon)
-    }
-}
-
-/// Soft-plus function: smooth approximation of max(x, 0).
-#[inline]
-fn soft_plus<T: Float>(x: T, epsilon: T) -> T {
-    let scaled = x / epsilon;
-    let twenty = T::from(20.0).unwrap();
-    if scaled > twenty {
-        x
-    } else if scaled < -twenty {
-        epsilon * scaled.exp()
-    } else {
-        epsilon * (T::one() + scaled.exp()).ln()
     }
 }
 

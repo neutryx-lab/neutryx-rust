@@ -3,8 +3,7 @@
 use crate::market::{CurrencyPair, RateIndex};
 
 /// Requirement for a market index needed by a Trade or Cashflow.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum IndexRequirement {
     /// Rate index for discount/projection curves.
     RateCurve(RateIndex),

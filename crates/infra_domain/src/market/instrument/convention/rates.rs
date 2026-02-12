@@ -6,8 +6,7 @@ use crate::{
 };
 
 /// Convention for a deposit (money market) instrument.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct DepositConvention {
     /// Day count convention for accrual calculation.
     pub day_count: DayCounter,
@@ -19,23 +18,6 @@ pub struct DepositConvention {
     pub spot_lag: u32,
 }
 
-impl DepositConvention {
-    /// Creates a new deposit convention.
-    #[must_use]
-    pub fn new(
-        day_count: DayCounter,
-        calendar: CalendarId,
-        business_day_convention: BusinessDayConvention,
-        spot_lag: u32,
-    ) -> Self {
-        Self {
-            day_count,
-            calendar,
-            business_day_convention,
-            spot_lag,
-        }
-    }
-}
 
 super::define_convention_factories! {
     for DepositConvention;
@@ -77,8 +59,7 @@ super::define_convention_factories! {
 }
 
 /// Convention for a Forward Rate Agreement.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FraConvention {
     /// Day count convention.
     pub day_count: DayCounter,
@@ -90,23 +71,6 @@ pub struct FraConvention {
     pub index: RateIndex,
 }
 
-impl FraConvention {
-    /// Creates a new FRA convention.
-    #[must_use]
-    pub fn new(
-        day_count: DayCounter,
-        calendar: CalendarId,
-        business_day_convention: BusinessDayConvention,
-        index: RateIndex,
-    ) -> Self {
-        Self {
-            day_count,
-            calendar,
-            business_day_convention,
-            index,
-        }
-    }
-}
 
 super::define_convention_factories! {
     for FraConvention;
@@ -123,8 +87,7 @@ super::define_convention_factories! {
 }
 
 /// Convention for an interest rate future.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FuturesConvention {
     /// Contract size (notional per contract).
     pub contract_size: f64,
@@ -136,23 +99,6 @@ pub struct FuturesConvention {
     pub calendar: CalendarId,
 }
 
-impl FuturesConvention {
-    /// Creates a new futures convention.
-    #[must_use]
-    pub fn new(
-        contract_size: f64,
-        tick_size: f64,
-        day_count: DayCounter,
-        calendar: CalendarId,
-    ) -> Self {
-        Self {
-            contract_size,
-            tick_size,
-            day_count,
-            calendar,
-        }
-    }
-}
 
 super::define_convention_factories! {
     for FuturesConvention;
@@ -174,8 +120,7 @@ super::define_convention_factories! {
 }
 
 /// Convention for a single leg of a swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SwapLegConvention {
     /// Day count convention for this leg.
     pub day_count: DayCounter,
@@ -189,29 +134,9 @@ pub struct SwapLegConvention {
     pub payment_lag: u32,
 }
 
-impl SwapLegConvention {
-    /// Creates a new swap leg convention.
-    #[must_use]
-    pub fn new(
-        day_count: DayCounter,
-        payment_frequency: Frequency,
-        calendar: CalendarId,
-        business_day_convention: BusinessDayConvention,
-        payment_lag: u32,
-    ) -> Self {
-        Self {
-            day_count,
-            payment_frequency,
-            calendar,
-            business_day_convention,
-            payment_lag,
-        }
-    }
-}
 
 /// Convention for an interest rate swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SwapConvention {
     /// Convention for the fixed leg.
     pub fixed_leg: SwapLegConvention,
@@ -357,8 +282,7 @@ impl SwapConvention {
 }
 
 /// Convention for a bond.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BondConvention {
     /// Day count convention.
     pub day_count: DayCounter,
@@ -372,25 +296,6 @@ pub struct BondConvention {
     pub settlement_days: u32,
 }
 
-impl BondConvention {
-    /// Creates a new bond convention.
-    #[must_use]
-    pub fn new(
-        day_count: DayCounter,
-        coupon_frequency: Frequency,
-        calendar: CalendarId,
-        business_day_convention: BusinessDayConvention,
-        settlement_days: u32,
-    ) -> Self {
-        Self {
-            day_count,
-            coupon_frequency,
-            calendar,
-            business_day_convention,
-            settlement_days,
-        }
-    }
-}
 
 super::define_convention_factories! {
     for BondConvention;
@@ -421,8 +326,7 @@ super::define_convention_factories! {
 }
 
 /// Convention for an interest rate cap or floor.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CapFloorConvention {
     /// Day count convention.
     pub day_count: DayCounter,
@@ -436,25 +340,6 @@ pub struct CapFloorConvention {
     pub index: RateIndex,
 }
 
-impl CapFloorConvention {
-    /// Creates a new cap/floor convention.
-    #[must_use]
-    pub fn new(
-        day_count: DayCounter,
-        payment_frequency: Frequency,
-        calendar: CalendarId,
-        business_day_convention: BusinessDayConvention,
-        index: RateIndex,
-    ) -> Self {
-        Self {
-            day_count,
-            payment_frequency,
-            calendar,
-            business_day_convention,
-            index,
-        }
-    }
-}
 
 super::define_convention_factories! {
     for CapFloorConvention;
@@ -479,8 +364,7 @@ super::define_convention_factories! {
 }
 
 /// Settlement convention for swaption premium and exercise.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum SettlementConvention {
     /// Physical delivery (enter into underlying swap).
     Physical,
@@ -489,8 +373,7 @@ pub enum SettlementConvention {
 }
 
 /// Convention for a swaption.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SwaptionConvention {
     /// Convention for the underlying swap.
     pub underlying_swap: SwapConvention,
@@ -594,8 +477,7 @@ impl SwaptionConvention {
 }
 
 /// Interpolation method for inflation index fixings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum InflationInterpolation {
     /// Use the index value from the reference month (no interpolation).
     Flat,
@@ -604,8 +486,7 @@ pub enum InflationInterpolation {
 }
 
 /// Inflation index type.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum InflationIndex {
     /// US Consumer Price Index (All Urban Consumers, not seasonally adjusted).
     UsCpi,
@@ -652,8 +533,7 @@ impl std::fmt::Display for InflationIndex {
 }
 
 /// Convention for inflation swaps.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct InflationSwapConvention {
     /// Inflation index used for the swap.
     pub inflation_index: InflationIndex,
@@ -776,8 +656,7 @@ impl InflationSwapConvention {
 }
 
 /// Convention for a leg of a cross-currency basis swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct XCcyLegConvention {
     /// Currency of this leg.
     pub currency: Currency,
@@ -821,8 +700,7 @@ impl XCcyLegConvention {
 }
 
 /// Specifies which leg receives the basis spread.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum BasisSpreadLeg {
     /// Basis spread is on the base currency leg.
     Base,
@@ -831,8 +709,7 @@ pub enum BasisSpreadLeg {
 }
 
 /// Convention for a cross-currency basis swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct XCcyBasisConvention {
     /// Convention for the base currency leg (first in pair).
     pub base_leg: XCcyLegConvention,

@@ -19,7 +19,7 @@ debug-logging = []
 
 [dependencies]
 pricer_core = { path = "../pricer_core" }
-infra_domain = { path = "../infra_domain", features = ["serde"] }
+infra_domain = { path = "../infra_domain" }
 enum_dispatch.workspace = true
 num-traits.workspace = true
 chrono.workspace = true

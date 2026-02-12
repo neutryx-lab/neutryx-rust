@@ -1,16 +1,16 @@
 //! Market event type definitions.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Type of market event.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "snake_case")]
 pub enum EventType {
     /// Central Bank policy meeting (e.g., FOMC, ECB, BOJ).
+    #[strum(serialize = "Central Bank Meeting")]
     CentralBankMeeting,
     /// Economic data release (GDP, CPI, NFP, etc.).
+    #[strum(serialize = "Economic Release")]
     EconomicRelease,
     /// Market holiday.
     Holiday,
@@ -21,31 +21,19 @@ pub enum EventType {
     /// Turn date for curve construction (generic turn).
     Turn,
     /// Turn of Year (TOY) — year-end rate spike.
+    #[strum(serialize = "Turn of Year")]
     TurnOfYear,
     /// Turn of Quarter (TOQ) — quarter-end rate spike.
+    #[strum(serialize = "Turn of Quarter")]
     TurnOfQuarter,
     /// Turn of Month (TOM) — month-end rate spike.
+    #[strum(serialize = "Turn of Month")]
     TurnOfMonth,
     /// Other market event.
     Other,
 }
 
 impl EventType {
-    /// Get the display name for this event type.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::CentralBankMeeting => "Central Bank Meeting",
-            Self::EconomicRelease => "Economic Release",
-            Self::Holiday => "Holiday",
-            Self::News => "News",
-            Self::Expiry => "Expiry",
-            Self::Turn => "Turn",
-            Self::TurnOfYear => "Turn of Year",
-            Self::TurnOfQuarter => "Turn of Quarter",
-            Self::TurnOfMonth => "Turn of Month",
-            Self::Other => "Other",
-        }
-    }
 
     /// Get the icon class name for this event type.
     pub fn icon(&self) -> &'static str {
@@ -87,11 +75,6 @@ impl EventType {
     }
 }
 
-impl std::fmt::Display for EventType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.display_name())
-    }
-}
 
 #[cfg(test)]
 mod tests {

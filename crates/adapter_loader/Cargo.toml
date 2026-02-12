@@ -9,7 +9,7 @@ description = "Flat file loaders (CSV/Parquet), FpML parser, and CSA details for
 
 [dependencies]
 # Master data from Infra layer
-infra_domain = { path = "../infra_domain", features = ["serde"] }
+infra_domain = { path = "../infra_domain" }
 
 # Pricer layer for target types (MarketInstrument)
 pricer_models = { path = "../pricer_models", optional = true }
@@ -42,7 +42,7 @@ quick-xml = { version = "0.37", features = ["serialize"], optional = true }
 
 [features]
 default = []
-full-serde = ["infra_domain/serde"]
+full-serde = []
 parquet = ["dep:parquet", "dep:arrow"]
 curve-builder = ["dep:pricer_models"]
 fpml = ["dep:quick-xml"]

@@ -1,28 +1,17 @@
 //! Debit Valuation Adjustment (DVA) calculation.
 
-use super::params::OwnCreditParams;
+use super::{
+    integrate::{trapezoidal_xva, trapezoidal_xva_with_survival},
+    params::OwnCreditParams,
+};
 
 /// Computes DVA for a netting set using trapezoidal integration: DVA = LGD_own
 /// * integral(ENE(t) * dPD_own(t)).
 pub fn compute_dva(ene: &[f64], time_grid: &[f64], own_credit: &OwnCreditParams) -> f64 {
-    if time_grid.len() < 2 || ene.len() != time_grid.len() {
-        return 0.0;
-    }
-
     let lgd = own_credit.lgd();
-    let mut dva = 0.0;
-
-    for i in 0..time_grid.len() - 1 {
-        let t1 = time_grid[i];
-        let t2 = time_grid[i + 1];
-
-        let marginal_pd = own_credit.marginal_pd(t1, t2);
-        let avg_ene = 0.5 * (ene[i] + ene[i + 1]);
-
-        dva += lgd * avg_ene * marginal_pd;
-    }
-
-    dva.max(0.0)
+    trapezoidal_xva(ene, time_grid, |_i, t1, t2| {
+        lgd * own_credit.marginal_pd(t1, t2)
+    })
 }
 
 /// Computes DVA with counterparty survival weighting for bilateral DVA
@@ -33,25 +22,10 @@ pub fn compute_dva_with_survival(
     own_credit: &OwnCreditParams,
     cp_survival: &[f64],
 ) -> f64 {
-    if time_grid.len() < 2 || ene.len() != time_grid.len() || cp_survival.len() != time_grid.len() {
-        return 0.0;
-    }
-
     let lgd = own_credit.lgd();
-    let mut dva = 0.0;
-
-    for i in 0..time_grid.len() - 1 {
-        let t1 = time_grid[i];
-        let t2 = time_grid[i + 1];
-
-        let marginal_pd = own_credit.marginal_pd(t1, t2);
-        let avg_ene = 0.5 * (ene[i] + ene[i + 1]);
-        let avg_cp_survival = 0.5 * (cp_survival[i] + cp_survival[i + 1]);
-
-        dva += lgd * avg_ene * marginal_pd * avg_cp_survival;
-    }
-
-    dva.max(0.0)
+    trapezoidal_xva_with_survival(ene, time_grid, cp_survival, |_i, t1, t2| {
+        lgd * own_credit.marginal_pd(t1, t2)
+    })
 }
 
 #[cfg(test)]

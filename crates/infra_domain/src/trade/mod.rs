@@ -35,7 +35,7 @@ pub use pricing_instrument::{
     PricingInstrument, VanillaOption,
 };
 pub use trade::{
-    BarrierType, ExerciseType, ProtectionSide, SettlementType, Trade, TradeBuilder, TradeMetadata,
+    ExerciseType, ProtectionSide, SettlementType, Trade, TradeBuilder, TradeMetadata,
     TradeType,
 };
 

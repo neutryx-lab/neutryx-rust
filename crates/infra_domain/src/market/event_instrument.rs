@@ -1,6 +1,5 @@
 //! Event instrument for curve impact analysis.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -10,9 +9,8 @@ use super::{
 use crate::time::Date;
 
 /// An event instrument representing a market event's impact on curves.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EventInstrument {
     /// Date of the event.
     event_date: Date,
@@ -25,10 +23,7 @@ pub struct EventInstrument {
     /// Rate index affected by this event.
     rate_index: RateIndex,
     /// End date for turn events (when the spike reverts).
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     end_date: Option<Date>,
 }
 
@@ -165,7 +160,7 @@ impl std::fmt::Display for EventInstrument {
             f,
             "{} {} {}{}bp @ {:.0}% confidence ({})",
             self.event_date,
-            self.event_type.display_name(),
+            self.event_type,
             direction,
             self.expected_spread,
             self.confidence * 100.0,

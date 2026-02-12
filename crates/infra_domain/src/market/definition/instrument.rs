@@ -2,7 +2,6 @@
 
 use std::str::FromStr;
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,9 +10,8 @@ use crate::{
 };
 
 /// Instrument definition for curve calibration.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstrumentDefinition {
     /// Unique identifier (e.g., "USD-Depo-ON", "USD-OIS-5Y").
     pub id: String,
@@ -22,79 +20,51 @@ pub struct InstrumentDefinition {
     pub currency: Currency,
 
     /// Convention ID (e.g., "USD-SOFR-OIS", "EUR-DEPO").
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub convention: Option<String>,
 
     /// Instrument type - derived from convention if not explicitly set.
-    #[cfg_attr(
-        feature = "serde",
-        serde(
+    #[serde(
             default,
             skip_serializing_if = "Option::is_none",
             alias = "quoteCategory"
-        )
-    )]
+        )]
     quote_category_override: Option<QuoteCategory>,
 
     /// Tenor specification (e.g., "ON", "3M", "5Y", or FRA format "3x6").
     pub tenor: String,
 
     /// Related rate index ID (e.g., "USD-SOFR") - optional.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_index: Option<String>,
 
     /// Market conventions override - optional.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conventions: Option<InstrumentConventions>,
 
     /// Event date for event instruments (ISO format: YYYY-MM-DD).
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub event_date: Option<String>,
 }
 
 /// Market conventions for an instrument.
-#[derive(Debug, Clone, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstrumentConventions {
     /// Day count convention.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub day_count: Option<DayCounter>,
 
     /// Spot lag in business days.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spot_lag: Option<u8>,
 
     /// Holiday calendar.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calendar: Option<CalendarId>,
 
     /// Payment frequency.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub payment_frequency: Option<Frequency>,
 }
 
@@ -437,9 +407,8 @@ impl InstrumentConventions {
 }
 
 /// Template for generating multiple instrument definitions.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstrumentTemplate {
     /// Pattern for generating IDs.
     pub id_pattern: String,
@@ -451,20 +420,14 @@ pub struct InstrumentTemplate {
     pub convention: String,
 
     /// Rate index ID (e.g., "USD-SOFR") - optional.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rate_index: Option<String>,
 
     /// List of tenors to generate instruments for.
     pub tenors: Vec<String>,
 
     /// Market conventions override - optional, applied to all generated.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conventions: Option<InstrumentConventions>,
 }
 
@@ -891,8 +854,7 @@ mod tests {
         ));
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_roundtrip() {
         let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, QuoteCategory::Ois, "5Y")
             .with_rate_index("USD-SOFR");
@@ -904,8 +866,7 @@ mod tests {
         assert_eq!(def.id, parsed.id);
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_from_json_legacy() {
         let json = r#"{
             "id": "USD-Depo-ON",
@@ -921,8 +882,7 @@ mod tests {
         assert_eq!(def.tenor, "ON");
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_from_json_convention() {
         let json = r#"{
             "id": "USD-OIS-5Y",
@@ -940,8 +900,7 @@ mod tests {
         assert_eq!(def.tenor, "5Y");
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_with_conventions() {
         let json = r#"{
             "id": "USD-OIS-5Y",
@@ -1020,8 +979,7 @@ mod tests {
         ));
     }
 
-    #[cfg(feature = "serde")]
-    #[test]
+        #[test]
     fn test_serde_event_instrument() {
         let json = r#"{
             "id": "USD-FOMC-2024-03",

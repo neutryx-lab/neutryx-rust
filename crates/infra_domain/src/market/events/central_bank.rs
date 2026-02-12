@@ -1,12 +1,10 @@
 //! Central bank definitions.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Central bank identifier.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CentralBank {
     /// Bank code (e.g., "FED", "ECB", "BOJ", "BOE").
     pub code: String,

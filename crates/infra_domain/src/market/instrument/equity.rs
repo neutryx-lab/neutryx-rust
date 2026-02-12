@@ -11,8 +11,7 @@ use crate::{
 };
 
 /// Underlying asset for equity instruments.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum EquityUnderlying {
     /// Single stock.
     SingleStock {
@@ -53,8 +52,7 @@ impl EquityUnderlying {
 }
 
 /// Equity forward contract.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EquityForward {
     /// Underlying asset.
     pub underlying: EquityUnderlying,
@@ -71,23 +69,14 @@ pub struct EquityForward {
 impl EquityForward {
     /// Validates the equity forward parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.forward_price <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Forward price must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.forward_price, "Forward price")?;
         Ok(())
     }
 }
 
 /// Equity vanilla option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EquityVanillaOption {
     /// Underlying asset.
     pub underlying: EquityUnderlying,
@@ -108,23 +97,14 @@ pub struct EquityVanillaOption {
 impl EquityVanillaOption {
     /// Validates the equity vanilla option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.strike <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
         Ok(())
     }
 }
 
 /// Monitoring frequency for path-dependent options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum MonitoringFrequency {
     /// Continuous monitoring.
     Continuous,
@@ -133,8 +113,7 @@ pub enum MonitoringFrequency {
 }
 
 /// Equity barrier option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EquityBarrierOption {
     /// Underlying vanilla option.
     pub vanilla: EquityVanillaOption,
@@ -155,11 +134,7 @@ impl EquityBarrierOption {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         self.vanilla.validate()?;
 
-        if self.barrier_level <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Barrier level must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.barrier_level, "Barrier level")?;
 
         if let Some(rebate) = self.rebate {
             if rebate < 0.0 {
@@ -174,8 +149,7 @@ impl EquityBarrierOption {
 }
 
 /// Averaging type for Asian options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum AveragingType {
     /// Arithmetic average.
     Arithmetic,
@@ -184,8 +158,7 @@ pub enum AveragingType {
 }
 
 /// Asian option (average price option).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AsianOption {
     /// Underlying asset.
     pub underlying: EquityUnderlying,
@@ -210,16 +183,8 @@ pub struct AsianOption {
 impl AsianOption {
     /// Validates the Asian option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.strike <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
         for val in &self.observed_values {
             if *val < 0.0 {
                 return Err(InstrumentError::invalid_parameter(
@@ -232,8 +197,7 @@ impl AsianOption {
 }
 
 /// Lookback option type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LookbackType {
     /// Fixed strike lookback (payoff uses maximum/minimum price).
     FixedStrike,
@@ -242,8 +206,7 @@ pub enum LookbackType {
 }
 
 /// Lookback option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct LookbackOption {
     /// Underlying asset.
     pub underlying: EquityUnderlying,
@@ -266,11 +229,7 @@ pub struct LookbackOption {
 impl LookbackOption {
     /// Validates the lookback option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
 
         if self.lookback_type == LookbackType::FixedStrike && self.strike.is_none() {
             return Err(InstrumentError::invalid_parameter(
@@ -297,8 +256,7 @@ impl LookbackOption {
 }
 
 /// Return type for equity leg of equity swaps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum EquityReturnType {
     /// Price return only.
     Price,
@@ -307,8 +265,7 @@ pub enum EquityReturnType {
 }
 
 /// Equity swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EquitySwap {
     /// Underlying asset for equity leg.
     pub underlying: EquityUnderlying,
@@ -331,28 +288,15 @@ pub struct EquitySwap {
 impl EquitySwap {
     /// Validates the equity swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.maturity <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "Maturity must be after start date",
-            ));
-        }
-        if self.funding_index.is_empty() {
-            return Err(InstrumentError::invalid_parameter(
-                "Funding index must be specified",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_not_empty(&self.funding_index, "Funding Index")?;
         Ok(())
     }
 }
 
 /// Component of a basket option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BasketComponent {
     /// Underlying asset.
     pub underlying: EquityUnderlying,
@@ -361,8 +305,7 @@ pub struct BasketComponent {
 }
 
 /// Basket option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BasketOption {
     /// Components of the basket.
     pub components: Vec<BasketComponent>,
@@ -387,19 +330,11 @@ impl BasketOption {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.components.is_empty() {
             return Err(InstrumentError::invalid_parameter(
-                "Basket must have at least one component",
+                "Components must not be empty",
             ));
         }
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.strike <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
 
         let weight_sum: f64 = self.components.iter().map(|c| c.weight).sum();
         if (weight_sum - 1.0).abs() > 0.0001 {

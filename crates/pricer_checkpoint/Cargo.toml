@@ -1,0 +1,18 @@
+[package]
+name = "pricer_checkpoint"
+description = "Checkpointing for memory-efficient reverse-mode automatic differentiation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Basic numeric traits (for PathObserverState<T: Float>)
+num-traits.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+[lints]
+workspace = true

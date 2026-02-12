@@ -7,12 +7,8 @@ use super::{
 use crate::market::{Currency, QuoteCategory, QuoteId};
 
 /// Unified market convention enum for all instrument types.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Serialize, serde::Deserialize),
-    serde(tag = "type", rename_all = "snake_case")
-)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum MarketConvention {
     /// Deposit (money market) convention.
     Deposit(DepositConvention),

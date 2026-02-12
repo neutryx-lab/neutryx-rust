@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use super::{layout_config::PathLayout, workspace_trait::PathWorkspaceTrait};
+use super::{capacity::calculate_growth_capacity, layout_config::PathLayout, workspace_trait::PathWorkspaceTrait};
 
 /// Index calculation strategy for workspace memory layout.
 pub trait LayoutStrategy: Send + Sync + Clone + 'static {
@@ -115,8 +115,8 @@ impl<S: LayoutStrategy> Workspace<S> {
     /// Ensures workspace has sufficient capacity (doubling strategy, never
     pub fn ensure_capacity(&mut self, n_paths: usize, n_steps: usize) {
         if n_paths > self.capacity_paths || n_steps > self.capacity_steps {
-            let new_cap_paths = n_paths.max(self.capacity_paths * 2);
-            let new_cap_steps = n_steps.max(self.capacity_steps * 2);
+            let new_cap_paths = calculate_growth_capacity(self.capacity_paths, n_paths);
+            let new_cap_steps = calculate_growth_capacity(self.capacity_steps, n_steps);
 
             self.randoms.resize(new_cap_paths * new_cap_steps, 0.0);
             self.paths.resize(new_cap_paths * (new_cap_steps + 1), 0.0);

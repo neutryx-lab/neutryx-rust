@@ -53,26 +53,17 @@ impl<T: Float + Default> Default for ModelState<T> {
 impl<T: Float + Default> ModelState<T> {
     /// Get state dimension.
     pub fn dimension(&self) -> usize {
-        match self {
-            ModelState::Single(_) => SingleState::<T>::dimension(),
-            ModelState::TwoFactor(_) => TwoFactorState::<T>::dimension(),
-        }
+        match self { Self::Single(_) => 1, Self::TwoFactor(_) => 2 }
     }
 
     /// Get state component by index.
     pub fn get(&self, index: usize) -> Option<T> {
-        match self {
-            ModelState::Single(s) => s.get(index),
-            ModelState::TwoFactor(s) => s.get(index),
-        }
+        match self { Self::Single(s) => s.get(index), Self::TwoFactor(s) => s.get(index) }
     }
 
     /// Convert to vector representation.
     pub fn to_vec(&self) -> Vec<T> {
-        match self {
-            ModelState::Single(s) => s.to_array(),
-            ModelState::TwoFactor(s) => s.to_array(),
-        }
+        match self { Self::Single(s) => s.to_array(), Self::TwoFactor(s) => s.to_array() }
     }
 
     /// Get the price component (always first element).
@@ -80,10 +71,7 @@ impl<T: Float + Default> ModelState<T> {
 
     /// Get variance component if available (second element for two-factor).
     pub fn variance(&self) -> Option<T> {
-        match self {
-            ModelState::Single(_) => None,
-            ModelState::TwoFactor(s) => Some(s.second),
-        }
+        match self { Self::Single(_) => None, Self::TwoFactor(s) => Some(s.second) }
     }
 }
 
@@ -166,116 +154,67 @@ impl<T: Float + Default> Default for StochasticModelEnum<T> {
     fn default() -> Self { StochasticModelEnum::GBM(GBMModel::new()) }
 }
 
+/// Dispatches a `StochasticModel` associated function across all enum variants.
+macro_rules! dispatch_assoc_fn {
+    ($self:expr, $method:ident) => {
+        match $self {
+            Self::GBM(_) => GBMModel::<T>::$method(),
+            Self::Heston(_) => HestonModel::<T>::$method(),
+            Self::HullWhite(_) => HullWhiteModel::<T>::$method(),
+            Self::CIR(_) => CIRModel::<T>::$method(),
+        }
+    };
+}
+
 impl<T: Float + Default> StochasticModelEnum<T> {
     /// Create a new GBM model.
-    pub fn gbm() -> Self { StochasticModelEnum::GBM(GBMModel::new()) }
+    pub fn gbm() -> Self { Self::GBM(GBMModel::new()) }
 
     /// Create a new Heston model with given parameters.
     pub fn heston(params: HestonParams<T>) -> Option<Self> {
-        HestonModel::new(params)
-            .ok()
-            .map(StochasticModelEnum::Heston)
+        HestonModel::new(params).ok().map(Self::Heston)
     }
 
     /// Create a new Hull-White model.
-    pub fn hull_white() -> Self { StochasticModelEnum::HullWhite(HullWhiteModel::new()) }
+    pub fn hull_white() -> Self { Self::HullWhite(HullWhiteModel::new()) }
 
     /// Create a new CIR model.
-    pub fn cir() -> Self { StochasticModelEnum::CIR(CIRModel::new()) }
+    pub fn cir() -> Self { Self::CIR(CIRModel::new()) }
 
     /// Get the model name.
-    pub fn model_name(&self) -> &'static str {
-        match self {
-            StochasticModelEnum::GBM(_) => GBMModel::<T>::model_name(),
-            StochasticModelEnum::Heston(_) => HestonModel::<T>::model_name(),
-            StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::model_name(),
-            StochasticModelEnum::CIR(_) => CIRModel::<T>::model_name(),
-        }
-    }
+    pub fn model_name(&self) -> &'static str { dispatch_assoc_fn!(self, model_name) }
 
     /// Get the number of Brownian motion dimensions required.
-    pub fn brownian_dim(&self) -> usize {
-        match self {
-            StochasticModelEnum::GBM(_) => GBMModel::<T>::brownian_dim(),
-            StochasticModelEnum::Heston(_) => HestonModel::<T>::brownian_dim(),
-            StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::brownian_dim(),
-            StochasticModelEnum::CIR(_) => CIRModel::<T>::brownian_dim(),
-        }
-    }
+    pub fn brownian_dim(&self) -> usize { dispatch_assoc_fn!(self, brownian_dim) }
 
     /// Check if this is a two-factor model.
-    pub fn is_two_factor(&self) -> bool {
-        match self {
-            StochasticModelEnum::GBM(_) => false,
-            StochasticModelEnum::Heston(_) => true,
-            StochasticModelEnum::HullWhite(_) => false,
-            StochasticModelEnum::CIR(_) => false,
-        }
-    }
+    pub fn is_two_factor(&self) -> bool { matches!(self, Self::Heston(_)) }
 
     /// Check if this is an interest rate model.
-    pub fn is_rate_model(&self) -> bool {
-        match self {
-            StochasticModelEnum::GBM(_) => false,
-            StochasticModelEnum::Heston(_) => false,
-            StochasticModelEnum::HullWhite(_) => true,
-            StochasticModelEnum::CIR(_) => true,
-        }
-    }
+    pub fn is_rate_model(&self) -> bool { matches!(self, Self::HullWhite(_) | Self::CIR(_)) }
 
     /// Get the number of stochastic factors in the model.
-    pub fn num_factors(&self) -> usize {
-        match self {
-            StochasticModelEnum::GBM(_) => GBMModel::<T>::num_factors(),
-            StochasticModelEnum::Heston(_) => HestonModel::<T>::num_factors(),
-            StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::num_factors(),
-            StochasticModelEnum::CIR(_) => CIRModel::<T>::num_factors(),
-        }
-    }
+    pub fn num_factors(&self) -> usize { dispatch_assoc_fn!(self, num_factors) }
 
     /// Get initial state for the model.
     pub fn initial_state(&self, params: &ModelParams<T>) -> ModelState<T> {
         match (self, params) {
-            (StochasticModelEnum::GBM(_), ModelParams::GBM(p)) => {
-                ModelState::Single(GBMModel::initial_state(p))
-            }
-            (StochasticModelEnum::Heston(_), ModelParams::Heston(p)) => {
-                ModelState::TwoFactor(HestonModel::initial_state(p))
-            }
-            (StochasticModelEnum::HullWhite(_), ModelParams::HullWhite(p)) => {
-                ModelState::Single(HullWhiteModel::initial_state(p))
-            }
-            (StochasticModelEnum::CIR(_), ModelParams::CIR(p)) => {
-                ModelState::Single(CIRModel::initial_state(p))
-            }
+            (Self::GBM(_), ModelParams::GBM(p)) => ModelState::Single(GBMModel::initial_state(p)),
+            (Self::Heston(_), ModelParams::Heston(p)) => ModelState::TwoFactor(HestonModel::initial_state(p)),
+            (Self::HullWhite(_), ModelParams::HullWhite(p)) => ModelState::Single(HullWhiteModel::initial_state(p)),
+            (Self::CIR(_), ModelParams::CIR(p)) => ModelState::Single(CIRModel::initial_state(p)),
             #[allow(unreachable_patterns)]
             _ => ModelState::default(),
         }
     }
 
     /// Evolve state by one time step.
-    pub fn evolve_step(
-        &self,
-        state: ModelState<T>,
-        dt: T,
-        dw: &[T],
-        params: &ModelParams<T>,
-    ) -> ModelState<T> {
+    pub fn evolve_step(&self, state: ModelState<T>, dt: T, dw: &[T], params: &ModelParams<T>) -> ModelState<T> {
         match (self, &state, params) {
-            (StochasticModelEnum::GBM(_), ModelState::Single(s), ModelParams::GBM(p)) => {
-                ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p))
-            }
-            (StochasticModelEnum::Heston(_), ModelState::TwoFactor(s), ModelParams::Heston(p)) => {
-                ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p))
-            }
-            (
-                StochasticModelEnum::HullWhite(_),
-                ModelState::Single(s),
-                ModelParams::HullWhite(p),
-            ) => ModelState::Single(HullWhiteModel::evolve_step(*s, dt, dw, p)),
-            (StochasticModelEnum::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => {
-                ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p))
-            }
+            (Self::GBM(_), ModelState::Single(s), ModelParams::GBM(p)) => ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p)),
+            (Self::Heston(_), ModelState::TwoFactor(s), ModelParams::Heston(p)) => ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p)),
+            (Self::HullWhite(_), ModelState::Single(s), ModelParams::HullWhite(p)) => ModelState::Single(HullWhiteModel::evolve_step(*s, dt, dw, p)),
+            (Self::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p)),
             #[allow(unreachable_patterns)]
             _ => state,
         }

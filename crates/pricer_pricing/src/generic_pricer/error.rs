@@ -99,44 +99,64 @@ pub enum PricingError {
     },
 }
 
+/// Generates a pair of error factory methods: a base method (with `trade_id: None`)
+/// and a `_with_trade` variant (with `trade_id: Some(...)`).
+///
+/// # Parameters
+/// - `$base_fn`: Name of the base factory method.
+/// - `$with_trade_fn`: Name of the variant that accepts a trade ID.
+/// - `$variant`: Enum variant to construct.
+/// - `$field`: The primary field name (e.g. `description`, `instrument_type`, `reason`).
+/// - `$base_doc`: Doc string for the base method.
+/// - `$trade_doc`: Doc string for the `_with_trade` method.
+macro_rules! error_factory_with_trade {
+    (
+        $base_fn:ident, $with_trade_fn:ident,
+        $variant:ident, $field:ident,
+        $base_doc:expr, $trade_doc:expr
+    ) => {
+        #[doc = $base_doc]
+        pub fn $base_fn($field: impl Into<String>) -> Self {
+            Self::$variant {
+                $field: $field.into(),
+                trade_id: None,
+            }
+        }
+
+        #[doc = $trade_doc]
+        pub fn $with_trade_fn(
+            $field: impl Into<String>,
+            trade_id: impl Into<String>,
+        ) -> Self {
+            Self::$variant {
+                $field: $field.into(),
+                trade_id: Some(trade_id.into()),
+            }
+        }
+    };
+}
+
 impl PricingError {
-    /// Creates a missing market data error.
-    pub fn missing_market_data(description: impl Into<String>) -> Self {
-        Self::MissingMarketData {
-            description: description.into(),
-            trade_id: None,
-        }
-    }
+    error_factory_with_trade!(
+        missing_market_data, missing_market_data_with_trade,
+        MissingMarketData, description,
+        "Creates a missing market data error.",
+        "Creates a missing market data error with trade ID."
+    );
 
-    /// Creates a missing market data error with trade ID.
-    pub fn missing_market_data_with_trade(
-        description: impl Into<String>,
-        trade_id: impl Into<String>,
-    ) -> Self {
-        Self::MissingMarketData {
-            description: description.into(),
-            trade_id: Some(trade_id.into()),
-        }
-    }
+    error_factory_with_trade!(
+        unsupported_instrument, unsupported_instrument_with_trade,
+        UnsupportedInstrument, instrument_type,
+        "Creates an unsupported instrument error.",
+        "Creates an unsupported instrument error with trade ID."
+    );
 
-    /// Creates an unsupported instrument error.
-    pub fn unsupported_instrument(instrument_type: impl Into<String>) -> Self {
-        Self::UnsupportedInstrument {
-            instrument_type: instrument_type.into(),
-            trade_id: None,
-        }
-    }
-
-    /// Creates an unsupported instrument error with trade ID.
-    pub fn unsupported_instrument_with_trade(
-        instrument_type: impl Into<String>,
-        trade_id: impl Into<String>,
-    ) -> Self {
-        Self::UnsupportedInstrument {
-            instrument_type: instrument_type.into(),
-            trade_id: Some(trade_id.into()),
-        }
-    }
+    error_factory_with_trade!(
+        invalid_trade, invalid_trade_with_id,
+        InvalidTrade, reason,
+        "Creates an invalid trade error.",
+        "Creates an invalid trade error with trade ID."
+    );
 
     /// Creates a market data resolution error.
     pub fn market_data_resolution(reason: impl Into<String>) -> Self {
@@ -155,22 +175,6 @@ impl PricingError {
         Self::StandaloneFxRateNotFound {
             base: base.into(),
             quote: quote.into(),
-        }
-    }
-
-    /// Creates an invalid trade error.
-    pub fn invalid_trade(reason: impl Into<String>) -> Self {
-        Self::InvalidTrade {
-            reason: reason.into(),
-            trade_id: None,
-        }
-    }
-
-    /// Creates an invalid trade error with trade ID.
-    pub fn invalid_trade_with_id(reason: impl Into<String>, trade_id: impl Into<String>) -> Self {
-        Self::InvalidTrade {
-            reason: reason.into(),
-            trade_id: Some(trade_id.into()),
         }
     }
 

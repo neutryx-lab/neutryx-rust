@@ -5,44 +5,59 @@
 use super::CounterPartyError;
 
 /// Credit rating with +/- notches (20 grades).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize, strum::Display)]
 pub enum CreditRating {
     /// AAA - Highest quality.
+    #[strum(serialize = "AAA")]
     Aaa,
     /// AA+ - High quality.
+    #[strum(serialize = "AA+")]
     AaPlus,
     /// AA - High quality.
+    #[strum(serialize = "AA")]
     Aa,
     /// AA- - High quality.
+    #[strum(serialize = "AA-")]
     AaMinus,
     /// A+ - Upper medium grade.
+    #[strum(serialize = "A+")]
     APlus,
     /// A - Upper medium grade.
     A,
     /// A- - Upper medium grade.
+    #[strum(serialize = "A-")]
     AMinus,
     /// BBB+ - Lower medium grade (investment grade boundary).
+    #[strum(serialize = "BBB+")]
     BbbPlus,
     /// BBB - Lower medium grade.
+    #[strum(serialize = "BBB")]
     Bbb,
     /// BBB- - Lowest investment grade.
+    #[strum(serialize = "BBB-")]
     BbbMinus,
     /// BB+ - Non-investment grade speculative.
+    #[strum(serialize = "BB+")]
     BbPlus,
     /// BB - Non-investment grade speculative.
+    #[strum(serialize = "BB")]
     Bb,
     /// BB- - Non-investment grade speculative.
+    #[strum(serialize = "BB-")]
     BbMinus,
     /// B+ - Highly speculative.
+    #[strum(serialize = "B+")]
     BPlus,
     /// B - Highly speculative.
     B,
     /// B- - Highly speculative.
+    #[strum(serialize = "B-")]
     BMinus,
     /// CCC - Substantial risks.
+    #[strum(serialize = "CCC")]
     Ccc,
     /// CC - Extremely speculative.
+    #[strum(serialize = "CC")]
     Cc,
     /// C - Exceptionally high risk.
     C,
@@ -115,37 +130,9 @@ impl CreditRating {
     }
 }
 
-impl std::fmt::Display for CreditRating {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            CreditRating::Aaa => "AAA",
-            CreditRating::AaPlus => "AA+",
-            CreditRating::Aa => "AA",
-            CreditRating::AaMinus => "AA-",
-            CreditRating::APlus => "A+",
-            CreditRating::A => "A",
-            CreditRating::AMinus => "A-",
-            CreditRating::BbbPlus => "BBB+",
-            CreditRating::Bbb => "BBB",
-            CreditRating::BbbMinus => "BBB-",
-            CreditRating::BbPlus => "BB+",
-            CreditRating::Bb => "BB",
-            CreditRating::BbMinus => "BB-",
-            CreditRating::BPlus => "B+",
-            CreditRating::B => "B",
-            CreditRating::BMinus => "B-",
-            CreditRating::Ccc => "CCC",
-            CreditRating::Cc => "CC",
-            CreditRating::C => "C",
-            CreditRating::D => "D",
-        };
-        write!(f, "{}", s)
-    }
-}
 
 /// Credit parameters for XVA calculations.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CreditParams {
     hazard_rate: f64,
     lgd: f64,

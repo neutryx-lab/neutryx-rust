@@ -8,8 +8,7 @@ use crate::{
 };
 
 /// Energy commodity subtypes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum EnergyType {
     /// Crude oil (WTI, Brent, etc.).
     CrudeOil,
@@ -26,8 +25,7 @@ pub enum EnergyType {
 }
 
 /// Metal commodity subtypes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum MetalType {
     /// Gold.
     Gold,
@@ -48,8 +46,7 @@ pub enum MetalType {
 }
 
 /// Agricultural commodity subtypes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum AgricultureType {
     /// Wheat.
     Wheat,
@@ -68,8 +65,7 @@ pub enum AgricultureType {
 }
 
 /// Commodity type classification.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CommodityType {
     /// Energy commodities.
     Energy(EnergyType),
@@ -102,8 +98,7 @@ impl std::fmt::Display for CommodityType {
 }
 
 /// Quantity unit for commodity transactions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum QuantityUnit {
     /// Barrels (for oil).
     Barrels,
@@ -122,8 +117,7 @@ pub enum QuantityUnit {
 }
 
 /// Commodity forward contract.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CommodityForward {
     /// Commodity type.
     pub commodity: CommodityType,
@@ -144,21 +138,9 @@ pub struct CommodityForward {
 impl CommodityForward {
     /// Validates the commodity forward parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.quantity <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Quantity must be positive",
-            ));
-        }
-        if self.forward_price <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Forward price must be positive",
-            ));
-        }
-        if self.delivery_location.is_empty() {
-            return Err(InstrumentError::invalid_parameter(
-                "Delivery location must be specified",
-            ));
-        }
+        InstrumentError::check_positive(self.quantity, "Quantity")?;
+        InstrumentError::check_positive(self.forward_price, "Forward price")?;
+        InstrumentError::check_not_empty(&self.delivery_location, "Delivery Location")?;
         Ok(())
     }
 
@@ -168,8 +150,7 @@ impl CommodityForward {
 }
 
 /// Commodity swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CommoditySwap {
     /// Commodity type.
     pub commodity: CommodityType,
@@ -194,33 +175,16 @@ pub struct CommoditySwap {
 impl CommoditySwap {
     /// Validates the commodity swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.quantity_per_period <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Quantity per period must be positive",
-            ));
-        }
-        if self.fixed_price <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Fixed price must be positive",
-            ));
-        }
-        if self.floating_index.is_empty() {
-            return Err(InstrumentError::invalid_parameter(
-                "Floating index must be specified",
-            ));
-        }
-        if self.maturity <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "Maturity must be after start date",
-            ));
-        }
+        InstrumentError::check_positive(self.quantity_per_period, "Quantity per period")?;
+        InstrumentError::check_positive(self.fixed_price, "Fixed price")?;
+        InstrumentError::check_not_empty(&self.floating_index, "Floating Index")?;
+        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
         Ok(())
     }
 }
 
 /// Commodity vanilla option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CommodityVanillaOption {
     /// Commodity type.
     pub commodity: CommodityType,
@@ -245,23 +209,14 @@ pub struct CommodityVanillaOption {
 impl CommodityVanillaOption {
     /// Validates the commodity vanilla option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.quantity <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Quantity must be positive",
-            ));
-        }
-        if self.strike <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.quantity, "Quantity")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
         Ok(())
     }
 }
 
 /// Commodity Asian option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CommodityAsianOption {
     /// Commodity type.
     pub commodity: CommodityType,
@@ -288,21 +243,9 @@ pub struct CommodityAsianOption {
 impl CommodityAsianOption {
     /// Validates the commodity Asian option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.quantity <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Quantity must be positive",
-            ));
-        }
-        if self.strike <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be positive",
-            ));
-        }
-        if self.averaging_end <= self.averaging_start {
-            return Err(InstrumentError::invalid_date(
-                "Averaging end must be after averaging start",
-            ));
-        }
+        InstrumentError::check_positive(self.quantity, "Quantity")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
+        InstrumentError::check_date_order(self.averaging_start, self.averaging_end, "Averaging end must be after averaging start")?;
         if self.expiry < self.averaging_end {
             return Err(InstrumentError::invalid_date(
                 "Expiry must be on or after averaging end",
@@ -313,8 +256,7 @@ impl CommodityAsianOption {
 }
 
 /// Spread option (on two commodities).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SpreadOption {
     /// First commodity.
     pub commodity_1: CommodityType,
@@ -337,11 +279,7 @@ pub struct SpreadOption {
 impl SpreadOption {
     /// Validates the spread option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.quantity <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Quantity must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.quantity, "Quantity")?;
         Ok(())
     }
 }

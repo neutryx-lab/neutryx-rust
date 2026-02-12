@@ -31,8 +31,13 @@
 use nalgebra::{DMatrix, RealField};
 use num_traits::Float;
 
-use super::{error::LinearAlgebraError, lu_solve};
+use super::{error::LinearAlgebraError, lu_solve, wrappers::{require_square, require_dims}};
 use crate::math::numeric::from_f64;
+
+/// Extract the stored matrix or return "not decomposed" error.
+fn require_decomposed<T: Clone>(matrix: &Option<T>) -> Result<&T, LinearAlgebraError> {
+    matrix.as_ref().ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))
+}
 
 /// Strategy trait for linear system solvers in calibration problems.
 pub trait LinearSolveStrategy<T: RealField + Copy + Float>: Clone + Default {
@@ -66,30 +71,17 @@ impl<T: RealField + Copy> Default for LUStrategy<T> {
 
 impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LUStrategy<T> {
     fn decompose(&mut self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
-        if matrix.nrows() != matrix.ncols() {
-            return Err(LinearAlgebraError::NotSquare {
-                rows: matrix.nrows(),
-                cols: matrix.ncols(),
-            });
-        }
+        require_square(matrix)?;
         self.matrix = Some(matrix.clone());
         Ok(())
     }
 
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
-        let matrix = self
-            .matrix
-            .as_ref()
-            .ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))?;
-        lu_solve(matrix, b)
+        lu_solve(require_decomposed(&self.matrix)?, b)
     }
 
     fn inverse(&self) -> Result<DMatrix<T>, LinearAlgebraError> {
-        let matrix = self
-            .matrix
-            .as_ref()
-            .ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))?;
-        matrix
+        require_decomposed(&self.matrix)?
             .clone()
             .try_inverse()
             .ok_or(LinearAlgebraError::SingularMatrix)
@@ -132,28 +124,15 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
     }
 
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
-        let matrix = self
-            .matrix
-            .as_ref()
-            .ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))?;
-        forward_substitution(matrix, b)
+        forward_substitution(require_decomposed(&self.matrix)?, b)
     }
 
     fn inverse(&self) -> Result<DMatrix<T>, LinearAlgebraError> {
-        let matrix = self
-            .matrix
-            .as_ref()
-            .ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))?;
-        lower_triangular_inverse(matrix)
+        lower_triangular_inverse(require_decomposed(&self.matrix)?)
     }
 
     fn validate_structure(&self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
-        if matrix.nrows() != matrix.ncols() {
-            return Err(LinearAlgebraError::NotSquare {
-                rows: matrix.nrows(),
-                cols: matrix.ncols(),
-            });
-        }
+        require_square(matrix)?;
 
         // Check upper triangle is zero (within tolerance)
         let n = matrix.nrows();
@@ -162,9 +141,7 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
                 if Float::abs(matrix[(i, j)]) > self.tolerance {
                     return Err(LinearAlgebraError::InvalidInput(format!(
                         "Matrix is not lower triangular: element ({}, {}) = {:?}",
-                        i,
-                        j,
-                        matrix[(i, j)]
+                        i, j, matrix[(i, j)]
                     )));
                 }
             }
@@ -186,21 +163,9 @@ pub fn forward_substitution<T: RealField + Copy + Float>(
     l: &DMatrix<T>,
     b: &[T],
 ) -> Result<Vec<T>, LinearAlgebraError> {
+    require_square(l)?;
+    require_dims(l.nrows(), b.len())?;
     let n = l.nrows();
-
-    if n != l.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: n,
-            cols: l.ncols(),
-        });
-    }
-
-    if n != b.len() {
-        return Err(LinearAlgebraError::DimensionMismatch {
-            expected: format!("{}", n),
-            got: format!("{}", b.len()),
-        });
-    }
 
     let mut x = vec![T::zero(); n];
     let epsilon: T = from_f64(1e-15);
@@ -225,14 +190,8 @@ pub fn forward_substitution<T: RealField + Copy + Float>(
 pub fn lower_triangular_inverse<T: RealField + Copy + Float>(
     l: &DMatrix<T>,
 ) -> Result<DMatrix<T>, LinearAlgebraError> {
+    require_square(l)?;
     let n = l.nrows();
-
-    if n != l.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: n,
-            cols: l.ncols(),
-        });
-    }
 
     let mut inv = DMatrix::zeros(n, n);
 

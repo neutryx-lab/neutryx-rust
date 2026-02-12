@@ -17,8 +17,7 @@ use crate::{
 };
 
 /// A collection of market quotes with O(1) lookup.
-#[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MarketQuoteSet {
     /// Quotes keyed by (QuoteId, QuoteType).
     quotes: HashMap<(QuoteId, QuoteType), MarketQuote>,

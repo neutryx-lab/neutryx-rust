@@ -9,9 +9,8 @@ use crate::{
 };
 
 /// Scope of a portfolio.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum PortfolioScope {
     /// Internal management portfolio.
     #[default]
@@ -47,9 +46,8 @@ impl PortfolioScope {
 }
 
 /// Metadata for a portfolio.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PortfolioMetadata {
     ownership: Option<BookOwnership>,
     scope: PortfolioScope,
@@ -113,9 +111,8 @@ impl PortfolioMetadata {
 }
 
 /// Mapping between a portfolio and a book.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PortfolioBookMapping {
     portfolio_id: PortfolioId,
     book_id: BookId,

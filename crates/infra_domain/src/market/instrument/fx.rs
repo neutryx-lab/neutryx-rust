@@ -8,8 +8,7 @@ pub use crate::market::CurrencyPair;
 use crate::{market::Currency, time::Date, trade::OptionType};
 
 /// FX spot transaction.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxSpot {
     /// Currency pair.
     pub currency_pair: CurrencyPair,
@@ -26,23 +25,14 @@ pub struct FxSpot {
 impl FxSpot {
     /// Validates the FX spot parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.spot_rate <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Spot rate must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.spot_rate, "Spot rate")?;
         Ok(())
     }
 }
 
 /// FX forward transaction.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxForward {
     /// Currency pair.
     pub currency_pair: CurrencyPair,
@@ -59,23 +49,14 @@ pub struct FxForward {
 impl FxForward {
     /// Validates the FX forward parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.forward_rate <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Forward rate must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.forward_rate, "Forward rate")?;
         Ok(())
     }
 }
 
 /// FX vanilla option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxVanillaOption {
     /// Currency pair.
     pub currency_pair: CurrencyPair,
@@ -98,16 +79,8 @@ pub struct FxVanillaOption {
 impl FxVanillaOption {
     /// Validates the FX vanilla option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.strike <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
         if self.delivery_date < self.expiry {
             return Err(InstrumentError::invalid_date(
                 "Delivery date must be on or after expiry",
@@ -118,8 +91,7 @@ impl FxVanillaOption {
 }
 
 /// FX barrier option.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxBarrierOption {
     /// Underlying vanilla option.
     pub vanilla: FxVanillaOption,
@@ -138,11 +110,7 @@ impl FxBarrierOption {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         self.vanilla.validate()?;
 
-        if self.barrier_level <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Barrier level must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.barrier_level, "Barrier level")?;
 
         if let Some(rebate) = self.rebate {
             if rebate < 0.0 {
@@ -175,8 +143,7 @@ impl FxBarrierOption {
 }
 
 /// FX swap (short-term swap).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxSwap {
     /// Currency pair.
     pub currency_pair: CurrencyPair,
@@ -197,19 +164,11 @@ pub struct FxSwap {
 impl FxSwap {
     /// Validates the FX swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
         if self.near_rate <= 0.0 || self.far_rate <= 0.0 {
             return Err(InstrumentError::invalid_parameter("Rates must be positive"));
         }
-        if self.far_leg_date <= self.near_leg_date {
-            return Err(InstrumentError::invalid_date(
-                "Far leg date must be after near leg date",
-            ));
-        }
+        InstrumentError::check_date_order(self.near_leg_date, self.far_leg_date, "Far leg date must be after near leg date")?;
         Ok(())
     }
 
@@ -219,8 +178,7 @@ impl FxSwap {
 }
 
 /// Swap points with scaling factor for forward rate calculation.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SwapPoints {
     /// Raw swap points value (e.g., 50 for 50 pips).
     value: f64,
@@ -281,8 +239,7 @@ impl std::fmt::Display for SwapPoints {
 }
 
 /// Standard FX swap tenors for short-term forward curve construction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum FxSwapTenor {
     /// Overnight (T+0 to T+1).
     ON,
@@ -335,8 +292,7 @@ impl std::fmt::Display for FxSwapTenor {
 }
 
 /// FX swap convention for business day and settlement rules.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct FxSwapConvention {
     /// Number of business days from trade date to spot settlement.
     pub spot_lag: u32,
@@ -357,8 +313,7 @@ impl FxSwapConvention {
 }
 
 /// FX Swap Instrument for forward point bootstrapping.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxSwapInstrument {
     /// Currency pair.
     pub currency_pair: CurrencyPair,

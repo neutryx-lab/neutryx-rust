@@ -62,18 +62,6 @@ impl BootstrapConfig {
             ..Default::default()
         }
     }
-
-    /// Sets the interpolation method.
-    pub fn with_interpolation(mut self, interpolation: BootstrapInterpolation) -> Self {
-        self.interpolation = interpolation;
-        self
-    }
-
-    /// Sets the finite difference epsilon.
-    pub fn with_fd_epsilon(mut self, epsilon: f64) -> Self {
-        self.fd_epsilon = epsilon;
-        self
-    }
 }
 
 /// Sequential curve bootstrapper for yield curve construction.
@@ -653,9 +641,11 @@ mod tests {
 
     #[test]
     fn test_bootstrap_with_custom_config() {
-        let config = BootstrapConfig::new(1e-12, 200)
-            .with_interpolation(BootstrapInterpolation::LogLinear)
-            .with_fd_epsilon(1e-8);
+        let config = BootstrapConfig {
+            interpolation: BootstrapInterpolation::LogLinear,
+            fd_epsilon: 1e-8,
+            ..BootstrapConfig::new(1e-12, 200)
+        };
 
         let bootstrapper = CurveBootstrapper::with_config(config);
 

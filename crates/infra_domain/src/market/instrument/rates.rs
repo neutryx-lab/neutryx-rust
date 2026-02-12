@@ -10,8 +10,7 @@ use crate::{
 };
 
 /// Floating rate note (FRN).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Frn {
     /// Coupon rate index.
     pub coupon_index: RateIndex,
@@ -32,18 +31,13 @@ pub struct Frn {
 impl Frn {
     /// Validates the FRN parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.maturity <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "Maturity must be after start date",
-            ));
-        }
+        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
         Ok(())
     }
 }
 
 /// Constant Maturity Swap (CMS) swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CmsSwap {
     /// CMS reference tenor (e.g., 10Y for 10-year CMS rate).
     pub cms_tenor: Tenor,
@@ -64,18 +58,13 @@ pub struct CmsSwap {
 impl CmsSwap {
     /// Validates the CMS swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
         Ok(())
     }
 }
 
 /// Inflation swap type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum SwapType {
     /// Zero-coupon inflation swap (single payment at maturity).
     ZeroCoupon,
@@ -84,8 +73,7 @@ pub enum SwapType {
 }
 
 /// Inflation swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct InflationSwap {
     /// Inflation index identifier (e.g., "CPI", "HICP").
     pub inflation_index: String,
@@ -108,28 +96,15 @@ pub struct InflationSwap {
 impl InflationSwap {
     /// Validates the inflation swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.maturity <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "Maturity must be after start date",
-            ));
-        }
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.inflation_index.is_empty() {
-            return Err(InstrumentError::invalid_parameter(
-                "Inflation index must be specified",
-            ));
-        }
+        InstrumentError::check_date_order(self.start_date, self.maturity, "Maturity must be after start date")?;
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_not_empty(&self.inflation_index, "Inflation Index")?;
         Ok(())
     }
 }
 
 /// Overnight Index Swap (OIS).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Ois {
     /// Overnight rate index (SOFR, ESTR, SONIA, TONA, etc.).
     pub rate_index: RateIndex,
@@ -152,16 +127,8 @@ pub struct Ois {
 impl Ois {
     /// Validates the OIS parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.end_date <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "End date must be after start date",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_date_order(self.start_date, self.end_date, "End date must be after start date")?;
         Ok(())
     }
 
@@ -175,8 +142,7 @@ impl Ois {
 }
 
 /// Deposit (money market deposit).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Deposit {
     /// Start date of the deposit.
     pub start_date: Date,
@@ -193,16 +159,8 @@ pub struct Deposit {
 impl Deposit {
     /// Validates the deposit parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.rate < -0.1 || self.rate > 0.5 {
-            return Err(InstrumentError::invalid_parameter(
-                "Rate must be between -10% and 50%",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_range(self.rate, -0.1, 0.5, "Rate")?;
         Ok(())
     }
 
@@ -219,8 +177,7 @@ impl Deposit {
 }
 
 /// Forward Rate Agreement (FRA).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Fra {
     /// Fixing date for the floating rate.
     pub fixing_date: Date,
@@ -241,16 +198,8 @@ pub struct Fra {
 impl Fra {
     /// Validates the FRA parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.strike < -0.1 || self.strike > 0.5 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike must be between -10% and 50%",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_range(self.strike, -0.1, 0.5, "Strike")?;
         if self.start_date < self.fixing_date {
             return Err(InstrumentError::invalid_date(
                 "Start date must be on or after fixing date",
@@ -272,8 +221,7 @@ impl Fra {
 }
 
 /// Interest Rate Futures contract.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Futures {
     /// Expiry/delivery date of the futures contract.
     pub expiry_date: Date,
@@ -292,16 +240,8 @@ pub struct Futures {
 impl Futures {
     /// Validates the futures parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.price < 80.0 || self.price > 110.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Price must be between 80 and 110 (implied rate -10% to 20%)",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_range(self.price, 80.0, 110.0, "Price")?;
         Ok(())
     }
 
@@ -324,8 +264,7 @@ impl Futures {
 }
 
 /// Interest Rate Swap (IRS).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct InterestRateSwap {
     /// Start date of the swap.
     pub start_date: Date,
@@ -352,16 +291,8 @@ pub struct InterestRateSwap {
 impl InterestRateSwap {
     /// Validates the IRS parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.fixed_rate < -0.1 || self.fixed_rate > 0.5 {
-            return Err(InstrumentError::invalid_parameter(
-                "Fixed rate must be between -10% and 50%",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_range(self.fixed_rate, -0.1, 0.5, "Fixed Rate")?;
         if self.tenor.to_months() == 0 {
             return Err(InstrumentError::invalid_parameter(
                 "Swap tenor must be at least 1 month",
@@ -387,8 +318,7 @@ impl InterestRateSwap {
 }
 
 /// Basis Swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BasisSwap {
     /// Start date of the swap.
     pub start_date: Date,
@@ -417,11 +347,7 @@ pub struct BasisSwap {
 impl BasisSwap {
     /// Validates the basis swap parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
         if self.tenor.to_months() == 0 {
             return Err(InstrumentError::invalid_parameter(
                 "Swap tenor must be at least 1 month",

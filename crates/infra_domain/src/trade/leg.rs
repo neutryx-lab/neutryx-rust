@@ -4,9 +4,8 @@ use super::cashflow::Cashflow;
 use crate::{market::Currency, time::Date};
 
 /// Direction of a leg from the perspective of the trade holder.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Direction {
     /// Payer: pays this leg's cashflows (negative NPV contribution).
     Payer,
@@ -44,8 +43,7 @@ impl Direction {
 }
 
 /// Type of leg in a trade.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum LegType {
     /// Fixed rate leg.
     Fixed,
@@ -70,8 +68,7 @@ impl LegType {
 }
 
 /// A leg (stream of cashflows) in a financial instrument.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Leg {
     /// Cashflows in this leg, ordered by payment date.
     cashflows: Vec<Cashflow>,

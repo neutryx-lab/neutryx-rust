@@ -11,21 +11,11 @@ use crate::{
     time::Date,
 };
 
-/// Type of option exercise.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum ExerciseType {
-    /// European: exercise only at expiry.
-    European,
-    /// Bermudan: exercise at specific dates.
-    Bermudan,
-    /// American: exercise at any time until expiry.
-    American,
-}
+/// Type of option exercise (alias for `ExerciseStyle`).
+pub type ExerciseType = crate::market::instrument::ExerciseStyle;
 
 /// Type of settlement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum SettlementType {
     /// Cash settlement.
     Cash,
@@ -34,8 +24,7 @@ pub enum SettlementType {
 }
 
 /// Type of trade.
-#[derive(Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 pub enum TradeType {
     /// Money market deposit.
     Deposit,
@@ -110,8 +99,10 @@ pub enum TradeType {
         strike: f64,
         /// Barrier level.
         barrier: f64,
-        /// Barrier type.
-        barrier_type: BarrierType,
+        /// Barrier type (knock-in or knock-out).
+        barrier_type: crate::market::instrument::BarrierType,
+        /// Barrier direction (up or down).
+        barrier_direction: crate::market::instrument::BarrierDirection,
         /// Exercise style.
         exercise_type: ExerciseType,
         /// Expiry date.
@@ -237,23 +228,8 @@ pub enum TradeType {
     Generic,
 }
 
-/// Barrier type for barrier options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum BarrierType {
-    /// Up-and-in: option activates when price goes above barrier.
-    UpAndIn,
-    /// Up-and-out: option deactivates when price goes above barrier.
-    UpAndOut,
-    /// Down-and-in: option activates when price goes below barrier.
-    DownAndIn,
-    /// Down-and-out: option deactivates when price goes below barrier.
-    DownAndOut,
-}
-
 /// Protection side for credit derivatives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ProtectionSide {
     /// Protection buyer (pays premium, receives protection).
     Buyer,
@@ -342,8 +318,7 @@ impl TradeType {
 }
 
 /// Trade metadata.
-#[derive(Debug, Clone, PartialEq, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 pub struct TradeMetadata {
     /// Date the trade was executed.
     pub trade_date: Option<Date>,
@@ -390,8 +365,7 @@ impl TradeMetadata {
 }
 
 /// A financial trade.
-#[derive(Debug, Clone, PartialEq, Builder)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Builder, serde::Serialize, serde::Deserialize)]
 pub struct Trade {
     /// Unique identifier for this trade.
     #[builder(into)]

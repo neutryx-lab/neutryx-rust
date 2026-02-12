@@ -27,6 +27,7 @@ use super::{
     error::LinearAlgebraError,
     lu_solve,
     sparse::{is_sparse_beneficial, sparsity_ratio, to_csr, to_dense, CsrMatrix},
+    wrappers::{require_dims, require_square},
     LinearSolveStrategy,
 };
 use crate::math::numeric::from_f64;
@@ -102,10 +103,7 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
     /// Decompose a sparse matrix directly from CSR input.
     pub fn decompose_sparse(&mut self, csr: CsrMatrix<T>) -> Result<(), LinearAlgebraError> {
         if csr.nrows() != csr.ncols() {
-            return Err(LinearAlgebraError::NotSquare {
-                rows: csr.nrows(),
-                cols: csr.ncols(),
-            });
+            return Err(LinearAlgebraError::NotSquare { rows: csr.nrows(), cols: csr.ncols() });
         }
 
         let total = csr.nrows() * csr.ncols();
@@ -140,12 +138,7 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
 
 impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for SparseLUStrategy<T> {
     fn decompose(&mut self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
-        if matrix.nrows() != matrix.ncols() {
-            return Err(LinearAlgebraError::NotSquare {
-                rows: matrix.nrows(),
-                cols: matrix.ncols(),
-            });
-        }
+        require_square(matrix)?;
 
         // Calculate sparsity and decide storage format
         let sparsity = sparsity_ratio(matrix, self.zero_threshold);
@@ -169,14 +162,7 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for SparseLUStrategy<T>
 
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
         let matrix = self.get_dense()?;
-
-        if matrix.nrows() != b.len() {
-            return Err(LinearAlgebraError::DimensionMismatch {
-                expected: format!("{}", matrix.nrows()),
-                got: format!("{}", b.len()),
-            });
-        }
-
+        require_dims(matrix.nrows(), b.len())?;
         lu_solve(&matrix, b)
     }
 

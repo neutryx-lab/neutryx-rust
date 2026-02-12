@@ -12,9 +12,8 @@ use crate::{
 };
 
 /// A portfolio definition.
-#[derive(Clone, Debug, Builder)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, Builder, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PortfolioDefinition {
     /// Unique identifier for this portfolio.
     #[builder(into)]

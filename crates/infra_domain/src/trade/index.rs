@@ -6,8 +6,7 @@ use crate::{
 };
 
 /// Type of market index.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum IndexType {
     /// Interest rate index (wraps existing RateIndex).
     Rate(RateIndex),
@@ -73,8 +72,7 @@ impl IndexType {
 }
 
 /// Observation parameters for an index.
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IndexObservation {
     /// The type of index being observed.
     pub index_type: IndexType,

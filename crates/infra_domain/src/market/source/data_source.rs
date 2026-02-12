@@ -3,8 +3,7 @@
 use std::{cmp::Ordering, fmt};
 
 /// Identification of market data sources.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum DataSource {
     /// Reuters/Refinitiv market data.

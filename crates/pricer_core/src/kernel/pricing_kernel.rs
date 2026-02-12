@@ -32,6 +32,24 @@
 
 use super::{aligned_buffer::AlignedBuffer, error::CompileError};
 
+/// Validate that all given expressions have the expected length.
+macro_rules! check_len {
+    ($len:expr, $($field:expr),+ $(,)?) => {
+        $(
+            if $field.len() != $len {
+                return Err(CompileError::length_mismatch($len, $field.len()));
+            }
+        )+
+    };
+}
+
+/// Reorder a set of `Vec`s in-place according to the given index permutation.
+macro_rules! permute_vecs {
+    ($indices:expr, $($vec:expr),+ $(,)?) => {
+        $( $vec = $indices.iter().map(|&i| $vec[i]).collect(); )+
+    };
+}
+
 /// SoA (Structure of Arrays) intermediate representation for cashflows.
 ///
 /// `PricingKernel` stores all cashflow data in contiguous arrays optimised
@@ -143,35 +161,10 @@ impl PricingKernel {
         fx_index_ids: Vec<u16>,
     ) -> Result<Self, CompileError> {
         let len = payment_dates.len();
-
-        // Validate all arrays have the same length
-        if fixing_dates.len() != len {
-            return Err(CompileError::length_mismatch(len, fixing_dates.len()));
-        }
-        if year_fractions.len() != len {
-            return Err(CompileError::length_mismatch(len, year_fractions.len()));
-        }
-        if notionals.len() != len {
-            return Err(CompileError::length_mismatch(len, notionals.len()));
-        }
-        if spreads.len() != len {
-            return Err(CompileError::length_mismatch(len, spreads.len()));
-        }
-        if gearings.len() != len {
-            return Err(CompileError::length_mismatch(len, gearings.len()));
-        }
-        if currency_ids.len() != len {
-            return Err(CompileError::length_mismatch(len, currency_ids.len()));
-        }
-        if discount_curve_ids.len() != len {
-            return Err(CompileError::length_mismatch(len, discount_curve_ids.len()));
-        }
-        if fwd_index_ids.len() != len {
-            return Err(CompileError::length_mismatch(len, fwd_index_ids.len()));
-        }
-        if fx_index_ids.len() != len {
-            return Err(CompileError::length_mismatch(len, fx_index_ids.len()));
-        }
+        check_len!(len,
+            fixing_dates, year_fractions, notionals, spreads, gearings,
+            currency_ids, discount_curve_ids, fwd_index_ids, fx_index_ids,
+        );
 
         Ok(Self {
             payment_dates: AlignedBuffer::from_vec(payment_dates),
@@ -233,44 +226,12 @@ impl PricingKernel {
     /// Returns `CompileError::LengthMismatch` if arrays are inconsistent.
     pub fn validate(&self) -> Result<(), CompileError> {
         let len = self.len;
-
-        if self.payment_dates.len() != len {
-            return Err(CompileError::length_mismatch(len, self.payment_dates.len()));
-        }
-        if self.fixing_dates.len() != len {
-            return Err(CompileError::length_mismatch(len, self.fixing_dates.len()));
-        }
-        if self.year_fractions.len() != len {
-            return Err(CompileError::length_mismatch(
-                len,
-                self.year_fractions.len(),
-            ));
-        }
-        if self.notionals.len() != len {
-            return Err(CompileError::length_mismatch(len, self.notionals.len()));
-        }
-        if self.spreads.len() != len {
-            return Err(CompileError::length_mismatch(len, self.spreads.len()));
-        }
-        if self.gearings.len() != len {
-            return Err(CompileError::length_mismatch(len, self.gearings.len()));
-        }
-        if self.currency_ids.len() != len {
-            return Err(CompileError::length_mismatch(len, self.currency_ids.len()));
-        }
-        if self.discount_curve_ids.len() != len {
-            return Err(CompileError::length_mismatch(
-                len,
-                self.discount_curve_ids.len(),
-            ));
-        }
-        if self.fwd_index_ids.len() != len {
-            return Err(CompileError::length_mismatch(len, self.fwd_index_ids.len()));
-        }
-        if self.fx_index_ids.len() != len {
-            return Err(CompileError::length_mismatch(len, self.fx_index_ids.len()));
-        }
-
+        check_len!(len,
+            self.payment_dates, self.fixing_dates, self.year_fractions,
+            self.notionals, self.spreads, self.gearings,
+            self.currency_ids, self.discount_curve_ids,
+            self.fwd_index_ids, self.fx_index_ids,
+        );
         Ok(())
     }
 
@@ -447,20 +408,12 @@ impl PricingKernelBuilder {
         let mut indices: Vec<usize> = (0..self.payment_dates.len()).collect();
         indices.sort_by_key(|&i| self.payment_dates[i]);
 
-        // Reorder all arrays
-        self.payment_dates = indices.iter().map(|&i| self.payment_dates[i]).collect();
-        self.fixing_dates = indices.iter().map(|&i| self.fixing_dates[i]).collect();
-        self.year_fractions = indices.iter().map(|&i| self.year_fractions[i]).collect();
-        self.notionals = indices.iter().map(|&i| self.notionals[i]).collect();
-        self.spreads = indices.iter().map(|&i| self.spreads[i]).collect();
-        self.gearings = indices.iter().map(|&i| self.gearings[i]).collect();
-        self.currency_ids = indices.iter().map(|&i| self.currency_ids[i]).collect();
-        self.discount_curve_ids = indices
-            .iter()
-            .map(|&i| self.discount_curve_ids[i])
-            .collect();
-        self.fwd_index_ids = indices.iter().map(|&i| self.fwd_index_ids[i]).collect();
-        self.fx_index_ids = indices.iter().map(|&i| self.fx_index_ids[i]).collect();
+        permute_vecs!(indices,
+            self.payment_dates, self.fixing_dates,
+            self.year_fractions, self.notionals, self.spreads, self.gearings,
+            self.currency_ids, self.discount_curve_ids,
+            self.fwd_index_ids, self.fx_index_ids,
+        );
 
         self
     }

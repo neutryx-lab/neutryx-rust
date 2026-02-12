@@ -17,7 +17,9 @@
 
 use num_traits::Float;
 
-use super::error::FormulaError;
+use super::error::{
+    require_positive_expiry, require_positive_spot, require_positive_strike, FormulaError,
+};
 
 /// Parameters for forward contract pricing.
 ///
@@ -68,21 +70,9 @@ impl<T: Float> ForwardParams<T> {
         dividend_yield: T,
         expiry: T,
     ) -> Result<Self, FormulaError> {
-        if spot <= T::zero() {
-            return Err(FormulaError::InvalidSpot {
-                spot: spot.to_f64().unwrap_or(0.0),
-            });
-        }
-        if strike <= T::zero() {
-            return Err(FormulaError::InvalidSpot {
-                spot: strike.to_f64().unwrap_or(0.0),
-            });
-        }
-        if expiry <= T::zero() {
-            return Err(FormulaError::InvalidExpiry {
-                expiry: expiry.to_f64().unwrap_or(0.0),
-            });
-        }
+        require_positive_spot(spot)?;
+        require_positive_strike(strike)?;
+        require_positive_expiry(expiry)?;
 
         Ok(Self {
             spot,

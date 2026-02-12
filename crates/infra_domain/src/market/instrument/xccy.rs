@@ -8,8 +8,7 @@ use crate::{
 };
 
 /// Basis spread in basis points for XCCY swaps.
-#[derive(Debug, Clone, Copy, PartialEq, Add, Sub)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Add, Sub, serde::Serialize, serde::Deserialize)]
 pub struct BasisSpread(f64);
 
 impl BasisSpread {
@@ -43,8 +42,7 @@ impl std::fmt::Display for BasisSpread {
 }
 
 /// Notional exchange type for XCCY swaps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
 pub enum NotionalExchange {
     /// Exchange notionals at trade inception only.
     Initial,
@@ -58,8 +56,7 @@ pub enum NotionalExchange {
 }
 
 /// Indicates which leg receives the basis spread.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
 pub enum SpreadLeg {
     /// Spread applied to domestic leg.
     Domestic,
@@ -69,8 +66,7 @@ pub enum SpreadLeg {
 }
 
 /// Cross-currency swap leg details.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct XccyLeg {
     /// Currency for this leg.
     pub currency: Currency,
@@ -93,8 +89,7 @@ impl XccyLeg {
 }
 
 /// Cross-currency basis swap convention.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct XccyBasisConvention {
     /// Notional exchange type.
     pub notional_exchange: NotionalExchange,
@@ -131,8 +126,7 @@ impl XccyBasisConvention {
 }
 
 /// Standard XCCY swap tenors for long-term curve construction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum XccyTenor {
     /// 2 Years.
     Y2,
@@ -199,8 +193,7 @@ impl std::fmt::Display for XccyTenor {
 }
 
 /// Cross-currency basis swap instrument.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CrossCurrencyBasisSwap {
     /// Domestic currency (typically USD).
     pub domestic_currency: Currency,

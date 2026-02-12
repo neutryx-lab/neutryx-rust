@@ -99,49 +99,6 @@ impl<T: Float> CalibrationEngineConfig<T> {
             ..Self::default()
         }
     }
-
-    /// Builder: set tolerance.
-    #[must_use]
-    pub fn with_tolerance(mut self, tolerance: T) -> Self {
-        self.tolerance = tolerance;
-        self.param_tolerance = tolerance;
-        self
-    }
-
-    /// Builder: set max iterations.
-    #[must_use]
-    pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
-        self.max_iterations = max_iterations;
-        self
-    }
-
-    /// Builder: set interpolation method.
-    #[must_use]
-    pub fn with_interpolation(mut self, interpolation: BootstrapInterpolation) -> Self {
-        self.interpolation = interpolation;
-        self
-    }
-
-    /// Builder: set store_jacobian_inverse flag.
-    #[must_use]
-    pub fn with_store_jacobian_inverse(mut self, store: bool) -> Self {
-        self.store_jacobian_inverse = store;
-        self
-    }
-
-    /// Builder: set damping factor.
-    #[must_use]
-    pub fn with_damping(mut self, damping: T) -> Self {
-        self.damping_factor = Some(damping);
-        self
-    }
-
-    /// Builder: enable debug logging.
-    #[must_use]
-    pub fn with_debug_logging(mut self, enabled: bool) -> Self {
-        self.debug_logging = enabled;
-        self
-    }
 }
 
 /// Result of calibration.
@@ -583,7 +540,7 @@ mod tests {
     #[test]
     fn test_jacobian_inverse_stored() {
         let instruments = create_test_instruments();
-        let config = CalibrationEngineConfig::default().with_store_jacobian_inverse(true);
+        let config = CalibrationEngineConfig::default(); // store_jacobian_inverse is true by default
 
         let mut engine = CalibrationEngine::with_lu_strategy(config);
         let result = engine.calibrate(&instruments).unwrap();
@@ -596,12 +553,15 @@ mod tests {
 
     #[test]
     fn test_config_builder() {
-        let config: CalibrationEngineConfig<f64> = CalibrationEngineConfig::default()
-            .with_tolerance(1e-12)
-            .with_max_iterations(200)
-            .with_interpolation(BootstrapInterpolation::LogLinear)
-            .with_store_jacobian_inverse(true)
-            .with_debug_logging(true);
+        let config: CalibrationEngineConfig<f64> = CalibrationEngineConfig {
+            tolerance: 1e-12,
+            param_tolerance: 1e-12,
+            max_iterations: 200,
+            interpolation: BootstrapInterpolation::LogLinear,
+            store_jacobian_inverse: true,
+            debug_logging: true,
+            ..Default::default()
+        };
 
         assert_relative_eq!(config.tolerance, 1e-12, epsilon = 1e-15);
         assert_eq!(config.max_iterations, 200);
@@ -612,7 +572,7 @@ mod tests {
     #[test]
     fn test_calibration_result_fields() {
         let instruments = create_test_instruments();
-        let config = CalibrationEngineConfig::default().with_debug_logging(true);
+        let config = CalibrationEngineConfig { debug_logging: true, ..Default::default() };
 
         let mut engine = CalibrationEngine::with_lu_strategy(config);
         let result = engine.calibrate(&instruments).unwrap();

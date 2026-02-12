@@ -6,8 +6,7 @@ use crate::{
 };
 
 /// Metadata for a rate index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IndexMetadata {
     /// Compounding method for interest calculation.
     pub compounding_method: CompoundingMethod,
@@ -22,8 +21,7 @@ pub struct IndexMetadata {
 }
 
 /// Benchmark rate index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum RateIndex {
     /// Secured Overnight Financing Rate (USD).
@@ -71,19 +69,42 @@ impl RateIndex {
         ]
     }
 
-    /// Returns the API code for this rate index (no spaces, suitable for JSON).
-    #[must_use]
-    pub const fn api_code(&self) -> &'static str {
+    /// Returns consolidated info: (currency, tenor, day_counter, name, code, api_code).
+    const fn info(&self) -> (Currency, Tenor, DayCounter, &'static str, &'static str, &'static str) {
         match self {
-            Self::Sofr => "SOFR",
-            Self::Tonar => "TONAR",
-            Self::Estr => "ESTR",
-            Self::Euribor3M => "EURIBOR3M",
-            Self::Euribor6M => "EURIBOR6M",
-            Self::Sonia => "SONIA",
-            Self::Saron => "SARON",
+            Self::Sofr      => (Currency::USD, Tenor::Overnight,   DayCounter::Actual360,      "SOFR",       "SOFR",   "SOFR"),
+            Self::Tonar     => (Currency::JPY, Tenor::Overnight,   DayCounter::Actual365Fixed,  "TONAR",      "TONAR",  "TONAR"),
+            Self::Estr      => (Currency::EUR, Tenor::Overnight,   DayCounter::Actual360,      "ESTR",       "ESTR",   "ESTR"),
+            Self::Euribor3M => (Currency::EUR, Tenor::ThreeMonths, DayCounter::Actual360,      "EURIBOR 3M", "EUR3M",  "EURIBOR3M"),
+            Self::Euribor6M => (Currency::EUR, Tenor::SixMonths,   DayCounter::Actual360,      "EURIBOR 6M", "EUR6M",  "EURIBOR6M"),
+            Self::Sonia     => (Currency::GBP, Tenor::Overnight,   DayCounter::Actual365Fixed,  "SONIA",      "SONIA",  "SONIA"),
+            Self::Saron     => (Currency::CHF, Tenor::Overnight,   DayCounter::Actual360,      "SARON",      "SARON",  "SARON"),
         }
     }
+
+    /// Returns the currency associated with this rate index.
+    #[must_use]
+    pub const fn currency(&self) -> Currency { self.info().0 }
+
+    /// Returns the standard fixing tenor for this rate index.
+    #[must_use]
+    pub const fn tenor(&self) -> Tenor { self.info().1 }
+
+    /// Returns the day count convention for this rate index.
+    #[must_use]
+    pub const fn day_counter(&self) -> DayCounter { self.info().2 }
+
+    /// Returns the human-readable name of this rate index.
+    #[must_use]
+    pub const fn name(&self) -> &'static str { self.info().3 }
+
+    /// Returns the short code for this rate index.
+    #[must_use]
+    pub const fn code(&self) -> &'static str { self.info().4 }
+
+    /// Returns the API code for this rate index (no spaces, suitable for JSON).
+    #[must_use]
+    pub const fn api_code(&self) -> &'static str { self.info().5 }
 
     /// Returns the default rate index for a given currency.
     #[must_use]
@@ -97,65 +118,15 @@ impl RateIndex {
         }
     }
 
-    /// Returns the currency associated with this rate index.
+    /// Returns the overnight rate index for a given currency.
     #[must_use]
-    pub const fn currency(&self) -> Currency {
-        match self {
-            Self::Sofr => Currency::USD,
-            Self::Tonar => Currency::JPY,
-            Self::Estr | Self::Euribor3M | Self::Euribor6M => Currency::EUR,
-            Self::Sonia => Currency::GBP,
-            Self::Saron => Currency::CHF,
-        }
-    }
-
-    /// Returns the standard fixing tenor for this rate index.
-    #[must_use]
-    pub const fn tenor(&self) -> Tenor {
-        match self {
-            Self::Sofr | Self::Tonar | Self::Estr | Self::Sonia | Self::Saron => Tenor::Overnight,
-            Self::Euribor3M => Tenor::ThreeMonths,
-            Self::Euribor6M => Tenor::SixMonths,
-        }
-    }
-
-    /// Returns the day count convention for this rate index.
-    #[must_use]
-    pub const fn day_counter(&self) -> DayCounter {
-        match self {
-            Self::Sofr | Self::Estr | Self::Euribor3M | Self::Euribor6M | Self::Saron => {
-                DayCounter::Actual360
-            }
-            Self::Sonia => DayCounter::Actual365Fixed,
-            Self::Tonar => DayCounter::Actual365Fixed,
-        }
-    }
-
-    /// Returns the human-readable name of this rate index.
-    #[must_use]
-    pub const fn name(&self) -> &'static str {
-        match self {
-            Self::Sofr => "SOFR",
-            Self::Tonar => "TONAR",
-            Self::Estr => "ESTR",
-            Self::Euribor3M => "EURIBOR 3M",
-            Self::Euribor6M => "EURIBOR 6M",
-            Self::Sonia => "SONIA",
-            Self::Saron => "SARON",
-        }
-    }
-
-    /// Returns the short code for this rate index.
-    #[must_use]
-    pub const fn code(&self) -> &'static str {
-        match self {
-            Self::Sofr => "SOFR",
-            Self::Tonar => "TONAR",
-            Self::Estr => "ESTR",
-            Self::Euribor3M => "EUR3M",
-            Self::Euribor6M => "EUR6M",
-            Self::Sonia => "SONIA",
-            Self::Saron => "SARON",
+    pub const fn overnight_for_currency(currency: Currency) -> Self {
+        match currency {
+            Currency::USD => Self::Sofr,
+            Currency::EUR => Self::Estr,
+            Currency::GBP => Self::Sonia,
+            Currency::JPY => Self::Tonar,
+            Currency::CHF => Self::Saron,
         }
     }
 

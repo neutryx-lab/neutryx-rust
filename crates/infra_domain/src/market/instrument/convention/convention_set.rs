@@ -8,8 +8,7 @@ use super::{
 use crate::trade::instrument_def::InstrumentError;
 
 /// Container for market conventions used in CF expansion.
-#[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct ConventionSet {
     /// Swap convention.
     pub swap: Option<SwapConvention>,
@@ -41,87 +40,6 @@ pub struct ConventionSet {
 }
 
 impl ConventionSet {
-    /// Creates a new empty convention set.
-    #[must_use]
-    pub fn new() -> Self { Self::default() }
-
-    /// Sets the swap convention.
-    #[must_use]
-    pub fn with_swap(mut self, conv: SwapConvention) -> Self {
-        self.swap = Some(conv);
-        self
-    }
-
-    /// Sets the swaption convention.
-    #[must_use]
-    pub fn with_swaption(mut self, conv: SwaptionConvention) -> Self {
-        self.swaption = Some(conv);
-        self
-    }
-
-    /// Sets the FRA convention.
-    #[must_use]
-    pub fn with_fra(mut self, conv: FraConvention) -> Self {
-        self.fra = Some(conv);
-        self
-    }
-
-    /// Sets the cap/floor convention.
-    #[must_use]
-    pub fn with_cap_floor(mut self, conv: CapFloorConvention) -> Self {
-        self.cap_floor = Some(conv);
-        self
-    }
-
-    /// Sets the inflation swap convention.
-    #[must_use]
-    pub fn with_inflation_swap(mut self, conv: InflationSwapConvention) -> Self {
-        self.inflation_swap = Some(conv);
-        self
-    }
-
-    /// Sets the FX convention.
-    #[must_use]
-    pub fn with_fx(mut self, conv: FxConvention) -> Self {
-        self.fx = Some(conv);
-        self
-    }
-
-    /// Sets the FX option convention.
-    #[must_use]
-    pub fn with_fx_option(mut self, conv: FxOptionConvention) -> Self {
-        self.fx_option = Some(conv);
-        self
-    }
-
-    /// Sets the CDS convention.
-    #[must_use]
-    pub fn with_cds(mut self, conv: CdsConvention) -> Self {
-        self.cds = Some(conv);
-        self
-    }
-
-    /// Sets the equity convention.
-    #[must_use]
-    pub fn with_equity(mut self, conv: EquityConvention) -> Self {
-        self.equity = Some(conv);
-        self
-    }
-
-    /// Sets the commodity convention.
-    #[must_use]
-    pub fn with_commodity(mut self, conv: CommodityConvention) -> Self {
-        self.commodity = Some(conv);
-        self
-    }
-
-    /// Sets the bond convention.
-    #[must_use]
-    pub fn with_bond(mut self, conv: BondConvention) -> Self {
-        self.bond = Some(conv);
-        self
-    }
-
     /// Returns the swap convention, or an error if not set.
     pub fn get_swap(&self) -> Result<&SwapConvention, InstrumentError> {
         self.swap
@@ -202,51 +120,59 @@ impl ConventionSet {
     /// Returns a standard USD market convention set.
     #[must_use]
     pub fn usd_standard() -> Self {
-        Self::new()
-            .with_swap(SwapConvention::usd_sofr())
-            .with_swaption(SwaptionConvention::usd_sofr())
-            .with_fx(FxConvention::usd_default())
-            .with_fx_option(FxOptionConvention::g10_standard())
-            .with_cds(CdsConvention::isda_na())
-            .with_equity(EquityConvention::us_equity())
-            .with_inflation_swap(InflationSwapConvention::us_cpi_zc())
-            .with_commodity(CommodityConvention::wti_crude())
+        Self {
+            swap: Some(SwapConvention::usd_sofr()),
+            swaption: Some(SwaptionConvention::usd_sofr()),
+            fx: Some(FxConvention::usd_default()),
+            fx_option: Some(FxOptionConvention::g10_standard()),
+            cds: Some(CdsConvention::isda_na()),
+            equity: Some(EquityConvention::us_equity()),
+            inflation_swap: Some(InflationSwapConvention::us_cpi_zc()),
+            commodity: Some(CommodityConvention::wti_crude()),
+            ..Default::default()
+        }
     }
 
     /// Returns a standard EUR market convention set.
     #[must_use]
     pub fn eur_standard() -> Self {
-        Self::new()
-            .with_swap(SwapConvention::eur_euribor_6m())
-            .with_swaption(SwaptionConvention::eur_euribor())
-            .with_fx(FxConvention::eur_default())
-            .with_fx_option(FxOptionConvention::eur_usd())
-            .with_cds(CdsConvention::isda_eu())
-            .with_equity(EquityConvention::eu_equity())
-            .with_inflation_swap(InflationSwapConvention::eur_hicp_zc())
+        Self {
+            swap: Some(SwapConvention::eur_euribor_6m()),
+            swaption: Some(SwaptionConvention::eur_euribor()),
+            fx: Some(FxConvention::eur_default()),
+            fx_option: Some(FxOptionConvention::eur_usd()),
+            cds: Some(CdsConvention::isda_eu()),
+            equity: Some(EquityConvention::eu_equity()),
+            inflation_swap: Some(InflationSwapConvention::eur_hicp_zc()),
+            ..Default::default()
+        }
     }
 
     /// Returns a standard GBP market convention set.
     #[must_use]
     pub fn gbp_standard() -> Self {
-        Self::new()
-            .with_swap(SwapConvention::gbp_sonia())
-            .with_swaption(SwaptionConvention::gbp_sonia())
-            .with_fx(FxConvention::gbp_default())
-            .with_fx_option(FxOptionConvention::gbp_usd())
-            .with_equity(EquityConvention::uk_equity())
-            .with_inflation_swap(InflationSwapConvention::uk_rpi_zc())
+        Self {
+            swap: Some(SwapConvention::gbp_sonia()),
+            swaption: Some(SwaptionConvention::gbp_sonia()),
+            fx: Some(FxConvention::gbp_default()),
+            fx_option: Some(FxOptionConvention::gbp_usd()),
+            equity: Some(EquityConvention::uk_equity()),
+            inflation_swap: Some(InflationSwapConvention::uk_rpi_zc()),
+            ..Default::default()
+        }
     }
 
     /// Returns a standard JPY market convention set.
     #[must_use]
     pub fn jpy_standard() -> Self {
-        Self::new()
-            .with_swap(SwapConvention::jpy_tonar())
-            .with_swaption(SwaptionConvention::jpy_tonar())
-            .with_fx(FxConvention::jpy_default())
-            .with_fx_option(FxOptionConvention::usd_jpy())
-            .with_equity(EquityConvention::jp_equity())
+        Self {
+            swap: Some(SwapConvention::jpy_tonar()),
+            swaption: Some(SwaptionConvention::jpy_tonar()),
+            fx: Some(FxConvention::jpy_default()),
+            fx_option: Some(FxOptionConvention::usd_jpy()),
+            equity: Some(EquityConvention::jp_equity()),
+            ..Default::default()
+        }
     }
 }
 
@@ -256,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_empty_set_returns_errors() {
-        let set = ConventionSet::new();
+        let set = ConventionSet::default();
         assert!(set.get_swap().is_err());
         assert!(set.get_swaption().is_err());
         assert!(set.get_fra().is_err());
@@ -275,16 +201,18 @@ mod tests {
     }
 
     #[test]
-    fn test_builder_chain() {
-        let set = ConventionSet::new()
-            .with_swap(SwapConvention::usd_sofr())
-            .with_swaption(SwaptionConvention::usd_sofr())
-            .with_fx(FxConvention::usd_default())
-            .with_fx_option(FxOptionConvention::g10_standard())
-            .with_cds(CdsConvention::isda_na())
-            .with_equity(EquityConvention::us_equity())
-            .with_commodity(CommodityConvention::wti_crude())
-            .with_inflation_swap(InflationSwapConvention::us_cpi_zc());
+    fn test_struct_construction() {
+        let set = ConventionSet {
+            swap: Some(SwapConvention::usd_sofr()),
+            swaption: Some(SwaptionConvention::usd_sofr()),
+            fx: Some(FxConvention::usd_default()),
+            fx_option: Some(FxOptionConvention::g10_standard()),
+            cds: Some(CdsConvention::isda_na()),
+            equity: Some(EquityConvention::us_equity()),
+            commodity: Some(CommodityConvention::wti_crude()),
+            inflation_swap: Some(InflationSwapConvention::us_cpi_zc()),
+            ..Default::default()
+        };
 
         assert!(set.get_swap().is_ok());
         assert!(set.get_swaption().is_ok());

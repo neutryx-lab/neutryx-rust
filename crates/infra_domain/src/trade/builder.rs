@@ -15,8 +15,7 @@ use crate::{
 };
 
 /// Configuration for constructing a leg from a schedule.
-#[derive(Debug, Clone, Builder)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Builder, serde::Serialize, serde::Deserialize)]
 pub struct LegConfig {
     /// Payment schedule dates.
     schedule: Vec<Date>,

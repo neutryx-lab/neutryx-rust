@@ -4,8 +4,7 @@ use super::payoff::Payoff;
 use crate::{market::Currency, time::Date};
 
 /// Daily accrual detail for OIS (Overnight Index Swap) compounding.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct DailyAccrual {
     /// The date for this daily accrual.
     pub date: Date,
@@ -57,8 +56,7 @@ impl DailyAccrual {
 }
 
 /// Type of cashflow.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CashflowType {
     /// Interest payment (coupon).
     Coupon,
@@ -81,8 +79,7 @@ impl CashflowType {
 }
 
 /// A single cashflow in a financial instrument.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Cashflow {
     /// Type of this cashflow.
     pub cf_type: CashflowType,

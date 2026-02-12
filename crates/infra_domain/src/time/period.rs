@@ -7,8 +7,7 @@ use chrono::{Datelike, Months, NaiveDate};
 use super::{day_counters::DayCounter, types::Date};
 
 /// Time unit for period calculations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, serde::Serialize, serde::Deserialize)]
 pub enum TimeUnit {
     /// Days.
     #[strum(serialize = "D")]
@@ -25,8 +24,7 @@ pub enum TimeUnit {
 }
 
 /// A generic time period.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct Period {
     /// Number of units (can be negative).
     pub length: i32,
@@ -105,8 +103,7 @@ impl Add<Period> for Date {
 }
 
 /// End of month handling rule for tenor calculations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
 pub enum EndOfMonthRule {
     /// Month-end to month-end adjustment.
     #[default]
@@ -340,14 +337,12 @@ impl FromStr for Tenor {
     }
 }
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for Tenor {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(&self.to_string())
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for Tenor {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
@@ -506,8 +501,7 @@ pub fn parse_expiry_to_date(expiry_str: &str, as_of_date: Date) -> Result<Date, 
 }
 
 /// A single accrual period for fixed income instruments.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AccrualPeriod {
     /// Start date of the accrual period.
     pub start: Date,

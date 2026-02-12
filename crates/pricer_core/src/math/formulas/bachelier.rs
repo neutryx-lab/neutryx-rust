@@ -16,7 +16,7 @@
 
 use num_traits::Float;
 
-use super::error::FormulaError;
+use super::error::{require_positive_vol, FormulaError};
 use crate::math::{
     normal_dist::{norm_cdf, norm_pdf},
     numeric::from_f64,
@@ -36,18 +36,8 @@ pub struct Bachelier<T: Float> {
 impl<T: Float> Bachelier<T> {
     /// Creates a new Bachelier model. Returns error if volatility <= 0.
     pub fn new(forward: T, volatility: T) -> Result<Self, FormulaError> {
-        let zero = T::zero();
-
-        if volatility <= zero {
-            return Err(FormulaError::InvalidVolatility {
-                volatility: volatility.to_f64().unwrap_or(0.0),
-            });
-        }
-
-        Ok(Self {
-            forward,
-            volatility,
-        })
+        require_positive_vol(volatility)?;
+        Ok(Self { forward, volatility })
     }
 
     /// Returns the forward price.

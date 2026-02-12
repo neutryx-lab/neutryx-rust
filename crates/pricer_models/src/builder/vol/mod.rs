@@ -421,19 +421,6 @@ impl<T: Float> SliceCalibrationConfig<T> {
         }
     }
 
-    /// Sets custom parameter bounds.
-    pub fn with_bounds(mut self, bounds: SabrBounds<T>) -> Self {
-        self.bounds = bounds;
-        self
-    }
-
-    /// Sets initial parameter guesses.
-    pub fn with_initial_params(mut self, alpha: T, rho: T, nu: T) -> Self {
-        self.initial_alpha = alpha;
-        self.initial_rho = rho;
-        self.initial_nu = nu;
-        self
-    }
 }
 
 /// SABR model slice calibrator using Levenberg-Marquardt optimisation.
@@ -886,8 +873,10 @@ mod tests {
     #[test]
     fn test_slice_config_with_bounds() {
         let custom_bounds = SabrBounds::new((0.01, 0.5), (-0.8, 0.8), (0.1, 1.5));
-        let config: SliceCalibrationConfig<f64> =
-            SliceCalibrationConfig::rates().with_bounds(custom_bounds);
+        let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig {
+            bounds: custom_bounds,
+            ..SliceCalibrationConfig::rates()
+        };
 
         assert!((config.bounds.alpha_bounds.0 - 0.01).abs() < 1e-10);
         assert!((config.bounds.rho_bounds.1 - 0.8).abs() < 1e-10);
@@ -895,8 +884,12 @@ mod tests {
 
     #[test]
     fn test_slice_config_with_initial_params() {
-        let config: SliceCalibrationConfig<f64> =
-            SliceCalibrationConfig::rates().with_initial_params(0.05, -0.5, 0.6);
+        let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig {
+            initial_alpha: 0.05,
+            initial_rho: -0.5,
+            initial_nu: 0.6,
+            ..SliceCalibrationConfig::rates()
+        };
 
         assert!((config.initial_alpha - 0.05).abs() < 1e-10);
         assert!((config.initial_rho - (-0.5)).abs() < 1e-10);

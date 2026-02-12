@@ -14,7 +14,7 @@
     strum::AsRefStr,
 )]
 #[strum(ascii_case_insensitive)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum CompoundingMethod {
     /// Simple interest (no compounding within period).
     #[default]

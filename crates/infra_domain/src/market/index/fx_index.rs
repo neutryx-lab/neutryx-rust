@@ -3,8 +3,7 @@
 use crate::{market::core::Currency, time::CalendarId};
 
 /// FX fixing source.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum FxFixingSource {
     /// European Central Bank.
     Ecb,
@@ -39,8 +38,7 @@ impl std::fmt::Display for FxFixingSource {
 }
 
 /// Metadata for an FX fixing index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct FxIndexMetadata {
     /// Fixing source (ECB, WM/Reuters, etc.).
     pub source: FxFixingSource,
@@ -55,8 +53,7 @@ pub struct FxIndexMetadata {
 }
 
 /// FX fixing index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum FxIndex {
     /// ECB EUR/USD fixing.

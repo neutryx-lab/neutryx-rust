@@ -15,8 +15,8 @@ chrono = { workspace = true }
 thiserror.workspace = true
 
 # Serialisation
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 
 # Builder pattern
 bon = { workspace = true }
@@ -27,10 +27,6 @@ derive_more = { workspace = true }
 # Enum utilities
 strum = { workspace = true }
 strum_macros = { workspace = true }
-
-[features]
-default = []
-serde = ["dep:serde", "dep:serde_json"]
 
 [dev-dependencies]
 approx.workspace = true

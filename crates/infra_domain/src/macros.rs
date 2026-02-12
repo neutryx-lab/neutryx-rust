@@ -4,7 +4,7 @@
 ///
 /// Generates: `Clone`, `Debug`, `Default`, `PartialEq`, `Eq`, `Hash`,
 /// `Display`, `From<String>`, `From<&str>`, `AsRef<str>`, plus
-/// optional serde `Serialize`/`Deserialize` (transparent).
+/// serde `Serialize`/`Deserialize` (transparent).
 macro_rules! define_id {
     (
         $(#[$meta:meta])*
@@ -12,10 +12,10 @@ macro_rules! define_id {
     ) => {
         $(#[$meta])*
         #[derive(Clone, Debug, Default, PartialEq, Eq, Hash,
-                 derive_more::Display, derive_more::From, derive_more::AsRef)]
+                 derive_more::Display, derive_more::From, derive_more::AsRef,
+                 serde::Serialize, serde::Deserialize)]
         #[as_ref(str)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-        #[cfg_attr(feature = "serde", serde(transparent))]
+        #[serde(transparent)]
         pub struct $name(String);
 
         impl $name {

@@ -53,8 +53,7 @@ pub use xccy::{
 };
 
 /// Unified instrument definition enum covering all asset classes.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum InstrumentDefinition {
     /// Money market deposit.

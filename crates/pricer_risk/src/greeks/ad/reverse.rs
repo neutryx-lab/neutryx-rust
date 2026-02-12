@@ -2,28 +2,7 @@
 
 use num_traits::Float;
 
-/// Greeks calculation result with optional sensitivities.
-#[derive(Clone, Debug, PartialEq)]
-pub struct GreeksResult<T: Float> {
-    /// Option price.
-    pub price: T,
-    /// Standard error.
-    pub std_error: T,
-    /// Delta.
-    pub delta: Option<T>,
-    /// Vega.
-    pub vega: Option<T>,
-    /// Theta.
-    pub theta: Option<T>,
-    /// Rho.
-    pub rho: Option<T>,
-    /// Gamma.
-    pub gamma: Option<T>,
-    /// Vanna.
-    pub vanna: Option<T>,
-    /// Volga.
-    pub volga: Option<T>,
-}
+use crate::greeks::GreeksResult;
 
 /// Reverse mode AD result containing all first-order Greeks.
 #[derive(Clone, Copy, Debug, PartialEq)]
