@@ -7,6 +7,38 @@ use nalgebra::{Cholesky, DMatrix, DVector, RealField, LU, QR};
 
 use super::error::LinearAlgebraError;
 
+// ── Shared validation helpers ────────────────────────────────────
+
+/// Validate that a matrix is square, returning `NotSquare` otherwise.
+#[inline]
+pub(crate) fn require_square<T: RealField>(m: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
+    if m.nrows() == m.ncols() {
+        Ok(())
+    } else {
+        Err(LinearAlgebraError::NotSquare {
+            rows: m.nrows(),
+            cols: m.ncols(),
+        })
+    }
+}
+
+/// Validate that two dimensions match, returning `DimensionMismatch` otherwise.
+#[inline]
+pub(crate) fn require_dims(expected: usize, got: usize) -> Result<(), LinearAlgebraError> {
+    if expected == got {
+        Ok(())
+    } else {
+        Err(LinearAlgebraError::DimensionMismatch {
+            expected: format!("{expected}"),
+            got: format!("{got}"),
+        })
+    }
+}
+
+/// Convert a `DVector<T>` to `Vec<T>`.
+#[inline]
+pub(crate) fn dvec_to_vec<T: Copy>(v: &DVector<T>) -> Vec<T> { v.iter().copied().collect() }
+
 /// Solve a linear system using Cholesky decomposition.
 ///
 /// Solves A * x = b where A is a positive definite symmetric matrix.
@@ -38,24 +70,12 @@ pub fn cholesky_solve<T: RealField + Copy>(
     a: &DMatrix<T>,
     b: &[T],
 ) -> Result<Vec<T>, LinearAlgebraError> {
-    // Check dimensions
-    if a.nrows() != a.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: a.nrows(),
-            cols: a.ncols(),
-        });
-    }
-    if a.nrows() != b.len() {
-        return Err(LinearAlgebraError::DimensionMismatch {
-            expected: format!("{}", a.nrows()),
-            got: format!("{}", b.len()),
-        });
-    }
+    require_square(a)?;
+    require_dims(a.nrows(), b.len())?;
 
     let chol = Cholesky::new(a.clone()).ok_or(LinearAlgebraError::NotPositiveDefinite)?;
-    let b_vec = DVector::from_column_slice(b);
-    let x = chol.solve(&b_vec);
-    Ok(x.iter().copied().collect())
+    let x = chol.solve(&DVector::from_column_slice(b));
+    Ok(dvec_to_vec(&x))
 }
 
 /// Solve a linear system using LU decomposition.
@@ -79,24 +99,14 @@ pub fn lu_solve<T: RealField + Copy>(
     a: &DMatrix<T>,
     b: &[T],
 ) -> Result<Vec<T>, LinearAlgebraError> {
-    // Check dimensions
-    if a.nrows() != a.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: a.nrows(),
-            cols: a.ncols(),
-        });
-    }
-    if a.nrows() != b.len() {
-        return Err(LinearAlgebraError::DimensionMismatch {
-            expected: format!("{}", a.nrows()),
-            got: format!("{}", b.len()),
-        });
-    }
+    require_square(a)?;
+    require_dims(a.nrows(), b.len())?;
 
     let lu = LU::new(a.clone());
-    let b_vec = DVector::from_column_slice(b);
-    let x = lu.solve(&b_vec).ok_or(LinearAlgebraError::SingularMatrix)?;
-    Ok(x.iter().copied().collect())
+    let x = lu
+        .solve(&DVector::from_column_slice(b))
+        .ok_or(LinearAlgebraError::SingularMatrix)?;
+    Ok(dvec_to_vec(&x))
 }
 
 /// Solve a linear system using QR decomposition.
@@ -120,12 +130,7 @@ pub fn qr_solve<T: RealField + Copy>(
     a: &DMatrix<T>,
     b: &[T],
 ) -> Result<Vec<T>, LinearAlgebraError> {
-    if a.nrows() != b.len() {
-        return Err(LinearAlgebraError::DimensionMismatch {
-            expected: format!("{}", a.nrows()),
-            got: format!("{}", b.len()),
-        });
-    }
+    require_dims(a.nrows(), b.len())?;
     if a.nrows() < a.ncols() {
         return Err(LinearAlgebraError::InvalidInput(
             "QR solve requires m >= n (overdetermined or square system)".to_string(),
@@ -136,13 +141,12 @@ pub fn qr_solve<T: RealField + Copy>(
 
     // For square systems, use direct QR solve
     if a.nrows() == a.ncols() {
-        let qr = QR::new(a.clone());
-        let x = qr
+        let x = QR::new(a.clone())
             .solve(&b_vec)
             .ok_or(LinearAlgebraError::DecompositionFailed(
                 "QR decomposition could not solve the system".to_string(),
             ))?;
-        return Ok(x.iter().copied().collect());
+        return Ok(dvec_to_vec(&x));
     }
 
     // For overdetermined systems, use normal equations: (A^T A) x = A^T b
@@ -150,13 +154,12 @@ pub fn qr_solve<T: RealField + Copy>(
     let ata = &at * a;
     let atb = &at * b_vec;
 
-    let lu = LU::new(ata);
-    let x = lu
+    let x = LU::new(ata)
         .solve(&atb)
         .ok_or(LinearAlgebraError::DecompositionFailed(
             "Normal equations could not be solved (system may be rank deficient)".to_string(),
         ))?;
-    Ok(x.iter().copied().collect())
+    Ok(dvec_to_vec(&x))
 }
 
 /// Solve a least squares problem using SVD (more robust than QR for
@@ -181,19 +184,13 @@ pub fn svd_solve<T: RealField + Copy>(
 ) -> Result<Vec<T>, LinearAlgebraError> {
     use nalgebra::SVD;
 
-    if a.nrows() != b.len() {
-        return Err(LinearAlgebraError::DimensionMismatch {
-            expected: format!("{}", a.nrows()),
-            got: format!("{}", b.len()),
-        });
-    }
+    require_dims(a.nrows(), b.len())?;
 
     let svd = SVD::new(a.clone(), true, true);
-    let b_vec = DVector::from_column_slice(b);
     let x = svd
-        .solve(&b_vec, epsilon)
+        .solve(&DVector::from_column_slice(b), epsilon)
         .map_err(|e| LinearAlgebraError::DecompositionFailed(e.to_string()))?;
-    Ok(x.iter().copied().collect())
+    Ok(dvec_to_vec(&x))
 }
 
 /// Compute the determinant of a square matrix.
@@ -210,12 +207,7 @@ pub fn svd_solve<T: RealField + Copy>(
 ///
 /// Returns `NotSquare` if the matrix is not square.
 pub fn determinant<T: RealField + Copy>(a: &DMatrix<T>) -> Result<T, LinearAlgebraError> {
-    if a.nrows() != a.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: a.nrows(),
-            cols: a.ncols(),
-        });
-    }
+    require_square(a)?;
     Ok(a.determinant())
 }
 
@@ -234,12 +226,7 @@ pub fn determinant<T: RealField + Copy>(a: &DMatrix<T>) -> Result<T, LinearAlgeb
 /// Returns `SingularMatrix` if the matrix is singular.
 /// Returns `NotSquare` if the matrix is not square.
 pub fn inverse<T: RealField + Copy>(a: &DMatrix<T>) -> Result<DMatrix<T>, LinearAlgebraError> {
-    if a.nrows() != a.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: a.nrows(),
-            cols: a.ncols(),
-        });
-    }
+    require_square(a)?;
     a.clone()
         .try_inverse()
         .ok_or(LinearAlgebraError::SingularMatrix)
@@ -262,12 +249,7 @@ pub fn inverse<T: RealField + Copy>(a: &DMatrix<T>) -> Result<DMatrix<T>, Linear
 /// Returns `NotPositiveDefinite` if the matrix is not positive definite.
 /// Returns `NotSquare` if the matrix is not square.
 pub fn cholesky<T: RealField + Copy>(a: &DMatrix<T>) -> Result<DMatrix<T>, LinearAlgebraError> {
-    if a.nrows() != a.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: a.nrows(),
-            cols: a.ncols(),
-        });
-    }
+    require_square(a)?;
     let chol = Cholesky::new(a.clone()).ok_or(LinearAlgebraError::NotPositiveDefinite)?;
     Ok(chol.l())
 }
@@ -291,12 +273,7 @@ pub fn cholesky<T: RealField + Copy>(a: &DMatrix<T>) -> Result<DMatrix<T>, Linea
 pub fn lu_decompose<T: RealField + Copy>(
     a: &DMatrix<T>,
 ) -> Result<(DMatrix<T>, DMatrix<T>), LinearAlgebraError> {
-    if a.nrows() != a.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: a.nrows(),
-            cols: a.ncols(),
-        });
-    }
+    require_square(a)?;
     let lu = LU::new(a.clone());
     Ok((lu.l(), lu.u()))
 }
@@ -331,12 +308,7 @@ pub fn qr_decompose<T: RealField + Copy>(a: &DMatrix<T>) -> (DMatrix<T>, DMatrix
 ///
 /// Returns `NotSquare` if the matrix is not square.
 pub fn trace<T: RealField + Copy>(a: &DMatrix<T>) -> Result<T, LinearAlgebraError> {
-    if a.nrows() != a.ncols() {
-        return Err(LinearAlgebraError::NotSquare {
-            rows: a.nrows(),
-            cols: a.ncols(),
-        });
-    }
+    require_square(a)?;
     Ok(a.trace())
 }
 
@@ -369,15 +341,9 @@ pub fn mat_vec_mul<T: RealField + Copy>(
     a: &DMatrix<T>,
     x: &[T],
 ) -> Result<Vec<T>, LinearAlgebraError> {
-    if a.ncols() != x.len() {
-        return Err(LinearAlgebraError::DimensionMismatch {
-            expected: format!("{}", a.ncols()),
-            got: format!("{}", x.len()),
-        });
-    }
-    let x_vec = DVector::from_column_slice(x);
-    let result = a * x_vec;
-    Ok(result.iter().copied().collect())
+    require_dims(a.ncols(), x.len())?;
+    let result = a * DVector::from_column_slice(x);
+    Ok(dvec_to_vec(&result))
 }
 
 /// Compute the matrix-matrix product A * B.
@@ -398,12 +364,7 @@ pub fn mat_mat_mul<T: RealField + Copy>(
     a: &DMatrix<T>,
     b: &DMatrix<T>,
 ) -> Result<DMatrix<T>, LinearAlgebraError> {
-    if a.ncols() != b.nrows() {
-        return Err(LinearAlgebraError::DimensionMismatch {
-            expected: format!("{}", a.ncols()),
-            got: format!("{}", b.nrows()),
-        });
-    }
+    require_dims(a.ncols(), b.nrows())?;
     Ok(a * b)
 }
 

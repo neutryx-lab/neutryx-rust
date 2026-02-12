@@ -7,8 +7,7 @@ use crate::{
 };
 
 /// Metadata for a swap index.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SwapIndexMetadata {
     /// Underlying rate index for the floating leg.
     pub underlying_index: RateIndex,
@@ -27,8 +26,7 @@ pub struct SwapIndexMetadata {
 }
 
 /// Swap index for CMS (Constant Maturity Swap) products.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum SwapIndex {
     /// USD CMS 2Y.
@@ -105,105 +103,77 @@ impl SwapIndex {
         ]
     }
 
-    /// Returns the API code for this swap index.
-    #[must_use]
-    pub const fn api_code(&self) -> &'static str {
+    /// Returns consolidated info: (currency, tenor, name, api_code).
+    const fn info(&self) -> (Currency, Tenor, &'static str, &'static str) {
         match self {
-            Self::UsdCms2Y => "USD-CMS-2Y",
-            Self::UsdCms5Y => "USD-CMS-5Y",
-            Self::UsdCms10Y => "USD-CMS-10Y",
-            Self::UsdCms30Y => "USD-CMS-30Y",
-            Self::EurCms2Y => "EUR-CMS-2Y",
-            Self::EurCms5Y => "EUR-CMS-5Y",
-            Self::EurCms10Y => "EUR-CMS-10Y",
-            Self::EurCms30Y => "EUR-CMS-30Y",
-            Self::GbpCms2Y => "GBP-CMS-2Y",
-            Self::GbpCms5Y => "GBP-CMS-5Y",
-            Self::GbpCms10Y => "GBP-CMS-10Y",
-            Self::GbpCms30Y => "GBP-CMS-30Y",
-            Self::JpyCms2Y => "JPY-CMS-2Y",
-            Self::JpyCms5Y => "JPY-CMS-5Y",
-            Self::JpyCms10Y => "JPY-CMS-10Y",
-            Self::JpyCms30Y => "JPY-CMS-30Y",
-            Self::ChfCms2Y => "CHF-CMS-2Y",
-            Self::ChfCms5Y => "CHF-CMS-5Y",
-            Self::ChfCms10Y => "CHF-CMS-10Y",
-            Self::ChfCms30Y => "CHF-CMS-30Y",
+            Self::UsdCms2Y => (Currency::USD, Tenor::TwoYears, "USD CMS 2Y", "USD-CMS-2Y"),
+            Self::UsdCms5Y => (Currency::USD, Tenor::FiveYears, "USD CMS 5Y", "USD-CMS-5Y"),
+            Self::UsdCms10Y => (Currency::USD, Tenor::TenYears, "USD CMS 10Y", "USD-CMS-10Y"),
+            Self::UsdCms30Y => (
+                Currency::USD,
+                Tenor::ThirtyYears,
+                "USD CMS 30Y",
+                "USD-CMS-30Y",
+            ),
+            Self::EurCms2Y => (Currency::EUR, Tenor::TwoYears, "EUR CMS 2Y", "EUR-CMS-2Y"),
+            Self::EurCms5Y => (Currency::EUR, Tenor::FiveYears, "EUR CMS 5Y", "EUR-CMS-5Y"),
+            Self::EurCms10Y => (Currency::EUR, Tenor::TenYears, "EUR CMS 10Y", "EUR-CMS-10Y"),
+            Self::EurCms30Y => (
+                Currency::EUR,
+                Tenor::ThirtyYears,
+                "EUR CMS 30Y",
+                "EUR-CMS-30Y",
+            ),
+            Self::GbpCms2Y => (Currency::GBP, Tenor::TwoYears, "GBP CMS 2Y", "GBP-CMS-2Y"),
+            Self::GbpCms5Y => (Currency::GBP, Tenor::FiveYears, "GBP CMS 5Y", "GBP-CMS-5Y"),
+            Self::GbpCms10Y => (Currency::GBP, Tenor::TenYears, "GBP CMS 10Y", "GBP-CMS-10Y"),
+            Self::GbpCms30Y => (
+                Currency::GBP,
+                Tenor::ThirtyYears,
+                "GBP CMS 30Y",
+                "GBP-CMS-30Y",
+            ),
+            Self::JpyCms2Y => (Currency::JPY, Tenor::TwoYears, "JPY CMS 2Y", "JPY-CMS-2Y"),
+            Self::JpyCms5Y => (Currency::JPY, Tenor::FiveYears, "JPY CMS 5Y", "JPY-CMS-5Y"),
+            Self::JpyCms10Y => (Currency::JPY, Tenor::TenYears, "JPY CMS 10Y", "JPY-CMS-10Y"),
+            Self::JpyCms30Y => (
+                Currency::JPY,
+                Tenor::ThirtyYears,
+                "JPY CMS 30Y",
+                "JPY-CMS-30Y",
+            ),
+            Self::ChfCms2Y => (Currency::CHF, Tenor::TwoYears, "CHF CMS 2Y", "CHF-CMS-2Y"),
+            Self::ChfCms5Y => (Currency::CHF, Tenor::FiveYears, "CHF CMS 5Y", "CHF-CMS-5Y"),
+            Self::ChfCms10Y => (Currency::CHF, Tenor::TenYears, "CHF CMS 10Y", "CHF-CMS-10Y"),
+            Self::ChfCms30Y => (
+                Currency::CHF,
+                Tenor::ThirtyYears,
+                "CHF CMS 30Y",
+                "CHF-CMS-30Y",
+            ),
         }
     }
 
     /// Returns the currency of this swap index.
     #[must_use]
-    pub const fn currency(&self) -> Currency {
-        match self {
-            Self::UsdCms2Y | Self::UsdCms5Y | Self::UsdCms10Y | Self::UsdCms30Y => Currency::USD,
-            Self::EurCms2Y | Self::EurCms5Y | Self::EurCms10Y | Self::EurCms30Y => Currency::EUR,
-            Self::GbpCms2Y | Self::GbpCms5Y | Self::GbpCms10Y | Self::GbpCms30Y => Currency::GBP,
-            Self::JpyCms2Y | Self::JpyCms5Y | Self::JpyCms10Y | Self::JpyCms30Y => Currency::JPY,
-            Self::ChfCms2Y | Self::ChfCms5Y | Self::ChfCms10Y | Self::ChfCms30Y => Currency::CHF,
-        }
-    }
+    pub const fn currency(&self) -> Currency { self.info().0 }
 
     /// Returns the tenor (maturity) of this swap index.
     #[must_use]
-    pub const fn tenor(&self) -> Tenor {
-        match self {
-            Self::UsdCms2Y | Self::EurCms2Y | Self::GbpCms2Y | Self::JpyCms2Y | Self::ChfCms2Y => {
-                Tenor::TwoYears
-            }
-            Self::UsdCms5Y | Self::EurCms5Y | Self::GbpCms5Y | Self::JpyCms5Y | Self::ChfCms5Y => {
-                Tenor::FiveYears
-            }
-            Self::UsdCms10Y
-            | Self::EurCms10Y
-            | Self::GbpCms10Y
-            | Self::JpyCms10Y
-            | Self::ChfCms10Y => Tenor::TenYears,
-            Self::UsdCms30Y
-            | Self::EurCms30Y
-            | Self::GbpCms30Y
-            | Self::JpyCms30Y
-            | Self::ChfCms30Y => Tenor::ThirtyYears,
-        }
-    }
+    pub const fn tenor(&self) -> Tenor { self.info().1 }
+
+    /// Returns the human-readable name of this swap index.
+    #[must_use]
+    pub const fn name(&self) -> &'static str { self.info().2 }
+
+    /// Returns the API code for this swap index.
+    #[must_use]
+    pub const fn api_code(&self) -> &'static str { self.info().3 }
 
     /// Returns the underlying rate index for the floating leg.
     #[must_use]
     pub const fn underlying_index(&self) -> RateIndex {
-        match self {
-            Self::UsdCms2Y | Self::UsdCms5Y | Self::UsdCms10Y | Self::UsdCms30Y => RateIndex::Sofr,
-            Self::EurCms2Y | Self::EurCms5Y | Self::EurCms10Y | Self::EurCms30Y => RateIndex::Estr,
-            Self::GbpCms2Y | Self::GbpCms5Y | Self::GbpCms10Y | Self::GbpCms30Y => RateIndex::Sonia,
-            Self::JpyCms2Y | Self::JpyCms5Y | Self::JpyCms10Y | Self::JpyCms30Y => RateIndex::Tonar,
-            Self::ChfCms2Y | Self::ChfCms5Y | Self::ChfCms10Y | Self::ChfCms30Y => RateIndex::Saron,
-        }
-    }
-
-    /// Returns the human-readable name of this swap index.
-    #[must_use]
-    pub const fn name(&self) -> &'static str {
-        match self {
-            Self::UsdCms2Y => "USD CMS 2Y",
-            Self::UsdCms5Y => "USD CMS 5Y",
-            Self::UsdCms10Y => "USD CMS 10Y",
-            Self::UsdCms30Y => "USD CMS 30Y",
-            Self::EurCms2Y => "EUR CMS 2Y",
-            Self::EurCms5Y => "EUR CMS 5Y",
-            Self::EurCms10Y => "EUR CMS 10Y",
-            Self::EurCms30Y => "EUR CMS 30Y",
-            Self::GbpCms2Y => "GBP CMS 2Y",
-            Self::GbpCms5Y => "GBP CMS 5Y",
-            Self::GbpCms10Y => "GBP CMS 10Y",
-            Self::GbpCms30Y => "GBP CMS 30Y",
-            Self::JpyCms2Y => "JPY CMS 2Y",
-            Self::JpyCms5Y => "JPY CMS 5Y",
-            Self::JpyCms10Y => "JPY CMS 10Y",
-            Self::JpyCms30Y => "JPY CMS 30Y",
-            Self::ChfCms2Y => "CHF CMS 2Y",
-            Self::ChfCms5Y => "CHF CMS 5Y",
-            Self::ChfCms10Y => "CHF CMS 10Y",
-            Self::ChfCms30Y => "CHF CMS 30Y",
-        }
+        RateIndex::overnight_for_currency(self.currency())
     }
 
     /// Returns the full metadata for this swap index.

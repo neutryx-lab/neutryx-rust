@@ -3,8 +3,7 @@
 use super::currency::Currency;
 
 /// Currency pair representation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct CurrencyPair {
     /// Base currency (first in the pair).
     pub base: Currency,

@@ -9,10 +9,6 @@ use crate::{
     market::curves::BootstrappedCurve,
 };
 
-// =============================================================================
-// Calibration Result
-// =============================================================================
-
 /// Result of global bootstrapping.
 #[derive(Debug, Clone)]
 pub struct GlobalBootstrapResult<T: Float> {
@@ -138,17 +134,7 @@ impl<T: Float> GlobalBootstrapResult<T> {
         })
     }
 
-    // =========================================================================
-    // IFT (Implicit Function Theorem) Sensitivity Methods
-    // =========================================================================
-
     /// Check if IFT sensitivity computation is possible.
-    ///
-    /// Returns `true` if the Jacobian inverse is cached and the calibration
-    /// converged, which are prerequisites for IFT-based sensitivity
-    /// calculation.
-    ///
-    /// # Requirement: 3.2
     pub fn can_compute_ift(&self) -> bool { self.jacobian_inverse.is_some() && self.converged }
 
     /// Compute IFT sensitivity for a single market parameter.

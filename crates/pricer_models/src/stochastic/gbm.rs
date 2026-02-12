@@ -42,14 +42,6 @@ pub struct GBMParams<T: Float> {
 
 impl<T: Float> GBMParams<T> {
     /// Create new GBM parameters with validation.
-    ///
-    /// # Arguments
-    /// * `spot` - Initial spot price (must be positive)
-    /// * `rate` - Risk-free rate
-    /// * `volatility` - Volatility (must be non-negative)
-    ///
-    /// # Returns
-    /// `Some(GBMParams)` if valid, `None` otherwise
     pub fn new(spot: T, rate: T, volatility: T) -> Option<Self> {
         let params = Self {
             spot,
@@ -88,68 +80,31 @@ impl<T: Float> Default for GBMParams<T> {
     }
 }
 
-/// Geometric Brownian Motion model.
-///
-/// A single-factor model for asset price simulation using log-space formulation
-/// for numerical stability.
-#[derive(Clone, Debug, Default)]
-pub struct GBMModel<T: Float> {
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: Float> GBMModel<T> {
-    /// Create a new GBM model instance.
-    pub fn new() -> Self {
-        Self {
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<T: Float> Differentiable for GBMModel<T> {}
-
-impl<T: Float + Default> StochasticModel<T> for GBMModel<T> {
-    type State = SingleState<T>;
-    type Params = GBMParams<T>;
-
-    fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State {
-        // Log-space exact solution: S(t+dt) = S(t) * exp((r - 0.5*sigma^2)*dt +
-        // sigma*sqrt(dt)*dW)
+define_phantom_model! {
+    /// Geometric Brownian Motion model (log-space formulation for numerical stability).
+    model GBMModel,
+    params: GBMParams<T>,
+    state: SingleState<T>,
+    marker: EquityModel,
+    brownian_dim: 1,
+    num_factors: 1,
+    name: "GBM",
+    evolve_step(state, dt, dw, params) {
+        // Log-space exact solution: S(t+dt) = S(t) * exp((r - 0.5*sigma^2)*dt + sigma*sqrt(dt)*dW)
         let s = state.0;
         let r = params.rate;
         let sigma = params.volatility;
-
-        // Drift term: (r - 0.5 * sigma^2) * dt
         let half = T::from(0.5).unwrap_or(T::zero());
         let drift = (r - half * sigma * sigma) * dt;
-
-        // Diffusion term: sigma * sqrt(dt) * dW
         let diffusion = sigma * dt.sqrt() * dw[0];
-
-        // New price
         SingleState(s * (drift + diffusion).exp())
-    }
-
-    fn initial_state(params: &Self::Params) -> Self::State { SingleState(params.spot) }
-
-    fn brownian_dim() -> usize { 1 }
-
-    fn model_name() -> &'static str { "GBM" }
-
-    fn num_factors() -> usize {
-        1 // GBM is a single-factor model
-    }
+    },
+    initial_state(params) { SingleState(params.spot) },
 }
-
-impl<T: Float + Default> EquityModel<T> for GBMModel<T> {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ================================================================
-    // Task 2.2: GBM Model Tests (TDD)
-    // ================================================================
 
     #[test]
     fn test_gbm_params_new_valid() {

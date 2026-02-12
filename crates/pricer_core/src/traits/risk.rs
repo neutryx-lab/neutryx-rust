@@ -29,23 +29,7 @@
 
 use super::Float;
 
-/// Classification of risk factor types.
-///
-/// Each risk factor type represents a category of market variables
-/// that can be shocked or shifted in scenario analysis.
-///
-/// # Variants
-///
-/// - `InterestRate`: Interest rate curve factors (yield curves, swap curves)
-/// - `Credit`: Credit spread and default probability factors
-/// - `Fx`: Foreign exchange rate factors
-/// - `Equity`: Equity price and dividend factors
-/// - `Commodity`: Commodity price factors
-/// - `Volatility`: Implied volatility surface factors
-///
-/// # Requirements
-///
-/// - Requirements: 10.1
+/// Classification of risk factor types for scenario analysis.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, strum::AsRefStr)]
 pub enum RiskFactorType {
     /// Interest rate curve factors (OIS, SOFR, swap curves, etc.)
@@ -65,8 +49,6 @@ pub enum RiskFactorType {
 
 impl RiskFactorType {
     /// Returns true if this factor type affects discounting calculations.
-    ///
-    /// Interest rate and credit factors directly impact discount factors.
     #[inline]
     pub fn affects_discounting(&self) -> bool {
         matches!(self, RiskFactorType::InterestRate | RiskFactorType::Credit)
@@ -90,34 +72,18 @@ impl RiskFactorType {
 }
 
 /// Types of market data shifts for scenario analysis.
-///
-/// These represent different ways to perturb market data factors
-/// for sensitivity analysis and stress testing.
-///
-/// # Requirements
-///
-/// - Requirements: 10.2
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ShiftType<T: Float> {
-    /// Absolute shift: add a fixed value.
-    ///
-    /// `new_value = old_value + shift_amount`
+    /// Absolute shift: `new_value = old_value + shift_amount`.
     Absolute(T),
 
-    /// Relative shift: multiply by (1 + percentage).
-    ///
-    /// `new_value = old_value * (1 + shift_percentage)`
+    /// Relative shift: `new_value = old_value * (1 + shift_percentage)`.
     Relative(T),
 
     /// Parallel shift: uniform shift across all tenors/strikes.
-    ///
-    /// Used for curve-level shocks (e.g., +1bp parallel shift).
     Parallel(T),
 
     /// Twist shift: short end moves opposite to long end.
-    ///
-    /// `short_shift = +amount, long_shift = -amount`
-    /// Used for yield curve steepening/flattening analysis.
     Twist {
         /// Shift amount for short end (positive = up)
         short_shift: T,
@@ -126,8 +92,6 @@ pub enum ShiftType<T: Float> {
     },
 
     /// Butterfly shift: middle of curve moves opposite to wings.
-    ///
-    /// Used for curvature analysis.
     Butterfly {
         /// Shift for short and long ends
         wing_shift: T,
@@ -162,8 +126,7 @@ impl<T: Float> ShiftType<T> {
         }
     }
 
-    /// Returns true if this is a curve-level shift (parallel, twist,
-    /// butterfly).
+    /// Returns true if this is a curve-level shift.
     pub fn is_curve_shift(&self) -> bool {
         matches!(
             self,
@@ -172,9 +135,6 @@ impl<T: Float> ShiftType<T> {
     }
 
     /// Apply this shift to a value.
-    ///
-    /// For curve shifts (Parallel, Twist, Butterfly), applies the parallel
-    /// component.
     pub fn apply(&self, value: T) -> T {
         match *self {
             ShiftType::Absolute(amount) => value + amount,
@@ -187,19 +147,6 @@ impl<T: Float> ShiftType<T> {
 }
 
 /// Trait for risk factors that can be bumped in scenario analysis.
-///
-/// Implementors of this trait represent market data that can be
-/// perturbed for sensitivity analysis, stress testing, and Greeks calculation.
-///
-/// # Design
-///
-/// - Designed for static dispatch (implement on concrete types, not dyn)
-/// - Supports multiple shift types through `ShiftType` enum
-/// - Returns new shifted value rather than mutating in place (functional style)
-///
-/// # Requirements
-///
-/// - Requirements: 10.1
 pub trait RiskFactor<T: Float>: Clone {
     /// Get the type of this risk factor.
     fn factor_type(&self) -> RiskFactorType;
@@ -208,8 +155,6 @@ pub trait RiskFactor<T: Float>: Clone {
     fn value(&self) -> T;
 
     /// Create a new factor with a shifted value.
-    ///
-    /// Returns a new instance with the shift applied.
     fn with_shift(&self, shift: ShiftType<T>) -> Self;
 
     /// Get factor identifier for reporting.
@@ -217,8 +162,6 @@ pub trait RiskFactor<T: Float>: Clone {
 }
 
 /// A simple risk factor representing a single market observable.
-///
-/// This is a basic implementation of `RiskFactor` for scalar values.
 #[derive(Clone, Debug)]
 pub struct SimpleRiskFactor<T: Float> {
     /// Factor type
@@ -285,11 +228,6 @@ impl<T: Float> RiskFactor<T> for SimpleRiskFactor<T> {
 mod tests {
     use super::*;
 
-    // ================================================================
-    // Task 11.1: RiskFactor trait tests (TDD)
-    // ================================================================
-
-    // Test: RiskFactorType enum
     #[test]
     fn test_risk_factor_type_affects_discounting() {
         assert!(RiskFactorType::InterestRate.affects_discounting());
@@ -345,7 +283,6 @@ mod tests {
         assert_eq!(set.len(), 3);
     }
 
-    // Test: ShiftType enum
     #[test]
     fn test_shift_type_absolute() {
         let shift = ShiftType::absolute(0.01_f64);
@@ -385,7 +322,6 @@ mod tests {
         assert!(ShiftType::<f64>::butterfly(0.01, -0.01).is_curve_shift());
     }
 
-    // Test: SimpleRiskFactor
     #[test]
     fn test_simple_risk_factor_new() {
         let factor = SimpleRiskFactor::new(RiskFactorType::InterestRate, 0.05_f64, "USD.OIS.5Y");
@@ -439,7 +375,6 @@ mod tests {
         assert_eq!(factor.identifier(), cloned.identifier());
     }
 
-    // Test: f32 compatibility
     #[test]
     fn test_simple_risk_factor_f32() {
         let factor = SimpleRiskFactor::interest_rate(0.03_f32, "EUR.ESTR.1Y");

@@ -12,10 +12,6 @@ use num_traits::Float;
 
 use crate::{math::numeric::from_f64, types::SolverError};
 
-// =============================================================================
-// SystemOfEquations Trait
-// =============================================================================
-
 /// Trait for defining a system of nonlinear equations F(x) = 0.
 ///
 /// A default numerical Jacobian is provided via finite differences.
@@ -50,10 +46,6 @@ pub trait SystemOfEquations<T: RealField + Copy + Float> {
         Ok(jacobian)
     }
 }
-
-// =============================================================================
-// Configuration
-// =============================================================================
 
 /// Configuration for the multi-dimensional Newton-Raphson solver.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -122,10 +114,6 @@ impl<T: RealField + Copy + Float> MultidimNewtonConfig<T> {
     }
 }
 
-// =============================================================================
-// Result
-// =============================================================================
-
 /// Result from the multi-dimensional Newton-Raphson solver.
 ///
 /// When `store_jacobian_inverse` is enabled, contains J^{-1} at the solution
@@ -172,10 +160,6 @@ impl<T: RealField + Copy> MultidimSolverResult<T> {
         })
     }
 }
-
-// =============================================================================
-// Argmin adapter: newtypes + SystemOfEquations -> Gradient + Hessian
-// =============================================================================
 
 /// Newtype wrappers for dynamic nalgebra types, allowing us to implement
 /// the argmin-math traits required by `argmin::solver::newton::Newton`.
@@ -265,10 +249,6 @@ impl<S: SystemOfEquations<f64>> argmin::core::Hessian for ArgminSystemAdapter<'_
             .map_err(|e| argmin::core::Error::msg(e.to_string()))
     }
 }
-
-// =============================================================================
-// Solver
-// =============================================================================
 
 /// Multi-dimensional Newton-Raphson solver for systems of equations.
 ///
@@ -418,10 +398,6 @@ impl MultidimensionalNewtonSolver<f64> {
         ))
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -653,8 +629,6 @@ mod tests {
         assert_relative_eq!(result.solution[0], 1.0, epsilon = 1e-10);
         assert_relative_eq!(result.solution[1], 2.0, epsilon = 1e-10);
     }
-
-    // argmin Newton adapter tests
 
     #[test]
     fn test_solve_argmin_linear() {

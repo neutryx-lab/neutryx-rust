@@ -1,12 +1,10 @@
 //! Volatility surface/cube definition for vol surface construction.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Calibration model for volatility surfaces.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum CalibrationModel {
     /// SABR (Stochastic Alpha Beta Rho) model.
     #[default]
@@ -74,9 +72,8 @@ impl std::fmt::Display for CalibrationModel {
 }
 
 /// Volatility surface/cube definition - the recipe for building a vol surface.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct VolSurfaceDefinition {
     /// Surface name (e.g., "USD-SOFR-Swaption-Vol", "EURUSD-FX-Vol").
     pub name: String,
@@ -85,33 +82,31 @@ pub struct VolSurfaceDefinition {
     pub instruments: Vec<String>,
 
     /// Calibration model (SABR, SVI, LocalVol).
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub model: CalibrationModel,
 
     /// Strike axis representation.
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub strike_axis: StrikeAxisType,
 
     /// Time interpolation method for the surface.
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub time_interpolation: TimeInterpolation,
 
     /// Strike interpolation method for the surface.
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub strike_interpolation: StrikeInterpolation,
 
     /// Whether to allow extrapolation beyond calibrated region.
-    #[cfg_attr(feature = "serde", serde(default = "default_true"))]
+    #[serde(default = "default_true")]
     pub allow_extrapolation: bool,
 }
 
-#[cfg(feature = "serde")]
 fn default_true() -> bool { true }
 
 /// Time axis interpolation method for volatility surfaces.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TimeInterpolation {
     /// Linear interpolation in total variance (σ²T).
     #[default]
@@ -135,9 +130,8 @@ impl TimeInterpolation {
 }
 
 /// Strike axis interpolation method for volatility surfaces.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StrikeInterpolation {
     /// Linear interpolation.
     Linear,
@@ -276,9 +270,8 @@ impl VolSurfaceDefinition {
 }
 
 /// Strike axis type for volatility surface display.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StrikeAxisType {
     /// Absolute strike values.
     #[default]
@@ -457,7 +450,6 @@ mod tests {
         assert_eq!(StrikeInterpolation::Sabr.name(), "SABR");
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_vol_surface_serde_roundtrip() {
         let surface =
@@ -471,7 +463,6 @@ mod tests {
         assert_eq!(surface, parsed);
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_vol_surface_serde_from_json() {
         let json = r#"{

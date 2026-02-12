@@ -3,24 +3,9 @@
 pub use infra_domain::trade::Direction;
 use infra_domain::{market::Currency, time::Date};
 
-/// Direction of a leg (standalone version).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SimpleDirection {
-    /// Payer: pays this leg's cashflows (negative NPV contribution).
-    Payer,
-    /// Receiver: receives this leg's cashflows (positive NPV contribution).
-    Receiver,
-}
-
-impl SimpleDirection {
-    /// Returns the sign for NPV calculation.
-    pub fn sign(&self) -> f64 {
-        match self {
-            SimpleDirection::Payer => -1.0,
-            SimpleDirection::Receiver => 1.0,
-        }
-    }
-}
+/// Type alias for backwards compatibility: `SimpleDirection` is now
+/// [`Direction`](infra_domain::trade::Direction).
+pub type SimpleDirection = Direction;
 
 /// Simple date representation (days since 2000-01-01).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

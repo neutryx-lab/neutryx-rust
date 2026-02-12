@@ -111,8 +111,10 @@ impl CurveService {
             max_time,
         );
 
-        let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
-            .with_interpolation(interpolation);
+        let config = BootstrapConfig {
+            interpolation,
+            ..BootstrapConfig::new(request.tolerance, request.max_iterations)
+        };
         let bootstrapper = CurveBootstrapper::with_config(config);
 
         let (curve, maybe_jacobian, actual_method) = match request.bootstrap_method {
@@ -126,11 +128,13 @@ impl CurveService {
                 (curve, Some(jac), "bootstrapping")
             }
             BootstrapMethod::Global => {
-                let global_config = GlobalBootstrapConfig::default()
-                    .with_tolerance(request.tolerance)
-                    .with_max_iterations(request.max_iterations)
-                    .with_interpolation(interpolation)
-                    .with_jacobian_inverse(true);
+                let global_config = GlobalBootstrapConfig {
+                    tolerance: request.tolerance,
+                    param_tolerance: request.tolerance,
+                    max_iterations: request.max_iterations,
+                    interpolation,
+                    ..Default::default()
+                };
                 let global = GlobalBootstrapper::new(global_config);
 
                 let n = market_instruments.len();

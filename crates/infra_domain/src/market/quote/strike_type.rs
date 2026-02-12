@@ -1,12 +1,10 @@
 //! Strike type definitions.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Strike convention for volatility quotes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum StrikeType {
     /// Absolute strike rate (e.g., 2.5% = 0.025).
     #[default]

@@ -1,28 +1,15 @@
 //! Credit Valuation Adjustment (CVA) calculation.
 
+use super::integrate::{trapezoidal_xva, trapezoidal_xva_with_survival};
 use crate::portfolio::CreditParams;
 
 /// Computes unilateral CVA for a netting set using trapezoidal integration: CVA
 /// = LGD * integral(EE(t) * dPD(t)).
 pub fn compute_cva(ee: &[f64], time_grid: &[f64], credit_params: &CreditParams) -> f64 {
-    if time_grid.len() < 2 || ee.len() != time_grid.len() {
-        return 0.0;
-    }
-
     let lgd = credit_params.lgd();
-    let mut cva = 0.0;
-
-    for i in 0..time_grid.len() - 1 {
-        let t1 = time_grid[i];
-        let t2 = time_grid[i + 1];
-
-        let marginal_pd = credit_params.marginal_default_prob(t1, t2);
-        let avg_ee = 0.5 * (ee[i] + ee[i + 1]);
-
-        cva += lgd * avg_ee * marginal_pd;
-    }
-
-    cva.max(0.0)
+    trapezoidal_xva(ee, time_grid, |_i, t1, t2| {
+        lgd * credit_params.marginal_default_prob(t1, t2)
+    })
 }
 
 /// Computes CVA with survival probability weighting for bilateral CVA
@@ -33,25 +20,10 @@ pub fn compute_cva_with_survival(
     credit_params: &CreditParams,
     own_survival: &[f64],
 ) -> f64 {
-    if time_grid.len() < 2 || ee.len() != time_grid.len() || own_survival.len() != time_grid.len() {
-        return 0.0;
-    }
-
     let lgd = credit_params.lgd();
-    let mut cva = 0.0;
-
-    for i in 0..time_grid.len() - 1 {
-        let t1 = time_grid[i];
-        let t2 = time_grid[i + 1];
-
-        let marginal_pd = credit_params.marginal_default_prob(t1, t2);
-        let avg_ee = 0.5 * (ee[i] + ee[i + 1]);
-        let avg_own_survival = 0.5 * (own_survival[i] + own_survival[i + 1]);
-
-        cva += lgd * avg_ee * marginal_pd * avg_own_survival;
-    }
-
-    cva.max(0.0)
+    trapezoidal_xva_with_survival(ee, time_grid, own_survival, |_i, t1, t2| {
+        lgd * credit_params.marginal_default_prob(t1, t2)
+    })
 }
 
 #[cfg(test)]

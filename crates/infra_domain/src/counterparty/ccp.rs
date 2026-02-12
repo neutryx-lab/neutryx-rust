@@ -6,8 +6,7 @@
 use super::CcpId;
 
 /// CCP (Central Counterparty Clearing House) entity.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[allow(clippy::struct_field_names)]
 pub struct Ccp {
     ccp_id: CcpId,

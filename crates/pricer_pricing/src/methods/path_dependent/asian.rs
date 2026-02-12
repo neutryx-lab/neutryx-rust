@@ -2,7 +2,7 @@
 
 use num_traits::Float;
 
-use super::{ObservationType, PathDependentPayoff, PathObserver};
+use super::{smooth_math::soft_plus, ObservationType, PathDependentPayoff, PathObserver};
 
 /// Parameters for Asian option payoffs.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -34,20 +34,6 @@ impl<T: Float> AsianParams<T> {
             is_call: false,
             smoothing_epsilon: epsilon,
         }
-    }
-}
-
-/// Soft-plus function: smooth approximation of max(x, 0).
-#[inline]
-fn soft_plus<T: Float>(x: T, epsilon: T) -> T {
-    let scaled = x / epsilon;
-    let twenty = T::from(20.0).unwrap();
-    if scaled > twenty {
-        x
-    } else if scaled < -twenty {
-        epsilon * scaled.exp()
-    } else {
-        epsilon * (T::one() + scaled.exp()).ln()
     }
 }
 
@@ -142,26 +128,6 @@ mod tests {
         let params = AsianParams::put(100.0_f64, 1e-6);
         assert_eq!(params.strike, 100.0);
         assert!(!params.is_call);
-    }
-
-    #[test]
-    fn test_soft_plus_positive() {
-        let result = soft_plus(10.0_f64, 0.01);
-        assert_relative_eq!(result, 10.0, epsilon = 0.01);
-    }
-
-    #[test]
-    fn test_soft_plus_negative() {
-        let result = soft_plus(-10.0_f64, 0.01);
-        assert!(result < 0.01);
-        assert!(result >= 0.0);
-    }
-
-    #[test]
-    fn test_soft_plus_at_zero() {
-        let epsilon = 1.0_f64;
-        let result = soft_plus(0.0, epsilon);
-        assert_relative_eq!(result, 2.0_f64.ln(), epsilon = 1e-10);
     }
 
     #[test]

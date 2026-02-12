@@ -50,8 +50,6 @@
 use super::PricingKernel;
 
 /// Exercise style for callable products.
-///
-/// Determines the timing and nature of exercise opportunities.
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, strum::Display,
 )]
@@ -62,24 +60,8 @@ pub enum ExerciseStyle {
     American,
 }
 
-/// Exercise opportunity definition.
-///
-/// Represents a single exercise decision point in a callable product.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_core::kernel::{ExerciseDef, ExerciseStyle};
-///
-/// let exercise = ExerciseDef {
-///     exercise_date: 19365,
-///     exercise_cost: 0.0,
-///     style: ExerciseStyle::Bermudan,
-/// };
-///
-/// assert_eq!(exercise.exercise_date, 19365);
-/// assert!(exercise.exercise_cost.abs() < 1e-10);
-/// ```
+/// Exercise opportunity definition for a single decision point in a callable
+/// product.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ExerciseDef {
     /// Exercise date (days from Unix epoch).
@@ -94,12 +76,6 @@ pub struct ExerciseDef {
 
 impl ExerciseDef {
     /// Creates a new exercise definition.
-    ///
-    /// # Arguments
-    ///
-    /// * `exercise_date` - Exercise date as days from epoch
-    /// * `exercise_cost` - Cost/fee paid upon exercise
-    /// * `style` - Bermudan or American style
     #[must_use]
     pub const fn new(exercise_date: i32, exercise_cost: f64, style: ExerciseStyle) -> Self {
         Self {
@@ -128,26 +104,8 @@ impl ExerciseDef {
     }
 }
 
-/// Exercise block in a callable product.
-///
-/// Represents a period between exercise dates, containing the underlying
-/// cashflows (`core_flows`) and an optional exercise opportunity at the end.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_core::kernel::{CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
-///
-/// let block = CallableBlock {
-///     start_date: 19000,
-///     end_date: 19365,
-///     core_flows: PricingKernel::empty(),
-///     exercise: Some(ExerciseDef::bermudan(19365)),
-/// };
-///
-/// assert!(block.has_exercise());
-/// assert_eq!(block.duration_days(), 365);
-/// ```
+/// A period between exercise dates with underlying cashflows and an optional
+/// exercise opportunity.
 #[derive(Clone, Debug)]
 pub struct CallableBlock {
     /// Block start date (days from epoch).
@@ -165,13 +123,6 @@ pub struct CallableBlock {
 
 impl CallableBlock {
     /// Creates a new callable block.
-    ///
-    /// # Arguments
-    ///
-    /// * `start_date` - Block start date (days from epoch)
-    /// * `end_date` - Block end date
-    /// * `core_flows` - Cashflows within this block
-    /// * `exercise` - Optional exercise opportunity
     #[must_use]
     pub fn new(
         start_date: i32,
@@ -212,43 +163,9 @@ impl CallableBlock {
 
 /// Block-structured IR for callable/Bermudan products.
 ///
-/// `CallableKernel` represents products with early exercise features
-/// (Bermudan swaptions, callable bonds, etc.) as a sequence of blocks
-/// divided by exercise dates.
-///
-/// # Structure
-///
-/// ```text
-/// [Block 0: Start → Exercise 1]
-/// [Block 1: Exercise 1 → Exercise 2]
-/// [Block 2: Exercise 2 → Maturity]
-/// ```
-///
-/// # Forward/Backward Passes
-///
-/// - **Forward Pass**: Accumulate cashflow values to each exercise point
-/// - **Backward Pass**: LSMC regression at exercise points (continuation vs
-///   exercise)
-///
-/// # Examples
-///
-/// ```
-/// use pricer_core::kernel::{CallableKernel, CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
-///
-/// let kernel = CallableKernel::new(
-///     vec![
-///         CallableBlock::new(
-///             19000, 19365,
-///             PricingKernel::empty(),
-///             Some(ExerciseDef::bermudan(19365)),
-///         ),
-///     ],
-///     0,
-/// );
-///
-/// assert_eq!(kernel.block_count(), 1);
-/// assert_eq!(kernel.exercise_count(), 1);
-/// ```
+/// Represents products with early exercise features as a sequence of blocks
+/// divided by exercise dates. Supports forward (cashflow accumulation) and
+/// backward (LSMC regression) passes.
 #[derive(Clone, Debug)]
 pub struct CallableKernel {
     /// Sequence of exercise blocks.
@@ -260,11 +177,6 @@ pub struct CallableKernel {
 
 impl CallableKernel {
     /// Creates a new `CallableKernel`.
-    ///
-    /// # Arguments
-    ///
-    /// * `blocks` - Sequence of callable blocks
-    /// * `base_currency_id` - Base currency ID for valuation
     #[must_use]
     pub fn new(blocks: Vec<CallableBlock>, base_currency_id: u8) -> Self {
         Self {
@@ -355,9 +267,6 @@ impl CallableKernel {
 }
 
 /// Builder for constructing `CallableKernel` incrementally.
-///
-/// Provides an ergonomic API for building kernels when blocks are
-/// generated sequentially (e.g., from a swap schedule).
 #[derive(Debug, Default)]
 pub struct CallableKernelBuilder {
     blocks: Vec<CallableBlock>,
@@ -418,10 +327,6 @@ impl CallableKernelBuilder {
 mod tests {
     use super::*;
 
-    // =========================================================================
-    // ExerciseStyle Tests
-    // =========================================================================
-
     #[test]
     fn test_exercise_style_display() {
         assert_eq!(format!("{}", ExerciseStyle::Bermudan), "Bermudan");
@@ -440,10 +345,6 @@ mod tests {
         let copied = style;
         assert_eq!(style, copied);
     }
-
-    // =========================================================================
-    // ExerciseDef Tests
-    // =========================================================================
 
     #[test]
     fn test_exercise_def_new() {
@@ -483,10 +384,6 @@ mod tests {
         let cloned = exercise.clone();
         assert_eq!(exercise, cloned);
     }
-
-    // =========================================================================
-    // CallableBlock Tests
-    // =========================================================================
 
     #[test]
     fn test_callable_block_new() {
@@ -552,10 +449,6 @@ mod tests {
         let block = CallableBlock::new(19000, 19365, kernel, None);
         assert_eq!(block.cashflow_count(), 1);
     }
-
-    // =========================================================================
-    // CallableKernel Tests
-    // =========================================================================
 
     #[test]
     fn test_callable_kernel_new() {
@@ -732,10 +625,6 @@ mod tests {
 
         assert!(kernel.memory_usage() > 0);
     }
-
-    // =========================================================================
-    // CallableKernelBuilder Tests
-    // =========================================================================
 
     #[test]
     fn test_builder_new() {

@@ -3,8 +3,7 @@
 use crate::time::CalendarId;
 
 /// Delivery convention for commodity contracts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DeliveryConvention {
     /// Physical delivery of the commodity.
     Physical,
@@ -15,8 +14,7 @@ pub enum DeliveryConvention {
 }
 
 /// Price quotation convention for commodities.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum PriceQuotation {
     /// Price per barrel (crude oil).
     PerBarrel,
@@ -33,8 +31,7 @@ pub enum PriceQuotation {
 }
 
 /// Convention for commodity derivatives.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CommodityConvention {
     /// Delivery convention.
     pub delivery_convention: DeliveryConvention,
@@ -48,28 +45,6 @@ pub struct CommodityConvention {
     pub delivery_location: Option<String>,
     /// Contract size (standard lot).
     pub contract_size: f64,
-}
-
-impl CommodityConvention {
-    /// Creates a new commodity convention.
-    #[must_use]
-    pub fn new(
-        delivery_convention: DeliveryConvention,
-        price_quotation: PriceQuotation,
-        pricing_calendar: CalendarId,
-        settlement_days: u32,
-        delivery_location: Option<String>,
-        contract_size: f64,
-    ) -> Self {
-        Self {
-            delivery_convention,
-            price_quotation,
-            pricing_calendar,
-            settlement_days,
-            delivery_location,
-            contract_size,
-        }
-    }
 }
 
 super::define_convention_factories! {

@@ -50,14 +50,17 @@ fn test_config_fast() {
 
 #[test]
 fn test_config_builder_methods() {
-    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default()
-        .with_jacobian_method(JacobianMethod::Analytical)
-        .with_telescoping(false)
-        .with_damping(0.01)
-        .with_debug_logging(true)
-        .with_max_condition_number(1e8)
-        .with_tolerance(1e-12)
-        .with_max_iterations(200);
+    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig {
+        jacobian_method: JacobianMethod::Analytical,
+        enable_telescoping: false,
+        damping_factor: Some(0.01),
+        debug_logging: true,
+        max_condition_number: 1e8,
+        tolerance: 1e-12,
+        param_tolerance: 1e-12,
+        max_iterations: 200,
+        ..Default::default()
+    };
 
     assert_eq!(config.jacobian_method, JacobianMethod::Analytical);
     assert!(!config.enable_telescoping);
@@ -99,7 +102,7 @@ fn test_calibrate_basic() {
 #[test]
 fn test_calibrate_stores_jacobian_inverse() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -162,7 +165,10 @@ fn test_vector_norm() {
 #[test]
 fn test_calibrate_with_debug_logging() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_debug_logging(true);
+    let config = GlobalBootstrapConfig {
+        debug_logging: true,
+        ..Default::default()
+    };
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -186,10 +192,6 @@ fn test_convergence_quality() {
     assert!(quality == "excellent" || quality == "good");
 }
 
-// =========================================================================
-// Jump Configuration Tests
-// =========================================================================
-
 #[test]
 fn test_config_default_no_jumps() {
     let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default();
@@ -203,8 +205,10 @@ fn test_config_with_jump_config() {
     let jump_config =
         JumpConfig::with_pillars(vec![JumpPillar::new(0.5, 25.0), JumpPillar::new(1.0, 25.0)]);
 
-    let config: GlobalBootstrapConfig<f64> =
-        GlobalBootstrapConfig::default().with_jump_config(jump_config);
+    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig {
+        jump_config: Some(jump_config),
+        ..Default::default()
+    };
 
     assert!(config.jump_config.is_some());
     assert!(config.has_jumps());
@@ -213,11 +217,14 @@ fn test_config_with_jump_config() {
 
 #[test]
 fn test_config_with_jumps_convenience() {
-    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default().with_jumps(vec![
-        JumpPillar::new(0.25, 25.0),
-        JumpPillar::new(0.5, 25.0),
-        JumpPillar::new(1.0, 25.0),
-    ]);
+    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig {
+        jump_config: Some(JumpConfig::with_pillars(vec![
+            JumpPillar::new(0.25, 25.0),
+            JumpPillar::new(0.5, 25.0),
+            JumpPillar::new(1.0, 25.0),
+        ])),
+        ..Default::default()
+    };
 
     assert!(config.has_jumps());
     assert_eq!(config.num_jumps(), 3);
@@ -229,7 +236,10 @@ fn test_config_with_jumps_convenience() {
 
 #[test]
 fn test_config_with_empty_jumps() {
-    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default().with_jumps(vec![]);
+    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig {
+        jump_config: Some(JumpConfig::with_pillars(vec![])),
+        ..Default::default()
+    };
 
     // Empty jump list should not activate jumps
     assert!(!config.has_jumps());
@@ -240,18 +250,16 @@ fn test_config_with_empty_jumps() {
 fn test_config_with_disabled_jump_config() {
     let jump_config = JumpConfig::with_pillars(vec![JumpPillar::new(0.5, 25.0)]).disable();
 
-    let config: GlobalBootstrapConfig<f64> =
-        GlobalBootstrapConfig::default().with_jump_config(jump_config);
+    let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig {
+        jump_config: Some(jump_config),
+        ..Default::default()
+    };
 
     // Jump config exists but is disabled
     assert!(config.jump_config.is_some());
     assert!(!config.has_jumps()); // Not active because disabled
     assert_eq!(config.num_jumps(), 1); // But pillars still counted
 }
-
-// =========================================================================
-// Jump calibration tests
-// =========================================================================
 
 #[allow(dead_code)]
 fn create_jump_pillars() -> Vec<JumpPillar<f64>> {
@@ -306,7 +314,11 @@ fn test_calibrate_with_jumps_empty_jumps() {
 fn test_calibrate_with_jumps_basic() {
     let instruments = create_test_instruments();
     let jump_pillars = vec![JumpPillar::new(0.5, 10.0)]; // Small 10bps jump
-    let config = GlobalBootstrapConfig::default().with_tolerance(1e-8);
+    let config = GlobalBootstrapConfig {
+        tolerance: 1e-8,
+        param_tolerance: 1e-8,
+        ..Default::default()
+    };
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate_with_jumps(&instruments, jump_pillars);
@@ -359,14 +371,10 @@ fn test_result_jump_helpers() {
     assert_eq!(result.total_jump_bps(), 0.0);
 }
 
-// =========================================================================
-// IFT Sensitivity Tests (Requirement 3.1-3.5)
-// =========================================================================
-
 #[test]
 fn test_can_compute_ift_with_jacobian_inverse() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -392,7 +400,7 @@ fn test_can_compute_ift_without_jacobian_inverse() {
 #[test]
 fn test_ift_sensitivity_basic() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -430,7 +438,7 @@ fn test_ift_sensitivity_no_jacobian_inverse() {
 #[test]
 fn test_ift_sensitivity_dimension_mismatch() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -451,7 +459,7 @@ fn test_ift_sensitivity_dimension_mismatch() {
 #[test]
 fn test_ift_sensitivity_batch_basic() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -493,7 +501,7 @@ fn test_ift_sensitivity_batch_no_jacobian_inverse() {
 #[test]
 fn test_ift_sensitivity_batch_dimension_mismatch() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -514,7 +522,7 @@ fn test_ift_sensitivity_batch_dimension_mismatch() {
 #[test]
 fn test_ift_sensitivity_single_vs_batch_consistency() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -538,7 +546,7 @@ fn test_ift_sensitivity_single_vs_batch_consistency() {
 #[test]
 fn test_ift_sensitivity_linearity() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -567,7 +575,7 @@ fn test_ift_sensitivity_linearity() {
 #[test]
 fn test_ift_sensitivity_zero_input() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+    let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
     let result = bootstrapper.calibrate(&instruments).unwrap();

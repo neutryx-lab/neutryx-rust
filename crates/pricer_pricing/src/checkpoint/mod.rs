@@ -1,11 +1,5 @@
 //! Checkpointing for memory-efficient reverse-mode automatic differentiation.
+//!
+//! This module re-exports all types from the [`pricer_checkpoint`] crate.
 
-mod budget;
-mod manager;
-mod state;
-mod strategy;
-
-pub use budget::MemoryBudget;
-pub use manager::{CheckpointError, CheckpointManager, CheckpointResult};
-pub use state::{CheckpointStorage, MinimalState, SimulationState};
-pub use strategy::CheckpointStrategy;
+pub use pricer_checkpoint::*;

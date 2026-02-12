@@ -29,10 +29,6 @@ fn extract_sorted_pillars<T: Float, I: CalibrationInstrument<T>>(instruments: &[
     pillars
 }
 
-// =============================================================================
-// JacobianMethod
-// =============================================================================
-
 /// Method for computing the Jacobian matrix.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum JacobianMethod {
@@ -50,10 +46,6 @@ pub enum JacobianMethod {
     #[cfg(feature = "enzyme-ad")]
     AutomaticDifferentiation,
 }
-
-// =============================================================================
-// CalibrationProblemConfig
-// =============================================================================
 
 /// Configuration for calibration problems.
 #[derive(Debug, Clone, Copy)]
@@ -79,22 +71,11 @@ impl<T: Float> Default for CalibrationProblemConfig<T> {
     }
 }
 
-// =============================================================================
-// CalibrationProblem
-// =============================================================================
-
 /// Calibration problem as a system of equations F(x) = 0.
 ///
-/// The unknowns x = log(DF) at each pillar maturity, and F_i(x) is the
-/// pricing error for instrument i evaluated on the curve implied by x.
-///
-/// When jump calibration is enabled, the parameter vector is extended to:
+/// Unknowns x = log(DF) at each pillar maturity. When jump calibration is
+/// enabled, the parameter vector is extended to:
 /// `[log(DF_1), ..., log(DF_n), jump_1, ..., jump_m]`
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for calculations
-/// * `I` - Instrument type implementing `CalibrationInstrument<T>`
 #[derive(Debug, Clone)]
 pub struct CalibrationProblem<T: Float, I: CalibrationInstrument<T>> {
     /// Calibration instruments.
@@ -137,9 +118,6 @@ where
     }
 
     /// Create a new calibration problem with jump pillars.
-    ///
-    /// The parameter vector is extended to:
-    /// `[log(DF_1), ..., log(DF_n), jump_1, ..., jump_m]`
     pub fn with_jumps(
         instruments: Vec<I>,
         mut jump_pillars: Vec<JumpPillar<T>>,
@@ -190,9 +168,7 @@ where
     /// Get the number of jump pillars.
     pub fn num_jumps(&self) -> usize { self.jump_pillars.len() }
 
-    /// Get the total dimension of the parameter vector.
-    ///
-    /// This is n_pillars + n_jumps when jumps are present.
+    /// Get the total dimension of the parameter vector (n_pillars + n_jumps).
     pub fn total_dimension(&self) -> usize { self.pillars.len() + self.jump_pillars.len() }
 
     /// Build a yield curve from log discount factors.
@@ -228,8 +204,7 @@ where
         Ok(residuals)
     }
 
-    /// Compute the Jacobian matrix J\[i,j\] = dF_i/dx_j using forward
-    /// differences.
+    /// Compute the Jacobian J\[i,j\] = dF_i/dx_j using forward differences.
     pub fn compute_jacobian_finite_diff(
         &self,
         log_df: &[T],
@@ -361,9 +336,8 @@ where
         super::error::validate_jacobian_dmatrix(jacobian, from_f64(1e-14))
     }
 
-    /// Create an initial guess for log discount factors.
-    ///
-    /// Uses a flat 3% rate assumption: log(DF(t)) = -0.03 * t
+    /// Create an initial guess for log discount factors using flat 3% rate:
+    /// log(DF(t)) = -0.03 * t.
     pub fn initial_guess(&self) -> Vec<T> {
         self.pillars
             .iter()
@@ -374,14 +348,7 @@ where
     /// Create an initial guess DVector for the solver.
     pub fn initial_guess_vector(&self) -> DVector<T> { DVector::from_vec(self.initial_guess()) }
 
-    // =========================================================================
-    // Jump-aware calibration methods
-    // =========================================================================
-
     /// Create an initial guess for extended parameter vector including jumps.
-    ///
-    /// Returns `[log(DF_1), ..., log(DF_n), jump_1, ..., jump_m]`
-    /// where jumps are initialised to their expected values.
     pub fn initial_guess_with_jumps(&self) -> Vec<T> {
         let mut guess = self.initial_guess();
 
@@ -472,7 +439,7 @@ where
         Ok(residuals)
     }
 
-    /// Compute the (n+k) x (m+k) Jacobian including jump parameter derivatives.
+    /// Compute the (n+k) x (m+k) Jacobian including jump parameters.
     pub fn compute_jacobian_with_jumps(
         &self,
         params: &[T],
@@ -544,10 +511,6 @@ where
             .collect()
     }
 
-    // =========================================================================
-    // AD Instability Helper Methods
-    // =========================================================================
-
     /// Compute mean squared difference between two Jacobian matrices.
     pub fn compute_jacobian_variance(&self, j1: &DMatrix<T>, j2: &DMatrix<T>) -> T {
         let n = j1.nrows();
@@ -590,10 +553,6 @@ where
         (variance > threshold, variance)
     }
 }
-
-// =============================================================================
-// CompiledInstrument Integration
-// =============================================================================
 
 use crate::builder::compile::CompiledInstrument;
 
@@ -676,10 +635,6 @@ where
     }
 }
 
-// =============================================================================
-// SystemOfEquations Implementation
-// =============================================================================
-
 impl<T, I> SystemOfEquations<T> for CalibrationProblem<T, I>
 where
     T: Float + RealField + Copy,
@@ -718,10 +673,6 @@ where
         })
     }
 }
-
-// =============================================================================
-// Enzyme AD Jacobian Implementation
-// =============================================================================
 
 #[cfg(feature = "enzyme-ad")]
 impl<T, I> CalibrationProblem<T, I>
@@ -867,10 +818,6 @@ where
         result
     }
 
-    // =========================================================================
-    // AD Instability Auto-Fallback
-    // =========================================================================
-
     /// Compute Jacobian with AD-vs-FD stability check; falls back to central
     /// diff if unstable.
     pub fn compute_jacobian_with_stability_check(
@@ -907,10 +854,6 @@ where
         }
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -1028,10 +971,6 @@ mod tests {
     fn test_jacobian_method_default() {
         assert_eq!(JacobianMethod::default(), JacobianMethod::FiniteDifference);
     }
-
-    // =========================================================================
-    // Jump-related tests
-    // =========================================================================
 
     fn create_jump_pillars() -> Vec<JumpPillar<f64>> {
         vec![
@@ -1229,10 +1168,6 @@ mod tests {
         assert_relative_eq!(jp[2].time, 1.5, epsilon = 1e-10);
     }
 
-    // =========================================================================
-    // CompiledInstrument Integration Tests
-    // =========================================================================
-
     use crate::builder::compile::{CompiledInstrument, InstrumentType};
 
     fn create_compiled_instruments() -> Vec<CompiledInstrument<f64>> {
@@ -1374,10 +1309,6 @@ mod tests {
         assert_eq!(problem.total_cashflows(), 5);
     }
 
-    // =========================================================================
-    // from_market_instruments Tests
-    // =========================================================================
-
     use infra_domain::{
         market::{
             convention::{DepositConvention, MarketConvention, SwapConvention},
@@ -1478,10 +1409,6 @@ mod tests {
         // Should have more than 3 cashflows (deposit=1, OIS=1, swap=5)
         assert!(problem.total_cashflows() > 3);
     }
-
-    // =========================================================================
-    // AD Instability Auto-Fallback Tests
-    // =========================================================================
 
     #[test]
     fn test_compute_jacobian_variance_identical() {

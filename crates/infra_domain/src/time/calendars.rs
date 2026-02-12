@@ -8,8 +8,18 @@ use super::types::Date;
 
 /// Business day adjustment convention.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, strum::AsRefStr)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
+    strum::AsRefStr,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum BusinessDayConvention {
     /// Move to the next business day.
     Following,
@@ -130,8 +140,7 @@ pub trait Calendar: Send + Sync {
 }
 
 /// Calendar identifier.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CalendarId {
     /// TARGET (Trans-European Automated Real-time Gross Settlement Express.
     Target,
@@ -216,8 +225,7 @@ impl Calendar for ConcreteCalendar {
 }
 
 /// Rule for combining multiple calendars.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum JointCalendarRule {
     /// A date is a business day only if ALL calendars agree.
     JoinHolidays,

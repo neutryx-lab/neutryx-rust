@@ -3,8 +3,7 @@
 use std::fmt;
 
 /// Classification of market quote categories grouped by asset class.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub enum QuoteCategory {
     /// Money market deposit rate (short-dated, ON to 1Y).

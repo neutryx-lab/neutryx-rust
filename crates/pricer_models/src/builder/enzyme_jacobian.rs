@@ -23,16 +23,7 @@ use pricer_core::math::linalg::DMatrix;
 
 use super::JacobianMethod;
 
-// =============================================================================
-// JacobianResult
-// =============================================================================
-
 /// Result of Jacobian computation with metadata.
-///
-/// # Requirement 1.4
-///
-/// When Enzyme AD computation fails, `fallback_used` is set to `true` and
-/// `method_used` reflects the actual method used (FiniteDifference).
 #[derive(Debug, Clone)]
 pub struct JacobianResult {
     /// The computed Jacobian matrix (n_instruments × n_pillars).
@@ -106,44 +97,12 @@ impl JacobianResult {
     }
 }
 
-// =============================================================================
-// Enzyme AD Kernels (feature-gated)
-// =============================================================================
-
 /// Enzyme AD Jacobian computation kernels.
-///
-/// This module contains the core differentiable kernels for curve calibration.
-/// The kernels are pure functions operating on `f64` slices for Enzyme
-/// compatibility.
-///
-/// # Requirement 1.1
-///
-/// When `JacobianMethod::AutomaticDifferentiation` is selected, the
-/// `CalibrationProblem` shall compute the Jacobian using these kernels.
 #[cfg(feature = "enzyme-ad")]
 pub mod kernels {
     use std::autodiff::autodiff;
 
-    // =========================================================================
-    // Log-Linear Interpolation Kernel
-    // =========================================================================
-
     /// Compute log-linearly interpolated log(DF) at a given time.
-    ///
-    /// This kernel performs log-linear interpolation on log discount factors.
-    /// Given pillar times [t_0, t_1, ..., t_n] and log discount factors
-    /// [log_df_0, log_df_1, ..., log_df_n], it computes log(DF(t)) by linear
-    /// interpolation in log-space.
-    ///
-    /// # Arguments
-    ///
-    /// * `time` - Query time
-    /// * `pillar_times` - Pillar maturities (sorted ascending)
-    /// * `log_df` - Log discount factors at pillars
-    ///
-    /// # Returns
-    ///
-    /// Interpolated log(DF) at the query time.
     #[inline]
     pub fn log_linear_interp(time: f64, pillar_times: &[f64], log_df: &[f64]) -> f64 {
         let n = pillar_times.len();
@@ -192,21 +151,7 @@ pub mod kernels {
         log_linear_interp(time, pillar_times, log_df).exp()
     }
 
-    // =========================================================================
-    // Instrument Residual Kernels
-    // =========================================================================
-
-    /// Compute the pricing residual for a single deposit instrument.
-    ///
     /// Deposit residual: F = (1/DF(T) - 1) / T - market_rate
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - Log discount factors at pillars
-    /// * `pillar_times` - Pillar maturities
-    /// * `maturity` - Instrument maturity
-    /// * `market_rate` - Market-quoted rate
-    /// * `output` - Output residual (mutable for reverse mode)
     #[autodiff(
         d_deposit_residual,
         Reverse,
@@ -228,19 +173,7 @@ pub mod kernels {
         *output = theoretical_rate - market_rate;
     }
 
-    /// Compute the pricing residual for a single FRA instrument.
-    ///
     /// FRA residual: F = (DF(start)/DF(end) - 1) / tau - market_rate
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - Log discount factors at pillars
-    /// * `pillar_times` - Pillar maturities
-    /// * `start_time` - FRA start time (0 if spot-starting)
-    /// * `end_time` - FRA end time (maturity)
-    /// * `tau` - Year fraction
-    /// * `market_rate` - Market-quoted rate
-    /// * `output` - Output residual
     #[autodiff(
         d_fra_residual,
         Reverse,
@@ -271,20 +204,8 @@ pub mod kernels {
         *output = theoretical_rate - market_rate;
     }
 
-    /// Compute the pricing residual for a single swap/OIS instrument.
-    ///
     /// Swap residual: F = (1 - DF(T)) / annuity - market_rate
     /// where annuity = sum(DF(t_i) * tau_i)
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df` - Log discount factors at pillars
-    /// * `pillar_times` - Pillar maturities
-    /// * `cashflow_times` - Cashflow payment times
-    /// * `year_fractions` - Year fractions for each period
-    /// * `maturity` - Swap maturity
-    /// * `market_rate` - Market-quoted par rate
-    /// * `output` - Output residual
     #[autodiff(
         d_swap_residual,
         Reverse,
@@ -324,28 +245,7 @@ pub mod kernels {
         *output = theoretical_rate - market_rate;
     }
 
-    // =========================================================================
-    // Jacobian Computation
-    // =========================================================================
-
-    /// Compute a single row of the Jacobian matrix using Enzyme reverse mode.
-    ///
-    /// This function computes ∂F_i/∂log_df_j for all j using reverse-mode AD.
-    ///
-    /// # Arguments
-    ///
-    /// * `instrument_type` - Type of instrument (0=Deposit, 1=FRA, 2=Swap)
-    /// * `log_df` - Log discount factors at pillars
-    /// * `pillar_times` - Pillar maturities
-    /// * `params` - Instrument parameters:
-    ///   - Deposit: [maturity, market_rate]
-    ///   - FRA: [start_time, end_time, tau, market_rate]
-    ///   - Swap: [maturity, market_rate, n_cf, cf_time_1, yf_1, ..., cf_time_n,
-    ///     yf_n]
-    ///
-    /// # Returns
-    ///
-    /// Gradient vector ∂F/∂log_df
+    /// Compute a single Jacobian row ∂F_i/∂log_df_j using Enzyme reverse mode.
     pub fn compute_jacobian_row(
         instrument_type: u32,
         log_df: &[f64],
@@ -424,18 +324,8 @@ pub mod kernels {
         gradient
     }
 
-    /// Compute the full Jacobian matrix using Enzyme reverse mode.
-    ///
-    /// # Arguments
-    ///
-    /// * `instrument_types` - Type of each instrument
-    /// * `instrument_params` - Parameters for each instrument
-    /// * `log_df` - Current log discount factors
-    /// * `pillar_times` - Pillar maturities
-    ///
-    /// # Returns
-    ///
-    /// Jacobian matrix (n_instruments × n_pillars)
+    /// Compute the full Jacobian matrix (n_instruments x n_pillars) using
+    /// Enzyme reverse mode.
     pub fn compute_jacobian_enzyme(
         instrument_types: &[u32],
         instrument_params: &[Vec<f64>],
@@ -464,14 +354,7 @@ pub mod kernels {
     }
 }
 
-// =============================================================================
-// Non-enzyme Stubs
-// =============================================================================
-
 /// Stub module for when enzyme-ad feature is disabled.
-///
-/// This provides the same function signatures but falls back to finite
-/// differences.
 #[cfg(not(feature = "enzyme-ad"))]
 pub mod kernels {
     use pricer_core::math::linalg::DMatrix;
@@ -545,10 +428,6 @@ pub mod kernels {
         vec![0.0; log_df.len()]
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

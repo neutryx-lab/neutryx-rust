@@ -14,18 +14,7 @@ use num_traits::Float;
 
 use super::CalibrationInstrument;
 
-// =============================================================================
-// CalibrationGrid
-// =============================================================================
-
-/// Calibration grid for unified axis management.
-///
-/// Collects, sorts, and deduplicates points to create a unified axis
-/// for matrix-based calculations.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for axis values
+/// Calibration grid: collects, sorts, and deduplicates axis points.
 ///
 /// # Example
 ///
@@ -58,11 +47,7 @@ impl<T: Float> CalibrationGrid<T> {
         }
     }
 
-    /// Create a grid from calibration instruments (using maturities).
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Slice of calibration instruments
+    /// Create a grid from calibration instrument maturities.
     pub fn from_instruments<I: CalibrationInstrument<T>>(instruments: &[I]) -> Self {
         let mut grid = Self::new();
 
@@ -82,9 +67,7 @@ impl<T: Float> CalibrationGrid<T> {
         grid
     }
 
-    /// Add a single point to the grid.
-    ///
-    /// If the point already exists (within tolerance), it is not added again.
+    /// Add a single point to the grid (deduplicated within tolerance).
     pub fn add_point(&mut self, point: T) {
         if self.contains(point) {
             return;
@@ -114,29 +97,14 @@ impl<T: Float> CalibrationGrid<T> {
             .any(|&p| Float::abs(p - point) < self.tolerance)
     }
 
-    /// Get the index of a point.
-    ///
-    /// Returns `None` if the point is not in the grid.
+    /// Get the index of a point, or `None` if absent.
     pub fn get_index(&self, point: T) -> Option<usize> {
         self.points
             .iter()
             .position(|&p| Float::abs(p - point) < self.tolerance)
     }
 
-    /// Get interpolation indices and weight for a point.
-    ///
-    /// Returns (lower_index, upper_index, weight) for linear interpolation.
-    ///
-    /// # Arguments
-    ///
-    /// * `point` - Point to locate
-    ///
-    /// # Returns
-    ///
-    /// Tuple of (lower_index, upper_index, weight) where:
-    /// - `lower_index` is the largest grid point ≤ query point
-    /// - `upper_index` is the smallest grid point ≥ query point
-    /// - `weight` is the interpolation factor: 0.0 = lower, 1.0 = upper
+    /// Get `(lower_index, upper_index, weight)` for linear interpolation.
     pub fn get_interpolation_indices(&self, point: T) -> Option<(usize, usize, T)> {
         if self.points.is_empty() {
             return None;
@@ -184,10 +152,6 @@ impl<T: Float> CalibrationGrid<T> {
 impl<T: Float> Default for CalibrationGrid<T> {
     fn default() -> Self { Self::new() }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

@@ -6,9 +6,8 @@ use super::{BookMetadata, BookOwnership, BookType, RegulatoryBookType};
 use crate::ids::BookId;
 
 /// A trading book.
-#[derive(Clone, Debug, Builder)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, Builder, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 #[allow(clippy::struct_field_names)]
 pub struct Book {
     /// Unique identifier for this book.

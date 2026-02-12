@@ -2,6 +2,7 @@
 
 use num_traits::Float;
 
+use super::capacity::calculate_growth_capacity;
 use crate::methods::path_dependent::{PathObserver, PathObserverState};
 
 /// Extended workspace with checkpoint and path-dependent support.
@@ -48,8 +49,8 @@ impl<T: Float> CheckpointWorkspace<T> {
         let needs_growth = n_paths > self.capacity_paths || n_steps > self.capacity_steps;
 
         if needs_growth {
-            let new_capacity_paths = n_paths.max(self.capacity_paths * 2);
-            let new_capacity_steps = n_steps.max(self.capacity_steps * 2);
+            let new_capacity_paths = calculate_growth_capacity(self.capacity_paths, n_paths);
+            let new_capacity_steps = calculate_growth_capacity(self.capacity_steps, n_steps);
 
             let randoms_size = new_capacity_paths * new_capacity_steps;
             let paths_size = new_capacity_paths * (new_capacity_steps + 1);

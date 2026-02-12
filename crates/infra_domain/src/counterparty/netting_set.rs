@@ -10,15 +10,27 @@ use super::{
 use crate::{ids::BookId, time::Date};
 
 /// Netting type classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    strum::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum NettingType {
     /// Bilateral (OTC) - direct with counterparty.
     #[default]
     Bilateral,
     /// Cleared via CCP as a clearing member.
+    #[strum(serialize = "Cleared (CCP)")]
     ClearedCcp,
     /// Cleared via CCP as a client of a clearing member.
+    #[strum(serialize = "Cleared (Client)")]
     ClearedClient,
 }
 
@@ -29,20 +41,8 @@ impl NettingType {
     }
 }
 
-impl std::fmt::Display for NettingType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            NettingType::Bilateral => "Bilateral",
-            NettingType::ClearedCcp => "Cleared (CCP)",
-            NettingType::ClearedClient => "Cleared (Client)",
-        };
-        write!(f, "{}", s)
-    }
-}
-
 /// NettingSet entity.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[allow(clippy::struct_field_names)]
 pub struct NettingSet {
     netting_set_id: NettingSetId,
@@ -216,8 +216,7 @@ impl NettingSetBuilder {
 }
 
 /// Cross-book netting agreement.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CrossBookNettingAgreement {
     id: CrossBookNettingAgreementId,
     counterparty_id: CounterPartyId,

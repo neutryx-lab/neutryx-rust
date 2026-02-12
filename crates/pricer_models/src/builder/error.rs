@@ -17,15 +17,7 @@ use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 use thiserror::Error;
 
-// =============================================================================
-// Numerical Diagnostics (Requirement 5.5)
-// =============================================================================
-
 /// Quality classification for Jacobian matrix.
-///
-/// Used to assess the numerical stability of the calibration problem.
-///
-/// # Requirement: 5.3
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JacobianQuality {
     /// Jacobian is well-conditioned with no issues detected.
@@ -75,8 +67,6 @@ impl std::fmt::Display for JacobianQuality {
 }
 
 /// Type of regularisation applied during calibration.
-///
-/// # Requirement: 5.2, 5.5
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum RegularisationType<T: Float> {
     /// No regularisation applied.
@@ -124,13 +114,8 @@ impl<T: Float + std::fmt::Display> std::fmt::Display for RegularisationType<T> {
     }
 }
 
-/// Comprehensive numerical diagnostics for calibration.
-///
-/// This structure captures diagnostic information about the numerical
-/// stability of a calibration run, including condition numbers, residual
-/// history, and any regularisation that was applied.
-///
-/// # Requirement: 5.5
+/// Numerical diagnostics for calibration (condition numbers, residuals,
+/// regularisation).
 #[derive(Debug, Clone)]
 pub struct NumericalDiagnostics<T: Float> {
     /// Estimated condition number of the Jacobian matrix.
@@ -249,31 +234,7 @@ impl<T: Float> NumericalDiagnostics<T> {
     }
 }
 
-// =============================================================================
-// Jacobian Validation Utilities (Requirement 5.3)
-// =============================================================================
-
-/// Validate a Jacobian matrix for numerical quality.
-///
-/// Checks for:
-/// - NaN values
-/// - Inf values
-/// - Near-zero diagonal elements (< 1e-14)
-///
-/// # Requirement: 5.3
-///
-/// # Arguments
-///
-/// * `jacobian` - The Jacobian matrix to validate (as row-major flattened
-///   vector)
-/// * `nrows` - Number of rows
-/// * `ncols` - Number of columns
-/// * `zero_threshold` - Threshold below which diagonal elements are considered
-///   near-zero
-///
-/// # Returns
-///
-/// A tuple of (JacobianQuality, NumericalDiagnostics) with validation results.
+/// Validates a Jacobian matrix for NaN, Inf, and near-zero diagonal elements.
 pub fn validate_jacobian_matrix<T: Float>(
     jacobian: &[T],
     nrows: usize,
@@ -327,9 +288,7 @@ pub fn validate_jacobian_matrix<T: Float>(
     (quality, diagnostics)
 }
 
-/// Validate a Jacobian DMatrix for numerical quality.
-///
-/// # Requirement: 5.3
+/// Validates a Jacobian DMatrix for numerical quality.
 pub fn validate_jacobian_dmatrix<T>(
     jacobian: &pricer_core::math::linalg::DMatrix<T>,
     zero_threshold: T,
@@ -384,12 +343,7 @@ where
     (quality, diagnostics)
 }
 
-/// Estimate condition number using row-sum norm heuristic.
-///
-/// This is a cheap O(n^2) estimate, not the true condition number
-/// (which would require SVD).
-///
-/// # Requirement: 5.1
+/// Estimates condition number using row-sum norm heuristic (O(n^2), not SVD).
 pub fn estimate_condition_number<T>(jacobian: &pricer_core::math::linalg::DMatrix<T>) -> Option<T>
 where
     T: Float + pricer_core::math::linalg::RealField,
@@ -422,11 +376,7 @@ where
     }
 }
 
-/// Apply Tikhonov regularisation to a matrix.
-///
-/// Adds λI to the matrix to improve conditioning.
-///
-/// # Requirement: 5.2
+/// Applies Tikhonov regularisation (adds λI) to improve conditioning.
 pub fn apply_tikhonov_regularisation<T>(
     matrix: &mut pricer_core::math::linalg::DMatrix<T>,
     damping: T,
@@ -439,12 +389,7 @@ pub fn apply_tikhonov_regularisation<T>(
     }
 }
 
-/// Check if Tikhonov regularisation should be applied based on condition
-/// number.
-///
-/// # Requirement: 5.2
-///
-/// Returns the recommended damping factor if regularisation is needed.
+/// Returns recommended damping factor if condition number exceeds threshold.
 #[allow(dead_code)]
 pub fn should_apply_regularisation<T: Float>(
     condition_number: T,
@@ -460,29 +405,14 @@ pub fn should_apply_regularisation<T: Float>(
     }
 }
 
-// =============================================================================
-// IFT Sensitivity Error (Requirement 3.4) -- Consolidated
-// =============================================================================
-
-/// Errors that can occur during IFT (Implicit Function Theorem) sensitivity
-/// computation.
-///
-/// IFT-based sensitivities require a cached Jacobian inverse from calibration.
-/// These errors indicate when IFT computation cannot proceed.
-///
-/// # Requirement: 3.4
+/// Errors during IFT (Implicit Function Theorem) sensitivity computation.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum IftError {
     /// Jacobian inverse is not cached.
-    ///
-    /// IFT sensitivity requires J^-1 to be stored during calibration.
-    /// Recalibrate with `store_jacobian_inverse=true`.
     #[error("Jacobian逆行列がキャッシュされていません。store_jacobian_inverse=trueで再キャリブレーションしてください")]
     NoJacobianInverse,
 
     /// Input vector dimension does not match expected size.
-    ///
-    /// The dF/dm vector must have length equal to the number of instruments.
     #[error("次元不整合: 期待値 {expected}、実際値 {got}")]
     DimensionMismatch {
         /// Expected dimension (number of instruments/pillars)
@@ -492,8 +422,6 @@ pub enum IftError {
     },
 
     /// Batch input matrix has wrong dimensions.
-    ///
-    /// For batch sensitivity, the matrix must have n_instruments rows.
     #[error("バッチ入力の次元不整合: 行数 {expected}、実際値 {got}")]
     BatchDimensionMismatch {
         /// Expected number of rows (n_instruments)
@@ -503,8 +431,6 @@ pub enum IftError {
     },
 
     /// Numerical error during IFT computation.
-    ///
-    /// Matrix-vector multiplication or other numerical operation failed.
     #[error("IFT計算中の数値エラー: {message}")]
     NumericalError {
         /// Description of the numerical issue
@@ -512,21 +438,10 @@ pub enum IftError {
     },
 }
 
-// =============================================================================
-// Calibration Error (Requirement 6.1)
-// =============================================================================
-
 /// Calibration error type.
-///
-/// # Requirement: 6.1
-///
-/// Comprehensive error type for model calibration failures.
-/// Supports multiple error scenarios with diagnostic information.
 #[derive(Error, Debug, Clone)]
 pub enum CalibrationError {
-    /// Convergence failure - optimiser did not converge
-    ///
-    /// Contains iteration count and final residual for diagnostics.
+    /// Convergence failure - optimiser did not converge.
     #[error(
         "キャリブレーションが収束しませんでした (iterations: {iterations}, residual: {residual:.6e})"
     )]
@@ -537,9 +452,7 @@ pub enum CalibrationError {
         residual: f64,
     },
 
-    /// Invalid parameter bounds
-    ///
-    /// Parameter constraints were violated during calibration.
+    /// Parameter bounds violated during calibration.
     #[error("パラメータ境界違反: {param_name} = {value:.6} (bounds: [{lower:.6}, {upper:.6}])")]
     BoundsViolation {
         /// Name of the parameter
@@ -552,9 +465,7 @@ pub enum CalibrationError {
         upper: f64,
     },
 
-    /// Insufficient market data
-    ///
-    /// Not enough data points for reliable calibration.
+    /// Insufficient market data for calibration.
     #[error("市場データが不足しています (required: {required}, provided: {provided})")]
     InsufficientData {
         /// Minimum required data points
@@ -563,27 +474,21 @@ pub enum CalibrationError {
         provided: usize,
     },
 
-    /// Numerical instability during calibration
-    ///
-    /// NaN, Inf, or other numerical issues encountered.
+    /// Numerical instability (NaN, Inf, etc.).
     #[error("数値不安定性: {message}")]
     NumericalInstability {
         /// Description of the numerical issue
         message: String,
     },
 
-    /// Invalid market data
-    ///
-    /// Market data failed validation (e.g., negative prices, invalid strikes).
+    /// Invalid market data.
     #[error("無効な市場データ: {message}")]
     InvalidMarketData {
         /// Description of the validation failure
         message: String,
     },
 
-    /// Model-specific error
-    ///
-    /// Error specific to a particular model type.
+    /// Model-specific error.
     #[error("{model_name} モデルエラー: {message}")]
     ModelError {
         /// Name of the model
@@ -592,36 +497,25 @@ pub enum CalibrationError {
         message: String,
     },
 
-    /// Arbitrage violation detected
-    ///
-    /// Calibrated parameters would produce arbitrage opportunities.
+    /// Arbitrage violation detected.
     #[error("アービトラージ違反: {message}")]
     ArbitrageViolation {
         /// Description of the arbitrage condition
         message: String,
     },
 
-    /// Gradient computation failed
-    ///
-    /// Failed to compute gradients for optimisation.
+    /// Gradient computation failed.
     #[error("勾配計算失敗: {message}")]
     GradientError {
         /// Description of the gradient computation failure
         message: String,
     },
 
-    // --- Global Solver Errors (Requirement 2.5, 9.1, 9.2, 9.4) ---
     /// No instruments provided for calibration.
-    ///
-    /// Requirement 2.5: The Calibration Problem shall return this error
-    /// if the instrument list is empty.
     #[error("キャリブレーション商品が指定されていません")]
     NoInstruments,
 
     /// Jacobian matrix is singular.
-    ///
-    /// Requirement 9.1: If Jacobian matrix is singular, the Global Solver
-    /// shall return this error with condition number information.
     #[error("Jacobian行列が特異です (condition number: {condition_number:.2e})")]
     SingularJacobian {
         /// Condition number of the matrix (estimate)
@@ -629,9 +523,6 @@ pub enum CalibrationError {
     },
 
     /// Solver diverged during iteration.
-    ///
-    /// Requirement 9.2: If the solver diverges (residual increases),
-    /// the Global Solver shall return this error.
     #[error("ソルバーが発散しました (iteration: {iteration}, residual: {residual:.6e})")]
     Divergence {
         /// Iteration at which divergence was detected
@@ -641,10 +532,6 @@ pub enum CalibrationError {
     },
 
     /// Instrument evaluation failed.
-    ///
-    /// Requirement 9.4: If computing the theoretical price for an instrument
-    /// fails, the Calibration Problem shall return this error identifying the
-    /// specific instrument.
     #[error("商品 {instrument_index} の評価に失敗しました: {message}")]
     InstrumentEvaluationFailed {
         /// Index of the failed instrument (0-based)
@@ -654,9 +541,6 @@ pub enum CalibrationError {
     },
 
     /// Dimension mismatch between instruments and parameters.
-    ///
-    /// Requirement 2.6: The Calibration Problem shall verify that
-    /// instrument count matches parameter count.
     #[error(
         "商品数とパラメータ数が一致しません (instruments: {instruments}, parameters: {parameters})"
     )]
@@ -668,8 +552,6 @@ pub enum CalibrationError {
     },
 
     /// Solver error from pricer_core.
-    ///
-    /// Wraps errors from the underlying numerical solver.
     #[error("ソルバーエラー: {message}")]
     SolverError {
         /// Error message from the solver
@@ -677,19 +559,13 @@ pub enum CalibrationError {
     },
 
     /// Missing required input.
-    ///
-    /// A required field was not provided to the builder.
     #[error("必須入力が不足しています: {field}")]
     MissingInput {
         /// Name of the missing field
         field: String,
     },
 
-    // --- Jump Calibration Errors (Requirement 6.4) ---
     /// Jump calibration failed.
-    ///
-    /// The jump-aware calibration did not converge or produced invalid results.
-    /// This may trigger fallback to non-jump calibration if enabled.
     #[error("ジャンプキャリブレーションに失敗しました: {message} (iterations: {iterations}, residual: {residual:.6e})")]
     JumpCalibrationFailed {
         /// Description of the failure
@@ -701,8 +577,6 @@ pub enum CalibrationError {
     },
 
     /// Invalid jump parameter.
-    ///
-    /// A jump pillar has invalid parameters (e.g., out of range, invalid date).
     #[error("無効なジャンプパラメータ: 日付 {date}, 値 {value:.4}bps - {reason}")]
     InvalidJumpParameter {
         /// Jump date in years or date string
@@ -715,10 +589,7 @@ pub enum CalibrationError {
 }
 
 impl CalibrationError {
-    /// Check if this is a recoverable error.
-    ///
-    /// Recoverable errors might succeed with different initial parameters
-    /// or optimiser settings.
+    /// Returns true if retrying with different parameters might succeed.
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,
@@ -866,10 +737,6 @@ impl From<CalibrationError> for pricer_core::types::PricingError {
 mod tests {
     use super::*;
 
-    // =========================================================================
-    // IftError Tests (Requirement 3.4)
-    // =========================================================================
-
     #[test]
     fn test_ift_error_no_jacobian_inverse() {
         let err = IftError::NoJacobianInverse;
@@ -955,10 +822,6 @@ mod tests {
         };
         assert_ne!(err5, err6);
     }
-
-    // =========================================================================
-    // CalibrationError Tests
-    // =========================================================================
 
     #[test]
     fn test_convergence_failure_error() {
@@ -1062,8 +925,6 @@ mod tests {
         let pricing_err: PricingError = calib_err.into();
         assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
     }
-
-    // --- Tests for new error types (Requirements 2.5, 9.1, 9.2, 9.4) ---
 
     #[test]
     fn test_no_instruments_error() {
@@ -1175,8 +1036,6 @@ mod tests {
         .is_recoverable());
     }
 
-    // --- Tests for jump calibration errors (Requirement 6.4) ---
-
     #[test]
     fn test_jump_calibration_failed_error() {
         let err = CalibrationError::JumpCalibrationFailed {
@@ -1279,10 +1138,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // JacobianQuality Tests (Requirement 5.3)
-    // =========================================================================
-
     #[test]
     fn test_jacobian_quality_good() {
         let quality = JacobianQuality::Good;
@@ -1327,10 +1182,6 @@ mod tests {
         );
     }
 
-    // =========================================================================
-    // RegularisationType Tests (Requirement 5.2, 5.5)
-    // =========================================================================
-
     #[test]
     fn test_regularisation_none() {
         let reg: RegularisationType<f64> = RegularisationType::None;
@@ -1361,10 +1212,6 @@ mod tests {
         assert!(!reg.is_regularised());
         assert!(matches!(reg, RegularisationType::None));
     }
-
-    // =========================================================================
-    // NumericalDiagnostics Tests (Requirement 5.5)
-    // =========================================================================
 
     #[test]
     fn test_numerical_diagnostics_default() {
@@ -1455,10 +1302,6 @@ mod tests {
         let summary = diag.summary();
         assert!(summary.contains("Tikhonov"));
     }
-
-    // =========================================================================
-    // Jacobian Validation Tests (Requirement 5.3)
-    // =========================================================================
 
     #[test]
     fn test_validate_jacobian_good() {

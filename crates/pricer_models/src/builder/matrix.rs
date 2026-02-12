@@ -17,29 +17,7 @@ use pricer_core::math::{
 
 use super::grid::CalibrationGrid;
 
-// =============================================================================
-// CalibrationMatrix
-// =============================================================================
-
-/// Calibration matrix for multi-instrument calibration.
-///
-/// An N×M matrix where:
-/// - N = number of instruments/quotes
-/// - M = number of grid points (dates, strikes, etc.)
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type for matrix elements
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_models::builder::CalibrationMatrix;
-///
-/// // 3 instruments, 5 grid points
-/// let mut matrix: CalibrationMatrix<f64> = CalibrationMatrix::zeros(3, 5);
-/// matrix.set(0, 1, 100.0); // Instrument 0 has value 100 at grid point 1
-/// ```
+/// Calibration matrix (N instruments x M grid points).
 #[derive(Debug, Clone)]
 pub struct CalibrationMatrix<T: Float + RealField + Copy> {
     /// The underlying matrix (N instruments x M grid points).
@@ -78,20 +56,11 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     }
 }
 
-// =============================================================================
-// InterpolationMatrix
-// =============================================================================
-
-/// Interpolation matrix for mapping pillar values to grid points.
+/// Interpolation matrix (M grid points x P pillars) mapping pillar values to
+/// grid points.
 ///
-/// An M×P matrix W where:
-/// - M = number of grid points
-/// - P = number of pillars
-/// - W\[j,k\] = interpolation weight for pillar k contributing to grid point j
-///
-/// For log-linear interpolation:
-/// - log(DF(t)) = (1-w) * log(DF(t_k)) + w * log(DF(t_{k+1}))
-/// - where w = (t - t_k) / (t_{k+1} - t_k)
+/// For log-linear interpolation: `log(DF(t)) = (1-w)*log(DF(t_k)) +
+/// w*log(DF(t_{k+1}))`
 #[derive(Debug, Clone)]
 pub struct InterpolationMatrix<T: Float + RealField + Copy> {
     /// The underlying matrix (M grid points x P pillars).
@@ -99,19 +68,8 @@ pub struct InterpolationMatrix<T: Float + RealField + Copy> {
 }
 
 impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
-    /// Create an interpolation matrix from pillar positions and a grid.
-    ///
-    /// Uses linear interpolation.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - Pillar positions (sorted)
-    /// * `grid` - Calibration grid with all points
-    ///
-    /// # Returns
-    ///
-    /// An interpolation matrix W where W\[j,k\] is the weight of pillar k for
-    /// point j.
+    /// Creates an interpolation matrix from pillar positions and a grid using
+    /// linear interpolation.
     pub fn from_pillars(pillars: &[T], grid: &CalibrationGrid<T>) -> Self {
         let points = grid.points();
         let num_points = points.len();
@@ -139,9 +97,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         Self { inner: matrix }
     }
 
-    /// Find the pillar interval containing a point.
-    ///
-    /// Returns (lower_index, upper_index, interpolation_weight).
+    /// Returns `(lower_index, upper_index, interpolation_weight)` for a point.
     fn find_pillar_interval(p: T, pillars: &[T]) -> (usize, usize, T) {
         if pillars.is_empty() {
             return (0, 0, T::zero());
@@ -189,23 +145,15 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
             .collect()
     }
 
-    /// Compute all cashflow DFs from pillar DFs using vector product.
-    ///
-    /// # Requirement 4.1, 4.3
+    /// Computes all cashflow DFs from pillar DFs using vector product.
     pub fn apply(&self, pillar_dfs: &DVector<T>) -> DVector<T> { &self.inner * pillar_dfs }
 
-    /// Compute all cashflow DFs using log-linear interpolation.
-    ///
-    /// # Requirement 4.5
+    /// Computes all cashflow DFs using log-linear interpolation.
     pub fn apply_log_linear(&self, pillar_log_dfs: &DVector<T>) -> DVector<T> {
         let log_result = &self.inner * pillar_log_dfs;
         log_result.map(|x| Float::exp(x))
     }
 }
-
-// =============================================================================
-// Jump-Aware Interpolation Extensions
-// =============================================================================
 
 /// Jump pillar information for interpolation.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -230,20 +178,8 @@ impl<T: Float> JumpInfo<T> {
 }
 
 impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
-    /// Create an interpolation matrix with jump pillars as segment boundaries.
-    ///
-    /// Jump pillars create discontinuities in the forward rate curve.
-    /// This method ensures interpolation respects those boundaries.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - Regular curve pillars (sorted)
-    /// * `jump_times` - Jump pillar times (sorted)
-    /// * `grid` - Calibration grid with all points
-    ///
-    /// # Returns
-    ///
-    /// An interpolation matrix that treats jump times as segment boundaries.
+    /// Creates an interpolation matrix treating jump times as segment
+    /// boundaries.
     pub fn with_jump_pillars(pillars: &[T], jump_times: &[T], grid: &CalibrationGrid<T>) -> Self {
         // Merge pillars and jump times into sorted unique list
         let mut all_breaks: Vec<T> = pillars.to_vec();
@@ -261,20 +197,10 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         Self::from_pillars(&all_breaks, grid)
     }
 
-    /// Interpolate log discount factors with jump adjustments.
+    /// Interpolates log discount factors with jump adjustments.
     ///
-    /// Applies jump effects multiplicatively to discount factors:
-    /// DF(t) = DF_smooth(t) × Π(1 - jump_i × Δt_i) for all jumps before t
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df_pillars` - log(DF) at regular pillars
-    /// * `jumps` - Jump information (time and size)
-    /// * `grid_points` - Times at which to evaluate
-    ///
-    /// # Returns
-    ///
-    /// Adjusted log(DF) values at each grid point.
+    /// Applies: `DF(t) = DF_smooth(t) * prod(1 - jump_i * dt_i)` for jumps
+    /// before t.
     pub fn interpolate_with_jumps(
         &self,
         log_df_pillars: &[T],
@@ -324,17 +250,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
         adjustment
     }
 
-    /// Interpolate discount factors with jump adjustments.
-    ///
-    /// # Arguments
-    ///
-    /// * `log_df_pillars` - log(DF) at regular pillars
-    /// * `jumps` - Jump information (time and size)
-    /// * `grid_points` - Times at which to evaluate
-    ///
-    /// # Returns
-    ///
-    /// Adjusted discount factors at each grid point.
+    /// Interpolates discount factors with jump adjustments.
     pub fn interpolate_df_with_jumps(
         &self,
         log_df_pillars: &[T],
@@ -347,10 +263,6 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
             .collect()
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -474,10 +386,6 @@ mod tests {
         assert_relative_eq!(interp.inner[(3, 1)], 1.0, epsilon = 1e-10);
     }
 
-    // =========================================================================
-    // Jump-Aware Interpolation Tests
-    // =========================================================================
-
     #[test]
     fn test_jump_info_creation() {
         let jump = JumpInfo::new(0.5, 0.0025);
@@ -575,10 +483,6 @@ mod tests {
         assert!(df_result[0] < df_no_jump[0]);
         assert!(df_result[1] < df_no_jump[1]);
     }
-
-    // =========================================================================
-    // apply() and apply_log_linear() Tests (Requirement 4)
-    // =========================================================================
 
     #[test]
     fn test_apply_basic() {

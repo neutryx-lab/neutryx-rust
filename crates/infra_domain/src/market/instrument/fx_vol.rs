@@ -24,9 +24,10 @@ pub enum FxVolInstrumentError {
 }
 
 /// Delta type convention for FX options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "snake_case")]
 pub enum DeltaType {
     /// Spot delta (standard for most G10 pairs like EURUSD).
     #[default]
@@ -60,8 +61,9 @@ impl DeltaType {
 }
 
 /// Cut-off time for option expiry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CutOffTime {
     /// New York 10:00 AM (standard for most FX options).
     #[default]
@@ -73,8 +75,7 @@ pub enum CutOffTime {
 }
 
 /// FX Vol Convention specification.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct FxVolConvention {
     /// Delta type (spot delta, premium-adjusted, forward).
     pub delta_type: DeltaType,
@@ -137,8 +138,7 @@ impl FxVolConvention {
 }
 
 /// Delta value for FX options (0 < delta <= 50).
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Delta(f64);
 
 impl Delta {
@@ -173,8 +173,7 @@ impl std::fmt::Display for Delta {
 }
 
 /// FX Volatility Instrument variants.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum FxVolInstrument {
     /// At-the-money volatility quote.
     Atm {

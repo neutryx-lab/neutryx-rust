@@ -10,7 +10,7 @@ authors.workspace = true
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 pricer_models = { path = "../pricer_models" }
-infra_domain = { path = "../infra_domain", features = ["serde"] }
+infra_domain = { path = "../infra_domain" }
 infra_config = { path = "../infra_config" }
 strum.workspace = true
 
@@ -39,8 +39,11 @@ serde_json.workspace = true
 # Aligned memory allocation (for SIMD optimisation)
 aligned-vec = "0.5"
 
-# Graph data structures and algorithms
-petgraph.workspace = true
+# Checkpointing for memory-efficient AD
+pricer_checkpoint = { path = "../pricer_checkpoint" }
+
+# Computation graph visualisation
+pricer_graph = { path = "../pricer_graph" }
 
 [dev-dependencies]
 approx.workspace = true

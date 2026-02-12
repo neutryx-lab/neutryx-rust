@@ -50,10 +50,6 @@ fn vec_norm<T: Float>(v: &[T]) -> T {
     Float::sqrt(v.iter().map(|&x| x * x).fold(T::zero(), |acc, x| acc + x))
 }
 
-// =============================================================================
-// CalibrationEngineConfig
-// =============================================================================
-
 /// Configuration for the calibration engine.
 #[derive(Debug, Clone)]
 pub struct CalibrationEngineConfig<T: Float> {
@@ -103,54 +99,7 @@ impl<T: Float> CalibrationEngineConfig<T> {
             ..Self::default()
         }
     }
-
-    /// Builder: set tolerance.
-    #[must_use]
-    pub fn with_tolerance(mut self, tolerance: T) -> Self {
-        self.tolerance = tolerance;
-        self.param_tolerance = tolerance;
-        self
-    }
-
-    /// Builder: set max iterations.
-    #[must_use]
-    pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
-        self.max_iterations = max_iterations;
-        self
-    }
-
-    /// Builder: set interpolation method.
-    #[must_use]
-    pub fn with_interpolation(mut self, interpolation: BootstrapInterpolation) -> Self {
-        self.interpolation = interpolation;
-        self
-    }
-
-    /// Builder: set store_jacobian_inverse flag.
-    #[must_use]
-    pub fn with_store_jacobian_inverse(mut self, store: bool) -> Self {
-        self.store_jacobian_inverse = store;
-        self
-    }
-
-    /// Builder: set damping factor.
-    #[must_use]
-    pub fn with_damping(mut self, damping: T) -> Self {
-        self.damping_factor = Some(damping);
-        self
-    }
-
-    /// Builder: enable debug logging.
-    #[must_use]
-    pub fn with_debug_logging(mut self, enabled: bool) -> Self {
-        self.debug_logging = enabled;
-        self
-    }
 }
-
-// =============================================================================
-// CalibrationResult
-// =============================================================================
 
 /// Result of calibration.
 #[derive(Debug, Clone)]
@@ -177,16 +126,7 @@ pub struct CalibrationResult<T: Float> {
     pub strategy_name: &'static str,
 }
 
-// =============================================================================
-// CalibrationEngine
-// =============================================================================
-
 /// Unified calibration engine with pluggable linear solve strategy.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type
-/// * `S` - Linear solve strategy (`LUStrategy` or `LowerTriangularStrategy`)
 #[derive(Debug, Clone)]
 pub struct CalibrationEngine<T: Float + RealField + Copy, S: LinearSolveStrategy<T>> {
     config: CalibrationEngineConfig<T>,
@@ -231,14 +171,6 @@ where
     pub fn strategy_name(&self) -> &'static str { self.strategy.name() }
 
     /// Calibrate a curve from instruments.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Market instruments to calibrate
-    ///
-    /// # Returns
-    ///
-    /// Calibration result containing the curve and diagnostics.
     pub fn calibrate<I>(
         &mut self,
         instruments: &[I],
@@ -259,15 +191,6 @@ where
     }
 
     /// Calibrate with jump pillars.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Market instruments
-    /// * `jump_pillars` - Jump pillars for CB meeting dates
-    ///
-    /// # Returns
-    ///
-    /// Calibration result with realised jumps.
     pub fn calibrate_with_jumps<I>(
         &mut self,
         instruments: &[I],
@@ -556,19 +479,11 @@ where
     }
 }
 
-// =============================================================================
-// Type Aliases for Convenience
-// =============================================================================
-
 /// Calibration engine with LU strategy (Global Bootstrap).
 pub type GlobalCalibrationEngine<T> = CalibrationEngine<T, LUStrategy<T>>;
 
 /// Calibration engine with lower triangular strategy (Sequential Bootstrap).
 pub type SequentialCalibrationEngine<T> = CalibrationEngine<T, LowerTriangularStrategy<T>>;
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -625,7 +540,7 @@ mod tests {
     #[test]
     fn test_jacobian_inverse_stored() {
         let instruments = create_test_instruments();
-        let config = CalibrationEngineConfig::default().with_store_jacobian_inverse(true);
+        let config = CalibrationEngineConfig::default(); // store_jacobian_inverse is true by default
 
         let mut engine = CalibrationEngine::with_lu_strategy(config);
         let result = engine.calibrate(&instruments).unwrap();
@@ -638,12 +553,15 @@ mod tests {
 
     #[test]
     fn test_config_builder() {
-        let config: CalibrationEngineConfig<f64> = CalibrationEngineConfig::default()
-            .with_tolerance(1e-12)
-            .with_max_iterations(200)
-            .with_interpolation(BootstrapInterpolation::LogLinear)
-            .with_store_jacobian_inverse(true)
-            .with_debug_logging(true);
+        let config: CalibrationEngineConfig<f64> = CalibrationEngineConfig {
+            tolerance: 1e-12,
+            param_tolerance: 1e-12,
+            max_iterations: 200,
+            interpolation: BootstrapInterpolation::LogLinear,
+            store_jacobian_inverse: true,
+            debug_logging: true,
+            ..Default::default()
+        };
 
         assert_relative_eq!(config.tolerance, 1e-12, epsilon = 1e-15);
         assert_eq!(config.max_iterations, 200);
@@ -654,7 +572,10 @@ mod tests {
     #[test]
     fn test_calibration_result_fields() {
         let instruments = create_test_instruments();
-        let config = CalibrationEngineConfig::default().with_debug_logging(true);
+        let config = CalibrationEngineConfig {
+            debug_logging: true,
+            ..Default::default()
+        };
 
         let mut engine = CalibrationEngine::with_lu_strategy(config);
         let result = engine.calibrate(&instruments).unwrap();

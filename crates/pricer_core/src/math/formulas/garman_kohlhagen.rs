@@ -50,7 +50,13 @@
 
 use num_traits::Float;
 
-use super::{error::FormulaError, generalised_bsm::GeneralisedBSM};
+use super::{
+    error::{
+        require_positive_expiry, require_positive_spot, require_positive_strike,
+        require_positive_vol, FormulaError,
+    },
+    generalised_bsm::GeneralisedBSM,
+};
 use crate::math::{normal_dist::norm_cdf, numeric::from_f64};
 
 /// Parameters for the Garman-Kohlhagen model.
@@ -89,26 +95,10 @@ impl<T: Float> GarmanKohlhagenParams<T> {
         volatility: T,
         expiry: T,
     ) -> Result<Self, FormulaError> {
-        if spot <= T::zero() {
-            return Err(FormulaError::InvalidSpot {
-                spot: spot.to_f64().unwrap_or(0.0),
-            });
-        }
-        if strike <= T::zero() {
-            return Err(FormulaError::InvalidSpot {
-                spot: strike.to_f64().unwrap_or(0.0),
-            });
-        }
-        if volatility <= T::zero() {
-            return Err(FormulaError::InvalidVolatility {
-                volatility: volatility.to_f64().unwrap_or(0.0),
-            });
-        }
-        if expiry <= T::zero() {
-            return Err(FormulaError::InvalidExpiry {
-                expiry: expiry.to_f64().unwrap_or(0.0),
-            });
-        }
+        require_positive_spot(spot)?;
+        require_positive_strike(strike)?;
+        require_positive_vol(volatility)?;
+        require_positive_expiry(expiry)?;
 
         Ok(Self {
             spot,
@@ -228,14 +218,15 @@ impl<T: Float> GarmanKohlhagen<T> {
     }
 }
 
-/// Convenience function to price an FX call option.
-pub fn fx_call_price<T: Float>(
+/// Convenience function to price an FX option.
+pub fn fx_option_price<T: Float>(
     spot: T,
     strike: T,
     rate_domestic: T,
     rate_foreign: T,
     volatility: T,
     expiry: T,
+    is_call: bool,
 ) -> Result<T, FormulaError> {
     let params = GarmanKohlhagenParams::new(
         spot,
@@ -245,8 +236,27 @@ pub fn fx_call_price<T: Float>(
         volatility,
         expiry,
     )?;
-    let model = GarmanKohlhagen::new(params);
-    Ok(model.price(true))
+    Ok(GarmanKohlhagen::new(params).price(is_call))
+}
+
+/// Convenience function to price an FX call option.
+pub fn fx_call_price<T: Float>(
+    spot: T,
+    strike: T,
+    rate_domestic: T,
+    rate_foreign: T,
+    volatility: T,
+    expiry: T,
+) -> Result<T, FormulaError> {
+    fx_option_price(
+        spot,
+        strike,
+        rate_domestic,
+        rate_foreign,
+        volatility,
+        expiry,
+        true,
+    )
 }
 
 /// Convenience function to price an FX put option.
@@ -258,16 +268,15 @@ pub fn fx_put_price<T: Float>(
     volatility: T,
     expiry: T,
 ) -> Result<T, FormulaError> {
-    let params = GarmanKohlhagenParams::new(
+    fx_option_price(
         spot,
         strike,
         rate_domestic,
         rate_foreign,
         volatility,
         expiry,
-    )?;
-    let model = GarmanKohlhagen::new(params);
-    Ok(model.price(false))
+        false,
+    )
 }
 
 #[cfg(test)]

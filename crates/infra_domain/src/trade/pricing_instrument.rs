@@ -3,60 +3,13 @@
 use std::fmt;
 
 use super::payoff::OptionType;
+pub use crate::market::instrument::ExerciseStyle;
 
 /// Alias for OptionType to maintain compatibility with pricing code.
 pub type PayoffType = OptionType;
 
-/// Exercise style for options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum ExerciseStyle {
-    /// European option (exercise only at expiry).
-    European,
-    /// American option (exercise any time before expiry).
-    American,
-    /// Bermudan option (exercise on specified dates).
-    Bermudan,
-    /// Asian option (payoff depends on average price).
-    Asian,
-}
-
-impl ExerciseStyle {
-    /// Returns true if this is European exercise.
-    #[inline]
-    #[must_use]
-    pub fn is_european(&self) -> bool { matches!(self, ExerciseStyle::European) }
-
-    /// Returns true if this is American exercise.
-    #[inline]
-    #[must_use]
-    pub fn is_american(&self) -> bool { matches!(self, ExerciseStyle::American) }
-
-    /// Returns true if this is Bermudan exercise.
-    #[inline]
-    #[must_use]
-    pub fn is_bermudan(&self) -> bool { matches!(self, ExerciseStyle::Bermudan) }
-
-    /// Returns true if this is Asian exercise.
-    #[inline]
-    #[must_use]
-    pub fn is_asian(&self) -> bool { matches!(self, ExerciseStyle::Asian) }
-}
-
-impl fmt::Display for ExerciseStyle {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ExerciseStyle::European => write!(f, "European"),
-            ExerciseStyle::American => write!(f, "American"),
-            ExerciseStyle::Bermudan => write!(f, "Bermudan"),
-            ExerciseStyle::Asian => write!(f, "Asian"),
-        }
-    }
-}
-
 /// Direction for forwards and swaps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ForwardDirection {
     /// Long position (buyer).
     Long,
@@ -85,8 +38,7 @@ impl fmt::Display for ForwardDirection {
 }
 
 /// Parameters for instrument pricing.
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct InstrumentParams<T> {
     strike: T,
     expiry: T,
@@ -118,8 +70,7 @@ impl<T: Copy> InstrumentParams<T> {
 }
 
 /// Vanilla option instrument.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct VanillaOption<T> {
     params: InstrumentParams<T>,
     payoff_type: PayoffType,
@@ -186,8 +137,7 @@ impl VanillaOption<f64> {
 }
 
 /// Forward contract instrument.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Forward<T> {
     strike: T,
     expiry: T,
@@ -237,8 +187,7 @@ impl Forward<f64> {
 }
 
 /// A pricing instrument for valuation and risk calculations.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum PricingInstrument<T> {
     /// Vanilla option (call or put).
     Vanilla(VanillaOption<T>),
@@ -299,8 +248,7 @@ impl PricingInstrument<f64> {
 }
 
 /// FX option type (Call or Put).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum FxOptionType {
     /// Call option - right to buy the base currency.
     Call,

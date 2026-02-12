@@ -80,9 +80,9 @@ impl From<AnalyticalError> for PricingError {
     fn from(err: AnalyticalError) -> Self {
         match err {
             AnalyticalError::Formula(e) => match e {
-                FormulaError::InvalidVolatility { .. } | FormulaError::InvalidSpot { .. } => {
-                    PricingError::InvalidInput(e.to_string())
-                }
+                FormulaError::InvalidVolatility { .. }
+                | FormulaError::InvalidSpot { .. }
+                | FormulaError::InvalidStrike { .. } => PricingError::InvalidInput(e.to_string()),
                 FormulaError::InvalidExpiry { .. } => PricingError::InvalidInput(e.to_string()),
                 FormulaError::NumericalInstability { .. } => {
                     PricingError::NumericalInstability(e.to_string())

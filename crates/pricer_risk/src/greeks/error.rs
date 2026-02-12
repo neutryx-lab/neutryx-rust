@@ -50,42 +50,33 @@ pub enum GreeksError {
     InvalidBenchmarkConfig(String),
 }
 
+/// Generate `snake_case` constructor helpers for `GreeksError(String)`
+/// variants.
+macro_rules! greeks_error_ctor {
+    ($($method:ident => $variant:ident),* $(,)?) => {
+        $(
+            pub fn $method(msg: impl Into<String>) -> Self { Self::$variant(msg.into()) }
+        )*
+    };
+}
+
 impl GreeksError {
-    /// Creates an invalid spot bump error.
-    pub fn invalid_spot_bump(msg: impl Into<String>) -> Self { Self::InvalidSpotBump(msg.into()) }
-
-    /// Creates an invalid vol bump error.
-    pub fn invalid_vol_bump(msg: impl Into<String>) -> Self { Self::InvalidVolBump(msg.into()) }
-
-    /// Creates an invalid time bump error.
-    pub fn invalid_time_bump(msg: impl Into<String>) -> Self { Self::InvalidTimeBump(msg.into()) }
-
-    /// Creates an invalid rate bump error.
-    pub fn invalid_rate_bump(msg: impl Into<String>) -> Self { Self::InvalidRateBump(msg.into()) }
-
-    /// Creates an invalid tolerance error.
-    pub fn invalid_tolerance(msg: impl Into<String>) -> Self { Self::InvalidTolerance(msg.into()) }
-
-    /// Creates an invalid swap error.
-    pub fn invalid_swap(msg: impl Into<String>) -> Self { Self::InvalidSwap(msg.into()) }
-
-    /// Creates a curve not found error.
-    pub fn curve_not_found(name: impl Into<String>) -> Self { Self::CurveNotFound(name.into()) }
-
-    /// Creates an AAD failed error.
-    pub fn aad_failed(msg: impl Into<String>) -> Self { Self::AadFailed(msg.into()) }
+    greeks_error_ctor!(
+        invalid_spot_bump => InvalidSpotBump,
+        invalid_vol_bump => InvalidVolBump,
+        invalid_time_bump => InvalidTimeBump,
+        invalid_rate_bump => InvalidRateBump,
+        invalid_tolerance => InvalidTolerance,
+        invalid_swap => InvalidSwap,
+        curve_not_found => CurveNotFound,
+        aad_failed => AadFailed,
+        invalid_config => InvalidConfig,
+        invalid_benchmark_config => InvalidBenchmarkConfig,
+    );
 
     /// Creates an accuracy check failed error.
     pub fn accuracy_check_failed(max_error: f64, tolerance: f64) -> Self {
         Self::AccuracyCheckFailed(max_error, tolerance)
-    }
-
-    /// Creates an invalid config error.
-    pub fn invalid_config(msg: impl Into<String>) -> Self { Self::InvalidConfig(msg.into()) }
-
-    /// Creates an invalid benchmark config error.
-    pub fn invalid_benchmark_config(msg: impl Into<String>) -> Self {
-        Self::InvalidBenchmarkConfig(msg.into())
     }
 
     /// Returns true if this is a configuration error.

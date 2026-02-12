@@ -3,13 +3,24 @@
 use crate::time::{AccrualPeriod, Date, EndOfMonthRule, Frequency, Period, Tenor, TimeUnit};
 
 /// Asset class categorisation for financial instruments.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
+    strum::AsRefStr,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+#[serde(rename_all = "snake_case")]
 pub enum AssetClass {
     /// Interest rate instruments (swaps, swaptions, caps/floors, etc.).
     Rates,
     /// Foreign exchange instruments (spots, forwards, options).
+    #[strum(serialize = "FX")]
     Fx,
     /// Equity instruments (forwards, options, swaps).
     Equity,
@@ -19,29 +30,10 @@ pub enum AssetClass {
     Commodity,
 }
 
-impl AssetClass {
-    /// Returns the string representation of the asset class.
-    #[must_use]
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AssetClass::Rates => "Rates",
-            AssetClass::Fx => "FX",
-            AssetClass::Equity => "Equity",
-            AssetClass::Credit => "Credit",
-            AssetClass::Commodity => "Commodity",
-        }
-    }
-}
-
-impl std::fmt::Display for AssetClass {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
 /// Exercise style for option instruments.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, serde::Serialize, serde::Deserialize,
+)]
 pub enum ExerciseStyle {
     /// European: exercise only at expiry.
     European,
@@ -49,11 +41,34 @@ pub enum ExerciseStyle {
     American,
     /// Bermudan: exercise at specific dates.
     Bermudan,
+    /// Asian: payoff depends on average price.
+    Asian,
+}
+
+impl ExerciseStyle {
+    /// Returns true if this is European exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_european(&self) -> bool { matches!(self, Self::European) }
+
+    /// Returns true if this is American exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_american(&self) -> bool { matches!(self, Self::American) }
+
+    /// Returns true if this is Bermudan exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_bermudan(&self) -> bool { matches!(self, Self::Bermudan) }
+
+    /// Returns true if this is Asian exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_asian(&self) -> bool { matches!(self, Self::Asian) }
 }
 
 /// Payer/Receiver position indicator.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum PayerReceiver {
     /// Payer position (pay fixed, receive floating in swap context).
     Payer,
@@ -82,8 +97,7 @@ impl PayerReceiver {
 }
 
 /// Barrier type for barrier options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum BarrierType {
     /// Knock-in: option becomes active when barrier is breached.
     KnockIn,
@@ -92,8 +106,7 @@ pub enum BarrierType {
 }
 
 /// Barrier direction for barrier options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum BarrierDirection {
     /// Up barrier: triggered when spot rises above barrier level.
     Up,
@@ -102,8 +115,7 @@ pub enum BarrierDirection {
 }
 
 /// Notional schedule for amortising instruments.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NotionalSchedule {
     /// Notional amounts for each period.
     pub notionals: Vec<f64>,
@@ -152,8 +164,7 @@ impl Default for NotionalSchedule {
 }
 
 /// Payment schedule for fixed income instruments.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PaymentSchedule {
     /// Accrual periods in the schedule.
     pub periods: Vec<AccrualPeriod>,
@@ -254,8 +265,8 @@ mod tests {
         assert_eq!(AssetClass::Equity.to_string(), "Equity");
         assert_eq!(AssetClass::Credit.to_string(), "Credit");
         assert_eq!(AssetClass::Commodity.to_string(), "Commodity");
-        assert_eq!(AssetClass::Rates.as_str(), "Rates");
-        assert_eq!(AssetClass::Fx.as_str(), "FX");
+        assert_eq!(AssetClass::Rates.as_ref(), "Rates");
+        assert_eq!(AssetClass::Fx.as_ref(), "FX");
         assert_eq!(AssetClass::Rates, AssetClass::Rates);
         assert_ne!(AssetClass::Rates, AssetClass::Fx);
         let mut set = std::collections::HashSet::new();

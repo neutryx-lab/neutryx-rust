@@ -6,10 +6,6 @@ use thiserror::Error;
 
 use crate::market::MarketDataError;
 
-// =============================================================================
-// Shared Infrastructure Modules
-// =============================================================================
-
 pub mod compile;
 mod error;
 mod grid;
@@ -21,10 +17,6 @@ mod jump;
 mod matrix;
 mod problem;
 
-// =============================================================================
-// Calibration Submodules
-// =============================================================================
-
 /// Curve calibration (sequential and global bootstrapping).
 pub mod curve;
 
@@ -34,20 +26,7 @@ pub mod construction;
 /// Volatility surface and cube calibration.
 pub mod vol;
 
-// =============================================================================
-// Public Re-exports: Shared Infrastructure
-// =============================================================================
-
-// =============================================================================
-// Public Re-exports: Curve Calibration
-// =============================================================================
-// =============================================================================
-// Public Re-exports: Instrument Compilation (Requirement 1, 8)
-// =============================================================================
 pub use compile::{CompileError, CompiledInstrument, InstrumentCompiler, InstrumentType};
-// =============================================================================
-// Public Re-exports: Curve Construction
-// =============================================================================
 pub use construction::{
     ConstructionConfig, ConstructionError, ConstructionResult, CurveConstructionEngine,
 };
@@ -70,18 +49,11 @@ pub use instrument::CalibrationInstrument;
 pub use jump::{JumpConfig, JumpPillar};
 pub use matrix::{CalibrationMatrix, InterpolationMatrix};
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
-// =============================================================================
-// Public Re-exports: Vol Calibration
-// =============================================================================
 pub use vol::{
     DeltaVol, DeltaVolSlice, FxVolBuilder, FxVolResult, OrderedFloat, SabrBounds, SabrParams,
     SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrationDiagnostics,
     SliceCalibrationResult, SliceCalibrator, VolBuilder, VolCubeBuilder, VolCubeResult, VolQuote,
 };
-
-// =============================================================================
-// Bootstrap Error and Result Types
-// =============================================================================
 
 /// Errors that can occur during bootstrapping.
 #[derive(Debug, Clone, Error)]

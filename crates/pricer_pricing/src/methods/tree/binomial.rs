@@ -1,5 +1,6 @@
 //! Binomial tree implementation using the Cox-Ross-Rubinstein (CRR) algorithm.
 
+use super::common::TreeBase;
 use crate::generic_pricer::ConfigError;
 
 /// CRR (Cox-Ross-Rubinstein) parameters for binomial tree.
@@ -29,14 +30,7 @@ impl CrrParams {
 /// Binomial tree for option pricing using the CRR algorithm.
 #[derive(Debug, Clone)]
 pub struct BinomialTree {
-    spot: f64,
-    strike: f64,
-    expiry: f64,
-    rate: f64,
-    volatility: f64,
-    num_steps: usize,
-    is_call: bool,
-    is_american: bool,
+    base: TreeBase,
     params: CrrParams,
 }
 
@@ -52,41 +46,7 @@ impl BinomialTree {
         is_call: bool,
         is_american: bool,
     ) -> Result<Self, ConfigError> {
-        if spot <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "spot",
-                reason: "spot must be positive".to_string(),
-            });
-        }
-        if strike <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "strike",
-                reason: "strike must be positive".to_string(),
-            });
-        }
-        if expiry <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "expiry",
-                reason: "expiry must be positive".to_string(),
-            });
-        }
-        if volatility <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "volatility",
-                reason: "volatility must be positive".to_string(),
-            });
-        }
-        if num_steps == 0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "num_steps",
-                reason: "num_steps must be greater than 0".to_string(),
-            });
-        }
-
-        let dt = expiry / num_steps as f64;
-        let params = CrrParams::compute(volatility, rate, dt);
-
-        Ok(Self {
+        let base = TreeBase::new(
             spot,
             strike,
             expiry,
@@ -95,34 +55,26 @@ impl BinomialTree {
             num_steps,
             is_call,
             is_american,
-            params,
-        })
+        )?;
+        let params = CrrParams::compute(volatility, rate, base.dt());
+        Ok(Self { base, params })
     }
 
     /// Returns the CRR parameters.
     pub fn params(&self) -> CrrParams { self.params }
 
-    /// Computes the payoff at a given spot level.
-    fn payoff(&self, spot: f64) -> f64 {
-        if self.is_call {
-            (spot - self.strike).max(0.0)
-        } else {
-            (self.strike - spot).max(0.0)
-        }
-    }
-
     /// Prices the option using backward induction.
     pub fn price(&self) -> f64 {
-        let n = self.num_steps;
+        let n = self.base.num_steps;
         let u = self.params.u;
         let d = self.params.d;
         let p = self.params.p;
-        let discount = (-self.rate * self.params.dt).exp();
+        let discount = self.base.discount();
 
         let mut values: Vec<f64> = (0..=n)
             .map(|j| {
-                let spot_t = self.spot * u.powi(j as i32) * d.powi((n - j) as i32);
-                self.payoff(spot_t)
+                let spot_t = self.base.spot * u.powi(j as i32) * d.powi((n - j) as i32);
+                self.base.payoff(spot_t)
             })
             .collect();
 
@@ -130,9 +82,9 @@ impl BinomialTree {
             for j in 0..=i {
                 let continuation = discount * (p * values[j + 1] + (1.0 - p) * values[j]);
 
-                if self.is_american {
-                    let spot_ij = self.spot * u.powi(j as i32) * d.powi((i - j) as i32);
-                    let intrinsic = self.payoff(spot_ij);
+                if self.base.is_american {
+                    let spot_ij = self.base.spot * u.powi(j as i32) * d.powi((i - j) as i32);
+                    let intrinsic = self.base.payoff(spot_ij);
                     values[j] = continuation.max(intrinsic);
                 } else {
                     values[j] = continuation;
@@ -145,20 +97,20 @@ impl BinomialTree {
 
     /// Computes Delta from the tree.
     pub fn delta(&self) -> f64 {
-        if self.num_steps < 1 {
+        if self.base.num_steps < 1 {
             return 0.0;
         }
 
         let u = self.params.u;
         let d = self.params.d;
         let p = self.params.p;
-        let discount = (-self.rate * self.params.dt).exp();
-        let n = self.num_steps;
+        let discount = self.base.discount();
+        let n = self.base.num_steps;
 
         let mut values: Vec<f64> = (0..=n)
             .map(|j| {
-                let spot_t = self.spot * u.powi(j as i32) * d.powi((n - j) as i32);
-                self.payoff(spot_t)
+                let spot_t = self.base.spot * u.powi(j as i32) * d.powi((n - j) as i32);
+                self.base.payoff(spot_t)
             })
             .collect();
 
@@ -166,9 +118,9 @@ impl BinomialTree {
             for j in 0..=i {
                 let continuation = discount * (p * values[j + 1] + (1.0 - p) * values[j]);
 
-                if self.is_american {
-                    let spot_ij = self.spot * u.powi(j as i32) * d.powi((i - j) as i32);
-                    let intrinsic = self.payoff(spot_ij);
+                if self.base.is_american {
+                    let spot_ij = self.base.spot * u.powi(j as i32) * d.powi((i - j) as i32);
+                    let intrinsic = self.base.payoff(spot_ij);
                     values[j] = continuation.max(intrinsic);
                 } else {
                     values[j] = continuation;
@@ -178,28 +130,28 @@ impl BinomialTree {
 
         let v_u = values[1];
         let v_d = values[0];
-        let s_u = self.spot * u;
-        let s_d = self.spot * d;
+        let s_u = self.base.spot * u;
+        let s_d = self.base.spot * d;
 
         (v_u - v_d) / (s_u - s_d)
     }
 
     /// Computes Gamma from the tree.
     pub fn gamma(&self) -> f64 {
-        if self.num_steps < 2 {
+        if self.base.num_steps < 2 {
             return 0.0;
         }
 
         let u = self.params.u;
         let d = self.params.d;
         let p = self.params.p;
-        let discount = (-self.rate * self.params.dt).exp();
-        let n = self.num_steps;
+        let discount = self.base.discount();
+        let n = self.base.num_steps;
 
         let mut values: Vec<f64> = (0..=n)
             .map(|j| {
-                let spot_t = self.spot * u.powi(j as i32) * d.powi((n - j) as i32);
-                self.payoff(spot_t)
+                let spot_t = self.base.spot * u.powi(j as i32) * d.powi((n - j) as i32);
+                self.base.payoff(spot_t)
             })
             .collect();
 
@@ -207,9 +159,9 @@ impl BinomialTree {
             for j in 0..=i {
                 let continuation = discount * (p * values[j + 1] + (1.0 - p) * values[j]);
 
-                if self.is_american {
-                    let spot_ij = self.spot * u.powi(j as i32) * d.powi((i - j) as i32);
-                    let intrinsic = self.payoff(spot_ij);
+                if self.base.is_american {
+                    let spot_ij = self.base.spot * u.powi(j as i32) * d.powi((i - j) as i32);
+                    let intrinsic = self.base.payoff(spot_ij);
                     values[j] = continuation.max(intrinsic);
                 } else {
                     values[j] = continuation;
@@ -221,9 +173,9 @@ impl BinomialTree {
         let v_ud = values[1];
         let v_dd = values[0];
 
-        let s_uu = self.spot * u * u;
-        let s_ud = self.spot;
-        let s_dd = self.spot * d * d;
+        let s_uu = self.base.spot * u * u;
+        let s_ud = self.base.spot;
+        let s_dd = self.base.spot * d * d;
 
         let delta_up = (v_uu - v_ud) / (s_uu - s_ud);
         let delta_down = (v_ud - v_dd) / (s_ud - s_dd);
@@ -233,28 +185,28 @@ impl BinomialTree {
     }
 
     /// Returns whether this is a call option.
-    pub fn is_call(&self) -> bool { self.is_call }
+    pub fn is_call(&self) -> bool { self.base.is_call }
 
     /// Returns whether this is an American option.
-    pub fn is_american(&self) -> bool { self.is_american }
+    pub fn is_american(&self) -> bool { self.base.is_american }
 
     /// Returns the spot price.
-    pub fn spot(&self) -> f64 { self.spot }
+    pub fn spot(&self) -> f64 { self.base.spot }
 
     /// Returns the strike price.
-    pub fn strike(&self) -> f64 { self.strike }
+    pub fn strike(&self) -> f64 { self.base.strike }
 
     /// Returns the time to expiry.
-    pub fn expiry(&self) -> f64 { self.expiry }
+    pub fn expiry(&self) -> f64 { self.base.expiry }
 
     /// Returns the number of steps.
-    pub fn num_steps(&self) -> usize { self.num_steps }
+    pub fn num_steps(&self) -> usize { self.base.num_steps }
 
     /// Returns the volatility.
-    pub fn volatility(&self) -> f64 { self.volatility }
+    pub fn volatility(&self) -> f64 { self.base.volatility }
 
     /// Returns the risk-free rate.
-    pub fn rate(&self) -> f64 { self.rate }
+    pub fn rate(&self) -> f64 { self.base.rate }
 }
 
 #[cfg(test)]

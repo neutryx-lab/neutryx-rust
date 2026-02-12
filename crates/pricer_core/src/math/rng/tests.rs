@@ -12,8 +12,6 @@ use std::time::Instant;
 
 use super::*;
 
-/// Verifies that the module structure is correctly set up and all
-/// public types are accessible.
 #[test]
 fn test_module_structure() {
     // Verify PricerRng is accessible
@@ -28,7 +26,6 @@ fn test_module_structure() {
     let _: fn(usize) -> SobolPlaceholder = SobolPlaceholder::new;
 }
 
-/// Verifies that the same seed produces identical sequences.
 #[test]
 fn test_seed_reproducibility() {
     let mut rng1 = PricerRng::from_seed(12345);
@@ -48,7 +45,6 @@ fn test_seed_reproducibility() {
     }
 }
 
-/// Verifies that uniform values are in the correct range [0, 1).
 #[test]
 fn test_uniform_range() {
     let mut rng = PricerRng::from_seed(42);
@@ -60,7 +56,6 @@ fn test_uniform_range() {
     }
 }
 
-/// Verifies that batch fill operations work correctly.
 #[test]
 fn test_fill_uniform() {
     let mut rng = PricerRng::from_seed(42);
@@ -73,7 +68,6 @@ fn test_fill_uniform() {
     }
 }
 
-/// Verifies that empty buffer is handled gracefully.
 #[test]
 fn test_empty_buffer() {
     let mut rng = PricerRng::from_seed(42);
@@ -84,19 +78,10 @@ fn test_empty_buffer() {
     rng.fill_normal(&mut empty);
 }
 
-/// Verifies that SobolPlaceholder::new panics with appropriate message.
 #[test]
 #[should_panic(expected = "Sobol sequence not implemented")]
 fn test_sobol_placeholder_panics() { let _ = SobolPlaceholder::new(10); }
 
-// ============================================================================
-// Large Batch Performance Verification
-// ============================================================================
-
-/// Verifies that large batch normal generation (1M samples) completes
-/// within acceptable time bounds and maintains consistent performance.
-///
-/// Target: >1M samples/second for normal distribution generation.
 #[test]
 fn test_large_batch_normal_performance() {
     let mut rng = PricerRng::from_seed(42);
@@ -136,8 +121,6 @@ fn test_large_batch_normal_performance() {
     );
 }
 
-/// Verifies that large batch uniform generation maintains consistent
-/// performance.
 #[test]
 fn test_large_batch_uniform_performance() {
     let mut rng = PricerRng::from_seed(42);
@@ -171,7 +154,6 @@ fn test_large_batch_uniform_performance() {
     );
 }
 
-/// Verifies no performance degradation with repeated large batches.
 #[test]
 fn test_batch_performance_consistency() {
     let mut rng = PricerRng::from_seed(42);
@@ -204,10 +186,6 @@ fn test_batch_performance_consistency() {
         second_half_avg
     );
 }
-
-// ============================================================================
-// Property-Based Tests with Proptest
-// ============================================================================
 
 use proptest::prelude::*;
 
@@ -303,11 +281,6 @@ proptest! {
     }
 }
 
-// ============================================================================
-// API Consistency and Documentation
-// ============================================================================
-
-/// Verifies that all public API items are accessible.
 #[test]
 fn test_public_api_accessibility() {
     // Test that PricerRng is fully accessible with all methods
@@ -327,8 +300,6 @@ fn test_public_api_accessibility() {
     let _type_check: fn(usize) -> SobolPlaceholder = SobolPlaceholder::new;
 }
 
-/// Verifies that no dynamic dispatch (Box<dyn Trait>) is used in PricerRng.
-/// This is primarily a code review check documented as a test.
 #[test]
 fn test_no_dynamic_dispatch() {
     // PricerRng uses StdRng directly (concrete type), not Box<dyn Rng>

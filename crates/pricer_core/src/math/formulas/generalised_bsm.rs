@@ -22,7 +22,10 @@
 
 use num_traits::Float;
 
-use super::error::FormulaError;
+use super::error::{
+    require_positive_expiry, require_positive_spot, require_positive_strike, require_positive_vol,
+    FormulaError,
+};
 use crate::math::{
     normal_dist::{norm_cdf, norm_pdf},
     numeric::from_f64,
@@ -88,28 +91,10 @@ impl<T: Float> GeneralisedBSM<T> {
         volatility: T,
         expiry: T,
     ) -> Result<Self, FormulaError> {
-        let zero = T::zero();
-
-        if spot <= zero {
-            return Err(FormulaError::InvalidSpot {
-                spot: spot.to_f64().unwrap_or(0.0),
-            });
-        }
-        if strike <= zero {
-            return Err(FormulaError::InvalidSpot {
-                spot: strike.to_f64().unwrap_or(0.0),
-            });
-        }
-        if volatility <= zero {
-            return Err(FormulaError::InvalidVolatility {
-                volatility: volatility.to_f64().unwrap_or(0.0),
-            });
-        }
-        if expiry <= zero {
-            return Err(FormulaError::InvalidExpiry {
-                expiry: expiry.to_f64().unwrap_or(0.0),
-            });
-        }
+        require_positive_spot(spot)?;
+        require_positive_strike(strike)?;
+        require_positive_vol(volatility)?;
+        require_positive_expiry(expiry)?;
 
         let two: T = from_f64(2.0);
         let sqrt_t = expiry.sqrt();

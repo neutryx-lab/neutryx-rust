@@ -3,9 +3,10 @@
 use super::index::IndexType;
 
 /// Option type for vanilla options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum OptionType {
     /// Call option (right to buy).
     #[default]
@@ -47,8 +48,7 @@ impl OptionType {
 }
 
 /// Payoff formula for a cashflow.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Payoff {
     /// Fixed rate payment.
     Fixed {

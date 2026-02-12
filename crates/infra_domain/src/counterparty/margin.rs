@@ -7,8 +7,9 @@ use super::CallFrequency;
 use crate::market::Currency;
 
 /// Margin type classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum MarginType {
     /// No margin requirements (uncollateralised).
     #[default]
@@ -20,8 +21,9 @@ pub enum MarginType {
 }
 
 /// Initial Margin model type.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum ImModel {
     /// ISDA SIMM (Standard Initial Margin Model).
     #[default]
@@ -35,32 +37,33 @@ pub enum ImModel {
 }
 
 /// SIMM version.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    Hash,
+    strum::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum SimmVersion {
     /// SIMM v2.5 (December 2021).
+    #[strum(serialize = "SIMM v2.5")]
     V2_5,
     /// SIMM v2.6 (December 2023).
     #[default]
+    #[strum(serialize = "SIMM v2.6")]
     V2_6,
     /// SIMM v2.7 (December 2024).
+    #[strum(serialize = "SIMM v2.7")]
     V2_7,
 }
 
-impl std::fmt::Display for SimmVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            SimmVersion::V2_5 => "2.5",
-            SimmVersion::V2_6 => "2.6",
-            SimmVersion::V2_7 => "2.7",
-        };
-        write!(f, "SIMM v{}", s)
-    }
-}
-
 /// Rounding direction for margin amounts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum RoundingDirection {
     /// Round to nearest (half up).
     #[default]
@@ -72,8 +75,7 @@ pub enum RoundingDirection {
 }
 
 /// Rounding rule for margin amounts.
-#[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub struct RoundingRule {
     amount: f64,
     direction: RoundingDirection,
@@ -112,8 +114,7 @@ impl Default for RoundingRule {
 }
 
 /// Variation Margin terms.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct VmTerms {
     frequency: CallFrequency,
     settlement_lag: u32,
@@ -159,8 +160,7 @@ impl Default for VmTerms {
 }
 
 /// Initial Margin terms.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct ImTerms {
     model: ImModel,
     simm_version: Option<SimmVersion>,
@@ -212,8 +212,7 @@ impl ImTerms {
 }
 
 /// Combined margin terms (VM + IM).
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct MarginTerms {
     margin_type: MarginType,
     vm_terms: Option<VmTerms>,

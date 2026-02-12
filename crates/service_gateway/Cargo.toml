@@ -58,7 +58,7 @@ pricer_pricing = { path = "../pricer_pricing" }
 pricer_risk = { path = "../pricer_risk" }
 adapter_loader = { path = "../adapter_loader", features = ["curve-builder", "fpml"] }
 infra_config = { path = "../infra_config" }
-infra_domain = { path = "../infra_domain", features = ["serde"] }
+infra_domain = { path = "../infra_domain" }
 
 # CLI (optional, feature-gated)
 clap = { workspace = true, optional = true }

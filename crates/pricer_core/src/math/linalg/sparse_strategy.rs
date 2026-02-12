@@ -27,40 +27,12 @@ use super::{
     error::LinearAlgebraError,
     lu_solve,
     sparse::{is_sparse_beneficial, sparsity_ratio, to_csr, to_dense, CsrMatrix},
+    wrappers::{require_dims, require_square},
     LinearSolveStrategy,
 };
 use crate::math::numeric::from_f64;
 
-// =============================================================================
-// SparseLUStrategy
-// =============================================================================
-
 /// LU decomposition-based strategy with sparse storage optimisation.
-///
-/// This strategy stores matrices in CSR format when sparsity exceeds the
-/// threshold, reducing memory usage for large sparse Jacobians.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type satisfying `RealField + Copy + Float`
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_core::math::linalg::{DMatrix, SparseLUStrategy, LinearSolveStrategy};
-///
-/// let mut strategy = SparseLUStrategy::default();
-///
-/// // Sparse matrix (diagonal - 67% zeros for 3x3)
-/// let matrix = DMatrix::from_row_slice(3, 3, &[
-///     1.0, 0.0, 0.0,
-///     0.0, 2.0, 0.0,
-///     0.0, 0.0, 3.0,
-/// ]);
-///
-/// strategy.decompose(&matrix).unwrap();
-/// let x = strategy.solve(&[1.0, 2.0, 3.0]).unwrap();
-/// ```
 #[derive(Debug, Clone)]
 pub struct SparseLUStrategy<T: RealField + Copy> {
     /// Stored dense matrix (used when not sparse enough).
@@ -92,13 +64,6 @@ impl<T: RealField + Copy + Float> Default for SparseLUStrategy<T> {
 
 impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
     /// Create a new strategy with custom thresholds.
-    ///
-    /// # Arguments
-    ///
-    /// * `zero_threshold` - Absolute value below which elements are considered
-    ///   zero
-    /// * `sparsity_threshold` - Minimum sparsity ratio to use sparse storage
-    ///   (0.0-1.0)
     pub fn with_thresholds(zero_threshold: T, sparsity_threshold: f64) -> Self {
         Self {
             dense_matrix: None,
@@ -111,10 +76,6 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
     }
 
     /// Create a strategy with a specific sparsity threshold.
-    ///
-    /// # Arguments
-    ///
-    /// * `threshold` - Minimum sparsity ratio to use sparse storage (0.0-1.0)
     pub fn with_sparsity_threshold(threshold: f64) -> Self {
         Self {
             sparsity_threshold: threshold,
@@ -122,19 +83,14 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
         }
     }
 
-    /// Get the sparsity ratio of the decomposed matrix.
-    ///
-    /// Returns `None` if no matrix has been decomposed yet.
+    /// Get the sparsity ratio of the decomposed matrix, or `None` if not yet
+    /// decomposed.
     pub fn sparsity(&self) -> Option<f64> { self.cached_sparsity }
 
     /// Check if the strategy is currently using sparse storage.
     pub fn is_using_sparse(&self) -> bool { self.is_sparse }
 
     /// Check if a matrix would benefit from sparse storage.
-    ///
-    /// # Arguments
-    ///
-    /// * `matrix` - The matrix to analyse
     pub fn would_use_sparse(&self, matrix: &DMatrix<T>) -> bool {
         is_sparse_beneficial(matrix, self.zero_threshold, self.sparsity_threshold)
     }
@@ -145,13 +101,7 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
     /// Get the sparsity threshold.
     pub fn sparsity_threshold(&self) -> f64 { self.sparsity_threshold }
 
-    /// Decompose a sparse matrix directly (CSR input).
-    ///
-    /// This is useful when the matrix is already in sparse format.
-    ///
-    /// # Arguments
-    ///
-    /// * `csr` - CSR matrix to store
+    /// Decompose a sparse matrix directly from CSR input.
     pub fn decompose_sparse(&mut self, csr: CsrMatrix<T>) -> Result<(), LinearAlgebraError> {
         if csr.nrows() != csr.ncols() {
             return Err(LinearAlgebraError::NotSquare {
@@ -176,9 +126,8 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
         Ok(())
     }
 
-    /// Get the stored matrix as dense format.
-    ///
-    /// Converts from sparse if necessary.
+    /// Get the stored matrix as dense format, converting from sparse if
+    /// necessary.
     fn get_dense(&self) -> Result<DMatrix<T>, LinearAlgebraError> {
         if let Some(ref dense) = self.dense_matrix {
             Ok(dense.clone())
@@ -194,12 +143,7 @@ impl<T: RealField + Copy + Float> SparseLUStrategy<T> {
 
 impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for SparseLUStrategy<T> {
     fn decompose(&mut self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
-        if matrix.nrows() != matrix.ncols() {
-            return Err(LinearAlgebraError::NotSquare {
-                rows: matrix.nrows(),
-                cols: matrix.ncols(),
-            });
-        }
+        require_square(matrix)?;
 
         // Calculate sparsity and decide storage format
         let sparsity = sparsity_ratio(matrix, self.zero_threshold);
@@ -223,14 +167,7 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for SparseLUStrategy<T>
 
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
         let matrix = self.get_dense()?;
-
-        if matrix.nrows() != b.len() {
-            return Err(LinearAlgebraError::DimensionMismatch {
-                expected: format!("{}", matrix.nrows()),
-                got: format!("{}", b.len()),
-            });
-        }
-
+        require_dims(matrix.nrows(), b.len())?;
         lu_solve(&matrix, b)
     }
 
@@ -251,10 +188,6 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for SparseLUStrategy<T>
         }
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

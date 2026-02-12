@@ -1,12 +1,10 @@
 //! Volatility quote type definitions.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// Volatility quote type for options and swaptions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum VolQuoteType {
     /// Normal (Bachelier) volatility in basis points.
     #[default]

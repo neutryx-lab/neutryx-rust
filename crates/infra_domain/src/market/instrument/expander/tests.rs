@@ -22,14 +22,16 @@ mod tests {
     };
 
     fn conv() -> ConventionSet {
-        ConventionSet::new()
-            .with_swap(SwapConvention::usd_sofr())
-            .with_swaption(SwaptionConvention::usd_sofr())
-            .with_fx(FxConvention::usd_default())
-            .with_fx_option(FxOptionConvention::g10_standard())
-            .with_cds(CdsConvention::isda_na())
-            .with_equity(EquityConvention::us_equity())
-            .with_inflation_swap(InflationSwapConvention::us_cpi_zc())
+        ConventionSet {
+            swap: Some(SwapConvention::usd_sofr()),
+            swaption: Some(SwaptionConvention::usd_sofr()),
+            fx: Some(FxConvention::usd_default()),
+            fx_option: Some(FxOptionConvention::g10_standard()),
+            cds: Some(CdsConvention::isda_na()),
+            equity: Some(EquityConvention::us_equity()),
+            inflation_swap: Some(InflationSwapConvention::us_cpi_zc()),
+            ..Default::default()
+        }
     }
 
     fn vd() -> Date { Date::from_ymd(2025, 1, 1).unwrap() }
@@ -63,7 +65,7 @@ mod tests {
             panic!("Expected TradeType::Swaption");
         }
 
-        let empty = ConventionSet::new();
+        let empty = ConventionSet::default();
         assert!(matches!(
             swaption.expand_to_trade("S", vd(), &empty).unwrap_err(),
             InstrumentError::MissingConvention { .. }

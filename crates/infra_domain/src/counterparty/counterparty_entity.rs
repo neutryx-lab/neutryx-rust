@@ -8,8 +8,18 @@ use bon::Builder;
 use super::{CounterPartyId, CreditParams, CreditRating, LegalEntityId};
 
 /// CounterParty sector classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    strum::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum CounterPartySector {
     /// Commercial or investment bank.
     Banking,
@@ -22,8 +32,10 @@ pub enum CounterPartySector {
     /// Proprietary trading firm.
     Trading,
     /// Asset management company.
+    #[strum(serialize = "Asset Management")]
     AssetManagement,
     /// Hedge fund.
+    #[strum(serialize = "Hedge Fund")]
     HedgeFund,
     /// Non-financial corporate.
     Corporate,
@@ -34,27 +46,8 @@ pub enum CounterPartySector {
     Other,
 }
 
-impl std::fmt::Display for CounterPartySector {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            CounterPartySector::Banking => "Banking",
-            CounterPartySector::Investment => "Investment",
-            CounterPartySector::Securities => "Securities",
-            CounterPartySector::Insurance => "Insurance",
-            CounterPartySector::Trading => "Trading",
-            CounterPartySector::AssetManagement => "Asset Management",
-            CounterPartySector::HedgeFund => "Hedge Fund",
-            CounterPartySector::Corporate => "Corporate",
-            CounterPartySector::Sovereign => "Sovereign",
-            CounterPartySector::Other => "Other",
-        };
-        write!(f, "{}", s)
-    }
-}
-
 /// CounterParty entity with credit parameters.
-#[derive(Clone, Debug, Builder)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, Builder, serde::Serialize, serde::Deserialize)]
 pub struct CounterParty {
     /// Unique identifier for this counterparty.
     #[builder(into)]

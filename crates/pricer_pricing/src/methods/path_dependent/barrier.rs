@@ -2,7 +2,10 @@
 
 use num_traits::Float;
 
-use super::{ObservationType, PathDependentPayoff, PathObserver};
+use super::{
+    smooth_math::{smooth_indicator, soft_plus},
+    ObservationType, PathDependentPayoff, PathObserver,
+};
 
 /// Barrier type enumeration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -83,34 +86,6 @@ impl<T: Float> BarrierParams<T> {
     #[inline]
     pub fn down_out_put(strike: T, barrier: T, epsilon: T) -> Self {
         Self::new(strike, barrier, BarrierType::DownOut, false, epsilon)
-    }
-}
-
-/// Smooth indicator function: approximation of Heaviside step.
-#[inline]
-fn smooth_indicator<T: Float>(x: T, epsilon: T) -> T {
-    let scaled = x / epsilon;
-    let twenty = T::from(20.0).unwrap();
-    if scaled > twenty {
-        T::one()
-    } else if scaled < -twenty {
-        T::zero()
-    } else {
-        T::one() / (T::one() + (-scaled).exp())
-    }
-}
-
-/// Soft-plus function: smooth approximation of max(x, 0).
-#[inline]
-fn soft_plus<T: Float>(x: T, epsilon: T) -> T {
-    let scaled = x / epsilon;
-    let twenty = T::from(20.0).unwrap();
-    if scaled > twenty {
-        x
-    } else if scaled < -twenty {
-        epsilon * scaled.exp()
-    } else {
-        epsilon * (T::one() + scaled.exp()).ln()
     }
 }
 
@@ -221,24 +196,6 @@ mod tests {
         assert!(!BarrierType::UpOut.is_in());
         assert!(BarrierType::DownIn.is_in());
         assert!(!BarrierType::DownOut.is_in());
-    }
-
-    #[test]
-    fn test_smooth_indicator_positive() {
-        let result = smooth_indicator(10.0_f64, 0.01);
-        assert_relative_eq!(result, 1.0, epsilon = 1e-6);
-    }
-
-    #[test]
-    fn test_smooth_indicator_negative() {
-        let result = smooth_indicator(-10.0_f64, 0.01);
-        assert!(result < 1e-6);
-    }
-
-    #[test]
-    fn test_smooth_indicator_at_zero() {
-        let result = smooth_indicator(0.0_f64, 1.0);
-        assert_relative_eq!(result, 0.5, epsilon = 1e-10);
     }
 
     #[test]

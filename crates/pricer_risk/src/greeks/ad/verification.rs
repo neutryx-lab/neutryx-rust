@@ -2,7 +2,8 @@
 
 use pricer_pricing::methods::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 
-use super::enzyme_greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
+use super::enzyme_greeks::{GreeksEnzyme, GreeksMode};
+use crate::greeks::GreeksResult;
 
 /// Configuration for verification tests.
 #[derive(Clone, Debug)]
@@ -128,7 +129,7 @@ pub struct VerificationResult {
     /// Whether the option is a call.
     pub is_call: bool,
     /// Enzyme Greeks result.
-    pub enzyme_result: EnzymeGreeksResult,
+    pub enzyme_result: GreeksResult<f64>,
     /// Delta verification.
     pub delta: GreekVerification,
     /// Gamma verification.
@@ -183,9 +184,9 @@ impl VerificationResult {
             self.rate,
             self.volatility,
             self.maturity,
-            self.enzyme_result.delta,
-            self.enzyme_result.gamma,
-            self.enzyme_result.vega,
+            self.enzyme_result.delta.unwrap_or(0.0),
+            self.enzyme_result.gamma.unwrap_or(0.0),
+            self.enzyme_result.vega.unwrap_or(0.0),
         )
     }
 }
@@ -386,8 +387,8 @@ pub fn verify_european_greeks(
 
     let delta = GreekVerification::new(
         "Delta",
-        enzyme_result.delta,
-        fd_result.delta,
+        enzyme_result.delta.unwrap_or(0.0),
+        fd_result.delta.unwrap_or(0.0),
         Some(ana_delta),
         config.enzyme_fd_tolerance,
         config.analytical_tolerance,
@@ -395,8 +396,8 @@ pub fn verify_european_greeks(
 
     let gamma = GreekVerification::new(
         "Gamma",
-        enzyme_result.gamma,
-        fd_result.gamma,
+        enzyme_result.gamma.unwrap_or(0.0),
+        fd_result.gamma.unwrap_or(0.0),
         Some(ana_gamma),
         config.enzyme_fd_tolerance,
         config.analytical_tolerance,
@@ -404,8 +405,8 @@ pub fn verify_european_greeks(
 
     let vega = GreekVerification::new(
         "Vega",
-        enzyme_result.vega,
-        fd_result.vega,
+        enzyme_result.vega.unwrap_or(0.0),
+        fd_result.vega.unwrap_or(0.0),
         Some(ana_vega),
         config.enzyme_fd_tolerance,
         config.analytical_tolerance,
@@ -413,8 +414,8 @@ pub fn verify_european_greeks(
 
     let theta = GreekVerification::new(
         "Theta",
-        enzyme_result.theta,
-        fd_result.theta,
+        enzyme_result.theta.unwrap_or(0.0),
+        fd_result.theta.unwrap_or(0.0),
         Some(ana_theta),
         config.enzyme_fd_tolerance,
         config.analytical_tolerance,
@@ -422,8 +423,8 @@ pub fn verify_european_greeks(
 
     let rho = GreekVerification::new(
         "Rho",
-        enzyme_result.rho,
-        fd_result.rho,
+        enzyme_result.rho.unwrap_or(0.0),
+        fd_result.rho.unwrap_or(0.0),
         Some(ana_rho),
         config.enzyme_fd_tolerance,
         config.analytical_tolerance,

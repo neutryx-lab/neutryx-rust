@@ -9,7 +9,7 @@ description = "Unified facade crate for Neutryx derivatives pricing library"
 
 [dependencies]
 # --- Infra Layer (always included) ---
-infra_domain = { path = "crates/infra_domain", features = ["serde"] }
+infra_domain = { path = "crates/infra_domain" }
 
 # --- Infra Layer (optional) ---
 infra_config = { path = "crates/infra_config", optional = true }
@@ -64,7 +64,9 @@ members = [
     "crates/infra_domain",
 
     # --- P: Pricer Layer (The Kernel) ---
+    "crates/pricer_checkpoint",
     "crates/pricer_core",
+    "crates/pricer_graph",
     "crates/pricer_models",
     "crates/pricer_pricing",
     "crates/pricer_risk",

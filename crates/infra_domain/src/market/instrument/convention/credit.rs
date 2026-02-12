@@ -3,8 +3,7 @@
 use crate::time::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 
 /// Convention for a credit default swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CdsConvention {
     /// Day count convention.
     pub day_count: DayCounter,
@@ -16,26 +15,6 @@ pub struct CdsConvention {
     pub business_day_convention: BusinessDayConvention,
     /// Standard recovery rate (as decimal).
     pub recovery_rate: f64,
-}
-
-impl CdsConvention {
-    /// Creates a new CDS convention.
-    #[must_use]
-    pub fn new(
-        day_count: DayCounter,
-        payment_frequency: Frequency,
-        calendar: CalendarId,
-        business_day_convention: BusinessDayConvention,
-        recovery_rate: f64,
-    ) -> Self {
-        Self {
-            day_count,
-            payment_frequency,
-            calendar,
-            business_day_convention,
-            recovery_rate,
-        }
-    }
 }
 
 super::define_convention_factories! {

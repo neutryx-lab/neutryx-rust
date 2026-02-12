@@ -6,8 +6,7 @@ use crate::{
 };
 
 /// Convention for foreign exchange transactions.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxConvention {
     /// Number of spot days.
     pub spot_days: u32,
@@ -15,22 +14,6 @@ pub struct FxConvention {
     pub calendar: CalendarId,
     /// Business day convention.
     pub business_day_convention: BusinessDayConvention,
-}
-
-impl FxConvention {
-    /// Creates a new FX convention.
-    #[must_use]
-    pub fn new(
-        spot_days: u32,
-        calendar: CalendarId,
-        business_day_convention: BusinessDayConvention,
-    ) -> Self {
-        Self {
-            spot_days,
-            calendar,
-            business_day_convention,
-        }
-    }
 }
 
 super::define_convention_factories! {
@@ -72,8 +55,7 @@ impl FxConvention {
 }
 
 /// Premium currency specification for FX options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum PremiumCurrency {
     /// Premium paid in base currency (first in pair).
     Base,
@@ -84,8 +66,7 @@ pub enum PremiumCurrency {
 }
 
 /// Delta convention for FX options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DeltaConvention {
     /// Spot delta (delta with respect to spot FX rate).
     SpotDelta,
@@ -94,8 +75,7 @@ pub enum DeltaConvention {
 }
 
 /// Cut-off time specification for FX option expiry.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct CutOffTime {
     /// Hour (0-23) in the specified timezone.
     pub hour: u8,
@@ -136,8 +116,7 @@ impl std::fmt::Display for CutOffTime {
 }
 
 /// Convention for FX options.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxOptionConvention {
     /// Premium currency specification.
     pub premium_currency: PremiumCurrency,
@@ -228,8 +207,7 @@ impl FxOptionConvention {
 }
 
 /// Settlement type for FX transactions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum FxSettlementType {
     /// Deliverable (physical exchange of currencies).
     Deliverable,
@@ -238,8 +216,7 @@ pub enum FxSettlementType {
 }
 
 /// Near leg type for FX swaps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum NearLegType {
     /// Today (T+0).
     Today,
@@ -250,8 +227,7 @@ pub enum NearLegType {
 }
 
 /// Convention for an FX swap.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxSwapConvention {
     /// Base currency (first in pair).
     pub base_currency: Currency,

@@ -1,14 +1,12 @@
 //! Market event definitions.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 use super::{CentralBank, EventImportance, EventType};
 
 /// A market event.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketEvent {
     /// Unique event ID.
     pub id: String,
@@ -17,46 +15,43 @@ pub struct MarketEvent {
     /// Event title/name.
     pub title: String,
     /// Event description (optional).
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Event date (ISO 8601 date: YYYY-MM-DD).
     pub date: String,
     /// Event time (optional, HH:MM format in local time).
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub time: Option<String>,
     /// Timezone (e.g., "America/New_York", "Europe/London").
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub timezone: Option<String>,
     /// Associated currency (e.g., "USD", "EUR").
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub currency: Option<String>,
     /// Associated region/country.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub region: Option<String>,
     /// Importance level.
     pub importance: EventImportance,
     /// Central bank info (for CB meetings).
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub central_bank: Option<CentralBank>,
     /// Previous value (for economic releases).
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub previous: Option<String>,
     /// Forecast/consensus value.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub forecast: Option<String>,
     /// Actual value (if released).
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub actual: Option<String>,
     /// Source of the event data.
     pub source: String,
     /// Tags for filtering.
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub tags: Vec<String>,
     /// Expected jump size in basis points for CB meeting events.
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expected_jump_bps: Option<f64>,
 }
 

@@ -6,9 +6,10 @@ use crate::{
 };
 
 /// Reason for a trade's book assignment or transfer.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
+#[serde(rename_all = "camelCase")]
 pub enum BookTransferReason {
     /// Initial assignment when trade is created.
     #[default]
@@ -46,9 +47,8 @@ impl BookTransferReason {
 }
 
 /// Record of a trade's book assignment.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TradeBookAssignment {
     trade_id: TradeId,
     book_id: BookId,

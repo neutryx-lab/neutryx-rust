@@ -10,18 +10,9 @@ use crate::{math::numeric::from_f64, types::SolverError};
 /// Uses Newton's method: `x_{n+1} = x_n - f(x_n) / f'(x_n)` for fast
 /// quadratic convergence on smooth functions.
 ///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type (e.g., `f64`)
-///
-/// # Convergence
-///
-/// Newton-Raphson converges quadratically near a root, meaning the number
-/// of correct digits approximately doubles each iteration. However, it may
-/// fail if:
-/// - The derivative is near zero
-/// - The initial guess is far from the root
-/// - The function has discontinuities
+/// Converges quadratically near a root (correct digits double each iteration).
+/// May fail if the derivative is near zero, the initial guess is far from
+/// the root, or the function has discontinuities.
 ///
 /// # Example
 ///
@@ -39,24 +30,11 @@ use crate::{math::numeric::from_f64, types::SolverError};
 /// ```
 #[derive(Debug, Clone)]
 pub struct NewtonRaphsonSolver<T: Float> {
-    /// Solver configuration
     config: SolverConfig<T>,
 }
 
 impl<T: Float> NewtonRaphsonSolver<T> {
     /// Create a new Newton-Raphson solver with the given configuration.
-    ///
-    /// # Arguments
-    ///
-    /// * `config` - Solver configuration with tolerance and max iterations
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use pricer_core::math::solvers::{NewtonRaphsonSolver, SolverConfig};
-    ///
-    /// let solver: NewtonRaphsonSolver<f64> = NewtonRaphsonSolver::new(SolverConfig::default());
-    /// ```
     pub fn new(config: SolverConfig<T>) -> Self { Self { config } }
 
     /// Create a solver with default configuration.
@@ -68,34 +46,8 @@ impl<T: Float> NewtonRaphsonSolver<T> {
 
     /// Find a root of `f` using explicit derivative `f_prime`.
     ///
-    /// Uses Newton's iteration: `x_{n+1} = x_n - f(x_n) / f'(x_n)`
-    ///
-    /// # Arguments
-    ///
-    /// * `f` - Function to find root of
-    /// * `f_prime` - Derivative of f
-    /// * `x0` - Initial guess
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(x)` - Root where `|f(x)| < tolerance`
-    /// * `Err(SolverError::MaxIterationsExceeded)` - Failed to converge
-    /// * `Err(SolverError::DerivativeNearZero)` - Derivative too small
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use pricer_core::math::solvers::{NewtonRaphsonSolver, SolverConfig};
-    ///
-    /// let solver = NewtonRaphsonSolver::new(SolverConfig::default());
-    ///
-    /// // Solve x³ - x - 2 = 0
-    /// let f = |x: f64| x * x * x - x - 2.0;
-    /// let f_prime = |x: f64| 3.0 * x * x - 1.0;
-    ///
-    /// let root = solver.find_root(f, f_prime, 1.5).unwrap();
-    /// assert!((f(root)).abs() < 1e-10);
-    /// ```
+    /// Returns `Ok(x)` where `|f(x)| < tolerance`, or an error if the
+    /// derivative is near zero or max iterations are exceeded.
     pub fn find_root<F, G>(&self, f: F, f_prime: G, x0: T) -> Result<T, SolverError>
     where
         F: Fn(T) -> T,
@@ -147,10 +99,6 @@ impl<T: Float> NewtonRaphsonSolver<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // ========================================
-    // Basic Functionality Tests (Task 9.1)
-    // ========================================
 
     #[test]
     fn test_find_sqrt_2() {
@@ -218,10 +166,6 @@ mod tests {
             root
         );
     }
-
-    // ========================================
-    // Error Handling Tests (Task 9.3)
-    // ========================================
 
     #[test]
     fn test_derivative_near_zero() {

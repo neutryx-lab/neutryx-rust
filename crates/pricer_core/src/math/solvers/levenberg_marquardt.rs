@@ -8,10 +8,6 @@ use nalgebra::{DMatrix, DVector, Dyn, Owned};
 
 use crate::types::SolverError;
 
-// =============================================================================
-// Configuration
-// =============================================================================
-
 /// Configuration for Levenberg-Marquardt solver.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct LMConfig {
@@ -78,10 +74,6 @@ impl LMConfig {
     }
 }
 
-// =============================================================================
-// Result
-// =============================================================================
-
 /// Result of Levenberg-Marquardt optimisation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LMResult {
@@ -124,10 +116,6 @@ impl LMResult {
         }
     }
 }
-
-// =============================================================================
-// Closure → LeastSquaresProblem adapter
-// =============================================================================
 
 struct ClosureProblem<F> {
     params: DVector<f64>,
@@ -174,10 +162,6 @@ where
         Some(jac)
     }
 }
-
-// =============================================================================
-// Solver
-// =============================================================================
 
 /// Levenberg-Marquardt nonlinear least-squares solver.
 #[derive(Debug, Clone)]

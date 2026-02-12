@@ -20,10 +20,6 @@ mod bootstrap;
 
 mod global;
 
-// =============================================================================
-// Re-exports
-// =============================================================================
-
 pub use bootstrap::{BootstrapConfig, CurveBootstrapper, JacobianMatrix};
 pub use global::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 

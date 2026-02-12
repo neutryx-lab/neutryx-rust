@@ -80,8 +80,7 @@ impl MarketInstrumentError {
 }
 
 /// A market instrument combining rate data with convention.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MarketInstrument {
     /// Unique identifier for the rate.
     pub quote_id: QuoteId,

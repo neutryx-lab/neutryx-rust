@@ -56,49 +56,17 @@
 use infra_domain::trade::instrument_def::DeltaType;
 use num_traits::Float;
 
-use super::error::FormulaError;
+use super::error::{
+    require_positive_expiry, require_positive_spot, require_positive_strike, require_positive_vol,
+    FormulaError,
+};
 use crate::math::{
     normal_dist::{norm_cdf, norm_inv_cdf, norm_pdf},
     numeric::from_f64,
     solvers::{NewtonRaphsonSolver, SolverConfig},
 };
 
-/// Converts a delta value to a strike price.
-///
-/// # Arguments
-///
-/// * `delta` - Delta value (positive for calls, negative for puts). For calls:
-///   0 < delta <= 1. For puts: -1 <= delta < 0.
-/// * `spot` - Spot exchange rate (must be positive)
-/// * `domestic_rate` - Domestic risk-free rate (continuous compounding)
-/// * `foreign_rate` - Foreign risk-free rate (continuous compounding)
-/// * `expiry` - Time to expiry in years (must be positive)
-/// * `volatility` - Implied volatility (must be positive)
-/// * `delta_type` - Delta convention (SpotDelta, ForwardDelta, or
-///   PremiumAdjusted)
-///
-/// # Returns
-///
-/// The strike price corresponding to the given delta.
-///
-/// # Errors
-///
-/// Returns `FormulaError` if:
-/// - `spot` is not positive
-/// - `volatility` is not positive
-/// - `expiry` is not positive
-/// - Numerical issues occur during computation
-///
-/// # Example
-///
-/// ```
-/// use pricer_core::math::formulas::fx_delta::delta_to_strike;
-/// use infra_domain::trade::instrument_def::DeltaType;
-///
-/// // 25-delta call, EURUSD style
-/// let k = delta_to_strike(0.25, 1.10, 0.03, 0.01, 1.0, 0.10, DeltaType::SpotDelta).unwrap();
-/// assert!(k > 1.10); // Call strike > spot for OTM
-/// ```
+/// Converts a delta value to a strike price for the given delta convention.
 pub fn delta_to_strike<T: Float>(
     delta: T,
     spot: T,
@@ -108,22 +76,9 @@ pub fn delta_to_strike<T: Float>(
     volatility: T,
     delta_type: DeltaType,
 ) -> Result<T, FormulaError> {
-    // Validate inputs
-    if spot <= T::zero() {
-        return Err(FormulaError::InvalidSpot {
-            spot: spot.to_f64().unwrap_or(0.0),
-        });
-    }
-    if volatility <= T::zero() {
-        return Err(FormulaError::InvalidVolatility {
-            volatility: volatility.to_f64().unwrap_or(0.0),
-        });
-    }
-    if expiry <= T::zero() {
-        return Err(FormulaError::InvalidExpiry {
-            expiry: expiry.to_f64().unwrap_or(0.0),
-        });
-    }
+    require_positive_spot(spot)?;
+    require_positive_vol(volatility)?;
+    require_positive_expiry(expiry)?;
 
     let abs_delta = delta.abs();
     let is_call = delta > T::zero();
@@ -186,9 +141,7 @@ pub fn delta_to_strike<T: Float>(
     Ok(strike)
 }
 
-/// Internal function for premium-adjusted delta to strike conversion.
-///
-/// Uses Newton-Raphson iteration to solve for strike.
+/// Premium-adjusted delta to strike conversion via Newton-Raphson iteration.
 fn delta_to_strike_premium_adjusted<T: Float>(
     target_delta: T,
     is_call: bool,
@@ -268,37 +221,7 @@ fn delta_to_strike_premium_adjusted<T: Float>(
         })
 }
 
-/// Converts a strike price to a delta value.
-///
-/// # Arguments
-///
-/// * `strike` - Strike price (must be positive)
-/// * `spot` - Spot exchange rate (must be positive)
-/// * `domestic_rate` - Domestic risk-free rate (continuous compounding)
-/// * `foreign_rate` - Foreign risk-free rate (continuous compounding)
-/// * `expiry` - Time to expiry in years (must be positive)
-/// * `volatility` - Implied volatility (must be positive)
-/// * `is_call` - True for call option, false for put
-/// * `delta_type` - Delta convention (SpotDelta, ForwardDelta, or
-///   PremiumAdjusted)
-///
-/// # Returns
-///
-/// The delta value for the option. Positive for calls, negative for puts.
-///
-/// # Errors
-///
-/// Returns `FormulaError` if any parameter is invalid.
-///
-/// # Example
-///
-/// ```
-/// use pricer_core::math::formulas::fx_delta::strike_to_delta;
-/// use infra_domain::trade::instrument_def::DeltaType;
-///
-/// let delta = strike_to_delta(1.15, 1.10, 0.03, 0.01, 1.0, 0.10, true, DeltaType::SpotDelta).unwrap();
-/// assert!(delta > 0.0 && delta < 0.5); // OTM call has delta < 0.5
-/// ```
+/// Converts a strike price to a delta value for the given delta convention.
 pub fn strike_to_delta<T: Float>(
     strike: T,
     spot: T,
@@ -309,27 +232,10 @@ pub fn strike_to_delta<T: Float>(
     is_call: bool,
     delta_type: DeltaType,
 ) -> Result<T, FormulaError> {
-    // Validate inputs
-    if spot <= T::zero() {
-        return Err(FormulaError::InvalidSpot {
-            spot: spot.to_f64().unwrap_or(0.0),
-        });
-    }
-    if strike <= T::zero() {
-        return Err(FormulaError::InvalidSpot {
-            spot: strike.to_f64().unwrap_or(0.0),
-        });
-    }
-    if volatility <= T::zero() {
-        return Err(FormulaError::InvalidVolatility {
-            volatility: volatility.to_f64().unwrap_or(0.0),
-        });
-    }
-    if expiry <= T::zero() {
-        return Err(FormulaError::InvalidExpiry {
-            expiry: expiry.to_f64().unwrap_or(0.0),
-        });
-    }
+    require_positive_spot(spot)?;
+    require_positive_strike(strike)?;
+    require_positive_vol(volatility)?;
+    require_positive_expiry(expiry)?;
 
     // Forward price: F = S × exp((rd - rf) × T)
     let drift = (domestic_rate - foreign_rate) * expiry;
@@ -388,10 +294,6 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-
-    // =========================================================================
-    // SpotDelta Tests
-    // =========================================================================
 
     #[test]
     fn test_delta_to_strike_spot_delta_call() {
@@ -457,10 +359,6 @@ mod tests {
         assert_relative_eq!(strike, forward, epsilon = 0.01);
     }
 
-    // =========================================================================
-    // ForwardDelta Tests
-    // =========================================================================
-
     #[test]
     fn test_delta_to_strike_forward_delta_call() {
         let delta = 0.25_f64;
@@ -494,10 +392,6 @@ mod tests {
             strike_to_delta(strike, spot, rd, rf, t, vol, false, DeltaType::ForwardDelta).unwrap();
         assert_relative_eq!(recovered, delta, epsilon = 1e-6);
     }
-
-    // =========================================================================
-    // Edge Cases and Validation
-    // =========================================================================
 
     #[test]
     fn test_invalid_spot() {
@@ -535,12 +429,8 @@ mod tests {
     #[test]
     fn test_strike_to_delta_invalid_strike() {
         let result = strike_to_delta(0.0, 1.10, 0.03, 0.01, 1.0, 0.10, true, DeltaType::SpotDelta);
-        assert!(matches!(result, Err(FormulaError::InvalidSpot { .. })));
+        assert!(matches!(result, Err(FormulaError::InvalidStrike { .. })));
     }
-
-    // =========================================================================
-    // Numerical Stability
-    // =========================================================================
 
     #[test]
     fn test_extreme_delta_values() {
@@ -593,10 +483,6 @@ mod tests {
         assert_relative_eq!(recovered, 0.25, epsilon = 1e-6);
     }
 
-    // =========================================================================
-    // Comparison between delta types
-    // =========================================================================
-
     #[test]
     fn test_spot_vs_forward_delta_difference() {
         let spot = 1.10_f64;
@@ -613,10 +499,6 @@ mod tests {
         // They should be different (unless rf = 0)
         assert!((strike_spot - strike_fwd).abs() > 1e-6);
     }
-
-    // =========================================================================
-    // PremiumAdjusted Delta Tests
-    // =========================================================================
 
     #[test]
     fn test_delta_to_strike_premium_adjusted_call() {

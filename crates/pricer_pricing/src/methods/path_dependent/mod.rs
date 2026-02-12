@@ -6,6 +6,7 @@ mod lookback;
 mod observer;
 mod payoff;
 mod payoff_type;
+pub(crate) mod smooth_math;
 
 pub use asian::{AsianArithmeticPayoff, AsianGeometricPayoff, AsianParams};
 pub use barrier::{BarrierParams, BarrierPayoff, BarrierType};

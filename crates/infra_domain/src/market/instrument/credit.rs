@@ -4,8 +4,7 @@ use super::error::InstrumentError;
 use crate::{market::Currency, time::Date};
 
 /// ISDA standard credit events.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CreditEvent {
     /// Bankruptcy of the reference entity.
     Bankruptcy,
@@ -37,8 +36,7 @@ impl CreditEvent {
 }
 
 /// Single-name Credit Default Swap (CDS).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Cds {
     /// Reference entity identifier (e.g., company name or RED code).
     pub reference_entity: String,
@@ -61,26 +59,14 @@ pub struct Cds {
 impl Cds {
     /// Validates the CDS parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.reference_entity.is_empty() {
-            return Err(InstrumentError::invalid_parameter(
-                "Reference entity must be specified",
-            ));
-        }
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.spread < 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Spread must be non-negative",
-            ));
-        }
-        if self.maturity <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "Maturity must be after start date",
-            ));
-        }
+        InstrumentError::check_not_empty(&self.reference_entity, "Reference Entity")?;
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_non_negative(self.spread, "Spread")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         if let Some(recovery) = self.recovery_rate {
             if !(0.0..=1.0).contains(&recovery) {
                 return Err(InstrumentError::invalid_parameter(
@@ -115,8 +101,7 @@ impl Cds {
 }
 
 /// CDS Index (e.g., CDX, iTraxx).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CdsIndex {
     /// Index name (e.g., "CDX.NA.IG", "iTraxx Europe").
     pub index_name: String,
@@ -141,31 +126,19 @@ pub struct CdsIndex {
 impl CdsIndex {
     /// Validates the CDS index parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.index_name.is_empty() {
-            return Err(InstrumentError::invalid_parameter(
-                "Index name must be specified",
-            ));
-        }
+        InstrumentError::check_not_empty(&self.index_name, "Index Name")?;
         if self.constituent_count == 0 {
             return Err(InstrumentError::invalid_parameter(
                 "Constituent count must be positive",
             ));
         }
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.spread < 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Spread must be non-negative",
-            ));
-        }
-        if self.maturity <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "Maturity must be after start date",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_non_negative(self.spread, "Spread")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         Ok(())
     }
 
@@ -177,8 +150,7 @@ impl CdsIndex {
 }
 
 /// CDS Option (Swaption on CDS).
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CdsOption {
     /// Underlying CDS reference entity.
     pub reference_entity: String,
@@ -200,33 +172,20 @@ pub struct CdsOption {
 impl CdsOption {
     /// Validates the CDS option parameters.
     pub fn validate(&self) -> Result<(), InstrumentError> {
-        if self.reference_entity.is_empty() {
-            return Err(InstrumentError::invalid_parameter(
-                "Reference entity must be specified",
-            ));
-        }
-        if self.strike_spread < 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Strike spread must be non-negative",
-            ));
-        }
-        if self.underlying_maturity <= self.exercise_date {
-            return Err(InstrumentError::invalid_date(
-                "Underlying maturity must be after exercise date",
-            ));
-        }
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
+        InstrumentError::check_not_empty(&self.reference_entity, "Reference Entity")?;
+        InstrumentError::check_non_negative(self.strike_spread, "Strike spread")?;
+        InstrumentError::check_date_order(
+            self.exercise_date,
+            self.underlying_maturity,
+            "Underlying maturity must be after exercise date",
+        )?;
+        InstrumentError::check_positive(self.notional, "Notional")?;
         Ok(())
     }
 }
 
 /// Nth-to-Default Basket.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NtdBasket {
     /// Basket constituents (reference entities).
     pub constituents: Vec<String>,
@@ -251,7 +210,7 @@ impl NtdBasket {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         if self.constituents.is_empty() {
             return Err(InstrumentError::invalid_parameter(
-                "Basket must have at least one constituent",
+                "Constituents must not be empty",
             ));
         }
         if self.nth_to_default == 0 {
@@ -264,21 +223,13 @@ impl NtdBasket {
                 "Nth-to-default cannot exceed number of constituents",
             ));
         }
-        if self.notional <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Notional must be positive",
-            ));
-        }
-        if self.spread < 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Spread must be non-negative",
-            ));
-        }
-        if self.maturity <= self.start_date {
-            return Err(InstrumentError::invalid_date(
-                "Maturity must be after start date",
-            ));
-        }
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_non_negative(self.spread, "Spread")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
         if let Some(corr) = self.correlation_parameter {
             if !(-1.0..=1.0).contains(&corr) {
                 return Err(InstrumentError::invalid_parameter(

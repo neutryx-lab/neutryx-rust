@@ -8,8 +8,19 @@ use super::types::Date;
 
 /// Day count convention for interest calculations.
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, strum::Display, strum::AsRefStr)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Default,
+    strum::Display,
+    strum::AsRefStr,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum DayCounter {
     /// Actual/360.
     #[strum(serialize = "ACT/360")]

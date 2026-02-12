@@ -1,5 +1,6 @@
 //! Trinomial tree implementation for option pricing.
 
+use super::common::TreeBase;
 use crate::generic_pricer::ConfigError;
 
 /// Trinomial tree parameters.
@@ -61,14 +62,7 @@ impl TrinomialParams {
 /// Trinomial tree for option pricing.
 #[derive(Debug, Clone)]
 pub struct TrinomialTree {
-    spot: f64,
-    strike: f64,
-    expiry: f64,
-    rate: f64,
-    volatility: f64,
-    num_steps: usize,
-    is_call: bool,
-    is_american: bool,
+    base: TreeBase,
     params: TrinomialParams,
 }
 
@@ -84,41 +78,7 @@ impl TrinomialTree {
         is_call: bool,
         is_american: bool,
     ) -> Result<Self, ConfigError> {
-        if spot <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "spot",
-                reason: "spot must be positive".to_string(),
-            });
-        }
-        if strike <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "strike",
-                reason: "strike must be positive".to_string(),
-            });
-        }
-        if expiry <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "expiry",
-                reason: "expiry must be positive".to_string(),
-            });
-        }
-        if volatility <= 0.0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "volatility",
-                reason: "volatility must be positive".to_string(),
-            });
-        }
-        if num_steps == 0 {
-            return Err(ConfigError::InvalidModelParameter {
-                name: "num_steps",
-                reason: "num_steps must be greater than 0".to_string(),
-            });
-        }
-
-        let dt = expiry / num_steps as f64;
-        let params = TrinomialParams::compute(volatility, rate, dt);
-
-        Ok(Self {
+        let base = TreeBase::new(
             spot,
             strike,
             expiry,
@@ -127,39 +87,31 @@ impl TrinomialTree {
             num_steps,
             is_call,
             is_american,
-            params,
-        })
+        )?;
+        let params = TrinomialParams::compute(volatility, rate, base.dt());
+        Ok(Self { base, params })
     }
 
     /// Returns the trinomial parameters.
     pub fn params(&self) -> TrinomialParams { self.params }
 
-    /// Computes the payoff at a given spot level.
-    fn payoff(&self, spot: f64) -> f64 {
-        if self.is_call {
-            (spot - self.strike).max(0.0)
-        } else {
-            (self.strike - spot).max(0.0)
-        }
-    }
-
     /// Computes the spot price at node (i, j) where:
-    fn spot_at_node(&self, j: i32) -> f64 { self.spot * self.params.u.powi(j) }
+    fn spot_at_node(&self, j: i32) -> f64 { self.base.spot * self.params.u.powi(j) }
 
     /// Prices the option using backward induction.
     pub fn price(&self) -> f64 {
-        let n = self.num_steps;
+        let n = self.base.num_steps;
         let p_u = self.params.p_u;
         let p_m = self.params.p_m;
         let p_d = self.params.p_d;
-        let discount = (-self.rate * self.params.dt).exp();
+        let discount = self.base.discount();
 
         let size = 2 * n + 1;
         let mut values: Vec<f64> = (0..size)
             .map(|idx| {
                 let j = idx as i32 - n as i32;
                 let spot_t = self.spot_at_node(j);
-                self.payoff(spot_t)
+                self.base.payoff(spot_t)
             })
             .collect();
 
@@ -177,9 +129,9 @@ impl TrinomialTree {
                 let continuation = discount
                     * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
 
-                if self.is_american {
+                if self.base.is_american {
                     let spot_ij = self.spot_at_node(j);
-                    let intrinsic = self.payoff(spot_ij);
+                    let intrinsic = self.base.payoff(spot_ij);
                     new_values[idx] = continuation.max(intrinsic);
                 } else {
                     new_values[idx] = continuation;
@@ -193,23 +145,23 @@ impl TrinomialTree {
 
     /// Computes Delta from the tree.
     pub fn delta(&self) -> f64 {
-        if self.num_steps < 1 {
+        if self.base.num_steps < 1 {
             return 0.0;
         }
 
-        let n = self.num_steps;
+        let n = self.base.num_steps;
         let u = self.params.u;
         let p_u = self.params.p_u;
         let p_m = self.params.p_m;
         let p_d = self.params.p_d;
-        let discount = (-self.rate * self.params.dt).exp();
+        let discount = self.base.discount();
 
         let size = 2 * n + 1;
         let mut values: Vec<f64> = (0..size)
             .map(|idx| {
                 let j = idx as i32 - n as i32;
                 let spot_t = self.spot_at_node(j);
-                self.payoff(spot_t)
+                self.base.payoff(spot_t)
             })
             .collect();
 
@@ -226,9 +178,9 @@ impl TrinomialTree {
                 let continuation = discount
                     * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
 
-                if self.is_american {
+                if self.base.is_american {
                     let spot_ij = self.spot_at_node(j);
-                    let intrinsic = self.payoff(spot_ij);
+                    let intrinsic = self.base.payoff(spot_ij);
                     new_values[idx] = continuation.max(intrinsic);
                 } else {
                     new_values[idx] = continuation;
@@ -239,31 +191,31 @@ impl TrinomialTree {
 
         let v_u = values[2];
         let v_d = values[0];
-        let s_u = self.spot * u;
-        let s_d = self.spot / u;
+        let s_u = self.base.spot * u;
+        let s_d = self.base.spot / u;
 
         (v_u - v_d) / (s_u - s_d)
     }
 
     /// Computes Gamma from the tree.
     pub fn gamma(&self) -> f64 {
-        if self.num_steps < 1 {
+        if self.base.num_steps < 1 {
             return 0.0;
         }
 
-        let n = self.num_steps;
+        let n = self.base.num_steps;
         let u = self.params.u;
         let p_u = self.params.p_u;
         let p_m = self.params.p_m;
         let p_d = self.params.p_d;
-        let discount = (-self.rate * self.params.dt).exp();
+        let discount = self.base.discount();
 
         let size = 2 * n + 1;
         let mut values: Vec<f64> = (0..size)
             .map(|idx| {
                 let j = idx as i32 - n as i32;
                 let spot_t = self.spot_at_node(j);
-                self.payoff(spot_t)
+                self.base.payoff(spot_t)
             })
             .collect();
 
@@ -280,9 +232,9 @@ impl TrinomialTree {
                 let continuation = discount
                     * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
 
-                if self.is_american {
+                if self.base.is_american {
                     let spot_ij = self.spot_at_node(j);
-                    let intrinsic = self.payoff(spot_ij);
+                    let intrinsic = self.base.payoff(spot_ij);
                     new_values[idx] = continuation.max(intrinsic);
                 } else {
                     new_values[idx] = continuation;
@@ -295,9 +247,9 @@ impl TrinomialTree {
         let v_m = values[1];
         let v_d = values[0];
 
-        let s_u = self.spot * u;
-        let s_m = self.spot;
-        let s_d = self.spot / u;
+        let s_u = self.base.spot * u;
+        let s_m = self.base.spot;
+        let s_d = self.base.spot / u;
 
         let delta_up = (v_u - v_m) / (s_u - s_m);
         let delta_down = (v_m - v_d) / (s_m - s_d);
@@ -307,28 +259,28 @@ impl TrinomialTree {
     }
 
     /// Returns whether this is a call option.
-    pub fn is_call(&self) -> bool { self.is_call }
+    pub fn is_call(&self) -> bool { self.base.is_call }
 
     /// Returns whether this is an American option.
-    pub fn is_american(&self) -> bool { self.is_american }
+    pub fn is_american(&self) -> bool { self.base.is_american }
 
     /// Returns the spot price.
-    pub fn spot(&self) -> f64 { self.spot }
+    pub fn spot(&self) -> f64 { self.base.spot }
 
     /// Returns the strike price.
-    pub fn strike(&self) -> f64 { self.strike }
+    pub fn strike(&self) -> f64 { self.base.strike }
 
     /// Returns the time to expiry.
-    pub fn expiry(&self) -> f64 { self.expiry }
+    pub fn expiry(&self) -> f64 { self.base.expiry }
 
     /// Returns the number of steps.
-    pub fn num_steps(&self) -> usize { self.num_steps }
+    pub fn num_steps(&self) -> usize { self.base.num_steps }
 
     /// Returns the volatility.
-    pub fn volatility(&self) -> f64 { self.volatility }
+    pub fn volatility(&self) -> f64 { self.base.volatility }
 
     /// Returns the risk-free rate.
-    pub fn rate(&self) -> f64 { self.rate }
+    pub fn rate(&self) -> f64 { self.base.rate }
 }
 
 #[cfg(test)]

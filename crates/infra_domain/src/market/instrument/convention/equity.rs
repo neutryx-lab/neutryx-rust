@@ -3,8 +3,7 @@
 use crate::time::CalendarId;
 
 /// Dividend handling convention for equity derivatives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum DividendConvention {
     /// Continuous dividend yield assumption.
     ContinuousYield,
@@ -17,8 +16,7 @@ pub enum DividendConvention {
 }
 
 /// Settlement type for equity transactions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum EquitySettlementType {
     /// Cash settlement (pay/receive cash based on price).
     Cash,
@@ -27,8 +25,7 @@ pub enum EquitySettlementType {
 }
 
 /// Convention for equity derivatives.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EquityConvention {
     /// Number of business days to settlement.
     pub settlement_days: u32,
@@ -42,28 +39,6 @@ pub struct EquityConvention {
     pub premium_adjusted_delta: bool,
     /// Borrow rate spread (for short selling).
     pub borrow_spread: f64,
-}
-
-impl EquityConvention {
-    /// Creates a new equity convention.
-    #[must_use]
-    pub fn new(
-        settlement_days: u32,
-        calendar: CalendarId,
-        dividend_convention: DividendConvention,
-        settlement_type: EquitySettlementType,
-        premium_adjusted_delta: bool,
-        borrow_spread: f64,
-    ) -> Self {
-        Self {
-            settlement_days,
-            calendar,
-            dividend_convention,
-            settlement_type,
-            premium_adjusted_delta,
-            borrow_spread,
-        }
-    }
 }
 
 super::define_convention_factories! {

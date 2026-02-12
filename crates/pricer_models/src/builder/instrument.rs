@@ -14,14 +14,6 @@ use crate::market::{
 };
 
 /// Trait for instruments used in global curve calibration.
-///
-/// This trait provides a uniform interface for computing pricing errors
-/// across different instrument types, enabling global optimisation approaches
-/// where all discount factors are solved simultaneously.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type (e.g., `f64`) for AD compatibility
 pub trait CalibrationInstrument<T: Float>: Clone {
     /// Returns the market-quoted rate for this instrument.
     fn market_rate(&self) -> T;
@@ -40,10 +32,6 @@ pub trait CalibrationInstrument<T: Float>: Clone {
     /// Returns a descriptive name for the instrument type.
     fn instrument_type(&self) -> &'static str;
 }
-
-// =============================================================================
-// Implementation for MarketInstrument
-// =============================================================================
 
 impl<T: Float> CalibrationInstrument<T> for MarketInstrument<T> {
     fn market_rate(&self) -> T { self.rate() }
@@ -81,10 +69,6 @@ impl<T: Float> CalibrationInstrument<T> for MarketInstrument<T> {
 
     fn instrument_type(&self) -> &'static str { MarketInstrument::instrument_type(self) }
 }
-
-// =============================================================================
-// Helper Functions for Rate Computation
-// =============================================================================
 
 /// Compute the OIS par swap rate from a yield curve.
 fn compute_ois_par_rate<T: Float, C: YieldCurve<T>>(
@@ -211,10 +195,6 @@ fn compute_event_jump<T: Float, C: YieldCurve<T>>(
 
     Ok(rate_after - rate_before)
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

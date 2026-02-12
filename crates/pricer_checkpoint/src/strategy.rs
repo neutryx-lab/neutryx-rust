@@ -58,7 +58,7 @@ impl CheckpointStrategy {
                     return false;
                 }
                 let ratio = step / base_interval;
-                ratio > 0 && (ratio & (ratio - 1)) == 0
+                ratio > 0 && ratio.is_power_of_two()
             }
             CheckpointStrategy::Adaptive {
                 target_memory_mb: _,

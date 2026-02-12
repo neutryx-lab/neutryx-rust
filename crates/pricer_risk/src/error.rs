@@ -57,7 +57,7 @@ pub enum RiskError {
 }
 
 /// Partial Greeks result when calculation partially succeeded.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PartialGreeksResult {
     /// Delta sensitivity.
     pub delta: Option<f64>,
@@ -73,15 +73,8 @@ pub struct PartialGreeksResult {
 
 impl PartialGreeksResult {
     /// Creates an empty partial result.
-    pub fn empty() -> Self {
-        Self {
-            delta: None,
-            gamma: None,
-            vega: None,
-            theta: None,
-            rho: None,
-        }
-    }
+    #[inline]
+    pub fn empty() -> Self { Self::default() }
 
     /// Returns true if any Greek was computed.
     pub fn has_any(&self) -> bool {
@@ -91,10 +84,6 @@ impl PartialGreeksResult {
             || self.theta.is_some()
             || self.rho.is_some()
     }
-}
-
-impl Default for PartialGreeksResult {
-    fn default() -> Self { Self::empty() }
 }
 
 #[cfg(test)]

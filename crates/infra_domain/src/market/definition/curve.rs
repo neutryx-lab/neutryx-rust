@@ -1,6 +1,5 @@
 //! Curve definition for yield curve construction.
 
-#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -9,9 +8,8 @@ use crate::{
 };
 
 /// A jump pillar representing a rate discontinuity at a specific date.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JumpPillar {
     /// Date when the jump occurs.
     jump_date: Date,
@@ -20,20 +18,14 @@ pub struct JumpPillar {
     expected_jump_bps: f64,
 
     /// Optional reference to the source event (e.g., EventInstrument ID).
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     event_reference: Option<String>,
 
     /// Confidence level that the jump will occur (0.0 to 1.0).
     confidence: f64,
 
     /// End date for turn events (when the temporary spike reverts).
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Option::is_none")
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     end_date: Option<Date>,
 }
 
@@ -230,9 +222,8 @@ impl JumpPillarBuilder {
 }
 
 /// Curve definition - the recipe for building a yield curve.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CurveDefinition {
     /// Curve name (e.g., "USD-SOFR-Discount").
     pub name: String,
@@ -244,32 +235,27 @@ pub struct CurveDefinition {
     pub instruments: Vec<String>,
 
     /// Jump pillars for rate discontinuities (e.g., central bank meetings).
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, skip_serializing_if = "Vec::is_empty")
-    )]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub jump_pillars: Vec<JumpPillar>,
 
     /// Calibration method.
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub calibration_method: CalibrationMethod,
 
     /// Interpolation method for the resulting curve.
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub interpolation: InterpolationMethod,
 
     /// Whether to allow extrapolation beyond the last pillar.
-    #[cfg_attr(feature = "serde", serde(default = "default_true"))]
+    #[serde(default = "default_true")]
     pub allow_extrapolation: bool,
 }
 
-#[cfg(feature = "serde")]
 fn default_true() -> bool { true }
 
 /// Calibration method for curve construction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CalibrationMethod {
     /// Sequential bootstrapping (pillar-by-pillar).
     #[default]
@@ -279,9 +265,8 @@ pub enum CalibrationMethod {
 }
 
 /// Interpolation method for the resulting yield curve.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum InterpolationMethod {
     /// Linear interpolation on discount factors.
     Linear,
@@ -735,7 +720,6 @@ mod tests {
         assert!(!jump.is_turn());
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_jump_pillar_serde_roundtrip() {
         let jump = JumpPillar::new(test_date(), 25.0, 0.85).with_event_reference("FOMC-2024-03");
@@ -746,7 +730,6 @@ mod tests {
         assert_eq!(jump, parsed);
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_jump_pillar_serde_without_event_reference() {
         let jump = JumpPillar::new(test_date(), 25.0, 0.85);
@@ -759,7 +742,6 @@ mod tests {
         assert_eq!(jump, parsed);
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_jump_pillar_serde_camel_case() {
         let json = r#"{
@@ -775,7 +757,6 @@ mod tests {
         assert_eq!(jump.event_reference(), Some("FOMC-2024-03"));
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_jump_pillar_serde_defaults() {
         let json = r#"{
@@ -1156,7 +1137,6 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_serde_roundtrip() {
         let curve = CurveDefinition::new(
@@ -1172,7 +1152,6 @@ mod tests {
         assert_eq!(curve, parsed);
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_serde_from_json() {
         let json = r#"{
@@ -1193,7 +1172,6 @@ mod tests {
         assert!(curve.allow_extrapolation);
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_serde_defaults_applied() {
         let json = r#"{
@@ -1316,7 +1294,6 @@ mod tests {
         ));
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_serde_with_jump_pillars() {
         let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
@@ -1333,7 +1310,6 @@ mod tests {
         assert_eq!(parsed.jump_pillar_count(), 1);
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_serde_empty_jump_pillars_omitted() {
         let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()]);
@@ -1342,7 +1318,6 @@ mod tests {
         assert!(!json.contains("jumpPillars"));
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_serde_backward_compatibility() {
         let json = r#"{

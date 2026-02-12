@@ -40,35 +40,11 @@ use std::{
 /// Alignment in bytes for AVX-512 cache lines.
 pub const ALIGNMENT: usize = 64;
 
-/// A 64-byte aligned heap buffer for SIMD-optimised operations.
-///
-/// `AlignedBuffer<T>` provides a contiguous, aligned array of elements
-/// suitable for vectorised operations and automatic differentiation.
-///
-/// # Type Parameters
-///
-/// * `T` - Element type (typically `f64` or `i32`)
-///
-/// # Examples
-///
-/// ```
-/// use pricer_core::kernel::AlignedBuffer;
-///
-/// // Create a buffer with 1000 f64 elements
-/// let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(1000);
-/// assert_eq!(buffer.len(), 1000);
-///
-/// // Verify 64-byte alignment
-/// assert!(buffer.is_aligned());
-/// ```
+/// A 64-byte aligned heap buffer for SIMD-optimised operations and AD.
 pub struct AlignedBuffer<T> {
-    /// Pointer to aligned heap memory.
     ptr: NonNull<T>,
-    /// Number of elements currently in the buffer.
     len: usize,
-    /// Capacity in number of elements.
     cap: usize,
-    /// Marker for ownership semantics.
     _marker: PhantomData<T>,
 }
 
@@ -81,26 +57,8 @@ unsafe impl<T: Send> Send for AlignedBuffer<T> {}
 unsafe impl<T: Sync> Sync for AlignedBuffer<T> {}
 
 impl<T: Clone + Default> AlignedBuffer<T> {
-    /// Creates a new aligned buffer with the specified capacity.
-    ///
-    /// All elements are initialised to `T::default()`.
-    ///
-    /// # Arguments
-    ///
-    /// * `capacity` - Number of elements to allocate
-    ///
-    /// # Panics
-    ///
-    /// Panics if memory allocation fails.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_core::kernel::AlignedBuffer;
-    ///
-    /// let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(100);
-    /// assert_eq!(buffer.len(), 100);
-    /// ```
+    /// Creates a new aligned buffer with `capacity` elements initialised to
+    /// `T::default()`.
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         if capacity == 0 {
@@ -141,24 +99,7 @@ impl<T: Clone + Default> AlignedBuffer<T> {
         }
     }
 
-    /// Creates an aligned buffer from a `Vec<T>`.
-    ///
-    /// Copies the vector contents into aligned memory.
-    ///
-    /// # Arguments
-    ///
-    /// * `vec` - Source vector
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_core::kernel::AlignedBuffer;
-    ///
-    /// let data = vec![1.0, 2.0, 3.0, 4.0];
-    /// let buffer: AlignedBuffer<f64> = AlignedBuffer::from_vec(data);
-    /// assert_eq!(buffer.len(), 4);
-    /// assert_eq!(buffer[0], 1.0);
-    /// ```
+    /// Creates an aligned buffer by copying a `Vec<T>` into aligned memory.
     #[must_use]
     pub fn from_vec(vec: Vec<T>) -> Self {
         if vec.is_empty() {
@@ -178,21 +119,7 @@ impl<T: Clone + Default> AlignedBuffer<T> {
         buf
     }
 
-    /// Creates an aligned buffer from a slice.
-    ///
-    /// # Arguments
-    ///
-    /// * `slice` - Source slice
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_core::kernel::AlignedBuffer;
-    ///
-    /// let data = [1.0, 2.0, 3.0];
-    /// let buffer: AlignedBuffer<f64> = AlignedBuffer::from_slice(&data);
-    /// assert_eq!(buffer.len(), 3);
-    /// ```
+    /// Creates an aligned buffer by copying a slice into aligned memory.
     #[must_use]
     pub fn from_slice(slice: &[T]) -> Self {
         if slice.is_empty() {
@@ -229,15 +156,6 @@ impl<T> AlignedBuffer<T> {
     pub fn capacity(&self) -> usize { self.cap }
 
     /// Returns `true` if the buffer data is 64-byte aligned.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_core::kernel::AlignedBuffer;
-    ///
-    /// let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(100);
-    /// assert!(buffer.is_aligned());
-    /// ```
     #[inline]
     #[must_use]
     #[allow(unknown_lints, clippy::manual_is_multiple_of)] // is_multiple_of is unstable
@@ -253,20 +171,13 @@ impl<T> AlignedBuffer<T> {
     #[must_use]
     pub fn alignment(&self) -> usize { ALIGNMENT }
 
-    /// Returns a raw pointer to the buffer data.
-    ///
-    /// # Safety
-    ///
-    /// The returned pointer is valid for `len()` elements.
+    /// Returns a raw pointer to the buffer data, valid for `len()` elements.
     #[inline]
     #[must_use]
     pub fn as_ptr(&self) -> *const T { self.ptr.as_ptr() }
 
-    /// Returns a mutable raw pointer to the buffer data.
-    ///
-    /// # Safety
-    ///
-    /// The returned pointer is valid for `len()` elements.
+    /// Returns a mutable raw pointer to the buffer data, valid for `len()`
+    /// elements.
     #[inline]
     #[must_use]
     pub fn as_mut_ptr(&mut self) -> *mut T { self.ptr.as_ptr() }
@@ -400,10 +311,6 @@ impl<T: Eq> Eq for AlignedBuffer<T> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // =========================================================================
-    // Task 1.1 TDD Tests: AlignedBuffer
-    // =========================================================================
 
     #[test]
     fn test_aligned_buffer_with_capacity() {
@@ -596,8 +503,6 @@ mod tests {
         assert_send::<AlignedBuffer<f64>>();
         assert_sync::<AlignedBuffer<f64>>();
     }
-
-    // === Task 6.2: Explicit 64-byte alignment bit verification ===
 
     #[test]
     fn test_aligned_buffer_lower_6_bits_zero() {

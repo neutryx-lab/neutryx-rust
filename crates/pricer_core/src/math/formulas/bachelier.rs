@@ -16,7 +16,7 @@
 
 use num_traits::Float;
 
-use super::error::FormulaError;
+use super::error::{require_positive_vol, FormulaError};
 use crate::math::{
     normal_dist::{norm_cdf, norm_pdf},
     numeric::from_f64,
@@ -24,25 +24,8 @@ use crate::math::{
 
 /// Bachelier (normal) model for European option pricing.
 ///
-/// Provides closed-form pricing for European options under normal dynamics.
-/// Unlike Black-Scholes, this model supports negative forward prices,
-/// making it suitable for interest rate markets.
-///
-/// # Type Parameters
-/// * `T` - Floating-point type implementing `Float` (e.g., `f64`, `Dual64`)
-///
-/// # Examples
-/// ```
-/// use pricer_core::math::formulas::Bachelier;
-///
-/// let model = Bachelier::new(0.01_f64, 0.005).unwrap();
-/// let call_price = model.price_call(0.01, 1.0);
-/// let put_price = model.price_put(0.01, 1.0);
-///
-/// // Put-call parity: C - P = F - K
-/// let parity = call_price - put_price - (0.01 - 0.01);
-/// assert!(parity.abs() < 1e-10);
-/// ```
+/// Supports negative forward prices, making it suitable for interest rate
+/// markets.
 #[derive(Debug, Clone)]
 pub struct Bachelier<T: Float> {
     /// Forward price (F) - can be negative
@@ -52,37 +35,9 @@ pub struct Bachelier<T: Float> {
 }
 
 impl<T: Float> Bachelier<T> {
-    /// Creates a new Bachelier model.
-    ///
-    /// # Arguments
-    /// * `forward` - Forward price (can be negative for interest rates)
-    /// * `volatility` - Normal volatility (must be positive)
-    ///
-    /// # Errors
-    /// - `FormulaError::InvalidVolatility` if volatility <= 0
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::math::formulas::Bachelier;
-    ///
-    /// // Positive forward
-    /// let model = Bachelier::new(0.03_f64, 0.01).unwrap();
-    ///
-    /// // Negative forward (interest rates)
-    /// let model_neg = Bachelier::new(-0.005_f64, 0.01).unwrap();
-    ///
-    /// // Invalid volatility
-    /// assert!(Bachelier::new(0.01_f64, 0.0).is_err());
-    /// ```
+    /// Creates a new Bachelier model. Returns error if volatility <= 0.
     pub fn new(forward: T, volatility: T) -> Result<Self, FormulaError> {
-        let zero = T::zero();
-
-        if volatility <= zero {
-            return Err(FormulaError::InvalidVolatility {
-                volatility: volatility.to_f64().unwrap_or(0.0),
-            });
-        }
-
+        require_positive_vol(volatility)?;
         Ok(Self {
             forward,
             volatility,
@@ -97,16 +52,7 @@ impl<T: Float> Bachelier<T> {
     #[inline]
     pub fn volatility(&self) -> T { self.volatility }
 
-    /// Computes the d term of the Bachelier formula.
-    ///
-    /// d = (F - K) / (σ√T)
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price (K)
-    /// * `expiry` - Time to expiration in years (T)
-    ///
-    /// # Returns
-    /// The d term.
+    /// Computes d = (F - K) / (σ√T).
     #[inline]
     fn d(&self, strike: T, expiry: T) -> T {
         let epsilon: T = from_f64(1e-10);
@@ -129,27 +75,7 @@ impl<T: Float> Bachelier<T> {
         (self.forward - strike) / vol_sqrt_t
     }
 
-    /// Computes European call option price under normal dynamics.
-    ///
-    /// C = (F - K)·N(d) + σ√T·φ(d)
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price (K)
-    /// * `expiry` - Time to expiration in years (T)
-    ///
-    /// # Returns
-    /// The theoretical call option price.
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::math::formulas::Bachelier;
-    ///
-    /// let model = Bachelier::new(0.03_f64, 0.01).unwrap();
-    /// let price = model.price_call(0.03, 1.0);
-    ///
-    /// // ATM call should have positive value
-    /// assert!(price > 0.0);
-    /// ```
+    /// Computes European call price: C = (F - K)·N(d) + σ√T·φ(d).
     #[inline]
     pub fn price_call(&self, strike: T, expiry: T) -> T {
         let zero = T::zero();
@@ -169,27 +95,7 @@ impl<T: Float> Bachelier<T> {
         (self.forward - strike) * norm_cdf(d) + vol_sqrt_t * norm_pdf(d)
     }
 
-    /// Computes European put option price under normal dynamics.
-    ///
-    /// P = (K - F)·N(-d) + σ√T·φ(d)
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price (K)
-    /// * `expiry` - Time to expiration in years (T)
-    ///
-    /// # Returns
-    /// The theoretical put option price.
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::math::formulas::Bachelier;
-    ///
-    /// let model = Bachelier::new(0.03_f64, 0.01).unwrap();
-    /// let price = model.price_put(0.03, 1.0);
-    ///
-    /// // ATM put should have positive value
-    /// assert!(price > 0.0);
-    /// ```
+    /// Computes European put price: P = (K - F)·N(-d) + σ√T·φ(d).
     #[inline]
     pub fn price_put(&self, strike: T, expiry: T) -> T {
         let zero = T::zero();
@@ -210,14 +116,6 @@ impl<T: Float> Bachelier<T> {
     }
 
     /// Computes option price based on call/put flag.
-    ///
-    /// # Arguments
-    /// * `strike` - Strike price
-    /// * `expiry` - Time to expiration
-    /// * `is_call` - True for call, false for put
-    ///
-    /// # Returns
-    /// The theoretical option price.
     #[inline]
     pub fn price(&self, strike: T, expiry: T, is_call: bool) -> T {
         if is_call {
@@ -233,10 +131,6 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-
-    // ==========================================================
-    // Constructor Tests
-    // ==========================================================
 
     #[test]
     fn test_new_valid_parameters() {
@@ -284,10 +178,6 @@ mod tests {
             _ => panic!("Expected InvalidVolatility error"),
         }
     }
-
-    // ==========================================================
-    // Price Tests
-    // ==========================================================
 
     #[test]
     fn test_call_price_positive() {
@@ -367,10 +257,6 @@ mod tests {
         assert_eq!(model.price(0.03, 1.0, false), model.price_put(0.03, 1.0));
     }
 
-    // ==========================================================
-    // Put-Call Parity Tests
-    // ==========================================================
-
     #[test]
     fn test_put_call_parity() {
         // For Bachelier: C - P = F - K
@@ -412,10 +298,6 @@ mod tests {
         assert_relative_eq!(call - put, forward_minus_strike, epsilon = 1e-10);
     }
 
-    // ==========================================================
-    // Clone and Debug Tests
-    // ==========================================================
-
     #[test]
     fn test_clone() {
         let model1 = Bachelier::new(0.03_f64, 0.01).unwrap();
@@ -431,10 +313,6 @@ mod tests {
         assert!(debug_str.contains("Bachelier"));
         assert!(debug_str.contains("forward"));
     }
-
-    // ==========================================================
-    // f32 Compatibility Tests
-    // ==========================================================
 
     #[test]
     fn test_f32_compatibility() {

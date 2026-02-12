@@ -1,5 +1,7 @@
 //! Funding Valuation Adjustment (FVA) calculation.
 
+use super::integrate::trapezoidal_xva;
+
 /// Computes Funding Cost Adjustment (FCA): the cost of funding positive
 /// exposure via trapezoidal integration.
 pub fn compute_fca(
@@ -8,24 +10,14 @@ pub fn compute_fca(
     funding_spread: f64,
     discount_factors: &[f64],
 ) -> f64 {
-    if time_grid.len() < 2
-        || ee.len() != time_grid.len()
-        || discount_factors.len() != time_grid.len()
-    {
+    if discount_factors.len() != time_grid.len() {
         return 0.0;
     }
-
-    let mut fca = 0.0;
-
-    for i in 0..time_grid.len() - 1 {
+    trapezoidal_xva(ee, time_grid, |i, _t1, _t2| {
         let dt = time_grid[i + 1] - time_grid[i];
-        let avg_ee = 0.5 * (ee[i] + ee[i + 1]);
         let avg_df = 0.5 * (discount_factors[i] + discount_factors[i + 1]);
-
-        fca += avg_ee * funding_spread * avg_df * dt;
-    }
-
-    fca.max(0.0)
+        funding_spread * avg_df * dt
+    })
 }
 
 /// Computes Funding Benefit Adjustment (FBA): the benefit of investing negative
@@ -36,24 +28,14 @@ pub fn compute_fba(
     lending_spread: f64,
     discount_factors: &[f64],
 ) -> f64 {
-    if time_grid.len() < 2
-        || ene.len() != time_grid.len()
-        || discount_factors.len() != time_grid.len()
-    {
+    if discount_factors.len() != time_grid.len() {
         return 0.0;
     }
-
-    let mut fba = 0.0;
-
-    for i in 0..time_grid.len() - 1 {
+    trapezoidal_xva(ene, time_grid, |i, _t1, _t2| {
         let dt = time_grid[i + 1] - time_grid[i];
-        let avg_ene = 0.5 * (ene[i] + ene[i + 1]);
         let avg_df = 0.5 * (discount_factors[i] + discount_factors[i + 1]);
-
-        fba += avg_ene * lending_spread * avg_df * dt;
-    }
-
-    fba.max(0.0)
+        lending_spread * avg_df * dt
+    })
 }
 
 /// Computes combined FVA = FCA - FBA, returning (FCA, FBA, FVA).

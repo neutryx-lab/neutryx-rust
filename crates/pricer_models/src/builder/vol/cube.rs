@@ -12,27 +12,7 @@ use super::{
     SliceCalibrationDiagnostics, SliceCalibrator, VolBuilder, VolQuote,
 };
 
-// =============================================================================
-// VolCubeBuilder
-// =============================================================================
-
-/// Builder for swaption volatility cubes.
-///
-/// Calibrates SABR parameters for each (expiry, tenor) slice independently,
-/// then aggregates into a complete parameter cube.
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_models::builder::vol::VolCubeBuilder;
-///
-/// let mut builder = VolCubeBuilder::new();
-/// builder.add_quote(1.0, 5.0, 0.03, 0.2, 0.03);  // 1Y expiry, 5Y tenor
-/// builder.add_quote(1.0, 5.0, 0.02, 0.22, 0.03);
-/// builder.add_quote(1.0, 10.0, 0.03, 0.21, 0.03); // 1Y expiry, 10Y tenor
-///
-/// let cube = builder.calibrate()?;
-/// ```
+/// Builder for swaption volatility cubes using slice-wise SABR calibration.
 #[derive(Debug, Clone)]
 pub struct VolCubeBuilder<T: Float> {
     /// Quotes organised by (expiry, tenor)
@@ -132,10 +112,6 @@ impl<T: Float> VolBuilder<T> for VolCubeBuilder<T> {
     }
 }
 
-// =============================================================================
-// VolCubeResult
-// =============================================================================
-
 /// Result of VolCube calibration.
 #[derive(Debug, Clone)]
 pub struct VolCubeResult<T: Float> {
@@ -201,10 +177,6 @@ impl<T: Float> VolCubeResult<T> {
         self.diagnostics.values().map(|d| d.iterations).sum()
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

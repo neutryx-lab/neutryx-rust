@@ -11,48 +11,20 @@
 //! let usd = Currency::USD;
 //! ```
 
-// =============================================================================
-// Time & Calendar Types (always available)
-// =============================================================================
-
-// =============================================================================
-// Configuration Types (full feature)
-// =============================================================================
 #[cfg(feature = "full")]
 pub use infra_config::{
     BumpSizes, GreekType, GreeksMethod, MonteCarloParams, PricingConfig, PricingMethod, RiskConfig,
     ScenarioConfig, ShiftType,
 };
-// =============================================================================
-// Book & Portfolio Types (always available)
-// =============================================================================
-pub use infra_domain::book::{
-    Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType,
-};
-// =============================================================================
-// Counterparty Types (always available)
-// =============================================================================
-pub use infra_domain::counterparty::{CsaTerms, NettingSet};
-// =============================================================================
-// Error Types (always available)
-// =============================================================================
-pub use infra_domain::error::{
-    BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
-    PortfolioError, ValidationError, ValidationResult,
-};
-// =============================================================================
-// ID Types (always available)
-// =============================================================================
-pub use infra_domain::ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
-// =============================================================================
-// Market Types (always available)
-// =============================================================================
-pub use infra_domain::market::{Currency, RateIndex};
-// =============================================================================
-// Trade Types (always available)
-// =============================================================================
-pub use infra_domain::trade::{SwapDirection, TradeDirection};
 pub use infra_domain::{
+    book::{Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType},
+    counterparty::{CsaTerms, NettingSet},
+    error::{
+        BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
+        PortfolioError, ValidationError, ValidationResult,
+    },
+    ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
+    market::{Currency, RateIndex},
     portfolio::{
         PortfolioBookMapping, PortfolioDefinition, PortfolioDefinitionBuilder, PortfolioMetadata,
         PortfolioScope,
@@ -62,15 +34,10 @@ pub use infra_domain::{
         DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
         TimeError, TimeUnit,
     },
+    trade::{SwapDirection, TradeDirection},
 };
-// =============================================================================
-// Pricing Result Types (full feature)
-// =============================================================================
 #[cfg(feature = "full")]
 pub use pricer_pricing::{MonteCarloConfig, MonteCarloPricer, PricingResult, UnifiedPricingResult};
-// =============================================================================
-// Risk Types (full feature)
-// =============================================================================
 #[cfg(feature = "full")]
 pub use pricer_risk::{
     AggregatedGreeks, GreeksConfig, GreeksResult, PortfolioRiskResult, RiskEngine,

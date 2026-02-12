@@ -8,23 +8,23 @@ pub enum ConfigError {
     /// Configuration file not found.
     #[error("Configuration file not found: {path}")]
     FileNotFound {
-        /// The file path that was not found.
+        /// File path.
         path: String,
     },
 
     /// Invalid configuration value.
     #[error("Invalid configuration value for '{key}': {message}")]
     InvalidValue {
-        /// Configuration key that has invalid value.
+        /// Configuration key.
         key: String,
-        /// Description of validation failure.
+        /// Validation failure detail.
         message: String,
     },
 
     /// Missing required configuration field.
     #[error("Missing required configuration: {field}")]
     MissingRequired {
-        /// The name of the missing field.
+        /// Field name.
         field: String,
     },
 
@@ -35,13 +35,13 @@ pub enum ConfigError {
     /// Parse error with location details.
     #[error("Parse error in '{path}' at line {line}, column {column}: {message}")]
     ParseError {
-        /// Path to the file with parse error.
+        /// File path.
         path: String,
         /// Line number (1-indexed).
         line: usize,
         /// Column number (1-indexed).
         column: usize,
-        /// Error message.
+        /// Error detail.
         message: String,
     },
 
@@ -55,12 +55,12 @@ pub enum ConfigError {
 }
 
 impl ConfigError {
-    /// Creates a FileNotFound error.
+    /// Constructs a `FileNotFound` error.
     pub fn file_not_found(path: impl Into<String>) -> Self {
         Self::FileNotFound { path: path.into() }
     }
 
-    /// Creates an InvalidValue error.
+    /// Constructs an `InvalidValue` error.
     pub fn invalid_value(key: impl Into<String>, message: impl Into<String>) -> Self {
         Self::InvalidValue {
             key: key.into(),
@@ -68,14 +68,14 @@ impl ConfigError {
         }
     }
 
-    /// Creates a MissingRequired error.
+    /// Constructs a `MissingRequired` error.
     pub fn missing_required(field: impl Into<String>) -> Self {
         Self::MissingRequired {
             field: field.into(),
         }
     }
 
-    /// Creates a ParseError.
+    /// Constructs a `ParseError`.
     pub fn parse_error(
         path: impl Into<String>,
         line: usize,

@@ -48,37 +48,17 @@ use crate::{
     validate_params,
 };
 
-// ================================================================
-// Task 2.1: ThetaFunction 型の実装
-// ================================================================
-
 /// theta(t) 計算方法を指定するための列挙型
-///
-/// Hull-White モデルの時間依存ドリフト theta(t) を
-/// 異なる方法で計算するための型
-///
-/// # Requirement: 4.1, 4.2
-///
-/// # バリアント
-///
-/// - `Constant`: 定数 theta（フラットカーブ向け）
-/// - `TimeDependentFlat`: フラットカーブからの時間依存 theta
-/// - `Custom`: カスタムテーブル（補間付き）
 #[derive(Clone, Debug)]
 pub enum ThetaFunction<T: Float> {
     /// 定数 theta（theta = a * r_star）
-    ///
-    /// フラットカーブの簡易ケースで使用
     Constant {
         /// 定数 theta 値
         value: T,
     },
 
-    /// フラットカーブからの時間依存 theta
-    ///
-    /// theta(t) = a * r* + (sigma^2 / 2a) * (1 - exp(-2at))
-    ///
-    /// # Requirement: 4.2
+    /// フラットカーブからの時間依存 theta: theta(t) = a * r* + (sigma^2 / 2a) *
+    /// (1 - exp(-2at))
     TimeDependentFlat {
         /// 平均回帰速度
         mean_reversion: T,
@@ -88,12 +68,7 @@ pub enum ThetaFunction<T: Float> {
         initial_short_rate: T,
     },
 
-    /// カスタムテーブル（時間と theta のペア）
-    ///
-    /// 任意のイールドカーブから導出された theta を
-    /// 線形補間でサポート
-    ///
-    /// # Requirement: 4.3
+    /// カスタムテーブル（時間と theta のペア、線形補間）
     CustomTable {
         /// 時間ポイント（昇順）
         times: Vec<T>,
@@ -107,8 +82,6 @@ impl<T: Float> ThetaFunction<T> {
     pub fn constant(value: T) -> Self { ThetaFunction::Constant { value } }
 
     /// フラットカーブからの時間依存 theta を作成
-    ///
-    /// # Requirement: 4.2
     pub fn from_flat_curve(mean_reversion: T, volatility: T, initial_short_rate: T) -> Self {
         ThetaFunction::TimeDependentFlat {
             mean_reversion,
@@ -118,13 +91,6 @@ impl<T: Float> ThetaFunction<T> {
     }
 
     /// カスタムテーブルから theta 関数を作成
-    ///
-    /// # 引数
-    ///
-    /// * `times` - 時間ポイント（昇順）
-    /// * `values` - 対応する theta 値
-    ///
-    /// # Requirement: 4.3
     pub fn from_table(times: Vec<T>, values: Vec<T>) -> Option<Self> {
         if times.len() != values.len() || times.is_empty() {
             return None;
@@ -133,14 +99,6 @@ impl<T: Float> ThetaFunction<T> {
     }
 
     /// 時刻 t における theta(t) を計算
-    ///
-    /// # 引数
-    ///
-    /// * `t` - 時刻
-    ///
-    /// # 戻り値
-    ///
-    /// theta(t) の値
     pub fn evaluate(&self, t: T) -> T {
         match self {
             ThetaFunction::Constant { value } => *value,
@@ -190,19 +148,6 @@ impl<T: Float> ThetaFunction<T> {
 }
 
 /// Hull-White model parameters.
-///
-/// # Type Parameters
-///
-/// * `T` - Float type (f64 or DualNumber for AD compatibility)
-///
-/// # Fields
-///
-/// * `mean_reversion` - Mean reversion speed (a), must be positive
-/// * `volatility` - Short rate volatility (sigma), must be positive
-/// * `initial_short_rate` - Initial short rate r(0) from the initial curve
-/// * `initial_curve` - Initial yield curve for calibration
-/// * `theta_function` - Time-dependent theta function (Requirement 4.1-4.3)
-/// * `current_time` - Current simulation time for time-dependent theta
 #[derive(Clone, Debug)]
 pub struct HullWhiteParams<T: Float> {
     /// Mean reversion speed (a > 0)
@@ -221,30 +166,6 @@ pub struct HullWhiteParams<T: Float> {
 
 impl<T: Float> HullWhiteParams<T> {
     /// Create new Hull-White parameters with validation.
-    ///
-    /// # Arguments
-    ///
-    /// * `mean_reversion` - Mean reversion speed (must be positive)
-    /// * `volatility` - Short rate volatility (must be positive)
-    /// * `initial_curve` - Initial yield curve
-    ///
-    /// # Returns
-    ///
-    /// `Some(HullWhiteParams)` if parameters are valid, `None` otherwise.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use pricer_models::stochastic::HullWhiteParams;
-    /// use pricer_models::market::curves::FlatCurve;
-    ///
-    /// let params = HullWhiteParams::new(0.05, 0.01, FlatCurve::new(0.03));
-    /// assert!(params.is_some());
-    ///
-    /// // Invalid: negative mean reversion
-    /// let invalid = HullWhiteParams::new(-0.05, 0.01, FlatCurve::new(0.03));
-    /// assert!(invalid.is_none());
-    /// ```
     pub fn new(mean_reversion: T, volatility: T, initial_curve: FlatCurve<T>) -> Option<Self> {
         // Extract initial short rate from curve (instantaneous forward rate at t=0)
         // For a flat curve, this equals the constant rate
@@ -269,15 +190,6 @@ impl<T: Float> HullWhiteParams<T> {
     }
 
     /// Create Hull-White parameters with a custom theta function.
-    ///
-    /// # Requirement: 4.3
-    ///
-    /// # Arguments
-    ///
-    /// * `mean_reversion` - Mean reversion speed (must be positive)
-    /// * `volatility` - Short rate volatility (must be positive)
-    /// * `initial_short_rate` - Initial short rate
-    /// * `theta_function` - Custom theta function
     pub fn with_theta_function(
         mean_reversion: T,
         volatility: T,
@@ -304,10 +216,7 @@ impl<T: Float> HullWhiteParams<T> {
         }
     }
 
-    /// Get the long-term mean rate (approximate).
-    ///
-    /// For a flat initial curve with rate r*, the long-term mean
-    /// is approximately r* + (sigma^2) / (2 * a^2).
+    /// Get the long-term mean rate: r* + sigma^2 / (2 * a^2).
     pub fn long_term_mean(&self) -> T {
         let sigma = self.volatility;
         let a = self.mean_reversion;
@@ -316,21 +225,9 @@ impl<T: Float> HullWhiteParams<T> {
     }
 
     /// Calculate theta(t) using the configured theta function.
-    ///
-    /// # Requirement: 4.1, 4.2, 4.3
-    ///
-    /// # Arguments
-    ///
-    /// * `t` - Time at which to evaluate theta
-    ///
-    /// # Returns
-    ///
-    /// theta(t) value
     pub fn theta(&self, t: T) -> T { self.theta_function.evaluate(t) }
 
     /// Advance the current simulation time by dt.
-    ///
-    /// Used internally for time-dependent theta evaluation.
     pub fn advance_time(&mut self, dt: T) { self.current_time = self.current_time + dt; }
 
     /// Reset the current simulation time to zero.
@@ -340,94 +237,31 @@ impl<T: Float> HullWhiteParams<T> {
     pub fn current_time(&self) -> T { self.current_time }
 }
 
-/// Hull-White one-factor model for short rate dynamics.
-///
-/// Implements the StochasticModel trait for Monte Carlo simulation.
-///
-/// # Discretization
-///
-/// Uses Euler-Maruyama discretization:
-/// ```text
-/// r(t+dt) = r(t) + [theta(t) - a * r(t)] * dt + sigma * sqrt(dt) * dW
-/// ```
-#[derive(Clone, Debug, Default)]
-pub struct HullWhiteModel<T: Float> {
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: Float> HullWhiteModel<T> {
-    /// Create a new Hull-White model instance.
-    pub fn new() -> Self {
-        Self {
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<T: Float> Differentiable for HullWhiteModel<T> {}
-
-impl<T: Float + Default> StochasticModel<T> for HullWhiteModel<T> {
-    type State = SingleState<T>;
-    type Params = HullWhiteParams<T>;
-
-    /// Hull-White の 1 ステップ時間発展
-    ///
-    /// # Requirement: 4.1, 4.2, 4.4
-    ///
-    /// Euler-Maruyama 離散化:
-    /// ```text
-    /// r(t+dt) = r(t) + [theta(t) - a * r(t)] * dt + sigma * sqrt(dt) * dW
-    /// ```
-    ///
-    /// # Note
-    ///
-    /// 時間依存 theta を使用するには、呼び出し側で `params.current_time` を
-    /// 更新する必要があります。または、このメソッドは `params.current_time` を
-    /// 使用して theta(t) を評価します。
-    fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State {
-        // Euler-Maruyama discretization:
-        // r(t+dt) = r(t) + [theta(t) - a * r(t)] * dt + sigma * sqrt(dt) * dW
+define_phantom_model! {
+    /// Hull-White one-factor model for short rate dynamics (Euler-Maruyama discretisation).
+    model HullWhiteModel,
+    params: HullWhiteParams<T>,
+    state: SingleState<T>,
+    marker: RatesModel,
+    brownian_dim: 1,
+    num_factors: 1,
+    name: "HullWhite1F",
+    evolve_step(state, dt, dw, params) {
         let r = state.0;
         let a = params.mean_reversion;
         let sigma = params.volatility;
-
-        // Use time-dependent theta evaluated at current simulation time
-        // Requirement 4.2: Time-dependent theta for yield curve fitting
         let theta = params.theta(params.current_time);
-
-        // Drift: [theta - a * r] * dt
         let drift = (theta - a * r) * dt;
-
-        // Diffusion: sigma * sqrt(dt) * dW
         let diffusion = sigma * dt.sqrt() * dw[0];
-
         SingleState(r + drift + diffusion)
-    }
-
-    fn initial_state(params: &Self::Params) -> Self::State {
-        SingleState(params.initial_short_rate)
-    }
-
-    fn brownian_dim() -> usize { 1 }
-
-    fn model_name() -> &'static str { "HullWhite1F" }
-
-    fn num_factors() -> usize {
-        1 // Hull-White 1F is a single-factor model
-    }
+    },
+    initial_state(params) { SingleState(params.initial_short_rate) },
 }
-
-impl<T: Float + Default> RatesModel<T> for HullWhiteModel<T> {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // ================================================================
-    // Task 9.2: Hull-White 1F Model Tests (TDD)
-    // ================================================================
-
-    // Test: Parameter validation
     #[test]
     fn test_hull_white_params_new_valid() {
         let params = HullWhiteParams::new(0.05_f64, 0.01, FlatCurve::new(0.03));
@@ -477,7 +311,6 @@ mod tests {
         assert!((theta_0 - 0.003).abs() < 1e-10);
     }
 
-    // Test: Model properties
     #[test]
     fn test_hull_white_model_new() {
         let model: HullWhiteModel<f64> = HullWhiteModel::new();
@@ -494,7 +327,6 @@ mod tests {
         assert!((state.0 - 0.03).abs() < 1e-10);
     }
 
-    // Test: Evolution step
     #[test]
     fn test_hull_white_evolve_step_no_shock() {
         let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
@@ -566,7 +398,6 @@ mod tests {
         assert!(next_state.0 < 0.0);
     }
 
-    // Test: Multiple steps path generation
     #[test]
     fn test_hull_white_path_generation() {
         let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
@@ -584,14 +415,12 @@ mod tests {
         assert!(state.0.is_finite());
     }
 
-    // Test: Differentiable marker
     #[test]
     fn test_hull_white_is_differentiable() {
         let model: HullWhiteModel<f64> = HullWhiteModel::new();
         let _: &dyn Differentiable = &model;
     }
 
-    // Test: f32 compatibility
     #[test]
     fn test_hull_white_f32_compatibility() {
         let params = HullWhiteParams::new(0.1_f32, 0.01, FlatCurve::new(0.03)).unwrap();
@@ -604,7 +433,6 @@ mod tests {
         assert!(next_state.0.is_finite());
     }
 
-    // Test: Clone
     #[test]
     fn test_hull_white_params_clone() {
         let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
@@ -612,10 +440,6 @@ mod tests {
         assert_eq!(params.mean_reversion, cloned.mean_reversion);
         assert_eq!(params.volatility, cloned.volatility);
     }
-
-    // ================================================================
-    // Task 6.2: ThetaFunction Tests
-    // ================================================================
 
     #[test]
     fn test_theta_function_constant() {

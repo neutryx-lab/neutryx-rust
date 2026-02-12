@@ -11,8 +11,7 @@ use crate::{
 };
 
 /// Unique identifier for a market quote.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct QuoteId {
     /// Currency of the quote.
     pub currency: Currency,

@@ -29,36 +29,10 @@ use pricer_core::math::{
     numeric::from_f64,
     solvers::{LMConfig, LevenbergMarquardtSolver},
 };
-// =============================================================================
-// Re-exports
-// =============================================================================
 pub use surface::{FxVolBuilder, FxVolResult};
 
-// =============================================================================
-// VolBuilder Trait
-// =============================================================================
-
-/// Trait for volatility surface/cube builders.
-///
-/// Captures the common **configure -> validate -> calibrate** pattern shared by
-/// [`FxVolBuilder`] (2D surface) and [`VolCubeBuilder`] (3D cube).
-///
-/// # Type Parameters
-///
-/// * `T` - Float type (f64 or f32)
-///
-/// # Associated Types
-///
-/// * `Result` - The calibrated result type (e.g. `FxVolResult`,
-///   `VolCubeResult`)
-///
-/// # Pattern
-///
-/// ```text
-/// 1. Configure: new() / with_config() -> set up calibration parameters
-/// 2. Validate:  validate() -> check sufficient data before calibration
-/// 3. Calibrate: calibrate() -> run slice-wise SABR calibration
-/// ```
+/// Trait for volatility surface/cube builders (configure -> validate ->
+/// calibrate).
 pub trait VolBuilder<T: Float> {
     /// The calibration result type.
     type Result;
@@ -70,10 +44,6 @@ pub trait VolBuilder<T: Float> {
     fn num_slices(&self) -> usize;
 
     /// Validates that the builder has sufficient data for calibration.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`CalibrationError::InsufficientData`] if no slices are loaded.
     fn validate(&self) -> Result<(), CalibrationError> {
         if self.num_slices() == 0 {
             return Err(CalibrationError::InsufficientData {
@@ -85,24 +55,12 @@ pub trait VolBuilder<T: Float> {
     }
 
     /// Calibrates all loaded slices and returns the aggregated result.
-    ///
-    /// This follows the common pattern:
-    /// 1. Validate input data
-    /// 2. Calibrate each slice independently
-    /// 3. Aggregate results
     fn calibrate(&self) -> Result<Self::Result, CalibrationError>;
 }
 
 use super::error::CalibrationError;
 
-// =============================================================================
-// Slice Calibration Diagnostics
-// =============================================================================
-
-/// Diagnostics from slice calibration.
-///
-/// Provides information about the calibration process for a single slice,
-/// including convergence status, iteration count, and fit quality metrics.
+/// Diagnostics from a single slice calibration.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SliceCalibrationDiagnostics {
     /// Whether the calibration converged.
@@ -185,18 +143,7 @@ pub struct SliceCalibrationResult<P> {
     pub diagnostics: SliceCalibrationDiagnostics,
 }
 
-// =============================================================================
-// SABR Parameters
-// =============================================================================
-
-/// SABR model parameters for a single slice.
-///
-/// The SABR model is defined by:
-/// - `alpha` (α): Initial volatility level
-/// - `beta` (β): CEV exponent (typically fixed, e.g., 0.5 for normal-like, 1.0
-///   for log-normal)
-/// - `rho` (ρ): Correlation between spot and volatility (-1 < ρ < 1)
-/// - `nu` (ν): Volatility of volatility
+/// SABR model parameters (α, β, ρ, ν) for a single slice.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SabrParams<T: Float> {
     /// Initial volatility (α > 0)
@@ -220,9 +167,8 @@ impl<T: Float> SabrParams<T> {
         }
     }
 
-    /// Creates parameters with typical defaults for rates.
-    ///
-    /// Uses β = 0.5 (normal-like), ρ = -0.3, ν = 0.4.
+    /// Creates parameters with typical defaults for rates (β=0.5, ρ=-0.3,
+    /// ν=0.4).
     pub fn default_rates(alpha: T) -> Self {
         Self {
             alpha,
@@ -232,9 +178,7 @@ impl<T: Float> SabrParams<T> {
         }
     }
 
-    /// Creates parameters with typical defaults for FX.
-    ///
-    /// Uses β = 1.0 (log-normal), ρ = -0.2, ν = 0.3.
+    /// Creates parameters with typical defaults for FX (β=1.0, ρ=-0.2, ν=0.3).
     pub fn default_fx(alpha: T) -> Self {
         Self {
             alpha,
@@ -286,14 +230,7 @@ impl<T: Float> Default for SabrParams<T> {
     fn default() -> Self { Self::default_rates(from_f64(0.03)) }
 }
 
-// =============================================================================
-// SABR Parameter Bounds
-// =============================================================================
-
 /// Bounds for SABR parameter optimisation.
-///
-/// Used by the Levenberg-Marquardt optimiser to constrain parameters
-/// within valid ranges during calibration.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SabrBounds<T: Float> {
     /// Bounds for alpha: (lower, upper), e.g. (0.001, 1.0)
@@ -325,8 +262,6 @@ impl<T: Float> SabrBounds<T> {
     }
 
     /// Creates bounds suitable for rates (swaptions).
-    ///
-    /// Uses tighter rho bounds (typically negative for rates).
     pub fn rates() -> Self {
         Self {
             alpha_bounds: (from_f64(0.001), from_f64(0.5)),
@@ -335,9 +270,7 @@ impl<T: Float> SabrBounds<T> {
         }
     }
 
-    /// Creates bounds suitable for Normal SABR (β = 0).
-    ///
-    /// Alpha is in normal vol units (decimal), typically 0.001–0.02.
+    /// Creates bounds suitable for Normal SABR (β=0).
     pub fn normal() -> Self {
         Self {
             alpha_bounds: (from_f64(0.0001), from_f64(0.05)),
@@ -347,8 +280,6 @@ impl<T: Float> SabrBounds<T> {
     }
 
     /// Creates bounds suitable for FX.
-    ///
-    /// Uses wider bounds for FX markets.
     pub fn fx() -> Self {
         Self {
             alpha_bounds: (from_f64(0.001), from_f64(1.0)),
@@ -357,17 +288,7 @@ impl<T: Float> SabrBounds<T> {
         }
     }
 
-    /// Clamps a parameter vector to be within bounds.
-    ///
-    /// # Arguments
-    ///
-    /// * `alpha` - Alpha value to clamp
-    /// * `rho` - Rho value to clamp
-    /// * `nu` - Nu value to clamp
-    ///
-    /// # Returns
-    ///
-    /// Tuple of clamped (alpha, rho, nu).
+    /// Clamps (alpha, rho, nu) to be within bounds.
     pub fn clamp(&self, alpha: T, rho: T, nu: T) -> (T, T, T) {
         let clamped_alpha = alpha.max(self.alpha_bounds.0).min(self.alpha_bounds.1);
         let clamped_rho = rho.max(self.rho_bounds.0).min(self.rho_bounds.1);
@@ -386,10 +307,6 @@ impl<T: Float> SabrBounds<T> {
     }
 }
 
-// =============================================================================
-// Volatility Quote
-// =============================================================================
-
 /// A single volatility quote for calibration.
 #[derive(Debug, Clone, Copy)]
 pub struct VolQuote<T: Float> {
@@ -405,13 +322,6 @@ pub struct VolQuote<T: Float> {
 
 impl<T: Float> VolQuote<T> {
     /// Creates a new volatility quote with expiry.
-    ///
-    /// # Arguments
-    ///
-    /// * `strike` - Strike price/rate
-    /// * `volatility` - Market-observed implied volatility
-    /// * `forward` - Forward rate/price at this expiry
-    /// * `expiry` - Time to expiry in years
     pub fn new(strike: T, volatility: T, forward: T, expiry: T) -> Self {
         Self {
             strike,
@@ -421,9 +331,7 @@ impl<T: Float> VolQuote<T> {
         }
     }
 
-    /// Creates a new volatility quote without expiry (backwards compatible).
-    ///
-    /// Sets expiry to T::one() as default.
+    /// Creates a new volatility quote without expiry (defaults to `T::one()`).
     pub fn new_without_expiry(strike: T, volatility: T, forward: T) -> Self {
         Self {
             strike,
@@ -434,22 +342,12 @@ impl<T: Float> VolQuote<T> {
     }
 }
 
-// =============================================================================
-// Slice Calibrator Trait
-// =============================================================================
-
 /// Trait for calibrating a single parameter slice.
-///
-/// A slice represents parameters at a fixed expiry (for FX) or
-/// expiry-tenor pair (for swaptions).
 pub trait SliceCalibrator<T: Float> {
     /// The output parameter type for a single slice.
     type Params;
 
     /// Calibrates parameters from a set of volatility quotes.
-    ///
-    /// Returns calibrated parameters along with diagnostics about the
-    /// calibration process.
     fn calibrate_slice(
         &self,
         quotes: &[VolQuote<T>],
@@ -502,11 +400,7 @@ impl<T: Float> SliceCalibrationConfig<T> {
         }
     }
 
-    /// Creates a configuration for Normal SABR (β = 0).
-    ///
-    /// Suitable for swaption normal (Bachelier) volatilities.
-    /// Alpha and vol quotes should be in decimal normal vol (e.g. 0.005 =
-    /// 50bp).
+    /// Creates a configuration for Normal SABR (β=0).
     pub fn normal() -> Self {
         Self {
             fixed_beta: Some(from_f64(0.0)),
@@ -528,38 +422,9 @@ impl<T: Float> SliceCalibrationConfig<T> {
             ..Self::default()
         }
     }
-
-    /// Sets custom parameter bounds.
-    pub fn with_bounds(mut self, bounds: SabrBounds<T>) -> Self {
-        self.bounds = bounds;
-        self
-    }
-
-    /// Sets initial parameter guesses.
-    pub fn with_initial_params(mut self, alpha: T, rho: T, nu: T) -> Self {
-        self.initial_alpha = alpha;
-        self.initial_rho = rho;
-        self.initial_nu = nu;
-        self
-    }
 }
 
-// =============================================================================
-// SABR Slice Calibrator
-// =============================================================================
-
-/// SABR model slice calibrator.
-///
-/// Calibrates SABR parameters (α, ρ, ν) for a single expiry/tenor slice,
-/// with β typically fixed. Uses Levenberg-Marquardt optimisation from
-/// `pricer_core::math::solvers`.
-///
-/// # Calibration Process
-///
-/// 1. Estimate initial alpha from ATM volatility
-/// 2. Build residual closure: `model_vol(K_i) - market_vol(K_i)`
-/// 3. Apply LM solver to minimise sum of squared residuals
-/// 4. Clamp parameters to bounds and validate
+/// SABR model slice calibrator using Levenberg-Marquardt optimisation.
 #[derive(Debug, Clone, Default)]
 pub struct SabrSliceCalibrator<T: Float> {
     _marker: std::marker::PhantomData<T>,
@@ -728,10 +593,6 @@ impl<T: Float> SliceCalibrator<T> for SabrSliceCalibrator<T> {
     }
 }
 
-// =============================================================================
-// OrderedFloat (for BTreeMap keys)
-// =============================================================================
-
 /// Wrapper for Float that implements Ord (for use in BTreeMap keys).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OrderedFloat<T: Float>(pub T);
@@ -748,19 +609,7 @@ impl<T: Float> Ord for OrderedFloat<T> {
     }
 }
 
-// =============================================================================
-// Delta Vol Slice (RR/BF Conversion)
-// =============================================================================
-
 /// A volatility slice quoted in ATM / Risk-Reversal / Butterfly format.
-///
-/// Standard FX market quoting convention uses:
-/// - ATM volatility (50-delta straddle)
-/// - 25-delta Risk Reversal (RR_25D = σ_25D_call - σ_25D_put)
-/// - 25-delta Butterfly (BF_25D = (σ_25D_call + σ_25D_put)/2 - σ_ATM)
-/// - Optionally 10-delta RR and BF
-///
-/// This struct converts these market quotes to individual delta volatilities.
 #[derive(Debug, Clone, Copy)]
 pub struct DeltaVolSlice<T: Float> {
     /// ATM (50-delta) volatility
@@ -840,15 +689,7 @@ impl<T: Float> DeltaVolSlice<T> {
 
     /// Converts RR/BF quotes to individual delta volatilities.
     ///
-    /// ## Conversion formulas
-    ///
-    /// Given ATM, RR, and BF:
-    /// - σ_call = ATM + BF + RR/2
-    /// - σ_put = ATM + BF - RR/2
-    ///
-    /// # Returns
-    ///
-    /// A vector of [`DeltaVol`] containing the converted volatilities.
+    /// Formulas: `σ_call = ATM + BF + RR/2`, `σ_put = ATM + BF - RR/2`.
     pub fn to_delta_vols(&self) -> Vec<DeltaVol<T>> {
         let half: T = from_f64(0.5);
         let mut result = Vec::new();
@@ -899,17 +740,8 @@ impl<T: Float> DeltaVolSlice<T> {
         result
     }
 
-    /// Converts to strike-based volatility quotes using the given delta-strike
-    /// converter.
-    ///
-    /// # Arguments
-    ///
-    /// * `delta_to_strike` - A closure that converts (delta, is_call, vol) to
-    ///   strike
-    ///
-    /// # Returns
-    ///
-    /// A vector of [`VolQuote`] with absolute strikes.
+    /// Converts to strike-based [`VolQuote`]s using the given delta-to-strike
+    /// closure.
     pub fn to_strike_vol_quotes<F>(&self, delta_to_strike: F) -> Vec<VolQuote<T>>
     where
         F: Fn(T, bool, T) -> T,
@@ -925,10 +757,6 @@ impl<T: Float> DeltaVolSlice<T> {
             .collect()
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -1047,8 +875,10 @@ mod tests {
     #[test]
     fn test_slice_config_with_bounds() {
         let custom_bounds = SabrBounds::new((0.01, 0.5), (-0.8, 0.8), (0.1, 1.5));
-        let config: SliceCalibrationConfig<f64> =
-            SliceCalibrationConfig::rates().with_bounds(custom_bounds);
+        let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig {
+            bounds: custom_bounds,
+            ..SliceCalibrationConfig::rates()
+        };
 
         assert!((config.bounds.alpha_bounds.0 - 0.01).abs() < 1e-10);
         assert!((config.bounds.rho_bounds.1 - 0.8).abs() < 1e-10);
@@ -1056,17 +886,17 @@ mod tests {
 
     #[test]
     fn test_slice_config_with_initial_params() {
-        let config: SliceCalibrationConfig<f64> =
-            SliceCalibrationConfig::rates().with_initial_params(0.05, -0.5, 0.6);
+        let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig {
+            initial_alpha: 0.05,
+            initial_rho: -0.5,
+            initial_nu: 0.6,
+            ..SliceCalibrationConfig::rates()
+        };
 
         assert!((config.initial_alpha - 0.05).abs() < 1e-10);
         assert!((config.initial_rho - (-0.5)).abs() < 1e-10);
         assert!((config.initial_nu - 0.6).abs() < 1e-10);
     }
-
-    // =========================================================================
-    // DeltaVolSlice Tests
-    // =========================================================================
 
     #[test]
     fn test_delta_vol_slice_atm_only() {
@@ -1200,10 +1030,6 @@ mod tests {
         assert!((put_25d.volatility - vol_25d_put).abs() < 1e-10);
     }
 
-    // =========================================================================
-    // SliceCalibrationDiagnostics Tests
-    // =========================================================================
-
     #[test]
     fn test_diagnostics_new() {
         let diag = SliceCalibrationDiagnostics::new(true, 10, 1e-12, 5);
@@ -1303,11 +1129,6 @@ mod tests {
         assert!(result.diagnostics.rmse < 0.01); // Good fit
     }
 
-    // =========================================================================
-    // Task 5.1: Unit Tests - ATM Alpha Estimation and Accuracy
-    // Requirement 8.1: ATM volatility-based alpha estimation
-    // =========================================================================
-
     #[test]
     fn test_atm_alpha_estimation() {
         // Test that alpha is correctly estimated from ATM volatility
@@ -1361,11 +1182,6 @@ mod tests {
         assert!(result.params.alpha > 0.0, "Alpha should be positive");
         assert!(result.params.alpha < 1.0, "Alpha should be less than 1.0");
     }
-
-    // =========================================================================
-    // Task 5.2: Integration Tests - Model Vol Accuracy (50bp)
-    // Requirement 8.3: Calibrated model vol within 50bp of market vol
-    // =========================================================================
 
     #[test]
     fn test_calibration_accuracy_within_50bp() {
@@ -1455,11 +1271,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Task 5.2: Integration Tests - Error Handling
-    // Requirement 8.4: Empty quotes returns InsufficientData error
-    // =========================================================================
-
     #[test]
     fn test_empty_quotes_returns_insufficient_data() {
         let calibrator: SabrSliceCalibrator<f64> = SabrSliceCalibrator::new();
@@ -1500,11 +1311,6 @@ mod tests {
         }
     }
 
-    // =========================================================================
-    // Task 5.2: Integration Tests - Parameter Bounds Validation
-    // Requirement 8.7: α>0, -1<ρ<1, ν>0 constraints
-    // =========================================================================
-
     #[test]
     fn test_calibrated_params_satisfy_constraints() {
         let calibrator: SabrSliceCalibrator<f64> = SabrSliceCalibrator::new();
@@ -1537,12 +1343,6 @@ mod tests {
         // Validate method should pass
         assert!(params.validate().is_ok());
     }
-
-    // =========================================================================
-    // Task 5.3: Performance Tests - Convergence
-    // Requirement 9.1: Converge within 100 iterations by default
-    // Requirement 9.2: tolerance=1e-8 default
-    // =========================================================================
 
     #[test]
     fn test_default_max_iterations_is_100() {
@@ -1578,11 +1378,6 @@ mod tests {
         assert!(result.diagnostics.converged);
     }
 
-    // =========================================================================
-    // Task 5.3: Performance Tests - Typical Swaption Data
-    // Requirement 9.3: Converge within 50 iterations for typical swaption smile
-    // =========================================================================
-
     #[test]
     fn test_typical_swaption_converges_within_50_iterations() {
         let calibrator: SabrSliceCalibrator<f64> = SabrSliceCalibrator::new();
@@ -1608,11 +1403,6 @@ mod tests {
         );
         assert!(result.diagnostics.converged);
     }
-
-    // =========================================================================
-    // Task 5.3: Performance Tests - Reproducibility
-    // Requirement 9.4: Same input produces same output
-    // =========================================================================
 
     #[test]
     fn test_calibration_reproducibility() {
@@ -1682,11 +1472,6 @@ mod tests {
             "VolCube calibration not reproducible"
         );
     }
-
-    // =========================================================================
-    // Task 5.2: Integration Tests - Multiple Slice VolCube
-    // Requirement 8.5: Multiple slice VolCube calibration works correctly
-    // =========================================================================
 
     #[test]
     fn test_volcube_multiple_slice_calibration() {

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{greeks::GreeksResult, scenarios::RiskFactorId};
 
 /// Computed Greeks for a single trade.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ComputedGreeks {
     /// Delta sensitivity.
     pub delta: Option<f64>,
@@ -26,19 +26,29 @@ pub struct ComputedGreeks {
     pub volga: Option<f64>,
 }
 
+/// Helper to aggregate an `Option<f64>` field across results.
+macro_rules! aggregate_greek {
+    ($results:expr, $field:ident) => {{
+        let mut total = 0.0;
+        let mut has = false;
+        for r in $results {
+            if let Some(v) = r.greeks.$field {
+                total += v;
+                has = true;
+            }
+        }
+        if has {
+            Some(total)
+        } else {
+            None
+        }
+    }};
+}
+
 impl ComputedGreeks {
     /// Creates an empty ComputedGreeks.
-    pub fn empty() -> Self {
-        Self {
-            delta: None,
-            gamma: None,
-            vega: None,
-            theta: None,
-            rho: None,
-            vanna: None,
-            volga: None,
-        }
-    }
+    #[inline]
+    pub fn empty() -> Self { Self::default() }
 
     /// Creates ComputedGreeks from a GreeksResult.
     pub fn from_greeks_result(result: &GreeksResult<f64>) -> Self {
@@ -67,22 +77,12 @@ impl ComputedGreeks {
     /// Returns the number of computed Greeks.
     pub fn count(&self) -> usize {
         [
-            self.delta.is_some(),
-            self.gamma.is_some(),
-            self.vega.is_some(),
-            self.theta.is_some(),
-            self.rho.is_some(),
-            self.vanna.is_some(),
-            self.volga.is_some(),
+            self.delta, self.gamma, self.vega, self.theta, self.rho, self.vanna, self.volga,
         ]
         .iter()
-        .filter(|&&v| v)
+        .filter(|v| v.is_some())
         .count()
     }
-}
-
-impl Default for ComputedGreeks {
-    fn default() -> Self { Self::empty() }
 }
 
 /// Performance metrics for a calculation.
@@ -165,65 +165,18 @@ impl AggregatedGreeks {
 
     /// Creates aggregated Greeks from individual results.
     pub fn from_results(results: &[RiskResult]) -> Self {
-        let mut total_delta = 0.0;
-        let mut total_gamma = 0.0;
-        let mut total_vega = 0.0;
-        let mut total_theta = 0.0;
-        let mut total_rho = 0.0;
-        let mut total_vanna = 0.0;
-        let mut total_volga = 0.0;
-
-        let mut has_delta = false;
-        let mut has_gamma = false;
-        let mut has_vega = false;
-        let mut has_theta = false;
-        let mut has_rho = false;
-        let mut has_vanna = false;
-        let mut has_volga = false;
-
-        for result in results {
-            if let Some(d) = result.greeks.delta {
-                total_delta += d;
-                has_delta = true;
-            }
-            if let Some(g) = result.greeks.gamma {
-                total_gamma += g;
-                has_gamma = true;
-            }
-            if let Some(v) = result.greeks.vega {
-                total_vega += v;
-                has_vega = true;
-            }
-            if let Some(t) = result.greeks.theta {
-                total_theta += t;
-                has_theta = true;
-            }
-            if let Some(r) = result.greeks.rho {
-                total_rho += r;
-                has_rho = true;
-            }
-            if let Some(va) = result.greeks.vanna {
-                total_vanna += va;
-                has_vanna = true;
-            }
-            if let Some(vo) = result.greeks.volga {
-                total_volga += vo;
-                has_volga = true;
-            }
-        }
-
         Self {
             by_risk_factor: HashMap::new(),
             by_currency: HashMap::new(),
             by_tenor_bucket: HashMap::new(),
             total: ComputedGreeks {
-                delta: if has_delta { Some(total_delta) } else { None },
-                gamma: if has_gamma { Some(total_gamma) } else { None },
-                vega: if has_vega { Some(total_vega) } else { None },
-                theta: if has_theta { Some(total_theta) } else { None },
-                rho: if has_rho { Some(total_rho) } else { None },
-                vanna: if has_vanna { Some(total_vanna) } else { None },
-                volga: if has_volga { Some(total_volga) } else { None },
+                delta: aggregate_greek!(results, delta),
+                gamma: aggregate_greek!(results, gamma),
+                vega: aggregate_greek!(results, vega),
+                theta: aggregate_greek!(results, theta),
+                rho: aggregate_greek!(results, rho),
+                vanna: aggregate_greek!(results, vanna),
+                volga: aggregate_greek!(results, volga),
             },
         }
     }

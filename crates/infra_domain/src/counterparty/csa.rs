@@ -11,8 +11,7 @@ use super::CounterPartyError;
 use crate::market::Currency;
 
 /// Eligible collateral types for CSA agreements.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum EligibleCollateral {
     /// Cash in various currencies.
     Cash,
@@ -27,8 +26,9 @@ pub enum EligibleCollateral {
 }
 
 /// Collateral segregation type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum SegregationType {
     /// Collateral held in segregated account (protected from bankruptcy).
     #[default]
@@ -38,8 +38,9 @@ pub enum SegregationType {
 }
 
 /// Margin call frequency.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CallFrequency {
     /// Daily margin calls (standard for most CSAs).
     #[default]
@@ -51,8 +52,7 @@ pub enum CallFrequency {
 }
 
 /// Collateral haircut settings.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CollateralHaircut {
     collateral_type: EligibleCollateral,
     currency: Option<Currency>,
@@ -95,8 +95,7 @@ impl CollateralHaircut {
 }
 
 /// CSA (Credit Support Annex) terms.
-#[derive(Clone, Debug, Builder)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, Builder, serde::Serialize, serde::Deserialize)]
 pub struct CsaTerms {
     /// Threshold amount (below which no collateral is posted).
     #[builder(default)]

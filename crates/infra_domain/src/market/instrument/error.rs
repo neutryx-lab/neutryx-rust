@@ -65,6 +65,56 @@ impl InstrumentError {
     pub fn expansion_failed(msg: impl Into<String>) -> Self {
         InstrumentError::ExpansionFailed(msg.into())
     }
+
+    /// Checks that a value is strictly positive (> 0).
+    pub fn check_positive(val: f64, field: &str) -> Result<(), Self> {
+        if val <= 0.0 {
+            return Err(Self::invalid_parameter(format!("{field} must be positive")));
+        }
+        Ok(())
+    }
+
+    /// Checks that a value is non-negative (>= 0).
+    pub fn check_non_negative(val: f64, field: &str) -> Result<(), Self> {
+        if val < 0.0 {
+            return Err(Self::invalid_parameter(format!(
+                "{field} must be non-negative"
+            )));
+        }
+        Ok(())
+    }
+
+    /// Checks that a value falls within the given range.
+    pub fn check_range(val: f64, min: f64, max: f64, field: &str) -> Result<(), Self> {
+        if val < min || val > max {
+            return Err(Self::invalid_parameter(format!(
+                "{field} must be between {min} and {max}"
+            )));
+        }
+        Ok(())
+    }
+
+    /// Checks that a string is not empty.
+    pub fn check_not_empty(val: &str, field: &str) -> Result<(), Self> {
+        if val.is_empty() {
+            return Err(Self::invalid_parameter(format!(
+                "{field} must be specified"
+            )));
+        }
+        Ok(())
+    }
+
+    /// Checks that `later` is strictly after `earlier`.
+    pub fn check_date_order(
+        earlier: crate::time::Date,
+        later: crate::time::Date,
+        msg: &str,
+    ) -> Result<(), Self> {
+        if later <= earlier {
+            return Err(Self::invalid_date(msg));
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

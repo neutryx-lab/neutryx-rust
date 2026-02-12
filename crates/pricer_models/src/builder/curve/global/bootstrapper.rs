@@ -12,15 +12,10 @@ use crate::{
     market::curves::BootstrappedCurve,
 };
 
-// =============================================================================
-// Global Bootstrapper
-// =============================================================================
-
 /// Global curve bootstrapper using multi-dimensional Newton-Raphson.
 ///
-/// Solves the system F(x) = 0 where:
-/// - x = log(DF) at each pillar (ensures DF > 0)
-/// - F_i = pricing_error(instrument_i, curve)
+/// Solves F(x) = 0 where x = log(DF) at each pillar and
+/// F_i = pricing_error(instrument_i, curve).
 #[derive(Debug, Clone)]
 pub struct GlobalBootstrapper<T: Float> {
     config: GlobalBootstrapConfig<T>,
@@ -30,19 +25,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     /// Create a new global bootstrapper with the given configuration.
     pub fn new(config: GlobalBootstrapConfig<T>) -> Self { Self { config } }
 
-    /// Calibrate using the unified CalibrationEngine.
-    ///
-    /// This method provides an alternative implementation using the
-    /// `CalibrationEngine<LUStrategy>`, which shares the same linear
-    /// algebra infrastructure with sequential bootstrap.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Market instruments to calibrate
-    ///
-    /// # Returns
-    ///
-    /// `GlobalBootstrapResult` compatible with existing code.
+    /// Calibrate using the unified `CalibrationEngine<LUStrategy>`.
     pub fn calibrate_with_engine<I: CalibrationInstrument<T> + Clone>(
         &self,
         instruments: &[I],
@@ -70,10 +53,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         Ok(GlobalBootstrapResult::from_calibration_result(result))
     }
 
-    /// Calibrate with jumps using the unified CalibrationEngine.
-    ///
-    /// This method provides an alternative implementation for jump calibration
-    /// using `CalibrationEngine<LUStrategy>`.
+    /// Calibrate with jumps using the unified `CalibrationEngine<LUStrategy>`.
     pub fn calibrate_with_jumps_engine<I: CalibrationInstrument<T> + Clone>(
         &self,
         instruments: &[I],
@@ -377,7 +357,6 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             .collect()
     }
 
-    /// Compute the Jacobian matrix via finite differences.
     /// Compute the Jacobian matrix with optional forward-rate-shift data.
     fn compute_jacobian_impl<I: CalibrationInstrument<T>>(
         &self,
@@ -479,25 +458,10 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         })
     }
 
-    // =========================================================================
-    // Jump-aware calibration methods
-    // =========================================================================
-
     /// Calibrate a yield curve with jump pillars at CB meeting dates.
     ///
-    /// This method extends the standard calibration to include jump parameters
-    /// at central bank meeting dates. The parameter vector becomes:
+    /// The parameter vector becomes:
     /// `[log(DF_1), ..., log(DF_n), jump_1, ..., jump_m]`
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Calibration instruments
-    /// * `jump_pillars` - Jump pillars for CB meeting dates
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(GlobalBootstrapResult)` - Calibration result with realised jumps
-    /// * `Err(SolverError)` - If calibration fails
     pub fn calibrate_with_jumps<I>(
         &self,
         instruments: &[I],
@@ -742,16 +706,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
     /// Merge regular pillars with jump pillars, avoiding duplicates.
     ///
-    /// # Arguments
-    ///
-    /// * `regular_pillars` - Standard pillar times from instruments
-    /// * `jump_pillars` - Jump pillar times
-    /// * `tolerance` - Time tolerance for duplicate detection
-    ///
-    /// # Returns
-    ///
-    /// Tuple of (merged_pillars, jump_indices) where jump_indices are
-    /// the positions of jump pillars in the merged array.
+    /// Returns (merged_pillars, jump_indices).
     pub fn merge_pillars(
         &self,
         regular_pillars: &[T],

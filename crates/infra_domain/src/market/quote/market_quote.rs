@@ -4,8 +4,7 @@ use super::{error::MarketQuoteError, quote_id::QuoteId, quote_type::QuoteType};
 use crate::market::source::DataSource;
 
 /// A single market quote with metadata.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MarketQuote {
     /// Quote identifier.
     pub id: QuoteId,

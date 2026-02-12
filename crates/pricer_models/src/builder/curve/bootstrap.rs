@@ -29,10 +29,6 @@ use crate::{
     market::curves::{BootstrapInterpolation, BootstrappedCurve, MarketInstrument},
 };
 
-// =============================================================================
-// Configuration
-// =============================================================================
-
 /// Configuration for curve bootstrapping.
 #[derive(Debug, Clone)]
 pub struct BootstrapConfig {
@@ -66,45 +62,9 @@ impl BootstrapConfig {
             ..Default::default()
         }
     }
-
-    /// Sets the interpolation method.
-    pub fn with_interpolation(mut self, interpolation: BootstrapInterpolation) -> Self {
-        self.interpolation = interpolation;
-        self
-    }
-
-    /// Sets the finite difference epsilon.
-    pub fn with_fd_epsilon(mut self, epsilon: f64) -> Self {
-        self.fd_epsilon = epsilon;
-        self
-    }
 }
 
-// =============================================================================
-// Bootstrapper
-// =============================================================================
-
 /// Sequential curve bootstrapper for yield curve construction.
-///
-/// This bootstrapper solves for discount factors one at a time, in order of
-/// increasing maturity. It uses the [`CalibrationInstrument`] trait to support
-/// various instrument types (OIS, IRS, FRA, Futures).
-///
-/// # Example
-///
-/// ```ignore
-/// use pricer_models::builder::{CurveBootstrapper, BootstrapConfig, CalibrationInstrument};
-/// use pricer_models::market::curves::MarketInstrument;
-///
-/// let instruments = vec![
-///     MarketInstrument::ois(1.0, 0.03),
-///     MarketInstrument::ois(2.0, 0.035),
-///     MarketInstrument::ois(5.0, 0.04),
-/// ];
-///
-/// let bootstrapper = CurveBootstrapper::new();
-/// let result = bootstrapper.bootstrap_instruments(&instruments)?;
-/// ```
 pub struct CurveBootstrapper {
     config: BootstrapConfig,
 }
@@ -124,26 +84,6 @@ impl CurveBootstrapper {
     pub fn config(&self) -> &BootstrapConfig { &self.config }
 
     /// Bootstrap a curve from calibration instruments.
-    ///
-    /// This method sorts instruments by maturity and solves for each discount
-    /// factor sequentially using Newton-Raphson iteration.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Slice of calibration instruments
-    ///
-    /// # Returns
-    ///
-    /// A `BootstrapResult` containing:
-    /// - `discount_factors`: Solved discount factors at each pillar
-    /// - `pillars`: Maturities in years
-    /// - `residual`: Sum of squared pricing errors
-    ///
-    /// # Errors
-    ///
-    /// - `BootstrapError::InsufficientData` if no instruments provided
-    /// - `BootstrapError::ConvergenceFailure` if Newton-Raphson fails to
-    ///   converge
     pub fn bootstrap_instruments<I>(
         &self,
         instruments: &[I],
@@ -278,9 +218,6 @@ impl CurveBootstrapper {
     }
 
     /// Bootstrap a curve and return the curve object directly.
-    ///
-    /// This is a convenience method that wraps `bootstrap_instruments` and
-    /// constructs a `BootstrappedCurve` from the result.
     pub fn bootstrap_to_curve<I>(
         &self,
         instruments: &[I],
@@ -301,13 +238,7 @@ impl CurveBootstrapper {
 
     /// Legacy bootstrap method using simple swap rate stripping.
     ///
-    /// This method is kept for backward compatibility. For new code, prefer
-    /// `bootstrap_instruments` which supports all instrument types.
-    ///
-    /// # Arguments
-    ///
-    /// * `pillars` - Pillar dates in years from today
-    /// * `swap_rates` - Market-observed swap rates (par rates)
+    /// Kept for backward compatibility; prefer `bootstrap_instruments`.
     pub fn bootstrap(
         &self,
         pillars: &[f64],
@@ -339,23 +270,7 @@ impl CurveBootstrapper {
     }
 
     /// Bootstrap with Jacobian inverse computation using
-    /// GlobalCalibrationEngine.
-    ///
-    /// This method uses the unified `CalibrationEngine<LUStrategy>` internally
-    /// to compute the Jacobian inverse, which is useful for AAD-based
-    /// sensitivity calculation via implicit function theorem.
-    ///
-    /// Note: This method is only available when the `global-bootstrap` feature
-    /// is enabled, as it uses the same infrastructure as GlobalBootstrapper.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Slice of calibration instruments
-    ///
-    /// # Returns
-    ///
-    /// A tuple of (curve, jacobian_inverse) where jacobian_inverse is
-    /// Some(DMatrix) if computation succeeded, None otherwise.
+    /// `CalibrationEngine<LUStrategy>`.
     pub fn bootstrap_with_jacobian<I>(
         &self,
         instruments: &[I],
@@ -405,10 +320,6 @@ impl Default for CurveBootstrapper {
     fn default() -> Self { Self::new() }
 }
 
-// =============================================================================
-// Finite-Difference Jacobian for Sequential Bootstrap
-// =============================================================================
-
 /// Result of a finite-difference Jacobian computation.
 ///
 /// Contains the matrix d(log DF_i) / dr_j where:
@@ -434,21 +345,8 @@ pub struct JacobianMatrix {
 }
 
 impl CurveBootstrapper {
-    /// Compute the finite-difference Jacobian d(log DF_i) / dr_j for
-    /// sequential bootstrap.
-    ///
-    /// For each instrument j, bumps its market rate by +/- epsilon,
-    /// re-bootstraps the full curve, and computes the central-difference
-    /// derivative of log(DF) at each pillar with respect to the bumped rate.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Sorted slice of market instruments (same order as
-    ///   `bootstrap_instruments` output)
-    ///
-    /// # Returns
-    ///
-    /// A `JacobianMatrix` of size n x n.
+    /// Compute the finite-difference Jacobian d(log DF_i) / dr_j for sequential
+    /// bootstrap.
     pub fn compute_fd_jacobian(
         &self,
         instruments: &[MarketInstrument<f64>],
@@ -503,17 +401,7 @@ impl CurveBootstrapper {
         Ok(JacobianMatrix { data, size: n })
     }
 
-    /// Bootstrap a curve with jump data and compute the finite-difference
-    /// Jacobian.
-    ///
-    /// This is a convenience method that:
-    /// 1. Sorts instruments and bootstraps discount factors
-    /// 2. Computes the FD Jacobian dDF/dr
-    /// 3. Constructs the curve with optional jump data
-    ///
-    /// # Returns
-    ///
-    /// A tuple of `(BootstrappedCurve, JacobianMatrix)`.
+    /// Bootstrap a curve with jump data and compute the FD Jacobian.
     pub fn bootstrap_to_curve_with_jacobian(
         &self,
         instruments: &[MarketInstrument<f64>],
@@ -550,25 +438,8 @@ impl CurveBootstrapper {
     }
 }
 
-// =============================================================================
-// Jump-Aware Bootstrap Extensions
-// =============================================================================
-
 impl CurveBootstrapper {
-    /// Bootstrap a curve with jump data.
-    ///
-    /// This method bootstraps a yield curve and attaches jump information
-    /// for modelling rate discontinuities at central bank meeting dates.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Slice of calibration instruments
-    /// * `jumps` - Pre-computed jump data as `(time, cumulative_offset)` pairs.
-    ///   Typically a dense daily grid produced by the forward-rate-shift model.
-    ///
-    /// # Returns
-    ///
-    /// A `BootstrappedCurve` with jump data attached.
+    /// Bootstrap a curve with jump data attached.
     pub fn bootstrap_to_curve_with_jumps<I>(
         &self,
         instruments: &[I],
@@ -596,52 +467,7 @@ impl CurveBootstrapper {
         }
     }
 
-    /// Bootstrap a curve with JumpPillar definitions.
-    ///
-    /// This method converts JumpPillars to curve-compatible format and
-    /// bootstraps a yield curve with the jump information attached.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Slice of calibration instruments
-    /// * `jump_pillars` - Slice of JumpPillar definitions
-    /// * `valuation_date` - Valuation date for year fraction calculation
-    /// * `day_counter` - Day count convention for year fraction calculation
-    ///
-    /// # Returns
-    ///
-    /// A `BootstrappedCurve` with jump data attached.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use pricer_models::builder::{CurveBootstrapper, CalibrationInstrument};
-    /// use pricer_models::market::curves::MarketInstrument;
-    /// use infra_domain::market::definition::JumpPillar;
-    /// use infra_domain::time::{Date, DayCounter};
-    ///
-    /// let valuation = Date::from_ymd(2024, 1, 1).unwrap();
-    /// let jump = JumpPillar::new(
-    ///     Date::from_ymd(2024, 6, 12).unwrap(),
-    ///     25.0,  // 25 bps
-    ///     0.8,   // 80% confidence
-    /// );
-    ///
-    /// let instruments = vec![
-    ///     MarketInstrument::ois(1.0, 0.03),
-    ///     MarketInstrument::ois(2.0, 0.035),
-    /// ];
-    ///
-    /// let bootstrapper = CurveBootstrapper::new();
-    /// let curve = bootstrapper.bootstrap_to_curve_with_jump_pillars(
-    ///     &instruments,
-    ///     &[jump],
-    ///     valuation,
-    ///     DayCounter::Actual365Fixed,
-    /// ).unwrap();
-    ///
-    /// assert!(curve.has_jumps());
-    /// ```
+    /// Bootstrap a curve with `JumpPillar` definitions.
     pub fn bootstrap_to_curve_with_jump_pillars<I>(
         &self,
         instruments: &[I],
@@ -679,10 +505,6 @@ impl CurveBootstrapper {
         self.bootstrap_to_curve_with_jumps(instruments, &jumps)
     }
 }
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -821,9 +643,11 @@ mod tests {
 
     #[test]
     fn test_bootstrap_with_custom_config() {
-        let config = BootstrapConfig::new(1e-12, 200)
-            .with_interpolation(BootstrapInterpolation::LogLinear)
-            .with_fd_epsilon(1e-8);
+        let config = BootstrapConfig {
+            interpolation: BootstrapInterpolation::LogLinear,
+            fd_epsilon: 1e-8,
+            ..BootstrapConfig::new(1e-12, 200)
+        };
 
         let bootstrapper = CurveBootstrapper::with_config(config);
 
@@ -888,10 +712,6 @@ mod tests {
             );
         }
     }
-
-    // =========================================================================
-    // Jump-Aware Bootstrap Tests
-    // =========================================================================
 
     #[test]
     fn test_bootstrap_to_curve_with_jumps_no_jumps() {
@@ -1077,10 +897,6 @@ mod tests {
             other => panic!("Expected InsufficientData error, got {:?}", other),
         }
     }
-
-    // =========================================================================
-    // Finite-Difference Jacobian Tests
-    // =========================================================================
 
     #[test]
     fn test_fd_jacobian_dimensions() {

@@ -36,6 +36,55 @@ pub mod model_enum;
 pub mod stochastic;
 pub mod validation;
 
+/// Generates a PhantomData-based stochastic model struct with `StochasticModel`
+/// trait implementation and a marker trait. Eliminates boilerplate for
+/// single-state models (GBM, CIR, Hull-White) that share the same structural
+/// pattern.
+macro_rules! define_phantom_model {
+    (
+        $(#[$model_meta:meta])*
+        model $model_name:ident,
+        params: $params_type:ty,
+        state: $state_type:ty,
+        marker: $marker_trait:ident,
+        brownian_dim: $bdim:expr,
+        num_factors: $nf:expr,
+        name: $name_str:expr,
+        evolve_step($st:ident, $dt:ident, $dw:ident, $p:ident) $evolve_body:block,
+        initial_state($ip:ident) $init_body:block $(,)?
+    ) => {
+        $(#[$model_meta])*
+        #[derive(Clone, Debug, Default)]
+        pub struct $model_name<T: Float> {
+            _phantom: std::marker::PhantomData<T>,
+        }
+
+        impl<T: Float> $model_name<T> {
+            /// Create a new model instance.
+            pub fn new() -> Self { Self { _phantom: std::marker::PhantomData } }
+        }
+
+        impl<T: Float> Differentiable for $model_name<T> {}
+
+        impl<T: Float + Default> StochasticModel<T> for $model_name<T> {
+            type State = $state_type;
+            type Params = $params_type;
+
+            fn evolve_step($st: Self::State, $dt: T, $dw: &[T], $p: &Self::Params) -> Self::State
+                $evolve_body
+
+            fn initial_state($ip: &Self::Params) -> Self::State
+                $init_body
+
+            fn brownian_dim() -> usize { $bdim }
+            fn model_name() -> &'static str { $name_str }
+            fn num_factors() -> usize { $nf }
+        }
+
+        impl<T: Float + Default> $marker_trait<T> for $model_name<T> {}
+    };
+}
+
 // === Individual Models ===
 
 pub mod gbm;
