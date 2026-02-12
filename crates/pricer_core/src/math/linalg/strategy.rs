@@ -39,9 +39,8 @@ use super::{
 use crate::math::numeric::from_f64;
 
 /// Extract the stored matrix or return "not decomposed" error.
-fn require_decomposed<T: Clone>(matrix: &Option<T>) -> Result<&T, LinearAlgebraError> {
+fn require_decomposed<T: Clone>(matrix: Option<&T>) -> Result<&T, LinearAlgebraError> {
     matrix
-        .as_ref()
         .ok_or_else(|| LinearAlgebraError::InvalidInput("Matrix not decomposed".to_string()))
 }
 
@@ -87,11 +86,11 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LUStrategy<T> {
     }
 
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
-        lu_solve(require_decomposed(&self.matrix)?, b)
+        lu_solve(require_decomposed(self.matrix.as_ref())?, b)
     }
 
     fn inverse(&self) -> Result<DMatrix<T>, LinearAlgebraError> {
-        require_decomposed(&self.matrix)?
+        require_decomposed(self.matrix.as_ref())?
             .clone()
             .try_inverse()
             .ok_or(LinearAlgebraError::SingularMatrix)
@@ -135,11 +134,11 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
     }
 
     fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
-        forward_substitution(require_decomposed(&self.matrix)?, b)
+        forward_substitution(require_decomposed(self.matrix.as_ref())?, b)
     }
 
     fn inverse(&self) -> Result<DMatrix<T>, LinearAlgebraError> {
-        lower_triangular_inverse(require_decomposed(&self.matrix)?)
+        lower_triangular_inverse(require_decomposed(self.matrix.as_ref())?)
     }
 
     fn validate_structure(&self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
