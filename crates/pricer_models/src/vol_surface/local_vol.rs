@@ -5,8 +5,7 @@
 
 use pricer_core::traits::Float;
 
-use super::interp::bilinear_interp;
-use super::{VolSurface, VolSurfaceError};
+use super::{interp::bilinear_interp, VolSurface, VolSurfaceError};
 
 /// A discrete local-volatility surface stored on a (strike x expiry) grid.
 ///
@@ -69,7 +68,8 @@ impl<T: Float> VolSurface<T> for LocalVolSurface<T> {
         ))
     }
 
-    /// Returns the local volatility at the given point via bilinear interpolation.
+    /// Returns the local volatility at the given point via bilinear
+    /// interpolation.
     fn local_vol(&self, strike: T, expiry: T, _forward: T) -> Result<T, VolSurfaceError> {
         // Boundary check when extrapolation is disallowed
         if !self.allow_extrapolation {
@@ -84,19 +84,24 @@ impl<T: Float> VolSurface<T> for LocalVolSurface<T> {
         }
 
         // bilinear_interp expects: xs = columns (strikes), ys = rows (expiries)
-        bilinear_interp(&self.strikes, &self.expiries, &self.local_vols, strike, expiry)
-            .ok_or_else(|| {
-                VolSurfaceError::InterpolationFailed(
-                    "bilinear interpolation failed".to_string(),
-                )
-            })
+        bilinear_interp(
+            &self.strikes,
+            &self.expiries,
+            &self.local_vols,
+            strike,
+            expiry,
+        )
+        .ok_or_else(|| {
+            VolSurfaceError::InterpolationFailed("bilinear interpolation failed".to_string())
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn sample_surface() -> LocalVolSurface<f64> {
         // 2 expiries x 3 strikes
@@ -146,7 +151,8 @@ mod tests {
         // Interpolate between grid nodes
         let vol = surface.local_vol(100.0, 0.625, 100.0).unwrap();
         // At strike=100 (col 1): t=0.25 -> 0.18, t=1.0 -> 0.20
-        // Linear interp at t=0.625: 0.18 + (0.20 - 0.18) * (0.625 - 0.25) / (1.0 - 0.25) = 0.19
+        // Linear interp at t=0.625: 0.18 + (0.20 - 0.18) * (0.625 - 0.25) / (1.0 -
+        // 0.25) = 0.19
         assert_relative_eq!(vol, 0.19, epsilon = 1e-12);
     }
 
@@ -154,14 +160,20 @@ mod tests {
     fn test_implied_vol_unsupported() {
         let surface = sample_surface();
         let result = surface.implied_vol(100.0, 1.0, 100.0);
-        assert!(matches!(result, Err(VolSurfaceError::UnsupportedOperation(_))));
+        assert!(matches!(
+            result,
+            Err(VolSurfaceError::UnsupportedOperation(_))
+        ));
     }
 
     #[test]
     fn test_extrapolation_not_allowed() {
         let surface = sample_surface(); // extrapolation off by default
         let result = surface.local_vol(80.0, 0.25, 100.0);
-        assert!(matches!(result, Err(VolSurfaceError::ExtrapolationNotAllowed)));
+        assert!(matches!(
+            result,
+            Err(VolSurfaceError::ExtrapolationNotAllowed)
+        ));
     }
 
     #[test]

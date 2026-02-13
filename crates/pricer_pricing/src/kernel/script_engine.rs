@@ -83,8 +83,8 @@ struct ExecutionState {
     has_knock_in: bool,
     registers: [f64; 8],
     total_pv: f64,
-    memory_coupon_sum: f64,     // Accumulated unpaid coupons (Snowball)
-    accumulated_quantity: f64,  // Accumulated quantity (Accumulator Forward)
+    memory_coupon_sum: f64,    // Accumulated unpaid coupons (Snowball)
+    accumulated_quantity: f64, // Accumulated quantity (Accumulator Forward)
 }
 
 impl Default for ExecutionState {
@@ -518,7 +518,10 @@ impl ScriptEngine {
 
                     TraceStep::executed(
                         op_idx,
-                        format!("CouponMemory(coupon={coupon}, total={})", state.memory_coupon_sum),
+                        format!(
+                            "CouponMemory(coupon={coupon}, total={})",
+                            state.memory_coupon_sum
+                        ),
                         state.memory_coupon_sum,
                         &state,
                     )
@@ -530,7 +533,10 @@ impl ScriptEngine {
 
                     TraceStep::executed(
                         op_idx,
-                        format!("AccumulateQuantity(qty={quantity}, total={})", state.accumulated_quantity),
+                        format!(
+                            "AccumulateQuantity(qty={quantity}, total={})",
+                            state.accumulated_quantity
+                        ),
                         state.accumulated_quantity,
                         &state,
                     )
@@ -1171,10 +1177,10 @@ mod tests {
 
     #[test]
     fn test_tarf_target_accrual() {
-        // TARF-style test: accumulate spot observations, pay intermediate, then check target.
-        // With a low target, the product should terminate early after accumulated
-        // spot exceeds the target level, but the first fixing payment is made
-        // before the target check.
+        // TARF-style test: accumulate spot observations, pay intermediate, then check
+        // target. With a low target, the product should terminate early after
+        // accumulated spot exceeds the target level, but the first fixing
+        // payment is made before the target check.
         let provider = create_flat_provider(110.0);
 
         let mut builder = ScriptKernelBuilder::new()
@@ -1214,13 +1220,17 @@ mod tests {
         let pv = ScriptEngine::price(&kernel, &provider);
 
         // The product should have positive PV from the first observation's payoff
-        assert!(pv > 0.0, "TARF should have positive PV from first fixing, got {pv}");
+        assert!(
+            pv > 0.0,
+            "TARF should have positive PV from first fixing, got {pv}"
+        );
     }
 
     #[test]
     fn test_autocallable_early_terminate() {
-        // Autocallable: CheckBarrier(UpIn) + CalcFixed(coupon+principal) + PayIntermediate + EarlyTerminate
-        // Spot is above the barrier so autocall should trigger at first observation.
+        // Autocallable: CheckBarrier(UpIn) + CalcFixed(coupon+principal) +
+        // PayIntermediate + EarlyTerminate Spot is above the barrier so
+        // autocall should trigger at first observation.
         let provider = create_flat_provider(110.0);
 
         let mut builder = ScriptKernelBuilder::new()
@@ -1255,7 +1265,10 @@ mod tests {
         let pv = ScriptEngine::price(&kernel, &provider);
 
         // Should have positive PV from the autocall coupon payment
-        assert!(pv > 1_000_000.0, "Autocallable PV should include coupon+principal, got {pv}");
+        assert!(
+            pv > 1_000_000.0,
+            "Autocallable PV should include coupon+principal, got {pv}"
+        );
     }
 
     #[test]
@@ -1274,7 +1287,10 @@ mod tests {
             .push_op(ScriptOp::CouponMemory { coupon_idx })
             .push_op(ScriptOp::CouponMemory { coupon_idx })
             .push_op(ScriptOp::CouponMemory { coupon_idx })
-            .push_op(ScriptOp::Pay { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            })
             .build()
             .expect("Valid kernel");
 

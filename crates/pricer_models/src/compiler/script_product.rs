@@ -41,7 +41,8 @@ pub struct ObservationSchedule {
 /// Action to perform at each observation date.
 #[derive(Clone, Debug)]
 pub enum ObservationAction {
-    /// Check autocall barrier; if triggered, pay coupon + principal and terminate.
+    /// Check autocall barrier; if triggered, pay coupon + principal and
+    /// terminate.
     AutocallCheck {
         /// Autocall barrier level (absolute).
         barrier_level: f64,

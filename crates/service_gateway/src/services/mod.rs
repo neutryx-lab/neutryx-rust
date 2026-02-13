@@ -23,6 +23,8 @@ mod volcube_service;
 pub use curve_service::CurveService;
 #[cfg(feature = "demo")]
 pub use demo::DemoService;
+#[cfg(feature = "demo")]
+pub use exotic_service::ExoticService;
 #[cfg(feature = "models")]
 pub use model_service::ModelService;
 #[cfg(feature = "risk")]
@@ -32,7 +34,5 @@ pub use pricing_service::PricingService;
 pub use risk_service::RiskService;
 #[cfg(feature = "volatility")]
 pub use volatility_service::VolatilityService;
-#[cfg(feature = "demo")]
-pub use exotic_service::ExoticService;
 #[cfg(feature = "demo")]
 pub use volcube_service::VolcubeService;

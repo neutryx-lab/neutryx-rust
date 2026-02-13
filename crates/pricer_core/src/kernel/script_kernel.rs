@@ -205,25 +205,33 @@ impl ScriptKernel {
     /// Checks if the kernel contains target accrual operations.
     #[must_use]
     pub fn has_target_accrual(&self) -> bool {
-        self.ops.iter().any(|op| matches!(op, ScriptOp::CheckTarget { .. }))
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::CheckTarget { .. }))
     }
 
     /// Checks if the kernel contains early termination operations.
     #[must_use]
     pub fn has_early_termination(&self) -> bool {
-        self.ops.iter().any(|op| matches!(op, ScriptOp::EarlyTerminate))
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::EarlyTerminate))
     }
 
     /// Checks if the kernel contains memory coupon operations.
     #[must_use]
     pub fn has_coupon_memory(&self) -> bool {
-        self.ops.iter().any(|op| matches!(op, ScriptOp::CouponMemory { .. }))
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::CouponMemory { .. }))
     }
 
     /// Checks if the kernel contains quantity accumulation operations.
     #[must_use]
     pub fn has_quantity_accumulation(&self) -> bool {
-        self.ops.iter().any(|op| matches!(op, ScriptOp::AccumulateQuantity { .. }))
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::AccumulateQuantity { .. }))
     }
 }
 
@@ -337,10 +345,12 @@ pub enum ScriptOp {
         register: u8,
     },
 
-    /// Compare accumulated value against target for TARF-style early termination.
+    /// Compare accumulated value against target for TARF-style early
+    /// termination.
     ///
-    /// Checks if the running accumulated sum exceeds (or falls below) a target level.
-    /// If the condition is met, the option is terminated (`is_alive = false`).
+    /// Checks if the running accumulated sum exceeds (or falls below) a target
+    /// level. If the condition is met, the option is terminated (`is_alive
+    /// = false`).
     CheckTarget {
         /// Index into constants for the target level.
         target_idx: u16,
@@ -870,11 +880,18 @@ mod tests {
         let kernel = ScriptKernel::new(
             vec![1.0],
             vec![
-                ScriptOp::CheckTarget { target_idx: 0, terminate_above: true },
-                ScriptOp::Pay { ccy_id: 0, dc_id: 0 },
+                ScriptOp::CheckTarget {
+                    target_idx: 0,
+                    terminate_above: true,
+                },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
             ],
             vec![50.0],
-        ).expect("Valid kernel");
+        )
+        .expect("Valid kernel");
         assert!(kernel.has_target_accrual());
         assert!(!kernel.has_early_termination());
     }
@@ -885,10 +902,14 @@ mod tests {
             vec![1.0],
             vec![
                 ScriptOp::EarlyTerminate,
-                ScriptOp::Pay { ccy_id: 0, dc_id: 0 },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
             ],
             vec![],
-        ).expect("Valid kernel");
+        )
+        .expect("Valid kernel");
         assert!(kernel.has_early_termination());
     }
 
@@ -898,10 +919,14 @@ mod tests {
             vec![1.0],
             vec![
                 ScriptOp::CouponMemory { coupon_idx: 0 },
-                ScriptOp::Pay { ccy_id: 0, dc_id: 0 },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
             ],
             vec![100.0],
-        ).expect("Valid kernel");
+        )
+        .expect("Valid kernel");
         assert!(kernel.has_coupon_memory());
     }
 
@@ -911,10 +936,14 @@ mod tests {
             vec![1.0],
             vec![
                 ScriptOp::AccumulateQuantity { quantity_idx: 0 },
-                ScriptOp::Pay { ccy_id: 0, dc_id: 0 },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
             ],
             vec![1000.0],
-        ).expect("Valid kernel");
+        )
+        .expect("Valid kernel");
         assert!(kernel.has_quantity_accumulation());
     }
 }

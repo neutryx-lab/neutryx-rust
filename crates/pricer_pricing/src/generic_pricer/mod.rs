@@ -13,7 +13,7 @@ pub use batch::{
     PortfolioPricer, PortfolioPricingResult, TradeId,
 };
 pub use config::{
-    DefaultCurrency, ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder,
+    DefaultCurrency, GreeksMode, ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder,
 };
 pub use error::{ConfigError, PricingError};
 pub use kernel::{

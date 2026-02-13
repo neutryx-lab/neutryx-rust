@@ -31,7 +31,8 @@ pub struct TarfRequest {
     /// Number of fixings over the maturity period.
     #[serde(default = "default_num_fixings")]
     pub num_fixings: u32,
-    /// Explicit fixing dates (year fractions). Auto-generated from maturity/num_fixings when absent.
+    /// Explicit fixing dates (year fractions). Auto-generated from
+    /// maturity/num_fixings when absent.
     pub fixing_dates: Option<Vec<f64>>,
     /// Spot price.
     pub spot: f64,
@@ -45,12 +46,11 @@ pub struct TarfRequest {
     pub num_paths: Option<u32>,
 }
 
-fn default_num_fixings() -> u32 {
-    12
-}
+fn default_num_fixings() -> u32 { 12 }
 
 impl TarfRequest {
-    /// Returns the fixing schedule, auto-generating evenly-spaced dates if not provided.
+    /// Returns the fixing schedule, auto-generating evenly-spaced dates if not
+    /// provided.
     pub fn effective_fixing_dates(&self) -> Vec<f64> {
         if let Some(dates) = &self.fixing_dates {
             return dates.clone();
@@ -93,12 +93,11 @@ pub struct AutocallableRequest {
     pub num_paths: Option<u32>,
 }
 
-fn default_num_observations() -> u32 {
-    4
-}
+fn default_num_observations() -> u32 { 4 }
 
 impl AutocallableRequest {
-    /// Returns the observation schedule, auto-generating quarterly dates if not provided.
+    /// Returns the observation schedule, auto-generating quarterly dates if not
+    /// provided.
     pub fn effective_observation_dates(&self) -> Vec<f64> {
         if let Some(dates) = &self.observation_dates {
             return dates.clone();

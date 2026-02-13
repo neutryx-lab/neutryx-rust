@@ -39,7 +39,12 @@ impl CalibrationModel {
     }
 
     /// Check if this model is currently enabled/implemented.
-    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sabr | Self::LocalVolatility | Self::BlackScholes) }
+    pub fn is_enabled(&self) -> bool {
+        matches!(
+            self,
+            Self::Sabr | Self::LocalVolatility | Self::BlackScholes
+        )
+    }
 
     /// Get the number of parameters for this model.
     pub fn parameter_count(&self) -> usize {

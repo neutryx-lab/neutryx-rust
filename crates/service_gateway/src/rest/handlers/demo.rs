@@ -21,8 +21,8 @@ use crate::{
             IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
             IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
             MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
-            RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse,
-            SabrSmileRequest, SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest,
+            RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse, SabrSmileRequest,
+            SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest,
             VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
             VolcubeModelsResponse,
         },
@@ -203,7 +203,6 @@ pub async fn get_exotic_products() -> Json<Vec<ExoticProductDef>> {
 pub async fn price_exotic(
     Json(request): Json<ExoticProductRequest>,
 ) -> Result<Json<ExoticPricingResponse>, ServerError> {
-    let response =
-        ExoticService::price_exotic(&request).map_err(|e| ServerError::Pricing(e))?;
+    let response = ExoticService::price_exotic(&request).map_err(|e| ServerError::Pricing(e))?;
     Ok(Json(response))
 }

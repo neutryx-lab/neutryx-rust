@@ -1,6 +1,7 @@
 //! PathObserver: Streaming statistics accumulation for path-dependent options.
 
 use num_traits::Float;
+
 pub use crate::checkpoint::PathObserverState;
 
 /// Streaming path observation statistics.

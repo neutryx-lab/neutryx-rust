@@ -96,8 +96,9 @@ pub fn bilinear_interp<T: Float>(xs: &[T], ys: &[T], values: &[T], x: T, y: T) -
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ── find_bracket ──────────────────────────────────────────────────
 

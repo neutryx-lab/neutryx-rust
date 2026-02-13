@@ -30,9 +30,7 @@ impl<T: Float> BlackScholesVol<T> {
     }
 
     /// Returns the constant volatility parameter.
-    pub fn sigma(&self) -> T {
-        self.sigma
-    }
+    pub fn sigma(&self) -> T { self.sigma }
 }
 
 impl<T: Float> VolSurface<T> for BlackScholesVol<T> {
@@ -49,8 +47,9 @@ impl<T: Float> VolSurface<T> for BlackScholesVol<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_new_valid() {

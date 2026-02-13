@@ -4,13 +4,16 @@
 //! [`pricer_core::math::formulas::sabr::sabr_implied_vol`] and provides
 //! term-structure interpolation across calibrated expiry slices.
 
-use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
-use pricer_core::traits::Float;
-
 use infra_domain::market::definition::TimeInterpolation;
+use pricer_core::{
+    math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams},
+    traits::Float,
+};
 
-use super::interp::{find_bracket, linear_interp};
-use super::{VolSurface, VolSurfaceError};
+use super::{
+    interp::{find_bracket, linear_interp},
+    VolSurface, VolSurfaceError,
+};
 
 /// Parameters for a single SABR smile slice at a given expiry.
 #[derive(Clone, Debug)]
@@ -44,7 +47,8 @@ pub struct SabrSurface<T: Float> {
 impl<T: Float> SabrSurface<T> {
     /// Constructs the surface from pre-calibrated slices.
     ///
-    /// `expiries` and `params` must have the same length and at least one element.
+    /// `expiries` and `params` must have the same length and at least one
+    /// element.
     pub fn from_calibrated_slices(
         expiries: Vec<T>,
         params: Vec<SabrSliceParams<T>>,
@@ -77,19 +81,13 @@ impl<T: Float> SabrSurface<T> {
     }
 
     /// Returns the time-interpolation method.
-    pub fn time_interpolation(&self) -> TimeInterpolation {
-        self.time_interpolation
-    }
+    pub fn time_interpolation(&self) -> TimeInterpolation { self.time_interpolation }
 
     /// Returns a reference to the expiry grid.
-    pub fn expiries(&self) -> &[T] {
-        &self.expiries
-    }
+    pub fn expiries(&self) -> &[T] { &self.expiries }
 
     /// Returns a reference to the per-slice parameters.
-    pub fn params(&self) -> &[SabrSliceParams<T>] {
-        &self.params
-    }
+    pub fn params(&self) -> &[SabrSliceParams<T>] { &self.params }
 
     /// Interpolates SABR parameters to the target expiry.
     ///
@@ -140,7 +138,12 @@ impl<T: Float> SabrSurface<T> {
                 let nu = linear_interp(t_lo, p_lo.nu, t_hi, p_hi.nu, expiry);
                 let beta = linear_interp(t_lo, p_lo.beta, t_hi, p_hi.beta, expiry);
 
-                Ok(SabrSliceParams { alpha, beta, rho, nu })
+                Ok(SabrSliceParams {
+                    alpha,
+                    beta,
+                    rho,
+                    nu,
+                })
             }
             TimeInterpolation::LinearVol | TimeInterpolation::FlatForward => {
                 let alpha = linear_interp(t_lo, p_lo.alpha, t_hi, p_hi.alpha, expiry);
@@ -148,7 +151,12 @@ impl<T: Float> SabrSurface<T> {
                 let rho = linear_interp(t_lo, p_lo.rho, t_hi, p_hi.rho, expiry);
                 let nu = linear_interp(t_lo, p_lo.nu, t_hi, p_hi.nu, expiry);
 
-                Ok(SabrSliceParams { alpha, beta, rho, nu })
+                Ok(SabrSliceParams {
+                    alpha,
+                    beta,
+                    rho,
+                    nu,
+                })
             }
         }
     }
@@ -174,8 +182,9 @@ impl<T: Float> VolSurface<T> for SabrSurface<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn single_slice_surface() -> SabrSurface<f64> {
         SabrSurface::from_calibrated_slices(

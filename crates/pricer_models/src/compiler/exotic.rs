@@ -23,8 +23,10 @@
 use infra_domain::{market::Currency, time::Date, trade::Payoff};
 use pricer_core::kernel::{BarrierType, CompileError, ScriptKernel, ScriptKernelBuilder, ScriptOp};
 
-use super::script_product::{ObservationAction, ScriptProduct, ScriptProductType};
-use super::IndexMapper;
+use super::{
+    script_product::{ObservationAction, ScriptProduct, ScriptProductType},
+    IndexMapper,
+};
 
 /// Compiler for exotic options (barriers, Asians).
 ///
@@ -617,10 +619,7 @@ impl ExoticCompiler {
     /// 5. `EndIf` - end of conditional block
     ///
     /// Final observation adds put payoff if configured.
-    fn compile_snowball(
-        &mut self,
-        product: &ScriptProduct,
-    ) -> Result<ScriptKernel, CompileError> {
+    fn compile_snowball(&mut self, product: &ScriptProduct) -> Result<ScriptKernel, CompileError> {
         if product.observations.is_empty() {
             return Err(CompileError::EmptyTrade(
                 "Snowball requires at least one observation".to_string(),

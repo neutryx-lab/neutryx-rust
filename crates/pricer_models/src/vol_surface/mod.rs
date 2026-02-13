@@ -25,12 +25,11 @@ pub mod interp;
 pub mod local_vol;
 pub mod sabr;
 
-use enum_dispatch::enum_dispatch;
-use pricer_core::traits::Float;
-
 // Re-export public types for convenient access.
 pub use black_scholes::BlackScholesVol;
+use enum_dispatch::enum_dispatch;
 pub use local_vol::LocalVolSurface;
+use pricer_core::traits::Float;
 pub use sabr::{SabrParams, SabrSliceParams, SabrSurface};
 
 // ─── Error type ───────────────────────────────────────────────────────
@@ -115,27 +114,22 @@ impl<T: Float> VolSurfaceEnum<T> {
     }
 
     /// Wraps an existing SABR surface.
-    pub fn sabr(surface: SabrSurface<T>) -> Self {
-        Self::Sabr(surface)
-    }
+    pub fn sabr(surface: SabrSurface<T>) -> Self { Self::Sabr(surface) }
 
     /// Wraps an existing local-vol surface.
-    pub fn local_vol(surface: LocalVolSurface<T>) -> Self {
-        Self::LocalVol(surface)
-    }
+    pub fn local_vol(surface: LocalVolSurface<T>) -> Self { Self::LocalVol(surface) }
 
     /// Returns `true` for parametric models (Black-Scholes, SABR) that
     /// produce implied volatilities directly; `false` for grid-based
     /// models (local vol) that require numerical inversion.
-    pub fn is_parametric(&self) -> bool {
-        matches!(self, Self::BlackScholes(_) | Self::Sabr(_))
-    }
+    pub fn is_parametric(&self) -> bool { matches!(self, Self::BlackScholes(_) | Self::Sabr(_)) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_flat_factory() {
@@ -151,12 +145,7 @@ mod tests {
 
     #[test]
     fn test_is_parametric_local_vol() {
-        let lv = LocalVolSurface::new(
-            vec![100.0_f64],
-            vec![1.0],
-            vec![0.2],
-        )
-        .unwrap();
+        let lv = LocalVolSurface::new(vec![100.0_f64], vec![1.0], vec![0.2]).unwrap();
         let surface = VolSurfaceEnum::local_vol(lv);
         assert!(!surface.is_parametric());
     }

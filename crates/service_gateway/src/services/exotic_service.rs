@@ -138,7 +138,8 @@ impl ExoticService {
         })
     }
 
-    /// Returns the list of available exotic product definitions for UI rendering.
+    /// Returns the list of available exotic product definitions for UI
+    /// rendering.
     pub fn get_exotic_products() -> Vec<ExoticProductDef> {
         vec![
             ExoticProductDef {
