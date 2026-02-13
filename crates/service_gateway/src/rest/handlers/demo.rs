@@ -13,18 +13,18 @@ use crate::{
     error::{ServerError, ValidatedJson},
     rest::dto::{
         demo::{
-            AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
-            CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
-            DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse,
-            ExpandedTrade, ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse,
-            FxVolQuotesResponse, HolidaysResponse, ImpliedPdfRequest, ImpliedPdfResponse,
-            IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
-            IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
-            MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
-            RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse, SabrSmileRequest,
-            SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest,
-            VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
-            VolcubeModelsResponse,
+            AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse, Convention,
+            ConventionsResponse, CreditQuotesResponse, CurveIndicesResponse,
+            CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest,
+            DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat,
+            FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse, HolidaysResponse,
+            ImpliedPdfRequest, ImpliedPdfResponse, IndexConventionsResponse, IndexRatesResponse,
+            InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse,
+            MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse,
+            RateCashflowsResponse, RateIndexDetailResponse, RateIndicesResponse,
+            RateInstrumentResponse, SabrSmileRequest, SabrSmileResponse, TradeExpandRequest,
+            VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
+            VolcubeInstrumentsResponse, VolcubeModelsResponse,
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
     },
@@ -98,6 +98,10 @@ state_handler!(/// GET /api/market/events/types.
     get_event_types, DemoService::get_event_types -> EventTypesResponse);
 state_handler!(/// GET /api/market/holidays.
     get_holidays, DemoService::get_holidays -> HolidaysResponse);
+state_handler!(/// GET /api/market/bonds.
+    get_bond_quotes, DemoService::get_bond_quotes -> BondQuotesResponse);
+state_handler!(/// GET /api/market/credit.
+    get_credit_quotes, DemoService::get_credit_quotes -> CreditQuotesResponse);
 state_handler!(/// GET /api/curves.
     get_available_curves, DemoService::get_available_curves -> AvailableCurvesResponse);
 state_handler!(/// GET /api/curves/indices.

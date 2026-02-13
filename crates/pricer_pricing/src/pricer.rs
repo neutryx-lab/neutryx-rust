@@ -112,6 +112,19 @@ impl Pricer {
         }
     }
 
+    /// Convenience wrapper returning only the total PV scalar.
+    ///
+    /// Equivalent to `Pricer::price(trade, market, calc).map(|r| r.total_pv)`
+    /// but reads better at call sites that discard the full breakdown (e.g.
+    /// bump-and-revalue Greeks loops).
+    pub fn price_pv(
+        trade: &Trade,
+        market: &MarketEnvironment,
+        calc: &CalcSetting,
+    ) -> Result<f64, PricingError> {
+        Self::price(trade, market, calc).map(|r| r.total_pv)
+    }
+
     /// Prices a trade and returns a [`UnifiedPricingResult`] (PV + optional
     /// Greeks + metadata).
     ///

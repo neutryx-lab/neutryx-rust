@@ -1,0 +1,53 @@
+{
+  "index": "CDX-NA-HY",
+  "currency": "USD",
+  "reference_date": "2026-02-13",
+  "recovery_rate": 0.40,
+  "series": 43,
+  "version": 1,
+  "rating": "HY",
+  "instruments": [
+    {
+      "type": "cds",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.0180,
+      "description": "CDX NA HY 1Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.0210,
+      "description": "CDX NA HY 2Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.0240,
+      "description": "CDX NA HY 3Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.0285,
+      "description": "CDX NA HY 5Y CDS spread (benchmark)"
+    },
+    {
+      "type": "cds",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.0310,
+      "description": "CDX NA HY 7Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.0340,
+      "description": "CDX NA HY 10Y CDS spread"
+    }
+  ]
+}

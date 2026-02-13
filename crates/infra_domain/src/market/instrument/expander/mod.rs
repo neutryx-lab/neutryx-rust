@@ -202,6 +202,9 @@ macro_rules! dispatch_expand {
     ($self:expr, $tid:expr, $vd:expr, $conv:expr; $($Variant:ident),+ $(,)?) => {
         match $self {
             $(InstrumentDefinition::$Variant(inner) => inner.expand_to_trade($tid, $vd, $conv),)+
+            other => Err(InstrumentError::invalid_parameter(
+                format!("Instrument expansion not yet supported for {other}"),
+            )),
         }
     };
 }

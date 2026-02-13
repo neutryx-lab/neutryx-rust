@@ -975,6 +975,65 @@ pub struct ImpliedPdfResponse {
     pub density: Vec<f64>,
 }
 
+/// Bond market data quote.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BondQuote {
+    pub id: String,
+    pub currency: String,
+    pub issuer: String,
+    pub maturity: String,
+    pub coupon_rate: f64,
+    pub ytm: f64,
+    pub price: f64,
+    pub duration: f64,
+    pub convexity: f64,
+    pub coupon_frequency: String,
+    pub rating: String,
+    /// "government", "corporate", or "agency".
+    pub bond_type: String,
+    pub source: String,
+    pub is_stale: bool,
+}
+
+/// Bond quotes response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BondQuotesResponse {
+    pub quotes: Vec<BondQuote>,
+    pub last_updated: String,
+}
+
+/// Credit market data quote (CDS spread).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreditQuote {
+    pub id: String,
+    pub name: String,
+    pub currency: String,
+    pub tenor: String,
+    pub spread: f64,
+    pub upfront: f64,
+    pub recovery_rate: f64,
+    pub index_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub series: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rating: Option<String>,
+    pub source: String,
+    pub is_stale: bool,
+}
+
+/// Credit quotes response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreditQuotesResponse {
+    pub quotes: Vec<CreditQuote>,
+    pub last_updated: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

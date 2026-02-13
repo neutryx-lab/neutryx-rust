@@ -590,3 +590,708 @@ fn test_ift_sensitivity_zero_input() {
         assert_relative_eq!(s, 0.0, epsilon = 1e-15);
     }
 }
+
+// =============================================================================
+// Integration tests (migrated from integration_tests/global_solver.rs)
+// =============================================================================
+
+#[test]
+fn test_ois_curve_construction_basic() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+        MarketInstrument::ois(10.0, 0.045),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+    assert!(result.iterations < 20, "Should converge quickly");
+
+    for (i, instrument) in instruments.iter().enumerate() {
+        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
+        assert!(
+            error.abs() < 1e-8,
+            "Instrument {} has pricing error {} (expected < 1e-8)",
+            i,
+            error
+        );
+    }
+
+    for i in 1..result.discount_factors.len() {
+        assert!(result.discount_factors[i] < result.discount_factors[i - 1]);
+    }
+}
+
+#[test]
+fn test_ois_curve_construction_flat() {
+    let rate = 0.03;
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, rate),
+        MarketInstrument::ois(2.0, rate),
+        MarketInstrument::ois(5.0, rate),
+        MarketInstrument::ois(10.0, rate),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+
+    for instrument in &instruments {
+        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
+        assert!(error.abs() < 1e-10);
+    }
+}
+
+#[test]
+fn test_ois_curve_construction_inverted() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.05),
+        MarketInstrument::ois(2.0, 0.045),
+        MarketInstrument::ois(5.0, 0.04),
+        MarketInstrument::ois(10.0, 0.035),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+
+    for instrument in &instruments {
+        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
+        assert!(error.abs() < 1e-8);
+    }
+}
+
+#[test]
+fn test_ois_curve_construction_with_problem() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+        MarketInstrument::ois(10.0, 0.045),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper
+        .calibrate_with_problem(instruments.clone())
+        .unwrap();
+
+    assert!(result.converged);
+
+    if let Some(errors) = &result.pricing_errors {
+        for (i, error) in errors.iter().enumerate() {
+            let e: f64 = *error;
+            assert!(e.abs() < 1e-8, "Instrument {} has pricing error {}", i, e);
+        }
+    }
+}
+
+#[test]
+fn test_mixed_instruments_convergence() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::fra(0.0, 0.5, 0.025),
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+
+    for instrument in &instruments {
+        let error = instrument.pricing_error(&result.curve).unwrap();
+        assert!(error.abs() < 1e-7);
+    }
+}
+
+#[test]
+fn test_fra_only_curve() {
+    let instruments = vec![
+        MarketInstrument::fra(0.0, 0.5, 0.025),
+        MarketInstrument::fra(0.5, 1.0, 0.028),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+}
+
+#[test]
+fn test_jacobian_finite_vs_central_difference() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let problem_fd = CalibrationProblem::with_config(
+        instruments.clone(),
+        crate::builder::CalibrationProblemConfig {
+            jacobian_method: JacobianMethod::FiniteDifference,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let problem_cd = CalibrationProblem::with_config(
+        instruments,
+        crate::builder::CalibrationProblemConfig {
+            jacobian_method: JacobianMethod::CentralDifference,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let initial = problem_fd.initial_guess();
+    let j_fd = problem_fd.compute_jacobian_finite_diff(&initial).unwrap();
+    let j_cd = problem_cd.compute_jacobian_central_diff(&initial).unwrap();
+
+    for i in 0..3 {
+        for j in 0..3 {
+            assert_relative_eq!(j_fd[(i, j)], j_cd[(i, j)], epsilon = 1e-4);
+        }
+    }
+}
+
+#[test]
+fn test_calibrated_result_satisfies_constraints() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+        MarketInstrument::ois(10.0, 0.045),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    let problem = CalibrationProblem::new(instruments.clone()).unwrap();
+
+    let log_df: Vec<f64> = result
+        .discount_factors
+        .iter()
+        .map(|df: &f64| df.ln())
+        .collect();
+
+    let curve = problem.build_curve(&log_df).unwrap();
+    let residuals = problem.compute_residuals(&curve).unwrap();
+
+    for (i, r) in residuals.iter().enumerate() {
+        assert!(r.abs() < 1e-8, "Residual {} = {} exceeds tolerance", i, r);
+    }
+}
+
+#[test]
+fn test_high_precision_calibration() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::high_precision();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+
+    for instrument in &instruments {
+        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
+        assert!(error.abs() < 1e-12);
+    }
+}
+
+#[test]
+fn test_fast_calibration() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::fast();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+
+    for instrument in &instruments {
+        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
+        assert!(error.abs() < 1e-5);
+    }
+}
+
+#[test]
+fn test_many_instruments() {
+    let maturities: Vec<f64> = (1..=20).map(|i| i as f64).collect();
+    let instruments: Vec<MarketInstrument<f64>> = maturities
+        .iter()
+        .map(|&t| {
+            let rate = 0.02 + 0.001 * t;
+            MarketInstrument::ois(t, rate)
+        })
+        .collect();
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+    assert_eq!(result.pillars.len(), 20);
+
+    for instrument in &instruments {
+        let error = instrument.pricing_error(&result.curve).unwrap();
+        assert!(error.abs() < 1e-7);
+    }
+}
+
+#[test]
+fn test_condition_number_computed() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+    assert!(result.condition_number.is_some());
+
+    let cond = result.condition_number.unwrap();
+    assert!(cond > 0.0);
+    assert!(cond < 1e12);
+}
+
+#[test]
+fn test_ift_vs_bump_and_recalibrate() {
+    let base_rate = 0.03;
+    let instruments = vec![
+        MarketInstrument::ois(1.0, base_rate),
+        MarketInstrument::ois(2.0, base_rate + 0.005),
+        MarketInstrument::ois(5.0, base_rate + 0.01),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+    let base_df = result.discount_factors.clone();
+
+    let bump = 1e-6;
+
+    for inst_idx in 0..instruments.len() {
+        let mut bumped_instruments = instruments.clone();
+        bumped_instruments[inst_idx] = MarketInstrument::ois(
+            instruments[inst_idx].maturity(),
+            instruments[inst_idx].rate() + bump,
+        );
+
+        let bumped_result = bootstrapper.calibrate(&bumped_instruments).unwrap();
+
+        let bump_sensitivities: Vec<f64> = base_df
+            .iter()
+            .zip(bumped_result.discount_factors.iter())
+            .map(|(&base, &bumped)| (bumped - base) / bump)
+            .collect();
+
+        let mut dF_dm = vec![0.0; instruments.len()];
+        dF_dm[inst_idx] = -1.0;
+
+        let ift_sensitivities = result.ift_sensitivity(&dF_dm).unwrap();
+
+        for (i, (&ift_sens, &bump_sens)) in ift_sensitivities
+            .iter()
+            .zip(bump_sensitivities.iter())
+            .enumerate()
+        {
+            let ift_df_sens = base_df[i] * ift_sens;
+
+            if bump_sens.abs() > 1e-10 {
+                let rel_error = ((ift_df_sens - bump_sens) / bump_sens).abs();
+                assert!(
+                    rel_error < 1e-4,
+                    "IFT vs bump-recal mismatch at pillar {} for instrument {}: \
+                     IFT={}, bump={}, rel_error={}",
+                    i,
+                    inst_idx,
+                    ift_df_sens,
+                    bump_sens,
+                    rel_error
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_enzyme_kernel_interpolation_accuracy() {
+    use crate::{
+        builder::enzyme_jacobian::kernels,
+        market::curves::{BootstrapInterpolation, BootstrappedCurve, YieldCurve},
+    };
+
+    let pillar_times = vec![1.0, 2.0, 5.0, 10.0];
+    let discount_factors: Vec<f64> = pillar_times.iter().map(|&t| (-0.03 * t).exp()).collect();
+    let log_df: Vec<f64> = discount_factors.iter().map(|&df| df.ln()).collect();
+
+    let curve = BootstrappedCurve::new(
+        pillar_times.clone(),
+        discount_factors.clone(),
+        BootstrapInterpolation::LogLinear,
+        true,
+    )
+    .unwrap();
+
+    let test_times = vec![1.0, 1.5, 2.0, 3.0, 5.0, 7.5, 10.0];
+
+    for t in test_times {
+        let df_curve = curve.discount_factor(t).unwrap();
+        let df_kernel = kernels::discount_factor_log_linear(t, &pillar_times, &log_df);
+
+        assert_relative_eq!(df_kernel, df_curve, epsilon = 1e-12);
+    }
+}
+
+#[test]
+fn test_bootstrapped_curve_gradient_accuracy() {
+    use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
+    let pillar_times = vec![1.0, 2.0, 5.0];
+    let discount_factors: Vec<f64> = pillar_times.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+    let curve = BootstrappedCurve::new(
+        pillar_times.clone(),
+        discount_factors.clone(),
+        BootstrapInterpolation::LogLinear,
+        true,
+    )
+    .unwrap();
+
+    let t = 1.5;
+    let (df, gradient) = curve.discount_factor_with_gradient(t).unwrap();
+
+    assert!(df > 0.0);
+    assert!(df < 1.0);
+    assert_eq!(gradient.len(), pillar_times.len());
+
+    let bump = 1e-8;
+    for i in 0..pillar_times.len() {
+        let mut bumped_dfs = discount_factors.clone();
+        bumped_dfs[i] *= 1.0 + bump;
+
+        let bumped_curve = BootstrappedCurve::new(
+            pillar_times.clone(),
+            bumped_dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
+
+        let df_bumped = bumped_curve.discount_factor_with_gradient(t).unwrap().0;
+        let fd_gradient = (df_bumped - df) / (discount_factors[i] * bump);
+
+        if gradient[i].abs() > 1e-10 {
+            let rel_error = ((gradient[i] - fd_gradient) / gradient[i]).abs();
+            assert!(
+                rel_error < 1e-6,
+                "Gradient mismatch at pillar {}: analytical={}, fd={}, rel_error={}",
+                i,
+                gradient[i],
+                fd_gradient,
+                rel_error
+            );
+        }
+    }
+}
+
+#[test]
+fn test_bootstrapped_curve_log_gradient_accuracy() {
+    use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
+    let pillar_times = vec![1.0, 2.0, 5.0];
+    let log_df: Vec<f64> = pillar_times.iter().map(|&t| -0.03 * t).collect();
+    let discount_factors: Vec<f64> = log_df.iter().map(|&x| x.exp()).collect();
+
+    let curve = BootstrappedCurve::new(
+        pillar_times.clone(),
+        discount_factors.clone(),
+        BootstrapInterpolation::LogLinear,
+        true,
+    )
+    .unwrap();
+
+    let t = 1.5;
+    let (df, log_gradient) = curve.discount_factor_with_log_gradient(t).unwrap();
+
+    let bump = 1e-8;
+    for i in 0..pillar_times.len() {
+        let mut bumped_log_df = log_df.clone();
+        bumped_log_df[i] += bump;
+        let bumped_dfs: Vec<f64> = bumped_log_df.iter().map(|&x| x.exp()).collect();
+
+        let bumped_curve = BootstrappedCurve::new(
+            pillar_times.clone(),
+            bumped_dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
+
+        let df_bumped = bumped_curve.discount_factor_with_log_gradient(t).unwrap().0;
+        let fd_log_gradient = (df_bumped - df) / bump;
+
+        if log_gradient[i].abs() > 1e-10 {
+            let rel_error = ((log_gradient[i] - fd_log_gradient) / log_gradient[i]).abs();
+            assert!(
+                rel_error < 1e-6,
+                "Log gradient mismatch at pillar {}: analytical={}, fd={}, rel_error={}",
+                i,
+                log_gradient[i],
+                fd_log_gradient,
+                rel_error
+            );
+        }
+    }
+}
+
+#[test]
+fn test_enzyme_jacobian_stub_behavior() {
+    use crate::builder::enzyme_jacobian::kernels;
+
+    let pillar_times = vec![1.0, 2.0, 5.0];
+    let log_df: Vec<f64> = pillar_times.iter().map(|&t| -0.03 * t).collect();
+
+    let instrument_types = vec![0u32, 0, 0];
+    let instrument_params = vec![vec![1.0, 0.03], vec![2.0, 0.035], vec![5.0, 0.04]];
+
+    let jacobian = kernels::compute_jacobian_enzyme(
+        &instrument_types,
+        &instrument_params,
+        &log_df,
+        &pillar_times,
+    );
+
+    #[cfg(not(feature = "enzyme-ad"))]
+    {
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+        for i in 0..3 {
+            for j in 0..3 {
+                assert_eq!(jacobian[(i, j)], 0.0, "Stub should return zero matrix");
+            }
+        }
+    }
+
+    #[cfg(feature = "enzyme-ad")]
+    {
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+        let max_elem: f64 = jacobian.iter().map(|&x| x.abs()).fold(0.0, f64::max);
+        assert!(max_elem > 0.0, "Enzyme Jacobian should be non-zero");
+    }
+}
+
+#[test]
+fn test_jacobian_method_consistency() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config_fd = GlobalBootstrapConfig::default();
+    let bootstrapper_fd = GlobalBootstrapper::new(config_fd);
+    let result_fd = bootstrapper_fd.calibrate(&instruments).unwrap();
+
+    let config_cd = GlobalBootstrapConfig {
+        jacobian_method: JacobianMethod::CentralDifference,
+        ..Default::default()
+    };
+    let bootstrapper_cd = GlobalBootstrapper::new(config_cd);
+    let result_cd = bootstrapper_cd.calibrate(&instruments).unwrap();
+
+    assert!(result_fd.converged);
+    assert!(result_cd.converged);
+
+    for i in 0..result_fd.discount_factors.len() {
+        assert_relative_eq!(
+            result_fd.discount_factors[i],
+            result_cd.discount_factors[i],
+            epsilon = 1e-8
+        );
+    }
+}
+
+#[test]
+fn test_jacobian_quality_validation_integration() {
+    use crate::builder::{JacobianQuality, NumericalDiagnostics};
+
+    let mut diagnostics = NumericalDiagnostics::<f64>::default();
+    diagnostics.jacobian_quality = JacobianQuality::Good;
+    diagnostics.residual_history.push(1e-3);
+    diagnostics.residual_history.push(1e-10);
+
+    assert_eq!(diagnostics.jacobian_quality, JacobianQuality::Good);
+    assert_eq!(diagnostics.iteration_count(), 2);
+    assert!(diagnostics.final_residual().is_some());
+    assert!(!diagnostics.has_issues());
+}
+
+#[test]
+fn test_condition_number_in_calibration_result() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+
+    if let Some(cond) = result.condition_number {
+        assert!(cond > 0.0, "Condition number should be positive");
+        assert!(
+            cond < 1e14,
+            "Condition number should not be extremely large"
+        );
+    }
+}
+
+#[test]
+fn test_max_condition_number_config_integration() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig {
+        max_condition_number: 1e15,
+        ..Default::default()
+    };
+
+    let bootstrapper = GlobalBootstrapper::new(config);
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+
+    if let Some(cond) = result.condition_number {
+        assert!(cond > 0.0);
+    }
+}
+
+#[test]
+fn test_tikhonov_regularisation_integration() {
+    use crate::builder::should_apply_regularisation;
+
+    let high_cond: f64 = 1e14;
+    let max_cond: f64 = 1e10;
+    let damping = should_apply_regularisation(high_cond, max_cond);
+    assert!(damping.is_some());
+    assert!(damping.unwrap() > 0.0, "Damping should be positive");
+
+    let low_cond: f64 = 1e6;
+    let no_damping = should_apply_regularisation(low_cond, max_cond);
+    assert!(
+        no_damping.is_none(),
+        "Should not apply regularisation for low condition number"
+    );
+}
+
+#[test]
+fn test_numerical_diagnostics_summary_integration() {
+    use crate::builder::{JacobianQuality, NumericalDiagnostics, RegularisationType};
+
+    let mut diagnostics = NumericalDiagnostics::<f64>::default();
+    diagnostics.condition_number = Some(1e8);
+    diagnostics.residual_history.push(1e-3);
+    diagnostics.residual_history.push(1e-6);
+    diagnostics.residual_history.push(1e-10);
+    diagnostics.jacobian_quality = JacobianQuality::Good;
+    diagnostics.regularisation_applied = RegularisationType::None;
+
+    let summary = diagnostics.summary();
+
+    assert!(summary.contains("Iterations: 3"));
+    assert!(summary.contains("Condition:"));
+    assert!(summary.contains("Quality:"));
+}
+
+#[test]
+fn test_calibration_problem_variance_calculation() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let problem: CalibrationProblem<f64, _> = CalibrationProblem::new(instruments).unwrap();
+    let x = problem.initial_guess();
+
+    let jacobian_fd = problem.compute_jacobian_finite_diff(&x).unwrap();
+    let jacobian_cd = problem.compute_jacobian_central_diff(&x).unwrap();
+
+    let variance = problem.compute_jacobian_variance(&jacobian_fd, &jacobian_cd);
+
+    assert!(
+        variance < 1e-6,
+        "FD and CD Jacobians should have low variance, got {}",
+        variance
+    );
+}
+
+#[test]
+fn test_ad_fallback_decision_integration() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let problem: CalibrationProblem<f64, _> = CalibrationProblem::new(instruments).unwrap();
+    let x = problem.initial_guess();
+
+    let jacobian1 = problem.compute_jacobian_finite_diff(&x).unwrap();
+    let jacobian2 = problem.compute_jacobian_central_diff(&x).unwrap();
+
+    let threshold = 1e6;
+    let (should_fallback, variance) =
+        problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
+
+    assert!(
+        !should_fallback,
+        "Should not fallback for similar Jacobians"
+    );
+    assert!(variance < threshold);
+}

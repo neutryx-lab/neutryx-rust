@@ -157,7 +157,9 @@ impl InstrumentMapper for StandardInstrumentMapper {
             QuoteCategory::FxSpot
             | QuoteCategory::FxForward
             | QuoteCategory::Vol
-            | QuoteCategory::Event => Err(MarketQuoteError::unsupported_quote_category(
+            | QuoteCategory::Event
+            | QuoteCategory::Bond
+            | QuoteCategory::CreditSpread => Err(MarketQuoteError::unsupported_quote_category(
                 quote.id.quote_category,
             )),
         }

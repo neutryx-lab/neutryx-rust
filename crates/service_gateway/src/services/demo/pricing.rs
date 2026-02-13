@@ -4,15 +4,14 @@ use std::{sync::Arc, time::Instant};
 
 use chrono::Datelike;
 use infra_domain::{
-    market::{Currency, CurrencyPair},
+    market::Currency,
     time::Date,
     trade::{
         Cashflow as DomainCashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade,
         TradeType,
     },
 };
-use pricer_models::{market::CurveEnum, market_env::MarketEnvironment};
-use pricer_pricing::{CalcSetting, MarketEnvironmentBuilder, Pricer};
+use pricer_pricing::{CalcSetting, MarketEnvironment, MarketEnvironmentBuilder, Pricer};
 
 use super::DemoService;
 use crate::{
@@ -112,19 +111,16 @@ fn build_market_env(
     dto_legs: &[PricingLeg],
     discount_rate: f64,
 ) -> Result<MarketEnvironment, ServerError> {
-    let mut builder = MarketEnvironmentBuilder::new(valuation_date)
-        .with_discount_curve(reporting_currency, CurveEnum::flat(discount_rate));
-
-    for dto_leg in dto_legs {
-        let ccy = parse_currency(&dto_leg.currency)?;
-        if ccy != reporting_currency {
-            builder = builder
-                .with_discount_curve(ccy, CurveEnum::flat(discount_rate))
-                .with_fx_spot(CurrencyPair::new(ccy, reporting_currency), 1.0);
-        }
-    }
-
-    Ok(builder.build())
+    let currencies = dto_legs
+        .iter()
+        .map(|l| parse_currency(&l.currency))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(MarketEnvironmentBuilder::flat_multi_currency(
+        valuation_date,
+        reporting_currency,
+        &currencies,
+        discount_rate,
+    ))
 }
 
 /// Build unified `Pricer` inputs from a `DemoPricingRequest`.
@@ -161,9 +157,8 @@ fn price_with_rate(
     let calc = CalcSetting::builder()
         .reporting_currency(reporting_currency)
         .build();
-    let result = Pricer::price(trade, &market, &calc)
-        .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))?;
-    Ok(result.total_pv)
+    Pricer::price_pv(trade, &market, &calc)
+        .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))
 }
 
 impl DemoService {

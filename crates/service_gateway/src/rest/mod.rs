@@ -166,6 +166,8 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/market/events", get(handlers::demo::get_events))
         .route("/market/events/types", get(handlers::demo::get_event_types))
         .route("/market/holidays", get(handlers::demo::get_holidays))
+        .route("/market/bonds", get(handlers::demo::get_bond_quotes))
+        .route("/market/credit", get(handlers::demo::get_credit_quotes))
         .route("/market/export/csv", get(handlers::demo::export_market_csv))
         .route(
             "/market/export/json",

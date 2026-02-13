@@ -6,8 +6,9 @@ use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        Convention, ConventionField, ConventionsResponse, EventType, EventsResponse, ExportFormat,
-        Holiday, HolidaysResponse, Importance, MarketEvent, MarketRate, MarketRatesResponse,
+        BondQuote, BondQuotesResponse, Convention, ConventionField, ConventionsResponse,
+        CreditQuote, CreditQuotesResponse, EventType, EventsResponse, ExportFormat, Holiday,
+        HolidaysResponse, Importance, MarketEvent, MarketRate, MarketRatesResponse,
     },
     services::helpers,
     state::AppState,
@@ -588,5 +589,316 @@ impl DemoService {
                 Ok(json)
             }
         }
+    }
+
+    /// Get bond market data quotes.
+    pub fn get_bond_quotes(_state: &Arc<AppState>) -> Result<BondQuotesResponse, ServerError> {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+        let mut quotes = Vec::new();
+
+        // Load government bond files.
+        let gov_files = [
+            "usd-treasury.json",
+            "eur-bund.json",
+            "gbp-gilt.json",
+            "jpy-jgb.json",
+        ];
+        for file in &gov_files {
+            let path = Path::new("demo/data/input/bonds").join(file);
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let issuer = data
+                        .get("issuer")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let currency = data
+                        .get("currency")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let bond_type = data
+                        .get("bond_type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("government")
+                        .to_string();
+                    let rating = data
+                        .get("rating")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+
+                    if let Some(instruments) = data.get("instruments").and_then(|v| v.as_array()) {
+                        for instr in instruments {
+                            if let Some(q) = parse_bond_instrument(
+                                instr, &issuer, &currency, &bond_type, &rating,
+                            ) {
+                                quotes.push(q);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Load corporate bond file.
+        let corp_path = Path::new("demo/data/input/bonds/corporate.json");
+        if let Ok(content) = std::fs::read_to_string(corp_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(issuers) = data.get("issuers").and_then(|v| v.as_array()) {
+                    for issuer_obj in issuers {
+                        let issuer = issuer_obj
+                            .get("issuer")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let currency = issuer_obj
+                            .get("currency")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let bond_type = issuer_obj
+                            .get("bond_type")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("corporate")
+                            .to_string();
+                        let rating = issuer_obj
+                            .get("rating")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+
+                        if let Some(instruments) =
+                            issuer_obj.get("instruments").and_then(|v| v.as_array())
+                        {
+                            for instr in instruments {
+                                if let Some(q) = parse_bond_instrument(
+                                    instr, &issuer, &currency, &bond_type, &rating,
+                                ) {
+                                    quotes.push(q);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(BondQuotesResponse {
+            quotes,
+            last_updated: timestamp,
+        })
+    }
+
+    /// Get credit market data quotes (CDS spreads).
+    pub fn get_credit_quotes(_state: &Arc<AppState>) -> Result<CreditQuotesResponse, ServerError> {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+        let mut quotes = Vec::new();
+
+        // Load index CDS files.
+        let index_files = [
+            "cdx-na-ig.json",
+            "cdx-na-hy.json",
+            "itraxx-europe-ig.json",
+            "itraxx-europe-xover.json",
+        ];
+        for file in &index_files {
+            let path = Path::new("demo/data/input/credit").join(file);
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let index_name = data
+                        .get("index")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let currency = data
+                        .get("currency")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let recovery_rate = data
+                        .get("recovery_rate")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.40);
+                    let series = data.get("series").and_then(|v| v.as_u64()).map(|v| v as u32);
+                    let version =
+                        data.get("version").and_then(|v| v.as_u64()).map(|v| v as u32);
+                    let rating = data
+                        .get("rating")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+                    let is_hy = rating.as_deref() == Some("HY");
+
+                    // Build display name with series.
+                    let display_name = if let Some(s) = series {
+                        // Convert index name: CDX-NA-IG -> CDX.NA.IG, ITRAXX-EUROPE-IG -> iTraxx.EUR.Main
+                        let name = format_index_display_name(&index_name);
+                        format!("{} S{}", name, s)
+                    } else {
+                        format_index_display_name(&index_name)
+                    };
+
+                    let index_type = format_index_display_name(&index_name);
+
+                    if let Some(instruments) = data.get("instruments").and_then(|v| v.as_array()) {
+                        for instr in instruments {
+                            let tenor = instr
+                                .get("tenor")
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let spread =
+                                instr.get("rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
+
+                            // HY indices: upfront = (spread - 5%) * 4 (approx 4Y risky annuity).
+                            let upfront = if is_hy {
+                                ((spread - 0.05) * 4.0 * 10000.0).round() / 10000.0
+                            } else {
+                                0.0
+                            };
+
+                            quotes.push(CreditQuote {
+                                id: format!("{}-{}", index_name, tenor),
+                                name: display_name.clone(),
+                                currency: currency.clone(),
+                                tenor,
+                                spread,
+                                upfront,
+                                recovery_rate,
+                                index_type: index_type.clone(),
+                                series,
+                                version,
+                                rating: rating.clone(),
+                                source: "Demo".to_string(),
+                                is_stale: false,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Load single-name CDS file.
+        let sn_path = Path::new("demo/data/input/credit/single-name-cds.json");
+        if let Ok(content) = std::fs::read_to_string(sn_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                let recovery_rate = data
+                    .get("recovery_rate")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.40);
+
+                if let Some(entities) = data.get("entities").and_then(|v| v.as_array()) {
+                    for entity in entities {
+                        let name = entity
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let currency = entity
+                            .get("currency")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string();
+                        let rating = entity
+                            .get("rating")
+                            .and_then(|v| v.as_str())
+                            .map(String::from);
+                        let entity_id = name.replace(' ', "").replace('&', "");
+
+                        if let Some(instruments) =
+                            entity.get("instruments").and_then(|v| v.as_array())
+                        {
+                            for instr in instruments {
+                                let tenor = instr
+                                    .get("tenor")
+                                    .and_then(|t| t.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let spread =
+                                    instr.get("rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
+
+                                quotes.push(CreditQuote {
+                                    id: format!("CDS-{}-{}", entity_id, tenor),
+                                    name: name.clone(),
+                                    currency: currency.clone(),
+                                    tenor,
+                                    spread,
+                                    upfront: 0.0,
+                                    recovery_rate,
+                                    index_type: "Single Name".to_string(),
+                                    series: None,
+                                    version: None,
+                                    rating: rating.clone(),
+                                    source: "Demo".to_string(),
+                                    is_stale: false,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(CreditQuotesResponse {
+            quotes,
+            last_updated: timestamp,
+        })
+    }
+}
+
+/// Parse a single bond instrument from JSON into a `BondQuote`.
+fn parse_bond_instrument(
+    instr: &serde_json::Value,
+    issuer: &str,
+    currency: &str,
+    bond_type: &str,
+    rating: &str,
+) -> Option<BondQuote> {
+    let maturity = instr.get("maturity")?.as_str()?.to_string();
+    let coupon_rate = instr.get("coupon_rate")?.as_f64()?;
+    let ytm = instr.get("ytm")?.as_f64()?;
+    let price = instr.get("price")?.as_f64()?;
+    let duration = instr.get("duration")?.as_f64()?;
+    let convexity = instr.get("convexity")?.as_f64()?;
+    let coupon_frequency = instr
+        .get("coupon_frequency")
+        .and_then(|v| v.as_str())
+        .unwrap_or("semi_annual");
+
+    let mat_year = &maturity[..4];
+    let issuer_id = issuer.replace(' ', "");
+    let id = format!("{}-{}-{}", currency, issuer_id, mat_year);
+
+    let freq_display = match coupon_frequency {
+        "annual" => "Annual",
+        _ => "SemiAnnual",
+    };
+
+    Some(BondQuote {
+        id,
+        currency: currency.to_string(),
+        issuer: issuer.to_string(),
+        maturity,
+        coupon_rate,
+        ytm,
+        price,
+        duration,
+        convexity,
+        coupon_frequency: freq_display.to_string(),
+        rating: rating.to_string(),
+        bond_type: bond_type.to_string(),
+        source: "Demo".to_string(),
+        is_stale: false,
+    })
+}
+
+/// Convert raw index name to display format.
+fn format_index_display_name(raw: &str) -> String {
+    match raw {
+        "CDX-NA-IG" => "CDX.NA.IG".to_string(),
+        "CDX-NA-HY" => "CDX.NA.HY".to_string(),
+        "ITRAXX-EUROPE-IG" => "iTraxx.EUR.Main".to_string(),
+        "ITRAXX-EUROPE-XOVER" => "iTraxx.EUR.Xover".to_string(),
+        _ => raw.replace('-', "."),
     }
 }

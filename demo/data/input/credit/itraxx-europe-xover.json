@@ -1,0 +1,53 @@
+{
+  "index": "ITRAXX-EUROPE-XOVER",
+  "currency": "EUR",
+  "reference_date": "2026-02-13",
+  "recovery_rate": 0.40,
+  "series": 42,
+  "version": 1,
+  "rating": "HY",
+  "instruments": [
+    {
+      "type": "cds",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.0200,
+      "description": "iTraxx Europe Crossover 1Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.0235,
+      "description": "iTraxx Europe Crossover 2Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.0265,
+      "description": "iTraxx Europe Crossover 3Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.0310,
+      "description": "iTraxx Europe Crossover 5Y CDS spread (benchmark)"
+    },
+    {
+      "type": "cds",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.0340,
+      "description": "iTraxx Europe Crossover 7Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.0370,
+      "description": "iTraxx Europe Crossover 10Y CDS spread"
+    }
+  ]
+}

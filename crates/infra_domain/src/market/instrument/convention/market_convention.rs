@@ -72,7 +72,10 @@ impl MarketConvention {
             QuoteCategory::FxSpot | QuoteCategory::FxForward => {
                 Self::fx_convention_for_currency(quote_id.currency)
             }
-            QuoteCategory::Vol | QuoteCategory::Event => None,
+            QuoteCategory::Vol
+            | QuoteCategory::Event
+            | QuoteCategory::Bond
+            | QuoteCategory::CreditSpread => None,
         }
     }
 

@@ -1,0 +1,45 @@
+{
+  "issuer": "UK Gilt",
+  "currency": "GBP",
+  "bond_type": "government",
+  "reference_date": "2026-02-13",
+  "rating": "AA",
+  "instruments": [
+    {
+      "maturity": "2027-09-07",
+      "coupon_rate": 0.0375,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0410,
+      "price": 99.4552,
+      "duration": 1.510,
+      "convexity": 3.001
+    },
+    {
+      "maturity": "2030-01-31",
+      "coupon_rate": 0.0425,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0420,
+      "price": 100.1733,
+      "duration": 3.540,
+      "convexity": 14.393
+    },
+    {
+      "maturity": "2034-07-31",
+      "coupon_rate": 0.0400,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0415,
+      "price": 98.8635,
+      "duration": 7.235,
+      "convexity": 58.476
+    },
+    {
+      "maturity": "2054-10-22",
+      "coupon_rate": 0.0450,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0440,
+      "price": 101.4183,
+      "duration": 17.054,
+      "convexity": 331.245
+    }
+  ]
+}

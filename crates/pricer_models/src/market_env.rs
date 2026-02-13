@@ -295,6 +295,32 @@ impl MarketEnvironmentBuilder {
         self
     }
 
+    /// Builds a flat [`MarketEnvironment`] for multi-currency trades.
+    ///
+    /// Creates flat discount curves at `discount_rate` for every currency in
+    /// `currencies` plus the `reporting_currency`, and registers an FX spot
+    /// of `1.0` for each non-reporting currency pair.
+    #[must_use]
+    pub fn flat_multi_currency(
+        valuation_date: Date,
+        reporting_currency: Currency,
+        currencies: &[Currency],
+        discount_rate: f64,
+    ) -> MarketEnvironment {
+        let mut builder = Self::new(valuation_date)
+            .with_discount_curve(reporting_currency, CurveEnum::flat(discount_rate));
+
+        for &ccy in currencies {
+            if ccy != reporting_currency {
+                builder = builder
+                    .with_discount_curve(ccy, CurveEnum::flat(discount_rate))
+                    .with_fx_spot(CurrencyPair::new(ccy, reporting_currency), 1.0);
+            }
+        }
+
+        builder.build()
+    }
+
     /// Consumes the builder and produces a [`MarketEnvironment`].
     #[must_use]
     pub fn build(self) -> MarketEnvironment {
