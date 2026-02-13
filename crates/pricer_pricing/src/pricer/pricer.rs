@@ -19,7 +19,7 @@ use std::time::Instant;
 use chrono::Datelike;
 use infra_config::PricingMethod;
 use infra_domain::{
-    market::Currency,
+    market::{instrument::ExerciseStyle, Currency},
     time::Date,
     trade::{Leg, OptionType, Trade, TradeType},
 };
@@ -38,7 +38,11 @@ use super::{
 };
 use crate::{
     kernel::{FlatSpotProvider, ScriptEngine},
-    result::{PricingMetadata, UnifiedGreeks, UnifiedPricingResult},
+    methods::{
+        mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams},
+        tree::{TreeConfig, TreeMethod, TreeType},
+    },
+    result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult},
 };
 
 // ---------------------------------------------------------------------------
@@ -56,6 +60,24 @@ enum ResolvedMethod {
     Tree,
     /// Script engine (exotic payoffs).
     Script,
+}
+
+// ---------------------------------------------------------------------------
+// Option parameters — extracted from Trade + MarketEnvironment.
+// ---------------------------------------------------------------------------
+
+/// Extracted option parameters for MC/Tree pricing.
+struct OptionParams {
+    spot: f64,
+    strike: f64,
+    rate: f64,
+    vol: f64,
+    t: f64,
+    is_call: bool,
+    is_american: bool,
+    multiplier: f64,
+    /// Foreign (base-currency) rate for FX options (Garman-Kohlhagen drift).
+    foreign_rate: Option<f64>,
 }
 
 // ---------------------------------------------------------------------------
@@ -96,14 +118,12 @@ impl Pricer {
                     Self::price_by_cashflow_discounting(trade, market, calc)
                 }
             }
-            ResolvedMethod::MonteCarlo => Err(PricingError::unsupported_method(
-                "MonteCarlo",
-                "Unified Monte Carlo path not yet wired — use MonteCarloPricer directly",
-            )),
-            ResolvedMethod::Tree => Err(PricingError::unsupported_method(
-                "Tree",
-                "Unified Tree path not yet wired — use BinomialTree directly",
-            )),
+            ResolvedMethod::MonteCarlo => {
+                Self::price_mc(trade, market, calc)
+            }
+            ResolvedMethod::Tree => {
+                Self::price_tree(trade, market, calc)
+            }
             ResolvedMethod::Script => Err(PricingError::unsupported_method(
                 "Script",
                 "Trade→Script conversion not available; use Pricer::price_script_flat() for ScriptProduct pricing",
@@ -154,14 +174,12 @@ impl Pricer {
                     }))
                 }
             }
-            ResolvedMethod::MonteCarlo => Err(PricingError::unsupported_method(
-                "MonteCarlo",
-                "Unified Monte Carlo path not yet wired",
-            )),
-            ResolvedMethod::Tree => Err(PricingError::unsupported_method(
-                "Tree",
-                "Unified Tree path not yet wired",
-            )),
+            ResolvedMethod::MonteCarlo => {
+                Self::price_mc_unified(trade, market, calc, start)
+            }
+            ResolvedMethod::Tree => {
+                Self::price_tree_unified(trade, market, calc, start)
+            }
             ResolvedMethod::Script => Err(PricingError::unsupported_method(
                 "Script",
                 "Trade→Script conversion not available; use Pricer::price_script_flat() for ScriptProduct pricing",
@@ -194,6 +212,219 @@ impl Pricer {
 
         let provider = FlatSpotProvider::new(discount_rate, foreign_rate, spot);
         Ok(ScriptEngine::price(&kernel, &provider))
+    }
+
+    // -----------------------------------------------------------------------
+    // Monte Carlo pricing
+    // -----------------------------------------------------------------------
+
+    /// Builds a [`MonteCarloPricer`] and [`GbmParams`] from trade/market data.
+    fn build_mc_context(
+        params: &OptionParams,
+        calc: &CalcSetting,
+    ) -> Result<(MonteCarloPricer, GbmParams, PayoffParams, f64), PricingError> {
+        let mc_setting = calc.mc_config.as_ref().cloned().unwrap_or_default();
+
+        let mut builder = MonteCarloConfig::builder()
+            .n_paths(mc_setting.num_paths)
+            .n_steps(mc_setting.num_steps);
+        if let Some(seed) = mc_setting.seed {
+            builder = builder.seed(seed);
+        }
+        let mc_config = builder
+            .build()
+            .map_err(|e| PricingError::InvalidInput {
+                reason: e.to_string(),
+            })?;
+
+        let mc = MonteCarloPricer::new(mc_config).map_err(|e| PricingError::InvalidInput {
+            reason: e.to_string(),
+        })?;
+
+        let drift_rate = params
+            .foreign_rate
+            .map(|rf| params.rate - rf)
+            .unwrap_or(params.rate);
+        let gbm = GbmParams::new(params.spot, drift_rate, params.vol, params.t);
+        let payoff = if params.is_call {
+            PayoffParams::call(params.strike)
+        } else {
+            PayoffParams::put(params.strike)
+        };
+        let df = (-params.rate * params.t).exp();
+
+        Ok((mc, gbm, payoff, df))
+    }
+
+    /// Prices an option via Monte Carlo, returning a [`PricingResult`].
+    fn price_mc(
+        trade: &Trade,
+        market: &MarketEnvironment,
+        calc: &CalcSetting,
+    ) -> Result<PricingResult, PricingError> {
+        let params = Self::extract_option_params(trade, market, calc)?;
+        let (mut mc, gbm, payoff, df) = Self::build_mc_context(&params, calc)?;
+        let mc_result = mc.price_european(gbm, payoff, df);
+
+        let pv = mc_result.price * params.multiplier;
+        let std_error = mc_result.std_error * params.multiplier;
+        let num_paths = calc
+            .mc_config
+            .as_ref()
+            .map(|c| c.num_paths)
+            .unwrap_or(10_000);
+
+        let dist = super::PathDistribution::new(pv, std_error, vec![], num_paths);
+
+        Ok(PricingResult::with_path_distribution(
+            pv,
+            Vec::new(),
+            calc.reporting_currency,
+            dist,
+        ))
+    }
+
+    /// Prices an option via Monte Carlo, returning a [`UnifiedPricingResult`].
+    fn price_mc_unified(
+        trade: &Trade,
+        market: &MarketEnvironment,
+        calc: &CalcSetting,
+        start: Instant,
+    ) -> Result<UnifiedPricingResult, PricingError> {
+        let params = Self::extract_option_params(trade, market, calc)?;
+        let (mut mc, gbm, payoff, df) = Self::build_mc_context(&params, calc)?;
+        let num_paths = mc.config().n_paths();
+
+        let mc_result = if calc.compute_greeks {
+            mc.price_with_greeks(
+                gbm,
+                payoff,
+                df,
+                &[Greek::Delta, Greek::Gamma, Greek::Vega, Greek::Theta, Greek::Rho],
+            )
+        } else {
+            mc.price_european(gbm, payoff, df)
+        };
+
+        let pv = mc_result.price * params.multiplier;
+        let std_error = mc_result.std_error * params.multiplier;
+        let elapsed = start.elapsed().as_nanos() as u64;
+
+        let mut result = UnifiedPricingResult::new(pv, PricingMethod::MonteCarlo, elapsed)
+            .with_metadata(PricingMetadata::MonteCarlo {
+                num_paths,
+                standard_error: std_error,
+            });
+
+        if calc.compute_greeks {
+            let greeks = UnifiedGreeks::new(
+                mc_result.delta.map(|d| d * params.multiplier),
+                mc_result.gamma.map(|g| g * params.multiplier),
+                mc_result.vega.map(|v| v * params.multiplier),
+                mc_result.theta.map(|t| t * params.multiplier),
+                mc_result.rho.map(|r| r * params.multiplier),
+            );
+            result = result.with_greeks(greeks);
+        }
+
+        Ok(result)
+    }
+
+    // -----------------------------------------------------------------------
+    // Tree pricing
+    // -----------------------------------------------------------------------
+
+    /// Builds a [`TreeMethod`] from calculation settings.
+    fn build_tree_method(calc: &CalcSetting) -> Result<TreeMethod, PricingError> {
+        let tree_setting = calc.tree_config.as_ref().cloned().unwrap_or_default();
+        let tree_config = TreeConfig::builder()
+            .num_steps(tree_setting.num_steps)
+            .tree_type(tree_setting.tree_type)
+            .compute_greeks(calc.compute_greeks)
+            .build()
+            .map_err(|e| PricingError::InvalidInput {
+                reason: e.to_string(),
+            })?;
+        Ok(TreeMethod::new(tree_config))
+    }
+
+    /// Prices an option via a tree method, returning a [`PricingResult`].
+    fn price_tree(
+        trade: &Trade,
+        market: &MarketEnvironment,
+        calc: &CalcSetting,
+    ) -> Result<PricingResult, PricingError> {
+        let params = Self::extract_option_params(trade, market, calc)?;
+        let method = Self::build_tree_method(calc)?;
+
+        let drift_rate = params
+            .foreign_rate
+            .map(|rf| params.rate - rf)
+            .unwrap_or(params.rate);
+
+        let tree_result = method.price(
+            params.spot,
+            params.strike,
+            params.t,
+            drift_rate,
+            params.vol,
+            params.is_call,
+            params.is_american,
+        )?;
+
+        let pv = tree_result.pv * params.multiplier;
+        Ok(PricingResult::new(pv, Vec::new(), calc.reporting_currency))
+    }
+
+    /// Prices an option via a tree method, returning a [`UnifiedPricingResult`].
+    fn price_tree_unified(
+        trade: &Trade,
+        market: &MarketEnvironment,
+        calc: &CalcSetting,
+        start: Instant,
+    ) -> Result<UnifiedPricingResult, PricingError> {
+        let params = Self::extract_option_params(trade, market, calc)?;
+        let method = Self::build_tree_method(calc)?;
+
+        let drift_rate = params
+            .foreign_rate
+            .map(|rf| params.rate - rf)
+            .unwrap_or(params.rate);
+
+        let tree_result = method.price(
+            params.spot,
+            params.strike,
+            params.t,
+            drift_rate,
+            params.vol,
+            params.is_call,
+            params.is_american,
+        )?;
+
+        let pv = tree_result.pv * params.multiplier;
+        let elapsed = start.elapsed().as_nanos() as u64;
+        let tree_type_meta = match method.config().tree_type {
+            TreeType::Binomial => TreeTypeMetadata::Binomial,
+            TreeType::Trinomial => TreeTypeMetadata::Trinomial,
+        };
+
+        let mut result = UnifiedPricingResult::new(pv, PricingMethod::Tree, elapsed)
+            .with_metadata(PricingMetadata::Tree {
+                num_steps: method.config().num_steps,
+                tree_type: tree_type_meta,
+            });
+
+        if calc.compute_greeks {
+            if let Some(tg) = tree_result.greeks {
+                let greeks = UnifiedGreeks::from_delta_gamma(
+                    tg.delta.unwrap_or(0.0) * params.multiplier,
+                    tg.gamma.unwrap_or(0.0) * params.multiplier,
+                );
+                result = result.with_greeks(greeks);
+            }
+        }
+
+        Ok(result)
     }
 
     // -----------------------------------------------------------------------
@@ -680,6 +911,169 @@ impl Pricer {
             .map_err(|e| PricingError::market_data_resolution(format!("{:?}", e)))
     }
 
+    /// Extracts vanilla option parameters from a trade and market environment.
+    ///
+    /// Supports FX, Equity, and Commodity vanilla options.  Returns an error
+    /// for non-option trade types or unsupported option types.
+    fn extract_option_params(
+        trade: &Trade,
+        market: &MarketEnvironment,
+        calc: &CalcSetting,
+    ) -> Result<OptionParams, PricingError> {
+        let valuation_date = market.valuation_date();
+
+        match &trade.trade_type {
+            TradeType::FxOption {
+                option_type,
+                strike,
+                exercise_type,
+                expiry_date,
+                ..
+            } => {
+                let (base_ccy, quote_ccy) = Self::extract_fx_currencies(trade)?;
+                let spot = market
+                    .fx_rate(base_ccy, quote_ccy)
+                    .ok_or_else(|| PricingError::fx_rate_not_found(base_ccy, quote_ccy))?;
+
+                let domestic_curve = market.discount_curve(&quote_ccy).ok_or_else(|| {
+                    PricingError::missing_market_data(format!(
+                        "No discount curve for domestic currency {:?}",
+                        quote_ccy
+                    ))
+                })?;
+                let foreign_curve = market.discount_curve(&base_ccy).ok_or_else(|| {
+                    PricingError::missing_market_data(format!(
+                        "No discount curve for foreign currency {:?}",
+                        base_ccy
+                    ))
+                })?;
+
+                let t = Self::year_fraction(valuation_date, *expiry_date)?;
+                let rd = Self::zero_rate_from_curve(domestic_curve, t)?;
+                let rf = Self::zero_rate_from_curve(foreign_curve, t)?;
+
+                let forward = spot * ((rd - rf) * t).exp();
+                let vol_key = format!("FX:{}/{}", base_ccy.code(), quote_ccy.code());
+                let vol = market
+                    .implied_vol(&vol_key, *strike, t, forward)
+                    .map_err(Self::map_market_error)?;
+
+                Ok(OptionParams {
+                    spot,
+                    strike: *strike,
+                    rate: rd,
+                    vol,
+                    t,
+                    is_call: option_type.is_call(),
+                    is_american: *exercise_type == ExerciseStyle::American,
+                    multiplier: 1.0,
+                    foreign_rate: Some(rf),
+                })
+            }
+
+            TradeType::EquityOption {
+                underlyer,
+                option_type,
+                strike,
+                exercise_type,
+                expiry_date,
+                contract_multiplier,
+                ..
+            } => {
+                let spot = market.spot_price(underlyer).ok_or_else(|| {
+                    PricingError::missing_market_data(format!(
+                        "No equity spot price for '{}'",
+                        underlyer
+                    ))
+                })?;
+
+                let domestic_curve =
+                    market
+                        .discount_curve(&calc.reporting_currency)
+                        .ok_or_else(|| {
+                            PricingError::missing_market_data(format!(
+                                "No discount curve for {:?}",
+                                calc.reporting_currency
+                            ))
+                        })?;
+
+                let t = Self::year_fraction(valuation_date, *expiry_date)?;
+                let r = Self::zero_rate_from_curve(domestic_curve, t)?;
+
+                let forward = spot * (r * t).exp();
+                let vol_key = format!("EQ:{}", underlyer);
+                let vol = market
+                    .implied_vol(&vol_key, *strike, t, forward)
+                    .map_err(Self::map_market_error)?;
+
+                Ok(OptionParams {
+                    spot,
+                    strike: *strike,
+                    rate: r,
+                    vol,
+                    t,
+                    is_call: option_type.is_call(),
+                    is_american: *exercise_type == ExerciseStyle::American,
+                    multiplier: *contract_multiplier,
+                    foreign_rate: None,
+                })
+            }
+
+            TradeType::CommodityOption {
+                commodity,
+                option_type,
+                strike,
+                exercise_type,
+                expiry_date,
+                quantity,
+                ..
+            } => {
+                let spot = market.spot_price(commodity).ok_or_else(|| {
+                    PricingError::missing_market_data(format!(
+                        "No commodity spot price for '{}'",
+                        commodity
+                    ))
+                })?;
+
+                let domestic_curve =
+                    market
+                        .discount_curve(&calc.reporting_currency)
+                        .ok_or_else(|| {
+                            PricingError::missing_market_data(format!(
+                                "No discount curve for {:?}",
+                                calc.reporting_currency
+                            ))
+                        })?;
+
+                let t = Self::year_fraction(valuation_date, *expiry_date)?;
+                let r = Self::zero_rate_from_curve(domestic_curve, t)?;
+
+                let forward = spot * (r * t).exp();
+                let vol_key = format!("CMDTY:{}", commodity);
+                let vol = market
+                    .implied_vol(&vol_key, *strike, t, forward)
+                    .map_err(Self::map_market_error)?;
+
+                Ok(OptionParams {
+                    spot,
+                    strike: *strike,
+                    rate: r,
+                    vol,
+                    t,
+                    is_call: option_type.is_call(),
+                    is_american: *exercise_type == ExerciseStyle::American,
+                    multiplier: *quantity,
+                    foreign_rate: None,
+                })
+            }
+
+            other => Err(PricingError::unsupported_instrument(format!(
+                "MC/Tree pricing not supported for {:?}",
+                other
+            ))),
+        }
+    }
+
     /// Extracts the base and quote currencies from an FX trade's legs.
     ///
     /// Convention: the first leg's currency is the *base* (foreign) currency
@@ -717,6 +1111,7 @@ mod tests {
     };
     use pricer_models::market::{CurveEnum, MarketEnvironmentBuilder, VolSurfaceEnum};
 
+    use super::super::{MonteCarloSetting, TreeSetting};
     use super::*;
 
     // -- Helpers --
@@ -918,10 +1313,10 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // -- MC / Tree / Script error paths --
+    // -- MC / Tree / Script error & success paths --
 
     #[test]
-    fn test_mc_returns_unsupported() {
+    fn test_mc_non_option_returns_unsupported() {
         let trade = Trade::new("T6", vec![], TradeType::Swap);
         let env = make_fx_market_env();
         let calc = CalcSetting::builder()
@@ -930,11 +1325,11 @@ mod tests {
 
         let result = Pricer::price(&trade, &env, &calc);
         assert!(result.is_err());
-        assert!(result.unwrap_err().is_method_error());
+        assert!(result.unwrap_err().is_instrument_error());
     }
 
     #[test]
-    fn test_tree_returns_unsupported() {
+    fn test_tree_non_option_returns_unsupported() {
         let trade = Trade::new("T7", vec![], TradeType::Swap);
         let env = make_fx_market_env();
         let calc = CalcSetting::builder()
@@ -943,7 +1338,7 @@ mod tests {
 
         let result = Pricer::price(&trade, &env, &calc);
         assert!(result.is_err());
-        assert!(result.unwrap_err().is_method_error());
+        assert!(result.unwrap_err().is_instrument_error());
     }
 
     #[test]
@@ -968,6 +1363,161 @@ mod tests {
         let result = Pricer::price(&trade, &env, &calc);
         assert!(result.is_err());
         assert!(result.unwrap_err().is_method_error());
+    }
+
+    // -- Monte Carlo dispatch --
+
+    #[test]
+    fn test_mc_fx_option_price() {
+        let trade = make_fx_option_trade();
+        let env = make_fx_market_env();
+        let calc = CalcSetting::builder()
+            .method(PricingMethodHint::MonteCarlo)
+            .mc_config(MonteCarloSetting {
+                num_paths: 50_000,
+                num_steps: 100,
+                seed: Some(42),
+            })
+            .build();
+
+        let result = Pricer::price(&trade, &env, &calc).unwrap();
+        assert!(result.total_pv > 0.0, "MC FX call PV should be positive");
+        assert!(
+            result.path_distribution.is_some(),
+            "MC should include path distribution"
+        );
+        let dist = result.path_distribution.unwrap();
+        assert_eq!(dist.path_count, 50_000);
+    }
+
+    #[test]
+    fn test_mc_fx_option_reproducible() {
+        let trade = make_fx_option_trade();
+        let env = make_fx_market_env();
+        let calc = CalcSetting::builder()
+            .method(PricingMethodHint::MonteCarlo)
+            .mc_config(MonteCarloSetting {
+                num_paths: 10_000,
+                num_steps: 50,
+                seed: Some(123),
+            })
+            .build();
+
+        let pv1 = Pricer::price_pv(&trade, &env, &calc).unwrap();
+        let pv2 = Pricer::price_pv(&trade, &env, &calc).unwrap();
+        assert!(
+            (pv1 - pv2).abs() < 1e-10,
+            "Same seed should give identical PVs"
+        );
+    }
+
+    #[test]
+    fn test_mc_unified_with_greeks() {
+        let trade = make_fx_option_trade();
+        let env = make_fx_market_env();
+        let calc = CalcSetting::builder()
+            .method(PricingMethodHint::MonteCarlo)
+            .compute_greeks(true)
+            .mc_config(MonteCarloSetting {
+                num_paths: 20_000,
+                num_steps: 50,
+                seed: Some(42),
+            })
+            .build();
+
+        let result = Pricer::price_unified(&trade, &env, &calc).unwrap();
+        assert!(result.pv > 0.0);
+        assert_eq!(result.method, PricingMethod::MonteCarlo);
+        assert!(result.has_greeks());
+        assert!(result.standard_error().is_some());
+        assert!(result.num_paths() == Some(20_000));
+    }
+
+    // -- Tree dispatch --
+
+    #[test]
+    fn test_tree_fx_option_price() {
+        let trade = make_fx_option_trade();
+        let env = make_fx_market_env();
+        let calc = CalcSetting::builder()
+            .method(PricingMethodHint::Tree)
+            .tree_config(TreeSetting {
+                num_steps: 200,
+                tree_type: TreeType::Binomial,
+            })
+            .build();
+
+        let result = Pricer::price(&trade, &env, &calc).unwrap();
+        assert!(
+            result.total_pv > 0.0,
+            "Tree FX call PV should be positive"
+        );
+    }
+
+    #[test]
+    fn test_tree_trinomial_fx_option() {
+        let trade = make_fx_option_trade();
+        let env = make_fx_market_env();
+        let calc = CalcSetting::builder()
+            .method(PricingMethodHint::Tree)
+            .tree_config(TreeSetting {
+                num_steps: 200,
+                tree_type: TreeType::Trinomial,
+            })
+            .build();
+
+        let result = Pricer::price(&trade, &env, &calc).unwrap();
+        assert!(result.total_pv > 0.0);
+    }
+
+    #[test]
+    fn test_tree_unified_with_greeks() {
+        let trade = make_fx_option_trade();
+        let env = make_fx_market_env();
+        let calc = CalcSetting::builder()
+            .method(PricingMethodHint::Tree)
+            .compute_greeks(true)
+            .tree_config(TreeSetting {
+                num_steps: 200,
+                tree_type: TreeType::Binomial,
+            })
+            .build();
+
+        let result = Pricer::price_unified(&trade, &env, &calc).unwrap();
+        assert!(result.pv > 0.0);
+        assert_eq!(result.method, PricingMethod::Tree);
+        assert!(result.has_greeks());
+        assert!(result.num_steps() == Some(200));
+    }
+
+    #[test]
+    fn test_tree_close_to_analytical() {
+        let trade = make_fx_option_trade();
+        let env = make_fx_market_env();
+
+        // Analytical price.
+        let analytical_calc = CalcSetting::builder()
+            .method(PricingMethodHint::Analytical)
+            .build();
+        let analytical = Pricer::price_unified(&trade, &env, &analytical_calc)
+            .unwrap()
+            .pv;
+
+        // Tree price (high step count for convergence).
+        let tree_calc = CalcSetting::builder()
+            .method(PricingMethodHint::Tree)
+            .tree_config(TreeSetting {
+                num_steps: 500,
+                tree_type: TreeType::Binomial,
+            })
+            .build();
+        let tree = Pricer::price(&trade, &env, &tree_calc).unwrap().total_pv;
+
+        let rel_err = (tree - analytical).abs() / analytical.abs();
+        assert!(
+            rel_err < 0.05,
+            "Tree should converge to analytical: tree={tree}, analytical={analytical}, rel_err={rel_err}"
+        );
     }
 
     // -- Extract FX currencies --
