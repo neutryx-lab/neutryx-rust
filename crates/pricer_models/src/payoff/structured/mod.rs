@@ -1,19 +1,17 @@
-//! Path-dependent option pricing infrastructure.
+//! Structured/path-dependent option payoff implementations.
+//!
+//! Provides Asian, Barrier, and Lookback payoffs that implement
+//! the [`McPayoff`](super::McPayoff) trait from the parent module.
 
 mod asian;
 mod barrier;
 mod lookback;
 mod observer;
-mod payoff;
-mod payoff_type;
-pub(crate) mod smooth_math;
 
 pub use asian::{AsianArithmeticPayoff, AsianGeometricPayoff, AsianParams};
 pub use barrier::{BarrierParams, BarrierPayoff, BarrierType};
 pub use lookback::{LookbackParams, LookbackPayoff, LookbackType};
 pub use observer::{PathObserver, PathObserverState};
-pub use payoff::{ObservationType, PathDependentPayoff};
-pub use payoff_type::PathPayoffType;
 
 #[cfg(test)]
 mod tests {
