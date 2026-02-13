@@ -1,5 +1,6 @@
 //! Demo DTOs for the demo_gui frontend integration.
 #![allow(dead_code)]
+#![allow(missing_docs)]
 
 use serde::{Deserialize, Serialize};
 use validator::Validate;

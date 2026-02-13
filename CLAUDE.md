@@ -23,6 +23,44 @@ S: Service   → service_cli, service_gateway, service_python
 3. **I**nfra crates must never depend on **P** or **S** crates.
 4. **A**dapter crates depend only on **I** (for definitions) or **P** (for target types), never on **S**.
 
+## Tier 1 Minimalist Architecture (CRITICAL)
+
+To achieve Tier 1 diversity (Exotics, SABR/Heston, etc.) with **minimal code**, strict adherence to these patterns is required:
+
+1.  **Enum Dispatch over Boilerplate**:
+    - Do NOT create isolated structs for every new model or product.
+    - **Extend existing Enums** (e.g., `VolatilitySurface`, `ProductType`) and use Rust's `enum_dispatch` or `match` patterns.
+    - Polymorphism should happen at the Enum level to simplify serialization/deserialization boundaries with the GUI.
+
+2.  **Data-Driven over Hard-Coding**:
+    - **Exotic Products** (TARF, Autocallables) must be implemented via the **Script Engine** (`pricer_core::script_kernel`) or configuration structs, NOT by writing new Rust structs for each payout type.
+    - Payoff logic should be composed, not duplicated.
+
+3.  **Strict Reuse**:
+    - Reuse `pricer_core` math primitives (interpolators, solvers, random number generators).
+    - Never duplicate Monte Carlo path generation logic; extend the `Process` trait instead.
+
+4.  **GUI-First Integration**:
+    - Any structural change to `infra_domain` (Enums/Structs) MUST be immediately reflected in `service_gateway` (JSON DTOs) and verified against `demo/gui` (Vue.js).
+    - Breaking the GUI is a critical failure.
+
+## Agent Team Protocols (Experimental)
+
+When operating as an Agent Team:
+
+1.  **Phase 1: Architecture Consensus**:
+    - Before writing code, the **Architect Agent** must propose the Enum/Trait abstraction.
+    - Other agents must validate that this abstraction covers their use cases (e.g., "Does this Enum support Heston parameters?").
+    - **NO CODING** until consensus is reached via `SendMessage`.
+
+2.  **Phase 2: Parallel Implementation**:
+    - Agents work on assigned crates defined in the A-I-P-S stream.
+    - Code comments must be in **British English**.
+
+3.  **Phase 3: Integration & Verification**:
+    - The **Integration Agent** (usually assigned to `S` layer) acts as the gatekeeper.
+    - They must verify that `cargo run --bin service_gateway` serves the new data correctly to the GUI.
+
 ### Paths
 - Steering: `.kiro/steering/`
 - Specs: `.kiro/specs/`

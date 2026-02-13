@@ -9,7 +9,7 @@ use pricer_models::{
         vol::{SliceCalibrationConfig, VolBuilder, VolCubeBuilder},
         BootstrapConfig, CurveBootstrapper,
     },
-    market::{BootstrapInterpolation, YieldCurve},
+    market::YieldCurve,
 };
 
 use crate::{
