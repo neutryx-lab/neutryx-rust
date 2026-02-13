@@ -195,7 +195,7 @@ trade/             → Trade representation (CF-expanded format)
 ```text
 L1: pricer_core      → Foundation (Stable) - math (smoothing, interpolators, solvers), types, traits
 L2: pricer_models    → Business Logic (Stable) - instruments, market (curves, surfaces, calibration), models, schedules
-L3: pricer_pricing   → MC Engine (Stable) - mc, rng, greeks, context, path_dependent, checkpoint, graph
+L3: pricer_pricing   → MC Engine (Stable) - mc, rng, greeks, context, structured, checkpoint, graph
 L4: pricer_risk      → Application + Enzyme AD (Stable, Nightly with enzyme-ad) - portfolio, exposure, xva, scenarios, enzyme
 ```
 
@@ -335,7 +335,7 @@ instruments/      → Re-exports from infra_domain::trade for backwards compatib
 
 ```text
 mc/              → Monte Carlo kernel (GBM paths, workspace buffers, Greeks, MonteCarloPricer, thread_local)
-path_dependent/  → Path-dependent options (Asian, Barrier, Lookback) with streaming statistics
+structured/      → Structured options (Asian, Barrier, Lookback) with streaming statistics
 rng/             → Random number generation (PRNG, QMC sequences)
 verify/          → Verification tests
 checkpoint/      → Memory management for checkpointing

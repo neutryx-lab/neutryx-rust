@@ -17,7 +17,7 @@ use pricer_pricing::{
         thread_local::{current_thread_index, ParallelWorkspaces},
         GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams,
     },
-    path_dependent::PathPayoffType,
+    structured::PathPayoffType,
     tree::{BinomialTree, TrinomialTree},
 };
 use rayon::prelude::*;

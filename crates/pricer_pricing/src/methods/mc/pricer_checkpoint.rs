@@ -1,7 +1,7 @@
 //! Checkpoint-integrated Monte Carlo pricing engine.
 
 use pricer_core::math::rng::PricerRng;
-use pricer_models::path_dependent::{PathDependentPayoff, PathObserverState, PathPayoffType};
+use pricer_models::structured::{PathDependentPayoff, PathObserverState, PathPayoffType};
 
 use crate::{
     checkpoint::{

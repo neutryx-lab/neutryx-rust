@@ -1,7 +1,7 @@
 //! Monte Carlo pricing engine.
 
 use pricer_core::math::rng::PricerRng;
-use pricer_models::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
+use pricer_models::structured::{PathDependentPayoff, PathObserver, PathPayoffType};
 
 use super::{
     config::MonteCarloConfig,

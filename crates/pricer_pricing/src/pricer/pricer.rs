@@ -223,7 +223,7 @@ impl Pricer {
         params: &OptionParams,
         calc: &CalcSetting,
     ) -> Result<(MonteCarloPricer, GbmParams, PayoffParams, f64), PricingError> {
-        let mc_setting = calc.mc_config.as_ref().cloned().unwrap_or_default();
+        let mc_setting = calc.mc_config.clone().unwrap_or_default();
 
         let mut builder = MonteCarloConfig::builder()
             .n_paths(mc_setting.num_paths)
@@ -231,11 +231,9 @@ impl Pricer {
         if let Some(seed) = mc_setting.seed {
             builder = builder.seed(seed);
         }
-        let mc_config = builder
-            .build()
-            .map_err(|e| PricingError::InvalidInput {
-                reason: e.to_string(),
-            })?;
+        let mc_config = builder.build().map_err(|e| PricingError::InvalidInput {
+            reason: e.to_string(),
+        })?;
 
         let mc = MonteCarloPricer::new(mc_config).map_err(|e| PricingError::InvalidInput {
             reason: e.to_string(),
@@ -300,7 +298,13 @@ impl Pricer {
                 gbm,
                 payoff,
                 df,
-                &[Greek::Delta, Greek::Gamma, Greek::Vega, Greek::Theta, Greek::Rho],
+                &[
+                    Greek::Delta,
+                    Greek::Gamma,
+                    Greek::Vega,
+                    Greek::Theta,
+                    Greek::Rho,
+                ],
             )
         } else {
             mc.price_european(gbm, payoff, df)
@@ -336,7 +340,7 @@ impl Pricer {
 
     /// Builds a [`TreeMethod`] from calculation settings.
     fn build_tree_method(calc: &CalcSetting) -> Result<TreeMethod, PricingError> {
-        let tree_setting = calc.tree_config.as_ref().cloned().unwrap_or_default();
+        let tree_setting = calc.tree_config.clone().unwrap_or_default();
         let tree_config = TreeConfig::builder()
             .num_steps(tree_setting.num_steps)
             .tree_type(tree_setting.tree_type)
@@ -376,7 +380,8 @@ impl Pricer {
         Ok(PricingResult::new(pv, Vec::new(), calc.reporting_currency))
     }
 
-    /// Prices an option via a tree method, returning a [`UnifiedPricingResult`].
+    /// Prices an option via a tree method, returning a
+    /// [`UnifiedPricingResult`].
     fn price_tree_unified(
         trade: &Trade,
         market: &MarketEnvironment,
@@ -408,11 +413,12 @@ impl Pricer {
             TreeType::Trinomial => TreeTypeMetadata::Trinomial,
         };
 
-        let mut result = UnifiedPricingResult::new(pv, PricingMethod::Tree, elapsed)
-            .with_metadata(PricingMetadata::Tree {
+        let mut result = UnifiedPricingResult::new(pv, PricingMethod::Tree, elapsed).with_metadata(
+            PricingMetadata::Tree {
                 num_steps: method.config().num_steps,
                 tree_type: tree_type_meta,
-            });
+            },
+        );
 
         if calc.compute_greeks {
             if let Some(tg) = tree_result.greeks {
@@ -1111,8 +1117,10 @@ mod tests {
     };
     use pricer_models::market::{CurveEnum, MarketEnvironmentBuilder, VolSurfaceEnum};
 
-    use super::super::{MonteCarloSetting, TreeSetting};
-    use super::*;
+    use super::{
+        super::{MonteCarloSetting, TreeSetting},
+        *,
+    };
 
     // -- Helpers --
 
@@ -1448,10 +1456,7 @@ mod tests {
             .build();
 
         let result = Pricer::price(&trade, &env, &calc).unwrap();
-        assert!(
-            result.total_pv > 0.0,
-            "Tree FX call PV should be positive"
-        );
+        assert!(result.total_pv > 0.0, "Tree FX call PV should be positive");
     }
 
     #[test]

@@ -41,7 +41,7 @@
 //! - [`analytic`] - Analytical pricing with instrument wrappers
 //! - [`builder`] - Yield curve bootstrapping and market data calibration
 //! - [`compiler`] - Instrument compilation for pricing engines
-//! - [`path_dependent`] - Path-dependent option payoffs (Asian, Barrier,
+//! - [`structured`] - Structured option payoffs (Asian, Barrier,
 //!   Lookback)
 //!
 //! ## Analytical Formulas
@@ -63,7 +63,7 @@ pub mod analytic;
 pub mod builder;
 pub mod compiler;
 pub mod market;
-pub mod path_dependent;
+pub mod structured;
 pub mod process;
 /// Backwards-compatible alias — process sub-modules use `crate::stochastic::`.
 pub use process as stochastic;
