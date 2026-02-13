@@ -67,12 +67,12 @@ When operating as an Agent Team:
 
 ## Project Knowledge
 
-- **Steering**: `.kiro/steering/` — project-wide context (product.md, tech.md, structure.md, roadmap.md). Load as needed.
-- **Roadmap**: `.kiro/steering/roadmap.md` — source of truth for project status. Reference when planning, update when completing work.
+- **Steering**: `.claude/steering/` — project-wide context (product.md, tech.md, structure.md, roadmap.md). Load as needed.
+- **Roadmap**: `.claude/steering/roadmap.md` — source of truth for project status. Reference when planning, update when completing work.
 
 ## Spec Workflow (use selectively)
 
-Specs (`.kiro/specs/`) formalise the development process. Use them **only for large features** that require architectural decisions across multiple crates. For small/medium changes, skip specs and implement directly.
+Specs (`.claude/specs/`) formalise the development process. Use them **only for large features** that require architectural decisions across multiple crates. For small/medium changes, skip specs and implement directly.
 
 **When to use a spec**: New asset class, new pricing engine, cross-layer refactoring, new GUI feature with backend changes.
 **When NOT to use a spec**: Bug fixes, single-crate changes, migrations, small refactorings, dependency updates.
@@ -80,4 +80,4 @@ Specs (`.kiro/specs/`) formalise the development process. Use them **only for la
 When using specs:
 - `/kiro:spec-init` → `/kiro:spec-requirements` → `/kiro:spec-tasks` → `/kiro:spec-impl`
 - Skip `/kiro:spec-design` unless genuine architectural trade-offs exist
-- 53 completed specs are deleted (git history preserved). Summary in `.kiro/steering/roadmap.md`
+- 53 completed specs are deleted (git history preserved). Summary in `.claude/steering/roadmap.md`

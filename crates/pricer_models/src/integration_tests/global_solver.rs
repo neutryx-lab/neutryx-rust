@@ -10,12 +10,9 @@
 //! - Task 6.2: Mixed instrument convergence test
 //! - Task 6.3: Jacobian consistency verification
 
-#![cfg(feature = "global-bootstrap")]
-#![allow(non_snake_case)]
-
 use approx::assert_relative_eq;
 use num_traits::Float;
-use pricer_models::{
+use crate::{
     builder::{
         CalibrationInstrument, CalibrationProblem, GlobalBootstrapConfig, GlobalBootstrapper,
         JacobianMethod,
@@ -201,7 +198,7 @@ fn test_jacobian_finite_vs_central_difference() {
     // Create problem with finite difference
     let problem_fd = CalibrationProblem::with_config(
         instruments.clone(),
-        pricer_models::builder::CalibrationProblemConfig {
+        crate::builder::CalibrationProblemConfig {
             jacobian_method: JacobianMethod::FiniteDifference,
             ..Default::default()
         },
@@ -211,7 +208,7 @@ fn test_jacobian_finite_vs_central_difference() {
     // Create problem with central difference
     let problem_cd = CalibrationProblem::with_config(
         instruments,
-        pricer_models::builder::CalibrationProblemConfig {
+        crate::builder::CalibrationProblemConfig {
             jacobian_method: JacobianMethod::CentralDifference,
             ..Default::default()
         },
@@ -434,7 +431,7 @@ fn test_ift_sensitivity_available() {
     );
     assert!(
         result.jacobian_inverse.is_some(),
-        "J⁻¹ should be cached by default"
+        "J\u{207b}\u{00b9} should be cached by default"
     );
 }
 
@@ -544,15 +541,15 @@ fn test_ift_vs_bump_and_recalibrate() {
             .collect();
 
         // Compute IFT sensitivity
-        // Since F = implied_rate - market_quote, ∂F/∂quote = -1
+        // Since F = implied_rate - market_quote, dF/dquote = -1
         // (a unit increase in quote makes the residual decrease by 1)
         let mut dF_dm = vec![0.0; instruments.len()];
         dF_dm[inst_idx] = -1.0;
 
         let ift_sensitivities = result.ift_sensitivity(&dF_dm).unwrap();
 
-        // Compare sensitivities (note: IFT gives ∂log(DF)/∂quote, we need ∂DF/∂quote)
-        // ∂DF/∂quote = DF * ∂log(DF)/∂quote
+        // Compare sensitivities (note: IFT gives dlog(DF)/dquote, we need dDF/dquote)
+        // dDF/dquote = DF * dlog(DF)/dquote
         for (i, (&ift_sens, &bump_sens)) in ift_sensitivities
             .iter()
             .zip(bump_sensitivities.iter())
@@ -638,7 +635,7 @@ fn test_ift_dimension_mismatch() {
 /// within 1e-12 relative tolerance compared to the BootstrappedCurve.
 #[test]
 fn test_enzyme_kernel_interpolation_accuracy() {
-    use pricer_models::{
+    use crate::{
         builder::enzyme_jacobian::kernels,
         market::curves::{BootstrapInterpolation, BootstrappedCurve, YieldCurve},
     };
@@ -676,7 +673,7 @@ fn test_enzyme_kernel_interpolation_accuracy() {
 /// Verify analytical derivatives are exact for LogLinear interpolation.
 #[test]
 fn test_bootstrapped_curve_gradient_accuracy() {
-    use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+    use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
 
     let pillar_times = vec![1.0, 2.0, 5.0];
     let discount_factors: Vec<f64> = pillar_times.iter().map(|&t| (-0.03 * t).exp()).collect();
@@ -736,7 +733,7 @@ fn test_bootstrapped_curve_gradient_accuracy() {
 /// Test gradient with log_df (for calibration).
 #[test]
 fn test_bootstrapped_curve_log_gradient_accuracy() {
-    use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+    use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
 
     let pillar_times = vec![1.0, 2.0, 5.0];
     let log_df: Vec<f64> = pillar_times.iter().map(|&t| -0.03 * t).collect();
@@ -792,7 +789,7 @@ fn test_bootstrapped_curve_log_gradient_accuracy() {
 /// and the actual computation should fall back to finite differences.
 #[test]
 fn test_enzyme_jacobian_stub_behavior() {
-    use pricer_models::builder::enzyme_jacobian::kernels;
+    use crate::builder::enzyme_jacobian::kernels;
 
     let pillar_times = vec![1.0, 2.0, 5.0];
     let log_df: Vec<f64> = pillar_times.iter().map(|&t| -0.03 * t).collect();
@@ -879,7 +876,7 @@ fn test_jacobian_method_consistency() {
 /// # Requirement: 5.3, 6.1
 #[test]
 fn test_jacobian_quality_validation_integration() {
-    use pricer_models::builder::{JacobianQuality, NumericalDiagnostics};
+    use crate::builder::{JacobianQuality, NumericalDiagnostics};
 
     // Test NumericalDiagnostics can be created and populated
     let mut diagnostics = NumericalDiagnostics::<f64>::default();
@@ -959,7 +956,7 @@ fn test_max_condition_number_config_integration() {
 /// # Requirement: 5.2, 6.1
 #[test]
 fn test_tikhonov_regularisation_integration() {
-    use pricer_models::builder::should_apply_regularisation;
+    use crate::builder::should_apply_regularisation;
 
     // Test should_apply_regularisation
     let high_cond: f64 = 1e14;
@@ -981,7 +978,7 @@ fn test_tikhonov_regularisation_integration() {
 /// # Requirement: 5.5, 6.1
 #[test]
 fn test_numerical_diagnostics_summary_integration() {
-    use pricer_models::builder::{JacobianQuality, NumericalDiagnostics, RegularisationType};
+    use crate::builder::{JacobianQuality, NumericalDiagnostics, RegularisationType};
 
     let mut diagnostics = NumericalDiagnostics::<f64>::default();
     diagnostics.condition_number = Some(1e8);

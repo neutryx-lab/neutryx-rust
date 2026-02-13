@@ -24,11 +24,11 @@ Generate technical design document for feature **$1** based on approved requirem
 ### Step 1: Load Context
 
 **Read all necessary context**:
-- `.kiro/specs/$1/spec.json`, `requirements.md`, `design.md` (if exists)
-- **Entire `.kiro/steering/` directory** for complete project memory
-- `.kiro/settings/templates/specs/design.md` for document structure
-- `.kiro/settings/rules/design-principles.md` for design principles
-- `.kiro/settings/templates/specs/research.md` for discovery log structure
+- `.claude/specs/$1/spec.json`, `requirements.md`, `design.md` (if exists)
+- **Entire `.claude/steering/` directory** for complete project memory
+- `.claude/settings/kiro/templates/specs/design.md` for document structure
+- `.claude/settings/kiro/rules/design-principles.md` for design principles
+- `.claude/settings/kiro/templates/specs/research.md` for discovery log structure
 
 **Validate requirements approval**:
 - If `-y` flag provided ($2 == "-y"): Auto-approve requirements in spec.json
@@ -47,7 +47,7 @@ Generate technical design document for feature **$1** based on approved requirem
 2. **Execute Appropriate Discovery Process**:
    
    **For Complex/New Features**:
-   - Read and execute `.kiro/settings/rules/design-discovery-full.md`
+   - Read and execute `.claude/settings/kiro/rules/design-discovery-full.md`
    - Conduct thorough research using WebSearch/WebFetch:
      - Latest architectural patterns and best practices
      - External dependency verification (APIs, libraries, versions, compatibility)
@@ -55,7 +55,7 @@ Generate technical design document for feature **$1** based on approved requirem
      - Performance benchmarks and security considerations
    
    **For Extensions**:
-   - Read and execute `.kiro/settings/rules/design-discovery-light.md`
+   - Read and execute `.claude/settings/kiro/rules/design-discovery-light.md`
    - Focus on integration points, existing patterns, compatibility
    - Use Grep to analyze existing codebase patterns
    
@@ -72,7 +72,7 @@ Generate technical design document for feature **$1** based on approved requirem
 - Parallelization considerations for future tasks (capture dependencies in `research.md`)
 
 4. **Persist Findings to Research Log**:
-- Create or update `.kiro/specs/$1/research.md` using the shared template
+- Create or update `.claude/specs/$1/research.md` using the shared template
 - Summarize discovery scope and key findings (Summary section)
 - Record investigations in Research Log topics with sources and implications
 - Document architecture pattern evaluation, design decisions, and risks using the template sections
@@ -81,8 +81,8 @@ Generate technical design document for feature **$1** based on approved requirem
 ### Step 3: Generate Design Document
 
 1. **Load Design Template and Rules**:
-- Read `.kiro/settings/templates/specs/design.md` for structure
-- Read `.kiro/settings/rules/design-principles.md` for principles
+- Read `.claude/settings/kiro/templates/specs/design.md` for structure
+- Read `.claude/settings/kiro/rules/design-principles.md` for principles
 
 2. **Generate Design Document**:
 - **Follow specs/design.md template structure and generation instructions strictly**
@@ -124,7 +124,7 @@ Generate technical design document for feature **$1** based on approved requirem
 
 Provide brief summary in the language specified in spec.json:
 
-1. **Status**: Confirm design document generated at `.kiro/specs/$1/design.md`
+1. **Status**: Confirm design document generated at `.claude/specs/$1/design.md`
 2. **Discovery Type**: Which discovery process was executed (full/light/minimal)
 3. **Key Findings**: 2-3 critical insights from `research.md` that shaped the design
 4. **Next Action**: Approval workflow guidance (see Safety & Fallback)
@@ -132,7 +132,7 @@ Provide brief summary in the language specified in spec.json:
 
 **Format**: Concise Markdown (under 200 words) - this is the command output, NOT the design document itself
 
-**Note**: The actual design document follows `.kiro/settings/templates/specs/design.md` structure.
+**Note**: The actual design document follows `.claude/settings/kiro/templates/specs/design.md` structure.
 
 ## Safety & Fallback
 
@@ -145,11 +145,11 @@ Provide brief summary in the language specified in spec.json:
 
 **Missing Requirements**:
 - **Stop Execution**: Requirements document must exist
-- **User Message**: "No requirements.md found at `.kiro/specs/$1/requirements.md`"
+- **User Message**: "No requirements.md found at `.claude/specs/$1/requirements.md`"
 - **Suggested Action**: "Run `/kiro:spec-requirements $1` to generate requirements first"
 
 **Template Missing**:
-- **User Message**: "Template file missing at `.kiro/settings/templates/specs/design.md`"
+- **User Message**: "Template file missing at `.claude/settings/kiro/templates/specs/design.md`"
 - **Suggested Action**: "Check repository setup or restore template file"
 - **Fallback**: Use inline basic structure with warning
 
@@ -158,7 +158,7 @@ Provide brief summary in the language specified in spec.json:
 - **Proceed**: Continue with generation but note limitation in output
 
 **Discovery Complexity Unclear**:
-- **Default**: Use full discovery process (`.kiro/settings/rules/design-discovery-full.md`)
+- **Default**: Use full discovery process (`.claude/settings/kiro/rules/design-discovery-full.md`)
 - **Rationale**: Better to over-research than miss critical context
 - **Invalid Requirement IDs**:
   - **Stop Execution**: If requirements.md is missing numeric IDs or uses non-numeric headings (for example, "Requirement A"), stop and instruct the user to fix requirements.md before continuing.
@@ -166,7 +166,7 @@ Provide brief summary in the language specified in spec.json:
 ### Next Phase: Task Generation
 
 **If Design Approved**:
-- Review generated design at `.kiro/specs/$1/design.md`
+- Review generated design at `.claude/specs/$1/design.md`
 - **Optional**: Run `/kiro:validate-design $1` for interactive quality review
 - Then `/kiro:spec-tasks $1 -y` to generate implementation tasks
 

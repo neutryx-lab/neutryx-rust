@@ -3,24 +3,22 @@
 //! # Requirements: 5.9, 6.5, 6.8, 6.10, 7.6
 //!
 //! These tests verify the end-to-end flow of VolCube calibration:
-//! - Curve→VolCube calibration dependency
-//! - Quote update→cache invalidation
+//! - Curve->VolCube calibration dependency
+//! - Quote update->cache invalidation
 //! - AAD Vega calculation accuracy
 //!
 //! NOTE: This test file is feature-gated behind the `volcube` feature
 //! because the volcube module is planned but not yet implemented.
 
-#![cfg(feature = "volcube")]
-
 use chrono::NaiveDate;
-use pricer_models::market::volcube::{
+use crate::market::volcube::{
     AADCrossValidator, Currency, Tenor, UnderlyingIndex, VegaBumpConfig, VolCubeBuilder,
     VolCubeConfig, VolCubeVegaCalculator, VolInstrument, VolLazyEvaluator, VolQuote, VolQuoteSet,
     VolStrike, VolatilityCube,
 };
 
 // ============================================================================
-// Task 17.1: Curve→VolCube Calibration Flow Tests
+// Task 17.1: Curve->VolCube Calibration Flow Tests
 // ============================================================================
 
 mod curve_volcube_flow_tests {
@@ -114,11 +112,11 @@ mod curve_volcube_flow_tests {
 }
 
 // ============================================================================
-// Task 17.2: Quote Update→Cache Invalidation Tests
+// Task 17.2: Quote Update->Cache Invalidation Tests
 // ============================================================================
 
 mod cache_invalidation_tests {
-    use pricer_models::market::volcube::QuoteUpdateListener;
+    use crate::market::volcube::QuoteUpdateListener;
 
     use super::*;
 

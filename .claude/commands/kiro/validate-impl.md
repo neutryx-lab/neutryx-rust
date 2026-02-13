@@ -29,11 +29,11 @@ Validate implementation for feature(s) and task(s) based on approved specificati
 - Extract feature names and task numbers from each execution
 - Aggregate all implemented tasks by feature
 - Report detected implementations (e.g., "user-auth: 1.1, 1.2, 1.3")
-- If no history found, scan `.kiro/specs/` for features with completed tasks `[x]`
+- If no history found, scan `.claude/specs/` for features with completed tasks `[x]`
 
 **If feature provided** (`$1` present, `$2` empty):
 - Use specified feature
-- Detect all completed tasks `[x]` in `.kiro/specs/$1/tasks.md`
+- Detect all completed tasks `[x]` in `.claude/specs/$1/tasks.md`
 
 **If both feature and tasks provided** (`$1` and `$2` present):
 - Validate specified feature and tasks only (e.g., `user-auth 1.1,1.2`)
@@ -41,11 +41,11 @@ Validate implementation for feature(s) and task(s) based on approved specificati
 ### 2. Load Context
 
 For each detected feature:
-- Read `.kiro/specs/<feature>/spec.json` for metadata
-- Read `.kiro/specs/<feature>/requirements.md` for requirements
-- Read `.kiro/specs/<feature>/design.md` for design structure
-- Read `.kiro/specs/<feature>/tasks.md` for task list
-- **Load ALL steering context**: Read entire `.kiro/steering/` directory including:
+- Read `.claude/specs/<feature>/spec.json` for metadata
+- Read `.claude/specs/<feature>/requirements.md` for requirements
+- Read `.claude/specs/<feature>/design.md` for design structure
+- Read `.claude/specs/<feature>/tasks.md` for task list
+- **Load ALL steering context**: Read entire `.claude/steering/` directory including:
   - Default files: `structure.md`, `tech.md`, `product.md`
   - All custom steering files (regardless of mode settings)
 

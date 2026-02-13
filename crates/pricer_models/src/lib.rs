@@ -72,6 +72,9 @@ pub mod vol_surface;
 pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
 
 #[cfg(test)]
+mod integration_tests;
+
+#[cfg(test)]
 mod tests {
     #[test]
     fn it_works() {

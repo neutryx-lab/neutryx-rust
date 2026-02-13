@@ -22,16 +22,16 @@ Generate complete requirements for feature **$1** based on the project descripti
 ## Execution Steps
 
 1. **Load Context**:
-   - Read `.kiro/specs/$1/spec.json` for language and metadata
-   - Read `.kiro/specs/$1/requirements.md` for project description
-   - **Load ALL steering context**: Read entire `.kiro/steering/` directory including:
+   - Read `.claude/specs/$1/spec.json` for language and metadata
+   - Read `.claude/specs/$1/requirements.md` for project description
+   - **Load ALL steering context**: Read entire `.claude/steering/` directory including:
      - Default files: `structure.md`, `tech.md`, `product.md`
      - All custom steering files (regardless of mode settings)
      - This provides complete project memory and context
 
 2. **Read Guidelines**:
-   - Read `.kiro/settings/rules/ears-format.md` for EARS syntax rules
-   - Read `.kiro/settings/templates/specs/requirements.md` for document structure
+   - Read `.claude/settings/kiro/rules/ears-format.md` for EARS syntax rules
+   - Read `.claude/settings/kiro/templates/specs/requirements.md` for document structure
 
 3. **Generate Requirements**:
    - Create initial requirements based on project description
@@ -83,7 +83,7 @@ Provide output in the language specified in spec.json with:
 ### Next Phase: Design Generation
 
 **If Requirements Approved**:
-- Review generated requirements at `.kiro/specs/$1/requirements.md`
+- Review generated requirements at `.claude/specs/$1/requirements.md`
 - **Optional Gap Analysis** (for existing codebases):
   - Run `/kiro:validate-gap $1` to analyze implementation gap with current code
   - Identifies existing components, integration points, and implementation strategy

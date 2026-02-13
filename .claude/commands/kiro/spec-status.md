@@ -21,9 +21,9 @@ Generate status report for feature **$1** showing progress across all phases.
 ## Execution Steps
 
 ### Step 1: Load Spec Context
-- Read `.kiro/specs/$1/spec.json` for metadata and phase status
+- Read `.claude/specs/$1/spec.json` for metadata and phase status
 - Read existing files: `requirements.md`, `design.md`, `tasks.md` (if they exist)
-- Check `.kiro/specs/$1/` directory for available files
+- Check `.claude/specs/$1/` directory for available files
 
 ### Step 2: Analyze Status
 
@@ -71,7 +71,7 @@ Provide status report in the language specified in spec.json:
 ### Error Scenarios
 
 **Spec Not Found**:
-- **Message**: "No spec found for `$1`. Check available specs in `.kiro/specs/`"
+- **Message**: "No spec found for `$1`. Check available specs in `.claude/specs/`"
 - **Action**: List available spec directories
 
 **Incomplete Spec**:
@@ -82,6 +82,6 @@ Provide status report in the language specified in spec.json:
 
 To see all available specs:
 - Run with no argument or use wildcard
-- Shows all specs in `.kiro/specs/` with their status
+- Shows all specs in `.claude/specs/` with their status
 
 think

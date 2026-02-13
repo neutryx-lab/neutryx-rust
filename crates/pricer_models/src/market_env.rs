@@ -11,7 +11,7 @@
 //! * **Enum dispatch** — uses [`CurveEnum`] and [`FxCurveEnum`] for zero-cost
 //!   polymorphism, keeping the structure Enzyme-friendly.
 //! * **Provider-compatible** — exposes accessor methods whose signatures mirror
-//!   `CurveProvider` / `SpotProvider` in `pricer_pricing`, allowing a thin
+//!   `CurveProvider` / `SpotProvider` in pricer\_pricing, allowing a thin
 //!   adapter in that crate without introducing a reverse dependency.
 //!
 //! # Example

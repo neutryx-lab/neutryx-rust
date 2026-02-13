@@ -8,7 +8,7 @@ use infra_domain::{
     time::{Date, DayCounter},
 };
 use pricer_core::types::Limit;
-use pricer_models::{
+use crate::{
     builder::CurveBootstrapper,
     market::{
         curves::{BootstrappedCurve, MarketInstrument, YieldCurve},
@@ -303,7 +303,7 @@ fn test_jump_lookup_performance() {
     let curve = BootstrappedCurve::new(
         pillars,
         dfs,
-        pricer_models::market::curves::BootstrapInterpolation::LogLinear,
+        crate::market::curves::BootstrapInterpolation::LogLinear,
         true,
     )
     .unwrap()

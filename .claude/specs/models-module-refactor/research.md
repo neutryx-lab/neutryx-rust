@@ -125,4 +125,4 @@
 ## References
 - [Hagan et al. (2002)](https://www.researchgate.net/publication/235622441) — SABR implied vol 公式の原典
 - `pricer_core::math::distributions` — 正規分布関数の canonical 実装
-- `.kiro/steering/structure.md` — A-I-P-S アーキテクチャ定義
+- `.claude/steering/structure.md` — A-I-P-S アーキテクチャ定義
