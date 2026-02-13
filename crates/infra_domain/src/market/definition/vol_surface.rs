@@ -13,6 +13,8 @@ pub enum CalibrationModel {
     Svi,
     /// Dupire's local volatility model.
     LocalVolatility,
+    /// Flat Black-Scholes volatility (constant sigma).
+    BlackScholes,
 }
 
 impl CalibrationModel {
@@ -22,6 +24,7 @@ impl CalibrationModel {
             Self::Sabr => "SABR",
             Self::Svi => "SVI",
             Self::LocalVolatility => "Local Volatility",
+            Self::BlackScholes => "Black-Scholes",
         }
     }
 
@@ -31,11 +34,12 @@ impl CalibrationModel {
             Self::Sabr => "Stochastic Alpha Beta Rho - standard for rates",
             Self::Svi => "Stochastic Volatility Inspired - popular for equity",
             Self::LocalVolatility => "Dupire's local volatility - arbitrage-free",
+            Self::BlackScholes => "Flat or term-structure volatility - simplest model",
         }
     }
 
     /// Check if this model is currently enabled/implemented.
-    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sabr) }
+    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sabr | Self::LocalVolatility | Self::BlackScholes) }
 
     /// Get the number of parameters for this model.
     pub fn parameter_count(&self) -> usize {
@@ -43,6 +47,7 @@ impl CalibrationModel {
             Self::Sabr => 4,
             Self::Svi => 5,
             Self::LocalVolatility => 0,
+            Self::BlackScholes => 1,
         }
     }
 
@@ -52,6 +57,7 @@ impl CalibrationModel {
             CalibrationModel::Sabr,
             CalibrationModel::Svi,
             CalibrationModel::LocalVolatility,
+            CalibrationModel::BlackScholes,
         ]
     }
 
@@ -331,7 +337,8 @@ mod tests {
     fn test_is_enabled() {
         assert!(CalibrationModel::Sabr.is_enabled());
         assert!(!CalibrationModel::Svi.is_enabled());
-        assert!(!CalibrationModel::LocalVolatility.is_enabled());
+        assert!(CalibrationModel::LocalVolatility.is_enabled());
+        assert!(CalibrationModel::BlackScholes.is_enabled());
     }
 
     #[test]
@@ -339,13 +346,16 @@ mod tests {
         assert_eq!(CalibrationModel::Sabr.parameter_count(), 4);
         assert_eq!(CalibrationModel::Svi.parameter_count(), 5);
         assert_eq!(CalibrationModel::LocalVolatility.parameter_count(), 0);
+        assert_eq!(CalibrationModel::BlackScholes.parameter_count(), 1);
     }
 
     #[test]
     fn test_enabled() {
         let enabled = CalibrationModel::enabled();
-        assert_eq!(enabled.len(), 1);
-        assert_eq!(enabled[0], CalibrationModel::Sabr);
+        assert_eq!(enabled.len(), 3);
+        assert!(enabled.contains(&CalibrationModel::Sabr));
+        assert!(enabled.contains(&CalibrationModel::LocalVolatility));
+        assert!(enabled.contains(&CalibrationModel::BlackScholes));
     }
 
     #[test]

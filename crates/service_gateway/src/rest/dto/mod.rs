@@ -5,6 +5,8 @@ mod pricing;
 
 #[cfg(feature = "demo")]
 pub mod demo;
+#[cfg(feature = "demo")]
+pub mod exotic;
 #[cfg(feature = "models")]
 pub mod models;
 #[cfg(feature = "risk")]

@@ -11,19 +11,24 @@ use axum::{
 
 use crate::{
     error::{ServerError, ValidatedJson},
-    rest::dto::demo::{
-        AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
-        CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
-        DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade,
-        ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse,
-        HolidaysResponse, ImpliedPdfRequest, ImpliedPdfResponse, IndexConventionsResponse,
-        IndexRatesResponse, InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse,
-        MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
-        RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse, SabrSmileRequest,
-        SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
-        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
+    rest::dto::{
+        demo::{
+            AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
+            CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
+            DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse,
+            ExpandedTrade, ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse,
+            FxVolQuotesResponse, HolidaysResponse, ImpliedPdfRequest, ImpliedPdfResponse,
+            IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
+            IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
+            MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
+            RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse,
+            SabrSmileRequest, SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest,
+            VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
+            VolcubeModelsResponse,
+        },
+        exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
     },
-    services::{DemoService, VolcubeService},
+    services::{DemoService, ExoticService, VolcubeService},
     state::AppState,
 };
 
@@ -187,4 +192,18 @@ pub async fn export_market_json(
         )
         .body(Body::from(data))
         .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))
+}
+
+/// GET /api/pricer/exotic-products.
+pub async fn get_exotic_products() -> Json<Vec<ExoticProductDef>> {
+    Json(ExoticService::get_exotic_products())
+}
+
+/// POST /api/pricer/price-exotic.
+pub async fn price_exotic(
+    Json(request): Json<ExoticProductRequest>,
+) -> Result<Json<ExoticPricingResponse>, ServerError> {
+    let response =
+        ExoticService::price_exotic(&request).map_err(|e| ServerError::Pricing(e))?;
+    Ok(Json(response))
 }

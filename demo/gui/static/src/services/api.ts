@@ -45,6 +45,8 @@ import type {
   ImpliedPdfResponse,
   PricerGraphRequest,
   PricerGraphResponse,
+  ExoticProductDef,
+  ExoticPricingResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -320,4 +322,16 @@ export async function fetchPortfolioTrades(): Promise<TradeListResponse> {
 
 export async function fetchPricerGraph(request: PricerGraphRequest): Promise<PricerGraphResponse> {
   return postJson<PricerGraphRequest, PricerGraphResponse>(`${API_BASE}/pricer/graph`, request);
+}
+
+// =============================================================================
+// Exotic Products API
+// =============================================================================
+
+export async function fetchExoticProducts(): Promise<ExoticProductDef[]> {
+  return fetchJson<ExoticProductDef[]>(`${API_BASE}/pricer/exotic-products`);
+}
+
+export async function priceExotic(request: Record<string, any>): Promise<ExoticPricingResponse> {
+  return postJson<Record<string, any>, ExoticPricingResponse>(`${API_BASE}/pricer/price-exotic`, request);
 }

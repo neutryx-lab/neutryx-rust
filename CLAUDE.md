@@ -1,6 +1,4 @@
-# AI-DLC and Spec-Driven Development
-
-Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life Cycle)
+# Neutryx Development Guide
 
 ## Project Context
 
@@ -14,7 +12,7 @@ The workspace enforces a strict unidirectional data flow:
 A: Adapter   → adapter_feeds, adapter_loader (incl. fpml feature)
 I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pricer_risk (L4)
-S: Service   → service_cli, service_gateway, service_python
+S: Service   → service_gateway (unified: REST API + CLI feature + Python feature)
 ```
 
 **Dependency Rules**:
@@ -61,50 +59,25 @@ When operating as an Agent Team:
     - The **Integration Agent** (usually assigned to `S` layer) acts as the gatekeeper.
     - They must verify that `cargo run --bin service_gateway` serves the new data correctly to the GUI.
 
-### Paths
-- Steering: `.kiro/steering/`
-- Specs: `.kiro/specs/`
-
-### Steering vs Specification
-
-**Steering** (`.kiro/steering/`) - Guide AI with project-wide rules and context
-**Specs** (`.kiro/specs/`) - Formalise development process for individual features
-
-### Active Specifications
-- Check `.kiro/specs/` for active specifications
-- Use `/kiro:spec-status [feature-name]` to check progress
-
 ## Development Guidelines
-- Think in English, generate responses in Japanese. All Markdown content written to project files (e.g., requirements.md, design.md, tasks.md, research.md, validation reports) MUST be written in the target language configured for this specification (see spec.json.language).
-- **British English**: Use `optimiser`, `serialisation`, `visualisation`, `modelling`
 
-## Minimal Workflow
-- Phase 0 (optional): `/kiro:steering`, `/kiro:steering-custom`
-- Phase 1 (Specification):
-  - `/kiro:spec-init "description"`
-  - `/kiro:spec-requirements {feature}`
-  - `/kiro:validate-gap {feature}` (optional: for existing codebase)
-  - `/kiro:spec-design {feature} [-y]`
-  - `/kiro:validate-design {feature}` (optional: design review)
-  - `/kiro:spec-tasks {feature} [-y]`
-- Phase 2 (Implementation): `/kiro:spec-impl {feature} [tasks]`
-  - `/kiro:validate-impl {feature}` (optional: after implementation)
-- Progress check: `/kiro:spec-status {feature}` (use anytime)
+- Think in English, generate responses in Japanese.
+- **British English** in code: Use `optimiser`, `serialisation`, `visualisation`, `modelling`
+- Follow the user's instructions precisely, and within that scope act autonomously.
 
-## Development Rules
-- 3-phase approval workflow: Requirements → Design → Tasks → Implementation
-- Human review required each phase; use `-y` only for intentional fast-track
-- Keep steering current and verify alignment with `/kiro:spec-status`
-- Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
+## Project Knowledge
 
-## Steering Configuration
-- Load entire `.kiro/steering/` as project memory
-- Default files: `product.md`, `tech.md`, `structure.md`, `roadmap.md`
-- Custom files are supported (managed via `/kiro:steering-custom`)
+- **Steering**: `.kiro/steering/` — project-wide context (product.md, tech.md, structure.md, roadmap.md). Load as needed.
+- **Roadmap**: `.kiro/steering/roadmap.md` — source of truth for project status. Reference when planning, update when completing work.
 
-### Roadmap Maintenance
+## Spec Workflow (use selectively)
 
-- `roadmap.md` tracks implementation status and future development items
-- **Reference** when: planning new features, checking current state, prioritising work
-- **Update** when: completing specs, changing priorities, adding/removing development items
-- Run `/kiro:spec-status` to verify alignment between specs and roadmap
+Specs (`.kiro/specs/`) formalise the development process. Use them **only for large features** that require architectural decisions across multiple crates. For small/medium changes, skip specs and implement directly.
+
+**When to use a spec**: New asset class, new pricing engine, cross-layer refactoring, new GUI feature with backend changes.
+**When NOT to use a spec**: Bug fixes, single-crate changes, migrations, small refactorings, dependency updates.
+
+When using specs:
+- `/kiro:spec-init` → `/kiro:spec-requirements` → `/kiro:spec-tasks` → `/kiro:spec-impl`
+- Skip `/kiro:spec-design` unless genuine architectural trade-offs exist
+- 53 completed specs are deleted (git history preserved). Summary in `.kiro/steering/roadmap.md`

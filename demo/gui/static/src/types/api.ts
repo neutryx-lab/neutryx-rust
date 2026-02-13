@@ -697,3 +697,37 @@ export interface ImpliedPdfResponse {
   offsets: number[];
   density: number[];
 }
+
+// =============================================================================
+// Exotic Product Types
+// =============================================================================
+
+export interface ExoticProductDef {
+  productType: string;
+  displayName: string;
+  description: string;
+  parameters: ExoticParameterDef[];
+}
+
+export interface ExoticParameterDef {
+  name: string;
+  displayName: string;
+  fieldType: string;
+  required: boolean;
+  defaultValue?: any;
+  description?: string;
+}
+
+export interface ExoticPricingResponse {
+  price: number;
+  currency: string;
+  productType: string;
+  mcStats?: MonteCarloStats;
+  calculationTimeMs: number;
+}
+
+export interface MonteCarloStats {
+  numPaths: number;
+  stdError: number;
+  confidence95: [number, number];
+}

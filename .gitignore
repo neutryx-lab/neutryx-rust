@@ -54,3 +54,6 @@ CHANGELOG.md
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# VSCode user settings
+.vscode/

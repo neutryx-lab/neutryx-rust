@@ -64,6 +64,7 @@ mod direction_ext;
 pub mod jump;
 pub mod market;
 pub mod stochastic;
+pub mod vol_surface;
 
 // Re-export extension traits for direction types (infra_domain types not
 // re-exported)

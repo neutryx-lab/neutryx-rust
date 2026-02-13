@@ -184,6 +184,14 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
             "/fxvol/quotes/:pair",
             get(handlers::demo::get_fx_vol_quotes),
         )
+        .route(
+            "/pricer/exotic-products",
+            get(handlers::demo::get_exotic_products),
+        )
+        .route(
+            "/pricer/price-exotic",
+            post(handlers::demo::price_exotic),
+        )
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))
         .with_state(state)

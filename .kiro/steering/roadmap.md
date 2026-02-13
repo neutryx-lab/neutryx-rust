@@ -2,66 +2,19 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-02-10_ — service_cli/service_python consolidated into service_gateway; 48 completed specs; 4 active specs
+_Updated: 2026-02-13_ — spec workflow lightweight化: 53 completed specs archived to `git history`; 4 active specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (48)
+### Archived Specifications
 
-| Spec | Description | Completed |
-|------|-------------|-----------|
-| core-traits-types-2 | Core traits and type definitions | 2025-12 |
-| rng-infrastructure | Random number generation (PRNG/QMC) | 2025-12 |
-| enzyme-infrastructure-setup | Enzyme AD infrastructure | 2025-12 |
-| interpolation-solvers | Interpolation and numerical solvers | 2025-12 |
-| market-data-structures | Yield curves and volatility surfaces | 2025-12 |
-| instrument-definitions | Financial instrument definitions | 2025-12 |
-| monte-carlo-kernel-enzyme | Monte Carlo pricing kernel | 2026-01 |
-| service-layer-rename | Crate renaming (kernel→pricing, xva→risk) | 2026-01 |
-| stochastic-models | Heston, SABR, Hull-White stochastic models | 2026-01 |
-| enzyme-autodiff-integration | Enzyme #[autodiff] macro integration | 2026-01 |
-| frictional-bank | FrictionalBank demo system (TUI, Web, Workflows) | 2026-01 |
-| frictionalbank-irs-bootstrap-risk | IRS bootstrapping and risk workflows | 2026-01-14 |
-| frictional-bank-webapp-polish | Web dashboard UX improvements (78 tasks) | 2026-01-15 |
-| frictionalbank-webapp-pricer | Web dashboard pricer integration (19 tasks) | 2026-01-16 |
-| advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01-19 |
-| codebase-cleanup-optimisation | Codebase cleanup and optimisation (16 tasks) | 2026-01-19 |
-| portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01-19 |
-| infra-primitives-migration | Financial primitives migration to infra_domain | 2026-01-19 |
-| model-architecture-refactoring | pricer_optimiser removal, consolidation into pricer_core/pricer_models | 2026-01-19 |
-| counterparty-netting-module | Counterparty and netting set data structures | 2026-01-21 |
-| financial-time-module | Financial time primitives (calendars, frequencies, periods) | 2026-01-21 |
-| trade-instrument-module | Trade/Instrument module with CF-expanded architecture | 2026-01-21 |
-| pricer-core-math-library | Comprehensive math library (distributions, integrators, optimisers, linalg, fitting, mesh) | 2026-01-21 |
-| codebase-simplification | Code deduplication, API surface minimisation, module restructuring | 2026-01-22 |
-| standard-instrument-catalogue | Standard instrument definitions (Rates, FX, Equity, Credit, Commodity) | 2026-01-23 |
-| domain-ordering-defaults | Domain enum ordering and documentation (Frequency, BootstrapInterpolation, RateType, etc.) | 2026-01-23 |
-| portfolio-book-model | Portfolio/Book organisation model with XVA/Exposure/Netting support | 2026-01-23 |
-| curve-builder-webapp | Curve Builder WebApp with instrument editing and parameter visualisation | 2026-01-23 |
-| generic-pricer-engine | Generic Pricer engine with market provider integration | 2026-01-23 |
-| demo-webapp-pricer | Demo WebApp Pricer with daily accruals display | 2026-01-23 |
-| volcube-calibration-ui | VolCube/FxVol calibration UI with SABR, smile/density visualisation, 3D surface | 2026-01-23 |
-| curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine (537 tests) | 2026-01-23 |
-| legacy-compatibility-removal | Legacy code removal and ID type safety (28 tasks) | 2026-01-23 |
-| rate-index-pricing-integration | RateIndex pricing integration across L1/L2/L3 layers (41 tests) | 2026-01-23 |
-| fx-vol-surface-calibration | FX curve + vol surface calibration with SABR, lazy evaluation (139 tests) | 2026-01-26 |
-| move-enzyme-to-pricer-risk | Enzyme AD module moved from pricer_pricing (L3) to pricer_risk (L4) | 2026-01-26 |
-| ir-vol-cube-calibration | IR VolCube calibration engine with SABR, lazy evaluation, AAD Vega, WebApp (64 tasks) | 2026-01-26 |
-| pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult, PricingMethodDispatcher | 2026-01-26 |
-| market-index-keyed-access | IndexedMarket, IndexedMarketBuilder, TradeIndexRequirements, MarketValidator | 2026-01-26 |
-| shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer (16 tasks) | 2026-01-26 |
-| external-numerics-migration | argmin/levenberg-marquardt integration, external-numerics feature (30 tasks) | 2026-01-26 |
-| mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, TimeStepFirstWorkspace, StreamingEngine (21 tasks) | 2026-01-26 |
-| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel, LSMC, CMS (31 tasks, 137 tests) | 2026-01-28 |
-| curve-global-solver | Global curve calibration solver with Newton-Raphson, Jacobian computation, AAD preparation (7 task groups, 422 tests) | 2026-01-28 |
-| config-consolidation | Configuration centralisation (workspace, handler config, environment) | 2026-01-30 |
-| service-gateway-services | Service layer architecture (Handler → Service → Pricer pattern, demo endpoints) | 2026-01-31 |
-| thiserror-migration | thiserror macro migration for error types | 2026-01-31 |
-| derive-more-newtype-migration | Newtype derive utilities (From, Display, AsRef) with derive_more | 2026-01-31 |
-| boilerplate-reduction | Reduce boilerplate across codebase (bon builder, derive patterns) | 2026-02-01 |
-| enum-dispatch-migration | Migrate to enum_dispatch for zero-cost trait dispatch | 2026-02-01 |
+53 completed specs were removed (git history preserved). Key milestones:
+
+- **2025-12**: Core foundations (traits, types, RNG, interpolators, market data, instruments)
+- **2026-01**: Pricing engines (MC, stochastic models, Enzyme AD, tree pricing, PricingKernel IR), calibration (curve bootstrap, FX vol, IR VolCube, global solver), webapp (FrictionalBank, dashboards), infrastructure (codebase cleanup, migrations)
+- **2026-02**: Boilerplate reduction (bon, derive_more, enum_dispatch, thiserror), service consolidation (CLI/Python → service_gateway features)
 
 ### Layer Implementation Status
 
@@ -184,7 +137,7 @@ Codebase redundancy cleanup performed:
 |------|-------------|--------|
 | app-js-modularisation | Split app.js into separate modules (chart-utils, portfolio-table, etc.) | ⏳ Planned |
 | error-consolidation | Consolidate 31 error.rs files into shared patterns | ⏳ Planned |
-| spec-consolidation | Consolidate FrictionalBank-related specs (4 specs → 1) | ⏳ Planned |
+| spec-consolidation | Consolidate FrictionalBank-related specs (4 specs → 1) | ✅ Archived |
 | d3-module-audit | Audit D3.js modules usage in demo/gui/static/vendor | ⏳ Planned |
 
 ---
@@ -198,15 +151,7 @@ Codebase redundancy cleanup performed:
 | models-module-refactor | tasks-generated | Refactor pricer_models module structure |
 | pricer-computation-graph | tasks-generated | Computation graph extraction for pricer |
 
-### Recently Completed
-
-| Spec | Completed | Description |
-|------|-----------|-------------|
-| boilerplate-reduction | 2026-02-01 | Reduce boilerplate with bon builder and derive patterns |
-| enum-dispatch-migration | 2026-02-01 | Migrate to enum_dispatch for zero-cost trait dispatch |
-| derive-more-newtype-migration | 2026-01-31 | Migrate newtypes to derive_more |
-
-### Temporary Status Notes
+### Notes
 
 - **demo/gui**: Temporarily disabled due to calibration module refactoring. Feature-gated handlers added for calibration-dependent endpoints. Will be re-enabled after `builder/paramsurface` stabilisation.
 - **service_gateway**: Unified service crate (2026-02). REST API, CLI, and Python bindings via feature flags.
@@ -223,50 +168,12 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
-| 2026-02-10 | consolidate-service-crates: service_cli and service_python absorbed into service_gateway via feature-gated modules (cli, python). Old crate directories removed. Total: 48 completed specs, 4 active specs |
-| 2026-02-09 | Steering sync: service_gateway re-enabled in workspace, ndarray dependency removed, TickerMapping→QuoteId migration, AI Fixer self-healing CI (.github/ai_fixer/). 4 active specs unchanged. Total: 48 completed specs |
-| 2026-02-04 | Steering sync: Vue 3 frontend migration (Vue + Pinia + Tailwind CSS), CurveDefinition/ConventionTemplate/MarketInstrument patterns, CurveRegistry. 4 active specs unchanged. Total: 48 specs |
-| 2026-02-02 | Steering sync: market-convention-instrument advanced to tasks-generated (ConventionRegistry, EventInstrument, D3.js graph). 4 active specs. Added Convention Registry Pattern to tech.md. Total: 48 specs |
-| 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |
-| 2026-01-31 | Steering sync: TypeScript frontend infrastructure (demo/gui/static with Vite, component-based architecture), service_gateway services layer (Handler→Service→Pricer pattern, demo endpoints, feature-gated caches), 3 new completed specs (config-consolidation, service-gateway-services, thiserror-migration). Total: 48 specs |
-| 2026-01-30 | Steering sync: Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude). Updated structure.md and tech.md. |
-| 2026-01-28 | curve-global-solver completed: Global curve calibration with Newton-Raphson, CurveCalibrationProblem (SystemOfEquations), GlobalTimeGrid, CashflowMatrix, Jacobian inverse storage for AAD. 7 task groups, 422 total tests (377 unit + 14 integration + 31 doc). Total: 44 specs |
-| 2026-01-28 | Steering sync: pricing-kernel-ir completed (43 total). Updated structure.md (pricer_models: builder/ calibration module with paramsurface, simplified market.rs). demo/gui temporarily disabled for calibration refactor. |
-| 2026-01-27 | pricing-kernel-ir: Task 8.1 CMSインデックス統合 completed. LinearProductsCompiler now handles IndexType::SwapRate → CmsIndex. 4 new tests added. pricing-kernel-ir now 100% (31/31 tasks) |
-| 2026-01-27 | Steering sync: Added kernel/ module (LinearEngine, ScriptEngine, CallableEngine, LSMC) to structure.md, CallableCompiler to compiler/, CallableKernel to ir/. pricing-kernel-ir now 97% (30/31 tasks, CMS remaining) |
-| 2026-01-26 | Closed 3 completed specs: shadow-object-aad (16 tasks), external-numerics-migration (30 tasks), mc-memory-layout-optimisation (21 tasks). Total: 42 specs. 1 active: pricing-kernel-ir (71%) |
-| 2026-01-26 | Steering sync: Added IR module (PricingKernel, AlignedBuffer, ScriptKernel), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder). 4 active specs: pricing-kernel-ir (implementing), shadow-object-aad, external-numerics-migration, mc-memory-layout-optimisation |
-| 2026-01-26 | Codebase redundancy cleanup: Fixed tokio versions, removed dead code/unused modules, added test fixtures, documented app.js refactor plan |
-| 2026-01-26 | Steering sync: market-index-keyed-access completed (39 total). Added IndexedMarket, TradeIndexRequirements, MarketValidator to structure.md. |
-| 2026-01-26 | Steering sync: pricer-pricing-architecture completed (38 total). Added TrinomialTree (Kamrad-Ritchken) to structure.md. market-index-keyed-access ready for implementation. |
-| 2026-01-26 | market-index-keyed-access tasks generated (6 phases, 23 sub-tasks: IndexRequirement, IndexedMarket, Builder, TradeIndexRequirements, MarketValidator). Ready for implementation. |
-| 2026-01-26 | ir-vol-cube-calibration completed (64/64 tasks, all phases done including SABR calibration, AAD Vega, WebApp). market-index-keyed-access advanced to design phase. Total: 37 specs |
-| 2026-01-26 | Steering sync: move-enzyme-to-pricer-risk completed (Enzyme AD → L4), pricer-pricing-architecture active (Tree, Dispatcher), market-index-keyed-access in requirements. Layer status updated. Total: 36 specs |
-| 2026-01-26 | Steering sync: fx-vol-surface-calibration completed (139 tests, FX curve + vol surface); ir-vol-cube-calibration active (Phase 1-2 complete); structure.md updated (fx_calibration/, volcube/ expansion, web handlers). Total: 35 specs |
-| 2026-01-25 | Steering sync: rate-index-pricing-integration completed (41 tests, RateIndex/Tenor/CurveName pricing). Total: 34 specs |
-| 2026-01-23 | Steering sync: rate-index-pricing-integration added to active specs (tasks-generated phase, awaiting implementation) |
-| 2026-01-23 | All active specs completed: curve-bootstrap-engine (537 tests), legacy-compatibility-removal (28 tasks, ID Newtype統一). Total: 33 specs |
-| 2026-01-23 | volcube-calibration-ui completed: VolCube/FxVol calibration UI with SABR, smile/density visualisation, 3D surface (21 tasks, 68 unit tests). Total: 31 specs |
-| 2026-01-23 | Steering sync: curve-builder-webapp, generic-pricer-engine, demo-webapp-pricer completed (30 total); volcube-calibration-ui active; structure.md updated with web handler pattern |
-| 2026-01-23 | Steering sync: portfolio-book-model completed (18 tasks, Book/Portfolio/CounterpartyPortfolio/ISDA/VMA階層構造, XVA/Exposure/Netting設定, 207 tests) |
-| 2026-01-23 | Steering sync: domain-ordering-defaults completed (17 tasks, enum ordering standardisation: Frequency, BootstrapInterpolation, RateType, StochasticModelEnum, CurveName) |
-| 2026-01-23 | Steering sync: standard-instrument-catalogue completed (186 instrument_def tests, 855 total), 3 new specs in tasks-generated phase, curve-bootstrap-engine in implementation |
-| 2026-01-22 | Steering sync: codebase-simplification completed (24 total), curve-bootstrap-engine added (requirements phase), standard-instrument-catalogue in implementation |
-| 2026-01-21 | Steering sync: Added codebase-simplification to active specs (tasks awaiting approval) |
-| 2026-01-21 | Steering sync: pricer-core-math-library completed (31/31 tasks), moved to completed specs. Total: 23 specs |
-| 2026-01-21 | Steering sync: pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg), infra_domain trade/convention modules, 3 new completed specs |
-| 2026-01-20 | Steering sync: market_data moved from pricer_core to pricer_models::market (CI fix), layer status updated |
-| 2026-01-20 | Steering sync: documented pricer_optimiser removal (consolidated into pricer_core/pricer_models), model-architecture-refactoring spec added |
-| 2026-01-19 | Steering sync: infra-primitives-migration completed, total specs: 18, no active specs remaining |
-| 2026-01-19 | Steering sync: portfolio-graph-optimisation completed, service_gateway upgraded to ✅, infra-primitives-migration active |
-| 2026-01-19 | codebase-cleanup-optimisation: Complete (16 tasks, all phases verified). Total completed specs: 16 |
-| 2026-01-19 | Steering sync: Added 3 completed specs (webapp-polish, webapp-pricer, irs-bootstrap-risk), added advanced-sensitivity-webapp to active specs |
-| 2026-01-16 | Steering sync: OpenAPI/Swagger documentation, scenario analysis handlers, async job manager, Prometheus metrics, parallel portfolio Greeks |
-| 2026-01-15 | Steering sync: Cloud Run deployment, dual-mode UI, REST orchestration, computation graph, IRS Greeks workflow |
-| 2026-01-14 | frictional-bank: Added IRS AAD workflow and benchmark visualisation module |
-| 2026-01-11 | frictional-bank: Complete (all tasks including optional Chart and Web dashboard) |
-| 2026-01-10 | enzyme-autodiff-integration: Complete (18/20 tasks, benchmarks deferred) |
-| 2026-01-10 | stochastic-models: Implementation complete (17/17 tasks) |
-| 2026-01-10 | stochastic-models: Calibration complete (Heston, SABR, Hull-White calibrators) |
-| 2026-01-10 | Steering sync: Added scenarios, demo, context, provider modules to layer status |
-| 2026-01-10 | Initial creation; cleaned 20 incomplete specs, documented current state |
+| 2026-02-13 | Spec workflow lightweight化: 53 completed specs archived to `git history`, CLAUDE.md簡素化, roadmap整理. Active specs: 4 |
+| 2026-02-10 | consolidate-service-crates completed. service_cli/service_python → service_gateway feature-gated modules |
+| 2026-02-01 | boilerplate-reduction, enum-dispatch-migration completed (bon builder, derive_more, enum_dispatch) |
+| 2026-01-28 | pricing-kernel-ir, curve-global-solver completed (PricingKernel IR, global calibration, 559 tests) |
+| 2026-01-26 | 6 specs completed (shadow-object-aad, external-numerics, mc-memory-layout, pricer-pricing-architecture, market-index-keyed-access, fx/ir-vol calibration) |
+| 2026-01-23 | 10 specs completed (instruments, domain, portfolio, webapp, curve-bootstrap, rate-index-pricing) |
+| 2026-01-21 | pricer-core-math-library, financial-time, trade-instrument, counterparty-netting completed |
+| 2026-01-19 | codebase-cleanup, portfolio-graph, infra-primitives, advanced-sensitivity completed |
+| 2026-01-10 | Initial creation. Core foundations (traits, RNG, interpolators, MC, stochastic models, Enzyme AD) |

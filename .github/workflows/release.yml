@@ -50,7 +50,7 @@ jobs:
         id: git-cliff
         uses: orhun/git-cliff-action@v4
         with:
-          config: cliff.toml
+          config: .github/cliff.toml
           args: --verbose --current --strip header
         env:
           OUTPUT: CHANGELOG.md
