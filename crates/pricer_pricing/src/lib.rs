@@ -44,8 +44,6 @@ mod integration_tests;
 /// Pricing Kernel IR runtime engine.
 pub mod kernel;
 
-pub mod numeric;
-
 pub mod methods;
 
 /// Checkpointing for memory-efficient AD.

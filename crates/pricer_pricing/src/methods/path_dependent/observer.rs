@@ -3,8 +3,6 @@
 use num_traits::Float;
 pub use crate::checkpoint::PathObserverState;
 
-use crate::numeric::from_usize;
-
 /// Streaming path observation statistics.
 #[derive(Clone, Debug)]
 pub struct PathObserver<T: Float> {
@@ -67,7 +65,7 @@ impl<T: Float> PathObserver<T> {
         if self.count == 0 {
             T::zero()
         } else {
-            self.running_sum / from_usize::<T>(self.count)
+            self.running_sum / T::from(self.count).unwrap()
         }
     }
 
@@ -77,7 +75,7 @@ impl<T: Float> PathObserver<T> {
         if self.count == 0 {
             T::zero()
         } else {
-            (self.running_product_log / from_usize::<T>(self.count)).exp()
+            (self.running_product_log / T::from(self.count).unwrap()).exp()
         }
     }
 
