@@ -653,11 +653,20 @@ impl VolcubeService {
         Ok(ImpliedPdfResponse { offsets, density })
     }
 
-    /// Compute a smooth SABR smile and implied density from calibrated.
+    /// Compute a smooth SABR smile and implied density from calibrated params.
+    ///
+    /// Two regimes based on beta:
+    /// - **Lognormal** (beta >= 0.5, FX): log-moneyness strikes, Black vol,
+    ///   Black-Scholes PDF.
+    /// - **Normal** (beta < 0.5, IR): linear strikes, normal vol conversion,
+    ///   Bachelier PDF.
     pub fn compute_sabr_smile(
         request: &SabrSmileRequest,
     ) -> Result<SabrSmileResponse, ServerError> {
-        use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
+        use pricer_core::math::formulas::{
+            sabr::{sabr_implied_vol, SabrImpliedVolParams},
+            BlackScholes,
+        };
 
         let forward = request.forward;
         let expiry = request.expiry_years;
@@ -682,28 +691,44 @@ impl VolcubeService {
         )
         .map_err(|e| ServerError::InvalidRequest(format!("Invalid SABR parameters: {e}")))?;
 
+        // Lognormal regime (FX, beta >= 0.5) vs normal regime (IR, beta < 0.5)
+        let is_lognormal = request.beta >= 0.5;
+
         let n = request.n_points.max(3);
         let range = request.range_bp;
         let step = 2.0 * range / (n - 1) as f64;
 
         let mut offsets = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
         let mut vols_decimal = Vec::with_capacity(n);
 
         for i in 0..n {
             let offset_bp = -range + i as f64 * step;
-            let strike = forward + offset_bp / 10_000.0;
-            let strike = strike.max(1e-8);
+
+            let strike = if is_lognormal {
+                // Log-moneyness: K = F * exp(offset / 10000)
+                (forward * (offset_bp / 10_000.0).exp()).max(1e-8)
+            } else {
+                // Linear: K = F + offset / 10000
+                (forward + offset_bp / 10_000.0).max(1e-8)
+            };
 
             let model_vol = sabr_implied_vol(&sabr_params, strike).unwrap_or(request.alpha);
 
-            let normal_vol = model_vol * forward.powf(request.beta);
+            let vol = if is_lognormal {
+                // SABR returns Black vol for beta >= 0.5 — use directly
+                model_vol
+            } else {
+                // Approximate normal vol: sigma_N ~ sigma_B * F^beta
+                model_vol * forward.powf(request.beta)
+            };
 
             offsets.push(offset_bp);
-            vols_decimal.push(normal_vol);
+            strikes.push(strike);
+            vols_decimal.push(vol);
         }
 
-        let dk_bp = step;
-        let dk = dk_bp / 10_000.0;
+        // PDF via Breeden-Litzenberger: p(K) = d^2 C / dK^2
         let mut density = Vec::with_capacity(n);
 
         for i in 0..n {
@@ -712,17 +737,33 @@ impl VolcubeService {
                 continue;
             }
 
-            let vol_lo = vols_decimal[i - 1];
-            let vol_mid = vols_decimal[i];
-            let vol_hi = vols_decimal[i + 1];
+            let k_lo = strikes[i - 1];
+            let k_mid = strikes[i];
+            let k_hi = strikes[i + 1];
+            let dk = (k_hi - k_lo) / 2.0;
 
-            let k_lo = forward + offsets[i - 1] / 10_000.0;
-            let k_mid = forward + offsets[i] / 10_000.0;
-            let k_hi = forward + offsets[i + 1] / 10_000.0;
-
-            let c_lo = bachelier_call_fwd(forward, k_lo, vol_lo, expiry);
-            let c_mid = bachelier_call_fwd(forward, k_mid, vol_mid, expiry);
-            let c_hi = bachelier_call_fwd(forward, k_hi, vol_hi, expiry);
+            let (c_lo, c_mid, c_hi) = if is_lognormal {
+                // Black-Scholes forward call (S=F, r=0)
+                let bs_call = |k: f64, v: f64| -> f64 {
+                    if v <= 0.0 {
+                        return (forward - k).max(0.0);
+                    }
+                    BlackScholes::new(forward, 0.0, v)
+                        .map(|bs| bs.price_call(k, expiry))
+                        .unwrap_or((forward - k).max(0.0))
+                };
+                (
+                    bs_call(k_lo, vols_decimal[i - 1]),
+                    bs_call(k_mid, vols_decimal[i]),
+                    bs_call(k_hi, vols_decimal[i + 1]),
+                )
+            } else {
+                (
+                    bachelier_call_fwd(forward, k_lo, vols_decimal[i - 1], expiry),
+                    bachelier_call_fwd(forward, k_mid, vols_decimal[i], expiry),
+                    bachelier_call_fwd(forward, k_hi, vols_decimal[i + 1], expiry),
+                )
+            };
 
             let d2c = (c_lo - 2.0 * c_mid + c_hi) / (dk * dk);
             density.push(d2c.max(0.0));

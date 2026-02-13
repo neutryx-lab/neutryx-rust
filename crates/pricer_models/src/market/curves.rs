@@ -666,10 +666,7 @@ impl<T: Float> BootstrappedCurve<T> {
     }
 
     /// Returns the discount factor and its gradient w.r.t. log(DF) values.
-    pub fn discount_factor_with_log_gradient(
-        &self,
-        t: T,
-    ) -> Result<(T, Vec<T>), MarketDataError> {
+    pub fn discount_factor_with_log_gradient(&self, t: T) -> Result<(T, Vec<T>), MarketDataError> {
         self.discount_factor_gradient_impl(t, true)
     }
 

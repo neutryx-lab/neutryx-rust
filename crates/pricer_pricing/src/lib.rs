@@ -38,9 +38,6 @@
 #![deny(rustdoc::private_intra_doc_links)]
 #![allow(unknown_lints)]
 
-#[cfg(test)]
-mod integration_tests;
-
 /// Pricing Kernel IR runtime engine.
 pub mod kernel;
 

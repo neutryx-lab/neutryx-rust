@@ -29,8 +29,8 @@
 //!
 //! ## Usage
 //! ```
-//! use pricer_models::stochastic::{CIRModel, CIRParams};
-//! use pricer_models::stochastic::stochastic::StochasticModel;
+//! use pricer_models::process::{CIRModel, CIRParams};
+//! use pricer_models::process::stochastic::StochasticModel;
 //!
 //! // Create parameters satisfying Feller condition
 //! let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();

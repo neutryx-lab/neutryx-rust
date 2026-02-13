@@ -27,7 +27,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 |-------|-------|--------|-------|
 | pricer_core | L1 | ✅ | math (smoothing, distributions, calculus, utilities, interpolators, solvers, integrators, optimisers, fitting, mesh, linalg), types, traits, ir (AlignedBuffer, PricingKernel, ScriptKernel) |
 | pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, compiler (IndexMapper, TradeCompiler), demo |
-| pricer_pricing | L3 | ✅ | mc, rng, greeks, path_dependent, checkpoint, context (l1l2-integration), generic_pricer |
+| pricer_pricing | L3 | ✅ | mc, rng, greeks, path_dependent, checkpoint, context (l1l2-integration), pricer |
 | pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, enzyme (AD, shadow, kernel, binder), demo |
 
 > **Note**: `pricer_optimiser` (L2.5) was removed in 2026-01. All market data (curves, surfaces, bootstrapping, provider, calibration) consolidated into `pricer_models::market`.

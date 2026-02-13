@@ -715,9 +715,7 @@ mod tests {
             TradeType,
         },
     };
-    use pricer_models::{
-        market::{CurveEnum, MarketEnvironmentBuilder, VolSurfaceEnum},
-    };
+    use pricer_models::market::{CurveEnum, MarketEnvironmentBuilder, VolSurfaceEnum};
 
     use super::*;
 

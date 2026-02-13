@@ -15,7 +15,7 @@ use pricer_core::math::{
     normal_dist::{norm_cdf, norm_pdf},
     smoothing::smooth_max,
 };
-use pricer_models::stochastic::{GBMModel, GBMParams, StochasticModel};
+use pricer_models::process::{GBMModel, GBMParams, StochasticModel};
 
 /// Benchmark normal distribution CDF computation.
 fn bench_norm_cdf(c: &mut Criterion) {

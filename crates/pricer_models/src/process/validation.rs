@@ -19,7 +19,7 @@
 //! # Example
 //!
 //! ```
-//! use pricer_models::stochastic::validation::{ParamValidationError, validate_positive};
+//! use pricer_models::process::validation::{ParamValidationError, validate_positive};
 //!
 //! // Validate a parameter
 //! let result = validate_positive("spot", -100.0);

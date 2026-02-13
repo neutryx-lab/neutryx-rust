@@ -530,7 +530,8 @@ async function renderFxDetailCharts() {
     });
 
     const smileLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
-    const smileVols = result.vols.map((v: number) => v * 100);
+    // Backend already sends vols in % — use directly for FX Black vol
+    const smileVols = result.vols as number[];
 
     destroyFxCharts();
 
@@ -561,13 +562,13 @@ async function renderFxDetailCharts() {
               tooltip: {
                 callbacks: {
                   title: (items: { label: string }[]) => `Strike: ${items[0].label} bp`,
-                  label: (item: { raw: unknown }) => item.raw != null ? `Vol: ${(item.raw as number).toFixed(1)}%` : '',
+                  label: (item: { raw: unknown }) => item.raw != null ? `Vol: ${(item.raw as number).toFixed(2)}%` : '',
                 },
               },
             },
             scales: {
               x: { ...axisStyle, title: { display: true, text: 'Strike Offset (bp)', color: cc.tick, font: { size: 10 } }, ticks: { ...axisStyle.ticks, maxTicksLimit: 10 } },
-              y: { ...axisStyle, title: { display: true, text: 'Vol (%)', color: cc.tick, font: { size: 10 } } },
+              y: { ...axisStyle, title: { display: true, text: 'Black Vol (%)', color: cc.tick, font: { size: 10 } } },
             },
           },
         });

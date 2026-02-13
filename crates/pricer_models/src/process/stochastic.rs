@@ -14,7 +14,7 @@
 //! ## Example
 //!
 //! ```
-//! use pricer_models::stochastic::stochastic::{StochasticModel, StochasticState};
+//! use pricer_models::process::stochastic::{StochasticModel, StochasticState};
 //! use pricer_core::traits::Float;
 //! use pricer_core::traits::priceable::Differentiable;
 //!

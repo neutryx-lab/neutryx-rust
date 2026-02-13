@@ -15,8 +15,8 @@
 //! ## Example
 //!
 //! ```
-//! use pricer_models::stochastic::model_enum::StochasticModelEnum;
-//! use pricer_models::stochastic::{GBMModel, GBMParams};
+//! use pricer_models::process::model_enum::StochasticModelEnum;
+//! use pricer_models::process::{GBMModel, GBMParams};
 //!
 //! // Create a GBM model wrapped in the enum
 //! let model = StochasticModelEnum::<f64>::gbm();

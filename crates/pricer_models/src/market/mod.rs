@@ -5,8 +5,8 @@
 //!
 //! * **[`MarketEnvironment`]** — immutable snapshot of curves, FX, and vol
 //!   surfaces for a single valuation date.
-//! * **[`curves`]** — yield curve traits, bootstrapped curves, and
-//!   calibration instruments.
+//! * **[`curves`]** — yield curve traits, bootstrapped curves, and calibration
+//!   instruments.
 //! * **[`fx`]** — FX forward curves (flat, IRP-based).
 //! * **[`vol`]** — volatility surfaces (Black-Scholes, SABR, local vol).
 //! * **[`jumps`]** — jump-pillar utilities for rate discontinuities.

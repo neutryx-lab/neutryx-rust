@@ -359,7 +359,7 @@ result/          → Unified pricing result types
   └── mod.rs        → UnifiedPricingResult, UnifiedGreeks, PricingMetadata
 dispatcher/      → Pricing method dispatcher
   └── mod.rs        → PricingMethodDispatcher, DispatcherConfig
-generic_pricer/  → Generic pricer API and configuration
+pricer/          → Unified pricer, calculation settings, and configuration
 context.rs       → [l1l2-integration] 3-stage rocket: PricingContext, price_single_trade
 irs_greeks/      → IRS Greeks workflow (AAD vs Bump-and-Revalue, lazy evaluation, benchmarks)
 graph/           → Computation graph extraction (D3.js-compatible JSON for DAG visualisation)
@@ -602,7 +602,7 @@ web/             → Web server module (feature-gated)
   │   ├── fxcurve.rs      → FX Curve API (/api/fxcurve/*)
   │   ├── trades.rs       → Trade expansion API (/api/trades/*)
   │   ├── market.rs       → Market data API (/api/market/*)
-  │   ├── generic_pricer.rs → Generic Pricer API (/api/pricer/*)
+  │   ├── pricer.rs         → Pricer API (/api/pricer/*)
   │   ├── risk_engine.rs  → Risk Engine API (/api/risk/*)
   │   ├── scenario_analysis.rs → Scenario analysis endpoints
   │   ├── pricing.rs      → Pricing endpoints (feature = "calibration")

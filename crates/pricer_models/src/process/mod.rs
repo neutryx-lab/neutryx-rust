@@ -19,7 +19,7 @@
 //! ## Example
 //!
 //! ```
-//! use pricer_models::stochastic::{StochasticModelEnum, ModelParams, GBMParams};
+//! use pricer_models::process::{StochasticModelEnum, ModelParams, GBMParams};
 //!
 //! let model = StochasticModelEnum::<f64>::gbm();
 //! let params = ModelParams::GBM(GBMParams::new(100.0, 0.05, 0.2).unwrap());

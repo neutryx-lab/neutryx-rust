@@ -112,9 +112,7 @@ pub fn cumulative_offset_at(jumps: &[JumpEntry], t: f64) -> f64 {
     }
 
     // Binary search for the last jump with time <= t
-    match jumps
-        .binary_search_by(|j| j.time.partial_cmp(&t).unwrap_or(std::cmp::Ordering::Equal))
-    {
+    match jumps.binary_search_by(|j| j.time.partial_cmp(&t).unwrap_or(std::cmp::Ordering::Equal)) {
         Ok(idx) => jumps[idx].cumulative_offset,
         Err(idx) => {
             if idx == 0 {
@@ -219,8 +217,7 @@ mod tests {
 
     #[test]
     fn test_convert_empty_pillars() {
-        let entries =
-            convert_jump_pillars(&[], test_valuation_date(), DayCounter::Actual365Fixed);
+        let entries = convert_jump_pillars(&[], test_valuation_date(), DayCounter::Actual365Fixed);
         assert!(entries.is_empty());
     }
 

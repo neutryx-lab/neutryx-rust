@@ -20,8 +20,8 @@
 //! ## Usage
 //!
 //! ```
-//! use pricer_models::stochastic::{HullWhiteModel, HullWhiteParams};
-//! use pricer_models::stochastic::stochastic::StochasticModel;
+//! use pricer_models::process::{HullWhiteModel, HullWhiteParams};
+//! use pricer_models::process::stochastic::StochasticModel;
 //! use pricer_models::market::curves::FlatCurve;
 //!
 //! // Create parameters with flat initial curve

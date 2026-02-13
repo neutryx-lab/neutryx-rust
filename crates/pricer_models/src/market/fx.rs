@@ -4,8 +4,10 @@ use enum_dispatch::enum_dispatch;
 use infra_domain::trade::instrument_def::CurrencyPair;
 use num_traits::Float;
 
-use super::curves::{CurveEnum, FlatCurve, YieldCurve};
-use super::MarketDataError;
+use super::{
+    curves::{CurveEnum, FlatCurve, YieldCurve},
+    MarketDataError,
+};
 
 /// Trait for FX forward curves providing forward rates.
 #[enum_dispatch]
@@ -73,12 +75,7 @@ pub struct IrpFxCurve<T: Float, D: YieldCurve<T>, F: YieldCurve<T>> {
 
 impl<T: Float, D: YieldCurve<T>, F: YieldCurve<T>> IrpFxCurve<T, D, F> {
     /// Creates a new IRP-based FX curve.
-    pub fn new(
-        spot: T,
-        domestic_curve: D,
-        foreign_curve: F,
-        currency_pair: CurrencyPair,
-    ) -> Self {
+    pub fn new(spot: T, domestic_curve: D, foreign_curve: F, currency_pair: CurrencyPair) -> Self {
         Self {
             spot,
             domestic_curve,
