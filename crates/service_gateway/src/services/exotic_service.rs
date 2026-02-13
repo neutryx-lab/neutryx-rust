@@ -30,8 +30,8 @@ impl ExoticService {
 
     /// Prices a TARF product.
     fn price_tarf(req: &TarfRequest, start: Instant) -> Result<ExoticPricingResponse, String> {
-        let observations: Vec<ObservationSchedule> = req
-            .fixing_dates
+        let fixing_dates = req.effective_fixing_dates();
+        let observations: Vec<ObservationSchedule> = fixing_dates
             .iter()
             .map(|&t| ObservationSchedule {
                 time: t,
@@ -49,7 +49,7 @@ impl ExoticService {
             underlying_index: 1,
             currency_id: 0,
             discount_curve_id: 0,
-            notional: req.notional_per_fixing * req.fixing_dates.len() as f64,
+            notional: req.notional_per_fixing * fixing_dates.len() as f64,
             observations,
             target: Some(TargetConfig {
                 target_level: req.target_profit,
@@ -81,8 +81,8 @@ impl ExoticService {
         req: &AutocallableRequest,
         start: Instant,
     ) -> Result<ExoticPricingResponse, String> {
-        let mut observations: Vec<ObservationSchedule> = req
-            .observation_dates
+        let obs_dates = req.effective_observation_dates();
+        let mut observations: Vec<ObservationSchedule> = obs_dates
             .iter()
             .map(|&t| ObservationSchedule {
                 time: t,
@@ -187,6 +187,22 @@ impl ExoticService {
                         description: None,
                     },
                     ParameterDef {
+                        name: "maturity".to_string(),
+                        display_name: "Maturity (years)".to_string(),
+                        field_type: "number".to_string(),
+                        required: true,
+                        default_value: Some(serde_json::json!(1.0)),
+                        description: None,
+                    },
+                    ParameterDef {
+                        name: "numFixings".to_string(),
+                        display_name: "Number of Fixings".to_string(),
+                        field_type: "number".to_string(),
+                        required: false,
+                        default_value: Some(serde_json::json!(12)),
+                        description: Some("Monthly fixings by default".to_string()),
+                    },
+                    ParameterDef {
                         name: "spot".to_string(),
                         display_name: "Spot".to_string(),
                         field_type: "number".to_string(),
@@ -255,7 +271,7 @@ impl ExoticService {
                         field_type: "number".to_string(),
                         required: true,
                         default_value: Some(serde_json::json!(105.0)),
-                        description: Some("% of spot".to_string()),
+                        description: Some("Absolute level".to_string()),
                     },
                     ParameterDef {
                         name: "couponRate".to_string(),
@@ -280,6 +296,14 @@ impl ExoticService {
                         required: true,
                         default_value: Some(serde_json::json!(3.0)),
                         description: None,
+                    },
+                    ParameterDef {
+                        name: "numObservations".to_string(),
+                        display_name: "Observations".to_string(),
+                        field_type: "number".to_string(),
+                        required: false,
+                        default_value: Some(serde_json::json!(4)),
+                        description: Some("Quarterly by default".to_string()),
                     },
                     ParameterDef {
                         name: "rate".to_string(),

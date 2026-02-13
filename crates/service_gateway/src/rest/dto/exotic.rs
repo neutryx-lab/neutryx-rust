@@ -26,8 +26,13 @@ pub struct TarfRequest {
     pub target_profit: f64,
     /// Leverage ratio on the downside (e.g. 2.0 for 2x).
     pub leverage: f64,
-    /// Fixing dates as times in years from valuation.
-    pub fixing_dates: Vec<f64>,
+    /// Maturity in years (used to generate fixing schedule).
+    pub maturity: f64,
+    /// Number of fixings over the maturity period.
+    #[serde(default = "default_num_fixings")]
+    pub num_fixings: u32,
+    /// Explicit fixing dates (year fractions). Auto-generated from maturity/num_fixings when absent.
+    pub fixing_dates: Option<Vec<f64>>,
     /// Spot price.
     pub spot: f64,
     /// Domestic risk-free rate.
@@ -38,6 +43,23 @@ pub struct TarfRequest {
     pub volatility: f64,
     /// Number of Monte Carlo paths (optional).
     pub num_paths: Option<u32>,
+}
+
+fn default_num_fixings() -> u32 {
+    12
+}
+
+impl TarfRequest {
+    /// Returns the fixing schedule, auto-generating evenly-spaced dates if not provided.
+    pub fn effective_fixing_dates(&self) -> Vec<f64> {
+        if let Some(dates) = &self.fixing_dates {
+            return dates.clone();
+        }
+        let n = self.num_fixings.max(1) as usize;
+        (1..=n)
+            .map(|i| self.maturity * i as f64 / n as f64)
+            .collect()
+    }
 }
 
 /// Autocallable request.
@@ -56,8 +78,11 @@ pub struct AutocallableRequest {
     pub coupon_rate: f64,
     /// Knock-in barrier for downside protection.
     pub ki_barrier: f64,
-    /// Observation dates as times in years from valuation.
-    pub observation_dates: Vec<f64>,
+    /// Number of observations over the maturity period.
+    #[serde(default = "default_num_observations")]
+    pub num_observations: u32,
+    /// Explicit observation dates (year fractions). Auto-generated when absent.
+    pub observation_dates: Option<Vec<f64>>,
     /// Maturity in years.
     pub maturity: f64,
     /// Risk-free rate.
@@ -66,6 +91,23 @@ pub struct AutocallableRequest {
     pub volatility: f64,
     /// Number of Monte Carlo paths (optional).
     pub num_paths: Option<u32>,
+}
+
+fn default_num_observations() -> u32 {
+    4
+}
+
+impl AutocallableRequest {
+    /// Returns the observation schedule, auto-generating quarterly dates if not provided.
+    pub fn effective_observation_dates(&self) -> Vec<f64> {
+        if let Some(dates) = &self.observation_dates {
+            return dates.clone();
+        }
+        let n = self.num_observations.max(1) as usize;
+        (1..=n)
+            .map(|i| self.maturity * i as f64 / n as f64)
+            .collect()
+    }
 }
 
 /// Response for exotic product pricing.
