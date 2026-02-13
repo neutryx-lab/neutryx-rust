@@ -100,10 +100,7 @@ impl<T: Float> HestonParams<T> {
 
     /// カスタムQE閾値を設定
     pub fn with_psi_c(mut self, psi_c: T) -> Result<Self, HestonError> {
-        crate::process::validation::validate_positive(
-            "psi_c",
-            psi_c.to_f64().unwrap_or(f64::NAN),
-        )?;
+        crate::process::validation::validate_positive("psi_c", psi_c.to_f64().unwrap_or(f64::NAN))?;
         self.psi_c = psi_c;
         Ok(self)
     }

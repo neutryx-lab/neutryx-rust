@@ -59,9 +59,10 @@ pub use graph::{
 pub use methods::{
     mc,
     mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult},
-    path_dependent, tree,
+    tree,
     tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType},
 };
+pub use pricer_models::path_dependent;
 pub use pricer::{CalcSetting, MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting};
 pub use pricer_models::market::{MarketEnvironment, MarketEnvironmentBuilder};
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

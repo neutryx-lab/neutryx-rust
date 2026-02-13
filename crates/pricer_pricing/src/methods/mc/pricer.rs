@@ -13,7 +13,7 @@ use super::{
     },
     workspace::PathWorkspace,
 };
-use crate::methods::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
+use pricer_models::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
 
 /// Greek type for selection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

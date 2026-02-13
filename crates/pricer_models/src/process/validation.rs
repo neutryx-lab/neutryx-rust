@@ -226,10 +226,7 @@ macro_rules! __validate_rule {
         )?;
     };
     (correlation, $conv:expr, $self:expr, $field:ident) => {
-        $crate::process::validation::validate_correlation(
-            stringify!($field),
-            $conv($self.$field),
-        )?;
+        $crate::process::validation::validate_correlation(stringify!($field), $conv($self.$field))?;
     };
     (strict_correlation, $conv:expr, $self:expr, $field:ident) => {
         $crate::process::validation::validate_strict_correlation(

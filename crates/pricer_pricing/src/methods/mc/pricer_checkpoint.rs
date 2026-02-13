@@ -10,7 +10,9 @@ use crate::{
         mc::{
             workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult,
         },
-        path_dependent::{PathDependentPayoff, PathObserverState, PathPayoffType},
+        mc::{
+            workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult,
+        },
     },
 };
 
