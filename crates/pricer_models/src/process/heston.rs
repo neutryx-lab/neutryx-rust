@@ -100,7 +100,7 @@ impl<T: Float> HestonParams<T> {
 
     /// カスタムQE閾値を設定
     pub fn with_psi_c(mut self, psi_c: T) -> Result<Self, HestonError> {
-        crate::stochastic::validation::validate_positive(
+        crate::process::validation::validate_positive(
             "psi_c",
             psi_c.to_f64().unwrap_or(f64::NAN),
         )?;
@@ -110,7 +110,7 @@ impl<T: Float> HestonParams<T> {
 
     /// カスタムsmoothing epsilonを設定
     pub fn with_epsilon(mut self, epsilon: T) -> Result<Self, HestonError> {
-        crate::stochastic::validation::validate_positive(
+        crate::process::validation::validate_positive(
             "smoothing_epsilon",
             epsilon.to_f64().unwrap_or(f64::NAN),
         )?;
@@ -345,7 +345,7 @@ impl<T: Float> HestonModel<T> {
 
 impl<T: Float> Differentiable for HestonModel<T> {}
 
-use crate::stochastic::stochastic::{EquityModel, StochasticModel, TwoFactorState};
+use crate::process::stochastic::{EquityModel, StochasticModel, TwoFactorState};
 
 impl<T: Float + Default> StochasticModel<T> for HestonModel<T> {
     type State = TwoFactorState<T>;
@@ -389,7 +389,7 @@ impl<T: Float + Default> EquityModel<T> for HestonModel<T> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::stochastic::stochastic::{StochasticModel, StochasticState, TwoFactorState};
+    use crate::process::stochastic::{StochasticModel, StochasticState, TwoFactorState};
 
     fn default_params() -> HestonParams<f64> {
         HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap()

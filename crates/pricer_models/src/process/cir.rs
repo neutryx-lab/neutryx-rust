@@ -50,7 +50,7 @@
 use pricer_core::traits::{priceable::Differentiable, Float};
 
 use crate::{
-    stochastic::{
+    process::{
         stochastic::{RatesModel, SingleState, StochasticModel},
         validation::ParamValidationError,
     },

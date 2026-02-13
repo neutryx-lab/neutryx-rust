@@ -62,6 +62,8 @@ pub mod builder;
 pub mod compiler;
 pub mod market;
 pub mod process;
+/// Backwards-compatible alias — process sub-modules use `crate::stochastic::`.
+pub use process as stochastic;
 
 #[cfg(test)]
 mod tests {

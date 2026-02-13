@@ -20,7 +20,7 @@
 use pricer_core::traits::{priceable::Differentiable, Float};
 
 use crate::{
-    stochastic::{
+    process::{
         stochastic::{EquityModel, SingleState, StochasticModel},
         validation::{ParamValidationError, DEFAULT_SMOOTHING_EPSILON},
     },

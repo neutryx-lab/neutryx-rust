@@ -217,28 +217,28 @@ pub const DEFAULT_SMOOTHING_EPSILON: f64 = 1e-8;
 #[macro_export]
 macro_rules! __validate_rule {
     (positive, $conv:expr, $self:expr, $field:ident) => {
-        $crate::stochastic::validation::validate_positive(stringify!($field), $conv($self.$field))?;
+        $crate::process::validation::validate_positive(stringify!($field), $conv($self.$field))?;
     };
     (non_negative, $conv:expr, $self:expr, $field:ident) => {
-        $crate::stochastic::validation::validate_non_negative(
+        $crate::process::validation::validate_non_negative(
             stringify!($field),
             $conv($self.$field),
         )?;
     };
     (correlation, $conv:expr, $self:expr, $field:ident) => {
-        $crate::stochastic::validation::validate_correlation(
+        $crate::process::validation::validate_correlation(
             stringify!($field),
             $conv($self.$field),
         )?;
     };
     (strict_correlation, $conv:expr, $self:expr, $field:ident) => {
-        $crate::stochastic::validation::validate_strict_correlation(
+        $crate::process::validation::validate_strict_correlation(
             stringify!($field),
             $conv($self.$field),
         )?;
     };
     (unit_interval, $conv:expr, $self:expr, $field:ident) => {
-        $crate::stochastic::validation::validate_unit_interval(
+        $crate::process::validation::validate_unit_interval(
             stringify!($field),
             $conv($self.$field),
         )?;
