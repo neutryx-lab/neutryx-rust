@@ -6,7 +6,7 @@ use crate::{
     builder::{
         jump::{JumpConfig, JumpPillar},
         problem::JacobianMethod,
-        CalibrationInstrument,
+        CalibrationInstrument, CalibrationProblem,
     },
     market::curves::MarketInstrument,
 };

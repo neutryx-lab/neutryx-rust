@@ -1001,4 +1001,384 @@ mod tests {
         // Jacobian should match instrument count
         assert_eq!(jacobian.size, 3);
     }
+
+    // =========================================================================
+    // Integration tests (migrated from integration_tests/jump_aware_curve.rs)
+    // =========================================================================
+
+    use infra_domain::{
+        market::definition::JumpPillar,
+        time::{Date, DayCounter},
+    };
+    use pricer_core::types::Limit;
+
+    use crate::market::jumps::convert_jump_pillars;
+
+    fn test_valuation_date() -> Date { Date::from_ymd(2024, 1, 1).unwrap() }
+
+    fn sample_instruments() -> Vec<MarketInstrument<f64>> {
+        vec![
+            MarketInstrument::ois(0.25, 0.025),
+            MarketInstrument::ois(0.5, 0.028),
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+            MarketInstrument::ois(5.0, 0.04),
+        ]
+    }
+
+    fn sample_jump_pillars() -> Vec<JumpPillar> {
+        vec![
+            JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(),
+                25.0,
+                0.8,
+            ),
+            JumpPillar::new(
+                Date::from_ymd(2024, 6, 12).unwrap(),
+                -25.0,
+                0.6,
+            ),
+        ]
+    }
+
+    #[test]
+    fn test_backward_compat_no_jumps_bootstrap_matches() {
+        let instruments = sample_instruments();
+        let bootstrapper = CurveBootstrapper::new();
+
+        let curve_regular = bootstrapper.bootstrap_to_curve(&instruments).unwrap();
+
+        let curve_with_jumps = bootstrapper
+            .bootstrap_to_curve_with_jumps(&instruments, &[])
+            .unwrap();
+
+        for t in [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0] {
+            let df_reg = curve_regular.discount_factor(t).unwrap();
+            let df_jump = curve_with_jumps.discount_factor(t).unwrap();
+            assert!(
+                (df_reg - df_jump).abs() < 1e-12,
+                "DF mismatch at t={}: regular={}, with_jumps={}",
+                t,
+                df_reg,
+                df_jump
+            );
+        }
+    }
+
+    #[test]
+    fn test_end_to_end_jump_pillar_to_curve() {
+        let valuation = test_valuation_date();
+        let instruments = sample_instruments();
+        let jump_pillars = sample_jump_pillars();
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &jump_pillars,
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        assert!(curve.has_jumps());
+        assert_eq!(curve.jumps().len(), 2);
+
+        let df_1y = curve.discount_factor(1.0).unwrap();
+        assert!(df_1y > 0.0 && df_1y < 1.0);
+    }
+
+    #[test]
+    fn test_left_right_limit_at_jump() {
+        let valuation = test_valuation_date();
+        let instruments = sample_instruments();
+
+        let jump = JumpPillar::new(
+            Date::from_ymd(2024, 3, 20).unwrap(),
+            25.0,
+            1.0,
+        );
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &[jump.clone()],
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        let jump_time = DayCounter::Actual365Fixed.year_fraction(valuation, jump.jump_date());
+
+        let df_left = curve
+            .discount_factor_with_limit(jump_time, Limit::Left)
+            .unwrap();
+        let df_right = curve
+            .discount_factor_with_limit(jump_time, Limit::Right)
+            .unwrap();
+        let df_cont = curve
+            .discount_factor_with_limit(jump_time, Limit::Continuous)
+            .unwrap();
+
+        assert!(
+            (df_right - df_cont).abs() < 1e-12,
+            "Right and Continuous limits should be equal at jump"
+        );
+
+        assert!(
+            df_left > df_right,
+            "Left limit should be greater than right at positive jump"
+        );
+
+        let expected_ratio = (-0.0025_f64).exp();
+        let actual_ratio = df_right / df_left;
+        assert!(
+            (actual_ratio - expected_ratio).abs() < 1e-8,
+            "Jump ratio mismatch: expected {}, got {}",
+            expected_ratio,
+            actual_ratio
+        );
+    }
+
+    #[test]
+    fn test_limits_between_jumps() {
+        let valuation = test_valuation_date();
+        let instruments = sample_instruments();
+        let jump_pillars = sample_jump_pillars();
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &jump_pillars,
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        let t_between = 0.4;
+
+        let df_left = curve
+            .discount_factor_with_limit(t_between, Limit::Left)
+            .unwrap();
+        let df_right = curve
+            .discount_factor_with_limit(t_between, Limit::Right)
+            .unwrap();
+
+        assert!(
+            (df_left - df_right).abs() < 1e-12,
+            "Left and right should be equal between jumps"
+        );
+    }
+
+    #[test]
+    fn test_forward_rate_decomposition_spanning_jump() {
+        let valuation = test_valuation_date();
+        let instruments = sample_instruments();
+
+        let jump = JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 1.0);
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &[jump],
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        let decomp = curve.decompose_forward_rate(0.1, 0.5).unwrap();
+
+        assert!(
+            (decomp.total - (decomp.continuous + decomp.jump)).abs() < 1e-10,
+            "Total should equal continuous + jump"
+        );
+
+        assert!(
+            decomp.jump.abs() > 1e-6,
+            "Jump component should be non-zero when spanning a jump"
+        );
+    }
+
+    #[test]
+    fn test_forward_rate_decomposition_no_jump_in_range() {
+        let valuation = test_valuation_date();
+        let instruments = sample_instruments();
+
+        let jump = JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 1.0);
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &[jump],
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        let decomp = curve.decompose_forward_rate(0.5, 1.0).unwrap();
+
+        assert!(
+            decomp.jump.abs() < 1e-10,
+            "Jump component should be zero when not spanning a jump"
+        );
+
+        assert!(
+            (decomp.total - decomp.continuous).abs() < 1e-10,
+            "Total should equal continuous when no jump in range"
+        );
+    }
+
+    #[test]
+    fn test_jump_lookup_performance() {
+        use std::time::Instant;
+
+        let mut jumps: Vec<(f64, f64)> = Vec::new();
+        let mut cumulative = 0.0;
+        for i in 1..=100 {
+            let t = i as f64 * 0.01;
+            cumulative += 0.0001;
+            jumps.push((t, cumulative));
+        }
+
+        let pillars = vec![0.5_f64, 1.0, 2.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(jumps);
+
+        for _ in 0..100 {
+            let _ = curve.discount_factor(0.55);
+        }
+
+        let start = Instant::now();
+        let iterations = 10000;
+        for _ in 0..iterations {
+            let _ = curve.discount_factor_with_limit(0.55, Limit::Continuous);
+        }
+        let elapsed = start.elapsed();
+
+        assert!(
+            elapsed.as_millis() < 100,
+            "Performance issue: {} ms for {} iterations",
+            elapsed.as_millis(),
+            iterations
+        );
+    }
+
+    #[test]
+    fn test_jump_at_curve_start() {
+        let valuation = test_valuation_date();
+        let instruments = vec![
+            MarketInstrument::ois(0.5, 0.028),
+            MarketInstrument::ois(1.0, 0.03),
+        ];
+
+        let jump = JumpPillar::new(
+            Date::from_ymd(2024, 1, 15).unwrap(),
+            10.0,
+            1.0,
+        );
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &[jump],
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        assert!(curve.has_jumps());
+        let df = curve.discount_factor(0.5).unwrap();
+        assert!(df > 0.0 && df < 1.0);
+    }
+
+    #[test]
+    fn test_jump_beyond_curve_end() {
+        let valuation = test_valuation_date();
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+        ];
+
+        let jump = JumpPillar::new(
+            Date::from_ymd(2027, 6, 12).unwrap(),
+            25.0,
+            0.5,
+        );
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &[jump],
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        assert!(curve.has_jumps());
+
+        let df = curve.discount_factor(1.5).unwrap();
+        assert!(df > 0.0 && df < 1.0);
+    }
+
+    #[test]
+    fn test_zero_confidence_jump_ignored() {
+        let valuation = test_valuation_date();
+        let instruments = sample_instruments();
+
+        let jump = JumpPillar::new(
+            Date::from_ymd(2024, 3, 20).unwrap(),
+            25.0,
+            0.0,
+        );
+
+        let bootstrapper = CurveBootstrapper::new();
+
+        let curve_with_zero = bootstrapper
+            .bootstrap_to_curve_with_jump_pillars(
+                &instruments,
+                &[jump],
+                valuation,
+                DayCounter::Actual365Fixed,
+            )
+            .unwrap();
+
+        let curve_without = bootstrapper.bootstrap_to_curve(&instruments).unwrap();
+
+        let df_with = curve_with_zero.discount_factor(0.5).unwrap();
+        let df_without = curve_without.discount_factor(0.5).unwrap();
+
+        assert!(
+            (df_with - df_without).abs() < 1e-10,
+            "Zero confidence jump should have no effect"
+        );
+    }
+
+    #[test]
+    fn test_jump_entry_conversion() {
+        let valuation = test_valuation_date();
+        let pillars = sample_jump_pillars();
+
+        let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+
+        assert_eq!(entries.len(), 2);
+
+        assert!(entries[0].time() < entries[1].time());
+
+        assert!((entries[0].cumulative_offset() - (-0.002)).abs() < 1e-10);
+        assert!((entries[1].cumulative_offset() - (-0.0005)).abs() < 1e-10);
+    }
 }

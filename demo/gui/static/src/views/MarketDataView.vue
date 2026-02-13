@@ -728,8 +728,8 @@ async function loadHolidaysData() {
 async function refresh() {
   if (assetClass.value === 'IRVol') await loadIrVolData();
   else if (assetClass.value === 'FXVol') await loadFxVolData();
-  else if (assetClass.value === 'Bond') loadBondData();
-  else if (assetClass.value === 'Credit') loadCreditData();
+  else if (assetClass.value === 'Bond') await loadBondData();
+  else if (assetClass.value === 'Credit') await loadCreditData();
   else if (assetClass.value === 'Events') await loadEventsData();
   else if (assetClass.value === 'Holidays') await loadHolidaysData();
   else await loadRates();
