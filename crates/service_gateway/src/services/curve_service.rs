@@ -13,7 +13,9 @@ use pricer_models::{
         BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
         JacobianMatrix,
     },
-    market::{build_forward_rate_shift_grid, BootstrapInterpolation, YieldCurve},
+    market::{
+        build_forward_rate_shift_grid, BootstrapInterpolation, MarketInstrument, YieldCurve,
+    },
 };
 
 use super::chart_grid::{
@@ -24,9 +26,9 @@ use crate::rest::dto::CurveInstrumentInput;
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
-        DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest, ForwardRateResponse,
-        ForwardSwapRateRequest, ForwardSwapRateResponse, JacobianData,
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, CurveType,
+        DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
+        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse, JacobianData,
     },
     state::{AppState, CurveEntry, InstrumentInput},
 };
@@ -48,6 +50,11 @@ impl CurveService {
         } else {
             chrono::Utc::now().date_naive()
         };
+
+        // Branch: credit curve bootstrap from CDS spreads.
+        if request.curve_type == CurveType::Credit {
+            return Self::build_credit_curve(request, state, reference_date, start);
+        }
 
         let mut regular_specs: Vec<InstrumentSpec> = Vec::new();
         let mut jump_pillars: Vec<JumpPillar> = Vec::new();
@@ -80,6 +87,7 @@ impl CurveService {
                     rate: i.rate,
                     event_date: None,
                     expected_rate_spike: None,
+                    coupon_rate: i.coupon_rate,
                 });
             }
         }
@@ -173,6 +181,7 @@ impl CurveService {
                         "fra" => "FRA",
                         "swap" | "irs" => "IRS",
                         "future" | "futures" => "Fut",
+                        "bond" => "Bond",
                         _ => &lower,
                     };
                     (t, format!("{}-{}", type_label, spec.tenor))
@@ -227,6 +236,8 @@ impl CurveService {
                     discount_factor: df,
                     zero_rate: zero_rate_from_df(df, *time),
                     forward_rate: fwd,
+                    survival_probability: None,
+                    hazard_rate: None,
                 })
             })
             .collect();
@@ -290,7 +301,216 @@ impl CurveService {
             calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
             bootstrap_method: actual_method.to_string(),
             jacobian: jacobian_data,
+            curve_type: "rate".to_string(),
         })
+    }
+
+    /// Build a credit (survival probability) curve from CDS spreads.
+    fn build_credit_curve(
+        request: &CurveBuildRequest,
+        state: &Arc<AppState>,
+        reference_date: chrono::NaiveDate,
+        start: Instant,
+    ) -> Result<CurveBuildResponse, ServerError> {
+        // Retrieve the risk-free discount curve from cache.
+        let discount_curve_id = request
+            .discount_curve_id
+            .as_ref()
+            .ok_or_else(|| {
+                ServerError::InvalidRequest(
+                    "discount_curve_id is required for credit curves".to_string(),
+                )
+            })?
+            .parse()
+            .map_err(|_| {
+                ServerError::InvalidRequest("Invalid discount_curve_id format".to_string())
+            })?;
+
+        let rf_entry = state.curve_cache.get(&discount_curve_id).ok_or_else(|| {
+            ServerError::NotFound(format!(
+                "Discount curve {} not found — build the rate curve first",
+                request.discount_curve_id.as_deref().unwrap_or("?")
+            ))
+        })?;
+
+        // Determine max maturity from CDS instruments.
+        let cds_specs: Vec<(String, f64, f64)> = request
+            .instruments
+            .iter()
+            .filter(|i| {
+                let t = i.instrument_type.to_lowercase();
+                t == "cds" || t == "credit"
+            })
+            .map(|i| {
+                let tenor_years = parse_tenor_to_years(&i.tenor).unwrap_or(1.0);
+                (i.tenor.clone(), tenor_years, i.rate)
+            })
+            .collect();
+
+        if cds_specs.is_empty() {
+            return Err(ServerError::InvalidRequest(
+                "At least one CDS instrument is required for credit curves".to_string(),
+            ));
+        }
+
+        let max_maturity = cds_specs
+            .iter()
+            .map(|(_, t, _)| *t)
+            .fold(1.0_f64, f64::max);
+
+        // Pre-sample risk-free DFs at quarterly intervals.
+        let rf_dfs = Self::sample_discount_factors(&rf_entry.curve, max_maturity);
+
+        // Convert to MarketInstrument::Cds.
+        let recovery = request.recovery_rate;
+        let mut market_instruments: Vec<MarketInstrument<f64>> = cds_specs
+            .iter()
+            .map(|(_, tenor_years, spread)| {
+                MarketInstrument::cds(*tenor_years, *spread, recovery, rf_dfs.clone())
+            })
+            .collect();
+        market_instruments.sort_by(|a, b| {
+            a.maturity()
+                .partial_cmp(&b.maturity())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        market_instruments.dedup_by(|a, b| (a.maturity() - b.maturity()).abs() < 1e-10);
+
+        // Bootstrap using the standard bootstrapper.
+        let interpolation = request.interpolation;
+        let config = BootstrapConfig {
+            interpolation,
+            ..BootstrapConfig::new(request.tolerance, request.max_iterations)
+        };
+        let bootstrapper = CurveBootstrapper::with_config(config);
+
+        let (curve, jacobian) = bootstrapper
+            .bootstrap_to_curve_with_jacobian(&market_instruments, &[])
+            .map_err(|e| {
+                ServerError::Pricing(format!("Credit curve bootstrap failed: {e}"))
+            })?;
+
+        // Build Jacobian data with CDS labels.
+        let jacobian_data = {
+            let labels: Vec<String> = cds_specs
+                .iter()
+                .map(|(tenor, _, _)| format!("CDS-{}", tenor))
+                .collect();
+            let size = jacobian.size;
+            let matrix = jacobian.data;
+            Some(JacobianData {
+                row_labels: labels.clone(),
+                col_labels: labels,
+                matrix,
+                size,
+            })
+        };
+
+        let day_counter = resolve_day_counter(&request.index);
+
+        // Build pillars with survival probability and hazard rate.
+        let pillars: Vec<CurvePillar> = curve
+            .pillars()
+            .iter()
+            .filter_map(|time| {
+                let sp = curve.discount_factor(*time).ok()?;
+                let days = (*time * 365.0).round() as i64;
+                let date = reference_date + chrono::Duration::days(days);
+                let hazard = if *time > 0.0 {
+                    -sp.ln() / *time
+                } else {
+                    0.0
+                };
+                Some(CurvePillar {
+                    date: date.format("%Y-%m-%d").to_string(),
+                    time: *time,
+                    discount_factor: sp,
+                    zero_rate: zero_rate_from_df(sp, *time),
+                    forward_rate: hazard,
+                    survival_probability: Some(sp),
+                    hazard_rate: Some(hazard),
+                })
+            })
+            .collect();
+
+        // Forward curve: hazard rate on daily grid.
+        let max_days = curve
+            .pillars()
+            .last()
+            .map(|t| (t * 365.0).round() as i64)
+            .unwrap_or(365);
+        let forward_curve: Vec<ForwardRatePoint> = (0..max_days)
+            .filter_map(|day| {
+                let date = reference_date + chrono::Duration::days(day);
+                let time = MODEL_DAY_COUNTER.year_fraction_from_days(day);
+                let fwd = overnight_forward_rate(&curve, reference_date, date, day_counter)?;
+                Some(ForwardRatePoint {
+                    date: date.format("%Y-%m-%d").to_string(),
+                    time,
+                    forward_rate: fwd,
+                })
+            })
+            .collect();
+
+        let (short_term_grid, long_term_grid) =
+            generate_chart_grids(reference_date, &curve, day_counter);
+
+        let interpolation_str = match interpolation {
+            BootstrapInterpolation::Linear => "linear_df",
+            BootstrapInterpolation::LogLinear => "log_linear_df",
+            BootstrapInterpolation::FlatForward => "flat_forward",
+        }
+        .to_string();
+
+        let instrument_inputs: Vec<InstrumentInput> = request
+            .instruments
+            .iter()
+            .map(|i| InstrumentInput {
+                instrument_type: i.instrument_type.clone(),
+                tenor: i.tenor.clone(),
+                rate: i.rate,
+            })
+            .collect();
+
+        let curve_id = state.curve_cache.add(CurveEntry {
+            curve,
+            instruments: instrument_inputs,
+        });
+
+        let elapsed = start.elapsed();
+
+        Ok(CurveBuildResponse {
+            curve_id: curve_id.to_string(),
+            index: request.index.clone(),
+            currency: request.currency.clone(),
+            pillars,
+            forward_curve,
+            short_term_grid,
+            long_term_grid,
+            instrument_count: cds_specs.len(),
+            interpolation: interpolation_str,
+            converged: true,
+            calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            bootstrap_method: "bootstrapping".to_string(),
+            jacobian: jacobian_data,
+            curve_type: "credit".to_string(),
+        })
+    }
+
+    /// Pre-sample risk-free discount factors at quarterly intervals.
+    fn sample_discount_factors(
+        curve: &dyn YieldCurve<f64>,
+        max_maturity: f64,
+    ) -> Vec<(f64, f64)> {
+        let step = 0.25_f64;
+        let n = ((max_maturity / step).ceil() as usize).max(1) + 1;
+        (0..=n)
+            .filter_map(|i| {
+                let t = (i as f64) * step;
+                let df = curve.discount_factor(t).ok()?;
+                Some((t, df))
+            })
+            .collect()
     }
 
     /// Get discount factor from a cached curve.
@@ -450,6 +670,7 @@ mod tests {
             event_date: None,
             expected_rate_spike: None,
             end_date: None,
+            coupon_rate: None,
         }
     }
 
@@ -461,6 +682,7 @@ mod tests {
             event_date: Some(date.to_string()),
             expected_rate_spike: Some(spike),
             end_date: end.map(String::from),
+            coupon_rate: None,
         }
     }
 
@@ -477,6 +699,9 @@ mod tests {
             bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
+            curve_type: CurveType::Rate,
+            discount_curve_id: None,
+            recovery_rate: 0.40,
         }
     }
 

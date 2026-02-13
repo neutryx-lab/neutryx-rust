@@ -4,10 +4,10 @@ use std::time::Instant;
 
 use pricer_core::kernel::BarrierType;
 use pricer_models::compiler::{
-    DownsideProtection, ExoticCompiler, IndexMapper, ObservationAction, ObservationSchedule,
-    ScriptProduct, ScriptProductType, TargetConfig,
+    DownsideProtection, ObservationAction, ObservationSchedule, ScriptProduct, ScriptProductType,
+    TargetConfig,
 };
-use pricer_pricing::kernel::{FlatSpotProvider, ScriptEngine};
+use pricer_pricing::Pricer;
 
 use crate::rest::dto::exotic::{
     AutocallableRequest, ExoticPricingResponse, ExoticProductDef, ExoticProductRequest,
@@ -59,13 +59,8 @@ impl ExoticService {
             memory_coupon: None,
         };
 
-        let mut compiler = ExoticCompiler::new(IndexMapper::new());
-        let kernel = compiler
-            .compile_script_product(&product)
+        let pv = Pricer::price_script_flat(&product, req.spot, req.domestic_rate, req.foreign_rate)
             .map_err(|e| format!("{e}"))?;
-
-        let provider = FlatSpotProvider::new(req.domestic_rate, req.foreign_rate, req.spot);
-        let pv = ScriptEngine::price(&kernel, &provider);
 
         Ok(ExoticPricingResponse {
             price: pv,
@@ -121,13 +116,8 @@ impl ExoticService {
             memory_coupon: None,
         };
 
-        let mut compiler = ExoticCompiler::new(IndexMapper::new());
-        let kernel = compiler
-            .compile_script_product(&product)
+        let pv = Pricer::price_script_flat(&product, req.spot, req.rate, 0.0)
             .map_err(|e| format!("{e}"))?;
-
-        let provider = FlatSpotProvider::new(req.rate, 0.0, req.spot);
-        let pv = ScriptEngine::price(&kernel, &provider);
 
         Ok(ExoticPricingResponse {
             price: pv,

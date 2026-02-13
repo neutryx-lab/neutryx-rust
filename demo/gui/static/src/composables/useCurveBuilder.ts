@@ -17,6 +17,9 @@ export interface CurveConfig {
   calibrationMethod: string;
   interpolation: string;
   allowExtrapolation: boolean;
+  curveType?: 'rate' | 'credit';
+  discountCurve?: string;
+  recoveryRate?: number;
 }
 
 export interface CurvesData {
@@ -40,6 +43,7 @@ export interface RateInstrument {
   event_date?: string;
   expected_rate_spike?: number;
   end_date?: string; // Turn events: spike reverts after this date
+  coupon_rate?: number; // For bond instruments
 }
 
 export interface RateData {
@@ -47,6 +51,7 @@ export interface RateData {
   currency: string;
   reference_date: string;
   instruments: RateInstrument[];
+  recovery_rate?: number;
 }
 
 export interface DisplayInstrument {
@@ -59,6 +64,7 @@ export interface DisplayInstrument {
   originalRate: number;
   eventDate?: string; // For EVENT type instruments
   endDate?: string; // Turn events: spike reverts after this date
+  couponRate?: number; // For BOND type instruments
 }
 
 // instruments.json types
@@ -84,6 +90,8 @@ export interface CurvePillar {
   discount_factor: number;
   zero_rate: number;
   forward_rate: number;
+  survival_probability?: number;
+  hazard_rate?: number;
 }
 
 export interface ForwardRatePoint {
@@ -119,6 +127,7 @@ export interface BuildResult {
   converged?: boolean;
   bootstrap_method?: string;
   jacobian?: JacobianData;
+  curve_type?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +175,8 @@ function buildInstrumentId(type: string, tenor: string, currency: string): strin
     'fra': 'FRA',
     'future': 'Future',
     'swap': 'Swap',
+    'bond': 'Bond',
+    'cds': 'CDS',
   };
   const typeLabel = typeMap[type] || type.toUpperCase();
   return `${currency}-${typeLabel}-${tenor}`;
@@ -193,6 +204,9 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
   const calibrationMethod = ref<string>('bootstrapping');
   const interpolation = ref<string>('log_linear_df');
   const allowExtrapolation = ref<boolean>(true);
+
+  // Map of curve name -> built curve_id (for discount curve references)
+  const builtCurveIds = ref<Record<string, string>>({});
 
   // Last-built settings -- used to detect "rebuild required"
   const lastBuiltSettings = ref<{
@@ -232,15 +246,26 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     return rateChanged || settingsChanged;
   });
 
+  const isCreditCurve = computed(() =>
+    selectedCurve.value?.curveType === 'credit'
+  );
+
   const summaryStats = computed(() => {
     const eventCount = enabledInstruments.value.filter(i => i.type === 'event').length;
 
-    return [
+    const stats = [
       { label: 'Valuation Date', value: rateData.value?.reference_date || '-', icon: 'fa-calendar', color: '#8b5cf6' },
       { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}${eventCount > 0 ? ` (${eventCount} events)` : ''}`, icon: 'fa-list-alt', color: '#3b82f6' },
       { label: 'Interpolation', value: interpolationMethods.find(m => m.value === interpolation.value)?.label ?? interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
       { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
     ];
+
+    if (isCreditCurve.value) {
+      const recovery = selectedCurve.value?.recoveryRate ?? 0.40;
+      stats.push({ label: 'Recovery', value: `${(recovery * 100).toFixed(0)}%`, icon: 'fa-shield-alt', color: '#ef4444' });
+    }
+
+    return stats;
   });
 
   // Curve data table -- merge short + long term grids, deduplicate by date
@@ -290,7 +315,12 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     try {
       // Convert rate index to file name (e.g., "USD-SOFR" -> "usd-sofr")
       const fileName = rateIndex.toLowerCase().replace('_', '-');
-      const response = await fetch(`/data/input/rates/${fileName}.json`);
+
+      // Credit curves load from /data/input/credit/, rate curves from /data/input/rates/
+      const isCredit = selectedCurve.value?.curveType === 'credit';
+      const basePath = isCredit ? '/data/input/credit' : '/data/input/rates';
+
+      const response = await fetch(`${basePath}/${fileName}.json`);
       if (!response.ok) throw new Error(`Failed to load rate data for ${rateIndex}`);
       rateData.value = await response.json();
     } catch (error) {
@@ -343,7 +373,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
           endDate: rateInst.end_date,
         });
       } else {
-        // Handle regular instruments (deposit, ois, fra, etc.)
+        // Handle regular instruments (deposit, ois, fra, bond, etc.)
         const tenor = rateInst.tenor || '';
         const id = buildInstrumentId(rateInst.type, tenor, currency);
 
@@ -355,6 +385,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
           rate: rateInst.rate || 0,
           originalRate: rateInst.rate || 0,
           enabled: defaultEnabledIds.has(id),
+          couponRate: rateInst.coupon_rate,
         });
       }
     }
@@ -425,6 +456,13 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
             payload.end_date = inst.endDate;
           }
           return payload;
+        } else if (inst.type === 'bond') {
+          return {
+            instrument_type: 'bond',
+            tenor: inst.tenor,
+            rate: inst.rate,
+            coupon_rate: inst.couponRate,
+          };
         } else {
           return {
             instrument_type: inst.type.toLowerCase(),
@@ -434,17 +472,40 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
         }
       });
 
+      // For credit curves, ensure the discount curve is built first.
+      let discountCurveId: string | undefined;
+      if (selectedCurve.value.curveType === 'credit' && selectedCurve.value.discountCurve) {
+        const discountName = selectedCurve.value.discountCurve;
+        discountCurveId = builtCurveIds.value[discountName];
+
+        if (!discountCurveId) {
+          // Auto-build the discount curve.
+          discountCurveId = await autoBuildDiscountCurve(discountName);
+          if (!discountCurveId) {
+            throw new Error(`Failed to auto-build discount curve "${discountName}" — please build it first.`);
+          }
+        }
+      }
+
+      const requestBody: Record<string, unknown> = {
+        index: selectedCurve.value.rateIndex,
+        currency: rateData.value?.currency || 'USD',
+        reference_date: rateData.value?.reference_date,
+        instruments: instrumentPayload,
+        bootstrap_method: calibrationMethod.value,
+        interpolation: interpolation.value,
+      };
+
+      if (selectedCurve.value.curveType === 'credit') {
+        requestBody.curve_type = 'credit';
+        requestBody.discount_curve_id = discountCurveId;
+        requestBody.recovery_rate = selectedCurve.value.recoveryRate ?? 0.40;
+      }
+
       const response = await fetch('/api/curves/build', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          index: selectedCurve.value.rateIndex,
-          currency: rateData.value?.currency || 'USD',
-          reference_date: rateData.value?.reference_date,
-          instruments: instrumentPayload,
-          bootstrap_method: calibrationMethod.value,
-          interpolation: interpolation.value,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -460,6 +521,11 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       }
 
       buildResult.value = await response.json();
+
+      // Store curve_id for discount curve references
+      if (buildResult.value?.curve_id && selectedCurve.value) {
+        builtCurveIds.value[selectedCurve.value.name] = buildResult.value.curve_id;
+      }
 
       // Snapshot current state as "last built"
       instruments.value.forEach(inst => {
@@ -481,6 +547,74 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     } finally {
       isBuilding.value = false;
     }
+  }
+
+  // ---------- Auto-build discount curve ----------
+
+  async function autoBuildDiscountCurve(curveName: string): Promise<string | undefined> {
+    if (!curvesConfig.value) return undefined;
+
+    const discountConfig = curvesConfig.value.curves.find(c => c.name === curveName);
+    if (!discountConfig) return undefined;
+
+    // Load rate data for the discount curve
+    const fileName = discountConfig.rateIndex.toLowerCase().replace('_', '-');
+    const rateResp = await fetch(`/data/input/rates/${fileName}.json`);
+    if (!rateResp.ok) return undefined;
+
+    const discountRateData: RateData = await rateResp.json();
+    const defaultIds = new Set(discountConfig.instruments || []);
+
+    // Build instrument payload from rate data (matching the curve definition)
+    const instrumentPayload = discountRateData.instruments
+      .filter(inst => {
+        if (inst.type === 'event') {
+          return defaultIds.has(inst.id || '');
+        }
+        const id = buildInstrumentId(inst.type, inst.tenor || '', discountRateData.currency);
+        return defaultIds.has(id);
+      })
+      .map(inst => {
+        if (inst.type === 'event') {
+          const payload: Record<string, unknown> = {
+            instrument_type: 'event',
+            tenor: '',
+            rate: 0,
+            event_date: inst.event_date,
+            expected_rate_spike: inst.expected_rate_spike,
+          };
+          if (inst.end_date) payload.end_date = inst.end_date;
+          return payload;
+        }
+        return {
+          instrument_type: inst.type,
+          tenor: inst.tenor,
+          rate: inst.rate,
+          coupon_rate: inst.coupon_rate,
+        };
+      });
+
+    const buildResp = await fetch('/api/curves/build', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        index: discountConfig.rateIndex,
+        currency: discountRateData.currency,
+        reference_date: discountRateData.reference_date,
+        instruments: instrumentPayload,
+        bootstrap_method: normaliseCalibrationMethod(discountConfig.calibrationMethod),
+        interpolation: normaliseInterpolation(discountConfig.interpolation),
+      }),
+    });
+
+    if (!buildResp.ok) return undefined;
+
+    const result = await buildResp.json();
+    if (result.curve_id) {
+      builtCurveIds.value[curveName] = result.curve_id;
+      return result.curve_id;
+    }
+    return undefined;
   }
 
   // ---------- Actions ----------
@@ -527,6 +661,11 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
   function updateSpike(index: number, value: string) {
     // Convert basis points to decimal (e.g., -25bp = -0.0025)
     instruments.value[index].rate = parseFloat(value) / 10000;
+  }
+
+  function updateCoupon(index: number, value: string) {
+    // Convert percentage to decimal (e.g., 4.5% = 0.045)
+    instruments.value[index].couponRate = parseFloat(value) / 100;
   }
 
   function toggleEnabled(index: number) {
@@ -577,8 +716,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     curveOptions,
     enabledInstruments,
     hasChanges,
+    isCreditCurve,
     summaryStats,
     curveTableRows,
+    builtCurveIds,
 
     // Actions
     buildCurve,
@@ -586,6 +727,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     exportRates,
     updateRate,
     updateSpike,
+    updateCoupon,
     toggleEnabled,
     toggleAll,
   };

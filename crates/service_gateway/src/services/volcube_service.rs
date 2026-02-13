@@ -823,6 +823,7 @@ impl VolcubeService {
                     rate: i.get("rate").and_then(|r| r.as_f64())?,
                     event_date: None,
                     expected_rate_spike: None,
+                    coupon_rate: None,
                 })
             })
             .collect();

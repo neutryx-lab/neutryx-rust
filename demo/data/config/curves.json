@@ -215,6 +215,67 @@
       "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
+    },
+    {
+      "name": "USD-TREASURY",
+      "description": "USD Treasury zero curve from government bond yields",
+      "rateIndex": "USD-TREASURY",
+      "instruments": [
+        "USD-Depo-ON",
+        "USD-Depo-1M",
+        "USD-Depo-3M",
+        "USD-Depo-6M",
+        "USD-Bond-2Y",
+        "USD-Bond-3Y",
+        "USD-Bond-5Y",
+        "USD-Bond-7Y",
+        "USD-Bond-10Y",
+        "USD-Bond-20Y",
+        "USD-Bond-30Y"
+      ],
+      "calibrationMethod": "bootstrapping",
+      "interpolation": "loglinear",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "CDX-NA-IG",
+      "description": "CDX North America Investment Grade credit curve",
+      "rateIndex": "CDX-NA-IG",
+      "curveType": "credit",
+      "discountCurve": "USD-SOFR",
+      "recoveryRate": 0.40,
+      "instruments": [
+        "CDX-CDS-6M",
+        "CDX-CDS-1Y",
+        "CDX-CDS-2Y",
+        "CDX-CDS-3Y",
+        "CDX-CDS-5Y",
+        "CDX-CDS-7Y",
+        "CDX-CDS-10Y"
+      ],
+      "calibrationMethod": "bootstrapping",
+      "interpolation": "loglinear",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "ITRAXX-EUROPE-IG",
+      "description": "iTraxx Europe Investment Grade credit curve",
+      "rateIndex": "ITRAXX-EUROPE-IG",
+      "curveType": "credit",
+      "discountCurve": "EUR-ESTR",
+      "recoveryRate": 0.40,
+      "instruments": [
+        "ITRAXX-CDS-6M",
+        "ITRAXX-CDS-1Y",
+        "ITRAXX-CDS-2Y",
+        "ITRAXX-CDS-3Y",
+        "ITRAXX-CDS-5Y",
+        "ITRAXX-CDS-7Y",
+        "ITRAXX-CDS-10Y"
+      ],
+      "calibrationMethod": "bootstrapping",
+      "interpolation": "loglinear",
+      "allowExtrapolation": true
     }
   ]
 }

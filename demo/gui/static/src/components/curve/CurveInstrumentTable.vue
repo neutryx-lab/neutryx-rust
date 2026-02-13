@@ -11,6 +11,7 @@ const emit = defineEmits<{
   toggleAll: [enabled: boolean];
   updateRate: [index: number, value: string];
   updateSpike: [index: number, value: string];
+  updateCoupon: [index: number, value: string];
 }>();
 </script>
 
@@ -45,7 +46,9 @@ const emit = defineEmits<{
         :class="[
           'flex items-center gap-2 px-2 py-1.5 rounded text-sm',
           inst.enabled ? 'bg-[var(--surface)]' : 'opacity-40',
-          inst.type === 'event' ? 'border-l-2 border-amber-500' : ''
+          inst.type === 'event' ? 'border-l-2 border-amber-500' : '',
+          inst.type === 'bond' ? 'border-l-2 border-blue-500' : '',
+          inst.type === 'cds' ? 'border-l-2 border-purple-500' : ''
         ]"
       >
         <input
@@ -80,6 +83,47 @@ const emit = defineEmits<{
             @change="emit('updateSpike', idx, ($event.target as HTMLInputElement).value)"
           >
           <span class="text-xs text-amber-400/60">bp</span>
+        </template>
+        <!-- Bond instruments show coupon rate + YTM inputs -->
+        <template v-else-if="inst.type === 'bond'">
+          <span
+            class="px-1 py-0.5 text-[10px] rounded bg-blue-500/20 text-blue-400"
+            title="Fixed-coupon bond"
+          >BOND</span>
+          <span class="text-[10px] text-[var(--text-muted)]">Cpn</span>
+          <input
+            type="number"
+            :value="((inst.couponRate || 0) * 100).toFixed(2)"
+            step="0.01"
+            class="w-14 px-1.5 py-0.5 text-right text-xs rounded bg-blue-500/10 border border-blue-500/30 text-blue-400"
+            title="Coupon rate (%)"
+            @change="emit('updateCoupon', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="text-[10px] text-[var(--text-muted)]">YTM</span>
+          <input
+            type="number"
+            :value="(inst.rate * 100).toFixed(2)"
+            step="0.01"
+            class="w-14 px-1.5 py-0.5 text-right text-xs rounded bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-primary)]"
+            title="Yield-to-maturity (%)"
+            @change="emit('updateRate', idx, ($event.target as HTMLInputElement).value)"
+          >
+        </template>
+        <!-- CDS instruments show spread in bp -->
+        <template v-else-if="inst.type === 'cds'">
+          <span
+            class="px-1 py-0.5 text-[10px] rounded bg-purple-500/20 text-purple-400"
+            title="Credit Default Swap"
+          >CDS</span>
+          <input
+            type="number"
+            :value="(inst.rate * 10000).toFixed(1)"
+            step="0.5"
+            class="w-16 px-1.5 py-0.5 text-right text-xs rounded bg-purple-500/10 border border-purple-500/30 text-purple-400"
+            title="CDS spread in basis points"
+            @change="emit('updateSpike', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="text-xs text-purple-400/60">bp</span>
         </template>
         <!-- Regular instruments show rate input -->
         <input

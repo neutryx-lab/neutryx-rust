@@ -37,6 +37,7 @@ const {
   curveOptions,
   enabledInstruments,
   hasChanges,
+  isCreditCurve,
   summaryStats,
   curveTableRows,
 
@@ -46,6 +47,7 @@ const {
   exportRates,
   updateRate,
   updateSpike,
+  updateCoupon,
   toggleEnabled,
   toggleAll,
 } = useCurveBuilder(() => {
@@ -119,6 +121,7 @@ watch(chartType, () => {
           @toggle-all="toggleAll"
           @update-rate="updateRate"
           @update-spike="updateSpike"
+          @update-coupon="updateCoupon"
         />
 
         <!-- Build Settings -->
@@ -190,7 +193,9 @@ watch(chartType, () => {
       <div class="lg:col-span-2 space-y-6">
         <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)]">Yield Curve</h3>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+              {{ isCreditCurve ? 'Credit Curve' : 'Yield Curve' }}
+            </h3>
             <div v-if="buildResult?.short_term_grid" class="flex gap-2">
               <button
                 :class="[
@@ -199,7 +204,7 @@ watch(chartType, () => {
                 ]"
                 @click="chartType = 'forward_rate'"
               >
-                Forward Rate
+                {{ isCreditCurve ? 'Hazard Rate' : 'Forward Rate' }}
               </button>
               <button
                 :class="[
@@ -208,7 +213,7 @@ watch(chartType, () => {
                 ]"
                 @click="chartType = 'discount_factor'"
               >
-                Discount Factor
+                {{ isCreditCurve ? 'Survival Prob' : 'Discount Factor' }}
               </button>
             </div>
           </div>
@@ -252,8 +257,8 @@ watch(chartType, () => {
           <div v-if="buildResult" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
             <div class="grid grid-cols-4 gap-4 text-sm">
               <div>
-                <span class="text-[var(--text-muted)]">Instruments:</span>
-                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ buildResult.instrument_count }}</span>
+                <span class="text-[var(--text-muted)]">{{ isCreditCurve ? 'Type:' : 'Instruments:' }}</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ isCreditCurve ? 'Credit' : buildResult.instrument_count }}</span>
               </div>
               <div>
                 <span class="text-[var(--text-muted)]">Method:</span>
@@ -282,8 +287,8 @@ watch(chartType, () => {
                   <tr class="border-b border-[var(--glass-border)] curve-table-header">
                     <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Date</th>
                     <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Time (Y)</th>
-                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Fwd Rate (%)</th>
-                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">DF</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">{{ isCreditCurve ? 'Hazard Rate (%)' : 'Fwd Rate (%)' }}</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">{{ isCreditCurve ? 'SP' : 'DF' }}</th>
                   </tr>
                 </thead>
                 <tbody>

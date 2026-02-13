@@ -2,26 +2,41 @@
 
 use std::{sync::Arc, time::Instant};
 
-use pricer_pricing::generic_pricer::{
-    DefaultCurrency, SimpleCashflow, SimpleDate, SimpleDirection, SimpleLeg,
+use chrono::Datelike;
+use infra_domain::{
+    market::{Currency, CurrencyPair},
+    time::Date,
+    trade::{
+        Cashflow as DomainCashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade,
+        TradeType,
+    },
 };
+use pricer_models::{market::CurveEnum, market_env::MarketEnvironment};
+use pricer_pricing::{CalcSetting, MarketEnvironmentBuilder, Pricer};
 
 use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
         Cashflow, CashflowPvResult, DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest,
-        DemoPricingResult, ExpandedTrade, LegResult, TradeExpandRequest, TradeLeg, TradeMetadata,
+        DemoPricingResult, ExpandedTrade, LegResult, PricingLeg, TradeExpandRequest, TradeLeg,
+        TradeMetadata,
     },
     state::AppState,
 };
 
-/// Parse a "YYYY-MM-DD" date string into `SimpleDate`.
-fn parse_simple_date(date_str: &str) -> Result<SimpleDate, ServerError> {
-    let parts: Vec<&str> = date_str.split('-').collect();
+/// Parse currency ISO code to `Currency`.
+fn parse_currency(s: &str) -> Result<Currency, ServerError> {
+    s.parse::<Currency>()
+        .map_err(|_| ServerError::InvalidRequest(format!("Unknown currency: {s}")))
+}
+
+/// Parse "YYYY-MM-DD" to domain `Date`.
+fn parse_date(s: &str) -> Result<Date, ServerError> {
+    let parts: Vec<&str> = s.split('-').collect();
     if parts.len() != 3 {
         return Err(ServerError::InvalidRequest(format!(
-            "Invalid date format (expected YYYY-MM-DD): {date_str}"
+            "Invalid date format (expected YYYY-MM-DD): {s}"
         )));
     }
     let year: i32 = parts[0]
@@ -34,73 +49,121 @@ fn parse_simple_date(date_str: &str) -> Result<SimpleDate, ServerError> {
         .parse()
         .map_err(|_| ServerError::InvalidRequest(format!("Invalid day: {}", parts[2])))?;
 
-    SimpleDate::from_ymd(year, month, day)
-        .ok_or_else(|| ServerError::InvalidRequest(format!("Invalid date: {date_str}")))
+    Date::from_ymd(year, month, day)
+        .map_err(|_| ServerError::InvalidRequest(format!("Invalid date: {s}")))
 }
 
-/// Format a `SimpleDate` back to "YYYY-MM-DD" string (approximate).
-fn format_simple_date(date: SimpleDate) -> String {
-    let days = date.days();
-    let year = 2000 + days / 365;
-    let remaining = days % 365;
-    let month = remaining / 30 + 1;
-    let day = remaining % 30;
-    format!("{year:04}-{month:02}-{day:02}")
+/// Format a domain `Date` as "YYYY-MM-DD".
+fn format_date(date: Date) -> String {
+    date.into_inner().format("%Y-%m-%d").to_string()
 }
 
-/// Convert DTO `PricingLeg` to `SimpleLeg` for `GenericPricer`.
-fn convert_to_simple_legs(
-    legs: &[crate::rest::dto::demo::PricingLeg],
-) -> Result<Vec<SimpleLeg>, ServerError> {
-    legs.iter()
-        .map(|leg| {
-            let currency = DefaultCurrency::new(&leg.currency);
-            let direction = match leg.direction.to_lowercase().as_str() {
-                "payer" => SimpleDirection::Payer,
-                "receiver" => SimpleDirection::Receiver,
+/// Default discount rate for demo pricing (flat curve).
+const DEFAULT_DISCOUNT_RATE: f64 = 0.05;
+
+/// Build domain [`Leg`]s from DTO pricing legs.
+fn build_domain_legs(
+    dto_legs: &[PricingLeg],
+    valuation_date: Date,
+) -> Result<Vec<Leg>, ServerError> {
+    dto_legs
+        .iter()
+        .map(|dto_leg| {
+            let currency = parse_currency(&dto_leg.currency)?;
+            let direction = match dto_leg.direction.to_lowercase().as_str() {
+                "payer" => Direction::Payer,
+                "receiver" => Direction::Receiver,
                 other => {
                     return Err(ServerError::InvalidRequest(format!(
                         "Unknown direction: {other}"
                     )))
                 }
             };
-            let cashflows = leg
+
+            let cashflows: Vec<DomainCashflow> = dto_leg
                 .cashflows
                 .iter()
                 .map(|cf| {
-                    let payment_date = parse_simple_date(&cf.payment_date)?;
-                    Ok(SimpleCashflow {
+                    let payment_date = parse_date(&cf.payment_date)?;
+                    // Encode the raw amount as notional with a unit fixed payoff
+                    // so PayoffEvaluator::evaluate returns exactly `amount`.
+                    Ok(DomainCashflow::new(
+                        CashflowType::Settlement,
                         payment_date,
-                        amount: cf.amount,
-                    })
+                        valuation_date, // accrual_start
+                        payment_date,   // accrual_end
+                        1.0,            // year_fraction
+                        cf.amount,      // notional
+                        Payoff::fixed(1.0),
+                        currency,
+                    ))
                 })
                 .collect::<Result<Vec<_>, ServerError>>()?;
 
-            Ok(SimpleLeg {
-                currency,
-                direction,
-                cashflows,
-            })
+            Ok(Leg::new(cashflows, direction, LegType::Generic, currency))
         })
         .collect()
 }
 
-/// Create legs with bumped cashflow amounts.
-fn bump_cashflow_amounts(legs: &[SimpleLeg], bump_fraction: f64) -> Vec<SimpleLeg> {
-    legs.iter()
-        .map(|leg| SimpleLeg {
-            currency: leg.currency,
-            direction: leg.direction,
-            cashflows: leg
-                .cashflows
-                .iter()
-                .map(|cf| SimpleCashflow {
-                    payment_date: cf.payment_date,
-                    amount: cf.amount * (1.0 + bump_fraction),
-                })
-                .collect(),
-        })
-        .collect()
+/// Build a [`MarketEnvironment`] with flat discount curves at the given rate.
+fn build_market_env(
+    valuation_date: Date,
+    reporting_currency: Currency,
+    dto_legs: &[PricingLeg],
+    discount_rate: f64,
+) -> Result<MarketEnvironment, ServerError> {
+    let mut builder = MarketEnvironmentBuilder::new(valuation_date)
+        .with_discount_curve(reporting_currency, CurveEnum::flat(discount_rate));
+
+    for dto_leg in dto_legs {
+        let ccy = parse_currency(&dto_leg.currency)?;
+        if ccy != reporting_currency {
+            builder = builder
+                .with_discount_curve(ccy, CurveEnum::flat(discount_rate))
+                .with_fx_spot(CurrencyPair::new(ccy, reporting_currency), 1.0);
+        }
+    }
+
+    Ok(builder.build())
+}
+
+/// Build unified `Pricer` inputs from a `DemoPricingRequest`.
+fn build_pricer_inputs(
+    request: &DemoPricingRequest,
+) -> Result<(Trade, MarketEnvironment, CalcSetting), ServerError> {
+    let valuation_date = parse_date(&request.valuation_date)?;
+    let reporting_currency = parse_currency(&request.reporting_currency)?;
+
+    let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
+    let trade = Trade::new("DEMO-TRADE", domain_legs, TradeType::Swap);
+    let market = build_market_env(
+        valuation_date,
+        reporting_currency,
+        &request.legs,
+        DEFAULT_DISCOUNT_RATE,
+    )?;
+    let calc = CalcSetting::builder()
+        .reporting_currency(reporting_currency)
+        .build();
+
+    Ok((trade, market, calc))
+}
+
+/// Price a trade with a specific discount rate (used for bump-and-revalue).
+fn price_with_rate(
+    trade: &Trade,
+    valuation_date: Date,
+    reporting_currency: Currency,
+    dto_legs: &[PricingLeg],
+    discount_rate: f64,
+) -> Result<f64, ServerError> {
+    let market = build_market_env(valuation_date, reporting_currency, dto_legs, discount_rate)?;
+    let calc = CalcSetting::builder()
+        .reporting_currency(reporting_currency)
+        .build();
+    let result = Pricer::price(trade, &market, &calc)
+        .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))?;
+    Ok(result.total_pv)
 }
 
 impl DemoService {
@@ -211,18 +274,14 @@ impl DemoService {
         })
     }
 
-    /// Price a trade using `GenericPricer`.
+    /// Price a trade using the unified `Pricer`.
     pub fn price_trade(
         request: &DemoPricingRequest,
-        state: &Arc<AppState>,
+        _state: &Arc<AppState>,
     ) -> Result<DemoPricingResult, ServerError> {
-        let simple_legs = convert_to_simple_legs(&request.legs)?;
-        let valuation_date = parse_simple_date(&request.valuation_date)?;
-        let reporting_ccy = DefaultCurrency::new(&request.reporting_currency);
+        let (trade, market, calc) = build_pricer_inputs(request)?;
 
-        let result = state
-            .pricer
-            .get_pv_simple(simple_legs, valuation_date, reporting_ccy)
+        let result = Pricer::price(&trade, &market, &calc)
             .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))?;
 
         let legs: Vec<LegResult> = result
@@ -230,8 +289,8 @@ impl DemoService {
             .iter()
             .map(|leg| {
                 let direction = match leg.direction {
-                    SimpleDirection::Payer => "payer",
-                    SimpleDirection::Receiver => "receiver",
+                    Direction::Payer => "payer",
+                    Direction::Receiver => "receiver",
                 };
                 let cashflows: Vec<CashflowPvResult> = leg
                     .cashflows
@@ -239,7 +298,7 @@ impl DemoService {
                     .map(|cf| CashflowPvResult {
                         pv: cf.pv,
                         discount_factor: cf.discount_factor,
-                        payment_date: format_simple_date(cf.payment_date),
+                        payment_date: format_date(cf.payment_date),
                     })
                     .collect();
                 LegResult {
@@ -261,55 +320,73 @@ impl DemoService {
         })
     }
 
-    /// Calculate Greeks via bump-and-revalue using `GenericPricer`.
+    /// Calculate Greeks via bump-and-revalue using the unified [`Pricer`].
+    ///
+    /// Bumps the flat discount rate in the [`MarketEnvironment`] to compute
+    /// rate delta, gamma, and theta.  Vega is zero for linear products (no
+    /// volatility surface in the demo market).
     pub fn calculate_greeks(
         request: &DemoGreeksRequest,
-        state: &Arc<AppState>,
+        _state: &Arc<AppState>,
     ) -> Result<DemoGreeksResult, ServerError> {
-        let simple_legs = convert_to_simple_legs(&request.legs)?;
-        let valuation_date = parse_simple_date(&request.valuation_date)?;
-        let reporting_ccy = DefaultCurrency::new(&request.reporting_currency);
+        let valuation_date = parse_date(&request.valuation_date)?;
+        let reporting_currency = parse_currency(&request.reporting_currency)?;
 
-        let base_pv = state
-            .pricer
-            .get_pv_simple(simple_legs.clone(), valuation_date, reporting_ccy)
-            .map_err(|e| ServerError::Internal(format!("Base pricing failed: {e}")))?
-            .total_pv;
+        let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
+        let trade = Trade::new("DEMO-GREEKS", domain_legs, TradeType::Swap);
 
+        // Base PV.
+        let base_pv = price_with_rate(
+            &trade,
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE,
+        )?;
+
+        // Rate delta: bump discount rate up/down.
         let rate_bump = request.bump_sizes.rate_bump_bp / 10000.0;
-        let legs_up = bump_cashflow_amounts(&simple_legs, rate_bump);
-        let legs_down = bump_cashflow_amounts(&simple_legs, -rate_bump);
-
-        let pv_up = state
-            .pricer
-            .get_pv_simple(legs_up, valuation_date, reporting_ccy)
-            .map_err(|e| ServerError::Internal(format!("Delta up pricing failed: {e}")))?
-            .total_pv;
-        let pv_down = state
-            .pricer
-            .get_pv_simple(legs_down, valuation_date, reporting_ccy)
-            .map_err(|e| ServerError::Internal(format!("Delta down pricing failed: {e}")))?
-            .total_pv;
+        let pv_up = price_with_rate(
+            &trade,
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE + rate_bump,
+        )?;
+        let pv_down = price_with_rate(
+            &trade,
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE - rate_bump,
+        )?;
 
         let delta = (pv_up - pv_down) / 2.0;
         let gamma = Some(pv_up - 2.0 * base_pv + pv_down);
 
-        let theta_date = SimpleDate::from_days(valuation_date.days() + 1);
-        let theta_pv = state
-            .pricer
-            .get_pv_simple(simple_legs.clone(), theta_date, reporting_ccy)
-            .map_err(|e| ServerError::Internal(format!("Theta pricing failed: {e}")))?
-            .total_pv;
+        // Theta: shift valuation date forward by 1 day.
+        let theta_inner = valuation_date.into_inner() + chrono::Duration::days(1);
+        let theta_date = Date::from_ymd(
+            theta_inner.year(),
+            theta_inner.month(),
+            theta_inner.day(),
+        )
+        .map_err(|e| ServerError::Internal(format!("Theta date error: {e}")))?;
+
+        // Rebuild legs relative to the new valuation date.
+        let theta_legs = build_domain_legs(&request.legs, theta_date)?;
+        let theta_trade = Trade::new("DEMO-GREEKS-THETA", theta_legs, TradeType::Swap);
+        let theta_pv = price_with_rate(
+            &theta_trade,
+            theta_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE,
+        )?;
         let theta = Some(theta_pv - base_pv);
 
-        let vol_bump = request.bump_sizes.vol_bump_pct / 100.0;
-        let legs_vol_up = bump_cashflow_amounts(&simple_legs, vol_bump);
-        let pv_vol_up = state
-            .pricer
-            .get_pv_simple(legs_vol_up, valuation_date, reporting_ccy)
-            .map_err(|e| ServerError::Internal(format!("Vega pricing failed: {e}")))?
-            .total_pv;
-        let vega = Some(pv_vol_up - base_pv);
+        // Vega: zero for linear products (no vol surface in demo market).
+        let vega = Some(0.0);
 
         Ok(DemoGreeksResult {
             currency: request.reporting_currency.clone(),

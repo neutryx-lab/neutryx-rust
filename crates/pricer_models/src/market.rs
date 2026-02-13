@@ -219,6 +219,32 @@ pub mod curves {
             /// Expected rate jump (absolute rate, not bps)
             expected_jump: T,
         },
+        /// Fixed-coupon bond (government or corporate)
+        Bond {
+            /// Maturity in years
+            maturity: T,
+            /// Market-quoted yield-to-maturity
+            rate: T,
+            /// Fixed coupon rate (annual equivalent)
+            coupon_rate: T,
+            /// Coupon payment frequency
+            payment_frequency: Frequency,
+        },
+        /// Credit Default Swap for credit curve calibration.
+        ///
+        /// The "rate" is the CDS par spread; the curve being bootstrapped is
+        /// a survival probability curve (discount_factor = survival_probability).
+        Cds {
+            /// Maturity in years
+            maturity: T,
+            /// CDS par spread (market-quoted, as decimal e.g. 0.01 = 100bp)
+            spread: T,
+            /// Recovery rate (e.g. 0.40)
+            recovery_rate: T,
+            /// Pre-sampled risk-free discount factors at quarterly intervals.
+            /// Stored as (time, df) pairs to avoid runtime curve dependency.
+            risk_free_dfs: Vec<(T, T)>,
+        },
     }
 
     impl<T: Float> MarketInstrument<T> {
@@ -270,6 +296,42 @@ pub mod curves {
             }
         }
 
+        /// Creates a Bond instrument with semi-annual coupons (default for
+        /// government bonds).
+        pub fn bond(maturity: T, ytm: T, coupon_rate: T) -> Self {
+            Self::Bond {
+                maturity,
+                rate: ytm,
+                coupon_rate,
+                payment_frequency: Frequency::SemiAnnual,
+            }
+        }
+
+        /// Creates a Bond instrument with explicit coupon frequency.
+        pub fn bond_with_frequency(
+            maturity: T,
+            ytm: T,
+            coupon_rate: T,
+            payment_frequency: Frequency,
+        ) -> Self {
+            Self::Bond {
+                maturity,
+                rate: ytm,
+                coupon_rate,
+                payment_frequency,
+            }
+        }
+
+        /// Creates a CDS instrument with pre-sampled risk-free discount factors.
+        pub fn cds(maturity: T, spread: T, recovery_rate: T, risk_free_dfs: Vec<(T, T)>) -> Self {
+            Self::Cds {
+                maturity,
+                spread,
+                recovery_rate,
+                risk_free_dfs,
+            }
+        }
+
         /// Returns the market-quoted rate (or expected jump for Event).
         pub fn rate(&self) -> T {
             match self {
@@ -278,6 +340,8 @@ pub mod curves {
                 Self::Fra { rate, .. } => *rate,
                 Self::Future { rate, .. } => *rate,
                 Self::Event { expected_jump, .. } => *expected_jump,
+                Self::Bond { rate, .. } => *rate,
+                Self::Cds { spread, .. } => *spread,
             }
         }
 
@@ -289,6 +353,8 @@ pub mod curves {
                 Self::Fra { end, .. } => *end,
                 Self::Future { maturity, .. } => *maturity,
                 Self::Event { maturity, .. } => *maturity,
+                Self::Bond { maturity, .. } => *maturity,
+                Self::Cds { maturity, .. } => *maturity,
             }
         }
 
@@ -300,6 +366,8 @@ pub mod curves {
                 Self::Fra { .. } => "FRA",
                 Self::Future { .. } => "Future",
                 Self::Event { .. } => "Event",
+                Self::Bond { .. } => "Bond",
+                Self::Cds { .. } => "CDS",
             }
         }
 
@@ -359,6 +427,28 @@ pub mod curves {
                 } => Self::Event {
                     maturity: *maturity,
                     expected_jump: *expected_jump + delta,
+                },
+                Self::Bond {
+                    maturity,
+                    rate,
+                    coupon_rate,
+                    payment_frequency,
+                } => Self::Bond {
+                    maturity: *maturity,
+                    rate: *rate + delta,
+                    coupon_rate: *coupon_rate,
+                    payment_frequency: *payment_frequency,
+                },
+                Self::Cds {
+                    maturity,
+                    spread,
+                    recovery_rate,
+                    ref risk_free_dfs,
+                } => Self::Cds {
+                    maturity: *maturity,
+                    spread: *spread + delta,
+                    recovery_rate: *recovery_rate,
+                    risk_free_dfs: risk_free_dfs.clone(),
                 },
             }
         }

@@ -18,6 +18,18 @@ pub enum BootstrapMethod {
     Global,
 }
 
+/// Curve type discriminator.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum CurveType {
+    /// Interest rate curve (default).
+    #[default]
+    Rate,
+    /// Credit (survival probability) curve bootstrapped from CDS spreads.
+    Credit,
+}
+
 /// Single instrument input for curve building.
 #[derive(Debug, Clone, Deserialize, Serialize, Validate)]
 #[cfg_attr(feature = "openapi", derive(ToSchema))]
@@ -42,6 +54,9 @@ pub struct CurveInstrumentInput {
     /// End date for turn events — spike reverts after this date (ISO format).
     #[serde(default)]
     pub end_date: Option<String>,
+    /// Coupon rate for Bond instruments (as decimal, e.g., 0.04 for 4%).
+    #[serde(default)]
+    pub coupon_rate: Option<f64>,
 }
 
 /// Request to build a yield curve.
@@ -76,11 +91,23 @@ pub struct CurveBuildRequest {
     #[serde(default = "default_max_iterations")]
     #[validate(range(min = 1))]
     pub max_iterations: usize,
+    /// Type of curve to build (rate or credit).
+    #[serde(default)]
+    pub curve_type: CurveType,
+    /// ID of a previously built risk-free discount curve (required for credit
+    /// curves).
+    #[serde(default)]
+    pub discount_curve_id: Option<String>,
+    /// Recovery rate for CDS instruments (default 0.40).
+    #[serde(default = "default_recovery_rate")]
+    pub recovery_rate: f64,
 }
 
 fn default_tolerance() -> f64 { 1e-10 }
 
 fn default_max_iterations() -> usize { 100 }
+
+fn default_recovery_rate() -> f64 { 0.40 }
 
 /// Pillar point in a bootstrapped curve.
 #[derive(Debug, Clone, Serialize)]
@@ -96,6 +123,12 @@ pub struct CurvePillar {
     pub zero_rate: f64,
     /// Instantaneous forward rate (simple, annualised) at this pillar.
     pub forward_rate: f64,
+    /// Survival probability at this pillar (credit curves only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub survival_probability: Option<f64>,
+    /// Hazard rate at this pillar (credit curves only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hazard_rate: Option<f64>,
 }
 
 /// Forward rate point on a daily grid.
@@ -171,6 +204,8 @@ pub struct CurveBuildResponse {
     /// Jacobian matrix d(log DF)/dr (finite-difference).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jacobian: Option<JacobianData>,
+    /// Type of curve that was built ("rate" or "credit").
+    pub curve_type: String,
 }
 
 /// Request to get discount factor from a cached curve.

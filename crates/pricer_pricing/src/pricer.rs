@@ -28,6 +28,7 @@ use pricer_core::math::formulas::{
     garman_kohlhagen::{GarmanKohlhagen, GarmanKohlhagenParams},
 };
 use pricer_models::{
+    compiler::{ExoticCompiler, IndexMapper, ScriptProduct},
     market::{curves::YieldCurve, CurveEnum, CurveSet, MarketDataError},
     market_env::MarketEnvironment,
 };
@@ -37,6 +38,7 @@ use crate::{
     generic_pricer::{
         CashflowPricingResult, LegPricingResult, PayoffEvaluator, PricingError, PricingResult,
     },
+    kernel::{FlatSpotProvider, ScriptEngine},
     result::{PricingMetadata, UnifiedGreeks, UnifiedPricingResult},
 };
 
@@ -105,7 +107,7 @@ impl Pricer {
             )),
             ResolvedMethod::Script => Err(PricingError::unsupported_method(
                 "Script",
-                "Script engine for exotic payoffs is not yet integrated",
+                "Trade→Script conversion not available; use Pricer::price_script_flat() for ScriptProduct pricing",
             )),
         }
     }
@@ -150,9 +152,36 @@ impl Pricer {
             )),
             ResolvedMethod::Script => Err(PricingError::unsupported_method(
                 "Script",
-                "Script engine for exotic payoffs is not yet integrated",
+                "Trade→Script conversion not available; use Pricer::price_script_flat() for ScriptProduct pricing",
             )),
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Script-based exotic pricing
+    // -----------------------------------------------------------------------
+
+    /// Prices a pre-built [`ScriptProduct`] using flat market assumptions.
+    ///
+    /// This is a convenience entry point for exotic products (TARF,
+    /// Autocallable, etc.) that provide explicit spot, discount, and foreign
+    /// rate parameters rather than a full [`MarketEnvironment`].
+    ///
+    /// Internally compiles the product into a [`ScriptKernel`] via
+    /// [`ExoticCompiler`] and evaluates it with [`ScriptEngine`].
+    pub fn price_script_flat(
+        product: &ScriptProduct,
+        spot: f64,
+        discount_rate: f64,
+        foreign_rate: f64,
+    ) -> Result<f64, PricingError> {
+        let mut compiler = ExoticCompiler::new(IndexMapper::new());
+        let kernel = compiler
+            .compile_script_product(product)
+            .map_err(|e| PricingError::Internal(format!("Script compilation failed: {e}")))?;
+
+        let provider = FlatSpotProvider::new(discount_rate, foreign_rate, spot);
+        Ok(ScriptEngine::price(&kernel, &provider))
     }
 
     // -----------------------------------------------------------------------

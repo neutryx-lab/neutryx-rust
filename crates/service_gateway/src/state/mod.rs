@@ -2,6 +2,7 @@
 
 mod cache;
 
+#[cfg(test)]
 use std::sync::Arc;
 
 #[cfg(feature = "risk")]
@@ -16,7 +17,6 @@ pub use cache::{ModelEntry, ModelType};
 #[cfg(feature = "volatility")]
 #[allow(unused_imports)]
 pub use cache::{VolSurfaceEntry, VolSurfaceType};
-use pricer_pricing::generic_pricer::{GenericPricer, ModelConfig, PricerConfig};
 
 /// Configuration for `AppState` cache sizes.
 #[derive(Debug, Clone)]
@@ -58,8 +58,6 @@ pub struct AppState {
     pub curve_cache: TypedCache<CurveEntry>,
     /// Cache for FX volatility surfaces.
     pub fxvol_cache: TypedCache<FxVolEntry>,
-    /// Pre-configured generic pricer for standalone pricing.
-    pub pricer: Arc<GenericPricer>,
 
     /// Cache for portfolios (risk feature).
     #[cfg(feature = "risk")]
@@ -78,22 +76,9 @@ impl AppState {
 
     /// Create application state with custom configuration.
     pub fn with_config(config: AppStateConfig) -> Self {
-        let model_config = ModelConfig::builder()
-            .num_paths(10_000)
-            .num_steps(100)
-            .build()
-            .expect("valid model config");
-
-        let pricer_config = PricerConfig::builder()
-            .build()
-            .expect("valid pricer config");
-
-        let pricer = GenericPricer::new_standalone(model_config, pricer_config);
-
         Self {
             curve_cache: TypedCache::new(config.curve_cache_size),
             fxvol_cache: TypedCache::new(config.fxvol_cache_size),
-            pricer: Arc::new(pricer),
             #[cfg(feature = "risk")]
             portfolio_cache: TypedCache::new(config.portfolio_cache_size),
             #[cfg(feature = "models")]

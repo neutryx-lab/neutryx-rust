@@ -1,11 +1,16 @@
-//! Pricing service - API layer delegating to `pricer_core`.
+//! Pricing service - API layer delegating to the unified `Pricer`.
 
 use std::time::Instant;
 
-use pricer_core::math::formulas::{
-    forward::{Forward, ForwardParams},
-    garman_kohlhagen::{GarmanKohlhagen, GarmanKohlhagenParams},
+use chrono::Datelike;
+use infra_domain::{
+    market::{instrument::ExerciseStyle, Currency, CurrencyPair},
+    time::Date,
+    trade::{Direction, Leg, LegType, OptionType, SettlementType, Trade, TradeType},
 };
+use pricer_core::math::formulas::forward::{Forward, ForwardParams};
+use pricer_models::{market::CurveEnum, vol_surface::VolSurfaceEnum};
+use pricer_pricing::{CalcSetting, MarketEnvironmentBuilder, Pricer};
 
 use crate::{
     error::ServerError,
@@ -98,36 +103,76 @@ impl PricingService {
         })
     }
 
-    /// Price a vanilla European option using `GarmanKohlhagen` (Merton model.
+    /// Price a vanilla European option via the unified [`Pricer`].
+    ///
+    /// Builds a synthetic FX option trade (EUR/USD convention) and delegates
+    /// to `Pricer::price_unified()` which dispatches to Garman-Kohlhagen.
     fn price_vanilla_option(
         request: &PricingRequest,
     ) -> Result<(f64, Option<GreeksResponse>), ServerError> {
-        let params = GarmanKohlhagenParams::new(
-            request.spot,
-            request.strike,
-            request.rate,
-            request.dividend_yield,
-            request.volatility,
-            request.expiry,
+        let val_date = Date::from_ymd(2025, 1, 1)
+            .map_err(|e| ServerError::Internal(format!("{e}")))?;
+
+        let expiry_days = (request.expiry * 365.0).round() as i64;
+        let expiry_inner =
+            val_date.into_inner() + chrono::Duration::days(expiry_days);
+        let expiry_date = Date::from_ymd(
+            expiry_inner.year(),
+            expiry_inner.month(),
+            expiry_inner.day(),
         )
-        .map_err(|e| ServerError::InvalidRequest(e.to_string()))?;
+        .map_err(|e| ServerError::Internal(format!("{e}")))?;
 
-        let model = GarmanKohlhagen::new(params);
-        let price = model.price(request.is_call);
+        // Synthetic two-leg trade so Pricer can extract base/quote currencies.
+        let leg_base = Leg::new(vec![], Direction::Receiver, LegType::Generic, Currency::EUR);
+        let leg_quote = Leg::new(vec![], Direction::Payer, LegType::Generic, Currency::USD);
 
-        let greeks = if request.compute_greeks {
-            Some(GreeksResponse {
-                delta: model.delta(request.is_call),
-                gamma: model.gamma(),
-                vega: model.vega(),
-                theta: model.theta(request.is_call),
-                rho: model.rho_domestic(request.is_call),
-            })
+        let option_type = if request.is_call {
+            OptionType::Call
         } else {
-            None
+            OptionType::Put
         };
 
-        Ok((price, greeks))
+        let trade = Trade::new(
+            "PRICING-SVC",
+            vec![leg_base, leg_quote],
+            TradeType::FxOption {
+                option_type,
+                strike: request.strike,
+                exercise_type: ExerciseStyle::European,
+                settlement_type: SettlementType::Cash,
+                expiry_date,
+            },
+        );
+
+        let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
+        let vol_surface = VolSurfaceEnum::<f64>::flat(request.volatility)
+            .map_err(|e| ServerError::Internal(format!("{e}")))?;
+
+        let market = MarketEnvironmentBuilder::new(val_date)
+            .with_discount_curve(Currency::USD, CurveEnum::flat(request.rate))
+            .with_discount_curve(Currency::EUR, CurveEnum::flat(request.dividend_yield))
+            .with_fx_spot(pair, request.spot)
+            .with_vol_surface("FX:EUR/USD", vol_surface)
+            .build();
+
+        let calc = CalcSetting::builder()
+            .compute_greeks(request.compute_greeks)
+            .reporting_currency(Currency::USD)
+            .build();
+
+        let result = Pricer::price_unified(&trade, &market, &calc)
+            .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))?;
+
+        let greeks = result.greeks.map(|g| GreeksResponse {
+            delta: g.delta.unwrap_or(0.0),
+            gamma: g.gamma.unwrap_or(0.0),
+            vega: g.vega.unwrap_or(0.0),
+            theta: g.theta.unwrap_or(0.0),
+            rho: g.rho.unwrap_or(0.0),
+        });
+
+        Ok((result.pv, greeks))
     }
 
     /// Price a forward contract.
