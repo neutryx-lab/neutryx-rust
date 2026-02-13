@@ -3,7 +3,6 @@
 mod batch;
 mod config;
 mod error;
-mod kernel;
 mod payoff_evaluator;
 mod pricer;
 mod result;
@@ -16,10 +15,6 @@ pub use config::{
     DefaultCurrency, GreeksMode, ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder,
 };
 pub use error::{ConfigError, PricingError};
-pub use kernel::{
-    price_cashflow, price_cashflow_stream, BusinessDayConvention, DayCountConvention,
-    DiscountCalculator, Frequency,
-};
 pub use payoff_evaluator::PayoffEvaluator;
 pub use pricer::{
     GenericPricer, SimpleCashflow, SimpleLeg, StandaloneCashflowResult, StandaloneLegResult,

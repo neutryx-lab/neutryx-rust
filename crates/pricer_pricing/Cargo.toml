@@ -12,6 +12,7 @@ pricer_core = { path = "../pricer_core" }
 pricer_models = { path = "../pricer_models" }
 infra_domain = { path = "../infra_domain" }
 infra_config = { path = "../infra_config" }
+bon.workspace = true
 strum.workspace = true
 
 # Enum dispatch for static trait forwarding

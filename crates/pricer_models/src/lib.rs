@@ -63,6 +63,7 @@ pub mod compiler;
 mod direction_ext;
 pub mod jump;
 pub mod market;
+pub mod market_env;
 pub mod stochastic;
 pub mod vol_surface;
 

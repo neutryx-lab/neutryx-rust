@@ -2572,6 +2572,7 @@ version = "0.1.0"
 dependencies = [
  "aligned-vec",
  "approx",
+ "bon",
  "chrono",
  "criterion",
  "enum_dispatch",
