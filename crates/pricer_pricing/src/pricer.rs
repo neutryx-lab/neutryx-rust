@@ -5,8 +5,8 @@
 //!
 //! - **Linear products** (Swap, FxForward, Bond, Deposit, …) → cashflow
 //!   discounting via the existing [`GenericPricer`] infrastructure.
-//! - **Vanilla options** (FxOption, EquityOption, CommodityOption) → closed-form
-//!   analytical formulae (Garman-Kohlhagen, Black-Scholes).
+//! - **Vanilla options** (FxOption, EquityOption, CommodityOption) →
+//!   closed-form analytical formulae (Garman-Kohlhagen, Black-Scholes).
 //! - **Barrier / exotic options** (FxBarrierOption, …) → Script engine
 //!   (placeholder).
 //! - **Monte Carlo / Tree** → delegated to existing MC and tree engines
@@ -16,6 +16,7 @@
 
 use std::time::Instant;
 
+use chrono::Datelike;
 use infra_config::PricingMethod;
 use infra_domain::{
     market::Currency,
@@ -26,16 +27,12 @@ use pricer_core::math::formulas::{
     black_scholes::BlackScholes,
     garman_kohlhagen::{GarmanKohlhagen, GarmanKohlhagenParams},
 };
-use pricer_models::market::{
-    curves::YieldCurve, CurveSet, MarketProvider,
-};
+use pricer_models::market::{curves::YieldCurve, CurveSet, MarketProvider};
 
 use crate::{
     calc_setting::{CalcSetting, PricingMethodHint},
     generic_pricer::{
-        error::PricingError,
-        payoff_evaluator::PayoffEvaluator,
-        result::{CashflowPricingResult, LegPricingResult, PricingResult},
+        CashflowPricingResult, LegPricingResult, PayoffEvaluator, PricingError, PricingResult,
     },
     result::{PricingMetadata, UnifiedGreeks, UnifiedPricingResult},
 };
@@ -86,9 +83,7 @@ impl MarketEnvironment {
     }
 
     /// Returns the valuation date.
-    pub fn valuation_date(&self) -> Date {
-        self.valuation_date
-    }
+    pub fn valuation_date(&self) -> Date { self.valuation_date }
 
     /// Returns the discount curve for a given currency.
     pub fn discount_curve(
@@ -96,24 +91,15 @@ impl MarketEnvironment {
         currency: Currency,
     ) -> Result<&pricer_models::market::CurveEnum<f64>, PricingError> {
         self.provider.get_curve(currency).ok_or_else(|| {
-            PricingError::missing_market_data(format!(
-                "No discount curve for {:?}",
-                currency
-            ))
+            PricingError::missing_market_data(format!("No discount curve for {:?}", currency))
         })
     }
 
     /// Returns the curve set for forward rate computations.
-    pub fn curve_set(&self) -> &CurveSet<f64> {
-        self.provider.curve_set()
-    }
+    pub fn curve_set(&self) -> &CurveSet<f64> { self.provider.curve_set() }
 
     /// Returns the FX spot rate between two currencies.
-    pub fn fx_rate(
-        &self,
-        from: Currency,
-        to: Currency,
-    ) -> Result<f64, PricingError> {
+    pub fn fx_rate(&self, from: Currency, to: Currency) -> Result<f64, PricingError> {
         if from == to {
             return Ok(1.0);
         }
@@ -130,11 +116,7 @@ impl MarketEnvironment {
     }
 
     /// Returns the FX spot rate for a given currency pair.
-    pub fn fx_spot(
-        &self,
-        base: Currency,
-        quote: Currency,
-    ) -> Result<f64, PricingError> {
+    pub fn fx_spot(&self, base: Currency, quote: Currency) -> Result<f64, PricingError> {
         self.fx_rate(base, quote)
     }
 
@@ -313,8 +295,13 @@ impl Pricer {
         let mut leg_results = Vec::with_capacity(trade.num_legs());
 
         for leg in trade.legs() {
-            let leg_result =
-                Self::price_leg(leg, valuation_date, calc.reporting_currency, market, curve_set)?;
+            let leg_result = Self::price_leg(
+                leg,
+                valuation_date,
+                calc.reporting_currency,
+                market,
+                curve_set,
+            )?;
             leg_results.push(leg_result);
         }
 
@@ -512,10 +499,11 @@ impl Pricer {
         let vol_key = format!("FX:{}/{}", base_ccy.code(), quote_ccy.code());
         let vol = market.vol_surface(&vol_key)?;
 
-        let params = GarmanKohlhagenParams::new(spot, strike, rd, rf, vol, t)
-            .map_err(|e| PricingError::InvalidInput {
+        let params = GarmanKohlhagenParams::new(spot, strike, rd, rf, vol, t).map_err(|e| {
+            PricingError::InvalidInput {
                 reason: format!("Garman-Kohlhagen parameter error: {:?}", e),
-            })?;
+            }
+        })?;
 
         let model = GarmanKohlhagen::new(params);
         let is_call = option_type.is_call();
@@ -564,10 +552,7 @@ impl Pricer {
         // Attempt to get the equity spot from the flat_vols store (as a
         // lightweight lookup).
         let spot = market.vol_surface(&spot_key).map_err(|_| {
-            PricingError::missing_market_data(format!(
-                "No equity spot price for '{}'",
-                underlyer
-            ))
+            PricingError::missing_market_data(format!("No equity spot price for '{}'", underlyer))
         })?;
 
         let domestic_curve = market.discount_curve(calc.reporting_currency)?;
@@ -722,14 +707,13 @@ impl Pricer {
 #[cfg(test)]
 mod tests {
     use infra_domain::{
-        market::Currency,
+        market::{instrument::ExerciseStyle, Currency},
         time::Date,
         trade::{
-            CashflowType, Direction, Leg, LegType, OptionType, Payoff, Trade, TradeType,
+            CashflowType, Direction, Leg, LegType, OptionType, Payoff, SettlementType, Trade,
+            TradeType,
         },
     };
-    use infra_domain::market::instrument::ExerciseStyle;
-    use infra_domain::trade::trade::SettlementType;
     use pricer_models::market::MarketProvider;
 
     use super::*;
@@ -737,9 +721,7 @@ mod tests {
 
     // -- Helpers --
 
-    fn make_valuation_date() -> Date {
-        Date::from_ymd(2025, 1, 1).unwrap()
-    }
+    fn make_valuation_date() -> Date { Date::from_ymd(2025, 1, 1).unwrap() }
 
     fn make_fx_market_env() -> MarketEnvironment {
         let provider = MarketProvider::new();
