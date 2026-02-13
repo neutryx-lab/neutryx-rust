@@ -38,7 +38,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -62,7 +62,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::asian_arithmetic_put(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_put(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -81,7 +81,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_call(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -96,7 +96,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::asian_geometric_put(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_put(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -111,7 +111,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::barrier_up_out_call(100.0, 130.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_out_call(100.0, 130.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -130,7 +130,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::barrier_up_in_call(100.0, 130.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_in_call(100.0, 130.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -144,7 +144,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6);
+        let payoff = PayoffKind::barrier_down_out_put(100.0, 80.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -159,7 +159,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::barrier_down_in_put(100.0, 80.0, 1e-6);
+        let payoff = PayoffKind::barrier_down_in_put(100.0, 80.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -173,7 +173,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::lookback_fixed_call(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_call(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -187,7 +187,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::lookback_fixed_put(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_put(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -201,7 +201,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::lookback_floating_call(1e-6);
+        let payoff = PayoffKind::lookback_floating_call(1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -215,7 +215,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::lookback_floating_put(1e-6);
+        let payoff = PayoffKind::lookback_floating_put(1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn e2e_all_checkpoint_strategies() {
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let mc_config = MonteCarloConfig::builder()
@@ -278,7 +278,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = standard_gbm();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         assert_eq!(pricer.checkpoint_count(), 0);
@@ -305,7 +305,7 @@ mod tests {
         );
 
         let base_gbm = standard_gbm();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let mut pricer = CheckpointPricer::new(config.clone()).unwrap();
@@ -347,54 +347,54 @@ mod tests {
         let gbm = standard_gbm();
         let df = (-0.05_f64 * 1.0).exp();
 
-        let payoffs: Vec<(&str, PathPayoffType<f64>)> = vec![
+        let payoffs: Vec<(&str, PayoffKind<f64>)> = vec![
             (
                 "Asian Arithmetic Call",
-                PathPayoffType::asian_arithmetic_call(100.0, 1e-6),
+                PayoffKind::asian_arithmetic_call(100.0, 1e-6),
             ),
             (
                 "Asian Arithmetic Put",
-                PathPayoffType::asian_arithmetic_put(100.0, 1e-6),
+                PayoffKind::asian_arithmetic_put(100.0, 1e-6),
             ),
             (
                 "Asian Geometric Call",
-                PathPayoffType::asian_geometric_call(100.0, 1e-6),
+                PayoffKind::asian_geometric_call(100.0, 1e-6),
             ),
             (
                 "Asian Geometric Put",
-                PathPayoffType::asian_geometric_put(100.0, 1e-6),
+                PayoffKind::asian_geometric_put(100.0, 1e-6),
             ),
             (
                 "Barrier Up-Out Call",
-                PathPayoffType::barrier_up_out_call(100.0, 130.0, 1e-6),
+                PayoffKind::barrier_up_out_call(100.0, 130.0, 1e-6),
             ),
             (
                 "Barrier Up-In Call",
-                PathPayoffType::barrier_up_in_call(100.0, 130.0, 1e-6),
+                PayoffKind::barrier_up_in_call(100.0, 130.0, 1e-6),
             ),
             (
                 "Barrier Down-Out Put",
-                PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6),
+                PayoffKind::barrier_down_out_put(100.0, 80.0, 1e-6),
             ),
             (
                 "Barrier Down-In Put",
-                PathPayoffType::barrier_down_in_put(100.0, 80.0, 1e-6),
+                PayoffKind::barrier_down_in_put(100.0, 80.0, 1e-6),
             ),
             (
                 "Lookback Fixed Call",
-                PathPayoffType::lookback_fixed_call(100.0, 1e-6),
+                PayoffKind::lookback_fixed_call(100.0, 1e-6),
             ),
             (
                 "Lookback Fixed Put",
-                PathPayoffType::lookback_fixed_put(100.0, 1e-6),
+                PayoffKind::lookback_fixed_put(100.0, 1e-6),
             ),
             (
                 "Lookback Floating Call",
-                PathPayoffType::lookback_floating_call(1e-6),
+                PayoffKind::lookback_floating_call(1e-6),
             ),
             (
                 "Lookback Floating Put",
-                PathPayoffType::lookback_floating_put(1e-6),
+                PayoffKind::lookback_floating_put(1e-6),
             ),
         ];
 
@@ -443,7 +443,7 @@ mod tests {
             maturity: 1.0,
         };
 
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = (-0.05_f64 * 1.0).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
