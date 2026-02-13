@@ -11,7 +11,7 @@
 //! * **Enum dispatch** — uses [`CurveEnum`] and [`FxCurveEnum`] for zero-cost
 //!   polymorphism, keeping the structure Enzyme-friendly.
 //! * **Provider-compatible** — exposes accessor methods whose signatures mirror
-//!   [`CurveProvider`] / [`SpotProvider`] in `pricer_pricing`, allowing a thin
+//!   `CurveProvider` / `SpotProvider` in `pricer_pricing`, allowing a thin
 //!   adapter in that crate without introducing a reverse dependency.
 //!
 //! # Example
@@ -60,6 +60,9 @@ pub struct MarketEnvironment {
     fx_spots: HashMap<CurrencyPair, f64>,
     fx_curves: HashMap<CurrencyPair, FxCurveEnum<f64>>,
     vol_surfaces: HashMap<String, VolSurfaceEnum<f64>>,
+    /// Generic spot prices keyed by identifier (e.g. equity ticker, commodity
+    /// code).
+    spot_prices: HashMap<String, f64>,
 }
 
 impl MarketEnvironment {
@@ -187,6 +190,17 @@ impl MarketEnvironment {
 
     /// Returns a reference to all volatility surfaces.
     pub fn vol_surfaces(&self) -> &HashMap<String, VolSurfaceEnum<f64>> { &self.vol_surfaces }
+
+    // -- Spot prices -------------------------------------------------------
+
+    /// Returns the spot price for the given key (e.g. equity ticker), if
+    /// present.
+    pub fn spot_price(&self, key: &str) -> Option<f64> {
+        self.spot_prices.get(key).copied()
+    }
+
+    /// Returns a reference to all spot prices.
+    pub fn spot_prices(&self) -> &HashMap<String, f64> { &self.spot_prices }
 }
 
 // ---------------------------------------------------------------------------
@@ -219,6 +233,7 @@ pub struct MarketEnvironmentBuilder {
     fx_spots: HashMap<CurrencyPair, f64>,
     fx_curves: HashMap<CurrencyPair, FxCurveEnum<f64>>,
     vol_surfaces: HashMap<String, VolSurfaceEnum<f64>>,
+    spot_prices: HashMap<String, f64>,
 }
 
 impl MarketEnvironmentBuilder {
@@ -232,6 +247,7 @@ impl MarketEnvironmentBuilder {
             fx_spots: HashMap::new(),
             fx_curves: HashMap::new(),
             vol_surfaces: HashMap::new(),
+            spot_prices: HashMap::new(),
         }
     }
 
@@ -274,6 +290,13 @@ impl MarketEnvironmentBuilder {
         self
     }
 
+    /// Adds a generic spot price (equity ticker, commodity code, etc.).
+    #[must_use]
+    pub fn with_spot_price(mut self, key: impl Into<String>, price: f64) -> Self {
+        self.spot_prices.insert(key.into(), price);
+        self
+    }
+
     /// Consumes the builder and produces a [`MarketEnvironment`].
     #[must_use]
     pub fn build(self) -> MarketEnvironment {
@@ -284,6 +307,7 @@ impl MarketEnvironmentBuilder {
             fx_spots: self.fx_spots,
             fx_curves: self.fx_curves,
             vol_surfaces: self.vol_surfaces,
+            spot_prices: self.spot_prices,
         }
     }
 }
