@@ -13,9 +13,7 @@ use pricer_models::{
         BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
         JacobianMatrix,
     },
-    market::{
-        build_forward_rate_shift_grid, BootstrapInterpolation, MarketInstrument, YieldCurve,
-    },
+    market::{build_forward_rate_shift_grid, BootstrapInterpolation, MarketInstrument, YieldCurve},
 };
 
 use super::chart_grid::{
@@ -353,10 +351,7 @@ impl CurveService {
             ));
         }
 
-        let max_maturity = cds_specs
-            .iter()
-            .map(|(_, t, _)| *t)
-            .fold(1.0_f64, f64::max);
+        let max_maturity = cds_specs.iter().map(|(_, t, _)| *t).fold(1.0_f64, f64::max);
 
         // Pre-sample risk-free DFs at quarterly intervals.
         let rf_dfs = Self::sample_discount_factors(&rf_entry.curve, max_maturity);
@@ -386,9 +381,7 @@ impl CurveService {
 
         let (curve, jacobian) = bootstrapper
             .bootstrap_to_curve_with_jacobian(&market_instruments, &[])
-            .map_err(|e| {
-                ServerError::Pricing(format!("Credit curve bootstrap failed: {e}"))
-            })?;
+            .map_err(|e| ServerError::Pricing(format!("Credit curve bootstrap failed: {e}")))?;
 
         // Build Jacobian data with CDS labels.
         let jacobian_data = {
@@ -416,11 +409,7 @@ impl CurveService {
                 let sp = curve.discount_factor(*time).ok()?;
                 let days = (*time * 365.0).round() as i64;
                 let date = reference_date + chrono::Duration::days(days);
-                let hazard = if *time > 0.0 {
-                    -sp.ln() / *time
-                } else {
-                    0.0
-                };
+                let hazard = if *time > 0.0 { -sp.ln() / *time } else { 0.0 };
                 Some(CurvePillar {
                     date: date.format("%Y-%m-%d").to_string(),
                     time: *time,
@@ -498,10 +487,7 @@ impl CurveService {
     }
 
     /// Pre-sample risk-free discount factors at quarterly intervals.
-    fn sample_discount_factors(
-        curve: &dyn YieldCurve<f64>,
-        max_maturity: f64,
-    ) -> Vec<(f64, f64)> {
+    fn sample_discount_factors(curve: &dyn YieldCurve<f64>, max_maturity: f64) -> Vec<(f64, f64)> {
         let step = 0.25_f64;
         let n = ((max_maturity / step).ceil() as usize).max(1) + 1;
         (0..=n)

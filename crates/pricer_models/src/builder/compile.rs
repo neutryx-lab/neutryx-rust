@@ -393,9 +393,11 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
             InstrumentType::Bond => {
                 // Bond: price from curve DFs, then convert to YTM via Newton-Raphson.
                 // Coupon rate is stored in fixed_rate.
-                let coupon_rate = self.fixed_rate.ok_or_else(|| MarketDataError::InvalidInput {
-                    message: "Bond must have coupon_rate (stored in fixed_rate)".to_string(),
-                })?;
+                let coupon_rate = self
+                    .fixed_rate
+                    .ok_or_else(|| MarketDataError::InvalidInput {
+                        message: "Bond must have coupon_rate (stored in fixed_rate)".to_string(),
+                    })?;
 
                 // Step 1: Dirty price from curve DFs
                 let n = self.cashflow_times.len();

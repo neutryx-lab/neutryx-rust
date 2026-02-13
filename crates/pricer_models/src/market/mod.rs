@@ -1,24 +1,20 @@
-//! Unified market environment for pricing operations.
+//! Unified market data module for pricing operations.
 //!
-//! [`MarketEnvironment`] aggregates all market data (discount curves, forward
-//! curves, FX spots, FX forward curves, and volatility surfaces) required by a
-//! pricing kernel into a single, immutable snapshot.
+//! This module aggregates all market data types required by the pricing
+//! library:
 //!
-//! # Design
-//!
-//! * **Keyed by domain types** — discount curves by [`Currency`], forward
-//!   curves by [`CurveName`], FX data by [`CurrencyPair`].
-//! * **Enum dispatch** — uses [`CurveEnum`] and [`FxCurveEnum`] for zero-cost
-//!   polymorphism, keeping the structure Enzyme-friendly.
-//! * **Provider-compatible** — exposes accessor methods whose signatures mirror
-//!   `CurveProvider` / `SpotProvider` in pricer\_pricing, allowing a thin
-//!   adapter in that crate without introducing a reverse dependency.
+//! * **[`MarketEnvironment`]** — immutable snapshot of curves, FX, and vol
+//!   surfaces for a single valuation date.
+//! * **[`curves`]** — yield curve traits, bootstrapped curves, and
+//!   calibration instruments.
+//! * **[`fx`]** — FX forward curves (flat, IRP-based).
+//! * **[`vol`]** — volatility surfaces (Black-Scholes, SABR, local vol).
+//! * **[`jumps`]** — jump-pillar utilities for rate discontinuities.
 //!
 //! # Example
 //!
 //! ```
-//! use pricer_models::market_env::MarketEnvironmentBuilder;
-//! use pricer_models::market::{CurveEnum, CurveName};
+//! use pricer_models::market::{MarketEnvironmentBuilder, CurveEnum, CurveName};
 //! use infra_domain::market::Currency;
 //! use infra_domain::time::Date;
 //!
@@ -37,13 +33,92 @@ use infra_domain::{
     market::{Currency, CurrencyPair},
     time::Date,
 };
+use thiserror::Error;
 
-use crate::{
-    market::{
-        curves::YieldCurve, fx_curves::FxCurve, CurveEnum, CurveName, FxCurveEnum, MarketDataError,
-    },
-    vol_surface::{VolSurface, VolSurfaceEnum},
+pub mod curves;
+pub mod fx;
+pub mod jumps;
+pub mod vol;
+
+// ---------------------------------------------------------------------------
+// Re-exports — keep `market::CurveEnum` etc. working
+// ---------------------------------------------------------------------------
+
+pub use curves::{
+    BootstrapInterpolation, BootstrappedCurve, CurveEnum, CurveName, CurveSet, FlatCurve,
+    ForwardRateDecomposition, Frequency, MarketInstrument, YieldCurve,
 };
+pub use fx::{FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
+pub use jumps::{
+    build_forward_rate_shift_grid, convert_jump_pillars, convert_jump_pillars_to_tuples, JumpEntry,
+};
+pub use vol::{VolSurface, VolSurfaceEnum, VolSurfaceError};
+
+// ---------------------------------------------------------------------------
+// Shared error type
+// ---------------------------------------------------------------------------
+
+/// Errors that can occur during market data operations.
+#[derive(Debug, Clone, Error)]
+pub enum MarketDataError {
+    /// Interpolation failed at a given point.
+    #[error("Interpolation failed: {reason}")]
+    InterpolationFailed {
+        /// Reason for the failure.
+        reason: String,
+    },
+
+    /// Curve not found.
+    #[error("Curve not found: {name}")]
+    CurveNotFound {
+        /// Name of the missing curve.
+        name: String,
+    },
+
+    /// Invalid input data.
+    #[error("Invalid input: {message}")]
+    InvalidInput {
+        /// Description of the invalid input.
+        message: String,
+    },
+
+    /// Maturity out of range.
+    #[error("Maturity {maturity} out of range (max: {max_maturity})")]
+    MaturityOutOfRange {
+        /// Requested maturity.
+        maturity: f64,
+        /// Maximum allowed maturity.
+        max_maturity: f64,
+    },
+}
+
+// ---------------------------------------------------------------------------
+// MarketProvider (placeholder)
+// ---------------------------------------------------------------------------
+
+/// Market data provider for pricing operations (placeholder).
+#[derive(Debug, Clone, Default)]
+pub struct MarketProvider {
+    curve_set: CurveSet<f64>,
+}
+
+impl MarketProvider {
+    /// Creates a new market provider.
+    pub fn new() -> Self {
+        Self {
+            curve_set: CurveSet::new(),
+        }
+    }
+
+    /// Gets a curve for the given currency.
+    pub fn get_curve(&self, _currency: Currency) -> Option<&CurveEnum<f64>> {
+        // Placeholder: return first available curve or None
+        self.curve_set.curves.values().next()
+    }
+
+    /// Returns the curve set.
+    pub fn curve_set(&self) -> &CurveSet<f64> { &self.curve_set }
+}
 
 // ---------------------------------------------------------------------------
 // MarketEnvironment
@@ -213,8 +288,7 @@ impl MarketEnvironment {
 /// # Example
 ///
 /// ```
-/// use pricer_models::market_env::MarketEnvironmentBuilder;
-/// use pricer_models::market::CurveEnum;
+/// use pricer_models::market::{MarketEnvironmentBuilder, CurveEnum};
 /// use infra_domain::market::Currency;
 /// use infra_domain::time::Date;
 ///

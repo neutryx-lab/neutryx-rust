@@ -239,7 +239,11 @@ fn compute_cds_par_spread<T: Float, C: YieldCurve<T>>(
     for i in 1..=n_periods {
         let t_i = {
             let t = quarter * from_usize::<T>(i);
-            if t > maturity { maturity } else { t }
+            if t > maturity {
+                maturity
+            } else {
+                t
+            }
         };
 
         let sp_i = curve.discount_factor(t_i)?;
@@ -249,7 +253,11 @@ fn compute_cds_par_spread<T: Float, C: YieldCurve<T>>(
             t_i
         } else {
             let t_prev = quarter * from_usize::<T>(i - 1);
-            if t_i > t_prev { t_i - t_prev } else { quarter }
+            if t_i > t_prev {
+                t_i - t_prev
+            } else {
+                quarter
+            }
         };
 
         // Protection leg: (1-R) × DF_rf × (SP_{i-1} - SP_i)
@@ -270,7 +278,8 @@ fn compute_cds_par_spread<T: Float, C: YieldCurve<T>>(
     Ok(protection_leg / risky_annuity)
 }
 
-/// Log-linear interpolation of risk-free discount factors from pre-sampled pairs.
+/// Log-linear interpolation of risk-free discount factors from pre-sampled
+/// pairs.
 fn interpolate_rf_df<T: Float>(t: T, dfs: &[(T, T)]) -> T {
     if dfs.is_empty() {
         return T::one();
@@ -296,10 +305,10 @@ fn interpolate_rf_df<T: Float>(t: T, dfs: &[(T, T)]) -> T {
 
 /// Compute the bond yield-to-maturity implied by a yield curve.
 ///
-/// 1. Price the bond using curve discount factors:
-///    `P = Σ(c × τ_i × DF(t_i)) + DF(T)`
-/// 2. Solve for YTM `y` via Newton-Raphson:
-///    `P(y) = Σ(c × τ_i × exp(-y × t_i)) + exp(-y × T)`
+/// 1. Price the bond using curve discount factors: `P = Σ(c × τ_i × DF(t_i)) +
+///    DF(T)`
+/// 2. Solve for YTM `y` via Newton-Raphson: `P(y) = Σ(c × τ_i × exp(-y × t_i))
+///    + exp(-y × T)`
 fn compute_bond_ytm<T: Float, C: YieldCurve<T>>(
     maturity: T,
     coupon_rate: T,
@@ -485,13 +494,8 @@ mod tests {
         let recovery = 0.40;
         let pillars = vec![0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0];
         let sps: Vec<f64> = pillars.iter().map(|&t| (-hazard_rate * t).exp()).collect();
-        let sp_curve = BootstrappedCurve::new(
-            pillars,
-            sps,
-            BootstrapInterpolation::LogLinear,
-            true,
-        )
-        .unwrap();
+        let sp_curve =
+            BootstrappedCurve::new(pillars, sps, BootstrapInterpolation::LogLinear, true).unwrap();
 
         // Pre-sample risk-free DFs at 3% flat
         let rf_dfs: Vec<(f64, f64)> = (1..=40)
@@ -572,7 +576,15 @@ mod tests {
     fn test_bond_instrument_type() {
         let bond: MarketInstrument<f64> = MarketInstrument::bond(10.0, 0.04, 0.035);
         assert_eq!(CalibrationInstrument::instrument_type(&bond), "Bond");
-        assert_relative_eq!(CalibrationInstrument::maturity(&bond), 10.0, epsilon = 1e-10);
-        assert_relative_eq!(CalibrationInstrument::market_rate(&bond), 0.04, epsilon = 1e-10);
+        assert_relative_eq!(
+            CalibrationInstrument::maturity(&bond),
+            10.0,
+            epsilon = 1e-10
+        );
+        assert_relative_eq!(
+            CalibrationInstrument::market_rate(&bond),
+            0.04,
+            epsilon = 1e-10
+        );
     }
 }

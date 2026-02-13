@@ -40,15 +40,6 @@ pub enum PricingError {
         quote: Currency,
     },
 
-    /// FX rate not found for standalone pricing (always available).
-    #[error("FX rate not found (standalone): {base}/{quote}")]
-    StandaloneFxRateNotFound {
-        /// Base currency code.
-        base: String,
-        /// Quote currency code.
-        quote: String,
-    },
-
     /// Trade structure is invalid.
     #[error("Invalid trade: {reason} (trade_id: {trade_id:?})")]
     InvalidTrade {
@@ -174,14 +165,6 @@ impl PricingError {
         Self::FxRateNotFound { base, quote }
     }
 
-    /// Creates an FX rate not found error for standalone pricing (always
-    pub fn standalone_fx_rate_not_found(base: impl Into<String>, quote: impl Into<String>) -> Self {
-        Self::StandaloneFxRateNotFound {
-            base: base.into(),
-            quote: quote.into(),
-        }
-    }
-
     /// Creates an internal error.
     pub fn internal(msg: impl Into<String>) -> Self { Self::Internal(msg.into()) }
 
@@ -221,7 +204,6 @@ impl PricingError {
             Self::MissingMarketData { .. }
                 | Self::MarketDataResolution { .. }
                 | Self::FxRateNotFound { .. }
-                | Self::StandaloneFxRateNotFound { .. }
         )
     }
 
@@ -335,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_pricing_error_fx_rate_not_found() {
-        let err = PricingError::standalone_fx_rate_not_found("EUR", "USD");
+        let err = PricingError::fx_rate_not_found(Currency::EUR, Currency::USD);
         assert!(err.to_string().contains("FX rate not found"));
         assert!(err.to_string().contains("EUR"));
         assert!(err.to_string().contains("USD"));

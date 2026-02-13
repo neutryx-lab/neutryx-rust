@@ -14,7 +14,7 @@
 //! ## Example
 //!
 //! ```
-//! use pricer_models::vol_surface::{VolSurfaceEnum, BlackScholesVol};
+//! use pricer_models::market::vol::{VolSurfaceEnum, BlackScholesVol};
 //!
 //! let surface = VolSurfaceEnum::<f64>::flat(0.2).unwrap();
 //! assert!(surface.is_parametric());

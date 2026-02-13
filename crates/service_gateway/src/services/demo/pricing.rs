@@ -7,8 +7,7 @@ use infra_domain::{
     market::Currency,
     time::Date,
     trade::{
-        Cashflow as DomainCashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade,
-        TradeType,
+        Cashflow as DomainCashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType,
     },
 };
 use pricer_pricing::{CalcSetting, MarketEnvironment, MarketEnvironmentBuilder, Pricer};
@@ -53,9 +52,7 @@ fn parse_date(s: &str) -> Result<Date, ServerError> {
 }
 
 /// Format a domain `Date` as "YYYY-MM-DD".
-fn format_date(date: Date) -> String {
-    date.into_inner().format("%Y-%m-%d").to_string()
-}
+fn format_date(date: Date) -> String { date.into_inner().format("%Y-%m-%d").to_string() }
 
 /// Default discount rate for demo pricing (flat curve).
 const DEFAULT_DISCOUNT_RATE: f64 = 0.05;
@@ -361,12 +358,8 @@ impl DemoService {
 
         // Theta: shift valuation date forward by 1 day.
         let theta_inner = valuation_date.into_inner() + chrono::Duration::days(1);
-        let theta_date = Date::from_ymd(
-            theta_inner.year(),
-            theta_inner.month(),
-            theta_inner.day(),
-        )
-        .map_err(|e| ServerError::Internal(format!("Theta date error: {e}")))?;
+        let theta_date = Date::from_ymd(theta_inner.year(), theta_inner.month(), theta_inner.day())
+            .map_err(|e| ServerError::Internal(format!("Theta date error: {e}")))?;
 
         // Rebuild legs relative to the new valuation date.
         let theta_legs = build_domain_legs(&request.legs, theta_date)?;

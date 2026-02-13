@@ -1028,16 +1028,8 @@ mod tests {
 
     fn sample_jump_pillars() -> Vec<JumpPillar> {
         vec![
-            JumpPillar::new(
-                Date::from_ymd(2024, 3, 20).unwrap(),
-                25.0,
-                0.8,
-            ),
-            JumpPillar::new(
-                Date::from_ymd(2024, 6, 12).unwrap(),
-                -25.0,
-                0.6,
-            ),
+            JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.8),
+            JumpPillar::new(Date::from_ymd(2024, 6, 12).unwrap(), -25.0, 0.6),
         ]
     }
 
@@ -1093,11 +1085,7 @@ mod tests {
         let valuation = test_valuation_date();
         let instruments = sample_instruments();
 
-        let jump = JumpPillar::new(
-            Date::from_ymd(2024, 3, 20).unwrap(),
-            25.0,
-            1.0,
-        );
+        let jump = JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 1.0);
 
         let bootstrapper = CurveBootstrapper::new();
         let curve = bootstrapper
@@ -1247,14 +1235,9 @@ mod tests {
         let pillars = vec![0.5_f64, 1.0, 2.0];
         let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
 
-        let curve = BootstrappedCurve::new(
-            pillars,
-            dfs,
-            BootstrapInterpolation::LogLinear,
-            true,
-        )
-        .unwrap()
-        .with_jumps(jumps);
+        let curve = BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true)
+            .unwrap()
+            .with_jumps(jumps);
 
         for _ in 0..100 {
             let _ = curve.discount_factor(0.55);
@@ -1283,11 +1266,7 @@ mod tests {
             MarketInstrument::ois(1.0, 0.03),
         ];
 
-        let jump = JumpPillar::new(
-            Date::from_ymd(2024, 1, 15).unwrap(),
-            10.0,
-            1.0,
-        );
+        let jump = JumpPillar::new(Date::from_ymd(2024, 1, 15).unwrap(), 10.0, 1.0);
 
         let bootstrapper = CurveBootstrapper::new();
         let curve = bootstrapper
@@ -1312,11 +1291,7 @@ mod tests {
             MarketInstrument::ois(2.0, 0.035),
         ];
 
-        let jump = JumpPillar::new(
-            Date::from_ymd(2027, 6, 12).unwrap(),
-            25.0,
-            0.5,
-        );
+        let jump = JumpPillar::new(Date::from_ymd(2027, 6, 12).unwrap(), 25.0, 0.5);
 
         let bootstrapper = CurveBootstrapper::new();
         let curve = bootstrapper
@@ -1339,11 +1314,7 @@ mod tests {
         let valuation = test_valuation_date();
         let instruments = sample_instruments();
 
-        let jump = JumpPillar::new(
-            Date::from_ymd(2024, 3, 20).unwrap(),
-            25.0,
-            0.0,
-        );
+        let jump = JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.0);
 
         let bootstrapper = CurveBootstrapper::new();
 

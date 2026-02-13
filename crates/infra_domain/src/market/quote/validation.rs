@@ -108,9 +108,7 @@ impl QuoteValidator for StandardQuoteValidator {
 
             QuoteCategory::Vol => self.validate_volatility(value),
 
-            QuoteCategory::Bond | QuoteCategory::CreditSpread => {
-                self.validate_interest_rate(value)
-            }
+            QuoteCategory::Bond | QuoteCategory::CreditSpread => self.validate_interest_rate(value),
         }
     }
 }

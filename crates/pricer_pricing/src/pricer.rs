@@ -4,7 +4,7 @@
 //! and [`CalcSetting`]:
 //!
 //! - **Linear products** (Swap, FxForward, Bond, Deposit, …) → cashflow
-//!   discounting via the existing [`GenericPricer`] infrastructure.
+//!   discounting.
 //! - **Vanilla options** (FxOption, EquityOption, CommodityOption) →
 //!   closed-form analytical formulae (Garman-Kohlhagen, Black-Scholes).
 //! - **Barrier / exotic options** (FxBarrierOption, …) → Script engine

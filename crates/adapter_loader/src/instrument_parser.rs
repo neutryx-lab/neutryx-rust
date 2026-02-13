@@ -117,12 +117,12 @@ impl InstrumentSpec {
             }
             "bond" => {
                 let tenor_years = self.tenor_years()?;
-                let coupon_rate = self.coupon_rate.ok_or_else(|| {
-                    InstrumentParseError::InvalidRate {
-                        rate: self.rate,
-                        reason: "Bond requires coupon_rate field".to_string(),
-                    }
-                })?;
+                let coupon_rate =
+                    self.coupon_rate
+                        .ok_or_else(|| InstrumentParseError::InvalidRate {
+                            rate: self.rate,
+                            reason: "Bond requires coupon_rate field".to_string(),
+                        })?;
                 Ok(MarketInstrument::bond(tenor_years, self.rate, coupon_rate))
             }
             _ => Err(InstrumentParseError::UnknownType {

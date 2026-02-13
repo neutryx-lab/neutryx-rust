@@ -772,10 +772,6 @@ function formatPct(value: number): string {
   return `${(value * 100).toFixed(3)}%`;
 }
 
-function formatPrice(value: number): string {
-  return value.toFixed(4);
-}
-
 function selectEvent(eventId: string) {
   selectedEventId.value = selectedEventId.value === eventId ? null : eventId;
 }

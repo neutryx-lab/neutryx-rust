@@ -110,12 +110,11 @@ impl PricingService {
     fn price_vanilla_option(
         request: &PricingRequest,
     ) -> Result<(f64, Option<GreeksResponse>), ServerError> {
-        let val_date = Date::from_ymd(2025, 1, 1)
-            .map_err(|e| ServerError::Internal(format!("{e}")))?;
+        let val_date =
+            Date::from_ymd(2025, 1, 1).map_err(|e| ServerError::Internal(format!("{e}")))?;
 
         let expiry_days = (request.expiry * 365.0).round() as i64;
-        let expiry_inner =
-            val_date.into_inner() + chrono::Duration::days(expiry_days);
+        let expiry_inner = val_date.into_inner() + chrono::Duration::days(expiry_days);
         let expiry_date = Date::from_ymd(
             expiry_inner.year(),
             expiry_inner.month(),
