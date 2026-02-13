@@ -195,9 +195,7 @@ impl MarketEnvironment {
 
     /// Returns the spot price for the given key (e.g. equity ticker), if
     /// present.
-    pub fn spot_price(&self, key: &str) -> Option<f64> {
-        self.spot_prices.get(key).copied()
-    }
+    pub fn spot_price(&self, key: &str) -> Option<f64> { self.spot_prices.get(key).copied() }
 
     /// Returns a reference to all spot prices.
     pub fn spot_prices(&self) -> &HashMap<String, f64> { &self.spot_prices }

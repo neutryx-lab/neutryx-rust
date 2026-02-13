@@ -286,8 +286,16 @@ mod e2e_path_dependent {
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        assert!(result.price > 0.0, "Price should be positive: {}", result.price);
-        assert!(result.price < 15.0, "Price should be reasonable: {}", result.price);
+        assert!(
+            result.price > 0.0,
+            "Price should be positive: {}",
+            result.price
+        );
+        assert!(
+            result.price < 15.0,
+            "Price should be reasonable: {}",
+            result.price
+        );
         assert!(result.std_error > 0.0 && result.std_error < 1.0);
     }
 
@@ -302,7 +310,11 @@ mod e2e_path_dependent {
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        assert!(result.price > 0.0, "Put price should be positive: {}", result.price);
+        assert!(
+            result.price > 0.0,
+            "Put price should be positive: {}",
+            result.price
+        );
         assert!(result.price < 15.0);
     }
 
@@ -347,7 +359,11 @@ mod e2e_path_dependent {
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-        assert!(result.price >= 0.0, "Price should be non-negative: {}", result.price);
+        assert!(
+            result.price >= 0.0,
+            "Price should be non-negative: {}",
+            result.price
+        );
         assert!(result.price < 15.0);
     }
 
@@ -484,7 +500,9 @@ mod e2e_path_dependent {
             assert!(
                 (price - reference).abs() < 1e-10,
                 "Strategy {} produced different price: {} vs {}",
-                i, price, reference
+                i,
+                price,
+                reference
             );
         }
     }
@@ -537,11 +555,17 @@ mod e2e_path_dependent {
         let _price_base = pricer.price_path_dependent_with_checkpoints(base_gbm, payoff, df);
 
         let bump = 0.01;
-        let gbm_up = GbmParams { spot: base_gbm.spot * (1.0 + bump), ..base_gbm };
+        let gbm_up = GbmParams {
+            spot: base_gbm.spot * (1.0 + bump),
+            ..base_gbm
+        };
         let mut pricer_up = CheckpointPricer::new(config.clone()).unwrap();
         let price_up = pricer_up.price_path_dependent_with_checkpoints(gbm_up, payoff, df);
 
-        let gbm_down = GbmParams { spot: base_gbm.spot * (1.0 - bump), ..base_gbm };
+        let gbm_down = GbmParams {
+            spot: base_gbm.spot * (1.0 - bump),
+            ..base_gbm
+        };
         let mut pricer_down = CheckpointPricer::new(config).unwrap();
         let price_down = pricer_down.price_path_dependent_with_checkpoints(gbm_down, payoff, df);
 
@@ -567,27 +591,77 @@ mod e2e_path_dependent {
         let df = (-0.05_f64 * 1.0).exp();
 
         let payoffs: Vec<(&str, PathPayoffType<f64>)> = vec![
-            ("Asian Arithmetic Call", PathPayoffType::asian_arithmetic_call(100.0, 1e-6)),
-            ("Asian Arithmetic Put", PathPayoffType::asian_arithmetic_put(100.0, 1e-6)),
-            ("Asian Geometric Call", PathPayoffType::asian_geometric_call(100.0, 1e-6)),
-            ("Asian Geometric Put", PathPayoffType::asian_geometric_put(100.0, 1e-6)),
-            ("Barrier Up-Out Call", PathPayoffType::barrier_up_out_call(100.0, 130.0, 1e-6)),
-            ("Barrier Up-In Call", PathPayoffType::barrier_up_in_call(100.0, 130.0, 1e-6)),
-            ("Barrier Down-Out Put", PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6)),
-            ("Barrier Down-In Put", PathPayoffType::barrier_down_in_put(100.0, 80.0, 1e-6)),
-            ("Lookback Fixed Call", PathPayoffType::lookback_fixed_call(100.0, 1e-6)),
-            ("Lookback Fixed Put", PathPayoffType::lookback_fixed_put(100.0, 1e-6)),
-            ("Lookback Floating Call", PathPayoffType::lookback_floating_call(1e-6)),
-            ("Lookback Floating Put", PathPayoffType::lookback_floating_put(1e-6)),
+            (
+                "Asian Arithmetic Call",
+                PathPayoffType::asian_arithmetic_call(100.0, 1e-6),
+            ),
+            (
+                "Asian Arithmetic Put",
+                PathPayoffType::asian_arithmetic_put(100.0, 1e-6),
+            ),
+            (
+                "Asian Geometric Call",
+                PathPayoffType::asian_geometric_call(100.0, 1e-6),
+            ),
+            (
+                "Asian Geometric Put",
+                PathPayoffType::asian_geometric_put(100.0, 1e-6),
+            ),
+            (
+                "Barrier Up-Out Call",
+                PathPayoffType::barrier_up_out_call(100.0, 130.0, 1e-6),
+            ),
+            (
+                "Barrier Up-In Call",
+                PathPayoffType::barrier_up_in_call(100.0, 130.0, 1e-6),
+            ),
+            (
+                "Barrier Down-Out Put",
+                PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6),
+            ),
+            (
+                "Barrier Down-In Put",
+                PathPayoffType::barrier_down_in_put(100.0, 80.0, 1e-6),
+            ),
+            (
+                "Lookback Fixed Call",
+                PathPayoffType::lookback_fixed_call(100.0, 1e-6),
+            ),
+            (
+                "Lookback Fixed Put",
+                PathPayoffType::lookback_fixed_put(100.0, 1e-6),
+            ),
+            (
+                "Lookback Floating Call",
+                PathPayoffType::lookback_floating_call(1e-6),
+            ),
+            (
+                "Lookback Floating Put",
+                PathPayoffType::lookback_floating_put(1e-6),
+            ),
         ];
 
         for (name, payoff) in payoffs {
             let mut pricer = CheckpointPricer::new(config.clone()).unwrap();
             let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
-            assert!(result.price >= 0.0, "{}: Price should be non-negative: {}", name, result.price);
-            assert!(result.std_error > 0.0, "{}: Std error should be positive: {}", name, result.std_error);
-            assert!(pricer.checkpoint_count() > 0, "{}: Checkpoints should be created", name);
+            assert!(
+                result.price >= 0.0,
+                "{}: Price should be non-negative: {}",
+                name,
+                result.price
+            );
+            assert!(
+                result.std_error > 0.0,
+                "{}: Std error should be positive: {}",
+                name,
+                result.std_error
+            );
+            assert!(
+                pricer.checkpoint_count() > 0,
+                "{}: Checkpoints should be created",
+                name
+            );
         }
     }
 
@@ -623,6 +697,9 @@ mod e2e_path_dependent {
         assert!(pricer.checkpoint_memory_usage() > 0);
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
-        assert!(is_equivalent, "Checkpoint and non-checkpoint results should match");
+        assert!(
+            is_equivalent,
+            "Checkpoint and non-checkpoint results should match"
+        );
     }
 }

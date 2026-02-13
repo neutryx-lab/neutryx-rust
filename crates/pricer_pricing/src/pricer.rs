@@ -243,18 +243,15 @@ impl Pricer {
         let leg_currency = leg.currency;
 
         let curve = market.discount_curve(&leg_currency).ok_or_else(|| {
-            PricingError::missing_market_data(format!(
-                "No discount curve for {:?}",
-                leg_currency
-            ))
+            PricingError::missing_market_data(format!("No discount curve for {:?}", leg_currency))
         })?;
 
         let fx_rate = if leg_currency == reporting_currency {
             1.0
         } else {
-            market.fx_rate(leg_currency, reporting_currency).ok_or_else(|| {
-                PricingError::fx_rate_not_found(leg_currency, reporting_currency)
-            })?
+            market
+                .fx_rate(leg_currency, reporting_currency)
+                .ok_or_else(|| PricingError::fx_rate_not_found(leg_currency, reporting_currency))?
         };
 
         let evaluator = PayoffEvaluator::new(curve_set);
@@ -410,9 +407,9 @@ impl Pricer {
         let (base_ccy, quote_ccy) = Self::extract_fx_currencies(trade)?;
 
         // Market data extraction.
-        let spot = market.fx_rate(base_ccy, quote_ccy).ok_or_else(|| {
-            PricingError::fx_rate_not_found(base_ccy, quote_ccy)
-        })?;
+        let spot = market
+            .fx_rate(base_ccy, quote_ccy)
+            .ok_or_else(|| PricingError::fx_rate_not_found(base_ccy, quote_ccy))?;
 
         let domestic_curve = market.discount_curve(&quote_ccy).ok_or_else(|| {
             PricingError::missing_market_data(format!(
@@ -435,11 +432,7 @@ impl Pricer {
 
         // Compute forward for vol surface lookup, then retrieve implied vol.
         let forward = spot * ((rd - rf) * t).exp();
-        let vol_key = format!(
-            "FX:{}/{}",
-            base_ccy.code(),
-            quote_ccy.code()
-        );
+        let vol_key = format!("FX:{}/{}", base_ccy.code(), quote_ccy.code());
         let vol = market
             .implied_vol(&vol_key, strike, t, forward)
             .map_err(Self::map_market_error)?;
@@ -491,21 +484,17 @@ impl Pricer {
         start: Instant,
     ) -> Result<UnifiedPricingResult, PricingError> {
         let spot = market.spot_price(underlyer).ok_or_else(|| {
-            PricingError::missing_market_data(format!(
-                "No equity spot price for '{}'",
-                underlyer
-            ))
+            PricingError::missing_market_data(format!("No equity spot price for '{}'", underlyer))
         })?;
 
-        let domestic_curve =
-            market
-                .discount_curve(&calc.reporting_currency)
-                .ok_or_else(|| {
-                    PricingError::missing_market_data(format!(
-                        "No discount curve for {:?}",
-                        calc.reporting_currency
-                    ))
-                })?;
+        let domestic_curve = market
+            .discount_curve(&calc.reporting_currency)
+            .ok_or_else(|| {
+                PricingError::missing_market_data(format!(
+                    "No discount curve for {:?}",
+                    calc.reporting_currency
+                ))
+            })?;
 
         let valuation_date = market.valuation_date();
         let t = Self::year_fraction(valuation_date, expiry_date)?;
@@ -569,15 +558,14 @@ impl Pricer {
             ))
         })?;
 
-        let domestic_curve =
-            market
-                .discount_curve(&calc.reporting_currency)
-                .ok_or_else(|| {
-                    PricingError::missing_market_data(format!(
-                        "No discount curve for {:?}",
-                        calc.reporting_currency
-                    ))
-                })?;
+        let domestic_curve = market
+            .discount_curve(&calc.reporting_currency)
+            .ok_or_else(|| {
+                PricingError::missing_market_data(format!(
+                    "No discount curve for {:?}",
+                    calc.reporting_currency
+                ))
+            })?;
 
         let valuation_date = market.valuation_date();
         let t = Self::year_fraction(valuation_date, expiry_date)?;
@@ -645,10 +633,7 @@ impl Pricer {
     }
 
     /// Extracts the zero rate from a yield curve at time `t`.
-    fn zero_rate_from_curve(
-        curve: &CurveEnum<f64>,
-        t: f64,
-    ) -> Result<f64, PricingError> {
+    fn zero_rate_from_curve(curve: &CurveEnum<f64>, t: f64) -> Result<f64, PricingError> {
         curve
             .zero_rate(t)
             .map_err(|e| PricingError::market_data_resolution(format!("{:?}", e)))
@@ -690,9 +675,7 @@ mod tests {
         },
     };
     use pricer_models::{
-        market::CurveEnum,
-        market_env::MarketEnvironmentBuilder,
-        vol_surface::VolSurfaceEnum,
+        market::CurveEnum, market_env::MarketEnvironmentBuilder, vol_surface::VolSurfaceEnum,
     };
 
     use super::*;
@@ -972,9 +955,7 @@ mod tests {
     fn test_fx_option_pricing_e2e() {
         let trade = make_fx_option_trade();
         let env = make_fx_market_env();
-        let calc = CalcSetting::builder()
-            .compute_greeks(true)
-            .build();
+        let calc = CalcSetting::builder().compute_greeks(true).build();
 
         let result = Pricer::price_unified(&trade, &env, &calc).unwrap();
         assert!(result.pv > 0.0, "FX call option PV should be positive");

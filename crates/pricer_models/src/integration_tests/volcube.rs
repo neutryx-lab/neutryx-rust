@@ -11,6 +11,7 @@
 //! because the volcube module is planned but not yet implemented.
 
 use chrono::NaiveDate;
+
 use crate::market::volcube::{
     AADCrossValidator, Currency, Tenor, UnderlyingIndex, VegaBumpConfig, VolCubeBuilder,
     VolCubeConfig, VolCubeVegaCalculator, VolInstrument, VolLazyEvaluator, VolQuote, VolQuoteSet,
@@ -116,9 +117,8 @@ mod curve_volcube_flow_tests {
 // ============================================================================
 
 mod cache_invalidation_tests {
-    use crate::market::volcube::QuoteUpdateListener;
-
     use super::*;
+    use crate::market::volcube::QuoteUpdateListener;
 
     /// Test that quote updates trigger cache invalidation.
     #[test]

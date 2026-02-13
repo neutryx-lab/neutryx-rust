@@ -12,6 +12,7 @@
 
 use approx::assert_relative_eq;
 use num_traits::Float;
+
 use crate::{
     builder::{
         CalibrationInstrument, CalibrationProblem, GlobalBootstrapConfig, GlobalBootstrapper,
