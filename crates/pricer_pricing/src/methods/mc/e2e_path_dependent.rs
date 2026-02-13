@@ -2,13 +2,14 @@
 
 #[cfg(test)]
 mod tests {
+    use pricer_models::path_dependent::PathPayoffType;
+
     use crate::{
         checkpoint::CheckpointStrategy,
         mc::{
             pricer_checkpoint::{CheckpointPricer, CheckpointPricingConfig},
             GbmParams, MonteCarloConfig,
         },
-        path_dependent::PathPayoffType,
     };
 
     fn standard_gbm() -> GbmParams {

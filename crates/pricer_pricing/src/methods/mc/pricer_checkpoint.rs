@@ -2,17 +2,14 @@
 
 use pricer_core::math::rng::PricerRng;
 
+use pricer_models::path_dependent::{PathDependentPayoff, PathObserverState, PathPayoffType};
+
 use crate::{
     checkpoint::{
         CheckpointManager, CheckpointResult, CheckpointStrategy, MemoryBudget, SimulationState,
     },
-    methods::{
-        mc::{
-            workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult,
-        },
-        mc::{
-            workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult,
-        },
+    methods::mc::{
+        workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult,
     },
 };
 
