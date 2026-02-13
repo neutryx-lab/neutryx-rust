@@ -1,7 +1,7 @@
 //! PathObserver: Streaming statistics accumulation for path-dependent options.
 
 use num_traits::Float;
-pub use pricer_checkpoint::PathObserverState;
+pub use crate::checkpoint::PathObserverState;
 
 use crate::numeric::from_usize;
 

@@ -8,7 +8,7 @@ use petgraph::{
     visit::EdgeRef,
 };
 
-use crate::{
+use super::{
     error::GraphError,
     types::{
         ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup,

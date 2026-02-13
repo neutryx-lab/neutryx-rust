@@ -195,11 +195,12 @@ trade/             → Trade representation (CF-expanded format)
 ```text
 L1: pricer_core      → Foundation (Stable) - math (smoothing, interpolators, solvers), types, traits
 L2: pricer_models    → Business Logic (Stable) - instruments, market (curves, surfaces, calibration), models, schedules
-L3: pricer_pricing   → MC Engine (Stable) - mc, rng, greeks, context, path_dependent, checkpoint
+L3: pricer_pricing   → MC Engine (Stable) - mc, rng, greeks, context, path_dependent, checkpoint, graph
 L4: pricer_risk      → Application + Enzyme AD (Stable, Nightly with enzyme-ad) - portfolio, exposure, xva, scenarios, enzyme
 ```
 
 > **Note**: L2.5 (`pricer_optimiser`) was removed in 2026-01. Market data functionality (curves, surfaces, bootstrapping, provider) consolidated into `pricer_models::market`, calibration engine into `pricer_models::market::calibration`.
+> **Note**: `pricer_checkpoint` and `pricer_graph` were consolidated into `pricer_pricing` in 2026-02. Both were exclusively consumed by L3 and are now internal modules (`checkpoint/`, `graph/`).
 
 ### pricer_core (L1)
 

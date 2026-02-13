@@ -3,7 +3,7 @@
 use num_traits::Float;
 use thiserror::Error;
 
-use crate::{
+use super::{
     budget::MemoryBudget,
     state::{CheckpointStorage, SimulationState},
     strategy::CheckpointStrategy,
@@ -195,7 +195,7 @@ impl<T: Float> Default for CheckpointManager<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PathObserverState;
+    use crate::checkpoint::PathObserverState;
 
     fn create_test_state(step: usize, n_paths: usize) -> SimulationState<f64> {
         SimulationState::new(

@@ -39,11 +39,8 @@ serde_json.workspace = true
 # Aligned memory allocation (for SIMD optimisation)
 aligned-vec = "0.5"
 
-# Checkpointing for memory-efficient AD
-pricer_checkpoint = { path = "../pricer_checkpoint" }
-
-# Computation graph visualisation
-pricer_graph = { path = "../pricer_graph" }
+# Graph data structures and algorithms (for computation graph visualisation)
+petgraph.workspace = true
 
 [dev-dependencies]
 approx.workspace = true

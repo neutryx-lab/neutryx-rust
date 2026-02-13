@@ -2,7 +2,7 @@
 
 use num_traits::Float;
 
-use crate::observer_state::PathObserverState;
+use super::observer_state::PathObserverState;
 
 /// Minimal simulation state for memory-efficient checkpointing.
 #[derive(Clone, Debug, Default)]

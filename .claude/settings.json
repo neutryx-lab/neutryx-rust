@@ -1,7 +1,34 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(while read dir)"
-    ]
+  "$schema": "https://code.claude.com/docs/settings.schema.json",
+  "theme": "dark",
+  "autoUpdatesChannel": "latest",
+  "verbose": false,
+  "teammateMode": "auto",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "ignorePatterns": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/.ipynb_checkpoints/**",
+    "**/.venv/**",
+    "**/env/**",
+    "**/.env",
+    "**/.DS_Store",
+    "**/coverage/**",
+    "**/*.jax_cache/**",
+    "**/*.npy",
+    "**/*.parquet",
+    "**/*.csv",
+    "**/dist/**",
+    "**/build/**"
+  ],
+  "contextWindow": {
+    "strategy": "truncate_middle"
+  },
+  "notifications": {
+    "enabled": true
   }
 }

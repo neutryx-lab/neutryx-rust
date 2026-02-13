@@ -2519,14 +2519,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pricer_checkpoint"
-version = "0.1.0"
-dependencies = [
- "num-traits",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "pricer_core"
 version = "0.1.0"
 dependencies = [
@@ -2546,16 +2538,6 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "pricer_graph"
-version = "0.1.0"
-dependencies = [
- "petgraph 0.6.5",
- "serde",
- "serde_json",
  "thiserror 2.0.18",
 ]
 
@@ -2598,9 +2580,8 @@ dependencies = [
  "infra_domain",
  "nalgebra 0.33.2",
  "num-traits",
- "pricer_checkpoint",
+ "petgraph 0.6.5",
  "pricer_core",
- "pricer_graph",
  "pricer_models",
  "proptest",
  "rayon",

@@ -64,9 +64,7 @@ members = [
     "crates/infra_domain",
 
     # --- P: Pricer Layer (The Kernel) ---
-    "crates/pricer_checkpoint",
     "crates/pricer_core",
-    "crates/pricer_graph",
     "crates/pricer_models",
     "crates/pricer_pricing",
     "crates/pricer_risk",
