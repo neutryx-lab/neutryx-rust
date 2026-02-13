@@ -51,15 +51,10 @@ pub mod checkpoint;
 
 pub mod graph;
 
-pub mod generic_pricer;
-
-pub mod calc_setting;
-
 pub mod pricer;
 
 pub mod result;
 
-pub use calc_setting::{CalcSetting, MonteCarloSetting, PricingMethodHint, TreeSetting};
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
@@ -70,6 +65,6 @@ pub use methods::{
     path_dependent, tree,
     tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType},
 };
-pub use pricer::Pricer;
+pub use pricer::{CalcSetting, MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting};
 pub use pricer_models::market::{MarketEnvironment, MarketEnvironmentBuilder};
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

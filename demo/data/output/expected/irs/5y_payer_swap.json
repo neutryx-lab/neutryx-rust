@@ -19,5 +19,5 @@
   },
   "source": "demo_gui::handlers::irs_price (simplified)",
   "generated_at": "2026-01-25T00:00:00Z",
-  "notes": "Simplified IRS pricing formula. Future: delegate to pricer_pricing::generic_pricer::GenericPricer"
+  "notes": "Simplified IRS pricing formula. Future: delegate to pricer_pricing::pricer::Pricer"
 }

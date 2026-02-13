@@ -8,9 +8,7 @@
 use bon::Builder;
 use infra_domain::market::Currency;
 
-// GreeksMode is re-exported via generic_pricer.
-pub use crate::generic_pricer::GreeksMode;
-// Re-exported at the crate root so we use short paths.
+pub use super::GreeksMode;
 use crate::methods::tree::TreeType;
 
 // ---------------------------------------------------------------------------

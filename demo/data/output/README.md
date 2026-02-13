@@ -54,7 +54,7 @@ Each expected output file follows this structure:
 
 - **Black-Scholes**: `pricer_models::analytical::BlackScholes`
 - **Garman-Kohlhagen**: `pricer_models::analytical::GarmanKohlhagen`
-- **IRS**: `demo_gui::handlers::irs_price` (simplified), future: `pricer_pricing::generic_pricer::GenericPricer`
+- **IRS**: `demo_gui::handlers::irs_price` (simplified), future: `pricer_pricing::pricer::Pricer`
 
 ## Usage
 

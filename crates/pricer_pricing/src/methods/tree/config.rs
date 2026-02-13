@@ -1,6 +1,6 @@
 //! Tree pricing configuration.
 
-use crate::generic_pricer::ConfigError;
+use crate::pricer::ConfigError;
 
 /// Tree type selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

@@ -32,11 +32,11 @@ use pricer_models::{
     market::{curves::YieldCurve, CurveEnum, CurveSet, MarketDataError, MarketEnvironment},
 };
 
+use super::{
+    CalcSetting, CashflowPricingResult, LegPricingResult, PayoffEvaluator, PricingError,
+    PricingMethodHint, PricingResult,
+};
 use crate::{
-    calc_setting::{CalcSetting, PricingMethodHint},
-    generic_pricer::{
-        CashflowPricingResult, LegPricingResult, PayoffEvaluator, PricingError, PricingResult,
-    },
     kernel::{FlatSpotProvider, ScriptEngine},
     result::{PricingMetadata, UnifiedGreeks, UnifiedPricingResult},
 };
@@ -720,7 +720,6 @@ mod tests {
     };
 
     use super::*;
-    use crate::calc_setting::{CalcSetting, PricingMethodHint};
 
     // -- Helpers --
 

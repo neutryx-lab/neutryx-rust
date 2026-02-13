@@ -7,7 +7,7 @@ use super::{
     config::{TreeConfig, TreeType},
     trinomial::TrinomialTree,
 };
-use crate::generic_pricer::PricingError;
+use crate::pricer::PricingError;
 
 /// Greeks computed from tree-based pricing.
 #[derive(Debug, Clone, Default)]

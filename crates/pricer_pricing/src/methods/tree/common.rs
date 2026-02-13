@@ -1,7 +1,7 @@
 //! Common tree pricing infrastructure shared between binomial and trinomial
 //! trees.
 
-use crate::generic_pricer::ConfigError;
+use crate::pricer::ConfigError;
 
 /// Shared parameters for all tree pricing methods.
 #[derive(Debug, Clone)]
