@@ -62,7 +62,9 @@ pub use methods::{
     tree,
     tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType},
 };
-pub use pricer_models::path_dependent;
 pub use pricer::{CalcSetting, MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting};
-pub use pricer_models::market::{MarketEnvironment, MarketEnvironmentBuilder};
+pub use pricer_models::{
+    market::{MarketEnvironment, MarketEnvironmentBuilder},
+    path_dependent,
+};
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

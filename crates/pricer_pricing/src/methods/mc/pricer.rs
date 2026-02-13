@@ -1,6 +1,7 @@
 //! Monte Carlo pricing engine.
 
 use pricer_core::math::rng::PricerRng;
+use pricer_models::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
 
 use super::{
     config::MonteCarloConfig,
@@ -13,7 +14,6 @@ use super::{
     },
     workspace::PathWorkspace,
 };
-use pricer_models::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
 
 /// Greek type for selection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
