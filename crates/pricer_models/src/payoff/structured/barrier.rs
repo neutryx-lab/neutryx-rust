@@ -2,10 +2,12 @@
 
 use num_traits::Float;
 
-use super::{
+use crate::payoff::{
     smooth_math::{smooth_indicator, soft_plus},
-    ObservationType, PathDependentPayoff, PathObserver,
+    McPayoff, ObservationType,
 };
+
+use super::PathObserver;
 
 /// Barrier type enumeration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -160,7 +162,7 @@ impl<T: Float> BarrierPayoff<T> {
     }
 }
 
-impl<T: Float + Send + Sync> PathDependentPayoff<T> for BarrierPayoff<T> {
+impl<T: Float + Send + Sync> McPayoff<T> for BarrierPayoff<T> {
     fn compute(&self, _path: &[T], observer: &PathObserver<T>) -> T {
         let terminal = observer.terminal();
         let barrier_ind = self.barrier_indicator(observer);

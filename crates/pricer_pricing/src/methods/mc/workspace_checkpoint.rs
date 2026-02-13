@@ -1,7 +1,7 @@
 //! Extended workspace with checkpoint and path-dependent option support.
 
 use num_traits::Float;
-use pricer_models::structured::{PathObserver, PathObserverState};
+use pricer_models::payoff::{PathObserver, PathObserverState};
 
 use super::capacity::calculate_growth_capacity;
 

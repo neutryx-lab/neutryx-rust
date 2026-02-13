@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use pricer_models::structured::PathPayoffType;
+    use pricer_models::payoff::PayoffKind;
 
     use crate::{
         checkpoint::CheckpointStrategy,

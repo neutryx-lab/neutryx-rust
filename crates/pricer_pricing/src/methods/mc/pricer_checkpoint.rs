@@ -1,7 +1,7 @@
 //! Checkpoint-integrated Monte Carlo pricing engine.
 
 use pricer_core::math::rng::PricerRng;
-use pricer_models::structured::{PathDependentPayoff, PathObserverState, PathPayoffType};
+use pricer_models::payoff::{McPayoff, PathObserverState, PayoffKind};
 
 use crate::{
     checkpoint::{
@@ -107,7 +107,7 @@ impl CheckpointPricer {
     pub fn price_path_dependent_with_checkpoints(
         &mut self,
         gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
+        payoff: PayoffKind<f64>,
         discount_factor: f64,
     ) -> PricingResult {
         let n_paths = self.config.mc_config.n_paths();
@@ -224,7 +224,7 @@ impl CheckpointPricer {
     pub fn verify_checkpoint_equivalence(
         &mut self,
         gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
+        payoff: PayoffKind<f64>,
         discount_factor: f64,
         tolerance: f64,
     ) -> bool {
@@ -253,7 +253,7 @@ impl CheckpointPricer {
     pub fn forward_pass_with_checkpoints(
         &mut self,
         gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
+        payoff: PayoffKind<f64>,
         discount_factor: f64,
     ) -> (f64, usize) {
         let result = self.price_path_dependent_with_checkpoints(gbm, payoff, discount_factor);
@@ -315,7 +315,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -332,7 +332,7 @@ mod tests {
         assert_eq!(pricer.checkpoint_count(), 0);
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -346,7 +346,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -360,7 +360,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -376,7 +376,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_call(100.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -389,7 +389,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::barrier_up_out_call(100.0, 150.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_out_call(100.0, 150.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -402,7 +402,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::lookback_fixed_call(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_call(100.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -414,7 +414,7 @@ mod tests {
         let config = create_test_config();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let mut pricer1 = CheckpointPricer::new(config.clone()).unwrap();
@@ -433,7 +433,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -449,7 +449,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let (price, checkpoint_count) = pricer.forward_pass_with_checkpoints(gbm, payoff, df);
@@ -475,7 +475,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let result = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -496,7 +496,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
@@ -514,7 +514,7 @@ mod tests {
             .unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let config_with = CheckpointPricingConfig::new(
@@ -541,7 +541,7 @@ mod tests {
             .unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let config_5 = CheckpointPricingConfig::new(
@@ -585,7 +585,7 @@ mod tests {
             .unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_call(100.0, 1e-6);
         let df = 0.95;
 
         let config_none = CheckpointPricingConfig::new(mc_config.clone(), CheckpointStrategy::None);
@@ -616,7 +616,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::barrier_down_in_put(100.0, 80.0, 1e-6);
+        let payoff = PayoffKind::barrier_down_in_put(100.0, 80.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -629,7 +629,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::barrier_up_in_call(100.0, 120.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_in_call(100.0, 120.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -642,7 +642,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6);
+        let payoff = PayoffKind::barrier_down_out_put(100.0, 80.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -655,7 +655,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::lookback_floating_call(1e-6);
+        let payoff = PayoffKind::lookback_floating_call(1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -668,7 +668,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::lookback_floating_put(1e-6);
+        let payoff = PayoffKind::lookback_floating_put(1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -681,7 +681,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::lookback_fixed_put(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_put(100.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -694,7 +694,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_put(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_put(100.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -707,7 +707,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_geometric_put(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_put(100.0, 1e-6);
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
@@ -726,13 +726,13 @@ mod tests {
         let gbm = GbmParams::default();
         let df = 0.95;
 
-        let payoffs: Vec<PathPayoffType<f64>> = vec![
-            PathPayoffType::asian_arithmetic_call(100.0, 1e-6),
-            PathPayoffType::asian_geometric_call(100.0, 1e-6),
-            PathPayoffType::barrier_up_out_call(100.0, 150.0, 1e-6),
-            PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6),
-            PathPayoffType::lookback_fixed_call(100.0, 1e-6),
-            PathPayoffType::lookback_floating_call(1e-6),
+        let payoffs: Vec<PayoffKind<f64>> = vec![
+            PayoffKind::asian_arithmetic_call(100.0, 1e-6),
+            PayoffKind::asian_geometric_call(100.0, 1e-6),
+            PayoffKind::barrier_up_out_call(100.0, 150.0, 1e-6),
+            PayoffKind::barrier_down_out_put(100.0, 80.0, 1e-6),
+            PayoffKind::lookback_fixed_call(100.0, 1e-6),
+            PayoffKind::lookback_floating_call(1e-6),
         ];
 
         for payoff in payoffs {
@@ -760,7 +760,7 @@ mod tests {
         let n_paths = 2000;
         let n_steps = 100;
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let mc_config = MonteCarloConfig::builder()
@@ -810,7 +810,7 @@ mod tests {
             .unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         for interval in [5, 10, 20, 25, 50] {
@@ -848,7 +848,7 @@ mod tests {
         let mut pricer = CheckpointPricer::new(config).unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);

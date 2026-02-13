@@ -65,6 +65,6 @@ pub use methods::{
 pub use pricer::{CalcSetting, MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting};
 pub use pricer_models::{
     market::{MarketEnvironment, MarketEnvironmentBuilder},
-    structured,
+    payoff,
 };
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

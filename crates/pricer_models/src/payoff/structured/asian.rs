@@ -59,7 +59,7 @@ impl<T: Float> AsianArithmeticPayoff<T> {
     pub fn put(strike: T, epsilon: T) -> Self { Self::new(AsianParams::put(strike, epsilon)) }
 }
 
-impl<T: Float + Send + Sync> PathDependentPayoff<T> for AsianArithmeticPayoff<T> {
+impl<T: Float + Send + Sync> McPayoff<T> for AsianArithmeticPayoff<T> {
     fn compute(&self, _path: &[T], observer: &PathObserver<T>) -> T {
         let avg = observer.arithmetic_average();
         let intrinsic = if self.params.is_call {
@@ -95,7 +95,7 @@ impl<T: Float> AsianGeometricPayoff<T> {
     pub fn put(strike: T, epsilon: T) -> Self { Self::new(AsianParams::put(strike, epsilon)) }
 }
 
-impl<T: Float + Send + Sync> PathDependentPayoff<T> for AsianGeometricPayoff<T> {
+impl<T: Float + Send + Sync> McPayoff<T> for AsianGeometricPayoff<T> {
     fn compute(&self, _path: &[T], observer: &PathObserver<T>) -> T {
         let geo_avg = observer.geometric_average();
         let intrinsic = if self.params.is_call {

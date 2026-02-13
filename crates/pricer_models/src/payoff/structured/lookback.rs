@@ -2,7 +2,12 @@
 
 use num_traits::Float;
 
-use super::{smooth_math::soft_plus, ObservationType, PathDependentPayoff, PathObserver};
+use crate::payoff::{
+    smooth_math::soft_plus,
+    McPayoff, ObservationType,
+};
+
+use super::PathObserver;
 
 /// Lookback option type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -110,7 +115,7 @@ impl<T: Float> LookbackPayoff<T> {
     pub fn floating_put(epsilon: T) -> Self { Self::new(LookbackParams::floating_put(epsilon)) }
 }
 
-impl<T: Float + Send + Sync> PathDependentPayoff<T> for LookbackPayoff<T> {
+impl<T: Float + Send + Sync> McPayoff<T> for LookbackPayoff<T> {
     fn compute(&self, _path: &[T], observer: &PathObserver<T>) -> T {
         let epsilon = self.params.smoothing_epsilon;
 
