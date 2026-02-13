@@ -113,7 +113,7 @@ impl MarketProvider {
     /// Gets a curve for the given currency.
     pub fn get_curve(&self, _currency: Currency) -> Option<&CurveEnum<f64>> {
         // Placeholder: return first available curve or None
-        self.curve_set.curves.values().next()
+        self.curve_set.iter().next().map(|(_, c)| c)
     }
 
     /// Returns the curve set.

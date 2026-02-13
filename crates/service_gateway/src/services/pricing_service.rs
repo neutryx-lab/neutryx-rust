@@ -9,7 +9,7 @@ use infra_domain::{
     trade::{Direction, Leg, LegType, OptionType, SettlementType, Trade, TradeType},
 };
 use pricer_core::math::formulas::forward::{Forward, ForwardParams};
-use pricer_models::{market::CurveEnum, vol_surface::VolSurfaceEnum};
+use pricer_models::market::{CurveEnum, VolSurfaceEnum};
 use pricer_pricing::{CalcSetting, MarketEnvironmentBuilder, Pricer};
 
 use crate::{

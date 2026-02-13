@@ -29,8 +29,7 @@ use pricer_core::math::formulas::{
 };
 use pricer_models::{
     compiler::{ExoticCompiler, IndexMapper, ScriptProduct},
-    market::{curves::YieldCurve, CurveEnum, CurveSet, MarketDataError},
-    market_env::MarketEnvironment,
+    market::{curves::YieldCurve, CurveEnum, CurveSet, MarketDataError, MarketEnvironment},
 };
 
 use crate::{
@@ -717,7 +716,7 @@ mod tests {
         },
     };
     use pricer_models::{
-        market::CurveEnum, market_env::MarketEnvironmentBuilder, vol_surface::VolSurfaceEnum,
+        market::{CurveEnum, MarketEnvironmentBuilder, VolSurfaceEnum},
     };
 
     use super::*;
