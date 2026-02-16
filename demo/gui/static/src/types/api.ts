@@ -144,8 +144,12 @@ export interface PricingLeg {
 export interface PricingCashflow {
   paymentDate: DateString;
   notional: number;
-  rate: number;
+  rate: number | null;
   yearFraction: number;
+  payoffType?: string;
+  rateIndex?: string | null;
+  accrualStart?: DateString;
+  accrualEnd?: DateString;
 }
 
 // Mirrors `PricingResult` from result.rs
@@ -232,9 +236,12 @@ export interface AdvancedGreeksRequest {
   config: AdvancedGreeksConfig;
 }
 
-export interface AdvancedGreeksResult {
-  price: number;
-  stdError?: number | null;
+export interface RiskFactor {
+  factorType: string;
+  name: string;
+}
+
+export interface FactorGreeks {
   delta?: number | null;
   gamma?: number | null;
   vega?: number | null;
@@ -242,10 +249,20 @@ export interface AdvancedGreeksResult {
   rho?: number | null;
   vanna?: number | null;
   volga?: number | null;
+}
+
+export interface FactorGreeksEntry {
+  factor: RiskFactor;
+  greeks: FactorGreeks;
+}
+
+export interface AdvancedGreeksResult {
+  price: number;
   currency: Currency;
-  computationTimeMs: number;
   mode: string;
-  confidence95?: [number, number] | null;
+  computationTimeMs: number;
+  factors: FactorGreeksEntry[];
+  totals: FactorGreeks;
 }
 
 // =============================================================================

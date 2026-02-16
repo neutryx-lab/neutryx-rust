@@ -207,9 +207,19 @@ pub struct PricingLeg {
 pub struct PricingCashflow {
     pub payment_date: String,
     pub notional: f64,
-    pub rate: f64,
+    pub rate: Option<f64>,
     pub year_fraction: f64,
+    #[serde(default = "default_payoff_type")]
+    pub payoff_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accrual_start: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accrual_end: Option<String>,
 }
+
+fn default_payoff_type() -> String { "Fixed".to_string() }
 
 /// Model configuration.
 #[derive(Debug, Clone, Deserialize)]
@@ -363,12 +373,18 @@ pub struct DemoAdvancedGreeksRequest {
     pub config: AdvancedGreeksConfig,
 }
 
-/// Advanced Greeks result (mirrors `pricer_risk::GreeksResult<f64>`).
+/// Risk factor identifier (mirrors `pricer_risk::RiskFactorId`).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DemoAdvancedGreeksResult {
-    pub price: f64,
-    pub std_error: Option<f64>,
+pub struct RiskFactor {
+    pub factor_type: String,
+    pub name: String,
+}
+
+/// Greeks for a single risk factor (mirrors `pricer_risk::GreeksResult`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FactorGreeks {
     pub delta: Option<f64>,
     pub gamma: Option<f64>,
     pub vega: Option<f64>,
@@ -376,10 +392,26 @@ pub struct DemoAdvancedGreeksResult {
     pub rho: Option<f64>,
     pub vanna: Option<f64>,
     pub volga: Option<f64>,
+}
+
+/// Per-factor Greeks entry.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FactorGreeksEntry {
+    pub factor: RiskFactor,
+    pub greeks: FactorGreeks,
+}
+
+/// Advanced Greeks result by factor (mirrors `pricer_risk::GreeksResultByFactor`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoAdvancedGreeksResult {
+    pub price: f64,
     pub currency: String,
-    pub computation_time_ms: f64,
     pub mode: String,
-    pub confidence_95: Option<[f64; 2]>,
+    pub computation_time_ms: f64,
+    pub factors: Vec<FactorGreeksEntry>,
+    pub totals: FactorGreeks,
 }
 
 /// Market rate.

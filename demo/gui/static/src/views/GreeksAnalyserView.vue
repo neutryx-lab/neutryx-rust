@@ -3,13 +3,12 @@
  * GreeksAnalyserView — Advanced Greeks analysis using saved Pricer history.
  *
  * Sends legs + bump config to /api/pricer/advanced-greeks and displays
- * 7 Greeks (delta, gamma, vega, theta, rho, vanna, volga) mirroring
- * pricer_risk::GreeksResult.
+ * per-factor Greeks in a table, mirroring pricer_risk::GreeksResultByFactor.
  */
 import { ref, computed } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
 import { computeAdvancedGreeks } from '@/services/api';
-import type { AdvancedGreeksResult, AdvancedGreeksMode } from '@/types/api';
+import type { AdvancedGreeksResult, AdvancedGreeksMode, FactorGreeks } from '@/types/api';
 import type { HistoryEntry } from '@/constants/pricer';
 import { formatCurrency } from '@/utils/format';
 
@@ -68,38 +67,62 @@ async function compute() {
   }
 }
 
-interface GreekCard {
-  label: string;
-  key: keyof AdvancedGreeksResult;
-  order: '1st' | '2nd';
-  description: string;
-}
-
-const greekCards: GreekCard[] = [
-  { label: 'Delta', key: 'delta', order: '1st', description: 'dV/dr' },
-  { label: 'Gamma', key: 'gamma', order: '2nd', description: 'd\u00B2V/dr\u00B2' },
-  { label: 'Vega', key: 'vega', order: '1st', description: 'dV/d\u03C3' },
-  { label: 'Theta', key: 'theta', order: '1st', description: 'dV/dt' },
-  { label: 'Rho', key: 'rho', order: '1st', description: 'dV/dr (rate)' },
-  { label: 'Vanna', key: 'vanna', order: '2nd', description: 'd\u00B2V/dr d\u03C3' },
-  { label: 'Volga', key: 'volga', order: '2nd', description: 'd\u00B2V/d\u03C3\u00B2' },
+// Greek column definitions for the table.
+const greekColumns = [
+  { key: 'delta' as const, label: 'Delta', order: '1st' },
+  { key: 'gamma' as const, label: 'Gamma', order: '2nd' },
+  { key: 'vega' as const, label: 'Vega', order: '1st' },
+  { key: 'theta' as const, label: 'Theta', order: '1st' },
+  { key: 'rho' as const, label: 'Rho', order: '1st' },
+  { key: 'vanna' as const, label: 'Vanna', order: '2nd' },
+  { key: 'volga' as const, label: 'Volga', order: '2nd' },
 ];
 
-function greekValue(card: GreekCard): number | null {
-  if (!result.value) return null;
-  return (result.value[card.key] as number | null | undefined) ?? null;
-}
+// Table rows: factors + totals.
+const tableRows = computed(() => {
+  if (!result.value) return [];
+  return result.value.factors.map((entry) => ({
+    label: `${entry.factor.factorType}:${entry.factor.name}`,
+    factorType: entry.factor.factorType,
+    greeks: entry.greeks,
+    isTotals: false,
+  }));
+});
 
-function formatGreek(val: number | null): string {
+const totalsRow = computed(() => {
+  if (!result.value) return null;
+  return {
+    label: 'Totals',
+    factorType: '',
+    greeks: result.value.totals,
+    isTotals: true,
+  };
+});
+
+function formatGreek(val: number | null | undefined): string {
   if (val === null || val === undefined) return 'N/A';
   return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 }
 
-function greekColor(val: number | null): string {
-  if (val === null || val === undefined) return '';
+function greekColor(val: number | null | undefined): string {
+  if (val === null || val === undefined) return 'text-medium-emphasis';
   if (val > 0) return 'text-success';
   if (val < 0) return 'text-error';
   return '';
+}
+
+function getGreekValue(greeks: FactorGreeks, key: keyof FactorGreeks): number | null {
+  return (greeks[key] as number | null | undefined) ?? null;
+}
+
+function factorTypeChipColor(factorType: string): string {
+  switch (factorType) {
+    case 'Curve': return 'primary';
+    case 'Underlying': return 'warning';
+    case 'VolSurface': return 'secondary';
+    case 'Time': return 'info';
+    default: return 'default';
+  }
 }
 </script>
 
@@ -254,49 +277,72 @@ function greekColor(val: number | null): string {
                   <span class="text-caption text-medium-emphasis">Time</span>
                   <div class="text-h6">{{ result.computationTimeMs.toFixed(2) }} ms</div>
                 </div>
-                <div v-if="result.stdError != null">
-                  <span class="text-caption text-medium-emphasis">Std Error</span>
-                  <div class="text-h6">{{ result.stdError.toFixed(6) }}</div>
+                <div>
+                  <span class="text-caption text-medium-emphasis">Factors</span>
+                  <div class="text-h6">{{ result.factors.length }}</div>
                 </div>
               </div>
             </v-card-text>
           </v-card>
 
-          <!-- Greeks cards -->
-          <v-row>
-            <v-col v-for="card in greekCards" :key="card.label" cols="12" sm="6" md="4" lg="3">
-              <v-card variant="outlined" class="greek-card">
-                <v-card-text class="text-center">
-                  <div class="d-flex align-center justify-center ga-2 mb-2">
-                    <span class="text-subtitle-1 font-weight-medium">{{ card.label }}</span>
+          <!-- Factor x Greek table -->
+          <v-card variant="outlined">
+            <v-card-title class="text-subtitle-1">Greeks by Risk Factor</v-card-title>
+            <v-table density="compact" class="greeks-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Factor</th>
+                  <th
+                    v-for="col in greekColumns"
+                    :key="col.key"
+                    class="text-right"
+                  >
+                    <span>{{ col.label }}</span>
                     <v-chip
                       size="x-small"
-                      :color="card.order === '1st' ? 'primary' : 'secondary'"
+                      :color="col.order === '1st' ? 'primary' : 'secondary'"
+                      variant="tonal"
+                      class="ml-1"
+                    >
+                      {{ col.order }}
+                    </v-chip>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in tableRows" :key="row.label">
+                  <td>
+                    <v-chip
+                      size="small"
+                      :color="factorTypeChipColor(row.factorType)"
                       variant="tonal"
                     >
-                      {{ card.order }}
+                      {{ row.label }}
                     </v-chip>
-                  </div>
-                  <div
-                    class="text-h5 font-weight-bold"
-                    :class="greekColor(greekValue(card))"
+                  </td>
+                  <td
+                    v-for="col in greekColumns"
+                    :key="col.key"
+                    class="text-right font-weight-medium"
+                    :class="greekColor(getGreekValue(row.greeks, col.key))"
                   >
-                    {{ formatGreek(greekValue(card)) }}
-                  </div>
-                  <div class="text-caption text-medium-emphasis mt-1">
-                    {{ card.description }}
-                  </div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-
-          <!-- Confidence interval -->
-          <v-card v-if="result.confidence95" variant="outlined" class="mt-4">
-            <v-card-text>
-              <span class="text-caption text-medium-emphasis">95% Confidence Interval: </span>
-              <span>[{{ result.confidence95[0].toFixed(4) }}, {{ result.confidence95[1].toFixed(4) }}]</span>
-            </v-card-text>
+                    {{ formatGreek(getGreekValue(row.greeks, col.key)) }}
+                  </td>
+                </tr>
+                <!-- Totals row -->
+                <tr v-if="totalsRow" class="totals-row">
+                  <td class="font-weight-bold">Totals</td>
+                  <td
+                    v-for="col in greekColumns"
+                    :key="col.key"
+                    class="text-right font-weight-bold"
+                    :class="greekColor(getGreekValue(totalsRow.greeks, col.key))"
+                  >
+                    {{ formatGreek(getGreekValue(totalsRow.greeks, col.key)) }}
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
           </v-card>
         </template>
       </v-col>
@@ -326,11 +372,11 @@ function greekColor(val: number | null): string {
   white-space: nowrap;
 }
 
-.greek-card {
-  transition: border-color 0.2s;
+.greeks-table th {
+  white-space: nowrap;
 }
 
-.greek-card:hover {
-  border-color: rgb(var(--v-theme-primary));
+.totals-row {
+  border-top: 2px solid rgba(var(--v-theme-on-surface), 0.2);
 }
 </style>

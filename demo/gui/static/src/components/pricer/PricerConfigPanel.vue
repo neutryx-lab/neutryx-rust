@@ -498,7 +498,7 @@ watch(
           variant="tonal"
           size="small"
           color="teal"
-          :disabled="!store.selectedInstrumentId || isSavingGraph || graphSaveFeedback"
+          :disabled="!store.expandedTrade || isSavingGraph || graphSaveFeedback"
           :loading="isSavingGraph"
           :prepend-icon="graphSaveFeedback ? 'mdi-check' : 'mdi-graph-outline'"
           @click="saveGraph"
