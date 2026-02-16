@@ -132,100 +132,115 @@ function factorTypeChipColor(factorType: string): string {
       <!-- Left Panel -->
       <v-col cols="4">
         <div class="glass-card p-4 mb-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
+          <div class="section-header" style="margin-top: 0">
             History
             <v-chip v-if="store.resultHistory.length > 0" size="x-small" class="ml-2">
               {{ store.resultHistory.length }}
             </v-chip>
           </div>
-            <v-select
-              v-model="selectedEntryId"
-              :items="historyItems"
-              item-title="title"
-              item-value="value"
-              placeholder="Select a pricing result..."
-              no-data-text="No pricing history"
-              density="compact"
-              variant="outlined"
-              hide-details
-              :disabled="historyItems.length === 0"
-            />
-            <div v-if="store.resultHistory.length === 0" class="text-caption text-text-muted mt-2">
-              No pricing history. Run the Pricer first.
+          <div class="config-grid">
+            <div class="grid-label">Entry</div>
+            <div class="grid-input">
+              <v-select
+                v-model="selectedEntryId"
+                :items="historyItems"
+                item-title="title"
+                item-value="value"
+                placeholder="Select a pricing result..."
+                no-data-text="No pricing history"
+                density="compact"
+                variant="outlined"
+                hide-details
+                :disabled="historyItems.length === 0"
+              />
             </div>
+          </div>
+          <div v-if="store.resultHistory.length === 0" class="text-caption text-text-muted mt-2">
+            No pricing history. Run the Pricer first.
+          </div>
         </div>
 
         <!-- Selected entry summary -->
         <div v-if="selectedEntry" class="glass-card p-4 mb-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Summary</div>
-            <div class="summary-grid">
-              <span class="text-text-muted">Instrument</span>
-              <span>{{ selectedEntry.instrumentName }}</span>
-              <span class="text-text-muted">PV</span>
-              <span>{{ formatCurrency(selectedEntry.totalPv, selectedEntry.reportingCcy) }}</span>
-              <span class="text-text-muted">Val Date</span>
-              <span>{{ selectedEntry.valuationDate }}</span>
-              <span class="text-text-muted">Currency</span>
-              <span>{{ selectedEntry.reportingCcy }}</span>
-              <span class="text-text-muted">Legs</span>
-              <span>{{ selectedEntry.legs.length }}</span>
-            </div>
+          <div class="section-header" style="margin-top: 0">Summary</div>
+          <div class="config-grid">
+            <div class="grid-label">Instrument</div>
+            <div class="grid-input">{{ selectedEntry.instrumentName }}</div>
+            <div class="grid-label">PV</div>
+            <div class="grid-input">{{ formatCurrency(selectedEntry.totalPv, selectedEntry.reportingCcy) }}</div>
+            <div class="grid-label">Val Date</div>
+            <div class="grid-input">{{ selectedEntry.valuationDate }}</div>
+            <div class="grid-label">Currency</div>
+            <div class="grid-input">{{ selectedEntry.reportingCcy }}</div>
+            <div class="grid-label">Legs</div>
+            <div class="grid-input">{{ selectedEntry.legs.length }}</div>
+          </div>
         </div>
 
         <!-- Bump configuration -->
         <div class="glass-card p-4 mb-4">
-          <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Bump Configuration</div>
+          <div class="section-header" style="margin-top: 0">Bump Configuration</div>
             <div class="config-grid">
-              <div class="config-label">Rate (abs)</div>
-              <v-text-field
-                v-model.number="rateBump"
-                type="number"
-                step="0.0001"
-                density="compact"
-                variant="outlined"
-                hide-details
-                suffix="(1bp = 0.0001)"
-              />
-              <div class="config-label">Vol (abs)</div>
-              <v-text-field
-                v-model.number="volBump"
-                type="number"
-                step="0.01"
-                density="compact"
-                variant="outlined"
-                hide-details
-              />
-              <div class="config-label">Time (yrs)</div>
-              <v-text-field
-                v-model.number="timeBump"
-                type="number"
-                step="0.001"
-                density="compact"
-                variant="outlined"
-                hide-details
-                suffix="(1d ~ 0.00274)"
-              />
-              <div class="config-label">Spot (rel)</div>
-              <v-text-field
-                v-model.number="spotBump"
-                type="number"
-                step="0.01"
-                density="compact"
-                variant="outlined"
-                hide-details
-                suffix="(1% = 0.01)"
-              />
-              <div class="config-label">Mode</div>
-              <v-select
-                v-model="greeksMode"
-                :items="[
-                  { title: 'Bump & Revalue', value: 'bumpRevalue' },
-                  { title: 'Enzyme AAD', value: 'enzymeAad' },
-                ]"
-                density="compact"
-                variant="outlined"
-                hide-details
-              />
+              <div class="grid-label">Rate (abs)</div>
+              <div class="grid-input">
+                <v-text-field
+                  v-model.number="rateBump"
+                  type="number"
+                  step="0.0001"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  suffix="(1bp = 0.0001)"
+                />
+              </div>
+              <div class="grid-label">Vol (abs)</div>
+              <div class="grid-input">
+                <v-text-field
+                  v-model.number="volBump"
+                  type="number"
+                  step="0.01"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
+              </div>
+              <div class="grid-label">Time (yrs)</div>
+              <div class="grid-input">
+                <v-text-field
+                  v-model.number="timeBump"
+                  type="number"
+                  step="0.001"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  suffix="(1d ~ 0.00274)"
+                />
+              </div>
+              <div class="grid-label">Spot (rel)</div>
+              <div class="grid-input">
+                <v-text-field
+                  v-model.number="spotBump"
+                  type="number"
+                  step="0.01"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  suffix="(1% = 0.01)"
+                />
+              </div>
+              <div class="grid-label">Mode</div>
+              <div class="grid-input">
+                <v-select
+                  v-model="greeksMode"
+                  :items="[
+                    { title: 'Bump & Revalue', value: 'bumpRevalue' },
+                    { title: 'Enzyme AAD', value: 'enzymeAad' },
+                  ]"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
+              </div>
             </div>
         </div>
 
@@ -351,27 +366,6 @@ function factorTypeChipColor(factorType: string): string {
 </template>
 
 <style scoped>
-.summary-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
-  font-size: 0.85rem;
-}
-
-.config-grid {
-  display: grid;
-  grid-template-columns: 80px 1fr;
-  align-items: center;
-  gap: 8px;
-}
-
-.config-label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  text-align: right;
-  white-space: nowrap;
-}
-
 .greeks-table th {
   white-space: nowrap;
 }

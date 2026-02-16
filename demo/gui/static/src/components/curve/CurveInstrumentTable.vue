@@ -17,18 +17,12 @@ const emit = defineEmits<{
 
 <template>
   <div class="glass-card p-5">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="section-title">Instruments</h3>
-      <div v-if="instruments.length > 0" class="flex gap-1">
-        <button
-          class="toggle-btn"
-          @click="emit('toggleAll', true)"
-        >All</button>
-        <button
-          class="toggle-btn"
-          @click="emit('toggleAll', false)"
-        >None</button>
-      </div>
+    <div class="section-header" style="margin-top: 0">
+      Instruments
+      <span v-if="instruments.length > 0" class="toggle-group">
+        <button class="toggle-btn" @click="emit('toggleAll', true)">All</button>
+        <button class="toggle-btn" @click="emit('toggleAll', false)">None</button>
+      </span>
     </div>
 
     <div v-if="isLoading" class="text-center py-8">
@@ -61,19 +55,19 @@ const emit = defineEmits<{
           <span v-else-if="inst.type === 'cds'" class="type-badge cds-badge">CDS</span>
         </div>
 
-        <!-- Fields grid -->
-        <div class="row-fields">
+        <!-- Fields grid (reuses global config-grid with narrower label column) -->
+        <div class="config-grid" style="display: grid; grid-template-columns: 50px 1fr; align-items: center; gap: 4px 8px; padding-left: 22px;">
           <!-- Event instruments -->
           <template v-if="inst.type === 'event'">
-            <div class="field-label">Date</div>
-            <div class="field-input">
+            <div class="grid-label">Date</div>
+            <div class="grid-input">
               <span
                 class="date-value"
                 :title="inst.endDate ? `Turn: ${inst.eventDate} → ${inst.endDate}` : 'Event Date'"
               >{{ inst.eventDate }}</span>
             </div>
-            <div class="field-label">Spike</div>
-            <div class="field-input">
+            <div class="grid-label">Spike</div>
+            <div class="grid-input d-flex align-center" style="gap: 4px">
               <input
                 type="number"
                 :value="(inst.rate * 10000).toFixed(1)"
@@ -88,8 +82,8 @@ const emit = defineEmits<{
 
           <!-- Bond instruments -->
           <template v-else-if="inst.type === 'bond'">
-            <div class="field-label">Coupon</div>
-            <div class="field-input">
+            <div class="grid-label">Coupon</div>
+            <div class="grid-input d-flex align-center" style="gap: 4px">
               <input
                 type="number"
                 :value="((inst.couponRate || 0) * 100).toFixed(2)"
@@ -100,8 +94,8 @@ const emit = defineEmits<{
               >
               <span class="field-unit">%</span>
             </div>
-            <div class="field-label">YTM</div>
-            <div class="field-input">
+            <div class="grid-label">YTM</div>
+            <div class="grid-input d-flex align-center" style="gap: 4px">
               <input
                 type="number"
                 :value="(inst.rate * 100).toFixed(2)"
@@ -116,8 +110,8 @@ const emit = defineEmits<{
 
           <!-- CDS instruments -->
           <template v-else-if="inst.type === 'cds'">
-            <div class="field-label">Spread</div>
-            <div class="field-input">
+            <div class="grid-label">Spread</div>
+            <div class="grid-input d-flex align-center" style="gap: 4px">
               <input
                 type="number"
                 :value="(inst.rate * 10000).toFixed(1)"
@@ -132,8 +126,8 @@ const emit = defineEmits<{
 
           <!-- Regular instruments -->
           <template v-else>
-            <div class="field-label">Rate</div>
-            <div class="field-input">
+            <div class="grid-label">Rate</div>
+            <div class="grid-input d-flex align-center" style="gap: 4px">
               <input
                 type="number"
                 :value="(inst.rate * 100).toFixed(2)"
@@ -151,29 +145,24 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-
-.section-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-primary);
+/* ─── Header toggle buttons ─── */
+.toggle-group {
+  float: right;
+  display: inline-flex;
+  gap: 4px;
 }
 
 .toggle-btn {
-  padding: 3px 10px;
-  font-size: 0.7rem;
+  padding: 2px 8px;
+  font-size: 0.65rem;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--surface);
   color: var(--text-muted);
   border: 1px solid var(--glass-border);
   cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
   transition: background 0.15s;
 }
 .toggle-btn:hover {
@@ -193,7 +182,7 @@ const emit = defineEmits<{
 .instrument-row {
   border-radius: 6px;
   background: var(--surface);
-  padding: 8px 10px;
+  padding: 5px 10px;
   transition: opacity 0.15s;
 }
 .instrument-row.disabled {
@@ -214,7 +203,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .checkbox {
@@ -258,31 +247,7 @@ const emit = defineEmits<{
   color: #a855f7;
 }
 
-/* ─── Fields grid (Pricer-style property grid) ─── */
-.row-fields {
-  display: grid;
-  grid-template-columns: 50px 1fr;
-  align-items: center;
-  gap: 3px 8px;
-  padding-left: 22px;
-}
-
-.field-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-align: right;
-  padding-right: 2px;
-  white-space: nowrap;
-  line-height: 1.2;
-}
-
-.field-input {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
+/* ─── Input fields (component-specific) ─── */
 .input-field {
   width: 100%;
   max-width: 100px;

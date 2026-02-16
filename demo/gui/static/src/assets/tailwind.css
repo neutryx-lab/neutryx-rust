@@ -256,6 +256,65 @@ body {
   .loading-spinner {
     @apply animate-spin h-5 w-5 border-2 border-text-muted border-t-primary rounded-full;
   }
+
+  /* ── Config property grid — shared input form layout ── */
+  .config-grid {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    align-items: center;
+    gap: 4px 8px;
+  }
+
+  .section-header {
+    grid-column: 1 / -1;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(var(--v-theme-on-surface), 0.5);
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+    padding: 6px 0 2px;
+    margin-top: 4px;
+  }
+
+  .section-header:first-child {
+    margin-top: 0;
+  }
+
+  .grid-label {
+    font-size: 0.8rem;
+    color: rgba(var(--v-theme-on-surface), 0.7);
+    text-align: right;
+    padding-right: 4px;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+
+  .grid-label.required::after {
+    content: ' *';
+    color: rgb(var(--v-theme-error));
+  }
+
+  .grid-input {
+    min-width: 0;
+  }
+
+  .grid-span {
+    grid-column: 1 / -1;
+    padding: 2px 0;
+  }
+
+  .tenor-chip {
+    min-width: 0 !important;
+    padding: 0 4px !important;
+    font-size: 0.7rem !important;
+  }
+
+  .override-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
 }
 
 /* Scrollbar styling */

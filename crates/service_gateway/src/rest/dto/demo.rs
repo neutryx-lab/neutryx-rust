@@ -330,29 +330,62 @@ pub struct DemoGreeksResult {
     pub vega: Option<f64>,
 }
 
-/// Greeks mode (mirrors `pricer_risk::GreeksMode`).
-#[derive(Debug, Clone, Copy, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub enum AdvancedGreeksMode {
-    #[default]
-    BumpRevalue,
+/// Advanced Greeks configuration — tagged enum keyed on `mode`.
+///
+/// `BumpRevalue` carries user-specified bump sizes; `EnzymeAad` uses
+/// `pricer_risk::GreeksConfig::default()` internally.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "mode", rename_all = "camelCase")]
+pub enum AdvancedGreeksConfig {
+    /// Bump-and-revalue with user-specified bump sizes.
+    #[serde(rename_all = "camelCase")]
+    BumpRevalue {
+        #[serde(default = "default_spot_bump")]
+        spot_bump_relative: f64,
+        #[serde(default = "default_vol_bump")]
+        vol_bump_absolute: f64,
+        #[serde(default = "default_time_bump")]
+        time_bump_years: f64,
+        #[serde(default = "default_rate_bump")]
+        rate_bump_absolute: f64,
+    },
+    /// Enzyme AAD (or FD fallback when `enzyme-ad` feature is disabled).
     EnzymeAad,
 }
 
-/// Advanced Greeks configuration (mirrors `pricer_risk::GreeksConfig`).
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AdvancedGreeksConfig {
-    #[serde(default = "default_spot_bump")]
-    pub spot_bump_relative: f64,
-    #[serde(default = "default_vol_bump")]
-    pub vol_bump_absolute: f64,
-    #[serde(default = "default_time_bump")]
-    pub time_bump_years: f64,
-    #[serde(default = "default_rate_bump")]
-    pub rate_bump_absolute: f64,
-    #[serde(default)]
-    pub mode: AdvancedGreeksMode,
+impl AdvancedGreeksConfig {
+    /// Returns `(spot, vol, time, rate)` bump sizes.
+    ///
+    /// `BumpRevalue` returns user-specified values; `EnzymeAad` returns
+    /// `pricer_risk::GreeksConfig::default()` values (used only in FD
+    /// fallback).
+    pub fn effective_bumps(&self) -> (f64, f64, f64, f64) {
+        match self {
+            Self::BumpRevalue {
+                spot_bump_relative,
+                vol_bump_absolute,
+                time_bump_years,
+                rate_bump_absolute,
+            } => (
+                *spot_bump_relative,
+                *vol_bump_absolute,
+                *time_bump_years,
+                *rate_bump_absolute,
+            ),
+            Self::EnzymeAad => {
+                let d = pricer_risk::GreeksConfig::default();
+                (
+                    d.spot_bump_relative,
+                    d.vol_bump_absolute,
+                    d.time_bump_years,
+                    d.rate_bump_absolute,
+                )
+            }
+        }
+    }
+
+    /// Returns `true` if this is the `EnzymeAad` variant.
+    pub fn is_enzyme_aad(&self) -> bool { matches!(self, Self::EnzymeAad) }
 }
 
 fn default_spot_bump() -> f64 { 0.01 }
@@ -1324,5 +1357,38 @@ mod tests {
         let json = r#"{"instrumentType": "IRS", "params": {"type": "VanillaIRS"}}"#;
         let request: TradeExpandRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.instrument_type, "IRS");
+    }
+
+    #[test]
+    fn test_advanced_greeks_config_bump_revalue() {
+        let json = r#"{"mode": "bumpRevalue", "rateBumpAbsolute": 0.001}"#;
+        let cfg: AdvancedGreeksConfig = serde_json::from_str(json).unwrap();
+        let (spot, _vol, _time, rate) = cfg.effective_bumps();
+        assert!((rate - 0.001).abs() < 1e-10);
+        // spot falls back to default
+        assert!((spot - 0.01).abs() < 1e-10);
+        assert!(!cfg.is_enzyme_aad());
+    }
+
+    #[test]
+    fn test_advanced_greeks_config_bump_revalue_defaults() {
+        let json = r#"{"mode": "bumpRevalue"}"#;
+        let cfg: AdvancedGreeksConfig = serde_json::from_str(json).unwrap();
+        let (spot, vol, _time, rate) = cfg.effective_bumps();
+        assert!((spot - 0.01).abs() < 1e-10);
+        assert!((vol - 0.01).abs() < 1e-10);
+        assert!((rate - 0.0001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_advanced_greeks_config_enzyme_aad() {
+        let json = r#"{"mode": "enzymeAad"}"#;
+        let cfg: AdvancedGreeksConfig = serde_json::from_str(json).unwrap();
+        assert!(cfg.is_enzyme_aad());
+        // effective_bumps returns pricer_risk defaults
+        let (spot, vol, _time, rate) = cfg.effective_bumps();
+        assert!(spot > 0.0);
+        assert!(vol > 0.0);
+        assert!(rate > 0.0);
     }
 }

@@ -1193,83 +1193,85 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
           <!-- Swaption Settings -->
           <template v-if="activeTab === 'swaption'">
             <div class="glass-card p-5">
-              <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Index Selection</h3>
-              <select
-                v-model="selectedSwaptionIndex"
-                class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-              >
-                <option value="">Select index...</option>
-                <option v-for="idx in swaptionIndices" :key="idx" :value="idx">{{ idx }}</option>
-              </select>
+              <div class="section-header" style="margin-top: 0">Index Selection</div>
+              <div class="config-grid">
+                <div class="grid-label">Index</div>
+                <div class="grid-input">
+                  <v-select
+                    v-model="selectedSwaptionIndex"
+                    :items="swaptionIndices.map(i => ({ title: i.toUpperCase(), value: i }))"
+                    placeholder="Select index..."
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
+                </div>
+              </div>
             </div>
 
             <div class="glass-card p-5">
-              <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Calibration Settings</h3>
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs text-[var(--text-muted)] mb-1">Model</label>
-                  <select
+              <div class="section-header" style="margin-top: 0">Calibration Settings</div>
+              <div class="config-grid">
+                <div class="grid-label">Model</div>
+                <div class="grid-input">
+                  <v-select
                     v-model="selectedModel"
-                    class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                  >
-                    <option v-for="model in swaptionModels" :key="model" :value="model">{{ model }}</option>
-                  </select>
+                    :items="swaptionModels.map(m => ({ title: m, value: m }))"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
                 </div>
 
-                <!-- Model Parameters (dynamic per model) -->
-                <div class="border-t border-[var(--glass-border)] pt-3 mt-2">
-                  <label class="block text-xs text-[var(--text-muted)] mb-2">{{ selectedModel }} Parameters</label>
+                <!-- Model Parameters -->
+                <div class="section-header">Initial {{ selectedModel }} Parameters</div>
 
-                  <!-- SABR: with fix checkboxes (used for calibration) -->
-                  <template v-if="isSabrModel">
-                    <div class="space-y-2">
-                      <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
-                        <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
-                        <input
-                          :id="'sabr-' + param"
-                          v-model.number="sabrInitial[param]"
-                          type="number"
-                          step="0.01"
-                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
-                          :class="{ 'opacity-70': sabrFixed[param] }"
-                        />
-                        <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
-                          <input
-                            v-model="sabrFixed[param]"
-                            type="checkbox"
-                            class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
-                          />
-                          <span class="text-[10px] text-[var(--text-muted)]">fix</span>
-                        </label>
-                      </div>
+                <!-- SABR: with fix checkboxes (used for calibration) -->
+                <template v-if="isSabrModel">
+                  <template v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param">
+                    <div class="grid-label">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</div>
+                    <div class="grid-input d-flex align-center" style="gap: 6px">
+                      <input
+                        :id="'sabr-' + param"
+                        v-model.number="sabrInitial[param]"
+                        type="number"
+                        step="0.01"
+                        class="param-input"
+                        :class="{ 'opacity-70': sabrFixed[param] }"
+                      />
+                      <label class="fix-label" :title="'Fix ' + param + ' during calibration'">
+                        <input v-model="sabrFixed[param]" type="checkbox" class="fix-checkbox" />
+                        <span>fix</span>
+                      </label>
                     </div>
-                    <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                      β=0 fixed → Normal SABR (Bachelier)
-                    </p>
-                    <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                      β=1 fixed → Lognormal SABR (Black-Scholes)
-                    </p>
                   </template>
+                  <div v-if="sabrFixed.beta && sabrInitial.beta === 0" class="grid-span text-[10px] text-[var(--accent)] italic">
+                    β=0 fixed → Normal SABR (Bachelier)
+                  </div>
+                  <div v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="grid-span text-[10px] text-[var(--accent)] italic">
+                    β=1 fixed → Lognormal SABR (Black-Scholes)
+                  </div>
+                </template>
 
-                  <!-- Non-SABR: generic param inputs -->
-                  <template v-else>
-                    <div class="space-y-2">
-                      <div v-for="def in activeModelParamDefs" :key="def.key" class="flex items-center gap-2">
-                        <label class="w-12 text-xs font-mono text-[var(--text-secondary)] select-none truncate" :for="'mp-' + def.key" :title="def.key">{{ def.symbol }}</label>
-                        <input
-                          :id="'mp-' + def.key"
-                          v-model.number="modelParams[def.key]"
-                          type="number"
-                          :step="def.step"
-                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
-                        />
-                      </div>
+                <!-- Non-SABR: generic param inputs -->
+                <template v-else>
+                  <template v-for="def in activeModelParamDefs" :key="def.key">
+                    <div class="grid-label font-mono">{{ def.symbol }}</div>
+                    <div class="grid-input">
+                      <input
+                        :id="'mp-' + def.key"
+                        v-model.number="modelParams[def.key]"
+                        type="number"
+                        :step="def.step"
+                        class="param-input"
+                        :title="def.key"
+                      />
                     </div>
-                    <p class="text-[10px] text-[var(--text-muted)] mt-1.5 italic">
-                      Smile exploration — calibration available for SABR
-                    </p>
                   </template>
-                </div>
+                  <div class="grid-span text-[10px] text-[var(--text-muted)] italic">
+                    Smile exploration — calibration available for SABR
+                  </div>
+                </template>
               </div>
             </div>
           </template>
@@ -1277,81 +1279,83 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
           <!-- FX Settings -->
           <template v-else>
             <div class="glass-card p-5">
-              <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Currency Pair</h3>
-              <select
-                v-model="selectedFxPair"
-                class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
-              >
-                <option value="">Select pair...</option>
-                <option v-for="pair in fxPairs" :key="pair" :value="pair">{{ pair }}</option>
-              </select>
+              <div class="section-header" style="margin-top: 0">Currency Pair</div>
+              <div class="config-grid">
+                <div class="grid-label">Pair</div>
+                <div class="grid-input">
+                  <v-select
+                    v-model="selectedFxPair"
+                    :items="fxPairs.map(p => ({ title: p, value: p }))"
+                    placeholder="Select pair..."
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
+                </div>
+              </div>
             </div>
 
             <div class="glass-card p-5">
-              <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Calibration Settings</h3>
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs text-[var(--text-muted)] mb-1">Model</label>
-                  <select
+              <div class="section-header" style="margin-top: 0">Calibration Settings</div>
+              <div class="config-grid">
+                <div class="grid-label">Model</div>
+                <div class="grid-input">
+                  <v-select
                     v-model="selectedModel"
-                    class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-                  >
-                    <option v-for="model in swaptionModels" :key="model" :value="model">{{ model }}</option>
-                  </select>
+                    :items="swaptionModels.map(m => ({ title: m, value: m }))"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
                 </div>
 
-                <!-- Model Parameters (dynamic per model) -->
-                <div class="border-t border-[var(--glass-border)] pt-3 mt-2">
-                  <label class="block text-xs text-[var(--text-muted)] mb-2">{{ selectedModel }} Parameters</label>
+                <!-- Model Parameters -->
+                <div class="section-header">Initial {{ selectedModel }} Parameters</div>
 
-                  <template v-if="isSabrModel">
-                    <div class="space-y-2">
-                      <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
-                        <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'fx-sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
-                        <input
-                          :id="'fx-sabr-' + param"
-                          v-model.number="sabrInitial[param]"
-                          type="number"
-                          step="0.01"
-                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
-                          :class="{ 'opacity-70': sabrFixed[param] }"
-                        />
-                        <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
-                          <input
-                            v-model="sabrFixed[param]"
-                            type="checkbox"
-                            class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
-                          />
-                          <span class="text-[10px] text-[var(--text-muted)]">fix</span>
-                        </label>
-                      </div>
+                <template v-if="isSabrModel">
+                  <template v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param">
+                    <div class="grid-label">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</div>
+                    <div class="grid-input d-flex align-center" style="gap: 6px">
+                      <input
+                        :id="'fx-sabr-' + param"
+                        v-model.number="sabrInitial[param]"
+                        type="number"
+                        step="0.01"
+                        class="param-input"
+                        :class="{ 'opacity-70': sabrFixed[param] }"
+                      />
+                      <label class="fix-label" :title="'Fix ' + param + ' during calibration'">
+                        <input v-model="sabrFixed[param]" type="checkbox" class="fix-checkbox" />
+                        <span>fix</span>
+                      </label>
                     </div>
-                    <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                      β=0 fixed → Normal SABR (Bachelier)
-                    </p>
-                    <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                      β=1 fixed → Lognormal SABR (Black-Scholes)
-                    </p>
                   </template>
+                  <div v-if="sabrFixed.beta && sabrInitial.beta === 0" class="grid-span text-[10px] text-[var(--accent)] italic">
+                    β=0 fixed → Normal SABR (Bachelier)
+                  </div>
+                  <div v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="grid-span text-[10px] text-[var(--accent)] italic">
+                    β=1 fixed → Lognormal SABR (Black-Scholes)
+                  </div>
+                </template>
 
-                  <template v-else>
-                    <div class="space-y-2">
-                      <div v-for="def in activeModelParamDefs" :key="def.key" class="flex items-center gap-2">
-                        <label class="w-12 text-xs font-mono text-[var(--text-secondary)] select-none truncate" :for="'fx-mp-' + def.key" :title="def.key">{{ def.symbol }}</label>
-                        <input
-                          :id="'fx-mp-' + def.key"
-                          v-model.number="modelParams[def.key]"
-                          type="number"
-                          :step="def.step"
-                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
-                        />
-                      </div>
+                <template v-else>
+                  <template v-for="def in activeModelParamDefs" :key="def.key">
+                    <div class="grid-label font-mono">{{ def.symbol }}</div>
+                    <div class="grid-input">
+                      <input
+                        :id="'fx-mp-' + def.key"
+                        v-model.number="modelParams[def.key]"
+                        type="number"
+                        :step="def.step"
+                        class="param-input"
+                        :title="def.key"
+                      />
                     </div>
-                    <p class="text-[10px] text-[var(--text-muted)] mt-1.5 italic">
-                      Smile exploration — calibration available for SABR
-                    </p>
                   </template>
-                </div>
+                  <div class="grid-span text-[10px] text-[var(--text-muted)] italic">
+                    Smile exploration — calibration available for SABR
+                  </div>
+                </template>
               </div>
             </div>
           </template>
@@ -2008,12 +2012,41 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
 </template>
 
 <style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
+/* ─── Model parameter inputs ─── */
+.param-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-family: monospace;
+  text-align: right;
+  border-radius: 4px;
+  background: var(--surface);
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.param-input:focus {
+  border-color: var(--primary);
+}
+
+.fix-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.fix-checkbox {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
 .matrix-container {

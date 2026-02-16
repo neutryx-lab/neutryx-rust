@@ -47,7 +47,7 @@ function onValCalendarPick(date: unknown) {
 </script>
 
 <template>
-  <div class="settings-grid">
+  <div class="config-grid">
     <div class="grid-label">Val Date</div>
     <div class="grid-input">
       <v-text-field
@@ -117,30 +117,3 @@ function onValCalendarPick(date: unknown) {
   </div>
 </template>
 
-<style scoped>
-.settings-grid {
-  display: grid;
-  grid-template-columns: 90px 1fr;
-  align-items: center;
-  gap: 4px 8px;
-}
-
-.grid-label {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  text-align: right;
-  padding-right: 4px;
-  white-space: nowrap;
-  line-height: 1.2;
-}
-
-.grid-input {
-  min-width: 0;
-}
-
-.tenor-chip {
-  min-width: 0 !important;
-  padding: 0 4px !important;
-  font-size: 0.7rem !important;
-}
-</style>

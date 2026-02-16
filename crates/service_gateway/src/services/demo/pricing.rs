@@ -35,7 +35,7 @@ use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        AdvancedGreeksMode, Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest,
+        Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest,
         DemoAdvancedGreeksResult, DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult,
         DemoPathDistribution, DemoPricingMethod, DemoPricingRequest, DemoPricingResult,
         DemoTreeType, ExpandedTrade, FactorGreeks, FactorGreeksEntry, LegResult,
@@ -404,6 +404,134 @@ fn price_with_rates(
         .build();
     Pricer::price_pv(trade, &market, &calc)
         .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))
+}
+
+/// Collect unique currencies from legs, including `reporting_currency`.
+fn collect_currencies(
+    legs: &[PricingLeg],
+    reporting_currency: Currency,
+) -> Result<Vec<Currency>, ServerError> {
+    let mut seen = std::collections::HashSet::new();
+    let mut ccys = Vec::new();
+    for leg in legs {
+        let ccy = parse_currency(&leg.currency)?;
+        if seen.insert(ccy) {
+            ccys.push(ccy);
+        }
+    }
+    if seen.insert(reporting_currency) {
+        ccys.push(reporting_currency);
+    }
+    Ok(ccys)
+}
+
+/// Compute per-currency bump-revalue delta, gamma, and rho.
+///
+/// Returns `(factor_entries, total_delta, total_gamma, total_rho)`.
+fn compute_factor_greeks(
+    trade: &Trade,
+    valuation_date: Date,
+    reporting_currency: Currency,
+    currencies: &[Currency],
+    base_pv: f64,
+    h: f64,
+    dto_legs: &[PricingLeg],
+) -> Result<(Vec<FactorGreeksEntry>, f64, f64, f64), ServerError> {
+    let mut factors = Vec::new();
+    let mut total_delta = 0.0_f64;
+    let mut total_gamma = 0.0_f64;
+    let mut total_rho = 0.0_f64;
+
+    for &ccy in currencies {
+        let rates_up: Vec<(Currency, f64)> = currencies
+            .iter()
+            .map(|&c| {
+                if c == ccy {
+                    (c, DEFAULT_DISCOUNT_RATE + h)
+                } else {
+                    (c, DEFAULT_DISCOUNT_RATE)
+                }
+            })
+            .collect();
+        let pv_up =
+            price_with_rates(trade, valuation_date, reporting_currency, &rates_up, dto_legs)?;
+
+        let rates_down: Vec<(Currency, f64)> = currencies
+            .iter()
+            .map(|&c| {
+                if c == ccy {
+                    (c, DEFAULT_DISCOUNT_RATE - h)
+                } else {
+                    (c, DEFAULT_DISCOUNT_RATE)
+                }
+            })
+            .collect();
+        let pv_down =
+            price_with_rates(trade, valuation_date, reporting_currency, &rates_down, dto_legs)?;
+
+        let delta = (pv_up - pv_down) / (2.0 * h);
+        let gamma = (pv_up - 2.0 * base_pv + pv_down) / (h * h);
+        let rho = delta; // Linear products: rho ≈ rate delta.
+
+        total_delta += delta;
+        total_gamma += gamma;
+        total_rho += rho;
+
+        factors.push(FactorGreeksEntry {
+            factor: RiskFactor {
+                factor_type: "Curve".to_string(),
+                name: ccy.code().to_string(),
+            },
+            greeks: FactorGreeks {
+                delta: Some(delta),
+                gamma: Some(gamma),
+                vega: None,
+                theta: None,
+                rho: Some(rho),
+                vanna: None,
+                volga: None,
+            },
+        });
+    }
+
+    Ok((factors, total_delta, total_gamma, total_rho))
+}
+
+/// Compute theta by shifting the valuation date forward.
+fn compute_theta_factor(
+    valuation_date: Date,
+    reporting_currency: Currency,
+    base_rates: &[(Currency, f64)],
+    base_pv: f64,
+    time_bump_years: f64,
+    dto_legs: &[PricingLeg],
+) -> FactorGreeksEntry {
+    let bump_days = (time_bump_years * 365.0).round() as i64;
+    let theta_inner = valuation_date.into_inner() + chrono::Duration::days(bump_days);
+    let theta = Date::from_ymd(theta_inner.year(), theta_inner.month(), theta_inner.day())
+        .ok()
+        .and_then(|td| {
+            let theta_legs = build_domain_legs(dto_legs, td).ok()?;
+            let theta_trade = Trade::new("DEMO-ADV-THETA", theta_legs, TradeType::Swap);
+            price_with_rates(&theta_trade, td, reporting_currency, base_rates, dto_legs).ok()
+        })
+        .map(|pv| (pv - base_pv) / time_bump_years);
+
+    FactorGreeksEntry {
+        factor: RiskFactor {
+            factor_type: "Time".to_string(),
+            name: "Theta".to_string(),
+        },
+        greeks: FactorGreeks {
+            delta: None,
+            gamma: None,
+            vega: None,
+            theta,
+            rho: None,
+            vanna: None,
+            volga: None,
+        },
+    }
 }
 
 /// Format `PricingMethodHint` for output.
@@ -1738,13 +1866,6 @@ impl DemoService {
         request: &DemoAdvancedGreeksRequest,
         _state: &Arc<AppState>,
     ) -> Result<DemoAdvancedGreeksResult, ServerError> {
-        // Reject EnzymeAAD in demo mode.
-        if matches!(request.config.mode, AdvancedGreeksMode::EnzymeAad) {
-            return Err(ServerError::InvalidRequest(
-                "EnzymeAAD requires nightly + pricer_risk. Use BumpRevalue in demo.".to_string(),
-            ));
-        }
-
         let start = Instant::now();
         let valuation_date = parse_date(&request.valuation_date)?;
         let reporting_currency = parse_currency(&request.reporting_currency)?;
@@ -1753,24 +1874,21 @@ impl DemoService {
         let trade = Trade::new("DEMO-ADV-GREEKS", domain_legs, TradeType::Swap);
 
         let cfg = &request.config;
-        let h = cfg.rate_bump_absolute;
+        let (_spot_bump, _vol_bump, time_bump, rate_bump) = cfg.effective_bumps();
+
+        // Determine actual computation method.
+        let mode_label = if cfg.is_enzyme_aad() {
+            if pricer_risk::RiskEngine::is_aad_available() {
+                "EnzymeAAD"
+            } else {
+                "BumpRevalue (FD fallback)"
+            }
+        } else {
+            "BumpRevalue"
+        };
 
         // Collect unique currencies from legs.
-        let currencies: Vec<Currency> = {
-            let mut seen = std::collections::HashSet::new();
-            let mut ccys = Vec::new();
-            for leg in &request.legs {
-                let ccy = parse_currency(&leg.currency)?;
-                if seen.insert(ccy) {
-                    ccys.push(ccy);
-                }
-            }
-            // Ensure reporting currency is included.
-            if seen.insert(reporting_currency) {
-                ccys.push(reporting_currency);
-            }
-            ccys
-        };
+        let currencies = collect_currencies(&request.legs, reporting_currency)?;
 
         // Build base rates: all currencies at DEFAULT_DISCOUNT_RATE.
         let base_rates: Vec<(Currency, f64)> =
@@ -1786,113 +1904,30 @@ impl DemoService {
         )?;
 
         // Per-currency delta & gamma (Curve factors).
-        let mut factors = Vec::new();
-        let mut total_delta = 0.0_f64;
-        let mut total_gamma = 0.0_f64;
-        let mut total_rho = 0.0_f64;
-        let mut has_delta = false;
-
-        for &ccy in &currencies {
-            // Bump only this currency's rate up.
-            let rates_up: Vec<(Currency, f64)> = currencies
-                .iter()
-                .map(|&c| {
-                    if c == ccy {
-                        (c, DEFAULT_DISCOUNT_RATE + h)
-                    } else {
-                        (c, DEFAULT_DISCOUNT_RATE)
-                    }
-                })
-                .collect();
-            let pv_up = price_with_rates(
-                &trade,
-                valuation_date,
-                reporting_currency,
-                &rates_up,
-                &request.legs,
-            )?;
-
-            // Bump only this currency's rate down.
-            let rates_down: Vec<(Currency, f64)> = currencies
-                .iter()
-                .map(|&c| {
-                    if c == ccy {
-                        (c, DEFAULT_DISCOUNT_RATE - h)
-                    } else {
-                        (c, DEFAULT_DISCOUNT_RATE)
-                    }
-                })
-                .collect();
-            let pv_down = price_with_rates(
-                &trade,
-                valuation_date,
-                reporting_currency,
-                &rates_down,
-                &request.legs,
-            )?;
-
-            let delta = (pv_up - pv_down) / (2.0 * h);
-            let gamma = (pv_up - 2.0 * base_pv + pv_down) / (h * h);
-            let rho = delta; // Linear products: rho ≈ rate delta.
-
-            total_delta += delta;
-            total_gamma += gamma;
-            total_rho += rho;
-            has_delta = true;
-
-            factors.push(FactorGreeksEntry {
-                factor: RiskFactor {
-                    factor_type: "Curve".to_string(),
-                    name: ccy.code().to_string(),
-                },
-                greeks: FactorGreeks {
-                    delta: Some(delta),
-                    gamma: Some(gamma),
-                    vega: None,
-                    theta: None,
-                    rho: Some(rho),
-                    vanna: None,
-                    volga: None,
-                },
-            });
-        }
+        let (mut factors, total_delta, total_gamma, total_rho) = compute_factor_greeks(
+            &trade,
+            valuation_date,
+            reporting_currency,
+            &currencies,
+            base_pv,
+            rate_bump,
+            &request.legs,
+        )?;
 
         // Theta: shift valuation date forward (Time factor).
-        let bump_days = (cfg.time_bump_years * 365.0).round() as i64;
-        let theta_inner = valuation_date.into_inner() + chrono::Duration::days(bump_days);
-        let theta = Date::from_ymd(theta_inner.year(), theta_inner.month(), theta_inner.day())
-            .ok()
-            .and_then(|td| {
-                let theta_legs = build_domain_legs(&request.legs, td).ok()?;
-                let theta_trade = Trade::new("DEMO-ADV-THETA", theta_legs, TradeType::Swap);
-                price_with_rates(
-                    &theta_trade,
-                    td,
-                    reporting_currency,
-                    &base_rates,
-                    &request.legs,
-                )
-                .ok()
-            })
-            .map(|pv| (pv - base_pv) / cfg.time_bump_years);
-
-        factors.push(FactorGreeksEntry {
-            factor: RiskFactor {
-                factor_type: "Time".to_string(),
-                name: "Theta".to_string(),
-            },
-            greeks: FactorGreeks {
-                delta: None,
-                gamma: None,
-                vega: None,
-                theta,
-                rho: None,
-                vanna: None,
-                volga: None,
-            },
-        });
+        let theta_entry = compute_theta_factor(
+            valuation_date,
+            reporting_currency,
+            &base_rates,
+            base_pv,
+            time_bump,
+            &request.legs,
+        );
+        let theta = theta_entry.greeks.theta;
+        factors.push(theta_entry);
 
         // Totals.
+        let has_delta = !currencies.is_empty();
         let totals = FactorGreeks {
             delta: if has_delta { Some(total_delta) } else { None },
             gamma: if has_delta { Some(total_gamma) } else { None },
@@ -1903,13 +1938,11 @@ impl DemoService {
             volga: None,
         };
 
-        let elapsed = start.elapsed();
-
         Ok(DemoAdvancedGreeksResult {
             price: base_pv,
             currency: request.reporting_currency.clone(),
-            mode: "BumpRevalue".to_string(),
-            computation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            mode: mode_label.to_string(),
+            computation_time_ms: start.elapsed().as_secs_f64() * 1000.0,
             factors,
             totals,
         })

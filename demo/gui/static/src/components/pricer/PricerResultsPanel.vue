@@ -161,28 +161,9 @@ const greekItems = computed(() => {
   gap: 2px 8px;
 }
 
-.section-header {
-  grid-column: 1 / -1;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  padding: 6px 0 2px;
-  margin-top: 4px;
-}
-
-.section-header:first-child {
-  margin-top: 0;
-}
-
-.grid-label {
+.result-grid .grid-label {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
-  text-align: right;
-  padding-right: 4px;
-  white-space: nowrap;
   font-family: monospace;
 }
 

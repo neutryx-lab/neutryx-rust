@@ -113,24 +113,27 @@ watch(chartType, () => {
       <div class="space-y-4">
         <!-- Curve Selector -->
         <div class="glass-card p-5">
-          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Curve Selection</h3>
+          <div class="section-header" style="margin-top: 0">Curve Selection</div>
 
           <!-- Error Message -->
           <div v-if="loadError" class="mb-3 p-2 rounded bg-red-500/20 border border-red-500/50">
             <p class="text-xs text-red-400">{{ loadError }}</p>
           </div>
 
-          <select
-            v-model="selectedCurveName"
-            :disabled="!curvesConfig"
-            class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] disabled:opacity-50"
-          >
-            <option value="">{{ curvesConfig ? 'Select curve...' : 'Loading...' }}</option>
-            <option v-for="curve in curveOptions" :key="curve.name" :value="curve.name">
-              {{ curve.name }}
-            </option>
-          </select>
-
+          <div class="config-grid">
+            <div class="grid-label">Curve</div>
+            <div class="grid-input">
+              <v-select
+                v-model="selectedCurveName"
+                :items="curveOptions.map(c => ({ title: c.name, value: c.name }))"
+                :placeholder="curvesConfig ? 'Select curve...' : 'Loading...'"
+                :disabled="!curvesConfig"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
+            </div>
+          </div>
         </div>
 
         <!-- Instruments Table -->
@@ -146,41 +149,44 @@ watch(chartType, () => {
 
         <!-- Build Settings -->
         <div class="glass-card p-5">
-          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Build Settings</h3>
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs text-[var(--text-muted)] mb-1">Calibration</label>
-              <select
+          <div class="section-header" style="margin-top: 0">Build Settings</div>
+          <div class="config-grid">
+            <div class="grid-label">Calibration</div>
+            <div class="grid-input">
+              <v-select
                 v-model="calibrationMethod"
-                class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-              >
-                <option v-for="m in calibrationMethods" :key="m.value" :value="m.value">{{ m.label }}</option>
-              </select>
+                :items="calibrationMethods.map(m => ({ title: m.label, value: m.value }))"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
             </div>
-            <div>
-              <label class="block text-xs text-[var(--text-muted)] mb-1">Interpolation</label>
-              <select
+            <div class="grid-label">Interpolation</div>
+            <div class="grid-input">
+              <v-select
                 v-model="interpolation"
-                class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
-              >
-                <option v-for="m in annotatedInterpolationMethods" :key="m.value" :value="m.value">{{ m.displayLabel }}</option>
-              </select>
+                :items="annotatedInterpolationMethods.map(m => ({ title: m.displayLabel, value: m.value }))"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
             </div>
-            <p
-              v-if="compatibilityHint"
-              class="text-xs px-2 py-1.5 rounded"
-              :class="{
-                'text-emerald-400 bg-emerald-500/10': compatibilityHint.level === 'good',
-                'text-amber-400 bg-amber-500/10': compatibilityHint.level === 'warn',
-                'text-sky-400 bg-sky-500/10': compatibilityHint.level === 'info',
-              }"
-            >
-              {{ compatibilityHint.message }}
-            </p>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input v-model="allowExtrapolation" type="checkbox" class="w-4 h-4 rounded">
-              <span class="text-sm text-[var(--text-secondary)]">Extrapolation</span>
-            </label>
+            <div v-if="compatibilityHint" class="grid-span">
+              <p
+                class="text-xs px-2 py-1.5 rounded"
+                :class="{
+                  'text-emerald-400 bg-emerald-500/10': compatibilityHint.level === 'good',
+                  'text-amber-400 bg-amber-500/10': compatibilityHint.level === 'warn',
+                  'text-sky-400 bg-sky-500/10': compatibilityHint.level === 'info',
+                }"
+              >
+                {{ compatibilityHint.message }}
+              </p>
+            </div>
+            <div class="grid-label">Extrap.</div>
+            <div class="grid-input">
+              <v-switch v-model="allowExtrapolation" color="primary" density="compact" hide-details />
+            </div>
           </div>
         </div>
 
@@ -358,14 +364,6 @@ watch(chartType, () => {
 </template>
 
 <style scoped>
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-}
-
 .curve-table-header {
   background: var(--surface);
   box-shadow: 0 1px 0 var(--glass-border);

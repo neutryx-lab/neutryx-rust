@@ -72,7 +72,7 @@ async function applyTenorChip(paramName: string, tenor: string) {
 </script>
 
 <template>
-  <div class="instrument-grid">
+  <div class="config-grid">
     <!-- Instrument Type -->
     <div class="grid-label">Type</div>
     <div class="grid-input">
@@ -179,35 +179,3 @@ async function applyTenorChip(paramName: string, tenor: string) {
   </div>
 </template>
 
-<style scoped>
-.instrument-grid {
-  display: grid;
-  grid-template-columns: 90px 1fr;
-  align-items: center;
-  gap: 4px 8px;
-}
-
-.grid-label {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  text-align: right;
-  padding-right: 4px;
-  white-space: nowrap;
-  line-height: 1.2;
-}
-
-.grid-label.required::after {
-  content: ' *';
-  color: rgb(var(--v-theme-error));
-}
-
-.grid-input {
-  min-width: 0;
-}
-
-.tenor-chip {
-  min-width: 0 !important;
-  padding: 0 4px !important;
-  font-size: 0.7rem !important;
-}
-</style>
