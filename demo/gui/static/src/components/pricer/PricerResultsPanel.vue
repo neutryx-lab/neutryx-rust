@@ -53,8 +53,8 @@ const greekItems = computed(() => {
 </script>
 
 <template>
-  <v-card v-if="result" variant="outlined">
-    <v-card-text class="pa-3">
+  <div v-if="result" class="glass-card">
+    <div class="p-3">
       <div class="result-grid">
         <!-- ═══ PricingResult ═══ -->
         <div class="section-header">PricingResult</div>
@@ -149,8 +149,8 @@ const greekItems = computed(() => {
           </template>
         </template>
       </div>
-    </v-card-text>
-  </v-card>
+    </div>
+  </div>
 </template>
 
 <style scoped>

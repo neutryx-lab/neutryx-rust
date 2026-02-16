@@ -212,8 +212,8 @@ watch(
 </script>
 
 <template>
-  <v-card variant="outlined" class="config-panel">
-    <v-card-text class="pa-3">
+  <div class="glass-card config-panel">
+    <div class="p-3">
       <div class="config-grid">
         <!-- ═══ TRADE ═══ -->
         <div class="section-header">Trade</div>
@@ -506,8 +506,8 @@ watch(
           {{ graphSaveFeedback ? 'Saved!' : 'Save Graph' }}
         </v-btn>
       </div>
-    </v-card-text>
-  </v-card>
+    </div>
+  </div>
 </template>
 
 <style scoped>

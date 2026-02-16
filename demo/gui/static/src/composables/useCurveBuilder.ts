@@ -137,12 +137,19 @@ export interface BuildResult {
 export const calibrationMethods = [
   { value: 'bootstrapping', label: 'Bootstrapping' },
   { value: 'global', label: 'Global' },
+  { value: 'levenberg_marquardt', label: 'Levenberg-Marquardt' },
+  { value: 'penalised', label: 'Penalised' },
+  { value: 'best_fit', label: 'Best Fit' },
 ];
 
 export const interpolationMethods = [
   { value: 'flat_forward', label: 'Flat Forward' },
   { value: 'log_linear_df', label: 'Log-Linear DF' },
   { value: 'linear_df', label: 'Linear DF' },
+  { value: 'cubic_spline_fwd', label: 'Cubic Spline (Fwd)' },
+  { value: 'monotone_convex', label: 'Monotone Convex' },
+  { value: 'log_cubic_df', label: 'Log-Cubic DF' },
+  { value: 'tension_spline', label: 'Tension Spline' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -155,9 +162,9 @@ function normaliseInterpolation(value: string): string {
     'loglinear': 'log_linear_df',
     'log_linear': 'log_linear_df',
     'linear': 'linear_df',
-    'monotone_cubic': 'log_linear_df',
-    'cubic': 'log_linear_df',
-    'cubic_spline': 'log_linear_df',
+    'monotone_cubic': 'monotone_convex',
+    'cubic': 'cubic_spline_fwd',
+    'cubic_spline': 'cubic_spline_fwd',
   };
   return map[value] || value;
 }
@@ -495,6 +502,16 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
         bootstrap_method: calibrationMethod.value,
         interpolation: interpolation.value,
       };
+
+      // Tension spline parameter
+      if (interpolation.value === 'tension_spline') {
+        requestBody.tension = 1.0;
+      }
+
+      // Penalised calibration penalty weight
+      if (calibrationMethod.value === 'penalised') {
+        requestBody.penalty_weight = 1e-4;
+      }
 
       if (selectedCurve.value.curveType === 'credit') {
         requestBody.curve_type = 'credit';

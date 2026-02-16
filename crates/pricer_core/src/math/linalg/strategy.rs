@@ -164,6 +164,48 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
     fn name(&self) -> &'static str { "Forward Substitution (Lower Triangular)" }
 }
 
+/// QR decomposition strategy for overdetermined or square systems.
+///
+/// For square systems, solves A * x = b exactly.
+/// For overdetermined systems (m > n), finds the least-squares solution
+/// minimising ||A * x - b||².
+#[derive(Debug, Clone)]
+pub struct QRStrategy<T: RealField + Copy> {
+    matrix: Option<DMatrix<T>>,
+}
+
+impl<T: RealField + Copy> Default for QRStrategy<T> {
+    fn default() -> Self { Self { matrix: None } }
+}
+
+impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for QRStrategy<T> {
+    fn decompose(&mut self, matrix: &DMatrix<T>) -> Result<(), LinearAlgebraError> {
+        if matrix.nrows() < matrix.ncols() {
+            return Err(LinearAlgebraError::InvalidInput(
+                "QR strategy requires m >= n (overdetermined or square system)".to_string(),
+            ));
+        }
+        self.matrix = Some(matrix.clone());
+        Ok(())
+    }
+
+    fn solve(&self, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
+        let matrix = require_decomposed(self.matrix.as_ref())?;
+        super::wrappers::qr_solve(matrix, b)
+    }
+
+    fn inverse(&self) -> Result<DMatrix<T>, LinearAlgebraError> {
+        let matrix = require_decomposed(self.matrix.as_ref())?;
+        require_square(matrix)?;
+        matrix
+            .clone()
+            .try_inverse()
+            .ok_or(LinearAlgebraError::SingularMatrix)
+    }
+
+    fn name(&self) -> &'static str { "QR Decomposition (Least Squares)" }
+}
+
 /// Solve `L * x = b` via forward substitution (O(n^2)).
 ///
 /// ```text

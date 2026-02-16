@@ -96,8 +96,8 @@ function fmtPv(v: number | null): string {
 </script>
 
 <template>
-  <v-card variant="outlined">
-    <v-card-text class="pa-0">
+  <div class="glass-card">
+    <div>
       <!-- Loading -->
       <div v-if="store.isExpanding" class="pa-4">
         <v-progress-linear indeterminate color="primary" />
@@ -185,8 +185,8 @@ function fmtPv(v: number | null): string {
           · {{ store.expandedTrade.metadata.processingTimeMs.toFixed(1) }}ms
         </div>
       </div>
-    </v-card-text>
-  </v-card>
+    </div>
+  </div>
 </template>
 
 <style scoped>

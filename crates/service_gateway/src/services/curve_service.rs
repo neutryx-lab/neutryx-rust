@@ -133,21 +133,40 @@ impl CurveService {
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
                 (curve, Some(jac), "bootstrapping")
             }
-            BootstrapMethod::Global => {
+            BootstrapMethod::Global
+            | BootstrapMethod::LevenbergMarquardt
+            | BootstrapMethod::Penalised
+            | BootstrapMethod::BestFit => {
+                let damping = match request.bootstrap_method {
+                    BootstrapMethod::LevenbergMarquardt => Some(1e-3),
+                    BootstrapMethod::Penalised => {
+                        Some(request.penalty_weight.unwrap_or(1e-4))
+                    }
+                    _ => None,
+                };
                 let global_config = GlobalBootstrapConfig {
                     tolerance: request.tolerance,
                     param_tolerance: request.tolerance,
                     max_iterations: request.max_iterations,
                     interpolation,
+                    damping_factor: damping,
                     ..Default::default()
                 };
                 let global = GlobalBootstrapper::new(global_config);
 
                 let n = market_instruments.len();
+                let method_label = match request.bootstrap_method {
+                    BootstrapMethod::LevenbergMarquardt => "levenberg_marquardt",
+                    BootstrapMethod::Penalised => "penalised",
+                    BootstrapMethod::BestFit => "best_fit",
+                    _ => "global",
+                };
 
                 let result = global
                     .calibrate_with_shift_grid(&market_instruments, &jump_data)
-                    .map_err(|e| ServerError::Pricing(format!("Global bootstrap failed: {e}")))?;
+                    .map_err(|e| {
+                        ServerError::Pricing(format!("{} calibration failed: {e}", method_label))
+                    })?;
                 let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
                     let size = n.min(j_inv.nrows());
                     let mut data = vec![vec![0.0; size]; size];
@@ -163,7 +182,7 @@ impl CurveService {
                 } else {
                     result.curve.with_jumps(jump_data.clone())
                 };
-                (curve, jacobian, "global")
+                (curve, jacobian, method_label)
             }
         };
 
@@ -265,6 +284,10 @@ impl CurveService {
             BootstrapInterpolation::Linear => "linear_df",
             BootstrapInterpolation::LogLinear => "log_linear_df",
             BootstrapInterpolation::FlatForward => "flat_forward",
+            BootstrapInterpolation::CubicSplineFwd => "cubic_spline_fwd",
+            BootstrapInterpolation::MonotoneConvex => "monotone_convex",
+            BootstrapInterpolation::LogCubicDF => "log_cubic_df",
+            BootstrapInterpolation::TensionSpline => "tension_spline",
         }
         .to_string();
 
@@ -448,6 +471,10 @@ impl CurveService {
             BootstrapInterpolation::Linear => "linear_df",
             BootstrapInterpolation::LogLinear => "log_linear_df",
             BootstrapInterpolation::FlatForward => "flat_forward",
+            BootstrapInterpolation::CubicSplineFwd => "cubic_spline_fwd",
+            BootstrapInterpolation::MonotoneConvex => "monotone_convex",
+            BootstrapInterpolation::LogCubicDF => "log_cubic_df",
+            BootstrapInterpolation::TensionSpline => "tension_spline",
         }
         .to_string();
 
@@ -688,6 +715,8 @@ mod tests {
             curve_type: CurveType::Rate,
             discount_curve_id: None,
             recovery_rate: 0.40,
+            tension: None,
+            penalty_weight: None,
         }
     }
 

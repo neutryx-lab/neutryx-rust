@@ -16,6 +16,12 @@ pub enum BootstrapMethod {
     Bootstrapping,
     /// Global optimisation.
     Global,
+    /// Levenberg-Marquardt non-linear least squares.
+    LevenbergMarquardt,
+    /// Penalised (regularised) global calibration with forward smoothness penalty.
+    Penalised,
+    /// Best fit via QR least squares (for overdetermined systems).
+    BestFit,
 }
 
 /// Curve type discriminator.
@@ -101,6 +107,12 @@ pub struct CurveBuildRequest {
     /// Recovery rate for CDS instruments (default 0.40).
     #[serde(default = "default_recovery_rate")]
     pub recovery_rate: f64,
+    /// Tension parameter for tension spline interpolation (default 1.0).
+    #[serde(default)]
+    pub tension: Option<f64>,
+    /// Penalty weight for penalised calibration (default 1e-4).
+    #[serde(default)]
+    pub penalty_weight: Option<f64>,
 }
 
 fn default_tolerance() -> f64 { 1e-10 }

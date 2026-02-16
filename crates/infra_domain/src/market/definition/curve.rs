@@ -262,6 +262,14 @@ pub enum CalibrationMethod {
     Sequential,
     /// Global calibration (all pillars simultaneously).
     Global,
+    /// Levenberg-Marquardt non-linear least squares.
+    #[serde(rename = "levenberg_marquardt")]
+    LevenbergMarquardt,
+    /// Penalised (regularised) global calibration with forward smoothness penalty.
+    Penalised,
+    /// Best fit via QR least squares (for overdetermined systems).
+    #[serde(rename = "best_fit")]
+    BestFit,
 }
 
 /// Interpolation method for the resulting yield curve.
@@ -511,6 +519,9 @@ impl CalibrationMethod {
         match self {
             Self::Sequential => "Sequential Bootstrapping",
             Self::Global => "Global Calibration",
+            Self::LevenbergMarquardt => "Levenberg-Marquardt",
+            Self::Penalised => "Penalised",
+            Self::BestFit => "Best Fit",
         }
     }
 }

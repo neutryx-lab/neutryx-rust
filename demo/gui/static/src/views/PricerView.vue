@@ -161,9 +161,8 @@ function onTabChange(tab: 'standard' | 'exotic') {
         <v-row>
           <!-- Left Panel: Product selection + parameters -->
           <v-col cols="12" lg="4">
-            <v-card variant="outlined" class="mb-4">
-              <v-card-title class="text-subtitle-1">Select Product</v-card-title>
-              <v-card-text>
+            <div class="glass-card p-4 mb-4">
+              <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Select Product</div>
                 <v-progress-linear
                   v-if="productsLoading"
                   indeterminate
@@ -195,21 +194,19 @@ function onTabChange(tab: 'standard' | 'exotic') {
 
                 <p
                   v-if="selectedProduct"
-                  class="text-body-2 text-medium-emphasis mt-2"
+                  class="text-body-2 mt-2"
+                  style="color: var(--text-muted)"
                 >
                   {{ selectedProduct.description }}
                 </p>
-              </v-card-text>
-            </v-card>
+            </div>
 
             <!-- Parameter Form -->
-            <v-card
+            <div
               v-if="selectedProduct && selectedProduct.parameters.length > 0"
-              variant="outlined"
-              class="mb-4"
+              class="glass-card p-4 mb-4"
             >
-              <v-card-title class="text-subtitle-1">Parameters</v-card-title>
-              <v-card-text>
+              <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Parameters</div>
                 <DynamicParamField
                   v-for="param in selectedProduct.parameters"
                   :key="param.name"
@@ -228,8 +225,7 @@ function onTabChange(tab: 'standard' | 'exotic') {
                 >
                   Price
                 </v-btn>
-              </v-card-text>
-            </v-card>
+            </div>
           </v-col>
 
           <!-- Right Panel: Results -->
@@ -247,9 +243,8 @@ function onTabChange(tab: 'standard' | 'exotic') {
             </v-alert>
 
             <!-- Results Card -->
-            <v-card v-if="exoticResult" variant="outlined">
-              <v-card-title class="text-subtitle-1">Pricing Result</v-card-title>
-              <v-card-text>
+            <div v-if="exoticResult" class="glass-card p-4">
+              <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Pricing Result</div>
                 <v-table density="compact">
                   <tbody>
                     <tr>
@@ -294,23 +289,21 @@ function onTabChange(tab: 'standard' | 'exotic') {
                     </tbody>
                   </v-table>
                 </template>
-              </v-card-text>
-            </v-card>
+            </div>
 
             <!-- Empty state -->
-            <v-card
+            <div
               v-else-if="!exoticError"
-              variant="outlined"
-              class="d-flex align-center justify-center"
+              class="glass-card d-flex align-center justify-center"
               style="min-height: 200px"
             >
-              <v-card-text class="text-center text-medium-emphasis">
+              <div class="text-center" style="color: var(--text-muted)">
                 <v-icon icon="mdi-chart-bell-curve-cumulative" size="48" class="mb-2" />
                 <p class="text-body-1">
                   Select an exotic product and configure its parameters to begin pricing.
                 </p>
-              </v-card-text>
-            </v-card>
+              </div>
+            </div>
           </v-col>
         </v-row>
       </div>
