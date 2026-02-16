@@ -2,12 +2,8 @@
 
 use num_traits::Float;
 
-use crate::payoff::{
-    smooth_math::soft_plus,
-    McPayoff, ObservationType,
-};
-
 use super::PathObserver;
+use crate::payoff::{smooth_math::soft_plus, McPayoff, ObservationType};
 
 /// Lookback option type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

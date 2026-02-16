@@ -8,8 +8,8 @@
 //!
 //! - [`structured`] - Structured/path-dependent payoffs (Asian, Barrier,
 //!   Lookback) and the [`PathObserver`] streaming statistics accumulator.
-//! - [`vanilla`](self::vanilla) - Vanilla European and digital payoffs.
-//! - [`smooth_math`] - Shared smooth approximation functions (soft-plus,
+//! - `vanilla` - Vanilla European and digital payoffs.
+//! - `smooth_math` - Shared smooth approximation functions (soft-plus,
 //!   smooth indicator).
 //!
 //! ## Unified Dispatch

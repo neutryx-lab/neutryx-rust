@@ -4,8 +4,8 @@ use num_traits::Float;
 
 use super::{
     smooth_math::{smooth_indicator, soft_plus},
-    McPayoff, ObservationType,
     structured::PathObserver,
+    McPayoff, ObservationType,
 };
 
 /// Parameters for vanilla European option payoffs.
