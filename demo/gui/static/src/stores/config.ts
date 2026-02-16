@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import vuetify from '@/plugins/vuetify';
 
 export type Theme = 'dark' | 'light' | 'oled';
 export type AccentColor = 'indigo' | 'cyan' | 'emerald' | 'amber' | 'rose' | 'violet';
@@ -63,9 +64,10 @@ export const useConfigStore = defineStore('config', () => {
     logLevel.value = level;
   }
 
-  // Apply theme to document body
+  // Apply theme to document body and Vuetify
   function applyTheme() {
     document.documentElement.dataset.theme = theme.value;
+    vuetify.theme.global.name.value = theme.value;
   }
 
   // Apply accent color

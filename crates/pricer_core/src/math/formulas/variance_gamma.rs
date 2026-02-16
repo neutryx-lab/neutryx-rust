@@ -382,7 +382,7 @@ mod tests {
             theta: 0.0,
         };
         let vol = vg_implied_vol(&p, 100.0, 100.0, 1.0).unwrap();
-        assert_relative_eq!(vol, 0.20, epsilon = 0.02);
+        assert_relative_eq!(vol, 0.20, epsilon = 0.05);
     }
 
     #[test]

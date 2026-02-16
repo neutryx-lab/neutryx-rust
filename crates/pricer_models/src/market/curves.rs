@@ -120,15 +120,17 @@ pub enum BootstrapInterpolation {
     #[default]
     #[serde(rename = "log_linear_df", alias = "log_linear")]
     LogLinear,
-    /// Flat forward interpolation (constant simple forward rate between
-    /// pillars).
-    ///
-    /// DF interpolation is identical to LogLinear: `DF(t) = DF_i^(1-w) *
-    /// DF_{i+1}^w`. The distinction is in forward rate computation:
-    /// FlatForward guarantees that the simple forward rate `F(t,
-    /// t+δ)` is constant within each pillar interval when δ matches
-    /// the index's accrual period (e.g. 1/360 for ACT/360 indices).
+    /// Flat forward interpolation (constant simple forward rate between pillars).
     FlatForward,
+    /// Cubic spline on forward rates (not yet implemented, falls back to LogLinear).
+    CubicSplineFwd,
+    /// Monotone convex (Hagan-West) (not yet implemented, falls back to LogLinear).
+    MonotoneConvex,
+    /// Log-cubic on discount factors (not yet implemented, falls back to LogLinear).
+    #[serde(rename = "log_cubic_df")]
+    LogCubicDF,
+    /// Tension spline on forward rates (not yet implemented, falls back to LogLinear).
+    TensionSpline,
 }
 
 /// Market instrument for yield curve calibration.

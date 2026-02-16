@@ -273,8 +273,16 @@ pub enum InterpolationMethod {
     /// Log-linear interpolation (default, preserves no-arbitrage).
     #[default]
     LogLinear,
-    /// Flat forward interpolation (constant simple forward rate between.
+    /// Flat forward interpolation.
     FlatForward,
+    /// Natural cubic spline on instantaneous forward rates.
+    CubicSplineFwd,
+    /// Monotone convex interpolation (Hagan & West, 2006).
+    MonotoneConvex,
+    /// Natural cubic spline on log(DF).
+    LogCubicDF,
+    /// Tension spline on instantaneous forward rates.
+    TensionSpline,
 }
 
 /// Error type for curve definition validation.
@@ -515,6 +523,10 @@ impl InterpolationMethod {
             Self::Linear => "Linear",
             Self::LogLinear => "Log-Linear",
             Self::FlatForward => "Flat Forward",
+            Self::CubicSplineFwd => "Cubic Spline (Fwd)",
+            Self::MonotoneConvex => "Monotone Convex",
+            Self::LogCubicDF => "Log-Cubic DF",
+            Self::TensionSpline => "Tension Spline",
         }
     }
 }
