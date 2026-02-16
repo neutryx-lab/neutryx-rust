@@ -595,7 +595,81 @@ impl<T: Float> BootstrappedCurve<T> {
                 let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                 Ok(log_df.exp())
             }
+            BootstrapInterpolation::LogCubicDF => {
+                if i < self.spline_coefficients.len() {
+                    let [a, b, c, d] = self.spline_coefficients[i];
+                    let dx = t - t1;
+                    Ok((a + dx * (b + dx * (c + dx * d))).exp())
+                } else {
+                    Ok((df1.ln() * (T::one() - w) + df2.ln() * w).exp())
+                }
+            }
+            BootstrapInterpolation::CubicSplineFwd => {
+                if !self.spline_coefficients.is_empty() {
+                    Ok((-self.integrate_spline_forward(t)).exp())
+                } else {
+                    Ok((df1.ln() * (T::one() - w) + df2.ln() * w).exp())
+                }
+            }
+            BootstrapInterpolation::MonotoneConvex => {
+                if !self.spline_coefficients.is_empty() {
+                    Ok((-self.integrate_mc_forward(t)).exp())
+                } else {
+                    Ok((df1.ln() * (T::one() - w) + df2.ln() * w).exp())
+                }
+            }
+            BootstrapInterpolation::TensionSpline => {
+                if !self.spline_coefficients.is_empty() {
+                    Ok((-self.integrate_tension_forward(t)).exp())
+                } else {
+                    Ok((df1.ln() * (T::one() - w) + df2.ln() * w).exp())
+                }
+            }
         }
+    }
+
+    /// Integrates cubic spline forward rate from first pillar to t.
+    fn integrate_spline_forward(&self, t: T) -> T {
+        let two = from_f64::<T>(2.0);
+        let three = from_f64::<T>(3.0);
+        let four = from_f64::<T>(4.0);
+        let mut total = T::zero();
+        for (idx, coeffs) in self.spline_coefficients.iter().enumerate() {
+            let s0 = self.pillars[idx];
+            let s1 = self.pillars[idx + 1];
+            if t <= s0 { break; }
+            let hi = if t < s1 { t - s0 } else { s1 - s0 };
+            let [a, b, c, d] = *coeffs;
+            total = total + hi * (a + hi * (b / two + hi * (c / three + hi * d / four)));
+            if t <= s1 { break; }
+        }
+        total
+    }
+
+    /// Integrates monotone convex forward rate from first pillar to t.
+    fn integrate_mc_forward(&self, t: T) -> T {
+        let two = from_f64::<T>(2.0);
+        let three = from_f64::<T>(3.0);
+        let mut total = T::zero();
+        for (idx, coeffs) in self.spline_coefficients.iter().enumerate() {
+            let s0 = self.pillars[idx];
+            let s1 = self.pillars[idx + 1];
+            let dt = s1 - s0;
+            if t <= s0 || dt <= T::zero() { break; }
+            let [a, b, c, _] = *coeffs;
+            let u = if t < s1 { (t - s0) / dt } else { T::one() };
+            total = total + u * (a + u * (b / two + u * c / three)) * dt;
+            if t <= s1 { break; }
+        }
+        total
+    }
+
+    /// Integrates tension spline forward rate from first pillar to t.
+    fn integrate_tension_forward(&self, t: T) -> T {
+        let fwd_rates = self.derive_instantaneous_forwards();
+        let tau = self.tension.unwrap_or_else(|| from_f64(1.0));
+        pricer_core::math::interpolation::TensionSpline::new(&self.pillars, &fwd_rates, tau)
+            .map_or(T::zero(), |sp| sp.integrate(self.pillars[0], t))
     }
 
     /// Returns the forward rate with limit specification.

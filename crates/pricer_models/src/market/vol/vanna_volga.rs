@@ -66,6 +66,9 @@ impl<T: Float> VannaVolgaSurface<T> {
     /// Returns the per-slice parameters.
     pub fn params(&self) -> &[VannaVolgaParams<T>] { &self.params }
 
+    /// Returns the time interpolation method.
+    pub fn time_interpolation(&self) -> TimeInterpolation { self.time_interpolation }
+
     /// Interpolates VV parameters to the target expiry.
     fn interpolate_params(
         &self,

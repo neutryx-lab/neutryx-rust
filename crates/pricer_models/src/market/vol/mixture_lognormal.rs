@@ -61,6 +61,12 @@ impl<T: Float> MixtureLognormalSurface<T> {
     /// Returns the expiry grid.
     pub fn expiries(&self) -> &[T] { &self.expiries }
 
+    /// Returns the forward rates.
+    pub fn forwards(&self) -> &[T] { &self.forwards }
+
+    /// Returns the time interpolation method.
+    pub fn time_interpolation(&self) -> TimeInterpolation { self.time_interpolation }
+
     /// Returns the closest slice for the target expiry.
     fn find_slice(&self, expiry: T) -> Result<usize, VolSurfaceError> {
         let n = self.expiries.len();

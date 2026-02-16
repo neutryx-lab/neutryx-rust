@@ -64,6 +64,9 @@ impl<T: Float> VarianceGammaSurface<T> {
     /// Returns the expiry grid.
     pub fn expiries(&self) -> &[T] { &self.expiries }
 
+    /// Returns the time interpolation method.
+    pub fn time_interpolation(&self) -> TimeInterpolation { self.time_interpolation }
+
     /// Interpolates VG parameters to the target expiry.
     fn interpolate_params(
         &self,
