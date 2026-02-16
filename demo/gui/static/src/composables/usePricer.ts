@@ -163,6 +163,21 @@ export function usePricer() {
         timestamp: Date.now(),
       };
 
+      // Save to history for Greeks Analyser.
+      const inst = store.selectedInstrument;
+      store.resultHistory.unshift({
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        instrumentId: store.selectedInstrumentId,
+        instrumentName: inst?.displayName || inst?.name || store.selectedInstrumentId,
+        valuationDate: store.valuationDate,
+        reportingCcy: store.reportingCcy,
+        totalPv: priceResult.totalPv,
+        legs,
+        pricingResult: priceResult,
+      });
+      if (store.resultHistory.length > 50) store.resultHistory.length = 50;
+
       toast.success('Pricing complete');
     } catch (error) {
       console.error('Calculation failed:', error);

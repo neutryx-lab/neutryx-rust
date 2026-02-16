@@ -12,6 +12,7 @@ import { formatCurrency } from '@/utils/format';
 import {
   STOCHASTIC_MODELS,
   type CashflowEdit,
+  type HistoryEntry,
   type ValidationError,
   type ComputationMetrics,
   type SummaryStat,
@@ -64,9 +65,9 @@ export const usePricerStore = defineStore('pricer', () => {
   const fxBump = ref(1);
   const volBump = ref(1);
 
-  // Market Data
-  const selectedCurveIndex = ref('USD-SOFR');
-  const selectedVolSurfaceId = ref('');
+  // Market Data Overrides (published curves/vol surfaces activated for pricing)
+  const activeCurveOverrideIds = ref<string[]>([]);
+  const activeVolOverrideIds = ref<string[]>([]);
 
   // Stochastic Model
   const modelType = ref('GBM');
@@ -82,6 +83,9 @@ export const usePricerStore = defineStore('pricer', () => {
 
   // Metrics
   const computationMetrics = ref<ComputationMetrics | null>(null);
+
+  // History (for Greeks Analyser)
+  const resultHistory = ref<HistoryEntry[]>([]);
 
   // ---------------------------------------------------------------------------
   // Getters
@@ -171,8 +175,8 @@ export const usePricerStore = defineStore('pricer', () => {
     rateBump,
     fxBump,
     volBump,
-    selectedCurveIndex,
-    selectedVolSurfaceId,
+    activeCurveOverrideIds,
+    activeVolOverrideIds,
     modelType,
     modelParams,
     isExpanding,
@@ -180,6 +184,7 @@ export const usePricerStore = defineStore('pricer', () => {
     apiAvailable,
     validationErrors,
     computationMetrics,
+    resultHistory,
     // Getters
     selectedInstrument,
     groupedInstruments,

@@ -13,7 +13,7 @@ import { STOCHASTIC_MODELS } from '@/constants/pricer';
 
 const store = usePricerStore();
 const marketEnv = useMarketEnvStore();
-const { expandCashflows, calculateAll, resetAll } = usePricer();
+const { expandCashflows, calculateAll } = usePricer();
 
 // ---------------------------------------------------------------------------
 // Save Graph
@@ -159,6 +159,31 @@ function onValCalendarPick(date: unknown) {
   const d = String(date);
   store.valuationDate = d;
   valDateDisplay.value = d;
+}
+
+// ---------------------------------------------------------------------------
+// Market data overrides
+// ---------------------------------------------------------------------------
+function toggleCurveOverride(id: string) {
+  const idx = store.activeCurveOverrideIds.indexOf(id);
+  if (idx >= 0) {
+    store.activeCurveOverrideIds.splice(idx, 1);
+  } else {
+    store.activeCurveOverrideIds.push(id);
+  }
+}
+
+function toggleVolOverride(id: string) {
+  const idx = store.activeVolOverrideIds.indexOf(id);
+  if (idx >= 0) {
+    store.activeVolOverrideIds.splice(idx, 1);
+  } else {
+    store.activeVolOverrideIds.push(id);
+  }
+}
+
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // ---------------------------------------------------------------------------
@@ -351,8 +376,8 @@ watch(
           </div>
         </template>
 
-        <!-- ═══ BUMPS (hidden for auto — uses defaults) ═══ -->
-        <template v-if="store.pricingMethod !== 'auto'">
+        <!-- ═══ BUMPS (only when Greeks is on) ═══ -->
+        <template v-if="store.computeGreeks">
           <div class="section-header">Bumps</div>
 
           <div class="grid-label">Rate bp</div>
@@ -372,20 +397,51 @@ watch(
         <!-- ═══ MARKET DATA ═══ -->
         <div class="section-header">Market Data</div>
 
-        <div class="grid-label">Curve</div>
-        <div class="grid-input">
-          <v-select v-model="store.selectedCurveIndex" :items="marketEnv.allCurveItems" density="compact" variant="outlined" hide-details />
-        </div>
+        <template v-if="marketEnv.curves.length === 0 && marketEnv.volSurfaces.length === 0">
+          <div class="grid-span text-caption text-medium-emphasis" style="font-style: italic">
+            Server defaults. Publish from CurveBuilder / VolSurface to override.
+          </div>
+        </template>
+
+        <template v-if="marketEnv.curves.length > 0">
+          <div class="grid-label">Curves</div>
+          <div class="grid-input">
+            <div class="override-list">
+              <v-chip
+                v-for="c in marketEnv.curves"
+                :key="c.id"
+                size="small"
+                :variant="store.activeCurveOverrideIds.includes(c.id) ? 'flat' : 'outlined'"
+                :color="store.activeCurveOverrideIds.includes(c.id) ? 'primary' : undefined"
+                :prepend-icon="store.activeCurveOverrideIds.includes(c.id) ? 'mdi-check-circle' : 'mdi-circle-outline'"
+                closable
+                @click="toggleCurveOverride(c.id)"
+                @click:close="marketEnv.removeCurve(c.id)"
+              >
+                {{ c.curveName }} <span class="text-caption ml-1 text-medium-emphasis">{{ formatTime(c.publishedAt) }}</span>
+              </v-chip>
+            </div>
+          </div>
+        </template>
+
         <template v-if="marketEnv.volSurfaces.length > 0">
           <div class="grid-label">Vol Surf</div>
           <div class="grid-input">
-            <v-select
-              v-model="store.selectedVolSurfaceId"
-              :items="[{ title: '(none)', value: '' }, ...marketEnv.allVolSurfaceItems]"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
+            <div class="override-list">
+              <v-chip
+                v-for="v in marketEnv.volSurfaces"
+                :key="v.id"
+                size="small"
+                :variant="store.activeVolOverrideIds.includes(v.id) ? 'flat' : 'outlined'"
+                :color="store.activeVolOverrideIds.includes(v.id) ? 'teal' : undefined"
+                :prepend-icon="store.activeVolOverrideIds.includes(v.id) ? 'mdi-check-circle' : 'mdi-circle-outline'"
+                closable
+                @click="toggleVolOverride(v.id)"
+                @click:close="marketEnv.removeVolSurface(v.id)"
+              >
+                {{ v.indexOrPair }} <span class="text-caption ml-1 text-medium-emphasis">{{ v.model }}</span>
+              </v-chip>
+            </div>
           </div>
         </template>
 
@@ -437,15 +493,6 @@ watch(
           @click="calculateAll"
         >
           Price
-        </v-btn>
-        <v-btn
-          variant="text"
-          size="small"
-          :disabled="!store.expandedTrade"
-          prepend-icon="mdi-undo"
-          @click="resetAll"
-        >
-          Reset
         </v-btn>
         <v-btn
           variant="tonal"
@@ -509,5 +556,16 @@ watch(
   min-width: 0 !important;
   padding: 0 4px !important;
   font-size: 0.7rem !important;
+}
+
+.grid-span {
+  grid-column: 1 / -1;
+  padding: 2px 0;
+}
+
+.override-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 </style>

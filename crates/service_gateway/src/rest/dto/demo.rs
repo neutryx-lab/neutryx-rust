@@ -320,6 +320,68 @@ pub struct DemoGreeksResult {
     pub vega: Option<f64>,
 }
 
+/// Greeks mode (mirrors `pricer_risk::GreeksMode`).
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum AdvancedGreeksMode {
+    #[default]
+    BumpRevalue,
+    EnzymeAad,
+}
+
+/// Advanced Greeks configuration (mirrors `pricer_risk::GreeksConfig`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvancedGreeksConfig {
+    #[serde(default = "default_spot_bump")]
+    pub spot_bump_relative: f64,
+    #[serde(default = "default_vol_bump")]
+    pub vol_bump_absolute: f64,
+    #[serde(default = "default_time_bump")]
+    pub time_bump_years: f64,
+    #[serde(default = "default_rate_bump")]
+    pub rate_bump_absolute: f64,
+    #[serde(default)]
+    pub mode: AdvancedGreeksMode,
+}
+
+fn default_spot_bump() -> f64 { 0.01 }
+fn default_vol_bump() -> f64 { 0.01 }
+fn default_time_bump() -> f64 { 1.0 / 365.0 }
+fn default_rate_bump() -> f64 { 0.0001 }
+
+/// Advanced Greeks request (mirrors `pricer_risk::GreeksConfig` + trade).
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoAdvancedGreeksRequest {
+    #[validate(length(min = 1))]
+    pub valuation_date: String,
+    #[validate(length(min = 1))]
+    pub reporting_currency: String,
+    #[validate(length(min = 1))]
+    pub legs: Vec<PricingLeg>,
+    pub config: AdvancedGreeksConfig,
+}
+
+/// Advanced Greeks result (mirrors `pricer_risk::GreeksResult<f64>`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoAdvancedGreeksResult {
+    pub price: f64,
+    pub std_error: Option<f64>,
+    pub delta: Option<f64>,
+    pub gamma: Option<f64>,
+    pub vega: Option<f64>,
+    pub theta: Option<f64>,
+    pub rho: Option<f64>,
+    pub vanna: Option<f64>,
+    pub volga: Option<f64>,
+    pub currency: String,
+    pub computation_time_ms: f64,
+    pub mode: String,
+    pub confidence_95: Option<[f64; 2]>,
+}
+
 /// Market rate.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

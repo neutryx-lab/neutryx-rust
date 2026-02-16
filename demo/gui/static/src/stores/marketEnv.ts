@@ -2,12 +2,11 @@
  * Shared Market Environment store.
  *
  * Holds curves and vol surfaces published from CurveBuilder / VolSurface,
- * making them available to the Pricer via computed dropdown items.
+ * making them available to the Pricer as market data overrides.
  */
 
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import { CURVE_OPTIONS } from '@/constants/pricer';
+import { ref } from 'vue';
 import type { VolcubeCalibrateResponse, PricerGraphResponse } from '@/types/api';
 
 // ---------------------------------------------------------------------------
@@ -66,20 +65,6 @@ export const useMarketEnvStore = defineStore('marketEnv', () => {
   const curves = ref<PublishedCurve[]>([]);
   const volSurfaces = ref<PublishedVolSurface[]>([]);
   const pricerGraphs = ref<PublishedPricerGraph[]>([]);
-
-  // -- Computed: dropdown items for Pricer -----------------------------------
-
-  const allCurveItems = computed(() => {
-    const defaults = CURVE_OPTIONS.map((c) => ({ title: c.label, value: c.index }));
-    const custom = curves.value.map((c) => ({ title: c.label, value: c.id }));
-    return custom.length > 0
-      ? [...defaults, { title: '--- Published ---', value: '__divider__', props: { disabled: true } }, ...custom]
-      : defaults;
-  });
-
-  const allVolSurfaceItems = computed(() =>
-    volSurfaces.value.map((v) => ({ title: v.label, value: v.id })),
-  );
 
   // -- Actions ---------------------------------------------------------------
 
@@ -176,8 +161,6 @@ export const useMarketEnvStore = defineStore('marketEnv', () => {
     curves,
     volSurfaces,
     pricerGraphs,
-    allCurveItems,
-    allVolSurfaceItems,
     publishCurve,
     publishVolSurface,
     publishPricerGraph,

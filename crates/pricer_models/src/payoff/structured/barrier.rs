@@ -3,7 +3,10 @@
 use num_traits::Float;
 
 use super::PathObserver;
-use crate::payoff::{smooth_math::{smooth_indicator, soft_plus}, McPayoff, ObservationType};
+use crate::payoff::{
+    smooth_math::{smooth_indicator, soft_plus},
+    McPayoff, ObservationType,
+};
 
 /// Barrier type enumeration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

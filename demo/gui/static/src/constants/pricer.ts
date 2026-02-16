@@ -58,6 +58,18 @@ export interface CashflowEdit {
   rate?: number;
 }
 
+export interface HistoryEntry {
+  id: string;
+  timestamp: number;
+  instrumentId: string;
+  instrumentName: string;
+  valuationDate: string;
+  reportingCcy: string;
+  totalPv: number;
+  legs: import('@/types/api').PricingLeg[];
+  pricingResult: import('@/types/api').PricingResult;
+}
+
 // =============================================================================
 // Constants
 // =============================================================================

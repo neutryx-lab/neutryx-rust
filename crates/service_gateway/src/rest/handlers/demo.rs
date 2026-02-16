@@ -15,17 +15,17 @@ use crate::{
         demo::{
             AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse, Convention,
             ConventionsResponse, CreditQuotesResponse, CurveIndicesResponse,
-            CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest,
-            DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat,
-            FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse, HolidaysResponse,
-            ImpliedPdfRequest, ImpliedPdfResponse, IndexConventionsResponse, IndexRatesResponse,
-            InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse,
-            MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse,
-            RateCashflowsResponse, RateIndexDetailResponse, RateIndicesResponse,
-            RateInstrumentResponse, ResolveTenorRequest, ResolveTenorResponse,
-            SabrSmileRequest, SabrSmileResponse, TradeExpandRequest,
-            VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
-            VolcubeInstrumentsResponse, VolcubeModelsResponse,
+            CurveInstrumentsResponse, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
+            DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult,
+            EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FxVolCalibrateRequest,
+            FxVolPairsResponse, FxVolQuotesResponse, HolidaysResponse, ImpliedPdfRequest,
+            ImpliedPdfResponse, IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
+            IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
+            MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
+            RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse,
+            ResolveTenorRequest, ResolveTenorResponse, SabrSmileRequest, SabrSmileResponse,
+            TradeExpandRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
+            VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
     },
@@ -147,6 +147,8 @@ state_body_handler!(/// POST /api/pricer/price.
     price_trade, DemoService::price_trade(DemoPricingRequest) -> DemoPricingResult);
 state_body_handler!(/// POST /api/pricer/greeks.
     calculate_greeks, DemoService::calculate_greeks(DemoGreeksRequest) -> DemoGreeksResult);
+state_body_handler!(/// POST /api/pricer/advanced-greeks.
+    calculate_advanced_greeks, DemoService::calculate_advanced_greeks(DemoAdvancedGreeksRequest) -> DemoAdvancedGreeksResult);
 state_body_handler!(/// POST /api/volcube/calibrate.
     calibrate_volcube, VolcubeService::calibrate_volcube(VolcubeCalibrateRequest) -> VolcubeCalibrateResponse);
 state_body_handler!(/// POST /api/fxvol/calibrate.

@@ -2,22 +2,10 @@
 import { computed } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
 import { useCashflowEditor } from '@/composables/useCashflowEditor';
-import { formatNumberCompact, parseFormattedNumber, formatCurrency } from '@/utils/format';
+import { formatNumberCompact, parseFormattedNumber } from '@/utils/format';
 
 const store = usePricerStore();
 const { updateCashflow, resetEdits } = useCashflowEditor();
-
-const headers = [
-  { title: 'Payment', key: 'paymentDate', sortable: true },
-  { title: 'Accrual Start', key: 'accrualStart', sortable: true },
-  { title: 'Accrual End', key: 'accrualEnd', sortable: true },
-  { title: 'YF', key: 'yearFraction', align: 'end' as const },
-  { title: 'Notional', key: 'notional', align: 'end' as const },
-  { title: 'Rate', key: 'rate', align: 'end' as const },
-  { title: 'Type', key: 'payoffType', align: 'center' as const },
-  { title: 'DF', key: 'discountFactor', align: 'end' as const },
-  { title: 'PV', key: 'pv', align: 'end' as const },
-];
 
 interface CashflowRow {
   legIdx: number;
@@ -34,36 +22,42 @@ interface CashflowRow {
   edited: boolean;
 }
 
-function buildRows(legIdx: number): CashflowRow[] {
-  const leg = store.expandedTrade?.legs[legIdx];
-  if (!leg) return [];
-  return leg.cashflows.map((cf, cfIdx) => {
-    const key = `${legIdx}-${cfIdx}`;
-    const edited = store.editedCashflows[key];
-    const pricedCf = (store.pricingResult?.legs as any)?.[legIdx]?.cashflows?.[cfIdx];
-    return {
-      legIdx,
-      cfIdx,
-      paymentDate: cf.paymentDate,
-      accrualStart: cf.accrualStart,
-      accrualEnd: cf.accrualEnd,
-      yearFraction: cf.yearFraction,
-      notional: edited?.notional ?? cf.notional,
-      rate: edited?.rate ?? cf.rate,
-      payoffType: cf.payoffType,
-      discountFactor: pricedCf?.discountFactor ?? null,
-      pv: pricedCf?.pv ?? null,
-      edited: !!edited,
-    };
-  });
+interface LegGroup {
+  legIdx: number;
+  direction: string;
+  currency: string;
+  legType: string;
+  rateIndex?: string;
+  rows: CashflowRow[];
 }
 
-const legTables = computed(() => {
+const legGroups = computed<LegGroup[]>(() => {
   if (!store.expandedTrade) return [];
-  return store.expandedTrade.legs.map((leg, idx) => ({
-    leg,
-    legIdx: idx,
-    rows: buildRows(idx),
+  return store.expandedTrade.legs.map((leg, legIdx) => ({
+    legIdx,
+    direction: leg.direction,
+    currency: leg.currency,
+    legType: leg.legType,
+    rateIndex: leg.rateIndex,
+    rows: leg.cashflows.map((cf, cfIdx) => {
+      const key = `${legIdx}-${cfIdx}`;
+      const edited = store.editedCashflows[key];
+      const pricedCf = (store.pricingResult?.legs as any)?.[legIdx]?.cashflows?.[cfIdx];
+      return {
+        legIdx,
+        cfIdx,
+        paymentDate: cf.paymentDate,
+        accrualStart: cf.accrualStart,
+        accrualEnd: cf.accrualEnd,
+        yearFraction: cf.yearFraction,
+        notional: edited?.notional ?? cf.notional,
+        rate: edited?.rate ?? cf.rate,
+        payoffType: cf.payoffType,
+        discountFactor: pricedCf?.discountFactor ?? null,
+        pv: pricedCf?.pv ?? null,
+        edited: !!edited,
+      };
+    }),
   }));
 });
 
@@ -77,185 +71,272 @@ function onRateChange(legIdx: number, cfIdx: number, event: Event) {
   updateCashflow(legIdx, cfIdx, 'rate', value);
 }
 
-function getNotionalDisplay(row: CashflowRow): string {
-  return formatNumberCompact(row.notional);
+function fmtNotional(v: number): string {
+  return formatNumberCompact(v);
 }
 
-function getRateDisplay(row: CashflowRow): string {
-  const rate = row.rate ?? 0;
-  return (rate * 100).toFixed(4);
+function fmtRate(v: number | null): string {
+  if (v == null) return '';
+  return (v * 100).toFixed(4);
+}
+
+function fmtYf(v: number): string {
+  return v.toFixed(4);
+}
+
+function fmtDf(v: number | null): string {
+  if (v == null) return '-';
+  return v.toFixed(6);
+}
+
+function fmtPv(v: number | null): string {
+  if (v == null) return '-';
+  return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 </script>
 
 <template>
-  <v-card>
-    <v-card-title class="d-flex align-center justify-space-between">
-      <span>Cashflows</span>
-      <v-btn
-        v-if="store.hasEdits"
-        size="small"
-        variant="text"
-        color="warning"
-        prepend-icon="mdi-undo"
-        @click="resetEdits"
-      >
-        Reset Edits
-      </v-btn>
-    </v-card-title>
-
-    <v-card-text>
+  <v-card variant="outlined">
+    <v-card-text class="pa-0">
       <!-- Loading -->
-      <div v-if="store.isExpanding">
-        <v-skeleton-loader v-for="i in 4" :key="i" type="table-row" class="mb-2" />
+      <div v-if="store.isExpanding" class="pa-4">
+        <v-progress-linear indeterminate color="primary" />
       </div>
 
       <!-- Empty State -->
-      <div v-else-if="!store.expandedTrade" class="text-center py-8">
-        <v-icon icon="mdi-table-large" size="48" color="grey" class="mb-3" />
-        <p class="text-medium-emphasis">Click "Expand Cashflows" to view cashflows</p>
+      <div v-else-if="!store.expandedTrade" class="text-center pa-6 text-medium-emphasis" style="font-size: 0.8rem">
+        Expand to view cashflows
       </div>
 
-      <!-- Expanded Trade -->
-      <template v-else>
-        <!-- Trade ID Chips -->
-        <div class="mb-4 d-flex ga-2">
-          <v-chip color="primary" size="small" prepend-icon="mdi-pound">
-            {{ store.expandedTrade.tradeId }}
-          </v-chip>
-          <v-chip size="small" variant="tonal">
-            {{ store.expandedTrade.tradeType }}
-          </v-chip>
+      <!-- Spreadsheet -->
+      <div v-else class="sheet-wrap">
+        <!-- Toolbar -->
+        <div v-if="store.hasEdits" class="sheet-toolbar">
+          <button class="reset-btn" @click="resetEdits">Reset Edits</button>
         </div>
 
-        <!-- Per-Leg Data Tables -->
-        <div v-for="lt in legTables" :key="lt.legIdx" class="mb-6">
-          <!-- Leg Header -->
-          <div class="d-flex align-center ga-2 mb-2">
-            <v-avatar color="primary" size="24">
-              <span class="text-caption">{{ lt.legIdx + 1 }}</span>
-            </v-avatar>
-            <v-chip
-              size="small"
-              :color="lt.leg.direction === 'Payer' ? 'error' : 'success'"
-              variant="tonal"
-            >
-              {{ lt.leg.direction }}
-            </v-chip>
-            <v-chip size="small" variant="outlined">{{ lt.leg.currency }}</v-chip>
-            <v-chip size="small" variant="outlined">{{ lt.leg.legType }}</v-chip>
-            <v-chip v-if="lt.leg.rateIndex" size="small" color="info" variant="tonal">
-              {{ lt.leg.rateIndex }}
-            </v-chip>
-          </div>
-
-          <!-- Data Table -->
-          <v-data-table
-            :headers="headers"
-            :items="lt.rows"
-            :items-per-page="-1"
-            density="compact"
-            hover
-            class="elevation-0"
-          >
-            <template #item.yearFraction="{ item }">
-              <span class="font-weight-medium text-body-2">{{ item.yearFraction.toFixed(4) }}</span>
-            </template>
-
-            <template #item.notional="{ item }">
-              <input
-                type="text"
-                :value="getNotionalDisplay(item)"
-                class="cf-input"
-                :class="{ 'cf-edited': item.edited }"
-                @change="onNotionalChange(item.legIdx, item.cfIdx, $event)"
-              />
-            </template>
-
-            <template #item.rate="{ item }">
-              <template v-if="item.rate !== null">
-                <input
-                  type="text"
-                  :value="getRateDisplay(item)"
-                  class="cf-input"
-                  :class="{ 'cf-edited': item.edited }"
-                  @change="onRateChange(item.legIdx, item.cfIdx, $event)"
-                />
-                <span class="text-caption text-medium-emphasis ml-1">%</span>
-              </template>
-              <span v-else class="text-medium-emphasis font-italic">Floating</span>
-            </template>
-
-            <template #item.payoffType="{ item }">
-              <v-chip
-                size="x-small"
-                :color="item.payoffType === 'Fixed' ? 'info' : 'secondary'"
-                variant="tonal"
-              >
-                {{ item.payoffType }}
-              </v-chip>
-            </template>
-
-            <template #item.discountFactor="{ item }">
-              <span v-if="item.discountFactor !== null" class="font-weight-medium text-body-2">
-                {{ item.discountFactor.toFixed(6) }}
-              </span>
-              <span v-else class="text-medium-emphasis">-</span>
-            </template>
-
-            <template #item.pv="{ item }">
-              <span
-                v-if="item.pv !== null"
-                :class="item.pv >= 0 ? 'text-success' : 'text-error'"
-                class="font-weight-bold"
-              >
-                {{ formatCurrency(item.pv) }}
-              </span>
-              <span v-else class="text-medium-emphasis">-</span>
-            </template>
-
-            <template #bottom />
-          </v-data-table>
+        <div class="sheet-scroll">
+          <table class="sheet">
+            <thead>
+              <tr>
+                <th class="col-date">Payment</th>
+                <th class="col-date">Accrual Start</th>
+                <th class="col-date">Accrual End</th>
+                <th class="col-num">YF</th>
+                <th class="col-num col-edit">Notional</th>
+                <th class="col-num col-edit">Rate %</th>
+                <th class="col-type">Type</th>
+                <th class="col-num">DF</th>
+                <th class="col-num">PV</th>
+              </tr>
+            </thead>
+            <tbody v-for="group in legGroups" :key="group.legIdx">
+              <!-- Leg separator row -->
+              <tr class="leg-row">
+                <td colspan="9">
+                  Leg {{ group.legIdx }}
+                  <span class="leg-tag" :class="group.direction === 'Payer' ? 'tag-pay' : 'tag-rec'">{{ group.direction }}</span>
+                  <span class="leg-tag">{{ group.currency }}</span>
+                  <span class="leg-tag">{{ group.legType }}</span>
+                  <span v-if="group.rateIndex" class="leg-tag tag-idx">{{ group.rateIndex }}</span>
+                </td>
+              </tr>
+              <!-- Data rows -->
+              <tr v-for="row in group.rows" :key="`${row.legIdx}-${row.cfIdx}`" :class="{ 'row-edited': row.edited }">
+                <td class="col-date">{{ row.paymentDate }}</td>
+                <td class="col-date">{{ row.accrualStart }}</td>
+                <td class="col-date">{{ row.accrualEnd }}</td>
+                <td class="col-num">{{ fmtYf(row.yearFraction) }}</td>
+                <td class="col-num col-edit">
+                  <input
+                    type="text"
+                    :value="fmtNotional(row.notional)"
+                    class="cell-input"
+                    :class="{ edited: row.edited }"
+                    @change="onNotionalChange(row.legIdx, row.cfIdx, $event)"
+                  />
+                </td>
+                <td class="col-num col-edit">
+                  <template v-if="row.rate != null">
+                    <input
+                      type="text"
+                      :value="fmtRate(row.rate)"
+                      class="cell-input"
+                      :class="{ edited: row.edited }"
+                      @change="onRateChange(row.legIdx, row.cfIdx, $event)"
+                    />
+                  </template>
+                  <span v-else class="float-label">Float</span>
+                </td>
+                <td class="col-type">{{ row.payoffType }}</td>
+                <td class="col-num">{{ fmtDf(row.discountFactor) }}</td>
+                <td class="col-num" :class="row.pv != null ? (row.pv >= 0 ? 'pv-pos' : 'pv-neg') : ''">
+                  {{ fmtPv(row.pv) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <!-- Footer Metadata -->
-        <v-divider class="mb-3" />
-        <div class="d-flex ga-4 text-caption text-medium-emphasis">
-          <span>
-            <v-icon icon="mdi-layers-outline" size="14" class="mr-1" />
-            {{ store.expandedTrade.metadata.totalLegs }} legs
-          </span>
-          <span>
-            <v-icon icon="mdi-cash-multiple" size="14" class="mr-1" />
-            {{ store.expandedTrade.metadata.totalCashflows }} cashflows
-          </span>
-          <span>
-            <v-icon icon="mdi-timer-outline" size="14" class="mr-1" />
-            {{ store.expandedTrade.metadata.processingTimeMs.toFixed(2) }}ms
-          </span>
+        <!-- Footer -->
+        <div class="sheet-footer">
+          {{ store.expandedTrade.metadata.totalLegs }} legs
+          · {{ store.expandedTrade.metadata.totalCashflows }} cfs
+          · {{ store.expandedTrade.metadata.processingTimeMs.toFixed(1) }}ms
         </div>
-      </template>
+      </div>
     </v-card-text>
   </v-card>
 </template>
 
 <style scoped>
-.cf-input {
-  width: 80px;
+.sheet-wrap {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.sheet-toolbar {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.reset-btn {
+  font-size: 0.7rem;
+  color: rgb(var(--v-theme-warning));
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
+.sheet-scroll {
+  overflow-x: auto;
+}
+
+.sheet {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+
+.sheet thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sheet th {
+  padding: 4px 6px;
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  border-bottom: 2px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgb(var(--v-theme-surface));
+  text-align: left;
+}
+
+.sheet td {
   padding: 2px 6px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.04);
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.sheet tr:hover td {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.col-num {
   text-align: right;
-  font-size: 0.8125rem;
-  font-family: 'JetBrains Mono', monospace;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
+}
+
+.col-num.col-edit {
+  padding: 1px 2px;
+}
+
+.col-type {
+  text-align: center;
+  font-size: 0.65rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.col-date {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Leg separator */
+.leg-row td {
+  padding: 5px 6px 3px;
+  font-weight: 700;
+  font-size: 0.68rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.leg-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  font-weight: 500;
+  font-size: 0.62rem;
+  border-radius: 2px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.tag-pay { color: rgb(var(--v-theme-error)); background: rgba(var(--v-theme-error), 0.08); }
+.tag-rec { color: rgb(var(--v-theme-success)); background: rgba(var(--v-theme-success), 0.08); }
+.tag-idx { color: rgb(var(--v-theme-info)); background: rgba(var(--v-theme-info), 0.08); }
+
+/* Editable cell input */
+.cell-input {
+  width: 100%;
+  min-width: 60px;
+  padding: 1px 4px;
+  text-align: right;
+  font-family: inherit;
+  font-size: inherit;
   color: inherit;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  background: transparent;
   outline: none;
 }
-.cf-input:focus {
-  border-color: rgb(var(--v-theme-primary));
+
+.cell-input:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.12);
 }
-.cf-edited {
-  border-color: rgb(var(--v-theme-warning));
-  background: rgba(var(--v-theme-warning), 0.08);
+
+.cell-input:focus {
+  border-color: rgb(var(--v-theme-primary));
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.cell-input.edited {
+  border-color: rgba(var(--v-theme-warning), 0.5);
+  background: rgba(var(--v-theme-warning), 0.06);
+}
+
+.float-label {
+  font-style: italic;
+  color: rgba(var(--v-theme-on-surface), 0.35);
+  font-size: 0.65rem;
+}
+
+.row-edited td {
+  background: rgba(var(--v-theme-warning), 0.03);
+}
+
+.pv-pos { color: rgb(var(--v-theme-success)); font-weight: 600; }
+.pv-neg { color: rgb(var(--v-theme-error)); font-weight: 600; }
+
+.sheet-footer {
+  padding: 3px 8px;
+  font-size: 0.65rem;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 </style>

@@ -41,8 +41,8 @@
 //! - [`analytic`] - Analytical pricing with instrument wrappers
 //! - [`builder`] - Yield curve bootstrapping and market data calibration
 //! - [`compiler`] - Instrument compilation for pricing engines
-//! - [`payoff`] - Unified MC payoff trait and implementations (vanilla,
-//!   Asian, Barrier, Lookback)
+//! - [`payoff`] - Unified MC payoff trait and implementations (vanilla, Asian,
+//!   Barrier, Lookback)
 //!
 //! ## Analytical Formulas
 //!

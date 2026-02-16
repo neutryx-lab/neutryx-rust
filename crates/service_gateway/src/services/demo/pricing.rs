@@ -19,7 +19,8 @@ use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        Cashflow, CashflowPvResult, DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult,
+        AdvancedGreeksMode, Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest,
+        DemoAdvancedGreeksResult, DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult,
         DemoPathDistribution, DemoPricingMethod, DemoPricingRequest, DemoPricingResult,
         DemoTreeType, ExpandedTrade, LegResult, PricingLeg, TradeExpandRequest, TradeLeg,
         TradeMetadata,
@@ -322,7 +323,8 @@ impl DemoService {
         })
     }
 
-    /// Price a trade using the unified `Pricer`, returning full `PricingResult`.
+    /// Price a trade using the unified `Pricer`, returning full
+    /// `PricingResult`.
     pub fn price_trade(
         request: &DemoPricingRequest,
         _state: &Arc<AppState>,
@@ -364,14 +366,15 @@ impl DemoService {
             })
             .collect();
 
-        let path_distribution = result.path_distribution.as_ref().map(|pd| {
-            DemoPathDistribution {
+        let path_distribution = result
+            .path_distribution
+            .as_ref()
+            .map(|pd| DemoPathDistribution {
                 mean: pd.mean,
                 std_dev: pd.std_dev,
                 percentiles: pd.percentiles.clone(),
                 path_count: pd.path_count,
-            }
-        });
+            });
 
         // Inline Greeks via bump-and-revalue if requested.
         let greeks = if request.compute_greeks {
@@ -382,11 +385,17 @@ impl DemoService {
 
             let rate_bump = 1.0 / 10000.0; // 1bp
             let pv_up = price_with_rate(
-                &greeks_trade, valuation_date, reporting_currency, &request.legs,
+                &greeks_trade,
+                valuation_date,
+                reporting_currency,
+                &request.legs,
                 DEFAULT_DISCOUNT_RATE + rate_bump,
             )?;
             let pv_down = price_with_rate(
-                &greeks_trade, valuation_date, reporting_currency, &request.legs,
+                &greeks_trade,
+                valuation_date,
+                reporting_currency,
+                &request.legs,
                 DEFAULT_DISCOUNT_RATE - rate_bump,
             )?;
 
@@ -395,14 +404,22 @@ impl DemoService {
 
             // Theta: shift valuation date +1d.
             let theta_inner = valuation_date.into_inner() + chrono::Duration::days(1);
-            let theta_date = Date::from_ymd(
-                theta_inner.year(), theta_inner.month(), theta_inner.day(),
-            ).ok();
-            let theta = theta_date.and_then(|td| {
-                let theta_legs = build_domain_legs(&request.legs, td).ok()?;
-                let theta_trade = Trade::new("DEMO-THETA", theta_legs, TradeType::Swap);
-                price_with_rate(&theta_trade, td, reporting_currency, &request.legs, DEFAULT_DISCOUNT_RATE).ok()
-            }).map(|pv| pv - result.total_pv);
+            let theta_date =
+                Date::from_ymd(theta_inner.year(), theta_inner.month(), theta_inner.day()).ok();
+            let theta = theta_date
+                .and_then(|td| {
+                    let theta_legs = build_domain_legs(&request.legs, td).ok()?;
+                    let theta_trade = Trade::new("DEMO-THETA", theta_legs, TradeType::Swap);
+                    price_with_rate(
+                        &theta_trade,
+                        td,
+                        reporting_currency,
+                        &request.legs,
+                        DEFAULT_DISCOUNT_RATE,
+                    )
+                    .ok()
+                })
+                .map(|pv| pv - result.total_pv);
 
             Some(DemoGreeksInline {
                 delta: Some(delta),
@@ -496,6 +513,98 @@ impl DemoService {
             gamma,
             theta,
             vega,
+        })
+    }
+
+    /// Calculate advanced Greeks (7 sensitivities) mirroring
+    /// `pricer_risk::GreeksResult`.
+    ///
+    /// Uses bump-and-revalue on the flat discount curve.  Vega, vanna, and
+    /// volga are `None` because the demo market has no vol surface.
+    pub fn calculate_advanced_greeks(
+        request: &DemoAdvancedGreeksRequest,
+        _state: &Arc<AppState>,
+    ) -> Result<DemoAdvancedGreeksResult, ServerError> {
+        let start = Instant::now();
+        let valuation_date = parse_date(&request.valuation_date)?;
+        let reporting_currency = parse_currency(&request.reporting_currency)?;
+
+        let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
+        let trade = Trade::new("DEMO-ADV-GREEKS", domain_legs, TradeType::Swap);
+
+        let cfg = &request.config;
+
+        // Base PV.
+        let base_pv = price_with_rate(
+            &trade,
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE,
+        )?;
+
+        // Rate delta & gamma: central finite difference.
+        let h = cfg.rate_bump_absolute;
+        let pv_up = price_with_rate(
+            &trade,
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE + h,
+        )?;
+        let pv_down = price_with_rate(
+            &trade,
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE - h,
+        )?;
+        let delta = (pv_up - pv_down) / (2.0 * h);
+        let gamma = (pv_up - 2.0 * base_pv + pv_down) / (h * h);
+
+        // Rho: for linear products on a flat curve, rho ≈ delta (dPV/dr).
+        let rho = delta;
+
+        // Theta: shift valuation date forward by time_bump_years.
+        let bump_days = (cfg.time_bump_years * 365.0).round() as i64;
+        let theta_inner = valuation_date.into_inner() + chrono::Duration::days(bump_days);
+        let theta = Date::from_ymd(theta_inner.year(), theta_inner.month(), theta_inner.day())
+            .ok()
+            .and_then(|td| {
+                let theta_legs = build_domain_legs(&request.legs, td).ok()?;
+                let theta_trade = Trade::new("DEMO-ADV-THETA", theta_legs, TradeType::Swap);
+                price_with_rate(
+                    &theta_trade,
+                    td,
+                    reporting_currency,
+                    &request.legs,
+                    DEFAULT_DISCOUNT_RATE,
+                )
+                .ok()
+            })
+            .map(|pv| (pv - base_pv) / cfg.time_bump_years);
+
+        let mode_str = match cfg.mode {
+            AdvancedGreeksMode::BumpRevalue => "BumpRevalue",
+            AdvancedGreeksMode::EnzymeAad => "BumpRevalue", // AAD not available in demo
+        };
+
+        let elapsed = start.elapsed();
+
+        Ok(DemoAdvancedGreeksResult {
+            price: base_pv,
+            std_error: None,
+            delta: Some(delta),
+            gamma: Some(gamma),
+            vega: None,
+            theta,
+            rho: Some(rho),
+            vanna: None,
+            volga: None,
+            currency: request.reporting_currency.clone(),
+            computation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            mode: mode_str.to_string(),
+            confidence_95: None,
         })
     }
 }

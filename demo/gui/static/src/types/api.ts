@@ -212,6 +212,43 @@ export interface GreeksResult {
 }
 
 // =============================================================================
+// Advanced Greeks Types (mirrors pricer_risk::GreeksConfig / GreeksResult)
+// =============================================================================
+
+export type AdvancedGreeksMode = 'bumpRevalue' | 'enzymeAad';
+
+export interface AdvancedGreeksConfig {
+  spotBumpRelative: number;
+  volBumpAbsolute: number;
+  timeBumpYears: number;
+  rateBumpAbsolute: number;
+  mode: AdvancedGreeksMode;
+}
+
+export interface AdvancedGreeksRequest {
+  valuationDate: DateString;
+  reportingCurrency: Currency;
+  legs: PricingLeg[];
+  config: AdvancedGreeksConfig;
+}
+
+export interface AdvancedGreeksResult {
+  price: number;
+  stdError?: number | null;
+  delta?: number | null;
+  gamma?: number | null;
+  vega?: number | null;
+  theta?: number | null;
+  rho?: number | null;
+  vanna?: number | null;
+  volga?: number | null;
+  currency: Currency;
+  computationTimeMs: number;
+  mode: string;
+  confidence95?: [number, number] | null;
+}
+
+// =============================================================================
 // Utility Types
 // =============================================================================
 

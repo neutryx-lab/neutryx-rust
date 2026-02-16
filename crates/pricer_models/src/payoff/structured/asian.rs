@@ -2,9 +2,8 @@
 
 use num_traits::Float;
 
-use crate::payoff::{smooth_math::soft_plus, McPayoff, ObservationType};
-
 use super::PathObserver;
+use crate::payoff::{smooth_math::soft_plus, McPayoff, ObservationType};
 
 /// Parameters for Asian option payoffs.
 #[derive(Clone, Copy, Debug, PartialEq)]

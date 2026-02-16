@@ -448,9 +448,8 @@ impl DemoService {
         request: &crate::rest::dto::demo::ResolveTenorRequest,
     ) -> Result<crate::rest::dto::demo::ResolveTenorResponse, ServerError> {
         let base = match &request.base {
-            Some(b) => chrono::NaiveDate::parse_from_str(b, "%Y-%m-%d").map_err(|_| {
-                ServerError::InvalidRequest(format!("Invalid base date: {b}"))
-            })?,
+            Some(b) => chrono::NaiveDate::parse_from_str(b, "%Y-%m-%d")
+                .map_err(|_| ServerError::InvalidRequest(format!("Invalid base date: {b}")))?,
             None => chrono::Utc::now().date_naive(),
         };
 
@@ -481,9 +480,9 @@ impl DemoService {
                 ServerError::InvalidRequest(format!("Unrecognised tenor: {}", request.tenor))
             })?;
 
-        let n: i32 = num_str.parse().map_err(|_| {
-            ServerError::InvalidRequest(format!("Invalid tenor number: {num_str}"))
-        })?;
+        let n: i32 = num_str
+            .parse()
+            .map_err(|_| ServerError::InvalidRequest(format!("Invalid tenor number: {num_str}")))?;
 
         let resolved = match unit {
             'D' => base + chrono::Duration::days(i64::from(n)),

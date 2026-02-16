@@ -206,8 +206,7 @@ impl DemoService {
                             let rate = instr.get("rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
                             let norm_type = normalise_rate_type(raw_type);
 
-                            let id =
-                                format!("{}-{}-{}", currency, norm_type, tenor);
+                            let id = format!("{}-{}-{}", currency, norm_type, tenor);
 
                             if rates.iter().any(|r| {
                                 r.currency == currency

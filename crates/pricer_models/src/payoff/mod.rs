@@ -9,21 +9,20 @@
 //! - [`structured`] - Structured/path-dependent payoffs (Asian, Barrier,
 //!   Lookback) and the [`PathObserver`] streaming statistics accumulator.
 //! - `vanilla` - Vanilla European and digital payoffs.
-//! - `smooth_math` - Shared smooth approximation functions (soft-plus,
-//!   smooth indicator).
+//! - `smooth_math` - Shared smooth approximation functions (soft-plus, smooth
+//!   indicator).
 //!
 //! ## Unified Dispatch
 //!
 //! [`PayoffKind`] is an enum-dispatch wrapper covering both vanilla and
 //! structured payoffs, enabling static dispatch without trait objects.
 
-pub mod structured;
 pub(crate) mod smooth_math;
+pub mod structured;
 mod vanilla;
 
 use enum_dispatch::enum_dispatch;
 use num_traits::Float;
-
 pub use structured::{
     AsianArithmeticPayoff, AsianGeometricPayoff, AsianParams, BarrierParams, BarrierPayoff,
     BarrierType, LookbackParams, LookbackPayoff, LookbackType, PathObserver, PathObserverState,
@@ -203,19 +202,25 @@ impl<T: Float + Send + Sync> PayoffKind<T> {
     /// Creates an arithmetic average Asian call option.
     #[inline]
     pub fn asian_arithmetic_call(strike: T, epsilon: T) -> Self {
-        Self::AsianArithmetic(AsianArithmeticPayoff::new(AsianParams::call(strike, epsilon)))
+        Self::AsianArithmetic(AsianArithmeticPayoff::new(AsianParams::call(
+            strike, epsilon,
+        )))
     }
 
     /// Creates an arithmetic average Asian put option.
     #[inline]
     pub fn asian_arithmetic_put(strike: T, epsilon: T) -> Self {
-        Self::AsianArithmetic(AsianArithmeticPayoff::new(AsianParams::put(strike, epsilon)))
+        Self::AsianArithmetic(AsianArithmeticPayoff::new(AsianParams::put(
+            strike, epsilon,
+        )))
     }
 
     /// Creates a geometric average Asian call option.
     #[inline]
     pub fn asian_geometric_call(strike: T, epsilon: T) -> Self {
-        Self::AsianGeometric(AsianGeometricPayoff::new(AsianParams::call(strike, epsilon)))
+        Self::AsianGeometric(AsianGeometricPayoff::new(AsianParams::call(
+            strike, epsilon,
+        )))
     }
 
     /// Creates a geometric average Asian put option.

@@ -12,6 +12,8 @@ import type {
   PricingResult,
   GreeksRequest,
   GreeksResult,
+  AdvancedGreeksRequest,
+  AdvancedGreeksResult,
   MarketRatesResponse,
   MarketConfigResponse,
   MarketRate,
@@ -107,6 +109,10 @@ export async function priceTrade(request: PricingRequest): Promise<PricingResult
 
 export async function calculateGreeks(request: GreeksRequest): Promise<GreeksResult> {
   return postJson<GreeksRequest, GreeksResult>(`${API_BASE}/pricer/greeks`, request);
+}
+
+export async function computeAdvancedGreeks(request: AdvancedGreeksRequest): Promise<AdvancedGreeksResult> {
+  return postJson<AdvancedGreeksRequest, AdvancedGreeksResult>(`${API_BASE}/pricer/advanced-greeks`, request);
 }
 
 // =============================================================================
