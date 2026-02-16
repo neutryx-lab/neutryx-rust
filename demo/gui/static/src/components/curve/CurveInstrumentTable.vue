@@ -16,7 +16,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="glass-card p-5">
+  <div class="glass-card px-3 py-4">
     <div class="section-header" style="margin-top: 0">
       Instruments
       <span v-if="instruments.length > 0" class="toggle-group">
@@ -39,106 +39,88 @@ const emit = defineEmits<{
         :key="inst.id"
         :class="['instrument-row', { disabled: !inst.enabled }, inst.type]"
       >
-        <!-- Row header: checkbox + ID + type badge -->
-        <div class="row-header">
+        <input
+          type="checkbox"
+          :checked="inst.enabled"
+          class="checkbox"
+          @change="emit('toggle', idx)"
+        >
+        <span class="instrument-id" :title="inst.id">{{ inst.id }}</span>
+        <span v-if="inst.type === 'event'" class="type-badge event-badge">
+          {{ inst.endDate ? 'TURN' : 'JUMP' }}
+        </span>
+        <span v-else-if="inst.type === 'bond'" class="type-badge bond-badge">BOND</span>
+        <span v-else-if="inst.type === 'cds'" class="type-badge cds-badge">CDS</span>
+
+        <!-- Event fields -->
+        <template v-if="inst.type === 'event'">
+          <span class="field-label">Date</span>
+          <span
+            class="date-value"
+            :title="inst.endDate ? `Turn: ${inst.eventDate} → ${inst.endDate}` : 'Event Date'"
+          >{{ inst.eventDate }}</span>
+          <span class="field-label">Spike</span>
           <input
-            type="checkbox"
-            :checked="inst.enabled"
-            class="checkbox"
-            @change="emit('toggle', idx)"
+            type="number"
+            :value="(inst.rate * 10000).toFixed(1)"
+            step="0.5"
+            class="input-field event-field"
+            :title="inst.endDate ? `Turn spike in bp (reverts ${inst.endDate})` : 'Expected rate spike in basis points'"
+            @change="emit('updateSpike', idx, ($event.target as HTMLInputElement).value)"
           >
-          <span class="instrument-id" :title="inst.id">{{ inst.id }}</span>
-          <span v-if="inst.type === 'event'" class="type-badge event-badge">
-            {{ inst.endDate ? 'TURN' : 'JUMP' }}
-          </span>
-          <span v-else-if="inst.type === 'bond'" class="type-badge bond-badge">BOND</span>
-          <span v-else-if="inst.type === 'cds'" class="type-badge cds-badge">CDS</span>
-        </div>
+          <span class="field-unit">bp</span>
+        </template>
 
-        <!-- Fields grid (reuses global config-grid with narrower label column) -->
-        <div class="config-grid" style="display: grid; grid-template-columns: 50px 1fr; align-items: center; gap: 4px 8px; padding-left: 22px;">
-          <!-- Event instruments -->
-          <template v-if="inst.type === 'event'">
-            <div class="grid-label">Date</div>
-            <div class="grid-input">
-              <span
-                class="date-value"
-                :title="inst.endDate ? `Turn: ${inst.eventDate} → ${inst.endDate}` : 'Event Date'"
-              >{{ inst.eventDate }}</span>
-            </div>
-            <div class="grid-label">Spike</div>
-            <div class="grid-input d-flex align-center" style="gap: 4px">
-              <input
-                type="number"
-                :value="(inst.rate * 10000).toFixed(1)"
-                step="0.5"
-                class="input-field event-field"
-                :title="inst.endDate ? `Turn spike in bp (reverts ${inst.endDate})` : 'Expected rate spike in basis points'"
-                @change="emit('updateSpike', idx, ($event.target as HTMLInputElement).value)"
-              >
-              <span class="field-unit">bp</span>
-            </div>
-          </template>
+        <!-- Bond fields -->
+        <template v-else-if="inst.type === 'bond'">
+          <span class="field-label">Coupon</span>
+          <input
+            type="number"
+            :value="((inst.couponRate || 0) * 100).toFixed(2)"
+            step="0.01"
+            class="input-field bond-field"
+            title="Coupon rate (%)"
+            @change="emit('updateCoupon', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="field-unit">%</span>
+          <span class="field-label">YTM</span>
+          <input
+            type="number"
+            :value="(inst.rate * 100).toFixed(2)"
+            step="0.01"
+            class="input-field"
+            title="Yield-to-maturity (%)"
+            @change="emit('updateRate', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="field-unit">%</span>
+        </template>
 
-          <!-- Bond instruments -->
-          <template v-else-if="inst.type === 'bond'">
-            <div class="grid-label">Coupon</div>
-            <div class="grid-input d-flex align-center" style="gap: 4px">
-              <input
-                type="number"
-                :value="((inst.couponRate || 0) * 100).toFixed(2)"
-                step="0.01"
-                class="input-field bond-field"
-                title="Coupon rate (%)"
-                @change="emit('updateCoupon', idx, ($event.target as HTMLInputElement).value)"
-              >
-              <span class="field-unit">%</span>
-            </div>
-            <div class="grid-label">YTM</div>
-            <div class="grid-input d-flex align-center" style="gap: 4px">
-              <input
-                type="number"
-                :value="(inst.rate * 100).toFixed(2)"
-                step="0.01"
-                class="input-field"
-                title="Yield-to-maturity (%)"
-                @change="emit('updateRate', idx, ($event.target as HTMLInputElement).value)"
-              >
-              <span class="field-unit">%</span>
-            </div>
-          </template>
+        <!-- CDS fields -->
+        <template v-else-if="inst.type === 'cds'">
+          <span class="field-label">Spread</span>
+          <input
+            type="number"
+            :value="(inst.rate * 10000).toFixed(1)"
+            step="0.5"
+            class="input-field cds-field"
+            title="CDS spread in basis points"
+            @change="emit('updateSpike', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="field-unit">bp</span>
+        </template>
 
-          <!-- CDS instruments -->
-          <template v-else-if="inst.type === 'cds'">
-            <div class="grid-label">Spread</div>
-            <div class="grid-input d-flex align-center" style="gap: 4px">
-              <input
-                type="number"
-                :value="(inst.rate * 10000).toFixed(1)"
-                step="0.5"
-                class="input-field cds-field"
-                title="CDS spread in basis points"
-                @change="emit('updateSpike', idx, ($event.target as HTMLInputElement).value)"
-              >
-              <span class="field-unit">bp</span>
-            </div>
-          </template>
-
-          <!-- Regular instruments -->
-          <template v-else>
-            <div class="grid-label">Rate</div>
-            <div class="grid-input d-flex align-center" style="gap: 4px">
-              <input
-                type="number"
-                :value="(inst.rate * 100).toFixed(2)"
-                step="0.01"
-                class="input-field"
-                @change="emit('updateRate', idx, ($event.target as HTMLInputElement).value)"
-              >
-              <span class="field-unit">%</span>
-            </div>
-          </template>
-        </div>
+        <!-- Regular fields -->
+        <template v-else>
+          <span class="field-label">Rate</span>
+          <input
+            type="number"
+            :value="(inst.rate * 100).toFixed(2)"
+            step="0.01"
+            class="input-field"
+            @change="emit('updateRate', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="field-unit">%</span>
+        </template>
       </div>
     </div>
   </div>
@@ -173,6 +155,7 @@ const emit = defineEmits<{
 .instrument-list {
   max-height: 26rem;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -180,10 +163,14 @@ const emit = defineEmits<{
 
 /* ─── Instrument row ─── */
 .instrument-row {
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
   border-radius: 6px;
   background: var(--surface);
-  padding: 5px 10px;
+  padding: 5px 6px;
   transition: opacity 0.15s;
+  flex-wrap: nowrap;
 }
 .instrument-row.disabled {
   opacity: 0.35;
@@ -198,14 +185,6 @@ const emit = defineEmits<{
   border-left: 2px solid #a855f7;
 }
 
-/* ─── Row header ─── */
-.row-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 2px;
-}
-
 .checkbox {
   width: 14px;
   height: 14px;
@@ -216,14 +195,22 @@ const emit = defineEmits<{
 }
 
 .instrument-id {
-  flex: 1;
   font-family: monospace;
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-secondary);
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.field-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .type-badge {
@@ -249,8 +236,8 @@ const emit = defineEmits<{
 
 /* ─── Input fields (component-specific) ─── */
 .input-field {
-  width: 100%;
-  max-width: 100px;
+  width: 64px;
+  flex-shrink: 1;
   padding: 4px 8px;
   font-size: 0.8rem;
   text-align: right;

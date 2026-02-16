@@ -51,17 +51,12 @@ function getFieldError(fieldName: string): string | undefined {
   return store.validationErrors.find((e) => e.field === fieldName)?.message;
 }
 
-const instrumentItems = computed(() => {
-  const items: { title: string; value: string }[] = [];
-  for (const [, instruments] of Object.entries(store.groupedInstruments)) {
-    for (const inst of instruments) {
-      const id = inst.instrumentType || inst.id || inst.type || '';
-      const name = inst.displayName || inst.name || id || '';
-      items.push({ title: name, value: id });
-    }
-  }
-  return items;
-});
+const instrumentItems = computed(() =>
+  store.instruments.map((inst) => ({
+    label: inst.displayName || inst.name || inst.instrumentType || '',
+    id: inst.instrumentType || inst.id || inst.type || '',
+  })),
+);
 
 const allParams = computed(() => {
   const inst = store.selectedInstrument;
@@ -223,6 +218,8 @@ watch(
           <v-select
             v-model="store.selectedInstrumentId"
             :items="instrumentItems"
+            item-title="label"
+            item-value="id"
             placeholder="Select..."
             density="compact"
             variant="outlined"

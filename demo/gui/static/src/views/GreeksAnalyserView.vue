@@ -8,7 +8,7 @@
 import { ref, computed } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
 import { computeAdvancedGreeks } from '@/services/api';
-import type { AdvancedGreeksResult, AdvancedGreeksMode, FactorGreeks } from '@/types/api';
+import type { AdvancedGreeksResult, AdvancedGreeksMode, AdvancedGreeksConfig, FactorGreeks } from '@/types/api';
 import type { HistoryEntry } from '@/constants/pricer';
 import { formatCurrency } from '@/utils/format';
 
@@ -47,17 +47,22 @@ async function compute() {
   error.value = null;
 
   try {
+    const config: AdvancedGreeksConfig =
+      greeksMode.value === 'bumpRevalue'
+        ? {
+            mode: 'bumpRevalue',
+            rateBumpAbsolute: rateBump.value,
+            volBumpAbsolute: volBump.value,
+            timeBumpYears: timeBump.value,
+            spotBumpRelative: spotBump.value,
+          }
+        : { mode: 'enzymeAad' };
+
     result.value = await computeAdvancedGreeks({
       valuationDate: entry.valuationDate,
       reportingCurrency: entry.reportingCcy,
       legs: entry.legs,
-      config: {
-        rateBumpAbsolute: rateBump.value,
-        volBumpAbsolute: volBump.value,
-        timeBumpYears: timeBump.value,
-        spotBumpRelative: spotBump.value,
-        mode: greeksMode.value,
-      },
+      config,
     });
   } catch (e) {
     error.value = (e as Error).message;
@@ -180,7 +185,21 @@ function factorTypeChipColor(factorType: string): string {
         <!-- Bump configuration -->
         <div class="glass-card p-4 mb-4">
           <div class="section-header" style="margin-top: 0">Bump Configuration</div>
-            <div class="config-grid">
+          <div class="config-grid">
+            <div class="grid-label">Mode</div>
+            <div class="grid-input">
+              <v-select
+                v-model="greeksMode"
+                :items="[
+                  { title: 'Bump & Revalue', value: 'bumpRevalue' },
+                  { title: 'Enzyme AAD', value: 'enzymeAad' },
+                ]"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
+            </div>
+            <template v-if="greeksMode === 'bumpRevalue'">
               <div class="grid-label">Rate (abs)</div>
               <div class="grid-input">
                 <v-text-field
@@ -228,20 +247,14 @@ function factorTypeChipColor(factorType: string): string {
                   suffix="(1% = 0.01)"
                 />
               </div>
-              <div class="grid-label">Mode</div>
-              <div class="grid-input">
-                <v-select
-                  v-model="greeksMode"
-                  :items="[
-                    { title: 'Bump & Revalue', value: 'bumpRevalue' },
-                    { title: 'Enzyme AAD', value: 'enzymeAad' },
-                  ]"
-                  density="compact"
-                  variant="outlined"
-                  hide-details
-                />
+            </template>
+            <template v-else>
+              <div class="grid-label" />
+              <div class="grid-input text-caption text-text-muted">
+                Uses pricer_risk default bump sizes. Actual method shown in results.
               </div>
-            </div>
+            </template>
+          </div>
         </div>
 
         <v-btn

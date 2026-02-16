@@ -1216,7 +1216,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                 <div class="grid-input">
                   <v-select
                     v-model="selectedModel"
-                    :items="swaptionModels.map(m => ({ title: m, value: m }))"
+                    :items="swaptionModels"
                     density="compact"
                     variant="outlined"
                     hide-details
@@ -1302,7 +1302,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                 <div class="grid-input">
                   <v-select
                     v-model="selectedModel"
-                    :items="swaptionModels.map(m => ({ title: m, value: m }))"
+                    :items="swaptionModels"
                     density="compact"
                     variant="outlined"
                     hide-details

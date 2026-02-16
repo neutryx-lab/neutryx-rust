@@ -221,13 +221,17 @@ export interface GreeksResult {
 
 export type AdvancedGreeksMode = 'bumpRevalue' | 'enzymeAad';
 
-export interface AdvancedGreeksConfig {
-  spotBumpRelative: number;
-  volBumpAbsolute: number;
-  timeBumpYears: number;
-  rateBumpAbsolute: number;
-  mode: AdvancedGreeksMode;
-}
+export type AdvancedGreeksConfig =
+  | {
+      mode: 'bumpRevalue';
+      spotBumpRelative: number;
+      volBumpAbsolute: number;
+      timeBumpYears: number;
+      rateBumpAbsolute: number;
+    }
+  | {
+      mode: 'enzymeAad';
+    };
 
 export interface AdvancedGreeksRequest {
   valuationDate: DateString;
