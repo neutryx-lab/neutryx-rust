@@ -14,11 +14,7 @@ import {
   type CashflowEdit,
   type ValidationError,
   type ComputationMetrics,
-  type HistoryEntry,
   type SummaryStat,
-  type PvDiff,
-  type CompareResult,
-  type ParamChange,
   type CurrencyAgg,
 } from '@/constants/pricer';
 
@@ -87,11 +83,6 @@ export const usePricerStore = defineStore('pricer', () => {
   // Metrics
   const computationMetrics = ref<ComputationMetrics | null>(null);
 
-  // History
-  const resultHistory = ref<HistoryEntry[]>([]);
-  const compareMode = ref(false);
-  const compareIndices = ref<[number, number]>([0, 1]);
-
   // ---------------------------------------------------------------------------
   // Getters
   // ---------------------------------------------------------------------------
@@ -138,50 +129,6 @@ export const usePricerStore = defineStore('pricer', () => {
   const selectedModelConfig = computed(
     () => STOCHASTIC_MODELS.find((m) => m.type === modelType.value) || STOCHASTIC_MODELS[0],
   );
-
-  const recentHistory = computed(() => resultHistory.value.slice(0, 5));
-
-  const pvDiff = computed<PvDiff | null>(() => {
-    if (resultHistory.value.length < 2) return null;
-    const current = resultHistory.value[0].pricingResult;
-    const previous = resultHistory.value[1].pricingResult;
-    const curPv = current.totalPv ?? 0;
-    const prevPv = previous.totalPv ?? 0;
-    const diff = curPv - prevPv;
-    const pct = prevPv !== 0 ? (diff / Math.abs(prevPv)) * 100 : 0;
-    return { absolute: diff, percent: pct };
-  });
-
-  const comparedResults = computed<CompareResult | null>(() => {
-    if (!compareMode.value || resultHistory.value.length < 2) return null;
-    const [idxA, idxB] = compareIndices.value;
-    const a = resultHistory.value[idxA];
-    const b = resultHistory.value[idxB];
-    if (!a || !b) return null;
-    return { a, b };
-  });
-
-  const changedParams = computed<ParamChange[]>(() => {
-    if (!comparedResults.value) return [];
-    const { a, b } = comparedResults.value;
-    const changes: ParamChange[] = [];
-    const allKeys = new Set([...Object.keys(a.params), ...Object.keys(b.params)]);
-    allKeys.forEach((key) => {
-      if (a.params[key] !== b.params[key]) {
-        changes.push({ name: key, valueA: a.params[key], valueB: b.params[key] });
-      }
-    });
-    if (a.modelType !== b.modelType) {
-      changes.push({ name: 'Model', valueA: a.modelType, valueB: b.modelType });
-    }
-    if (a.curveIndex !== b.curveIndex) {
-      changes.push({ name: 'Curve', valueA: a.curveIndex, valueB: b.curveIndex });
-    }
-    if (a.valuationDate !== b.valuationDate) {
-      changes.push({ name: 'Val Date', valueA: a.valuationDate, valueB: b.valuationDate });
-    }
-    return changes;
-  });
 
   const currencyAggregation = computed<CurrencyAgg[]>(() => {
     if (!pricingResult.value?.legs) return [];
@@ -233,19 +180,12 @@ export const usePricerStore = defineStore('pricer', () => {
     apiAvailable,
     validationErrors,
     computationMetrics,
-    resultHistory,
-    compareMode,
-    compareIndices,
     // Getters
     selectedInstrument,
     groupedInstruments,
     hasEdits,
     summaryStats,
     selectedModelConfig,
-    recentHistory,
-    pvDiff,
-    comparedResults,
-    changedParams,
     currencyAggregation,
   };
 });

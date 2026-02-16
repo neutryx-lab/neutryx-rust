@@ -6,12 +6,43 @@
  */
 import { computed, ref, watch } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
+import { useMarketEnvStore } from '@/stores/marketEnv';
 import { usePricer } from '@/composables/usePricer';
-import { resolveTenor } from '@/services/api';
-import { CURVE_OPTIONS, STOCHASTIC_MODELS } from '@/constants/pricer';
+import { resolveTenor, fetchPricerGraph } from '@/services/api';
+import { STOCHASTIC_MODELS } from '@/constants/pricer';
 
 const store = usePricerStore();
+const marketEnv = useMarketEnvStore();
 const { expandCashflows, calculateAll, resetAll } = usePricer();
+
+// ---------------------------------------------------------------------------
+// Save Graph
+// ---------------------------------------------------------------------------
+const isSavingGraph = ref(false);
+const graphSaveFeedback = ref(false);
+const graphDetailLevel = ref<'operation' | 'scope'>('scope');
+
+async function saveGraph() {
+  const inst = store.selectedInstrument;
+  if (!inst) return;
+  isSavingGraph.value = true;
+  try {
+    const instrumentType = inst.instrumentType || inst.id || inst.type || '';
+    const instrumentName = inst.displayName || inst.name || instrumentType;
+    const response = await fetchPricerGraph({
+      instrumentType,
+      params: { ...store.instrumentParams },
+      detailLevel: graphDetailLevel.value,
+    });
+    marketEnv.publishPricerGraph(instrumentType, instrumentName, response, graphDetailLevel.value);
+    graphSaveFeedback.value = true;
+    setTimeout(() => { graphSaveFeedback.value = false; }, 2000);
+  } catch (err) {
+    console.error('Failed to save pricer graph:', err);
+  } finally {
+    isSavingGraph.value = false;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Instruments
@@ -140,7 +171,6 @@ const ccyItems = [
   { title: 'JPY', value: 'JPY' },
 ];
 
-const curveItems = CURVE_OPTIONS.map((c) => ({ title: c.label, value: c.index }));
 const modelItems = STOCHASTIC_MODELS.map((m) => ({ title: m.label, value: m.type }));
 
 watch(
@@ -289,8 +319,8 @@ watch(
           </v-text-field>
         </div>
 
-        <!-- ═══ MONTE CARLO (shown when method=monteCarlo or auto) ═══ -->
-        <template v-if="store.pricingMethod === 'monteCarlo' || store.pricingMethod === 'auto'">
+        <!-- ═══ MONTE CARLO (shown when method=monteCarlo) ═══ -->
+        <template v-if="store.pricingMethod === 'monteCarlo'">
           <div class="section-header">MonteCarloSetting</div>
 
           <div class="grid-label">Paths</div>
@@ -307,8 +337,8 @@ watch(
           </div>
         </template>
 
-        <!-- ═══ TREE (shown when method=tree or auto) ═══ -->
-        <template v-if="store.pricingMethod === 'tree' || store.pricingMethod === 'auto'">
+        <!-- ═══ TREE (shown when method=tree) ═══ -->
+        <template v-if="store.pricingMethod === 'tree'">
           <div class="section-header">TreeSetting</div>
 
           <div class="grid-label">Steps</div>
@@ -321,32 +351,46 @@ watch(
           </div>
         </template>
 
-        <!-- ═══ BUMPS ═══ -->
-        <div class="section-header">Bumps</div>
+        <!-- ═══ BUMPS (hidden for auto — uses defaults) ═══ -->
+        <template v-if="store.pricingMethod !== 'auto'">
+          <div class="section-header">Bumps</div>
 
-        <div class="grid-label">Rate bp</div>
-        <div class="grid-input">
-          <v-text-field v-model.number="store.rateBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
-        </div>
-        <div class="grid-label">FX %</div>
-        <div class="grid-input">
-          <v-text-field v-model.number="store.fxBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
-        </div>
-        <div class="grid-label">Vol %</div>
-        <div class="grid-input">
-          <v-text-field v-model.number="store.volBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
-        </div>
+          <div class="grid-label">Rate bp</div>
+          <div class="grid-input">
+            <v-text-field v-model.number="store.rateBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
+          </div>
+          <div class="grid-label">FX %</div>
+          <div class="grid-input">
+            <v-text-field v-model.number="store.fxBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
+          </div>
+          <div class="grid-label">Vol %</div>
+          <div class="grid-input">
+            <v-text-field v-model.number="store.volBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
+          </div>
+        </template>
 
         <!-- ═══ MARKET DATA ═══ -->
         <div class="section-header">Market Data</div>
 
         <div class="grid-label">Curve</div>
         <div class="grid-input">
-          <v-select v-model="store.selectedCurveIndex" :items="curveItems" density="compact" variant="outlined" hide-details />
+          <v-select v-model="store.selectedCurveIndex" :items="marketEnv.allCurveItems" density="compact" variant="outlined" hide-details />
         </div>
+        <template v-if="marketEnv.volSurfaces.length > 0">
+          <div class="grid-label">Vol Surf</div>
+          <div class="grid-input">
+            <v-select
+              v-model="store.selectedVolSurfaceId"
+              :items="[{ title: '(none)', value: '' }, ...marketEnv.allVolSurfaceItems]"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </div>
+        </template>
 
-        <!-- ═══ MODEL (shown when method=monteCarlo or auto) ═══ -->
-        <template v-if="store.pricingMethod === 'monteCarlo' || store.pricingMethod === 'auto'">
+        <!-- ═══ MODEL (shown when method=monteCarlo) ═══ -->
+        <template v-if="store.pricingMethod === 'monteCarlo'">
           <div class="section-header">Stochastic Model</div>
 
           <div class="grid-label">Type</div>
@@ -402,6 +446,17 @@ watch(
           @click="resetAll"
         >
           Reset
+        </v-btn>
+        <v-btn
+          variant="tonal"
+          size="small"
+          color="teal"
+          :disabled="!store.selectedInstrumentId || isSavingGraph || graphSaveFeedback"
+          :loading="isSavingGraph"
+          :prepend-icon="graphSaveFeedback ? 'mdi-check' : 'mdi-graph-outline'"
+          @click="saveGraph"
+        >
+          {{ graphSaveFeedback ? 'Saved!' : 'Save Graph' }}
         </v-btn>
       </div>
     </v-card-text>

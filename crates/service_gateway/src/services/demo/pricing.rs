@@ -11,8 +11,8 @@ use infra_domain::{
     },
 };
 use pricer_pricing::{
-    CalcSetting, MarketEnvironment, MarketEnvironmentBuilder, MonteCarloSetting, Pricer,
-    PricingMethodHint, TreeSetting, TreeType,
+    pricer::GreeksMode, CalcSetting, MarketEnvironment, MarketEnvironmentBuilder,
+    MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting, TreeType,
 };
 
 use super::DemoService;
@@ -147,34 +147,25 @@ fn map_tree_type(t: DemoTreeType) -> TreeType {
 fn build_calc_setting(request: &DemoPricingRequest) -> Result<CalcSetting, ServerError> {
     let reporting_currency = parse_currency(&request.reporting_currency)?;
 
-    let mc_config = request.mc_config.as_ref().map(|mc| {
-        let mut builder = MonteCarloSetting::builder();
-        builder = builder.num_paths(mc.num_paths);
-        builder = builder.num_steps(mc.num_steps);
-        if let Some(seed) = mc.seed {
-            builder = builder.seed(Some(seed));
-        }
-        builder.build()
+    let mc_config = request.mc_config.as_ref().map(|mc| MonteCarloSetting {
+        num_paths: mc.num_paths,
+        num_steps: mc.num_steps,
+        seed: mc.seed,
     });
 
-    let tree_config = request.tree_config.as_ref().map(|tc| {
-        let mut builder = TreeSetting::builder();
-        if let Some(steps) = tc.num_steps {
-            builder = builder.num_steps(steps);
-        }
-        if let Some(tt) = tc.tree_type {
-            builder = builder.tree_type(map_tree_type(tt));
-        }
-        builder.build()
+    let tree_config = request.tree_config.as_ref().map(|tc| TreeSetting {
+        num_steps: tc.num_steps.unwrap_or(100),
+        tree_type: tc.tree_type.map(map_tree_type).unwrap_or_default(),
     });
 
-    Ok(CalcSetting::builder()
-        .method(map_method(request.method))
-        .compute_greeks(request.compute_greeks)
-        .reporting_currency(reporting_currency)
-        .mc_config(mc_config)
-        .tree_config(tree_config)
-        .build())
+    Ok(CalcSetting {
+        method: map_method(request.method),
+        compute_greeks: request.compute_greeks,
+        reporting_currency,
+        mc_config,
+        tree_config,
+        greeks_mode: GreeksMode::default(),
+    })
 }
 
 /// Build unified `Pricer` inputs from a `DemoPricingRequest`.

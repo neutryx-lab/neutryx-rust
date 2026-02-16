@@ -16,7 +16,7 @@ import PricerSummaryBar from '@/components/pricer/PricerSummaryBar.vue';
 import PricerConfigPanel from '@/components/pricer/PricerConfigPanel.vue';
 import PricerResultsPanel from '@/components/pricer/PricerResultsPanel.vue';
 import CashflowTable from '@/components/pricer/CashflowTable.vue';
-import PricerHistory from '@/components/pricer/PricerHistory.vue';
+
 import DynamicParamField from '@/components/pricer/DynamicParamField.vue';
 
 import type { ExoticProductDef, ExoticPricingResponse } from '@/types';
@@ -137,18 +137,21 @@ function onTabChange(tab: 'standard' | 'exotic') {
       <!-- Standard Tab -->
       <div v-if="activeTab === 'standard'">
         <v-row>
-          <!-- Left Panel: Config + Results (4 cols) -->
+          <!-- Left Panel: Config (4 cols) -->
           <v-col cols="12" lg="4">
-            <div class="d-flex flex-column" style="gap: 16px">
-              <PricerConfigPanel />
-              <PricerResultsPanel />
-              <PricerHistory />
-            </div>
+            <PricerConfigPanel />
           </v-col>
 
           <!-- Right Panel: Cashflows (8 cols) -->
           <v-col cols="12" lg="8">
             <CashflowTable />
+          </v-col>
+        </v-row>
+
+        <!-- Results (below, full width) -->
+        <v-row class="mt-2">
+          <v-col cols="12">
+            <PricerResultsPanel />
           </v-col>
         </v-row>
       </div>

@@ -8,7 +8,7 @@
 import { usePricerStore } from '@/stores/pricer';
 import { useToast } from '@/composables/useToast';
 import { useCashflowEditor } from '@/composables/useCashflowEditor';
-import { usePricerHistory } from '@/composables/usePricerHistory';
+
 import { expandTrade, priceTrade, calculateGreeks } from '@/services/api';
 import type { PricingRequest, GreeksRequest, TradeExpandRequest } from '@/types/api';
 import type { ValidationError } from '@/constants/pricer';
@@ -17,7 +17,6 @@ export function usePricer() {
   const store = usePricerStore();
   const toast = useToast();
   const { buildPricingLegs } = useCashflowEditor();
-  const { addToHistory } = usePricerHistory();
 
   /**
    * Validate required instrument parameters.
@@ -164,7 +163,6 @@ export function usePricer() {
         timestamp: Date.now(),
       };
 
-      addToHistory();
       toast.success('Pricing complete');
     } catch (error) {
       console.error('Calculation failed:', error);

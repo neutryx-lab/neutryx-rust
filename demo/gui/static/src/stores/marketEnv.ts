@@ -8,7 +8,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { CURVE_OPTIONS } from '@/constants/pricer';
-import type { VolcubeCalibrateResponse } from '@/types/api';
+import type { VolcubeCalibrateResponse, PricerGraphResponse } from '@/types/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,6 +38,16 @@ export interface PublishedCurve {
   calibrationMethod: string;
 }
 
+export interface PublishedPricerGraph {
+  id: string;
+  label: string;
+  instrumentType: string;
+  instrumentName: string;
+  publishedAt: number;
+  graphResponse: PricerGraphResponse;
+  detailLevel: 'operation' | 'scope';
+}
+
 export interface PublishedVolSurface {
   id: string;
   label: string;
@@ -55,6 +65,7 @@ export interface PublishedVolSurface {
 export const useMarketEnvStore = defineStore('marketEnv', () => {
   const curves = ref<PublishedCurve[]>([]);
   const volSurfaces = ref<PublishedVolSurface[]>([]);
+  const pricerGraphs = ref<PublishedPricerGraph[]>([]);
 
   // -- Computed: dropdown items for Pricer -----------------------------------
 
@@ -116,6 +127,35 @@ export const useMarketEnvStore = defineStore('marketEnv', () => {
     return id;
   }
 
+  function publishPricerGraph(
+    instrumentType: string,
+    instrumentName: string,
+    graphResponse: PricerGraphResponse,
+    detailLevel: 'operation' | 'scope',
+  ) {
+    const ts = Date.now();
+    const time = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const id = `graph-${instrumentType}-${ts}`;
+    pricerGraphs.value.unshift({
+      id,
+      label: `${instrumentName} (${time})`,
+      instrumentType,
+      instrumentName,
+      publishedAt: ts,
+      graphResponse: { ...graphResponse },
+      detailLevel,
+    });
+    return id;
+  }
+
+  function removePricerGraph(id: string) {
+    pricerGraphs.value = pricerGraphs.value.filter((g) => g.id !== id);
+  }
+
+  function getPricerGraph(id: string) {
+    return pricerGraphs.value.find((g) => g.id === id);
+  }
+
   function removeCurve(id: string) {
     curves.value = curves.value.filter((c) => c.id !== id);
   }
@@ -135,13 +175,17 @@ export const useMarketEnvStore = defineStore('marketEnv', () => {
   return {
     curves,
     volSurfaces,
+    pricerGraphs,
     allCurveItems,
     allVolSurfaceItems,
     publishCurve,
     publishVolSurface,
+    publishPricerGraph,
     removeCurve,
     removeVolSurface,
+    removePricerGraph,
     getCurve,
     getVolSurface,
+    getPricerGraph,
   };
 });
