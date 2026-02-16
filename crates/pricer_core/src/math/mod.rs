@@ -16,6 +16,7 @@
 #![allow(clippy::similar_names)]
 
 pub mod formulas;
+pub mod interpolation;
 pub mod normal_dist;
 pub mod numeric;
 pub mod smoothing;

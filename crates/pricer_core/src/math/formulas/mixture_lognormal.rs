@@ -115,19 +115,6 @@ impl<T: Float> MixtureLognormalParams<T> {
     }
 }
 
-/// Standard normal CDF approximation (Abramowitz & Stegun).
-#[inline]
-fn norm_cdf<T: Float>(x: T) -> T {
-    let one = T::one();
-    let half: T = from_f64(0.5);
-    // erfc-based: Φ(x) = erfc(-x/√2) / 2
-    // Using the tanh approximation for broad compatibility:
-    let sqrt2: T = from_f64(std::f64::consts::SQRT_2);
-    half * (one + (x / sqrt2 * from_f64(std::f64::consts::FRAC_2_SQRT_PI) * from_f64(0.5)).tanh()
-        .max(-one)
-        .min(one))
-}
-
 /// More accurate normal CDF via rational approximation (Hart 1968).
 #[inline]
 fn norm_cdf_precise<T: Float>(x: T) -> T {

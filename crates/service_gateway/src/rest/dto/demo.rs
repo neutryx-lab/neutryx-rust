@@ -883,25 +883,53 @@ pub struct SabrSmileRequest {
     #[validate(range(exclusive_min = 0.0))]
     pub expiry_years: f64,
     /// Number of output points (default: 101).
-    #[serde(default = "default_sabr_n_points")]
+    #[serde(default = "default_smile_n_points")]
     pub n_points: usize,
     /// Strike range in basis points (default: 200, i.e., -200 to +200).
-    #[serde(default = "default_sabr_range_bp")]
+    #[serde(default = "default_smile_range_bp")]
     pub range_bp: f64,
 }
 
-fn default_sabr_n_points() -> usize { 101 }
-fn default_sabr_range_bp() -> f64 { 200.0 }
+fn default_smile_n_points() -> usize { 101 }
+fn default_smile_range_bp() -> f64 { 200.0 }
 
-/// Response with SABR smile and implied density.
+/// Response with smile and implied density (shared across all models).
 #[derive(Debug, Clone, Serialize)]
-pub struct SabrSmileResponse {
+pub struct SmileResponse {
     /// Strike offsets in basis points.
     pub offsets: Vec<f64>,
-    /// Normal volatilities (percentage, same scale as market data).
+    /// Implied volatilities (percentage).
     pub vols: Vec<f64>,
     /// Implied probability density (Breeden-Litzenberger).
     pub density: Vec<f64>,
+}
+
+/// Backward-compatible alias.
+pub type SabrSmileResponse = SmileResponse;
+
+/// Generic vol smile request for any model.
+///
+/// `model` selects the model ("sabr", "svi", "ssvi", etc.).
+/// `params` carries model-specific parameters as a JSON object.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolSmileRequest {
+    /// Model identifier (e.g., "sabr", "svi", "ssvi", "vanna_volga",
+    /// "zabr", "mixture_lognormal", "polynomial", "variance_gamma").
+    pub model: String,
+    /// Forward rate.
+    pub forward: f64,
+    /// Time to expiry in years.
+    pub expiry_years: f64,
+    /// Number of output points (default: 101).
+    #[serde(default = "default_smile_n_points")]
+    pub n_points: usize,
+    /// Strike range in basis points (default: 200).
+    #[serde(default = "default_smile_range_bp")]
+    pub range_bp: f64,
+    /// Model-specific parameters.
+    #[serde(default)]
+    pub params: serde_json::Value,
 }
 
 /// Tenor resolution request.

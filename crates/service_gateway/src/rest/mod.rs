@@ -132,6 +132,10 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
             "/volcube/sabr-smile",
             post(handlers::demo::compute_sabr_smile),
         )
+        .route(
+            "/volcube/model-smile",
+            post(handlers::demo::compute_model_smile),
+        )
         .route("/fxvol/calibrate", post(handlers::demo::calibrate_fxvol))
         .route("/market/rates", get(handlers::demo::get_market_rates))
         .route("/market/config", get(handlers::demo::get_market_config))

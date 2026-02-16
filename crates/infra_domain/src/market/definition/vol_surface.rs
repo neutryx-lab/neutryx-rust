@@ -11,6 +11,18 @@ pub enum CalibrationModel {
     Sabr,
     /// SVI (Stochastic Volatility Inspired) model.
     Svi,
+    /// SSVI (Surface SVI) arbitrage-free model.
+    Ssvi,
+    /// Vanna-Volga FX smile model.
+    VannaVolga,
+    /// ZABR generalised SABR model.
+    Zabr,
+    /// Mixture of Lognormals model.
+    MixtureLognormal,
+    /// Polynomial total-variance model.
+    Polynomial,
+    /// Variance Gamma model.
+    VarianceGamma,
     /// Dupire's local volatility model.
     LocalVolatility,
     /// Flat Black-Scholes volatility (constant sigma).
@@ -23,6 +35,12 @@ impl CalibrationModel {
         match self {
             Self::Sabr => "SABR",
             Self::Svi => "SVI",
+            Self::Ssvi => "SSVI",
+            Self::VannaVolga => "Vanna-Volga",
+            Self::Zabr => "ZABR",
+            Self::MixtureLognormal => "Mixture Lognormal",
+            Self::Polynomial => "Polynomial",
+            Self::VarianceGamma => "Variance Gamma",
             Self::LocalVolatility => "Local Volatility",
             Self::BlackScholes => "Black-Scholes",
         }
@@ -33,6 +51,12 @@ impl CalibrationModel {
         match self {
             Self::Sabr => "Stochastic Alpha Beta Rho - standard for rates",
             Self::Svi => "Stochastic Volatility Inspired - popular for equity",
+            Self::Ssvi => "Surface SVI - arbitrage-free by construction",
+            Self::VannaVolga => "Vanna-Volga - FX market standard 3-pillar smile",
+            Self::Zabr => "ZABR - generalised SABR with flexible backbone",
+            Self::MixtureLognormal => "Mixture of Lognormals - bimodal FX distributions",
+            Self::Polynomial => "Polynomial total-variance - simple IR baseline",
+            Self::VarianceGamma => "Variance Gamma - stochastic process smile",
             Self::LocalVolatility => "Dupire's local volatility - arbitrage-free",
             Self::BlackScholes => "Flat or term-structure volatility - simplest model",
         }
@@ -42,7 +66,16 @@ impl CalibrationModel {
     pub fn is_enabled(&self) -> bool {
         matches!(
             self,
-            Self::Sabr | Self::LocalVolatility | Self::BlackScholes
+            Self::Sabr
+                | Self::Svi
+                | Self::Ssvi
+                | Self::VannaVolga
+                | Self::Zabr
+                | Self::MixtureLognormal
+                | Self::Polynomial
+                | Self::VarianceGamma
+                | Self::LocalVolatility
+                | Self::BlackScholes
         )
     }
 
@@ -51,6 +84,12 @@ impl CalibrationModel {
         match self {
             Self::Sabr => 4,
             Self::Svi => 5,
+            Self::Ssvi => 3,
+            Self::VannaVolga => 3,
+            Self::Zabr => 5,
+            Self::MixtureLognormal => 3,
+            Self::Polynomial => 0,
+            Self::VarianceGamma => 3,
             Self::LocalVolatility => 0,
             Self::BlackScholes => 1,
         }
@@ -61,6 +100,12 @@ impl CalibrationModel {
         &[
             CalibrationModel::Sabr,
             CalibrationModel::Svi,
+            CalibrationModel::Ssvi,
+            CalibrationModel::VannaVolga,
+            CalibrationModel::Zabr,
+            CalibrationModel::MixtureLognormal,
+            CalibrationModel::Polynomial,
+            CalibrationModel::VarianceGamma,
             CalibrationModel::LocalVolatility,
             CalibrationModel::BlackScholes,
         ]
@@ -340,16 +385,21 @@ mod tests {
 
     #[test]
     fn test_is_enabled() {
-        assert!(CalibrationModel::Sabr.is_enabled());
-        assert!(!CalibrationModel::Svi.is_enabled());
-        assert!(CalibrationModel::LocalVolatility.is_enabled());
-        assert!(CalibrationModel::BlackScholes.is_enabled());
+        for model in CalibrationModel::all() {
+            assert!(model.is_enabled(), "{:?} should be enabled", model);
+        }
     }
 
     #[test]
     fn test_parameter_count() {
         assert_eq!(CalibrationModel::Sabr.parameter_count(), 4);
         assert_eq!(CalibrationModel::Svi.parameter_count(), 5);
+        assert_eq!(CalibrationModel::Ssvi.parameter_count(), 3);
+        assert_eq!(CalibrationModel::VannaVolga.parameter_count(), 3);
+        assert_eq!(CalibrationModel::Zabr.parameter_count(), 5);
+        assert_eq!(CalibrationModel::MixtureLognormal.parameter_count(), 3);
+        assert_eq!(CalibrationModel::Polynomial.parameter_count(), 0);
+        assert_eq!(CalibrationModel::VarianceGamma.parameter_count(), 3);
         assert_eq!(CalibrationModel::LocalVolatility.parameter_count(), 0);
         assert_eq!(CalibrationModel::BlackScholes.parameter_count(), 1);
     }
@@ -357,8 +407,15 @@ mod tests {
     #[test]
     fn test_enabled() {
         let enabled = CalibrationModel::enabled();
-        assert_eq!(enabled.len(), 3);
+        assert_eq!(enabled.len(), 10);
         assert!(enabled.contains(&CalibrationModel::Sabr));
+        assert!(enabled.contains(&CalibrationModel::Svi));
+        assert!(enabled.contains(&CalibrationModel::Ssvi));
+        assert!(enabled.contains(&CalibrationModel::VannaVolga));
+        assert!(enabled.contains(&CalibrationModel::Zabr));
+        assert!(enabled.contains(&CalibrationModel::MixtureLognormal));
+        assert!(enabled.contains(&CalibrationModel::Polynomial));
+        assert!(enabled.contains(&CalibrationModel::VarianceGamma));
         assert!(enabled.contains(&CalibrationModel::LocalVolatility));
         assert!(enabled.contains(&CalibrationModel::BlackScholes));
     }
@@ -442,13 +499,12 @@ mod tests {
     }
 
     #[test]
-    fn test_vol_surface_validate_unsupported_model() {
-        let surface = VolSurfaceDefinition::new("USD-Vol", vec!["inst1".to_string()])
-            .with_model(CalibrationModel::Svi);
-        assert!(matches!(
-            surface.validate(),
-            Err(VolSurfaceDefError::UnsupportedModel(_))
-        ));
+    fn test_vol_surface_validate_all_models_supported() {
+        for model in CalibrationModel::all() {
+            let surface = VolSurfaceDefinition::new("USD-Vol", vec!["inst1".to_string()])
+                .with_model(*model);
+            assert!(surface.validate().is_ok(), "{:?} should be supported", model);
+        }
     }
 
     #[test]

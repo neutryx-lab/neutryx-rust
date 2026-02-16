@@ -28,8 +28,15 @@ pub mod forward;
 pub mod fx_delta;
 pub mod garman_kohlhagen;
 pub mod generalised_bsm;
+pub mod mixture_lognormal;
+pub mod polynomial_vol;
 pub mod rates;
 pub mod sabr;
+pub mod ssvi;
+pub mod svi;
+pub mod vanna_volga;
+pub mod variance_gamma;
+pub mod zabr;
 
 // Re-export main types at module level
 pub use bachelier::Bachelier;

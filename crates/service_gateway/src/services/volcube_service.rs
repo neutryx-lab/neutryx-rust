@@ -18,9 +18,9 @@ use crate::{
         CalibrationMetadata, CalibrationParameters, CellDiagnostics, CellJacobian,
         FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
         ImpliedPdfRequest, ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
-        IrVolQuotesResponse, SabrSmileRequest, SabrSmileResponse, SmilePoint, SwaptionInstrument,
-        VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
-        VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        IrVolQuotesResponse, SabrSmileRequest, SmilePoint, SmileResponse, SwaptionInstrument,
+        VolSmileRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
+        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     services::helpers,
     state::AppState,
@@ -236,8 +236,12 @@ impl VolcubeService {
     pub fn get_volcube_models(
         _state: &Arc<AppState>,
     ) -> Result<VolcubeModelsResponse, ServerError> {
+        use infra_domain::market::definition::CalibrationModel;
         Ok(VolcubeModelsResponse {
-            models: vec!["SABR".to_string()],
+            models: CalibrationModel::enabled()
+                .iter()
+                .map(|m| m.display_name().to_string())
+                .collect(),
         })
     }
 
@@ -662,7 +666,7 @@ impl VolcubeService {
     ///   Bachelier PDF.
     pub fn compute_sabr_smile(
         request: &SabrSmileRequest,
-    ) -> Result<SabrSmileResponse, ServerError> {
+    ) -> Result<SmileResponse, ServerError> {
         use pricer_core::math::formulas::{
             sabr::{sabr_implied_vol, SabrImpliedVolParams},
             BlackScholes,
@@ -771,7 +775,387 @@ impl VolcubeService {
 
         let vols_pct: Vec<f64> = vols_decimal.iter().map(|v| v * 100.0).collect();
 
-        Ok(SabrSmileResponse {
+        Ok(SmileResponse {
+            offsets,
+            vols: vols_pct,
+            density,
+        })
+    }
+
+    /// Compute a smile for any supported model via a unified request.
+    pub fn compute_model_smile(request: &VolSmileRequest) -> Result<SmileResponse, ServerError> {
+        let forward = request.forward;
+        let expiry = request.expiry_years;
+        let n = request.n_points.max(3);
+        let range = request.range_bp;
+        let params = &request.params;
+
+        if forward <= 0.0 {
+            return Err(ServerError::InvalidRequest(
+                "forward must be positive".to_string(),
+            ));
+        }
+        if expiry <= 0.0 {
+            return Err(ServerError::InvalidRequest(
+                "expiry_years must be positive".to_string(),
+            ));
+        }
+
+        match request.model.to_lowercase().as_str() {
+            "sabr" => {
+                let sabr_req = SabrSmileRequest {
+                    alpha: json_f64(params, "alpha", 0.2),
+                    beta: json_f64(params, "beta", 0.5),
+                    rho: json_f64(params, "rho", -0.3),
+                    nu: json_f64(params, "nu", 0.4),
+                    forward,
+                    expiry_years: expiry,
+                    n_points: n,
+                    range_bp: range,
+                };
+                Self::compute_sabr_smile(&sabr_req)
+            }
+            "svi" => Self::compute_svi_smile(forward, expiry, n, range, params),
+            "ssvi" => Self::compute_ssvi_smile(forward, expiry, n, range, params),
+            "polynomial" => Self::compute_polynomial_smile(forward, expiry, n, range, params),
+            "vanna_volga" | "vannavolga" | "vanna-volga" => {
+                Self::compute_vanna_volga_smile(forward, expiry, n, range, params)
+            }
+            "zabr" => Self::compute_zabr_smile(forward, expiry, n, range, params),
+            "mixture_lognormal" | "mixturelognormal" | "mixture-lognormal" => {
+                Self::compute_mixture_ln_smile(forward, expiry, n, range, params)
+            }
+            "variance_gamma" | "variancegamma" | "variance-gamma" => {
+                Self::compute_variance_gamma_smile(forward, expiry, n, range, params)
+            }
+            other => Err(ServerError::InvalidRequest(format!(
+                "Unknown model: {other}"
+            ))),
+        }
+    }
+
+    /// SVI smile computation.
+    fn compute_svi_smile(
+        forward: f64,
+        expiry: f64,
+        n: usize,
+        range: f64,
+        params: &serde_json::Value,
+    ) -> Result<SmileResponse, ServerError> {
+        use pricer_core::math::formulas::svi::{svi_implied_vol, SviParams};
+
+        let svi = SviParams {
+            a: json_f64(params, "a", 0.04),
+            b: json_f64(params, "b", 0.1),
+            rho: json_f64(params, "rho", -0.3),
+            m: json_f64(params, "m", 0.0),
+            sigma: json_f64(params, "sigma", 0.1),
+        };
+
+        let step = 2.0 * range / (n - 1) as f64;
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
+            let vol = svi_implied_vol(&svi, strike, forward, expiry).unwrap_or(0.0);
+            offsets.push(offset_bp);
+            strikes.push(strike);
+            vols.push(vol);
+        }
+
+        let density = breeden_litzenberger_bs(&strikes, &vols, forward, expiry);
+        let vols_pct: Vec<f64> = vols.iter().map(|v| v * 100.0).collect();
+
+        Ok(SmileResponse {
+            offsets,
+            vols: vols_pct,
+            density,
+        })
+    }
+
+    /// SSVI smile computation.
+    fn compute_ssvi_smile(
+        forward: f64,
+        expiry: f64,
+        n: usize,
+        range: f64,
+        params: &serde_json::Value,
+    ) -> Result<SmileResponse, ServerError> {
+        use pricer_core::math::formulas::ssvi::{ssvi_implied_vol, SsviParams};
+
+        let ssvi = SsviParams {
+            rho: json_f64(params, "rho", -0.3),
+            eta: json_f64(params, "eta", 0.5),
+            gamma: json_f64(params, "gamma", 0.5),
+        };
+        let atm_vol = json_f64(params, "atmVol", 0.2);
+
+        let step = 2.0 * range / (n - 1) as f64;
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
+            let vol = ssvi_implied_vol(&ssvi, strike, forward, expiry, atm_vol).unwrap_or(0.0);
+            offsets.push(offset_bp);
+            strikes.push(strike);
+            vols.push(vol);
+        }
+
+        let density = breeden_litzenberger_bs(&strikes, &vols, forward, expiry);
+        let vols_pct: Vec<f64> = vols.iter().map(|v| v * 100.0).collect();
+
+        Ok(SmileResponse {
+            offsets,
+            vols: vols_pct,
+            density,
+        })
+    }
+
+    /// Polynomial smile computation.
+    fn compute_polynomial_smile(
+        forward: f64,
+        expiry: f64,
+        n: usize,
+        range: f64,
+        params: &serde_json::Value,
+    ) -> Result<SmileResponse, ServerError> {
+        use pricer_core::math::formulas::polynomial_vol::{
+            polynomial_implied_vol, PolynomialVolParams,
+        };
+
+        let coeffs: Vec<f64> = params
+            .get("coefficients")
+            .and_then(|c| c.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_f64()).collect())
+            .unwrap_or_else(|| vec![0.04]);
+
+        let poly = PolynomialVolParams {
+            coefficients: coeffs,
+        };
+
+        let step = 2.0 * range / (n - 1) as f64;
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
+            let vol = polynomial_implied_vol(&poly, strike, forward, expiry).unwrap_or(0.0);
+            offsets.push(offset_bp);
+            strikes.push(strike);
+            vols.push(vol);
+        }
+
+        let density = breeden_litzenberger_bs(&strikes, &vols, forward, expiry);
+        let vols_pct: Vec<f64> = vols.iter().map(|v| v * 100.0).collect();
+
+        Ok(SmileResponse {
+            offsets,
+            vols: vols_pct,
+            density,
+        })
+    }
+
+    /// Vanna-Volga smile computation.
+    fn compute_vanna_volga_smile(
+        forward: f64,
+        expiry: f64,
+        n: usize,
+        range: f64,
+        params: &serde_json::Value,
+    ) -> Result<SmileResponse, ServerError> {
+        use pricer_core::math::formulas::vanna_volga::{
+            vanna_volga_implied_vol, VannaVolgaParams,
+        };
+
+        let vv = VannaVolgaParams {
+            sigma_atm: json_f64(params, "sigmaAtm", 0.10),
+            sigma_25d_put: json_f64(params, "sigma25dPut", 0.12),
+            sigma_25d_call: json_f64(params, "sigma25dCall", 0.09),
+            strike_atm: json_f64(params, "strikeAtm", forward),
+            strike_25d_put: json_f64(params, "strike25dPut", forward * 0.95),
+            strike_25d_call: json_f64(params, "strike25dCall", forward * 1.05),
+        };
+
+        let step = 2.0 * range / (n - 1) as f64;
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
+            let vol = vanna_volga_implied_vol(&vv, strike).unwrap_or(0.0);
+            offsets.push(offset_bp);
+            strikes.push(strike);
+            vols.push(vol);
+        }
+
+        let density = breeden_litzenberger_bs(&strikes, &vols, forward, expiry);
+        let vols_pct: Vec<f64> = vols.iter().map(|v| v * 100.0).collect();
+
+        Ok(SmileResponse {
+            offsets,
+            vols: vols_pct,
+            density,
+        })
+    }
+
+    /// ZABR smile computation.
+    fn compute_zabr_smile(
+        forward: f64,
+        expiry: f64,
+        n: usize,
+        range: f64,
+        params: &serde_json::Value,
+    ) -> Result<SmileResponse, ServerError> {
+        use pricer_core::math::formulas::zabr::{zabr_implied_vol, ZabrBackbone, ZabrParams};
+
+        let beta = json_f64(params, "beta", 0.5);
+        let backbone = match params
+            .get("backbone")
+            .and_then(|b| b.as_str())
+            .unwrap_or("power")
+        {
+            "displaced" => ZabrBackbone::Displaced {
+                beta,
+                displacement: json_f64(params, "displacement", 0.0),
+            },
+            _ => ZabrBackbone::Power { beta },
+        };
+
+        let zabr = ZabrParams {
+            alpha: json_f64(params, "alpha", 0.2),
+            backbone,
+            nu: json_f64(params, "nu", 0.4),
+            rho: json_f64(params, "rho", -0.3),
+            gamma_mix: json_f64(params, "gammaMix", 0.0),
+        };
+
+        let step = 2.0 * range / (n - 1) as f64;
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
+            let vol = zabr_implied_vol(&zabr, forward, strike, expiry).unwrap_or(0.0);
+            offsets.push(offset_bp);
+            strikes.push(strike);
+            vols.push(vol);
+        }
+
+        let density = breeden_litzenberger_bs(&strikes, &vols, forward, expiry);
+        let vols_pct: Vec<f64> = vols.iter().map(|v| v * 100.0).collect();
+
+        Ok(SmileResponse {
+            offsets,
+            vols: vols_pct,
+            density,
+        })
+    }
+
+    /// Mixture Lognormal smile computation.
+    fn compute_mixture_ln_smile(
+        forward: f64,
+        expiry: f64,
+        n: usize,
+        range: f64,
+        params: &serde_json::Value,
+    ) -> Result<SmileResponse, ServerError> {
+        use pricer_core::math::formulas::mixture_lognormal::{
+            mixture_lognormal_implied_vol, MixtureLognormalParams,
+        };
+
+        let weights: Vec<f64> = params
+            .get("weights")
+            .and_then(|w| w.as_array())
+            .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
+            .unwrap_or_else(|| vec![0.6, 0.4]);
+        let forwards: Vec<f64> = params
+            .get("forwards")
+            .and_then(|f| f.as_array())
+            .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
+            .unwrap_or_else(|| vec![forward, forward]);
+        let volatilities: Vec<f64> = params
+            .get("volatilities")
+            .and_then(|v| v.as_array())
+            .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
+            .unwrap_or_else(|| vec![0.15, 0.30]);
+
+        let mix = MixtureLognormalParams::new(weights, forwards, volatilities).map_err(|e| {
+            ServerError::InvalidRequest(format!("Invalid mixture params: {e}"))
+        })?;
+
+        let step = 2.0 * range / (n - 1) as f64;
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
+            let vol =
+                mixture_lognormal_implied_vol(&mix, strike, forward, expiry).unwrap_or(0.0);
+            offsets.push(offset_bp);
+            strikes.push(strike);
+            vols.push(vol);
+        }
+
+        let density = breeden_litzenberger_bs(&strikes, &vols, forward, expiry);
+        let vols_pct: Vec<f64> = vols.iter().map(|v| v * 100.0).collect();
+
+        Ok(SmileResponse {
+            offsets,
+            vols: vols_pct,
+            density,
+        })
+    }
+
+    /// Variance Gamma smile computation.
+    fn compute_variance_gamma_smile(
+        forward: f64,
+        expiry: f64,
+        n: usize,
+        range: f64,
+        params: &serde_json::Value,
+    ) -> Result<SmileResponse, ServerError> {
+        use pricer_core::math::formulas::variance_gamma::{
+            vg_implied_vol, VarianceGammaParams,
+        };
+
+        let vg = VarianceGammaParams {
+            sigma: json_f64(params, "sigma", 0.2),
+            nu: json_f64(params, "nu", 0.5),
+            theta: json_f64(params, "theta", -0.1),
+        };
+
+        let step = 2.0 * range / (n - 1) as f64;
+        let mut offsets = Vec::with_capacity(n);
+        let mut vols = Vec::with_capacity(n);
+        let mut strikes = Vec::with_capacity(n);
+
+        for i in 0..n {
+            let offset_bp = -range + i as f64 * step;
+            let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
+            let vol = vg_implied_vol(&vg, forward, strike, expiry, 0.0).unwrap_or(0.0);
+            offsets.push(offset_bp);
+            strikes.push(strike);
+            vols.push(vol);
+        }
+
+        let density = breeden_litzenberger_bs(&strikes, &vols, forward, expiry);
+        let vols_pct: Vec<f64> = vols.iter().map(|v| v * 100.0).collect();
+
+        Ok(SmileResponse {
             offsets,
             vols: vols_pct,
             density,
@@ -1059,3 +1443,49 @@ fn compute_cell_jacobians(
 
 /// Round to 4 decimal places.
 fn round4(x: f64) -> f64 { (x * 10_000.0).round() / 10_000.0 }
+
+/// Extract f64 from JSON value with default.
+fn json_f64(v: &serde_json::Value, key: &str, default: f64) -> f64 {
+    v.get(key).and_then(|val| val.as_f64()).unwrap_or(default)
+}
+
+/// Breeden-Litzenberger density via Black-Scholes call prices.
+fn breeden_litzenberger_bs(
+    strikes: &[f64],
+    vols: &[f64],
+    forward: f64,
+    expiry: f64,
+) -> Vec<f64> {
+    use pricer_core::math::formulas::BlackScholes;
+
+    let n = strikes.len();
+    let mut density = Vec::with_capacity(n);
+
+    let bs_call = |k: f64, v: f64| -> f64 {
+        if v <= 0.0 {
+            return (forward - k).max(0.0);
+        }
+        BlackScholes::new(forward, 0.0, v)
+            .map(|bs| bs.price_call(k, expiry))
+            .unwrap_or((forward - k).max(0.0))
+    };
+
+    for i in 0..n {
+        if i == 0 || i == n - 1 {
+            density.push(0.0);
+            continue;
+        }
+        let dk = (strikes[i + 1] - strikes[i - 1]) / 2.0;
+        if dk <= 0.0 {
+            density.push(0.0);
+            continue;
+        }
+        let c_lo = bs_call(strikes[i - 1], vols[i - 1]);
+        let c_mid = bs_call(strikes[i], vols[i]);
+        let c_hi = bs_call(strikes[i + 1], vols[i + 1]);
+        let d2c = (c_lo - 2.0 * c_mid + c_hi) / (dk * dk);
+        density.push(d2c.max(0.0));
+    }
+
+    density
+}

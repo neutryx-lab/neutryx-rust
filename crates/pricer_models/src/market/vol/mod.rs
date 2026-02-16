@@ -23,14 +23,28 @@
 pub mod black_scholes;
 pub mod interp;
 pub mod local_vol;
+pub mod mixture_lognormal;
+pub mod polynomial;
 pub mod sabr;
+pub mod ssvi;
+pub mod svi;
+pub mod vanna_volga;
+pub mod variance_gamma;
+pub mod zabr;
 
 // Re-export public types for convenient access.
 pub use black_scholes::BlackScholesVol;
 use enum_dispatch::enum_dispatch;
 pub use local_vol::LocalVolSurface;
+pub use mixture_lognormal::MixtureLognormalSurface;
+pub use polynomial::PolynomialVolSurface;
 use pricer_core::traits::Float;
 pub use sabr::{SabrParams, SabrSliceParams, SabrSurface};
+pub use ssvi::SsviSurface;
+pub use svi::SviSurface;
+pub use vanna_volga::VannaVolgaSurface;
+pub use variance_gamma::VarianceGammaSurface;
+pub use zabr::ZabrSurface;
 
 // ─── Error type ───────────────────────────────────────────────────────
 
@@ -105,6 +119,20 @@ pub enum VolSurfaceEnum<T: Float> {
     Sabr(SabrSurface<T>),
     /// Dupire local-volatility grid.
     LocalVol(LocalVolSurface<T>),
+    /// SVI (Stochastic Volatility Inspired) surface.
+    Svi(SviSurface<T>),
+    /// SSVI (Surface SVI) arbitrage-free surface.
+    Ssvi(SsviSurface<T>),
+    /// Vanna-Volga FX surface.
+    VannaVolga(VannaVolgaSurface<T>),
+    /// ZABR generalised SABR surface.
+    Zabr(ZabrSurface<T>),
+    /// Mixture of Lognormals surface.
+    MixtureLn(MixtureLognormalSurface<T>),
+    /// Polynomial total-variance surface.
+    Polynomial(PolynomialVolSurface<T>),
+    /// Variance Gamma surface.
+    VarianceGamma(VarianceGammaSurface<T>),
 }
 
 impl<T: Float> VolSurfaceEnum<T> {
@@ -119,10 +147,33 @@ impl<T: Float> VolSurfaceEnum<T> {
     /// Wraps an existing local-vol surface.
     pub fn local_vol(surface: LocalVolSurface<T>) -> Self { Self::LocalVol(surface) }
 
-    /// Returns `true` for parametric models (Black-Scholes, SABR) that
-    /// produce implied volatilities directly; `false` for grid-based
-    /// models (local vol) that require numerical inversion.
-    pub fn is_parametric(&self) -> bool { matches!(self, Self::BlackScholes(_) | Self::Sabr(_)) }
+    /// Wraps an existing SVI surface.
+    pub fn svi(surface: SviSurface<T>) -> Self { Self::Svi(surface) }
+
+    /// Wraps an existing SSVI surface.
+    pub fn ssvi(surface: SsviSurface<T>) -> Self { Self::Ssvi(surface) }
+
+    /// Wraps an existing Vanna-Volga surface.
+    pub fn vanna_volga(surface: VannaVolgaSurface<T>) -> Self { Self::VannaVolga(surface) }
+
+    /// Wraps an existing ZABR surface.
+    pub fn zabr(surface: ZabrSurface<T>) -> Self { Self::Zabr(surface) }
+
+    /// Wraps an existing Mixture Lognormal surface.
+    pub fn mixture_ln(surface: MixtureLognormalSurface<T>) -> Self { Self::MixtureLn(surface) }
+
+    /// Wraps an existing Polynomial surface.
+    pub fn polynomial(surface: PolynomialVolSurface<T>) -> Self { Self::Polynomial(surface) }
+
+    /// Wraps an existing Variance Gamma surface.
+    pub fn variance_gamma(surface: VarianceGammaSurface<T>) -> Self {
+        Self::VarianceGamma(surface)
+    }
+
+    /// Returns `true` for parametric models that produce implied
+    /// volatilities directly; `false` for grid-based models (local vol)
+    /// that require numerical inversion.
+    pub fn is_parametric(&self) -> bool { !matches!(self, Self::LocalVol(_)) }
 }
 
 #[cfg(test)]

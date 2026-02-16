@@ -24,7 +24,7 @@ use thiserror::Error;
 use crate::math::{
     formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams},
     numeric::from_f64,
-    smoothing::{smooth_log, smooth_pow},
+    smoothing::smooth_pow,
 };
 
 /// Default smoothing epsilon.

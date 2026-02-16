@@ -30,8 +30,8 @@ const greekItems = computed<GreekItem[]>(() => {
 </script>
 
 <template>
-  <v-card v-if="store.greeksResult">
-    <v-card-title>Greeks</v-card-title>
+  <v-card v-if="store.greeksResult" variant="outlined">
+    <v-card-title class="text-subtitle-1">Greeks</v-card-title>
     <v-card-text>
       <v-row dense>
         <v-col v-for="g in greekItems" :key="g.label" cols="6">

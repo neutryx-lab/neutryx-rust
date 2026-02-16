@@ -14,7 +14,7 @@ const iconMap: Record<string, string> = {
 <template>
   <v-row class="mb-4">
     <v-col v-for="stat in store.summaryStats" :key="stat.label" cols="6" md="3">
-      <v-card>
+      <v-card variant="outlined">
         <v-card-text class="d-flex align-center justify-space-between">
           <div>
             <div class="text-caption text-medium-emphasis">{{ stat.label }}</div>

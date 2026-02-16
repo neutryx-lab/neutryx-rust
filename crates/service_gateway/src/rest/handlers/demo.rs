@@ -25,8 +25,8 @@ use crate::{
             MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
             RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse,
             PricerGraphRequest, PricerGraphResponse, ResolveTenorRequest, ResolveTenorResponse,
-            SabrSmileRequest, SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest,
-            VolcubeCalibrateResponse,
+            SabrSmileRequest, SmileResponse, TradeExpandRequest, VolSmileRequest,
+            VolcubeCalibrateRequest, VolcubeCalibrateResponse,
             VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
@@ -159,7 +159,9 @@ state_body_handler!(/// POST /api/fxvol/calibrate.
 body_handler!(/// POST /api/volcube/implied-pdf.
     compute_implied_pdf, VolcubeService::compute_implied_pdf(ImpliedPdfRequest) -> ImpliedPdfResponse);
 body_handler!(/// POST /api/volcube/sabr-smile.
-    compute_sabr_smile, VolcubeService::compute_sabr_smile(SabrSmileRequest) -> SabrSmileResponse);
+    compute_sabr_smile, VolcubeService::compute_sabr_smile(SabrSmileRequest) -> SmileResponse);
+body_handler!(/// POST /api/volcube/model-smile.
+    compute_model_smile, VolcubeService::compute_model_smile(VolSmileRequest) -> SmileResponse);
 body_handler!(/// POST /api/utils/resolve-tenor.
     resolve_tenor, DemoService::resolve_tenor(ResolveTenorRequest) -> ResolveTenorResponse);
 body_handler!(/// POST /api/pricer/graph.
