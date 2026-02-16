@@ -192,8 +192,8 @@ function fmtPv(v: number | null): string {
 <style scoped>
 .sheet-wrap {
   font-family: 'JetBrains Mono', 'Consolas', monospace;
-  font-size: 0.72rem;
-  line-height: 1.3;
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
 .sheet-toolbar {
@@ -202,7 +202,7 @@ function fmtPv(v: number | null): string {
 }
 
 .reset-btn {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: rgb(var(--v-theme-warning));
   cursor: pointer;
   background: none;
@@ -215,7 +215,6 @@ function fmtPv(v: number | null): string {
 }
 
 .sheet {
-  width: 100%;
   border-collapse: collapse;
   white-space: nowrap;
 }
@@ -227,9 +226,9 @@ function fmtPv(v: number | null): string {
 }
 
 .sheet th {
-  padding: 4px 6px;
+  padding: 6px 8px;
   font-weight: 600;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: rgba(var(--v-theme-on-surface), 0.5);
@@ -239,7 +238,7 @@ function fmtPv(v: number | null): string {
 }
 
 .sheet td {
-  padding: 2px 6px;
+  padding: 4px 8px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.04);
   color: rgba(var(--v-theme-on-surface), 0.8);
 }
@@ -253,12 +252,14 @@ function fmtPv(v: number | null): string {
 }
 
 .col-num.col-edit {
-  padding: 1px 2px;
+  padding: 2px 4px;
+  width: 100px;
+  max-width: 100px;
 }
 
 .col-type {
   text-align: center;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
@@ -268,9 +269,9 @@ function fmtPv(v: number | null): string {
 
 /* Leg separator */
 .leg-row td {
-  padding: 5px 6px 3px;
+  padding: 6px 8px 4px;
   font-weight: 700;
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.10);
   background: rgba(var(--v-theme-on-surface), 0.03);
@@ -281,7 +282,7 @@ function fmtPv(v: number | null): string {
   margin-left: 6px;
   padding: 0 4px;
   font-weight: 500;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   border-radius: 2px;
   background: rgba(var(--v-theme-on-surface), 0.06);
   color: rgba(var(--v-theme-on-surface), 0.5);
@@ -293,8 +294,7 @@ function fmtPv(v: number | null): string {
 
 /* Editable cell input */
 .cell-input {
-  width: 100%;
-  min-width: 60px;
+  width: 90px;
   padding: 1px 4px;
   text-align: right;
   font-family: inherit;
@@ -323,7 +323,7 @@ function fmtPv(v: number | null): string {
 .float-label {
   font-style: italic;
   color: rgba(var(--v-theme-on-surface), 0.35);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
 }
 
 .row-edited td {
@@ -334,8 +334,8 @@ function fmtPv(v: number | null): string {
 .pv-neg { color: rgb(var(--v-theme-error)); font-weight: 600; }
 
 .sheet-footer {
-  padding: 3px 8px;
-  font-size: 0.65rem;
+  padding: 4px 8px;
+  font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.4);
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }

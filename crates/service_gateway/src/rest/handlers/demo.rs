@@ -17,14 +17,16 @@ use crate::{
             ConventionsResponse, CreditQuotesResponse, CurveIndicesResponse,
             CurveInstrumentsResponse, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
             DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult,
-            EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FxVolCalibrateRequest,
+            EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat,
+            FxVolCalibrateRequest,
             FxVolPairsResponse, FxVolQuotesResponse, HolidaysResponse, ImpliedPdfRequest,
             ImpliedPdfResponse, IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
             IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
             MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
             RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse,
-            ResolveTenorRequest, ResolveTenorResponse, SabrSmileRequest, SabrSmileResponse,
-            TradeExpandRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
+            PricerGraphRequest, PricerGraphResponse, ResolveTenorRequest, ResolveTenorResponse,
+            SabrSmileRequest, SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest,
+            VolcubeCalibrateResponse,
             VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
@@ -160,6 +162,8 @@ body_handler!(/// POST /api/volcube/sabr-smile.
     compute_sabr_smile, VolcubeService::compute_sabr_smile(SabrSmileRequest) -> SabrSmileResponse);
 body_handler!(/// POST /api/utils/resolve-tenor.
     resolve_tenor, DemoService::resolve_tenor(ResolveTenorRequest) -> ResolveTenorResponse);
+body_handler!(/// POST /api/pricer/graph.
+    get_pricer_graph, DemoService::get_pricer_graph(PricerGraphRequest) -> PricerGraphResponse);
 
 /// POST /api/market/rates/refresh.
 pub async fn refresh_market_rates(

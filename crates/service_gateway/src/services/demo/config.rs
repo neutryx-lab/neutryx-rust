@@ -135,17 +135,73 @@ impl DemoService {
                         validation: None,
                     },
                 ],
-                optional_params: vec![ParameterDef {
-                    name: "fixedRate".to_string(),
-                    label: Some("Fixed Rate".to_string()),
-                    field_type: FieldType::Number,
-                    default_value: Some(serde_json::json!(0.05)),
-                    options: None,
-                    validation: Some(crate::rest::dto::demo::ParameterValidation {
-                        min: Some(-0.1),
-                        max: Some(0.5),
-                    }),
-                }],
+                optional_params: vec![
+                    ParameterDef {
+                        name: "fixedRate".to_string(),
+                        label: Some("Fixed Rate".to_string()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(0.05)),
+                        options: None,
+                        validation: Some(crate::rest::dto::demo::ParameterValidation {
+                            min: Some(-0.1),
+                            max: Some(0.5),
+                        }),
+                    },
+                    ParameterDef {
+                        name: "rateIndex".to_string(),
+                        label: Some("Float Index".to_string()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("SOFR")),
+                        options: Some(vec![
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "SOFR".to_string(),
+                                label: "USD SOFR".to_string(),
+                            },
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "ESTR".to_string(),
+                                label: "EUR ESTR".to_string(),
+                            },
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "EURIBOR3M".to_string(),
+                                label: "EUR EURIBOR 3M".to_string(),
+                            },
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "EURIBOR6M".to_string(),
+                                label: "EUR EURIBOR 6M".to_string(),
+                            },
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "SONIA".to_string(),
+                                label: "GBP SONIA".to_string(),
+                            },
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "TONA".to_string(),
+                                label: "JPY TONA".to_string(),
+                            },
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "SARON".to_string(),
+                                label: "CHF SARON".to_string(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                    ParameterDef {
+                        name: "swapType".to_string(),
+                        label: Some("Swap Type".to_string()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("Vanilla")),
+                        options: Some(vec![
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "Vanilla".to_string(),
+                                label: "Vanilla".to_string(),
+                            },
+                            crate::rest::dto::demo::ParameterOption {
+                                value: "OIS".to_string(),
+                                label: "OIS".to_string(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
             },
             InstrumentDef {
                 instrument_type: "FxForward".to_string(),

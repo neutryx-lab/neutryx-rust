@@ -891,6 +891,69 @@ pub struct ResolveTenorResponse {
     pub date: String,
 }
 
+/// Pricer graph request (single-instrument computation graph).
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphRequest {
+    #[validate(length(min = 1))]
+    pub instrument_type: String,
+    #[serde(default)]
+    pub params: serde_json::Value,
+    pub detail_level: Option<String>,
+}
+
+/// Graph node DTO.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphNode {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub node_type: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<f64>,
+    pub is_sensitivity_target: bool,
+    pub group: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub trade_ids: Vec<String>,
+}
+
+/// Graph edge DTO.
+#[derive(Debug, Clone, Serialize)]
+pub struct PricerGraphEdge {
+    pub source: String,
+    pub target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<f64>,
+}
+
+/// Pricer graph response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphResponse {
+    pub nodes: Vec<PricerGraphNode>,
+    #[serde(rename = "links")]
+    pub edges: Vec<PricerGraphEdge>,
+    pub metadata: PricerGraphMetadata,
+}
+
+/// Pricer graph metadata.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphMetadata {
+    pub node_count: usize,
+    pub edge_count: usize,
+    pub depth: usize,
+    pub generated_at: String,
+    pub trade_count: usize,
+    pub shared_node_count: usize,
+    pub optimisation_ratio: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trade_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_locations: Option<std::collections::HashMap<String, String>>,
+}
+
 /// Export format.
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]

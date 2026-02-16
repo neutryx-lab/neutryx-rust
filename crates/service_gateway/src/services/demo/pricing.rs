@@ -22,8 +22,9 @@ use crate::{
         AdvancedGreeksMode, Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest,
         DemoAdvancedGreeksResult, DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult,
         DemoPathDistribution, DemoPricingMethod, DemoPricingRequest, DemoPricingResult,
-        DemoTreeType, ExpandedTrade, LegResult, PricingLeg, TradeExpandRequest, TradeLeg,
-        TradeMetadata,
+        DemoTreeType, ExpandedTrade, LegResult, PricerGraphEdge, PricerGraphMetadata,
+        PricerGraphNode, PricerGraphRequest, PricerGraphResponse, PricingLeg, TradeExpandRequest,
+        TradeLeg, TradeMetadata,
     },
     state::AppState,
 };
@@ -225,14 +226,43 @@ impl DemoService {
 
         let (legs, trade_type) = match request.instrument_type.as_str() {
             "IRS" => {
+                let currency = request
+                    .params
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("USD");
+                let notional = request
+                    .params
+                    .get("notional")
+                    .and_then(|n| n.as_f64())
+                    .unwrap_or(1_000_000.0);
+                let fixed_rate = request
+                    .params
+                    .get("fixedRate")
+                    .and_then(|r| r.as_f64())
+                    .unwrap_or(0.05);
+                let rate_index = request
+                    .params
+                    .get("rateIndex")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or(match currency {
+                        "EUR" => "ESTR",
+                        "GBP" => "SONIA",
+                        "JPY" => "TONA",
+                        "CHF" => "SARON",
+                        _ => "SOFR",
+                    })
+                    .to_string();
+                let swap_type = request
+                    .params
+                    .get("swapType")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("Vanilla");
+                let leg_type_label = if swap_type == "OIS" { "OIS Float" } else { "Float" };
+
                 let fixed_leg = TradeLeg {
                     direction: "Payer".to_string(),
-                    currency: request
-                        .params
-                        .get("currency")
-                        .and_then(|c| c.as_str())
-                        .unwrap_or("USD")
-                        .to_string(),
+                    currency: currency.to_string(),
                     leg_type: "Fixed".to_string(),
                     rate_index: None,
                     cashflows: vec![Cashflow {
@@ -240,39 +270,26 @@ impl DemoService {
                         accrual_start: "2026-01-30".to_string(),
                         accrual_end: "2027-01-30".to_string(),
                         year_fraction: 1.0,
-                        notional: request
-                            .params
-                            .get("notional")
-                            .and_then(|n| n.as_f64())
-                            .unwrap_or(1_000_000.0),
-                        rate: Some(0.05),
+                        notional,
+                        rate: Some(fixed_rate),
                         payoff_type: "Fixed".to_string(),
                         rate_index: None,
                     }],
                 };
                 let float_leg = TradeLeg {
                     direction: "Receiver".to_string(),
-                    currency: request
-                        .params
-                        .get("currency")
-                        .and_then(|c| c.as_str())
-                        .unwrap_or("USD")
-                        .to_string(),
-                    leg_type: "Float".to_string(),
-                    rate_index: Some("SOFR".to_string()),
+                    currency: currency.to_string(),
+                    leg_type: leg_type_label.to_string(),
+                    rate_index: Some(rate_index.clone()),
                     cashflows: vec![Cashflow {
                         payment_date: "2027-01-30".to_string(),
                         accrual_start: "2026-01-30".to_string(),
                         accrual_end: "2027-01-30".to_string(),
                         year_fraction: 1.0,
-                        notional: request
-                            .params
-                            .get("notional")
-                            .and_then(|n| n.as_f64())
-                            .unwrap_or(1_000_000.0),
+                        notional,
                         rate: None,
                         payoff_type: "Linear".to_string(),
-                        rate_index: Some("SOFR".to_string()),
+                        rate_index: Some(rate_index),
                     }],
                 };
                 (vec![fixed_leg, float_leg], "IRS")
@@ -605,6 +622,147 @@ impl DemoService {
             computation_time_ms: elapsed.as_secs_f64() * 1000.0,
             mode: mode_str.to_string(),
             confidence_95: None,
+        })
+    }
+
+    /// Generate a simplified computation graph for a single instrument.
+    pub fn get_pricer_graph(
+        request: &PricerGraphRequest,
+    ) -> Result<PricerGraphResponse, ServerError> {
+        let trade_id = format!("PRICER-{}", request.instrument_type);
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // Determine input parameters based on instrument type.
+        let params: Vec<&str> = match request.instrument_type.as_str() {
+            "IRS" | "OIS" | "BasisSwap" => vec!["rate", "spread", "notional"],
+            "Swaption" | "CapFloor" => vec!["rate", "vol", "strike", "notional"],
+            "FxForward" | "FxSpot" => vec!["spot", "rate_dom", "rate_for", "notional"],
+            "FxOption" => vec!["spot", "vol", "rate_dom", "rate_for", "strike"],
+            "EquityOption" => vec!["spot", "vol", "rate", "div", "strike"],
+            "CDS" => vec!["spread", "recovery", "rate"],
+            _ => vec!["rate", "notional"],
+        };
+
+        let detail = request.detail_level.as_deref().unwrap_or("scope");
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
+
+        // Input nodes.
+        let input_ids: Vec<String> = params
+            .iter()
+            .map(|p| {
+                let id = format!("{trade_id}_{p}");
+                nodes.push(PricerGraphNode {
+                    id: id.clone(),
+                    node_type: "Input".to_string(),
+                    label: p.to_string(),
+                    value: None,
+                    is_sensitivity_target: true,
+                    group: "Sensitivity".to_string(),
+                    trade_ids: vec![trade_id.clone()],
+                });
+                id
+            })
+            .collect();
+
+        if detail == "operation" {
+            // Detailed: discount + payoff + aggregate nodes.
+            let discount_id = format!("{trade_id}_discount");
+            nodes.push(PricerGraphNode {
+                id: discount_id.clone(),
+                node_type: "Mul".to_string(),
+                label: "discount".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: "Intermediate".to_string(),
+                trade_ids: vec![trade_id.clone()],
+            });
+            for id in &input_ids {
+                edges.push(PricerGraphEdge { source: id.clone(), target: discount_id.clone(), weight: None });
+            }
+
+            let payoff_id = format!("{trade_id}_payoff");
+            nodes.push(PricerGraphNode {
+                id: payoff_id.clone(),
+                node_type: "Mul".to_string(),
+                label: "payoff".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: "Intermediate".to_string(),
+                trade_ids: vec![trade_id.clone()],
+            });
+            edges.push(PricerGraphEdge { source: discount_id, target: payoff_id.clone(), weight: None });
+
+            let agg_id = format!("{trade_id}_aggregate");
+            nodes.push(PricerGraphNode {
+                id: agg_id.clone(),
+                node_type: "Add".to_string(),
+                label: "aggregate".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: "Intermediate".to_string(),
+                trade_ids: vec![trade_id.clone()],
+            });
+            edges.push(PricerGraphEdge { source: payoff_id, target: agg_id.clone(), weight: None });
+
+            let out_id = format!("{trade_id}_price");
+            nodes.push(PricerGraphNode {
+                id: out_id.clone(),
+                node_type: "Output".to_string(),
+                label: "price".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: "Output".to_string(),
+                trade_ids: vec![trade_id.clone()],
+            });
+            edges.push(PricerGraphEdge { source: agg_id, target: out_id, weight: None });
+        } else {
+            // Scope: simple input → calc → output.
+            let calc_id = format!("{trade_id}_calc");
+            nodes.push(PricerGraphNode {
+                id: calc_id.clone(),
+                node_type: "Mul".to_string(),
+                label: "calculation".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: "Intermediate".to_string(),
+                trade_ids: vec![trade_id.clone()],
+            });
+            for id in &input_ids {
+                edges.push(PricerGraphEdge { source: id.clone(), target: calc_id.clone(), weight: None });
+            }
+
+            let out_id = format!("{trade_id}_price");
+            nodes.push(PricerGraphNode {
+                id: out_id.clone(),
+                node_type: "Output".to_string(),
+                label: "price".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: "Output".to_string(),
+                trade_ids: vec![trade_id.clone()],
+            });
+            edges.push(PricerGraphEdge { source: calc_id, target: out_id, weight: None });
+        }
+
+        let node_count = nodes.len();
+        let edge_count = edges.len();
+        let depth = if detail == "operation" { 4 } else { 3 };
+
+        Ok(PricerGraphResponse {
+            nodes,
+            edges,
+            metadata: PricerGraphMetadata {
+                node_count,
+                edge_count,
+                depth,
+                generated_at: now,
+                trade_count: 1,
+                shared_node_count: 0,
+                optimisation_ratio: 1.0,
+                trade_id: Some(trade_id),
+                source_locations: None,
+            },
         })
     }
 }

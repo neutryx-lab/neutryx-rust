@@ -92,6 +92,7 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/pricer/expand", post(handlers::demo::expand_trade))
         .route("/pricer/price", post(handlers::demo::price_trade))
         .route("/pricer/greeks", post(handlers::demo::calculate_greeks))
+        .route("/pricer/graph", post(handlers::demo::get_pricer_graph))
         .route(
             "/pricer/advanced-greeks",
             post(handlers::demo::calculate_advanced_greeks),
