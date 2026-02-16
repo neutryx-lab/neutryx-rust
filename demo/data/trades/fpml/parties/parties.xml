@@ -8,27 +8,27 @@
          xsi:schemaLocation="http://www.fpml.org/FpML-5/confirmation fpml-main-5-12.xsd">
 
   <!-- Internal Legal Entities -->
-  <party id="FB_NA">
+  <party id="EB_NA">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
-    <partyName>FrictionalBank N.A.</partyName>
+    <partyName>Ergodic Bank N.A.</partyName>
     <country>US</country>
   </party>
 
-  <party id="FB_EUROPE">
+  <party id="EB_EUROPE">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0002EU</partyId>
-    <partyName>FrictionalBank Europe GmbH</partyName>
+    <partyName>Ergodic Bank Europe GmbH</partyName>
     <country>DE</country>
   </party>
 
-  <party id="FB_UK">
+  <party id="EB_UK">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0003UK</partyId>
-    <partyName>FrictionalBank UK Limited</partyName>
+    <partyName>Ergodic Bank UK Limited</partyName>
     <country>GB</country>
   </party>
 
-  <party id="FB_JAPAN">
+  <party id="EB_JAPAN">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0004JP</partyId>
-    <partyName>FrictionalBank Japan K.K.</partyName>
+    <partyName>Ergodic Bank Japan K.K.</partyName>
     <country>JP</country>
   </party>
 

@@ -64,7 +64,7 @@ S: Service   → service_gateway (REST + CLI + Python, feature-gated)
 
 ### Demo Layer
 
-- **TUI**: `ratatui`, `crossterm` (FrictionalBank TUI)
+- **TUI**: `ratatui`, `crossterm` (Ergodic Bank TUI)
 - **Web**: `axum`, `tower-http` (REST API and HTTP server)
 - **WebSocket**: `tokio-tungstenite` (real-time dashboard)
 - **Visualisation**: D3.js-compatible JSON graph export (computation DAG), Chart.js for charts
@@ -146,7 +146,7 @@ docker run -it neutryx-enzyme
 | **Calibration Patterns** | Sequential (`curve::bootstrap`), Global (`curve::global`, feature-gated), Slice-wise (`vol::surface`, `vol::cube`) in `pricer_models::builder` |
 | **Linear Solve Strategy** | Pluggable matrix solve strategies (`LUStrategy`, `LowerTriangularStrategy`) enable O(n²) vs O(n³) complexity; both store J⁻¹ for AAD via implicit function theorem |
 | **Shadow Object Pattern** | Reverse mode AAD uses shadow buffers for gradient accumulation; `binder.rs` orchestrates market data → portfolio Greeks flow |
-| **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
+| **Feature Flag Coordination** | Features propagate through dependency chain (demo→ergodic_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
 | **Convention Registry Pattern** | `ConventionRegistry` with `ConventionKey` lookup; `ConventionSet` bundles per-currency conventions; `EventInstrument` models expected rate jumps at CB meetings |
 | **ConventionTemplate Pattern** | `ConventionTemplate` generates multiple conventions across currencies from compact JSON with `{currency}`, `{index}` placeholders; reduces configuration duplication |

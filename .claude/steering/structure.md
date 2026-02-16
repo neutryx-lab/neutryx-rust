@@ -540,9 +540,9 @@ state/            → Application state (AppState, caches)
 
 **Location**: `demo/`
 
-### FrictionalBank Demo
+### Ergodic Bank Demo
 
-**Location**: `demo/frictional_bank/`
+**Location**: `demo/ergodic_bank/`
 **Purpose**: Full A-I-P-S workflow orchestration (TUI + REST API)
 **Structure**:
 
@@ -693,7 +693,7 @@ demo/data/
 **Cloud Deployment**: Root directory
 - `.dockerignore` - Build optimisation (exclude unnecessary files)
 - `.gcloudignore` - Cloud deployment optimisation
-- `demo/frictional_bank/Dockerfile` - Cloud Run deployment container
+- `demo/ergodic_bank/Dockerfile` - Cloud Run deployment container
 
 **CI/CD**: `.github/`
 

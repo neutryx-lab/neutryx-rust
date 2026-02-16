@@ -1,5 +1,5 @@
 /**
- * API Service for FrictionalBank Dashboard
+ * API Service for Ergodic Bank Dashboard
  * Centralised HTTP client for all backend API calls.
  */
 

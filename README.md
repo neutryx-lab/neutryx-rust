@@ -177,19 +177,19 @@ maturin develop
 python -c "import neutryx; print(neutryx.version())"
 ```
 
-### Frictional Bank Demo
+### Ergodic Bank Demo
 
-The Frictional Bank demo showcases the A-I-P-S architecture with a complete end-to-end workflow.
+The Ergodic Bank demo showcases the A-I-P-S architecture with a complete end-to-end workflow.
 
 ```bash
 # From workspace root
-cargo run --bin frictional-bank
+cargo run --bin ergodic-bank
 
 # Release build (recommended for performance)
-cargo run --release --bin frictional-bank
+cargo run --release --bin ergodic-bank
 
-# Or from demo/frictional_bank directory
-cd demo/frictional_bank
+# Or from demo/ergodic_bank directory
+cd demo/ergodic_bank
 cargo run
 ```
 
@@ -307,10 +307,10 @@ cargo bench
 | service-layer-rename | Crate renaming (kernel→pricing, xva→risk) | 2026-01 |
 | stochastic-models | Heston, SABR, Hull-White stochastic models | 2026-01 |
 | enzyme-autodiff-integration | Enzyme `#[autodiff]` macro integration | 2026-01 |
-| frictional-bank | FrictionalBank demo system (TUI, Web, Workflows) | 2026-01 |
-| frictionalbank-irs-bootstrap-risk | IRS bootstrapping and risk workflows | 2026-01 |
-| frictional-bank-webapp-polish | Web dashboard UX improvements | 2026-01 |
-| frictionalbank-webapp-pricer | Web dashboard pricer integration | 2026-01 |
+| ergodic-bank | Ergodic Bank demo system (TUI, Web, Workflows) | 2026-01 |
+| ergodicbank-irs-bootstrap-risk | IRS bootstrapping and risk workflows | 2026-01 |
+| ergodic-bank-webapp-polish | Web dashboard UX improvements | 2026-01 |
+| ergodicbank-webapp-pricer | Web dashboard pricer integration | 2026-01 |
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01 |
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation | 2026-01 |
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01 |

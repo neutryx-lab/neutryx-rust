@@ -102,6 +102,21 @@ fn make_market_rate(
     }
 }
 
+/// Normalise raw instrument type to uppercase abbreviation.
+fn normalise_rate_type(raw: &str) -> String {
+    match raw {
+        "deposit" => "DEPO".to_string(),
+        "ois" => "OIS".to_string(),
+        "swap" => "SWAP".to_string(),
+        "fra" => "FRA".to_string(),
+        "future" => "FUT".to_string(),
+        "fxspot" => "FXSPOT".to_string(),
+        "fxforward" => "FXFWD".to_string(),
+        "xccybasis" => "XCCY".to_string(),
+        _ => raw.to_uppercase(),
+    }
+}
+
 /// Parse importance string to enum.
 fn parse_importance(s: &str) -> Importance {
     match s.to_lowercase().as_str() {
@@ -148,11 +163,12 @@ impl DemoService {
                                     quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
                                 let index = quote.get("index").and_then(|i| i.as_str());
 
+                                let norm_type = normalise_rate_type(rate_type);
                                 rates.push(make_market_rate(
-                                    format!("{currency}-{rate_type}-{tenor}"),
+                                    format!("{currency}-{norm_type}-{tenor}"),
                                     currency.clone(),
                                     tenor.to_string(),
-                                    rate_type.clone(),
+                                    norm_type,
                                     value,
                                     index.map(String::from),
                                     &timestamp,
@@ -182,20 +198,21 @@ impl DemoService {
                         curve_data.get("instruments").and_then(|i| i.as_array())
                     {
                         for instr in instruments {
-                            let instr_type = instr
+                            let raw_type = instr
                                 .get("type")
                                 .and_then(|t| t.as_str())
                                 .unwrap_or("unknown");
                             let tenor = instr.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
                             let rate = instr.get("rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
+                            let norm_type = normalise_rate_type(raw_type);
 
                             let id =
-                                format!("{}-{}-{}-{}", currency, index_name, instr_type, tenor);
+                                format!("{}-{}-{}", currency, norm_type, tenor);
 
                             if rates.iter().any(|r| {
                                 r.currency == currency
                                     && r.tenor == tenor
-                                    && r.rate_type == instr_type
+                                    && r.rate_type == norm_type
                             }) {
                                 continue;
                             }
@@ -204,7 +221,7 @@ impl DemoService {
                                 id,
                                 currency.to_string(),
                                 tenor.to_string(),
-                                instr_type.to_string(),
+                                norm_type,
                                 rate,
                                 Some(index_name.to_uppercase()),
                                 &timestamp,
@@ -228,7 +245,7 @@ impl DemoService {
                             pair.to_string(),
                             base_ccy.to_string(),
                             "SPOT".to_string(),
-                            "fxspot".to_string(),
+                            normalise_rate_type("fxspot"),
                             value,
                             Some(pair.to_string()),
                             &timestamp,
@@ -254,7 +271,7 @@ impl DemoService {
                                     format!("{pair}-{tenor}"),
                                     base_ccy.to_string(),
                                     tenor.to_string(),
-                                    "fxforward".to_string(),
+                                    normalise_rate_type("fxforward"),
                                     points,
                                     Some(pair.clone()),
                                     &timestamp,
@@ -284,7 +301,7 @@ impl DemoService {
                                     format!("XCCY-{pair}-{tenor}"),
                                     base_ccy.to_string(),
                                     tenor.to_string(),
-                                    "xccybasis".to_string(),
+                                    normalise_rate_type("xccybasis"),
                                     value,
                                     index.map(String::from),
                                     &timestamp,

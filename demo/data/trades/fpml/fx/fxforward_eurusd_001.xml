@@ -10,8 +10,8 @@
   <trade>
     <tradeHeader>
       <partyTradeIdentifier>
-        <partyReference href="FB_EUROPE"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T20001-01</tradeId>
+        <partyReference href="EB_EUROPE"/>
+        <tradeId tradeIdScheme="http://www.ergodicbank.com/trade-id">T20001-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="BNP"/>
@@ -23,14 +23,14 @@
     <fxSingleLeg>
       <exchangedCurrency1>
         <payerPartyReference href="BNP"/>
-        <receiverPartyReference href="FB_EUROPE"/>
+        <receiverPartyReference href="EB_EUROPE"/>
         <paymentAmount>
           <currency>EUR</currency>
           <amount>25000000</amount>
         </paymentAmount>
       </exchangedCurrency1>
       <exchangedCurrency2>
-        <payerPartyReference href="FB_EUROPE"/>
+        <payerPartyReference href="EB_EUROPE"/>
         <receiverPartyReference href="BNP"/>
         <paymentAmount>
           <currency>USD</currency>
@@ -50,9 +50,9 @@
       </exchangeRate>
     </fxSingleLeg>
   </trade>
-  <party id="FB_EUROPE">
+  <party id="EB_EUROPE">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0002EU</partyId>
-    <partyName>FrictionalBank Europe GmbH</partyName>
+    <partyName>Ergodic Bank Europe GmbH</partyName>
   </party>
   <party id="BNP">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">R0MUWSFPU8MPRO8K5P83</partyId>

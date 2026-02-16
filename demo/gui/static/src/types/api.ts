@@ -1,5 +1,5 @@
 /**
- * API Response Types for Neutryx FrictionalBank Dashboard
+ * API Response Types for Neutryx Ergodic Bank Dashboard
  * These types mirror the Rust backend API responses.
  */
 

@@ -13,7 +13,7 @@ _Updated: 2026-02-13_ — spec workflow lightweight化: 53 completed specs archi
 53 completed specs were removed (git history preserved). Key milestones:
 
 - **2025-12**: Core foundations (traits, types, RNG, interpolators, market data, instruments)
-- **2026-01**: Pricing engines (MC, stochastic models, Enzyme AD, tree pricing, PricingKernel IR), calibration (curve bootstrap, FX vol, IR VolCube, global solver), webapp (FrictionalBank, dashboards), infrastructure (codebase cleanup, migrations)
+- **2026-01**: Pricing engines (MC, stochastic models, Enzyme AD, tree pricing, PricingKernel IR), calibration (curve bootstrap, FX vol, IR VolCube, global solver), webapp (Ergodic Bank, dashboards), infrastructure (codebase cleanup, migrations)
 - **2026-02**: Boilerplate reduction (bon, derive_more, enum_dispatch, thiserror), service consolidation (CLI/Python → service_gateway features)
 
 ### Layer Implementation Status
@@ -137,7 +137,7 @@ Codebase redundancy cleanup performed:
 |------|-------------|--------|
 | app-js-modularisation | Split app.js into separate modules (chart-utils, portfolio-table, etc.) | ⏳ Planned |
 | error-consolidation | Consolidate 31 error.rs files into shared patterns | ⏳ Planned |
-| spec-consolidation | Consolidate FrictionalBank-related specs (4 specs → 1) | ✅ Archived |
+| spec-consolidation | Consolidate Ergodic Bank-related specs (4 specs → 1) | ✅ Archived |
 | d3-module-audit | Audit D3.js modules usage in demo/gui/static/vendor | ⏳ Planned |
 
 ---

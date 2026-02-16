@@ -10,8 +10,8 @@
   <trade>
     <tradeHeader>
       <partyTradeIdentifier>
-        <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T10003-01</tradeId>
+        <partyReference href="EB_NA"/>
+        <tradeId tradeIdScheme="http://www.ergodicbank.com/trade-id">T10003-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="MORGAN_STANLEY"/>
@@ -21,11 +21,11 @@
       <book>RATES_NA</book>
     </tradeHeader>
     <capFloor>
-      <buyerPartyReference href="FB_NA"/>
+      <buyerPartyReference href="EB_NA"/>
       <sellerPartyReference href="MORGAN_STANLEY"/>
       <capFloorStream>
         <payerPartyReference href="MORGAN_STANLEY"/>
-        <receiverPartyReference href="FB_NA"/>
+        <receiverPartyReference href="EB_NA"/>
         <calculationPeriodDates id="capCalcPeriods">
           <effectiveDate>
             <unadjustedDate>2024-07-03</unadjustedDate>
@@ -114,7 +114,7 @@
         </calculationPeriodAmount>
       </capFloorStream>
       <premium>
-        <payerPartyReference href="FB_NA"/>
+        <payerPartyReference href="EB_NA"/>
         <receiverPartyReference href="MORGAN_STANLEY"/>
         <paymentAmount>
           <currency>USD</currency>
@@ -132,9 +132,9 @@
       </premium>
     </capFloor>
   </trade>
-  <party id="FB_NA">
+  <party id="EB_NA">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
-    <partyName>FrictionalBank N.A.</partyName>
+    <partyName>Ergodic Bank N.A.</partyName>
   </party>
   <party id="MORGAN_STANLEY">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">4PQUHN3JPFGFNF3BB653</partyId>

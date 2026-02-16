@@ -157,12 +157,12 @@ const filteredRates = computed(() => {
   }
   // Filter by asset class
   const typeMap: Record<string, string[]> = {
-    Rates: ['deposit', 'swap', 'ois', 'fra', 'future', 'xccybasis'],
-    FX: ['fxspot', 'fxforward'],
+    Rates: ['DEPO', 'SWAP', 'OIS', 'FRA', 'FUT', 'XCCY'],
+    FX: ['FXSPOT', 'FXFWD'],
   };
   const types = typeMap[assetClass.value] || [];
   if (types.length > 0) {
-    result = result.filter(r => types.includes(r.rateType?.toLowerCase() || ''));
+    result = result.filter(r => types.includes(r.rateType?.toUpperCase() || ''));
   }
   // Sort by currency then tenor (shortest first)
   result = [...result].sort((a, b) => {
@@ -395,7 +395,7 @@ function tenorToOrder(tenor: string): number {
 }
 
 function formatRate(value: number, rateType: string): string {
-  if (rateType === 'fxspot' || rateType === 'fxforward') return value.toFixed(4);
+  if (rateType === 'FXSPOT' || rateType === 'FXFWD') return value.toFixed(4);
   return `${(value * 100).toFixed(4)}%`;
 }
 

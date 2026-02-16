@@ -10,8 +10,8 @@
   <trade>
     <tradeHeader>
       <partyTradeIdentifier>
-        <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T40001-01</tradeId>
+        <partyReference href="EB_NA"/>
+        <tradeId tradeIdScheme="http://www.ergodicbank.com/trade-id">T40001-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
@@ -34,7 +34,7 @@
             <businessDayConvention>NONE</businessDayConvention>
           </dateAdjustments>
         </scheduledTerminationDate>
-        <buyerPartyReference href="FB_NA"/>
+        <buyerPartyReference href="EB_NA"/>
         <sellerPartyReference href="GOLDMAN"/>
         <dateAdjustments>
           <businessDayConvention>FOLLOWING</businessDayConvention>
@@ -59,7 +59,7 @@
       </generalTerms>
       <feeLeg>
         <initialPayment>
-          <payerPartyReference href="FB_NA"/>
+          <payerPartyReference href="EB_NA"/>
           <receiverPartyReference href="GOLDMAN"/>
           <paymentAmount>
             <currency>USD</currency>
@@ -108,7 +108,7 @@
           </defaultRequirement>
           <creditEventNotice>
             <notifyingParty>
-              <buyerPartyReference href="FB_NA"/>
+              <buyerPartyReference href="EB_NA"/>
               <sellerPartyReference href="GOLDMAN"/>
             </notifyingParty>
             <publiclyAvailableInformation>
@@ -158,9 +158,9 @@
       </physicalSettlementTerms>
     </creditDefaultSwap>
   </trade>
-  <party id="FB_NA">
+  <party id="EB_NA">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
-    <partyName>FrictionalBank N.A.</partyName>
+    <partyName>Ergodic Bank N.A.</partyName>
   </party>
   <party id="GOLDMAN">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">W22LROWP2IHZNBB6K528</partyId>

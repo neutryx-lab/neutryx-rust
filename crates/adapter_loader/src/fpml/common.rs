@@ -398,7 +398,7 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
 /// Find the counterparty from the list of party references.
 fn find_counterparty(party_refs: &[String], _all_parties: &[Party]) -> Option<String> {
     for party_ref in party_refs {
-        if party_ref.starts_with("FB") || party_ref.contains("FRICTIONAL") {
+        if party_ref.starts_with("EB") || party_ref.contains("ERGODIC") {
             continue;
         }
         return Some(party_ref.clone());
@@ -450,9 +450,9 @@ mod tests {
 
     #[test]
     fn test_xml_navigator_get_attribute() {
-        let xml = r#"<root><party id="FB_NA">Test</party></root>"#;
+        let xml = r#"<root><party id="EB_NA">Test</party></root>"#;
         let nav = XmlNavigator::new(xml);
 
-        assert_eq!(nav.get_attribute("party", "id"), Some("FB_NA".to_string()));
+        assert_eq!(nav.get_attribute("party", "id"), Some("EB_NA".to_string()));
     }
 }

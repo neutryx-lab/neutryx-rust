@@ -245,7 +245,7 @@ mod tests {
                     <scheduledTerminationDate>
                         <unadjustedDate>2029-06-20</unadjustedDate>
                     </scheduledTerminationDate>
-                    <buyerPartyReference href="FB_NA"/>
+                    <buyerPartyReference href="EB_NA"/>
                     <sellerPartyReference href="GOLDMAN"/>
                     <referenceInformation>
                         <referenceEntity>

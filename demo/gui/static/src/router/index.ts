@@ -162,7 +162,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   const meta = to.meta as ViewMeta | undefined;
   if (meta?.title) {
-    document.title = `${meta.title} | FrictionalBank`;
+    document.title = `${meta.title} | Ergodic Bank`;
   }
 });
 
