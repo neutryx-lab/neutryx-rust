@@ -1,18 +1,35 @@
 <script setup lang="ts">
 import { usePricerStore } from '@/stores/pricer';
-import { CURVE_OPTIONS } from '@/constants/pricer';
+import { useMarketEnvStore } from '@/stores/marketEnv';
 
 const store = usePricerStore();
-
-const curveItems = CURVE_OPTIONS.map((c) => ({ title: c.label, value: c.index }));
+const marketEnv = useMarketEnvStore();
 </script>
 
 <template>
   <div class="market-grid">
     <div class="grid-label">Curve</div>
     <div class="grid-input">
-      <v-select v-model="store.selectedCurveIndex" :items="curveItems" density="compact" variant="outlined" hide-details />
+      <v-select
+        v-model="store.selectedCurveIndex"
+        :items="marketEnv.allCurveItems"
+        density="compact"
+        variant="outlined"
+        hide-details
+      />
     </div>
+    <template v-if="marketEnv.volSurfaces.length > 0">
+      <div class="grid-label">Vol Surf</div>
+      <div class="grid-input">
+        <v-select
+          v-model="store.selectedVolSurfaceId"
+          :items="[{ title: '(none)', value: '' }, ...marketEnv.allVolSurfaceItems]"
+          density="compact"
+          variant="outlined"
+          hide-details
+        />
+      </div>
+    </template>
   </div>
 </template>
 

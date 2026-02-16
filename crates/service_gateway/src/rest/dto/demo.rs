@@ -144,7 +144,35 @@ pub struct TradeMetadata {
     pub processing_time_ms: f64,
 }
 
-/// Pricing request.
+/// Pricing method hint (mirrors `PricingMethodHint`).
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum DemoPricingMethod {
+    #[default]
+    Auto,
+    Analytical,
+    MonteCarlo,
+    Tree,
+}
+
+/// Tree type (mirrors `TreeType`).
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum DemoTreeType {
+    #[default]
+    Binomial,
+    Trinomial,
+}
+
+/// Tree configuration (mirrors `TreeSetting`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoTreeConfig {
+    pub num_steps: Option<usize>,
+    pub tree_type: Option<DemoTreeType>,
+}
+
+/// Pricing request (mirrors `CalcSetting` + trade data).
 #[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoPricingRequest {
@@ -154,8 +182,14 @@ pub struct DemoPricingRequest {
     pub reporting_currency: String,
     #[validate(length(min = 1))]
     pub legs: Vec<PricingLeg>,
+    #[serde(default)]
+    pub method: DemoPricingMethod,
+    #[serde(default)]
+    pub compute_greeks: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_config: Option<DemoModelConfig>,
+    pub mc_config: Option<DemoModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tree_config: Option<DemoTreeConfig>,
 }
 
 /// Pricing leg.
@@ -172,7 +206,9 @@ pub struct PricingLeg {
 #[serde(rename_all = "camelCase")]
 pub struct PricingCashflow {
     pub payment_date: String,
-    pub amount: f64,
+    pub notional: f64,
+    pub rate: f64,
+    pub year_fraction: f64,
 }
 
 /// Model configuration.
@@ -185,17 +221,45 @@ pub struct DemoModelConfig {
     pub seed: Option<u64>,
 }
 
-/// Pricing result.
+/// Pricing result (mirrors `PricingResult` from result.rs).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoPricingResult {
+    pub total_pv: f64,
+    pub reporting_currency: String,
+    pub legs: Vec<LegResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub total_pv: Option<f64>,
+    pub path_distribution: Option<DemoPathDistribution>,
+    /// Pricing method used.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pv: Option<f64>,
-    pub currency: String,
+    pub method: Option<String>,
+    /// Greeks (if compute_greeks was true).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub legs: Option<Vec<LegResult>>,
+    pub greeks: Option<DemoGreeksInline>,
+    /// Computation time in milliseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub computation_time_ms: Option<f64>,
+}
+
+/// Inline Greeks returned with pricing result.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoGreeksInline {
+    pub delta: Option<f64>,
+    pub gamma: Option<f64>,
+    pub vega: Option<f64>,
+    pub theta: Option<f64>,
+    pub rho: Option<f64>,
+}
+
+/// Path distribution for Monte Carlo pricing.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoPathDistribution {
+    pub mean: f64,
+    pub std_dev: f64,
+    pub percentiles: Vec<(f64, f64)>,
+    pub path_count: usize,
 }
 
 /// Leg result with detailed breakdown.
@@ -744,6 +808,25 @@ pub struct SabrSmileResponse {
     pub vols: Vec<f64>,
     /// Implied probability density (Breeden-Litzenberger).
     pub density: Vec<f64>,
+}
+
+/// Tenor resolution request.
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveTenorRequest {
+    /// Tenor string (e.g. "TD", "3M", "1Y") or ISO date "YYYY-MM-DD".
+    #[validate(length(min = 1))]
+    pub tenor: String,
+    /// Optional base date (ISO "YYYY-MM-DD"). Defaults to today.
+    pub base: Option<String>,
+}
+
+/// Tenor resolution response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveTenorResponse {
+    /// Resolved ISO date string "YYYY-MM-DD".
+    pub date: String,
 }
 
 /// Export format.

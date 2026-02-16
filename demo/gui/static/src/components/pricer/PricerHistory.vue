@@ -7,7 +7,7 @@ const store = usePricerStore();
 const { restoreFromHistory, toggleCompareMode } = usePricerHistory();
 
 function entryPv(entry: (typeof store.recentHistory)[number]): number {
-  return entry.pricingResult.totalPv ?? entry.pricingResult.pv ?? 0;
+  return entry.pricingResult.totalPv ?? 0;
 }
 
 const compareItems = (_idx: number) =>
@@ -100,9 +100,7 @@ const compareItems = (_idx: number) =>
               >
                 {{
                   formatCurrency(
-                    store.comparedResults.a.pricingResult.totalPv ??
-                      store.comparedResults.a.pricingResult.pv ??
-                      0,
+                    store.comparedResults.a.pricingResult.totalPv ?? 0,
                   )
                 }}
               </div>
@@ -121,9 +119,7 @@ const compareItems = (_idx: number) =>
               >
                 {{
                   formatCurrency(
-                    store.comparedResults.b.pricingResult.totalPv ??
-                      store.comparedResults.b.pricingResult.pv ??
-                      0,
+                    store.comparedResults.b.pricingResult.totalPv ?? 0,
                   )
                 }}
               </div>

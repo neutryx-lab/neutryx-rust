@@ -22,7 +22,8 @@ use crate::{
             InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse,
             MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse,
             RateCashflowsResponse, RateIndexDetailResponse, RateIndicesResponse,
-            RateInstrumentResponse, SabrSmileRequest, SabrSmileResponse, TradeExpandRequest,
+            RateInstrumentResponse, ResolveTenorRequest, ResolveTenorResponse,
+            SabrSmileRequest, SabrSmileResponse, TradeExpandRequest,
             VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
             VolcubeInstrumentsResponse, VolcubeModelsResponse,
         },
@@ -155,6 +156,8 @@ body_handler!(/// POST /api/volcube/implied-pdf.
     compute_implied_pdf, VolcubeService::compute_implied_pdf(ImpliedPdfRequest) -> ImpliedPdfResponse);
 body_handler!(/// POST /api/volcube/sabr-smile.
     compute_sabr_smile, VolcubeService::compute_sabr_smile(SabrSmileRequest) -> SabrSmileResponse);
+body_handler!(/// POST /api/utils/resolve-tenor.
+    resolve_tenor, DemoService::resolve_tenor(ResolveTenorRequest) -> ResolveTenorResponse);
 
 /// POST /api/market/rates/refresh.
 pub async fn refresh_market_rates(

@@ -1,9 +1,27 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useCurveBuilder, calibrationMethods, interpolationMethods } from '@/composables/useCurveBuilder';
 import { useCurveCharts } from '@/composables/useCurveCharts';
+import { useMarketEnvStore } from '@/stores/marketEnv';
 import CurveInstrumentTable from '@/components/curve/CurveInstrumentTable.vue';
 import CurveJacobianHeatmap from '@/components/curve/CurveJacobianHeatmap.vue';
+
+const marketEnv = useMarketEnvStore();
+const publishFeedback = ref(false);
+
+function publishToEnvironment() {
+  if (!buildResult.value || !selectedCurveName.value) return;
+  const currency = selectedCurve.value?.rateIndex?.split('-')[0] ?? '';
+  marketEnv.publishCurve(
+    selectedCurveName.value,
+    currency,
+    buildResult.value,
+    interpolation.value,
+    calibrationMethod.value,
+  );
+  publishFeedback.value = true;
+  setTimeout(() => { publishFeedback.value = false; }, 2000);
+}
 
 // Initialise charts composable
 const {
@@ -162,6 +180,14 @@ watch(chartType, () => {
           >
             <i :class="['fas', isBuilding ? 'fa-spinner fa-spin' : 'fa-hammer']"></i>
             {{ isBuilding ? 'Building...' : 'Build Curve' }}
+          </button>
+          <button
+            :disabled="!buildResult || publishFeedback"
+            class="w-full mt-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            @click="publishToEnvironment"
+          >
+            <i :class="['fas', publishFeedback ? 'fa-check' : 'fa-cloud-upload-alt']"></i>
+            {{ publishFeedback ? 'Published!' : 'Publish to Environment' }}
           </button>
           <div class="grid grid-cols-2 gap-2 mt-2">
             <button

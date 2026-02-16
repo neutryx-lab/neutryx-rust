@@ -5,7 +5,7 @@ import { formatCurrency } from '@/utils/format';
 const store = usePricerStore();
 
 function pvValue(): number {
-  return store.pricingResult?.totalPv ?? store.pricingResult?.pv ?? 0;
+  return store.pricingResult?.totalPv ?? 0;
 }
 </script>
 

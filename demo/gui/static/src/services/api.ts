@@ -110,6 +110,18 @@ export async function calculateGreeks(request: GreeksRequest): Promise<GreeksRes
 }
 
 // =============================================================================
+// Utility API
+// =============================================================================
+
+export async function resolveTenor(tenor: string, base?: string): Promise<string> {
+  const res = await postJson<{ tenor: string; base?: string }, { date: string }>(
+    `${API_BASE}/utils/resolve-tenor`,
+    { tenor, ...(base ? { base } : {}) },
+  );
+  return res.date;
+}
+
+// =============================================================================
 // Market Data API
 // =============================================================================
 

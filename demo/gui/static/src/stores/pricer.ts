@@ -7,7 +7,7 @@
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Instrument, ExpandedTrade, PricingResult, GreeksResult } from '@/types/api';
+import type { Instrument, ExpandedTrade, PricingResult, GreeksResult, PricingMethod, TreeTypeOption } from '@/types/api';
 import { formatCurrency } from '@/utils/format';
 import {
   STOCHASTIC_MODELS,
@@ -42,9 +42,22 @@ export const usePricerStore = defineStore('pricer', () => {
   const pricingResult = ref<PricingResult | null>(null);
   const greeksResult = ref<GreeksResult | null>(null);
 
-  // Valuation Settings
-  const valuationDate = ref(new Date().toISOString().split('T')[0]);
+  // CalcSetting (mirrors Rust CalcSetting)
+  const pricingMethod = ref<PricingMethod>('auto');
+  const computeGreeks = ref(false);
   const reportingCcy = ref('USD');
+
+  // MonteCarloSetting
+  const mcNumPaths = ref(10000);
+  const mcNumSteps = ref(100);
+  const mcSeed = ref<number | null>(null);
+
+  // TreeSetting
+  const treeNumSteps = ref(100);
+  const treeType = ref<TreeTypeOption>('binomial');
+
+  // Valuation
+  const valuationDate = ref(new Date().toISOString().split('T')[0]);
   const useDefaults = ref(true);
   const numPaths = ref(10000);
   const numSteps = ref(100);
@@ -57,6 +70,7 @@ export const usePricerStore = defineStore('pricer', () => {
 
   // Market Data
   const selectedCurveIndex = ref('USD-SOFR');
+  const selectedVolSurfaceId = ref('');
 
   // Stochastic Model
   const modelType = ref('GBM');
@@ -102,9 +116,11 @@ export const usePricerStore = defineStore('pricer', () => {
 
   const summaryStats = computed<SummaryStat[]>(() => {
     const pvValue = pricingResult.value
-      ? formatCurrency(pricingResult.value.totalPv ?? pricingResult.value.pv ?? 0)
+      ? formatCurrency(pricingResult.value.totalPv ?? 0)
       : '-';
-    const dv01Value = greeksResult.value ? formatCurrency(greeksResult.value.delta) : '-';
+    const dv01Value = pricingResult.value?.greeks?.delta != null
+      ? formatCurrency(pricingResult.value.greeks.delta)
+      : greeksResult.value ? formatCurrency(greeksResult.value.delta) : '-';
 
     return [
       { label: 'Valuation Date', value: valuationDate.value, icon: 'fa-calendar', color: '#10b981' },
@@ -129,8 +145,8 @@ export const usePricerStore = defineStore('pricer', () => {
     if (resultHistory.value.length < 2) return null;
     const current = resultHistory.value[0].pricingResult;
     const previous = resultHistory.value[1].pricingResult;
-    const curPv = current.totalPv ?? current.pv ?? 0;
-    const prevPv = previous.totalPv ?? previous.pv ?? 0;
+    const curPv = current.totalPv ?? 0;
+    const prevPv = previous.totalPv ?? 0;
     const diff = curPv - prevPv;
     const pct = prevPv !== 0 ? (diff / Math.abs(prevPv)) * 100 : 0;
     return { absolute: diff, percent: pct };
@@ -171,7 +187,7 @@ export const usePricerStore = defineStore('pricer', () => {
     if (!pricingResult.value?.legs) return [];
     const byCcy: Record<string, number> = {};
     pricingResult.value.legs.forEach((leg) => {
-      const ccy = (leg as Record<string, unknown>).currency as string || reportingCcy.value;
+      const ccy = leg.currency || reportingCcy.value;
       byCcy[ccy] = (byCcy[ccy] || 0) + leg.pv;
     });
     return Object.entries(byCcy).map(([ccy, pv]) => ({ ccy, pv }));
@@ -190,8 +206,17 @@ export const usePricerStore = defineStore('pricer', () => {
     editedCashflows,
     pricingResult,
     greeksResult,
-    valuationDate,
+    // CalcSetting
+    pricingMethod,
+    computeGreeks,
     reportingCcy,
+    mcNumPaths,
+    mcNumSteps,
+    mcSeed,
+    treeNumSteps,
+    treeType,
+    // Valuation
+    valuationDate,
     useDefaults,
     numPaths,
     numSteps,
@@ -200,6 +225,7 @@ export const usePricerStore = defineStore('pricer', () => {
     fxBump,
     volBump,
     selectedCurveIndex,
+    selectedVolSurfaceId,
     modelType,
     modelParams,
     isExpanding,

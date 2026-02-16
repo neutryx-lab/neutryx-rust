@@ -10,14 +10,18 @@ use infra_domain::{
         Cashflow as DomainCashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType,
     },
 };
-use pricer_pricing::{CalcSetting, MarketEnvironment, MarketEnvironmentBuilder, Pricer};
+use pricer_pricing::{
+    CalcSetting, MarketEnvironment, MarketEnvironmentBuilder, MonteCarloSetting, Pricer,
+    PricingMethodHint, TreeSetting, TreeType,
+};
 
 use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        Cashflow, CashflowPvResult, DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest,
-        DemoPricingResult, ExpandedTrade, LegResult, PricingLeg, TradeExpandRequest, TradeLeg,
+        Cashflow, CashflowPvResult, DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult,
+        DemoPathDistribution, DemoPricingMethod, DemoPricingRequest, DemoPricingResult,
+        DemoTreeType, ExpandedTrade, LegResult, PricingLeg, TradeExpandRequest, TradeLeg,
         TradeMetadata,
     },
     state::AppState,
@@ -81,7 +85,8 @@ fn build_domain_legs(
                 .iter()
                 .map(|cf| {
                     let payment_date = parse_date(&cf.payment_date)?;
-                    // Encode the raw amount as notional with a unit fixed payoff
+                    let amount = cf.notional * cf.rate * cf.year_fraction;
+                    // Encode the computed amount as notional with a unit fixed payoff
                     // so PayoffEvaluator::evaluate returns exactly `amount`.
                     Ok(DomainCashflow::new(
                         CashflowType::Settlement,
@@ -89,7 +94,7 @@ fn build_domain_legs(
                         valuation_date, // accrual_start
                         payment_date,   // accrual_end
                         1.0,            // year_fraction
-                        cf.amount,      // notional
+                        amount,         // notional
                         Payoff::fixed(1.0),
                         currency,
                     ))
@@ -120,6 +125,58 @@ fn build_market_env(
     ))
 }
 
+/// Map DTO pricing method to domain `PricingMethodHint`.
+fn map_method(m: DemoPricingMethod) -> PricingMethodHint {
+    match m {
+        DemoPricingMethod::Auto => PricingMethodHint::Auto,
+        DemoPricingMethod::Analytical => PricingMethodHint::Analytical,
+        DemoPricingMethod::MonteCarlo => PricingMethodHint::MonteCarlo,
+        DemoPricingMethod::Tree => PricingMethodHint::Tree,
+    }
+}
+
+/// Map DTO tree type to domain `TreeType`.
+fn map_tree_type(t: DemoTreeType) -> TreeType {
+    match t {
+        DemoTreeType::Binomial => TreeType::Binomial,
+        DemoTreeType::Trinomial => TreeType::Trinomial,
+    }
+}
+
+/// Build `CalcSetting` from a `DemoPricingRequest`.
+fn build_calc_setting(request: &DemoPricingRequest) -> Result<CalcSetting, ServerError> {
+    let reporting_currency = parse_currency(&request.reporting_currency)?;
+
+    let mc_config = request.mc_config.as_ref().map(|mc| {
+        let mut builder = MonteCarloSetting::builder();
+        builder = builder.num_paths(mc.num_paths);
+        builder = builder.num_steps(mc.num_steps);
+        if let Some(seed) = mc.seed {
+            builder = builder.seed(Some(seed));
+        }
+        builder.build()
+    });
+
+    let tree_config = request.tree_config.as_ref().map(|tc| {
+        let mut builder = TreeSetting::builder();
+        if let Some(steps) = tc.num_steps {
+            builder = builder.num_steps(steps);
+        }
+        if let Some(tt) = tc.tree_type {
+            builder = builder.tree_type(map_tree_type(tt));
+        }
+        builder.build()
+    });
+
+    Ok(CalcSetting::builder()
+        .method(map_method(request.method))
+        .compute_greeks(request.compute_greeks)
+        .reporting_currency(reporting_currency)
+        .mc_config(mc_config)
+        .tree_config(tree_config)
+        .build())
+}
+
 /// Build unified `Pricer` inputs from a `DemoPricingRequest`.
 fn build_pricer_inputs(
     request: &DemoPricingRequest,
@@ -135,9 +192,7 @@ fn build_pricer_inputs(
         &request.legs,
         DEFAULT_DISCOUNT_RATE,
     )?;
-    let calc = CalcSetting::builder()
-        .reporting_currency(reporting_currency)
-        .build();
+    let calc = build_calc_setting(request)?;
 
     Ok((trade, market, calc))
 }
@@ -156,6 +211,16 @@ fn price_with_rate(
         .build();
     Pricer::price_pv(trade, &market, &calc)
         .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))
+}
+
+/// Format `PricingMethodHint` for output.
+fn format_method(m: PricingMethodHint) -> &'static str {
+    match m {
+        PricingMethodHint::Auto => "Auto",
+        PricingMethodHint::Analytical => "Analytical",
+        PricingMethodHint::MonteCarlo => "MonteCarlo",
+        PricingMethodHint::Tree => "Tree",
+    }
 }
 
 impl DemoService {
@@ -266,15 +331,19 @@ impl DemoService {
         })
     }
 
-    /// Price a trade using the unified `Pricer`.
+    /// Price a trade using the unified `Pricer`, returning full `PricingResult`.
     pub fn price_trade(
         request: &DemoPricingRequest,
         _state: &Arc<AppState>,
     ) -> Result<DemoPricingResult, ServerError> {
+        let start = Instant::now();
         let (trade, market, calc) = build_pricer_inputs(request)?;
+        let method = calc.method;
 
         let result = Pricer::price(&trade, &market, &calc)
             .map_err(|e| ServerError::Internal(format!("Pricing failed: {e}")))?;
+
+        let elapsed = start.elapsed();
 
         let legs: Vec<LegResult> = result
             .legs
@@ -304,11 +373,65 @@ impl DemoService {
             })
             .collect();
 
+        let path_distribution = result.path_distribution.as_ref().map(|pd| {
+            DemoPathDistribution {
+                mean: pd.mean,
+                std_dev: pd.std_dev,
+                percentiles: pd.percentiles.clone(),
+                path_count: pd.path_count,
+            }
+        });
+
+        // Inline Greeks via bump-and-revalue if requested.
+        let greeks = if request.compute_greeks {
+            let valuation_date = parse_date(&request.valuation_date)?;
+            let reporting_currency = parse_currency(&request.reporting_currency)?;
+            let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
+            let greeks_trade = Trade::new("DEMO-GREEKS", domain_legs, TradeType::Swap);
+
+            let rate_bump = 1.0 / 10000.0; // 1bp
+            let pv_up = price_with_rate(
+                &greeks_trade, valuation_date, reporting_currency, &request.legs,
+                DEFAULT_DISCOUNT_RATE + rate_bump,
+            )?;
+            let pv_down = price_with_rate(
+                &greeks_trade, valuation_date, reporting_currency, &request.legs,
+                DEFAULT_DISCOUNT_RATE - rate_bump,
+            )?;
+
+            let delta = (pv_up - pv_down) / 2.0;
+            let gamma = pv_up - 2.0 * result.total_pv + pv_down;
+
+            // Theta: shift valuation date +1d.
+            let theta_inner = valuation_date.into_inner() + chrono::Duration::days(1);
+            let theta_date = Date::from_ymd(
+                theta_inner.year(), theta_inner.month(), theta_inner.day(),
+            ).ok();
+            let theta = theta_date.and_then(|td| {
+                let theta_legs = build_domain_legs(&request.legs, td).ok()?;
+                let theta_trade = Trade::new("DEMO-THETA", theta_legs, TradeType::Swap);
+                price_with_rate(&theta_trade, td, reporting_currency, &request.legs, DEFAULT_DISCOUNT_RATE).ok()
+            }).map(|pv| pv - result.total_pv);
+
+            Some(DemoGreeksInline {
+                delta: Some(delta),
+                gamma: Some(gamma),
+                vega: Some(0.0), // No vol surface in demo
+                theta,
+                rho: Some(delta), // For linear products, rho ≈ rate delta
+            })
+        } else {
+            None
+        };
+
         Ok(DemoPricingResult {
-            total_pv: Some(result.total_pv),
-            pv: Some(result.total_pv),
-            currency: request.reporting_currency.clone(),
-            legs: Some(legs),
+            total_pv: result.total_pv,
+            reporting_currency: result.reporting_currency.code().to_string(),
+            legs,
+            path_distribution,
+            method: Some(format_method(method).to_string()),
+            greeks,
+            computation_time_ms: Some(elapsed.as_secs_f64() * 1000.0),
         })
     }
 

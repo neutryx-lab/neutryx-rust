@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
-import { parseTenorToDate } from '@/utils/format';
+import { resolveTenor } from '@/services/api';
 
 const store = usePricerStore();
 
@@ -39,23 +39,19 @@ function getDateDisplay(paramName: string): string {
 
 function onTenorInput(paramName: string, raw: string) {
   dateDisplay.value[paramName] = raw;
-  // Live-resolve: if valid tenor or ISO date, apply immediately
-  const resolved = parseTenorToDate(raw);
-  if (resolved) {
-    store.instrumentParams[paramName] = resolved;
-  }
 }
 
-function onTenorCommit(paramName: string) {
+async function onTenorCommit(paramName: string) {
   const raw = dateDisplay.value[paramName] ?? '';
-  const resolved = parseTenorToDate(raw);
-  if (resolved) {
+  if (!raw) {
+    store.instrumentParams[paramName] = '';
+    return;
+  }
+  try {
+    const resolved = await resolveTenor(raw);
     store.instrumentParams[paramName] = resolved;
     dateDisplay.value[paramName] = resolved;
-  } else if (!raw) {
-    // Cleared — keep empty
-    store.instrumentParams[paramName] = '';
-  } else {
+  } catch {
     // Invalid input — revert to stored value
     dateDisplay.value[paramName] = (store.instrumentParams[paramName] as string) ?? '';
   }
@@ -66,12 +62,12 @@ function onCalendarPick(paramName: string, date: string) {
   dateDisplay.value[paramName] = date;
 }
 
-function applyTenorChip(paramName: string, tenor: string) {
-  const resolved = parseTenorToDate(tenor);
-  if (resolved) {
+async function applyTenorChip(paramName: string, tenor: string) {
+  try {
+    const resolved = await resolveTenor(tenor);
     store.instrumentParams[paramName] = resolved;
     dateDisplay.value[paramName] = resolved;
-  }
+  } catch { /* ignore */ }
 }
 </script>
 

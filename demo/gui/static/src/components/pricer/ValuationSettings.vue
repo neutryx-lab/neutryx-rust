@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { usePricerStore } from '@/stores/pricer';
-import { parseTenorToDate } from '@/utils/format';
+import { resolveTenor } from '@/services/api';
 import { ref } from 'vue';
 
 const store = usePricerStore();
@@ -17,29 +17,26 @@ const valDateDisplay = ref(store.valuationDate);
 
 function onValInput(raw: string) {
   valDateDisplay.value = raw;
-  const resolved = parseTenorToDate(raw);
-  if (resolved) {
-    store.valuationDate = resolved;
-  }
 }
 
-function onValCommit() {
+async function onValCommit() {
   const raw = valDateDisplay.value;
-  const resolved = parseTenorToDate(raw);
-  if (resolved) {
+  if (!raw) return;
+  try {
+    const resolved = await resolveTenor(raw);
     store.valuationDate = resolved;
     valDateDisplay.value = resolved;
-  } else {
+  } catch {
     valDateDisplay.value = store.valuationDate;
   }
 }
 
-function applyValTenor(tenor: string) {
-  const resolved = parseTenorToDate(tenor);
-  if (resolved) {
+async function applyValTenor(tenor: string) {
+  try {
+    const resolved = await resolveTenor(tenor);
     store.valuationDate = resolved;
     valDateDisplay.value = resolved;
-  }
+  } catch { /* ignore */ }
 }
 
 function onValCalendarPick(date: unknown) {

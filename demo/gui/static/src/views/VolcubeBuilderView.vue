@@ -17,6 +17,7 @@ import {
   calibrateFxVol,
   computeSabrSmile,
 } from '@/services/api';
+import { useMarketEnvStore } from '@/stores/marketEnv';
 
 Chart.register(...registerables);
 
@@ -32,6 +33,19 @@ const ERROR_AUTO_DISMISS_MS = 8000;
 
 type AssetTab = 'swaption' | 'fx';
 type SabrParam = 'alpha' | 'beta' | 'rho' | 'nu';
+
+// ── Market Environment ───────────────────────────────────────────────────────
+const marketEnv = useMarketEnvStore();
+const volPublishFeedback = ref(false);
+
+function publishVolToEnvironment() {
+  if (!calibrationResult.value) return;
+  const indexOrPair = activeTab.value === 'swaption' ? selectedSwaptionIndex.value : selectedFxPair.value;
+  const assetType = activeTab.value === 'swaption' ? 'swaption' as const : 'fx' as const;
+  marketEnv.publishVolSurface(indexOrPair, assetType, calibrationResult.value, selectedModel.value);
+  volPublishFeedback.value = true;
+  setTimeout(() => { volPublishFeedback.value = false; }, 2000);
+}
 
 // ── State ────────────────────────────────────────────────────────────────────
 const activeTab = ref<AssetTab>('swaption');
@@ -1179,6 +1193,14 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
             >
               <i :class="['fas', isCalibrating ? 'fa-spinner fa-spin' : 'fa-cogs']"></i>
               {{ isCalibrating ? 'Calibrating...' : 'Calibrate' }}
+            </button>
+            <button
+              :disabled="!calibrationResult || volPublishFeedback"
+              class="w-full mt-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              @click="publishVolToEnvironment"
+            >
+              <i :class="['fas', volPublishFeedback ? 'fa-check' : 'fa-cloud-upload-alt']"></i>
+              {{ volPublishFeedback ? 'Published!' : 'Publish to Environment' }}
             </button>
           </div>
 

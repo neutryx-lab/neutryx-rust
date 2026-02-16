@@ -108,11 +108,31 @@ export interface TradeMetadata {
 // Pricing Types
 // =============================================================================
 
+// Mirrors `PricingMethodHint`
+export type PricingMethod = 'auto' | 'analytical' | 'monteCarlo' | 'tree';
+
+// Mirrors `TreeType`
+export type TreeTypeOption = 'binomial' | 'trinomial';
+
+export interface McConfig {
+  numPaths: number;
+  numSteps: number;
+  seed?: number | null;
+}
+
+export interface TreeConfig {
+  numSteps?: number;
+  treeType?: TreeTypeOption;
+}
+
 export interface PricingRequest {
   valuationDate: DateString;
   reportingCurrency: Currency;
   legs: PricingLeg[];
-  modelConfig?: ModelConfig | null;
+  method: PricingMethod;
+  computeGreeks: boolean;
+  mcConfig?: McConfig | null;
+  treeConfig?: TreeConfig | null;
 }
 
 export interface PricingLeg {
@@ -123,25 +143,50 @@ export interface PricingLeg {
 
 export interface PricingCashflow {
   paymentDate: DateString;
-  amount: number;
+  notional: number;
+  rate: number;
+  yearFraction: number;
 }
 
-export interface ModelConfig {
-  numPaths: number;
-  numSteps: number;
-  seed?: number | null;
-}
-
+// Mirrors `PricingResult` from result.rs
 export interface PricingResult {
-  totalPv?: number;
-  pv?: number;
-  currency: Currency;
-  legs?: LegResult[];
+  totalPv: number;
+  reportingCurrency: Currency;
+  legs: LegResult[];
+  pathDistribution?: PathDistribution | null;
+  method?: string;
+  greeks?: GreeksInline | null;
+  computationTimeMs?: number;
 }
 
 export interface LegResult {
   direction: string;
   pv: number;
+  currency: Currency;
+  pvOriginal?: number;
+  fxRate?: number;
+  cashflows?: CashflowPvResult[];
+}
+
+export interface CashflowPvResult {
+  pv: number;
+  discountFactor: number;
+  paymentDate: DateString;
+}
+
+export interface PathDistribution {
+  mean: number;
+  stdDev: number;
+  percentiles: [number, number][];
+  pathCount: number;
+}
+
+export interface GreeksInline {
+  delta?: number | null;
+  gamma?: number | null;
+  vega?: number | null;
+  theta?: number | null;
+  rho?: number | null;
 }
 
 // =============================================================================
@@ -164,6 +209,19 @@ export interface GreeksResult {
   gamma: number | null;
   theta: number | null;
   vega: number | null;
+}
+
+// =============================================================================
+// Utility Types
+// =============================================================================
+
+export interface ResolveTenorRequest {
+  tenor: string;
+  base?: DateString;
+}
+
+export interface ResolveTenorResponse {
+  date: DateString;
 }
 
 // =============================================================================
