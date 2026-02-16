@@ -499,32 +499,30 @@ fn domain_trade_to_dto(
     }
 }
 
-impl DemoService {
-    /// Expand a trade request into cashflows using `InstrumentExpander`.
-    pub fn expand_trade(
-        request: &TradeExpandRequest,
-        _state: &Arc<AppState>,
-    ) -> Result<ExpandedTrade, ServerError> {
-        let start = Instant::now();
-        let p = &request.params;
+/// Build a domain `Trade` from instrument type and JSON params.
+///
+/// Shared by `expand_trade` (returns DTO) and `get_pricer_graph` (builds
+/// computation graph from real structure).
+fn build_domain_trade(
+    instrument_type: &str,
+    params: &serde_json::Value,
+) -> Result<(Trade, &'static str), ServerError> {
+    let param_str = |key: &str| params.get(key).and_then(|v| v.as_str());
+    let param_f64 = |key: &str, default: f64| {
+        params.get(key).and_then(|v| v.as_f64()).unwrap_or(default)
+    };
+    let param_date = |key: &str| -> Result<Date, ServerError> {
+        let s = param_str(key).ok_or_else(|| {
+            ServerError::InvalidRequest(format!("Missing required param: {key}"))
+        })?;
+        parse_date(s)
+    };
 
-        // Common param extractors.
-        let param_str = |key: &str| p.get(key).and_then(|v| v.as_str());
-        let param_f64 = |key: &str, default: f64| {
-            p.get(key).and_then(|v| v.as_f64()).unwrap_or(default)
-        };
-        let param_date = |key: &str| -> Result<Date, ServerError> {
-            let s = param_str(key).ok_or_else(|| {
-                ServerError::InvalidRequest(format!("Missing required param: {key}"))
-            })?;
-            parse_date(s)
-        };
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::from_ymd(2026, 1, 1)
+        .map_err(|e| ServerError::Internal(format!("Default valuation date: {e}")))?;
 
-        let conventions = ConventionSet::default();
-        let valuation_date = Date::from_ymd(2026, 1, 1)
-            .map_err(|e| ServerError::Internal(format!("Default valuation date: {e}")))?;
-
-        let (trade, trade_type_label) = match request.instrument_type.as_str() {
+    Ok(match instrument_type {
             "IRS" => {
                 let currency_str = param_str("currency").unwrap_or("USD");
                 let currency = parse_currency(currency_str)?;
@@ -927,8 +925,18 @@ impl DemoService {
                     "Instrument expansion not yet supported: {other}"
                 )))
             }
-        };
+        })
+}
 
+impl DemoService {
+    /// Expand a trade request into cashflows using `InstrumentExpander`.
+    pub fn expand_trade(
+        request: &TradeExpandRequest,
+        _state: &Arc<AppState>,
+    ) -> Result<ExpandedTrade, ServerError> {
+        let start = Instant::now();
+        let (trade, trade_type_label) =
+            build_domain_trade(&request.instrument_type, &request.params)?;
         let elapsed = start.elapsed();
         Ok(domain_trade_to_dto(&trade, trade_type_label, elapsed))
     }
@@ -1313,129 +1321,221 @@ impl DemoService {
         })
     }
 
-    /// Generate a simplified computation graph for a single instrument.
+    /// Generate a computation graph from the real expanded trade structure.
     pub fn get_pricer_graph(
         request: &PricerGraphRequest,
     ) -> Result<PricerGraphResponse, ServerError> {
-        let trade_id = format!("PRICER-{}", request.instrument_type);
+        let (trade, label) =
+            build_domain_trade(&request.instrument_type, &request.params)?;
+        let trade_id = format!("PRICER-{label}");
         let now = chrono::Utc::now().to_rfc3339();
-
-        // Determine input parameters based on instrument type.
-        let params: Vec<&str> = match request.instrument_type.as_str() {
-            "IRS" | "OIS" | "BasisSwap" => vec!["rate", "spread", "notional"],
-            "Swaption" | "CapFloor" => vec!["rate", "vol", "strike", "notional"],
-            "FxForward" | "FxSpot" => vec!["spot", "rate_dom", "rate_for", "notional"],
-            "FxOption" => vec!["spot", "vol", "rate_dom", "rate_for", "strike"],
-            "EquityOption" => vec!["spot", "vol", "rate", "div", "strike"],
-            "CDS" => vec!["spread", "recovery", "rate"],
-            _ => vec!["rate", "notional"],
-        };
-
         let detail = request.detail_level.as_deref().unwrap_or("scope");
+
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
 
-        // Input nodes.
-        let input_ids: Vec<String> = params
-            .iter()
-            .map(|p| {
-                let id = format!("{trade_id}_{p}");
+        // --- Market data input nodes (sensitivity targets) ---
+        // Collect unique discount curves (per currency) and forward curves
+        // (per rate index) from the actual legs.
+        let mut discount_inputs: Vec<(String, String)> = Vec::new(); // (id, label)
+        let mut forward_inputs: Vec<(String, String)> = Vec::new();
+        let mut seen_ccy = std::collections::HashSet::new();
+        let mut seen_idx = std::collections::HashSet::new();
+
+        for leg in trade.legs() {
+            let ccy = leg.currency.code();
+            if seen_ccy.insert(ccy.to_string()) {
+                let id = format!("{trade_id}_disc_{ccy}");
+                discount_inputs.push((id, format!("Disc:{ccy}")));
+            }
+            for cf in leg.cashflows() {
+                if let Some(idx) = cf.payoff.required_index() {
+                    let idx_str = match idx {
+                        IndexType::Rate(ri) => ri.to_string(),
+                        other => format!("{other:?}"),
+                    };
+                    if seen_idx.insert(idx_str.clone()) {
+                        let id = format!("{trade_id}_fwd_{idx_str}");
+                        forward_inputs.push((id, format!("Fwd:{idx_str}")));
+                    }
+                }
+            }
+        }
+
+        // Push input nodes.
+        for (id, label) in discount_inputs.iter().chain(forward_inputs.iter()) {
+            nodes.push(PricerGraphNode {
+                id: id.clone(),
+                node_type: "Input".to_string(),
+                label: label.clone(),
+                value: None,
+                is_sensitivity_target: true,
+                group: "Sensitivity".to_string(),
+                trade_ids: vec![trade_id.clone()],
+            });
+        }
+
+        // --- Per-leg nodes ---
+        let mut leg_pv_ids = Vec::new();
+
+        for (leg_idx, leg) in trade.legs().enumerate() {
+            let dir = match leg.direction {
+                Direction::Payer => "Pay",
+                Direction::Receiver => "Rec",
+            };
+            let lt = match leg.leg_type {
+                LegType::Fixed => "Fixed",
+                LegType::Floating => "Float",
+                LegType::CapFloor => "CapFloor",
+                LegType::Principal => "Principal",
+                LegType::Generic => "Generic",
+            };
+            let ccy = leg.currency.code();
+            let cf_count = leg.cashflows().count();
+
+            // Determine which market inputs this leg depends on.
+            let disc_id = format!("{trade_id}_disc_{ccy}");
+            let fwd_ids: Vec<String> = leg
+                .cashflows()
+                .filter_map(|cf| {
+                    cf.payoff.required_index().map(|idx| {
+                        let s = match idx {
+                            IndexType::Rate(ri) => ri.to_string(),
+                            other => format!("{other:?}"),
+                        };
+                        format!("{trade_id}_fwd_{s}")
+                    })
+                })
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect();
+
+            if detail == "operation" {
+                // Payoff evaluation node.
+                let payoff_id = format!("{trade_id}_L{leg_idx}_payoff");
+                let payoff_label = if leg.leg_type == LegType::Floating {
+                    format!("{lt} payoff ({cf_count} CFs)")
+                } else {
+                    let rate = leg
+                        .cashflows()
+                        .next()
+                        .and_then(|cf| match &cf.payoff {
+                            Payoff::Fixed { rate } => Some(*rate),
+                            _ => None,
+                        });
+                    match rate {
+                        Some(r) => format!("{lt} payoff r={r:.4} ({cf_count} CFs)"),
+                        None => format!("{lt} payoff ({cf_count} CFs)"),
+                    }
+                };
                 nodes.push(PricerGraphNode {
-                    id: id.clone(),
-                    node_type: "Input".to_string(),
-                    label: p.to_string(),
+                    id: payoff_id.clone(),
+                    node_type: "Mul".to_string(),
+                    label: payoff_label,
                     value: None,
-                    is_sensitivity_target: true,
-                    group: "Sensitivity".to_string(),
+                    is_sensitivity_target: false,
+                    group: "Intermediate".to_string(),
                     trade_ids: vec![trade_id.clone()],
                 });
-                id
-            })
-            .collect();
+                // Forward curves → payoff.
+                for fid in &fwd_ids {
+                    edges.push(PricerGraphEdge {
+                        source: fid.clone(),
+                        target: payoff_id.clone(),
+                        weight: None,
+                    });
+                }
 
-        if detail == "operation" {
-            // Detailed: discount + payoff + aggregate nodes.
-            let discount_id = format!("{trade_id}_discount");
-            nodes.push(PricerGraphNode {
-                id: discount_id.clone(),
-                node_type: "Mul".to_string(),
-                label: "discount".to_string(),
-                value: None,
-                is_sensitivity_target: false,
-                group: "Intermediate".to_string(),
-                trade_ids: vec![trade_id.clone()],
-            });
-            for id in &input_ids {
-                edges.push(PricerGraphEdge { source: id.clone(), target: discount_id.clone(), weight: None });
+                // Discount node.
+                let disc_node_id = format!("{trade_id}_L{leg_idx}_disc");
+                nodes.push(PricerGraphNode {
+                    id: disc_node_id.clone(),
+                    node_type: "Mul".to_string(),
+                    label: format!("DF({ccy})"),
+                    value: None,
+                    is_sensitivity_target: false,
+                    group: "Intermediate".to_string(),
+                    trade_ids: vec![trade_id.clone()],
+                });
+                edges.push(PricerGraphEdge {
+                    source: disc_id,
+                    target: disc_node_id.clone(),
+                    weight: None,
+                });
+                edges.push(PricerGraphEdge {
+                    source: payoff_id,
+                    target: disc_node_id.clone(),
+                    weight: None,
+                });
+
+                // Leg PV aggregation.
+                let leg_pv_id = format!("{trade_id}_L{leg_idx}_pv");
+                nodes.push(PricerGraphNode {
+                    id: leg_pv_id.clone(),
+                    node_type: "Add".to_string(),
+                    label: format!("{dir} {lt} {ccy}"),
+                    value: None,
+                    is_sensitivity_target: false,
+                    group: "Leg".to_string(),
+                    trade_ids: vec![trade_id.clone()],
+                });
+                edges.push(PricerGraphEdge {
+                    source: disc_node_id,
+                    target: leg_pv_id.clone(),
+                    weight: None,
+                });
+                leg_pv_ids.push(leg_pv_id);
+            } else {
+                // Scope: single node per leg.
+                let leg_node_id = format!("{trade_id}_L{leg_idx}");
+                nodes.push(PricerGraphNode {
+                    id: leg_node_id.clone(),
+                    node_type: "Add".to_string(),
+                    label: format!("{dir} {lt} {ccy} ({cf_count} CFs)"),
+                    value: None,
+                    is_sensitivity_target: false,
+                    group: "Leg".to_string(),
+                    trade_ids: vec![trade_id.clone()],
+                });
+                // Connect market inputs → leg.
+                edges.push(PricerGraphEdge {
+                    source: disc_id,
+                    target: leg_node_id.clone(),
+                    weight: None,
+                });
+                for fid in &fwd_ids {
+                    edges.push(PricerGraphEdge {
+                        source: fid.clone(),
+                        target: leg_node_id.clone(),
+                        weight: None,
+                    });
+                }
+                leg_pv_ids.push(leg_node_id);
             }
+        }
 
-            let payoff_id = format!("{trade_id}_payoff");
-            nodes.push(PricerGraphNode {
-                id: payoff_id.clone(),
-                node_type: "Mul".to_string(),
-                label: "payoff".to_string(),
-                value: None,
-                is_sensitivity_target: false,
-                group: "Intermediate".to_string(),
-                trade_ids: vec![trade_id.clone()],
+        // --- Output node ---
+        let out_id = format!("{trade_id}_pv");
+        nodes.push(PricerGraphNode {
+            id: out_id.clone(),
+            node_type: "Output".to_string(),
+            label: "Trade PV".to_string(),
+            value: None,
+            is_sensitivity_target: false,
+            group: "Output".to_string(),
+            trade_ids: vec![trade_id.clone()],
+        });
+        for lid in &leg_pv_ids {
+            edges.push(PricerGraphEdge {
+                source: lid.clone(),
+                target: out_id.clone(),
+                weight: None,
             });
-            edges.push(PricerGraphEdge { source: discount_id, target: payoff_id.clone(), weight: None });
-
-            let agg_id = format!("{trade_id}_aggregate");
-            nodes.push(PricerGraphNode {
-                id: agg_id.clone(),
-                node_type: "Add".to_string(),
-                label: "aggregate".to_string(),
-                value: None,
-                is_sensitivity_target: false,
-                group: "Intermediate".to_string(),
-                trade_ids: vec![trade_id.clone()],
-            });
-            edges.push(PricerGraphEdge { source: payoff_id, target: agg_id.clone(), weight: None });
-
-            let out_id = format!("{trade_id}_price");
-            nodes.push(PricerGraphNode {
-                id: out_id.clone(),
-                node_type: "Output".to_string(),
-                label: "price".to_string(),
-                value: None,
-                is_sensitivity_target: false,
-                group: "Output".to_string(),
-                trade_ids: vec![trade_id.clone()],
-            });
-            edges.push(PricerGraphEdge { source: agg_id, target: out_id, weight: None });
-        } else {
-            // Scope: simple input → calc → output.
-            let calc_id = format!("{trade_id}_calc");
-            nodes.push(PricerGraphNode {
-                id: calc_id.clone(),
-                node_type: "Mul".to_string(),
-                label: "calculation".to_string(),
-                value: None,
-                is_sensitivity_target: false,
-                group: "Intermediate".to_string(),
-                trade_ids: vec![trade_id.clone()],
-            });
-            for id in &input_ids {
-                edges.push(PricerGraphEdge { source: id.clone(), target: calc_id.clone(), weight: None });
-            }
-
-            let out_id = format!("{trade_id}_price");
-            nodes.push(PricerGraphNode {
-                id: out_id.clone(),
-                node_type: "Output".to_string(),
-                label: "price".to_string(),
-                value: None,
-                is_sensitivity_target: false,
-                group: "Output".to_string(),
-                trade_ids: vec![trade_id.clone()],
-            });
-            edges.push(PricerGraphEdge { source: calc_id, target: out_id, weight: None });
         }
 
         let node_count = nodes.len();
         let edge_count = edges.len();
-        let depth = if detail == "operation" { 4 } else { 3 };
+        let depth = if detail == "operation" { 5 } else { 3 };
 
         Ok(PricerGraphResponse {
             nodes,

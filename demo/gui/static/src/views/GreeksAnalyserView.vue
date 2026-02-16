@@ -132,16 +132,24 @@ function factorTypeChipColor(factorType: string): string {
       <!-- Left Panel -->
       <v-col cols="4">
         <v-card variant="outlined" class="mb-4">
-          <v-card-title class="text-subtitle-1">History</v-card-title>
+          <v-card-title class="text-subtitle-1">
+            History
+            <v-chip v-if="store.resultHistory.length > 0" size="x-small" class="ml-2">
+              {{ store.resultHistory.length }}
+            </v-chip>
+          </v-card-title>
           <v-card-text>
             <v-select
               v-model="selectedEntryId"
               :items="historyItems"
+              item-title="title"
+              item-value="value"
               placeholder="Select a pricing result..."
+              no-data-text="No pricing history"
               density="compact"
               variant="outlined"
               hide-details
-              :disabled="store.resultHistory.length === 0"
+              :disabled="historyItems.length === 0"
             />
             <div v-if="store.resultHistory.length === 0" class="text-caption text-medium-emphasis mt-2">
               No pricing history. Run the Pricer first.
