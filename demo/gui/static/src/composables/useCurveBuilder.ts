@@ -143,14 +143,23 @@ export const calibrationMethods = [
 ];
 
 export const interpolationMethods = [
-  { value: 'flat_forward', label: 'Flat Forward' },
-  { value: 'log_linear_df', label: 'Log-Linear DF' },
-  { value: 'linear_df', label: 'Linear DF' },
-  { value: 'cubic_spline_fwd', label: 'Cubic Spline (Fwd)' },
-  { value: 'monotone_convex', label: 'Monotone Convex' },
-  { value: 'log_cubic_df', label: 'Log-Cubic DF' },
-  { value: 'tension_spline', label: 'Tension Spline' },
+  { value: 'flat_forward', label: 'Flat Forward', spline: false },
+  { value: 'log_linear_df', label: 'Log-Linear DF', spline: false },
+  { value: 'linear_df', label: 'Linear DF', spline: false },
+  { value: 'cubic_spline_fwd', label: 'Cubic Spline (Fwd)', spline: true },
+  { value: 'monotone_convex', label: 'Monotone Convex', spline: true },
+  { value: 'log_cubic_df', label: 'Log-Cubic DF', spline: true },
+  { value: 'tension_spline', label: 'Tension Spline', spline: true },
 ];
+
+/** Calibration methods that pair best with spline interpolation. */
+const splinePreferredCalibrations = new Set(['global', 'levenberg_marquardt', 'penalised']);
+
+export type HintLevel = 'good' | 'info' | 'warn';
+export interface CompatibilityHint {
+  level: HintLevel;
+  message: string;
+}
 
 // ---------------------------------------------------------------------------
 // Helper functions
@@ -693,6 +702,50 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     instruments.value.forEach(inst => inst.enabled = enabled);
   }
 
+  // ---------- Compatibility hints ----------
+
+  /** Interpolation list annotated with recommendation badge for current calibration. */
+  const annotatedInterpolationMethods = computed(() =>
+    interpolationMethods.map(m => {
+      const cal = calibrationMethod.value;
+      let badge = '';
+      if (m.spline && cal === 'bootstrapping') {
+        badge = ' \u26A0'; // ⚠
+      } else if (m.spline && splinePreferredCalibrations.has(cal)) {
+        badge = ' \u2605'; // ★
+      } else if (!m.spline && cal === 'penalised') {
+        badge = ' \u26A0'; // ⚠
+      }
+      return { ...m, displayLabel: m.label + badge };
+    }),
+  );
+
+  /** Contextual hint about the current calibration + interpolation combination. */
+  const compatibilityHint = computed<CompatibilityHint | null>(() => {
+    const cal = calibrationMethod.value;
+    const isSpline = interpolationMethods.find(m => m.value === interpolation.value)?.spline ?? false;
+
+    if (cal === 'bootstrapping' && isSpline) {
+      return {
+        level: 'warn',
+        message: 'Sequential bootstrapping with spline interpolation may converge slowly. Consider Global or LM.',
+      };
+    }
+    if (cal === 'penalised' && !isSpline) {
+      return {
+        level: 'info',
+        message: 'Penalised calibration is most effective with spline interpolation.',
+      };
+    }
+    if (splinePreferredCalibrations.has(cal) && isSpline) {
+      return {
+        level: 'good',
+        message: 'Good combination \u2014 global solver pairs well with spline interpolation.',
+      };
+    }
+    return null;
+  });
+
   // ---------- Watchers ----------
 
   watch(selectedCurveName, () => {
@@ -737,6 +790,8 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     summaryStats,
     curveTableRows,
     builtCurveIds,
+    annotatedInterpolationMethods,
+    compatibilityHint,
 
     // Actions
     buildCurve,

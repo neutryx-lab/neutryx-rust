@@ -43,6 +43,8 @@ import type {
   FxVolCalibrateRequest,
   SabrSmileRequest,
   SabrSmileResponse,
+  SmileResponse,
+  VolSmileRequest,
   ImpliedPdfRequest,
   ImpliedPdfResponse,
   PricerGraphRequest,
@@ -251,6 +253,10 @@ export async function calibrateVolcube(request: VolcubeCalibrateRequest): Promis
 
 export async function computeSabrSmile(request: SabrSmileRequest): Promise<SabrSmileResponse> {
   return postJson<SabrSmileRequest, SabrSmileResponse>(`${API_BASE}/volcube/sabr-smile`, request);
+}
+
+export async function computeModelSmile(request: VolSmileRequest): Promise<SmileResponse> {
+  return postJson<VolSmileRequest, SmileResponse>(`${API_BASE}/volcube/model-smile`, request);
 }
 
 export async function computeImpliedPdf(request: ImpliedPdfRequest): Promise<ImpliedPdfResponse> {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useCurveBuilder, calibrationMethods, interpolationMethods } from '@/composables/useCurveBuilder';
+import { useCurveBuilder, calibrationMethods } from '@/composables/useCurveBuilder';
 import { useCurveCharts } from '@/composables/useCurveCharts';
 import { useMarketEnvStore } from '@/stores/marketEnv';
 import CurveInstrumentTable from '@/components/curve/CurveInstrumentTable.vue';
@@ -58,6 +58,8 @@ const {
   isCreditCurve,
   summaryStats,
   curveTableRows,
+  annotatedInterpolationMethods,
+  compatibilityHint,
 
   // Actions
   buildCurve,
@@ -161,9 +163,20 @@ watch(chartType, () => {
                 v-model="interpolation"
                 class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
               >
-                <option v-for="m in interpolationMethods" :key="m.value" :value="m.value">{{ m.label }}</option>
+                <option v-for="m in annotatedInterpolationMethods" :key="m.value" :value="m.value">{{ m.displayLabel }}</option>
               </select>
             </div>
+            <p
+              v-if="compatibilityHint"
+              class="text-xs px-2 py-1.5 rounded"
+              :class="{
+                'text-emerald-400 bg-emerald-500/10': compatibilityHint.level === 'good',
+                'text-amber-400 bg-amber-500/10': compatibilityHint.level === 'warn',
+                'text-sky-400 bg-sky-500/10': compatibilityHint.level === 'info',
+              }"
+            >
+              {{ compatibilityHint.message }}
+            </p>
             <label class="flex items-center gap-2 cursor-pointer">
               <input v-model="allowExtrapolation" type="checkbox" class="w-4 h-4 rounded">
               <span class="text-sm text-[var(--text-secondary)]">Extrapolation</span>

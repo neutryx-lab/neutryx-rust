@@ -131,14 +131,13 @@ function factorTypeChipColor(factorType: string): string {
     <v-row>
       <!-- Left Panel -->
       <v-col cols="4">
-        <v-card variant="outlined" class="mb-4">
-          <v-card-title class="text-subtitle-1">
+        <div class="glass-card p-4 mb-4">
+          <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
             History
             <v-chip v-if="store.resultHistory.length > 0" size="x-small" class="ml-2">
               {{ store.resultHistory.length }}
             </v-chip>
-          </v-card-title>
-          <v-card-text>
+          </div>
             <v-select
               v-model="selectedEntryId"
               :items="historyItems"
@@ -151,35 +150,31 @@ function factorTypeChipColor(factorType: string): string {
               hide-details
               :disabled="historyItems.length === 0"
             />
-            <div v-if="store.resultHistory.length === 0" class="text-caption text-medium-emphasis mt-2">
+            <div v-if="store.resultHistory.length === 0" class="text-caption text-text-muted mt-2">
               No pricing history. Run the Pricer first.
             </div>
-          </v-card-text>
-        </v-card>
+        </div>
 
         <!-- Selected entry summary -->
-        <v-card v-if="selectedEntry" variant="outlined" class="mb-4">
-          <v-card-title class="text-subtitle-1">Summary</v-card-title>
-          <v-card-text>
+        <div v-if="selectedEntry" class="glass-card p-4 mb-4">
+          <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Summary</div>
             <div class="summary-grid">
-              <span class="text-medium-emphasis">Instrument</span>
+              <span class="text-text-muted">Instrument</span>
               <span>{{ selectedEntry.instrumentName }}</span>
-              <span class="text-medium-emphasis">PV</span>
+              <span class="text-text-muted">PV</span>
               <span>{{ formatCurrency(selectedEntry.totalPv, selectedEntry.reportingCcy) }}</span>
-              <span class="text-medium-emphasis">Val Date</span>
+              <span class="text-text-muted">Val Date</span>
               <span>{{ selectedEntry.valuationDate }}</span>
-              <span class="text-medium-emphasis">Currency</span>
+              <span class="text-text-muted">Currency</span>
               <span>{{ selectedEntry.reportingCcy }}</span>
-              <span class="text-medium-emphasis">Legs</span>
+              <span class="text-text-muted">Legs</span>
               <span>{{ selectedEntry.legs.length }}</span>
             </div>
-          </v-card-text>
-        </v-card>
+        </div>
 
         <!-- Bump configuration -->
-        <v-card variant="outlined" class="mb-4">
-          <v-card-title class="text-subtitle-1">Bump Configuration</v-card-title>
-          <v-card-text>
+        <div class="glass-card p-4 mb-4">
+          <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Bump Configuration</div>
             <div class="config-grid">
               <div class="config-label">Rate (abs)</div>
               <v-text-field
@@ -232,8 +227,7 @@ function factorTypeChipColor(factorType: string): string {
                 hide-details
               />
             </div>
-          </v-card-text>
-        </v-card>
+        </div>
 
         <v-btn
           color="primary"
@@ -266,36 +260,34 @@ function factorTypeChipColor(factorType: string): string {
         <!-- Results -->
         <template v-else>
           <!-- Summary row -->
-          <v-card variant="outlined" class="mb-4">
-            <v-card-text>
+          <div class="glass-card p-4 mb-4">
               <div class="d-flex flex-wrap ga-6">
                 <div>
-                  <span class="text-caption text-medium-emphasis">Price</span>
-                  <div class="text-h6">{{ formatCurrency(result.price, result.currency) }}</div>
+                  <span class="stat-label">Price</span>
+                  <div class="stat-value">{{ formatCurrency(result.price, result.currency) }}</div>
                 </div>
                 <div>
-                  <span class="text-caption text-medium-emphasis">Currency</span>
-                  <div class="text-h6">{{ result.currency }}</div>
+                  <span class="stat-label">Currency</span>
+                  <div class="stat-value">{{ result.currency }}</div>
                 </div>
                 <div>
-                  <span class="text-caption text-medium-emphasis">Mode</span>
-                  <div class="text-h6">{{ result.mode }}</div>
+                  <span class="stat-label">Mode</span>
+                  <div class="stat-value">{{ result.mode }}</div>
                 </div>
                 <div>
-                  <span class="text-caption text-medium-emphasis">Time</span>
-                  <div class="text-h6">{{ result.computationTimeMs.toFixed(2) }} ms</div>
+                  <span class="stat-label">Time</span>
+                  <div class="stat-value">{{ result.computationTimeMs.toFixed(2) }} ms</div>
                 </div>
                 <div>
-                  <span class="text-caption text-medium-emphasis">Factors</span>
-                  <div class="text-h6">{{ result.factors.length }}</div>
+                  <span class="stat-label">Factors</span>
+                  <div class="stat-value">{{ result.factors.length }}</div>
                 </div>
               </div>
-            </v-card-text>
-          </v-card>
+          </div>
 
           <!-- Factor x Greek table -->
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1">Greeks by Risk Factor</v-card-title>
+          <div class="glass-card p-4">
+            <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Greeks by Risk Factor</div>
             <v-table density="compact" class="greeks-table">
               <thead>
                 <tr>
@@ -351,7 +343,7 @@ function factorTypeChipColor(factorType: string): string {
                 </tr>
               </tbody>
             </v-table>
-          </v-card>
+          </div>
         </template>
       </v-col>
     </v-row>
@@ -375,7 +367,7 @@ function factorTypeChipColor(factorType: string): string {
 
 .config-label {
   font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.7);
+  color: var(--text-muted);
   text-align: right;
   white-space: nowrap;
 }
@@ -385,6 +377,6 @@ function factorTypeChipColor(factorType: string): string {
 }
 
 .totals-row {
-  border-top: 2px solid rgba(var(--v-theme-on-surface), 0.2);
+  border-top: 2px solid var(--border);
 }
 </style>

@@ -792,6 +792,19 @@ export interface SabrSmileResponse {
   density: number[];
 }
 
+/** Generic smile response (same shape as SABR, shared by all models). */
+export type SmileResponse = SabrSmileResponse;
+
+/** Generic smile request for any model via /volcube/model-smile. */
+export interface VolSmileRequest {
+  model: string;
+  forward: number;
+  expiryYears: number;
+  nPoints?: number;
+  rangeBp?: number;
+  params: Record<string, unknown>;
+}
+
 export interface ImpliedPdfSmilePoint {
   strike_offset_bp: number;
   vol: number;

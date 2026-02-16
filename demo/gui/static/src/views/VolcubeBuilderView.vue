@@ -15,7 +15,7 @@ import {
   fetchFxVolQuotes,
   calibrateVolcube,
   calibrateFxVol,
-  computeSabrSmile,
+  computeModelSmile,
 } from '@/services/api';
 import { useMarketEnvStore } from '@/stores/marketEnv';
 
@@ -26,13 +26,110 @@ const EXPIRY_ORDER = ['1M', '3M', '6M', '1Y', '2Y', '5Y', '10Y', '15Y', '20Y', '
 const TENOR_ORDER = ['1Y', '2Y', '5Y', '10Y', '15Y', '20Y', '30Y'];
 const UNKNOWN_SORT_ORDER = 999;
 const DEFAULT_FORWARD_RATE = 0.03;
-const SABR_SMILE_N_POINTS = 101;
-const SABR_SMILE_RANGE_BP = 200;
+const SMILE_N_POINTS = 101;
+const SMILE_RANGE_BP = 200;
 const POPOVER_WIDTH = 256; // matches w-64
 const ERROR_AUTO_DISMISS_MS = 8000;
 
 type AssetTab = 'swaption' | 'fx';
 type SabrParam = 'alpha' | 'beta' | 'rho' | 'nu';
+
+// ── Model parameter definitions ──────────────────────────────────────────────
+interface ModelParamDef {
+  key: string;
+  symbol: string;
+  default: number;
+  step: number;
+}
+
+const MODEL_PARAMS: Record<string, ModelParamDef[]> = {
+  'SABR': [
+    { key: 'alpha', symbol: '\u03B1', default: 0.03, step: 0.01 },
+    { key: 'beta', symbol: '\u03B2', default: 0, step: 0.1 },
+    { key: 'rho', symbol: '\u03C1', default: -0.3, step: 0.01 },
+    { key: 'nu', symbol: '\u03BD', default: 0.4, step: 0.01 },
+  ],
+  'SVI': [
+    { key: 'a', symbol: 'a', default: 0.04, step: 0.01 },
+    { key: 'b', symbol: 'b', default: 0.1, step: 0.01 },
+    { key: 'rho', symbol: '\u03C1', default: -0.3, step: 0.01 },
+    { key: 'm', symbol: 'm', default: 0.0, step: 0.01 },
+    { key: 'sigma', symbol: '\u03C3', default: 0.1, step: 0.01 },
+  ],
+  'SSVI': [
+    { key: 'rho', symbol: '\u03C1', default: -0.3, step: 0.01 },
+    { key: 'eta', symbol: '\u03B7', default: 0.5, step: 0.01 },
+    { key: 'gamma', symbol: '\u03B3', default: 0.5, step: 0.01 },
+    { key: 'atmVol', symbol: '\u03C3\u2080', default: 0.2, step: 0.01 },
+  ],
+  'Vanna-Volga': [
+    { key: 'sigmaAtm', symbol: '\u03C3_ATM', default: 0.10, step: 0.01 },
+    { key: 'sigma25dPut', symbol: '\u03C3_P25', default: 0.12, step: 0.01 },
+    { key: 'sigma25dCall', symbol: '\u03C3_C25', default: 0.09, step: 0.01 },
+  ],
+  'ZABR': [
+    { key: 'alpha', symbol: '\u03B1', default: 0.2, step: 0.01 },
+    { key: 'beta', symbol: '\u03B2', default: 0.5, step: 0.1 },
+    { key: 'nu', symbol: '\u03BD', default: 0.4, step: 0.01 },
+    { key: 'rho', symbol: '\u03C1', default: -0.3, step: 0.01 },
+    { key: 'gammaMix', symbol: '\u03B3', default: 0.0, step: 0.01 },
+  ],
+  'Mixture Lognormal': [
+    { key: 'weight1', symbol: 'w\u2081', default: 0.6, step: 0.05 },
+    { key: 'sigma1', symbol: '\u03C3\u2081', default: 0.15, step: 0.01 },
+    { key: 'sigma2', symbol: '\u03C3\u2082', default: 0.30, step: 0.01 },
+  ],
+  'Polynomial': [
+    { key: 'c0', symbol: 'c\u2080', default: 0.04, step: 0.01 },
+    { key: 'c1', symbol: 'c\u2081', default: 0.0, step: 0.01 },
+    { key: 'c2', symbol: 'c\u2082', default: 0.01, step: 0.001 },
+  ],
+  'Variance Gamma': [
+    { key: 'sigma', symbol: '\u03C3', default: 0.2, step: 0.01 },
+    { key: 'nu', symbol: '\u03BD', default: 0.5, step: 0.01 },
+    { key: 'theta', symbol: '\u03B8', default: -0.1, step: 0.01 },
+  ],
+  'Black-Scholes': [
+    { key: 'vol', symbol: '\u03C3', default: 0.2, step: 0.01 },
+  ],
+};
+
+/** Map display name → backend API model string. */
+function modelApiName(displayName: string): string {
+  const map: Record<string, string> = {
+    'SABR': 'sabr', 'SVI': 'svi', 'SSVI': 'ssvi',
+    'Vanna-Volga': 'vanna_volga', 'ZABR': 'zabr',
+    'Mixture Lognormal': 'mixture_lognormal',
+    'Polynomial': 'polynomial', 'Variance Gamma': 'variance_gamma',
+    'Local Volatility': 'local_volatility', 'Black-Scholes': 'black_scholes',
+  };
+  return map[displayName] || displayName.toLowerCase().replace(/[- ]/g, '_');
+}
+
+/** Build model-specific params object for the smile API. */
+function buildSmileParams(model: string, values: Record<string, number>, forward: number): Record<string, unknown> {
+  switch (model) {
+    case 'Polynomial':
+      return { coefficients: [values.c0 ?? 0.04, values.c1 ?? 0, values.c2 ?? 0.01] };
+    case 'Vanna-Volga':
+      return {
+        ...values,
+        strikeAtm: forward,
+        strike25dPut: forward * 0.95,
+        strike25dCall: forward * 1.05,
+      };
+    case 'Mixture Lognormal': {
+      const w1 = values.weight1 ?? 0.6;
+      return {
+        weights: [w1, 1 - w1],
+        forwards: [forward, forward],
+        volatilities: [values.sigma1 ?? 0.15, values.sigma2 ?? 0.30],
+      };
+    }
+    default:
+      return { ...values };
+  }
+}
 
 // ── Market Environment ───────────────────────────────────────────────────────
 const marketEnv = useMarketEnvStore();
@@ -70,9 +167,24 @@ const fxSpot = ref('');
 const fxDomesticRate = ref('0');
 const fxForeignRate = ref('0');
 
-// SABR parameter settings (initial values + fixed flags)
+// SABR parameter settings (initial values + fixed flags) — used for calibration
 const sabrInitial = ref<Record<SabrParam, number>>({ alpha: 0.03, beta: 0, rho: -0.3, nu: 0.4 });
 const sabrFixed = ref<Record<SabrParam, boolean>>({ alpha: false, beta: true, rho: false, nu: false });
+
+// Generic model parameters (for non-SABR smile exploration)
+const modelParams = ref<Record<string, number>>({});
+
+const isSabrModel = computed(() => selectedModel.value === 'SABR');
+const activeModelParamDefs = computed(() => MODEL_PARAMS[selectedModel.value] ?? []);
+
+/** Initialise modelParams with defaults for the given model. */
+function resetModelParams(model: string) {
+  const defs = MODEL_PARAMS[model];
+  if (!defs) { modelParams.value = {}; return; }
+  const vals: Record<string, number> = {};
+  for (const d of defs) vals[d.key] = d.default;
+  modelParams.value = vals;
+}
 
 const calibrationResult = ref<VolcubeCalibrateResponse | null>(null);
 const isCalibrating = ref(false);
@@ -346,7 +458,8 @@ async function renderDetailCharts() {
   if (!selectedCell.value) return;
 
   const cellParams = selectedCellParams.value;
-  if (!cellParams) return; // No calibrated params — nothing to render
+  // For SABR: require calibrated params; for other models: use manual params
+  if (isSabrModel.value && !cellParams) return;
 
   const inst = selectedInstrument.value;
   const cell = selectedCell.value;
@@ -362,15 +475,20 @@ async function renderDetailCharts() {
   const forward = fwdSwapRates.value.get(fwdKey) ?? DEFAULT_FORWARD_RATE;
 
   try {
-    const result = await computeSabrSmile({
-      alpha: cellParams.alpha,
-      beta: cellParams.beta,
-      rho: cellParams.rho,
-      nu: cellParams.nu,
+    // Build params: use calibrated SABR params when available, else manual model params
+    const smileModel = selectedModel.value || 'SABR';
+    const smileParamsRaw = isSabrModel.value && cellParams
+      ? { alpha: cellParams.alpha, beta: cellParams.beta, rho: cellParams.rho, nu: cellParams.nu }
+      : modelParams.value;
+    const smileParamsObj = buildSmileParams(smileModel, smileParamsRaw, forward);
+
+    const result = await computeModelSmile({
+      model: modelApiName(smileModel),
       forward,
-      expiry_years: expiryToYears(cell.expiry),
-      n_points: SABR_SMILE_N_POINTS,
-      range_bp: SABR_SMILE_RANGE_BP,
+      expiryYears: expiryToYears(cell.expiry),
+      nPoints: SMILE_N_POINTS,
+      rangeBp: SMILE_RANGE_BP,
+      params: smileParamsObj,
     });
 
     const smileLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
@@ -384,7 +502,7 @@ async function renderDetailCharts() {
       const ctx = smileChartCanvas.value.getContext('2d');
       if (ctx) {
         const datasets: ChartDataset<'line'>[] = [{
-          label: 'SABR Fitted',
+          label: `${smileModel} Fitted`,
           data: smileVols,
           borderColor: '#6366f1',
           backgroundColor: 'rgba(99, 102, 241, 0.10)',
@@ -504,9 +622,9 @@ async function renderDetailCharts() {
       }
     }
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'SABR smile computation failed';
+    const msg = error instanceof Error ? error.message : 'Smile computation failed';
     showError(msg);
-    console.error('Failed to compute SABR smile:', error);
+    console.error('Failed to compute smile:', error);
   }
 }
 
@@ -520,7 +638,9 @@ async function renderFxDetailCharts() {
   if (!selectedFxTenor.value) return;
   const params = selectedFxParams.value;
   const quote = selectedFxQuote.value;
-  if (!params || !quote) return;
+  // For SABR: require calibrated params; for other models: use manual params
+  if (isSabrModel.value && !params) return;
+  if (!quote) return;
 
   const forward = quote.forward ?? parseFloat(fxSpot.value);
   if (!forward || forward <= 0) return;
@@ -532,15 +652,19 @@ async function renderFxDetailCharts() {
   };
 
   try {
-    const result = await computeSabrSmile({
-      alpha: params.alpha,
-      beta: params.beta,
-      rho: params.rho,
-      nu: params.nu,
+    const smileModel = selectedModel.value || 'SABR';
+    const smileParamsRaw = isSabrModel.value && params
+      ? { alpha: params.alpha, beta: params.beta, rho: params.rho, nu: params.nu }
+      : modelParams.value;
+    const smileParamsObj = buildSmileParams(smileModel, smileParamsRaw, forward);
+
+    const result = await computeModelSmile({
+      model: modelApiName(smileModel),
       forward,
-      expiry_years: quote.expiry,
-      n_points: SABR_SMILE_N_POINTS,
-      range_bp: SABR_SMILE_RANGE_BP,
+      expiryYears: quote.expiry,
+      nPoints: SMILE_N_POINTS,
+      rangeBp: SMILE_RANGE_BP,
+      params: smileParamsObj,
     });
 
     const smileLabels = result.offsets.map((o: number) => (o > 0 ? '+' : '') + Math.round(o));
@@ -558,7 +682,7 @@ async function renderFxDetailCharts() {
           data: {
             labels: smileLabels,
             datasets: [{
-              label: 'SABR Fitted',
+              label: `${smileModel} Fitted`,
               data: smileVols,
               borderColor: '#6366f1',
               backgroundColor: 'rgba(99, 102, 241, 0.10)',
@@ -629,9 +753,9 @@ async function renderFxDetailCharts() {
       }
     }
   } catch (error) {
-    const msg = error instanceof Error ? error.message : 'SABR smile computation failed';
+    const msg = error instanceof Error ? error.message : 'Smile computation failed';
     showError(msg);
-    console.error('Failed to compute FX SABR smile:', error);
+    console.error('Failed to compute FX smile:', error);
   }
 }
 
@@ -945,6 +1069,10 @@ watch(activeTab, (tab) => {
   sabrFixed.value.beta = true;
 });
 
+watch(selectedModel, (model) => {
+  if (model) resetModelParams(model);
+});
+
 watch(selectedSwaptionIndex, (index) => {
   if (index) loadSwaptionInstruments(index);
 });
@@ -1088,36 +1216,59 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                   </select>
                 </div>
 
-                <!-- SABR Parameter Initial Values + Fix Checkboxes -->
+                <!-- Model Parameters (dynamic per model) -->
                 <div class="border-t border-[var(--glass-border)] pt-3 mt-2">
-                  <label class="block text-xs text-[var(--text-muted)] mb-2">SABR Parameters</label>
-                  <div class="space-y-2">
-                    <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
-                      <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
-                      <input
-                        :id="'sabr-' + param"
-                        v-model.number="sabrInitial[param]"
-                        type="number"
-                        step="0.01"
-                        class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
-                        :class="{ 'opacity-70': sabrFixed[param] }"
-                      />
-                      <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
+                  <label class="block text-xs text-[var(--text-muted)] mb-2">{{ selectedModel }} Parameters</label>
+
+                  <!-- SABR: with fix checkboxes (used for calibration) -->
+                  <template v-if="isSabrModel">
+                    <div class="space-y-2">
+                      <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
+                        <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
                         <input
-                          v-model="sabrFixed[param]"
-                          type="checkbox"
-                          class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
+                          :id="'sabr-' + param"
+                          v-model.number="sabrInitial[param]"
+                          type="number"
+                          step="0.01"
+                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
+                          :class="{ 'opacity-70': sabrFixed[param] }"
                         />
-                        <span class="text-[10px] text-[var(--text-muted)]">fix</span>
-                      </label>
+                        <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
+                          <input
+                            v-model="sabrFixed[param]"
+                            type="checkbox"
+                            class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
+                          />
+                          <span class="text-[10px] text-[var(--text-muted)]">fix</span>
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                  <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                    β=0 fixed → Normal SABR (Bachelier)
-                  </p>
-                  <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                    β=1 fixed → Lognormal SABR (Black-Scholes)
-                  </p>
+                    <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                      β=0 fixed → Normal SABR (Bachelier)
+                    </p>
+                    <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                      β=1 fixed → Lognormal SABR (Black-Scholes)
+                    </p>
+                  </template>
+
+                  <!-- Non-SABR: generic param inputs -->
+                  <template v-else>
+                    <div class="space-y-2">
+                      <div v-for="def in activeModelParamDefs" :key="def.key" class="flex items-center gap-2">
+                        <label class="w-12 text-xs font-mono text-[var(--text-secondary)] select-none truncate" :for="'mp-' + def.key" :title="def.key">{{ def.symbol }}</label>
+                        <input
+                          :id="'mp-' + def.key"
+                          v-model.number="modelParams[def.key]"
+                          type="number"
+                          :step="def.step"
+                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
+                        />
+                      </div>
+                    </div>
+                    <p class="text-[10px] text-[var(--text-muted)] mt-1.5 italic">
+                      Smile exploration — calibration available for SABR
+                    </p>
+                  </template>
                 </div>
               </div>
             </div>
@@ -1149,36 +1300,57 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                   </select>
                 </div>
 
-                <!-- SABR Parameter Initial Values + Fix Checkboxes -->
+                <!-- Model Parameters (dynamic per model) -->
                 <div class="border-t border-[var(--glass-border)] pt-3 mt-2">
-                  <label class="block text-xs text-[var(--text-muted)] mb-2">SABR Parameters</label>
-                  <div class="space-y-2">
-                    <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
-                      <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'fx-sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
-                      <input
-                        :id="'fx-sabr-' + param"
-                        v-model.number="sabrInitial[param]"
-                        type="number"
-                        step="0.01"
-                        class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
-                        :class="{ 'opacity-70': sabrFixed[param] }"
-                      />
-                      <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
+                  <label class="block text-xs text-[var(--text-muted)] mb-2">{{ selectedModel }} Parameters</label>
+
+                  <template v-if="isSabrModel">
+                    <div class="space-y-2">
+                      <div v-for="param in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])" :key="param" class="flex items-center gap-2">
+                        <label class="w-10 text-xs font-mono text-[var(--text-secondary)] select-none" :for="'fx-sabr-' + param">{{ param === 'alpha' ? 'α' : param === 'beta' ? 'β' : param === 'rho' ? 'ρ' : 'ν' }}</label>
                         <input
-                          v-model="sabrFixed[param]"
-                          type="checkbox"
-                          class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
+                          :id="'fx-sabr-' + param"
+                          v-model.number="sabrInitial[param]"
+                          type="number"
+                          step="0.01"
+                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
+                          :class="{ 'opacity-70': sabrFixed[param] }"
                         />
-                        <span class="text-[10px] text-[var(--text-muted)]">fix</span>
-                      </label>
+                        <label class="flex items-center gap-1 cursor-pointer select-none" :title="'Fix ' + param + ' during calibration'">
+                          <input
+                            v-model="sabrFixed[param]"
+                            type="checkbox"
+                            class="w-3.5 h-3.5 rounded border-[var(--glass-border)] text-[var(--primary)] focus:ring-[var(--primary)] focus:ring-offset-0 cursor-pointer"
+                          />
+                          <span class="text-[10px] text-[var(--text-muted)]">fix</span>
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                  <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                    β=0 fixed → Normal SABR (Bachelier)
-                  </p>
-                  <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
-                    β=1 fixed → Lognormal SABR (Black-Scholes)
-                  </p>
+                    <p v-if="sabrFixed.beta && sabrInitial.beta === 0" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                      β=0 fixed → Normal SABR (Bachelier)
+                    </p>
+                    <p v-else-if="sabrFixed.beta && sabrInitial.beta === 1" class="text-[10px] text-[var(--accent)] mt-1.5 italic">
+                      β=1 fixed → Lognormal SABR (Black-Scholes)
+                    </p>
+                  </template>
+
+                  <template v-else>
+                    <div class="space-y-2">
+                      <div v-for="def in activeModelParamDefs" :key="def.key" class="flex items-center gap-2">
+                        <label class="w-12 text-xs font-mono text-[var(--text-secondary)] select-none truncate" :for="'fx-mp-' + def.key" :title="def.key">{{ def.symbol }}</label>
+                        <input
+                          :id="'fx-mp-' + def.key"
+                          v-model.number="modelParams[def.key]"
+                          type="number"
+                          :step="def.step"
+                          class="flex-1 px-2 py-1 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-xs font-mono focus:outline-none focus:ring-1 focus:ring-[var(--primary)] w-0"
+                        />
+                      </div>
+                    </div>
+                    <p class="text-[10px] text-[var(--text-muted)] mt-1.5 italic">
+                      Smile exploration — calibration available for SABR
+                    </p>
+                  </template>
                 </div>
               </div>
             </div>
@@ -1463,7 +1635,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
           <div v-if="!calibrationResult && activeTab === 'fx' && fxQuotes.length > 0" class="glass-card p-6 mt-6 text-center py-8">
             <i class="fas fa-chart-line text-3xl text-[var(--text-muted)] mb-3"></i>
             <p class="text-sm text-[var(--text-muted)]">
-              Click <strong>Calibrate</strong> to view delta-strike volatilities &amp; SABR smile charts
+              Click <strong>Calibrate</strong> to view delta-strike volatilities &amp; smile charts
             </p>
           </div>
 
@@ -1475,7 +1647,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                 Calibration Result
               </h3>
               <div class="flex items-center gap-4">
-                <!-- SABR param tabs -->
+                <!-- Calibration param tabs -->
                 <div v-if="activeTab === 'swaption' && calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
                   <button
                     v-for="p in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])"
@@ -1534,7 +1706,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
             <template v-if="activeTab === 'swaption'">
               <!-- Parameter Matrix -->
               <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="overflow-x-auto mb-4">
-                <table class="w-full border-collapse" aria-label="SABR parameter matrix" role="grid">
+                <table class="w-full border-collapse" aria-label="Calibration parameter matrix" role="grid">
                   <thead>
                     <tr>
                       <th class="sticky left-0 z-10 py-2 px-3 text-xs font-medium text-[var(--text-muted)] bg-[var(--glass-bg)] border-b border-r border-[var(--glass-border)]">
@@ -1606,24 +1778,19 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                     </button>
                   </div>
 
-                  <!-- Calibrated SABR parameters -->
+                  <!-- Calibrated parameters -->
                   <div v-if="selectedCellParams" class="flex flex-wrap gap-2 mb-4">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&alpha;</span> {{ selectedCellParams.alpha.toFixed(4) }}
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&beta;</span> {{ selectedCellParams.beta.toFixed(4) }}
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&rho;</span> {{ selectedCellParams.rho.toFixed(4) }}
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&nu;</span> {{ selectedCellParams.nu.toFixed(4) }}
+                    <span
+                      v-for="(value, key) in selectedCellParams"
+                      :key="key"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]"
+                    >
+                      <span class="text-[var(--primary)] font-semibold">{{ key }}</span> {{ Number(value).toFixed(4) }}
                     </span>
                   </div>
 
-                  <!-- Smile & PDF charts (only when SABR params are available) -->
-                  <div v-if="selectedCellParams" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- Smile & PDF charts -->
+                  <div v-if="selectedCellParams || !isSabrModel" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <h5 class="text-xs font-medium text-[var(--text-muted)] mb-2">Smile</h5>
                       <div class="chart-wrapper">
@@ -1679,7 +1846,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                     </div>
                     <p class="mt-2 text-[10px] text-[var(--text-muted)]">
                       <i class="fas fa-info-circle mr-1"></i>
-                      Sensitivity of model vol (% units) to each SABR parameter.
+                      Sensitivity of model vol (% units) to each calibrated parameter.
                     </p>
                   </div>
                 </div>
@@ -1731,7 +1898,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
               </div>
 
               <!-- FX Row Detail -->
-              <template v-if="selectedFxTenor && selectedFxParams">
+              <template v-if="selectedFxTenor && (selectedFxParams || !isSabrModel)">
                 <div class="border-t border-[var(--glass-border)] pt-4">
                   <div class="flex items-center justify-between mb-3">
                     <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -1751,19 +1918,14 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                     </button>
                   </div>
 
-                  <!-- Calibrated SABR parameters -->
-                  <div class="flex flex-wrap gap-2 mb-4">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&alpha;</span> {{ selectedFxParams.alpha.toFixed(4) }}
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&beta;</span> {{ selectedFxParams.beta.toFixed(4) }}
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&rho;</span> {{ selectedFxParams.rho.toFixed(4) }}
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]">
-                      <span class="text-[var(--primary)] font-semibold">&nu;</span> {{ selectedFxParams.nu.toFixed(4) }}
+                  <!-- Calibrated parameters -->
+                  <div v-if="selectedFxParams" class="flex flex-wrap gap-2 mb-4">
+                    <span
+                      v-for="(value, key) in selectedFxParams"
+                      :key="key"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-[var(--surface)] text-[var(--text-primary)]"
+                    >
+                      <span class="text-[var(--primary)] font-semibold">{{ key }}</span> {{ Number(value).toFixed(4) }}
                     </span>
                   </div>
 
@@ -1824,7 +1986,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                     </div>
                     <p class="mt-2 text-[10px] text-[var(--text-muted)]">
                       <i class="fas fa-info-circle mr-1"></i>
-                      Sensitivity of model vol (% units) to each SABR parameter.
+                      Sensitivity of model vol (% units) to each calibrated parameter.
                     </p>
                   </div>
                 </div>
@@ -1833,7 +1995,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                 <div class="border-t border-[var(--glass-border)] pt-4 text-center py-6">
                   <p class="text-sm text-[var(--text-muted)]">
                     <i class="fas fa-mouse-pointer mr-1"></i>
-                    Select a row to view calibrated SABR parameters &amp; smile chart
+                    Select a row to view calibrated parameters &amp; smile chart
                   </p>
                 </div>
               </template>
