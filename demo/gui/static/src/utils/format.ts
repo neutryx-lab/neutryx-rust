@@ -143,3 +143,41 @@ export function escapeHtml(str: unknown): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+/**
+ * Parse a tenor string (e.g. "TD", "1D", "1W", "3M", "1Y", "5Y")
+ * relative to a base date and return an ISO date string (YYYY-MM-DD).
+ * Returns null if the input is not a recognised tenor.
+ */
+export function parseTenorToDate(tenor: string, base?: Date): string | null {
+  const t = tenor.trim().toUpperCase();
+  const ref = base ?? new Date();
+  const result = new Date(ref);
+
+  if (t === 'TD' || t === 'TODAY' || t === 'T') {
+    return result.toISOString().split('T')[0];
+  }
+
+  const match = t.match(/^(\d+)\s*(D|W|M|Y)$/);
+  if (!match) return null;
+
+  const n = parseInt(match[1], 10);
+  const unit = match[2];
+
+  switch (unit) {
+    case 'D':
+      result.setDate(result.getDate() + n);
+      break;
+    case 'W':
+      result.setDate(result.getDate() + n * 7);
+      break;
+    case 'M':
+      result.setMonth(result.getMonth() + n);
+      break;
+    case 'Y':
+      result.setFullYear(result.getFullYear() + n);
+      break;
+  }
+
+  return result.toISOString().split('T')[0];
+}

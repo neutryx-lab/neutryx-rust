@@ -18,33 +18,46 @@ export function useInstruments() {
   let skipWatcher = false;
 
   /**
+   * Build default parameter values from an instrument's param definitions.
+   * Uses the API-provided `defaultValue` for each param, with sensible
+   * fallbacks for date fields (today / today + 5Y).
+   */
+  function buildDefaults(inst: (typeof store.instruments)[number]): Record<string, string | number> {
+    const params: Record<string, string | number> = {};
+    const today = new Date();
+
+    for (const p of [...inst.requiredParams, ...(inst.optionalParams ?? [])]) {
+      if (p.defaultValue !== undefined && p.defaultValue !== null) {
+        params[p.name] = p.defaultValue as string | number;
+      } else if (p.fieldType === 'date') {
+        // Sensible date fallbacks: first date = today, second = today + 5Y
+        if (p.name.toLowerCase().includes('end') || p.name.toLowerCase().includes('maturity')) {
+          const future = new Date(today);
+          future.setFullYear(future.getFullYear() + 5);
+          params[p.name] = future.toISOString().split('T')[0];
+        } else {
+          params[p.name] = today.toISOString().split('T')[0];
+        }
+      }
+    }
+    return params;
+  }
+
+  /**
    * Fetch the instrument catalogue from the API, populate the store,
-   * and auto-select IRS with USD OIS 5Y defaults when available.
+   * and auto-select the first instrument with API-provided defaults.
    */
   async function loadInstruments(): Promise<void> {
     try {
       const data = await fetchInstruments();
       store.instruments = data.instruments || [];
 
-      // Auto-select IRS and set USD OIS 5Y defaults
-      const irs = store.instruments.find((inst) =>
-        ['IRS', 'irs'].includes(inst.instrumentType || inst.id || inst.type || ''),
-      );
-      if (irs) {
+      // Auto-select first instrument (typically IRS) and apply API defaults
+      const first = store.instruments[0];
+      if (first) {
         skipWatcher = true;
-        store.selectedInstrumentId = irs.instrumentType || irs.id || irs.type || 'IRS';
-
-        const today = new Date();
-        const fiveYears = new Date(today);
-        fiveYears.setFullYear(fiveYears.getFullYear() + 5);
-
-        store.instrumentParams = {
-          notional: 1_000_000,
-          currency: 'USD',
-          startDate: today.toISOString().split('T')[0],
-          endDate: fiveYears.toISOString().split('T')[0],
-          fixedRate: 0.04,
-        };
+        store.selectedInstrumentId = first.instrumentType || first.id || first.type || '';
+        store.instrumentParams = buildDefaults(first);
         skipWatcher = false;
       }
     } catch (error) {
@@ -64,9 +77,11 @@ export function useInstruments() {
 
   /**
    * Clear parameters, expanded trade, edits, and pricing results.
+   * If the newly selected instrument has defaultValues, apply them.
    */
   function resetDependentState(): void {
-    store.instrumentParams = {};
+    const inst = store.selectedInstrument;
+    store.instrumentParams = inst ? buildDefaults(inst) : {};
     store.expandedTrade = null;
     store.editedCashflows = {};
     store.pricingResult = null;

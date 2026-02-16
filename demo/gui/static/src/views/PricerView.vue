@@ -24,7 +24,7 @@ import { fetchExoticProducts, priceExotic } from '@/services/api';
 
 const store = usePricerStore();
 const { loadInstruments } = useInstruments();
-const { expandCashflows } = usePricer();
+usePricer();
 
 // ---------------------------------------------------------------------------
 // Tab state
@@ -49,11 +49,8 @@ const selectedProduct = computed(() =>
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
-onMounted(async () => {
-  await loadInstruments();
-  if (store.selectedInstrumentId && store.instruments.length > 0) {
-    expandCashflows();
-  }
+onMounted(() => {
+  loadInstruments();
 });
 
 // ---------------------------------------------------------------------------
