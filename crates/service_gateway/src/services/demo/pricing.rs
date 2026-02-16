@@ -11,8 +11,9 @@ use infra_domain::{
             Bond, BondType, CapFloor, CapFloorType, Cds, CdsIndex, CdsOption, CommodityAsianOption,
             CommodityForward, CommoditySwap, CommodityType, CommodityVanillaOption, CreditEvent,
             CrossCurrencyBasisSwap, Deposit, EnergyType, EquityBarrierOption, EquityForward,
-            EquityReturnType, EquitySwap, EquityUnderlying, EquityVanillaOption, ExerciseStyle,
-            Fra, Frn, Futures, FxBarrierOption, FxForward, FxSpot, FxSwap, FxVanillaOption,
+            CmsSwap, EquityReturnType, EquitySwap, EquityUnderlying, EquityVanillaOption,
+            ExerciseStyle, Fra, Frn, Futures, FxBarrierOption, FxForward, FxSpot, FxSwap,
+            FxVanillaOption,
             InflationSwap, InstrumentExpander, InterestRateSwap, LookbackOption, LookbackType,
             MetalType, MonitoringFrequency, NotionalSchedule, NtdBasket, Ois, PayerReceiver,
             QuantityUnit, SpreadOption, SwapType, Swaption, XccyBasisConvention, XccyLeg,
@@ -104,7 +105,7 @@ fn parse_currency_pair(s: &str) -> Result<CurrencyPair, ServerError> {
 fn compute_tenor(start: Date, end: Date) -> Tenor {
     let days = end - start;
     let months = (days as f64 / 30.44).round() as u32;
-    Tenor::months(months.max(1))
+    Tenor::months(months.max(1) as i32)
 }
 
 /// Default fixed/float payment frequencies for a given rate index.
@@ -219,6 +220,7 @@ fn rate_index_to_curve_name(ri: RateIndex) -> CurveName {
         RateIndex::Tonar => CurveName::Tonar,
         RateIndex::Sonia => CurveName::Sonia,
         RateIndex::Saron => CurveName::Custom("SARON"),
+        _ => CurveName::Custom("UNKNOWN"),
     }
 }
 

@@ -219,7 +219,7 @@ impl InstrumentExpander for InstrumentDefinition {
         self.validate()?;
         dispatch_expand!(self, trade_id, valuation_date, conventions;
             Deposit, Fra, Futures, InterestRateSwap, BasisSwap, Ois,
-            Swaption, CapFloor, Frn, CmsSwap, InflationSwap,
+            Swaption, CapFloor, Bond, Frn, CmsSwap, InflationSwap,
             FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap, CrossCurrencyBasisSwap,
             EquityForward, EquityVanillaOption, EquityBarrierOption, AsianOption, LookbackOption, EquitySwap, BasketOption,
             Cds, CdsIndex, CdsOption, NtdBasket,

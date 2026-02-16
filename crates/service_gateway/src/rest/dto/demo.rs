@@ -944,7 +944,7 @@ pub type SabrSmileResponse = SmileResponse;
 ///
 /// `model` selects the model ("sabr", "svi", "ssvi", etc.).
 /// `params` carries model-specific parameters as a JSON object.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct VolSmileRequest {
     /// Model identifier (e.g., "sabr", "svi", "ssvi", "vanna_volga",

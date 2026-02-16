@@ -8,7 +8,7 @@ use crate::{
     market::{
         convention::ConventionSet,
         instrument::{
-            BasisSwap, CapFloor, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
+            BasisSwap, Bond, CapFloor, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
             InstrumentError, InterestRateSwap, Ois, Swaption,
         },
         Currency, RateIndex,
@@ -293,6 +293,53 @@ impl InstrumentExpander for CapFloor {
         );
 
         Ok(Trade::new(trade_id, vec![leg], TradeType::CapFloor))
+    }
+}
+
+impl InstrumentExpander for Bond {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let coupon_cf = Cashflow::new(
+            CashflowType::Coupon,
+            self.maturity,
+            self.start_date,
+            self.maturity,
+            1.0,
+            self.notional,
+            Payoff::fixed(self.coupon_rate),
+            self.currency,
+        );
+
+        let principal_cf = Cashflow::new(
+            CashflowType::Principal,
+            self.maturity,
+            self.maturity,
+            self.maturity,
+            0.0,
+            self.notional,
+            Payoff::fixed(1.0),
+            self.currency,
+        );
+
+        let leg = Leg::new(
+            vec![coupon_cf, principal_cf],
+            Direction::Receiver,
+            LegType::Fixed,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![leg],
+            TradeType::Bond {
+                issuer_id: Some(self.issuer.clone().into()),
+                seniority: None,
+            },
+        ))
     }
 }
 

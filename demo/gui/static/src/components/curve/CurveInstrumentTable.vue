@@ -17,8 +17,8 @@ const emit = defineEmits<{
 
 <template>
   <div class="glass-card px-3 py-4">
-    <div class="section-header" style="margin-top: 0">
-      Instruments
+    <div class="section-header" style="margin-top: 0; display: flex; justify-content: space-between; align-items: center;">
+      <span>Instruments</span>
       <span v-if="instruments.length > 0" class="toggle-group">
         <button class="toggle-btn" @click="emit('toggleAll', true)">All</button>
         <button class="toggle-btn" @click="emit('toggleAll', false)">None</button>
@@ -38,6 +38,7 @@ const emit = defineEmits<{
         v-for="(inst, idx) in instruments"
         :key="inst.id"
         :class="['instrument-row', { disabled: !inst.enabled }, inst.type]"
+        style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;"
       >
         <input
           type="checkbox"
@@ -45,7 +46,7 @@ const emit = defineEmits<{
           class="checkbox"
           @change="emit('toggle', idx)"
         >
-        <span class="instrument-id" :title="inst.id">{{ inst.id }}</span>
+        <span class="instrument-id" style="flex: 1; min-width: 0;" :title="inst.id">{{ inst.id }}</span>
         <span v-if="inst.type === 'event'" class="type-badge event-badge">
           {{ inst.endDate ? 'TURN' : 'JUMP' }}
         </span>
@@ -129,7 +130,6 @@ const emit = defineEmits<{
 <style scoped>
 /* ─── Header toggle buttons ─── */
 .toggle-group {
-  float: right;
   display: inline-flex;
   gap: 4px;
 }

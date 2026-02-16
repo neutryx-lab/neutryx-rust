@@ -1146,7 +1146,7 @@ impl VolcubeService {
         for i in 0..n {
             let offset_bp = -range + i as f64 * step;
             let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
-            let vol = vg_implied_vol(&vg, forward, strike, expiry, 0.0).unwrap_or(0.0);
+            let vol = vg_implied_vol(&vg, forward, strike, expiry).unwrap_or(0.0);
             offsets.push(offset_bp);
             strikes.push(strike);
             vols.push(vol);
