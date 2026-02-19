@@ -72,7 +72,7 @@ impl MarketQuote {
     /// Calculate the mid price if both bid and ask are available.
     pub fn mid(&self) -> Option<f64> {
         match (self.bid, self.ask) {
-            (Some(b), Some(a)) => Some((b + a) / 2.0),
+            (Some(b), Some(a)) => Some(f64::midpoint(b, a)),
             _ => None,
         }
     }
