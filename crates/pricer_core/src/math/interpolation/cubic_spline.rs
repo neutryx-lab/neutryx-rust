@@ -157,7 +157,7 @@ impl<T: Float> CubicSpline<T> {
         let mut lo = 0;
         let mut hi = n - 1;
         while lo < hi - 1 {
-            let mid = (lo + hi) / 2;
+            let mid = usize::midpoint(lo, hi);
             if x < self.knots_x[mid] {
                 hi = mid;
             } else {

@@ -307,7 +307,7 @@ impl<T: Float> MonotoneConvexInterpolator<T> {
         let mut lo = 0;
         let mut hi = n - 1;
         while lo < hi - 1 {
-            let mid = (lo + hi) / 2;
+            let mid = usize::midpoint(lo, hi);
             if t < self.times[mid] {
                 hi = mid;
             } else {
