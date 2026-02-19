@@ -17,9 +17,14 @@ export interface CurveConfig {
   calibrationMethod: string;
   interpolation: string;
   allowExtrapolation: boolean;
-  curveType?: 'rate' | 'credit';
+  curveType?: 'rate' | 'credit' | 'fx';
   discountCurve?: string;
   recoveryRate?: number;
+  currencyPair?: string;
+  fxCurveMethod?: 'flat' | 'irp_generic';
+  spot?: number;
+  domesticCurve?: string;
+  foreignCurve?: string;
 }
 
 export interface CurvesData {
@@ -52,6 +57,8 @@ export interface RateData {
   reference_date: string;
   instruments: RateInstrument[];
   recovery_rate?: number;
+  currency_pair?: string;
+  spot?: number;
 }
 
 export interface DisplayInstrument {
@@ -92,6 +99,7 @@ export interface CurvePillar {
   forward_rate: number;
   survival_probability?: number;
   hazard_rate?: number;
+  fx_forward?: number;
 }
 
 export interface ForwardRatePoint {
@@ -106,6 +114,7 @@ export interface ChartGridPoint {
   discount_factor: number;
   forward_rate: number;
   label: string;
+  fx_forward?: number;
 }
 
 export interface JacobianData {
@@ -128,6 +137,8 @@ export interface BuildResult {
   bootstrap_method?: string;
   jacobian?: JacobianData;
   curve_type?: string;
+  spot?: number;
+  currency_pair?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -193,6 +204,7 @@ function buildInstrumentId(type: string, tenor: string, currency: string): strin
     'swap': 'Swap',
     'bond': 'Bond',
     'cds': 'CDS',
+    'fx_forward': 'FxFwd',
   };
   const typeLabel = typeMap[type] || type.toUpperCase();
   return `${currency}-${typeLabel}-${tenor}`;
@@ -266,6 +278,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     selectedCurve.value?.curveType === 'credit'
   );
 
+  const isFxCurve = computed(() =>
+    selectedCurve.value?.curveType === 'fx'
+  );
+
   const summaryStats = computed(() => {
     const eventCount = enabledInstruments.value.filter(i => i.type === 'event').length;
 
@@ -279,6 +295,11 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     if (isCreditCurve.value) {
       const recovery = selectedCurve.value?.recoveryRate ?? 0.40;
       stats.push({ label: 'Recovery', value: `${(recovery * 100).toFixed(0)}%`, icon: 'fa-shield-alt', color: '#ef4444' });
+    }
+
+    if (isFxCurve.value && selectedCurve.value) {
+      stats.push({ label: 'Spot', value: (selectedCurve.value.spot ?? 0).toFixed(4), icon: 'fa-exchange-alt', color: '#06b6d4' });
+      stats.push({ label: 'Pair', value: selectedCurve.value.currencyPair ?? '-', icon: 'fa-coins', color: '#f97316' });
     }
 
     return stats;
@@ -332,9 +353,13 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       // Convert rate index to file name (e.g., "USD-SOFR" -> "usd-sofr")
       const fileName = rateIndex.toLowerCase().replace('_', '-');
 
-      // Credit curves load from /data/input/credit/, rate curves from /data/input/rates/
+      // Credit curves load from /data/input/credit/, FX from /data/input/fx/, rate curves from /data/input/rates/
       const isCredit = selectedCurve.value?.curveType === 'credit';
-      const basePath = isCredit ? '/data/input/credit' : '/data/input/rates';
+      const isFx = selectedCurve.value?.curveType === 'fx';
+      let basePath: string;
+      if (isCredit) basePath = '/data/input/credit';
+      else if (isFx) basePath = '/data/input/fx';
+      else basePath = '/data/input/rates';
 
       const response = await fetch(`${basePath}/${fileName}.json`);
       if (!response.ok) throw new Error(`Failed to load rate data for ${rateIndex}`);
@@ -387,6 +412,19 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
           enabled: true,
           eventDate: rateInst.event_date,
           endDate: rateInst.end_date,
+        });
+      } else if (rateInst.type === 'fx_forward') {
+        const tenor = rateInst.tenor || '';
+        const pair = rateData.value.currency_pair || '';
+        const id = `${pair}-FxFwd-${tenor}`;
+        displayInstruments.push({
+          id,
+          type: 'fx_forward',
+          tenor,
+          tenorYears: rateInst.tenor_years || 0,
+          rate: rateInst.rate || 0,
+          originalRate: rateInst.rate || 0,
+          enabled: defaultEnabledIds.has(id),
         });
       } else {
         // Handle regular instruments (deposit, ois, fra, bond, etc.)
@@ -452,14 +490,22 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
   // ---------- Build ----------
 
   async function buildCurve() {
-    if (!selectedCurve.value || enabledInstruments.value.length === 0) return;
+    if (!selectedCurve.value) return;
+    // IRP FX curves have no instruments — allow empty for those
+    if (enabledInstruments.value.length === 0 && selectedCurve.value.fxCurveMethod !== 'irp_generic') return;
 
     isBuilding.value = true;
     buildError.value = null;
     try {
       // Build instrument payload including events
       const instrumentPayload = enabledInstruments.value.map(inst => {
-        if (inst.type === 'event') {
+        if (inst.type === 'fx_forward') {
+          return {
+            instrument_type: 'fx_forward',
+            tenor: inst.tenor,
+            rate: inst.rate,  // raw pips value
+          };
+        } else if (inst.type === 'event') {
           const payload: Record<string, unknown> = {
             instrument_type: 'event',
             tenor: '',
@@ -503,14 +549,18 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
         }
       }
 
+      const isFx = selectedCurve.value.curveType === 'fx';
       const requestBody: Record<string, unknown> = {
         index: selectedCurve.value.rateIndex,
-        currency: rateData.value?.currency || 'USD',
-        reference_date: rateData.value?.reference_date,
+        currency: rateData.value?.currency || selectedCurve.value.currencyPair?.slice(0, 3) || 'USD',
+        reference_date: rateData.value?.reference_date || new Date().toISOString().slice(0, 10),
         instruments: instrumentPayload,
-        bootstrap_method: calibrationMethod.value,
-        interpolation: interpolation.value,
       };
+      // FX curves don't use bootstrap/interpolation — omit to avoid unknown variant error
+      if (!isFx) {
+        requestBody.bootstrap_method = calibrationMethod.value;
+        requestBody.interpolation = interpolation.value;
+      }
 
       // Tension spline parameter
       if (interpolation.value === 'tension_spline') {
@@ -526,6 +576,33 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
         requestBody.curve_type = 'credit';
         requestBody.discount_curve_id = discountCurveId;
         requestBody.recovery_rate = selectedCurve.value.recoveryRate ?? 0.40;
+      }
+
+      if (selectedCurve.value.curveType === 'fx') {
+        requestBody.curve_type = 'fx';
+        requestBody.currency_pair = selectedCurve.value.currencyPair;
+        requestBody.spot = selectedCurve.value.spot;
+        requestBody.fx_curve_method = selectedCurve.value.fxCurveMethod;
+
+        // For IRP method, auto-build domestic and foreign curves
+        if (selectedCurve.value.fxCurveMethod === 'irp_generic') {
+          if (selectedCurve.value.domesticCurve) {
+            let domId = builtCurveIds.value[selectedCurve.value.domesticCurve];
+            if (!domId) {
+              domId = await autoBuildDiscountCurve(selectedCurve.value.domesticCurve);
+              if (!domId) throw new Error(`Failed to auto-build domestic curve "${selectedCurve.value.domesticCurve}"`);
+            }
+            requestBody.domestic_curve_id = domId;
+          }
+          if (selectedCurve.value.foreignCurve) {
+            let forId = builtCurveIds.value[selectedCurve.value.foreignCurve];
+            if (!forId) {
+              forId = await autoBuildDiscountCurve(selectedCurve.value.foreignCurve);
+              if (!forId) throw new Error(`Failed to auto-build foreign curve "${selectedCurve.value.foreignCurve}"`);
+            }
+            requestBody.foreign_curve_id = forId;
+          }
+        }
       }
 
       const response = await fetch('/api/curves/build', {
@@ -689,6 +766,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     instruments.value[index].rate = parseFloat(value) / 10000;
   }
 
+  function updatePips(index: number, value: string) {
+    instruments.value[index].rate = parseFloat(value);
+  }
+
   function updateCoupon(index: number, value: string) {
     // Convert percentage to decimal (e.g., 4.5% = 0.045)
     instruments.value[index].couponRate = parseFloat(value) / 100;
@@ -787,6 +868,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     enabledInstruments,
     hasChanges,
     isCreditCurve,
+    isFxCurve,
     summaryStats,
     curveTableRows,
     builtCurveIds,
@@ -799,6 +881,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     exportRates,
     updateRate,
     updateSpike,
+    updatePips,
     updateCoupon,
     toggleEnabled,
     toggleAll,

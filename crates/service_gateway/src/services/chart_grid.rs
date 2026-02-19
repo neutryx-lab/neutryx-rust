@@ -5,7 +5,7 @@ use infra_domain::{
     market::RateIndex,
     time::{Date, DayCounter},
 };
-use pricer_models::market::YieldCurve;
+use pricer_models::market::{fx::FxCurve, YieldCurve};
 
 use crate::rest::dto::ChartGridPoint;
 
@@ -136,6 +136,7 @@ fn build_chart_grid<C: YieldCurve<f64>>(
                 discount_factor: df,
                 forward_rate: fwd,
                 label: label_fn(*date),
+                fx_forward: None,
             })
         })
         .collect()
@@ -164,4 +165,58 @@ pub(crate) fn generate_chart_grids<C: YieldCurve<f64>>(
         day_counter,
     );
     (short_term_grid, long_term_grid)
+}
+
+/// Build `ChartGridPoint` vec from grid dates for an FX forward curve.
+fn build_fx_chart_grid<C: FxCurve<f64>>(
+    ref_date: NaiveDate,
+    dates: &[NaiveDate],
+    fx_curve: &C,
+    label_fn: fn(NaiveDate) -> String,
+) -> Vec<ChartGridPoint> {
+    dates
+        .iter()
+        .filter_map(|date| {
+            let time = MODEL_DAY_COUNTER.year_fraction_from_days((*date - ref_date).num_days());
+            let fwd = fx_curve.forward_rate(time).ok()?;
+            Some(ChartGridPoint {
+                date: date.format("%Y-%m-%d").to_string(),
+                time,
+                discount_factor: 0.0,
+                forward_rate: fwd,
+                label: label_fn(*date),
+                fx_forward: Some(fwd),
+            })
+        })
+        .collect()
+}
+
+/// Generate short-term and long-term chart grids for an FX forward curve.
+pub(crate) fn generate_fx_chart_grids<C: FxCurve<f64>>(
+    ref_date: NaiveDate,
+    fx_curve: &C,
+    max_time: f64,
+) -> (Vec<ChartGridPoint>, Vec<ChartGridPoint>) {
+    let short_term_dates = generate_short_term_dates(ref_date);
+    // Filter short-term dates to max_time.
+    let short_term_dates: Vec<_> = short_term_dates
+        .into_iter()
+        .filter(|d| {
+            let t = MODEL_DAY_COUNTER.year_fraction_from_days((*d - ref_date).num_days());
+            t <= max_time
+        })
+        .collect();
+    let short_grid = build_fx_chart_grid(ref_date, &short_term_dates, fx_curve, format_short_term_label);
+
+    let long_term_dates = generate_long_term_dates(ref_date);
+    let long_term_dates: Vec<_> = long_term_dates
+        .into_iter()
+        .filter(|d| {
+            let t = MODEL_DAY_COUNTER.year_fraction_from_days((*d - ref_date).num_days());
+            t <= max_time
+        })
+        .collect();
+    let long_grid = build_fx_chart_grid(ref_date, &long_term_dates, fx_curve, format_long_term_label);
+
+    (short_grid, long_grid)
 }

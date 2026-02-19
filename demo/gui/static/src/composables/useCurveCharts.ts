@@ -47,7 +47,7 @@ export function useCurveCharts() {
 
   // ------ Chart option factory ------
 
-  function createChartOptions(yAxisLabel: string) {
+  function createChartOptions(yAxisLabel: string, isFx = false) {
     const cc = getChartColors();
     return {
       responsive: true,
@@ -62,7 +62,9 @@ export function useCurveCharts() {
             title: (items: { label: string }[]) => items[0].label,
             label: (item: { raw: unknown }) => {
               const value = item.raw as number;
-              if (chartType.value === 'discount_factor') {
+              if (isFx) {
+                return `FX Forward: ${value.toFixed(4)}`;
+              } else if (chartType.value === 'discount_factor') {
                 return `DF: ${value.toFixed(6)}`;
               } else {
                 return `Forward Rate: ${value.toFixed(4)}%`;
@@ -95,14 +97,17 @@ export function useCurveCharts() {
     color: string,
     milestones: { time: number; term: string }[],
     interpolationValue: string,
+    isFx = false,
   ): Chart | null {
     if (!canvas || grid.length === 0) return existing;
     if (existing) existing.destroy();
 
     const labels = grid.map(pt => pt.label);
-    const data = chartType.value === 'forward_rate'
-      ? grid.map(pt => pt.forward_rate * 100)
-      : grid.map(pt => pt.discount_factor);
+    const data = isFx
+      ? grid.map(pt => pt.forward_rate)
+      : chartType.value === 'forward_rate'
+        ? grid.map(pt => pt.forward_rate * 100)
+        : grid.map(pt => pt.discount_factor);
 
     // Compute milestone index -> [dateLabel, term]
     const milestoneAt = new Map<number, string[]>();
@@ -116,7 +121,7 @@ export function useCurveCharts() {
       milestoneAt.set(bestIdx, [grid[bestIdx].label, ms.term]);
     }
 
-    const opts = createChartOptions(label);
+    const opts = createChartOptions(label, isFx);
     const cc = getChartColors();
     (opts.scales.x as Record<string, unknown>).ticks = {
       autoSkip: false,
@@ -159,25 +164,38 @@ export function useCurveCharts() {
 
     const shortGrid = result.short_term_grid || [];
     const longGrid = result.long_term_grid || [];
+    const isFx = result.curve_type === 'fx';
 
-    const chartLabels: Record<string, string> = {
-      discount_factor: 'Discount Factor',
-      forward_rate: 'Forward Rate (%)',
-    };
-    const chartColors: Record<string, string> = {
-      discount_factor: '#6366f1',
-      forward_rate: '#10b981',
-    };
+    if (isFx) {
+      const fxLabel = 'FX Forward Rate';
+      const fxColor = '#06b6d4'; // cyan
 
-    const currentLabel = chartLabels[chartType.value];
-    const currentColor = chartColors[chartType.value];
+      shortTermChartInstance = renderChart(
+        shortTermChartCanvas.value, shortTermChartInstance, shortGrid, fxLabel, fxColor, SHORT_MILESTONES, interpolationValue, true,
+      );
+      longTermChartInstance = renderChart(
+        longTermChartCanvas.value, longTermChartInstance, longGrid, fxLabel, fxColor, LONG_MILESTONES, interpolationValue, true,
+      );
+    } else {
+      const chartLabels: Record<string, string> = {
+        discount_factor: 'Discount Factor',
+        forward_rate: 'Forward Rate (%)',
+      };
+      const chartColors: Record<string, string> = {
+        discount_factor: '#6366f1',
+        forward_rate: '#10b981',
+      };
 
-    shortTermChartInstance = renderChart(
-      shortTermChartCanvas.value, shortTermChartInstance, shortGrid, currentLabel, currentColor, SHORT_MILESTONES, interpolationValue,
-    );
-    longTermChartInstance = renderChart(
-      longTermChartCanvas.value, longTermChartInstance, longGrid, currentLabel, currentColor, LONG_MILESTONES, interpolationValue,
-    );
+      const currentLabel = chartLabels[chartType.value];
+      const currentColor = chartColors[chartType.value];
+
+      shortTermChartInstance = renderChart(
+        shortTermChartCanvas.value, shortTermChartInstance, shortGrid, currentLabel, currentColor, SHORT_MILESTONES, interpolationValue,
+      );
+      longTermChartInstance = renderChart(
+        longTermChartCanvas.value, longTermChartInstance, longGrid, currentLabel, currentColor, LONG_MILESTONES, interpolationValue,
+      );
+    }
   }
 
   // ------ Cleanup ------

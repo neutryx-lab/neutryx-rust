@@ -1,0 +1,17 @@
+{
+  "index": "EURJPY-FX",
+  "currency": "EUR",
+  "currency_pair": "EURJPY",
+  "reference_date": "2026-01-29",
+  "spot": 162.21,
+  "instruments": [
+    { "type": "fx_forward", "tenor": "1W",  "tenor_years": 0.01923, "rate": 8.5 },
+    { "type": "fx_forward", "tenor": "1M",  "tenor_years": 0.08333, "rate": 35.2 },
+    { "type": "fx_forward", "tenor": "2M",  "tenor_years": 0.16667, "rate": 72.5 },
+    { "type": "fx_forward", "tenor": "3M",  "tenor_years": 0.25,    "rate": 110.8 },
+    { "type": "fx_forward", "tenor": "6M",  "tenor_years": 0.5,     "rate": 225.5 },
+    { "type": "fx_forward", "tenor": "9M",  "tenor_years": 0.75,    "rate": 345.2 },
+    { "type": "fx_forward", "tenor": "1Y",  "tenor_years": 1.0,     "rate": 468.5 },
+    { "type": "fx_forward", "tenor": "2Y",  "tenor_years": 2.0,     "rate": 958.2 }
+  ]
+}

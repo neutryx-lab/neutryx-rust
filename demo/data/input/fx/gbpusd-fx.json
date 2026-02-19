@@ -1,0 +1,17 @@
+{
+  "index": "GBPUSD-FX",
+  "currency": "GBP",
+  "currency_pair": "GBPUSD",
+  "reference_date": "2026-01-29",
+  "spot": 1.2650,
+  "instruments": [
+    { "type": "fx_forward", "tenor": "1W",  "tenor_years": 0.01923, "rate": -1.8 },
+    { "type": "fx_forward", "tenor": "1M",  "tenor_years": 0.08333, "rate": -5.2 },
+    { "type": "fx_forward", "tenor": "2M",  "tenor_years": 0.16667, "rate": -10.5 },
+    { "type": "fx_forward", "tenor": "3M",  "tenor_years": 0.25,    "rate": -16.2 },
+    { "type": "fx_forward", "tenor": "6M",  "tenor_years": 0.5,     "rate": -32.5 },
+    { "type": "fx_forward", "tenor": "9M",  "tenor_years": 0.75,    "rate": -48.8 },
+    { "type": "fx_forward", "tenor": "1Y",  "tenor_years": 1.0,     "rate": -65.2 },
+    { "type": "fx_forward", "tenor": "2Y",  "tenor_years": 2.0,     "rate": -125.5 }
+  ]
+}

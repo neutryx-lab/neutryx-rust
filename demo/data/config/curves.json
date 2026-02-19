@@ -276,6 +276,104 @@
       "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",
       "allowExtrapolation": true
+    },
+    {
+      "name": "EURUSD-FX",
+      "description": "EUR/USD FX forward curve from market forward points",
+      "rateIndex": "EURUSD-FX",
+      "curveType": "fx",
+      "currencyPair": "EURUSD",
+      "fxCurveMethod": "flat",
+      "spot": 1.0850,
+      "instruments": [
+        "EURUSD-FxFwd-1W", "EURUSD-FxFwd-1M", "EURUSD-FxFwd-2M",
+        "EURUSD-FxFwd-3M", "EURUSD-FxFwd-6M", "EURUSD-FxFwd-9M",
+        "EURUSD-FxFwd-1Y", "EURUSD-FxFwd-2Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "USDJPY-FX",
+      "description": "USD/JPY FX forward curve from market forward points",
+      "rateIndex": "USDJPY-FX",
+      "curveType": "fx",
+      "currencyPair": "USDJPY",
+      "fxCurveMethod": "flat",
+      "spot": 149.50,
+      "instruments": [
+        "USDJPY-FxFwd-1W", "USDJPY-FxFwd-1M", "USDJPY-FxFwd-2M",
+        "USDJPY-FxFwd-3M", "USDJPY-FxFwd-6M", "USDJPY-FxFwd-9M",
+        "USDJPY-FxFwd-1Y", "USDJPY-FxFwd-2Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "GBPUSD-FX",
+      "description": "GBP/USD FX forward curve from market forward points",
+      "rateIndex": "GBPUSD-FX",
+      "curveType": "fx",
+      "currencyPair": "GBPUSD",
+      "fxCurveMethod": "flat",
+      "spot": 1.2650,
+      "instruments": [
+        "GBPUSD-FxFwd-1W", "GBPUSD-FxFwd-1M", "GBPUSD-FxFwd-2M",
+        "GBPUSD-FxFwd-3M", "GBPUSD-FxFwd-6M", "GBPUSD-FxFwd-9M",
+        "GBPUSD-FxFwd-1Y", "GBPUSD-FxFwd-2Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "EURJPY-FX",
+      "description": "EUR/JPY FX forward curve from market forward points",
+      "rateIndex": "EURJPY-FX",
+      "curveType": "fx",
+      "currencyPair": "EURJPY",
+      "fxCurveMethod": "flat",
+      "spot": 162.21,
+      "instruments": [
+        "EURJPY-FxFwd-1W", "EURJPY-FxFwd-1M", "EURJPY-FxFwd-2M",
+        "EURJPY-FxFwd-3M", "EURJPY-FxFwd-6M", "EURJPY-FxFwd-9M",
+        "EURJPY-FxFwd-1Y", "EURJPY-FxFwd-2Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "EURUSD-IRP",
+      "description": "EUR/USD FX forward curve via Interest Rate Parity (USD-SOFR + EUR-ESTR)",
+      "rateIndex": "EURUSD-IRP",
+      "curveType": "fx",
+      "currencyPair": "EURUSD",
+      "fxCurveMethod": "irp_generic",
+      "spot": 1.0850,
+      "domesticCurve": "USD-SOFR",
+      "foreignCurve": "EUR-ESTR",
+      "instruments": [],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "USDJPY-IRP",
+      "description": "USD/JPY FX forward curve via Interest Rate Parity (JPY-TONA + USD-SOFR)",
+      "rateIndex": "USDJPY-IRP",
+      "curveType": "fx",
+      "currencyPair": "USDJPY",
+      "fxCurveMethod": "irp_generic",
+      "spot": 149.50,
+      "domesticCurve": "JPY-TONA",
+      "foreignCurve": "USD-SOFR",
+      "instruments": [],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
     }
   ]
 }

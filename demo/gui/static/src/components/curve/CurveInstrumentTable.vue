@@ -11,6 +11,7 @@ const emit = defineEmits<{
   toggleAll: [enabled: boolean];
   updateRate: [index: number, value: string];
   updateSpike: [index: number, value: string];
+  updatePips: [index: number, value: string];
   updateCoupon: [index: number, value: string];
 }>();
 </script>
@@ -52,6 +53,7 @@ const emit = defineEmits<{
         </span>
         <span v-else-if="inst.type === 'bond'" class="type-badge bond-badge">BOND</span>
         <span v-else-if="inst.type === 'cds'" class="type-badge cds-badge">CDS</span>
+        <span v-else-if="inst.type === 'fx_forward'" class="type-badge fwd-badge">FWD</span>
 
         <!-- Event fields -->
         <template v-if="inst.type === 'event'">
@@ -108,6 +110,20 @@ const emit = defineEmits<{
             @change="emit('updateSpike', idx, ($event.target as HTMLInputElement).value)"
           >
           <span class="field-unit">bp</span>
+        </template>
+
+        <!-- FX Forward fields -->
+        <template v-else-if="inst.type === 'fx_forward'">
+          <span class="field-label">Pips</span>
+          <input
+            type="number"
+            :value="inst.rate.toFixed(2)"
+            step="0.01"
+            class="input-field fwd-field"
+            title="Forward points (pips)"
+            @change="emit('updatePips', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="field-unit">pips</span>
         </template>
 
         <!-- Regular fields -->
@@ -184,6 +200,9 @@ const emit = defineEmits<{
 .instrument-row.cds {
   border-left: 2px solid #a855f7;
 }
+.instrument-row.fx_forward {
+  border-left: 2px solid #06b6d4;
+}
 
 .checkbox {
   width: 14px;
@@ -233,6 +252,10 @@ const emit = defineEmits<{
   background: rgba(168, 85, 247, 0.15);
   color: #a855f7;
 }
+.fwd-badge {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+}
 
 /* ─── Input fields (component-specific) ─── */
 .input-field {
@@ -277,6 +300,15 @@ const emit = defineEmits<{
 }
 .cds-field:focus {
   border-color: #a855f7;
+}
+
+.fwd-field {
+  background: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.25);
+  color: #06b6d4;
+}
+.fwd-field:focus {
+  border-color: #06b6d4;
 }
 
 .field-unit {

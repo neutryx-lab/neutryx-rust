@@ -1,0 +1,17 @@
+{
+  "index": "USDJPY-FX",
+  "currency": "USD",
+  "currency_pair": "USDJPY",
+  "reference_date": "2026-01-29",
+  "spot": 149.50,
+  "instruments": [
+    { "type": "fx_forward", "tenor": "1W",  "tenor_years": 0.01923, "rate": 12.5 },
+    { "type": "fx_forward", "tenor": "1M",  "tenor_years": 0.08333, "rate": 52.8 },
+    { "type": "fx_forward", "tenor": "2M",  "tenor_years": 0.16667, "rate": 108.5 },
+    { "type": "fx_forward", "tenor": "3M",  "tenor_years": 0.25,    "rate": 165.2 },
+    { "type": "fx_forward", "tenor": "6M",  "tenor_years": 0.5,     "rate": 335.8 },
+    { "type": "fx_forward", "tenor": "9M",  "tenor_years": 0.75,    "rate": 512.5 },
+    { "type": "fx_forward", "tenor": "1Y",  "tenor_years": 1.0,     "rate": 695.2 },
+    { "type": "fx_forward", "tenor": "2Y",  "tenor_years": 2.0,     "rate": 1425.8 }
+  ]
+}

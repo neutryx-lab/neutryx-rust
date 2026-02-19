@@ -34,6 +34,20 @@ pub enum CurveType {
     Rate,
     /// Credit (survival probability) curve bootstrapped from CDS spreads.
     Credit,
+    /// FX forward curve.
+    Fx,
+}
+
+/// FX curve construction method.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "openapi", derive(ToSchema))]
+#[serde(rename_all = "snake_case")]
+pub enum FxCurveMethod {
+    /// Flat forward points.
+    #[default]
+    Flat,
+    /// Interest Rate Parity using bootstrapped yield curves.
+    IrpGeneric,
 }
 
 /// Single instrument input for curve building.
@@ -78,8 +92,7 @@ pub struct CurveBuildRequest {
     /// Reference date for curve building (ISO format, e.g., "2026-01-29").
     #[serde(default)]
     pub reference_date: Option<String>,
-    /// Market instruments for bootstrapping.
-    #[validate(length(min = 1))]
+    /// Market instruments for bootstrapping (may be empty for FX IRP curves).
     #[validate(nested)]
     pub instruments: Vec<CurveInstrumentInput>,
     /// Interpolation method.
@@ -113,6 +126,23 @@ pub struct CurveBuildRequest {
     /// Penalty weight for penalised calibration (default 1e-4).
     #[serde(default)]
     pub penalty_weight: Option<f64>,
+    /// FX curve construction method (required for FX curves).
+    #[serde(default)]
+    pub fx_curve_method: FxCurveMethod,
+    /// Currency pair (e.g., "EURUSD") for FX curves.
+    #[serde(default)]
+    pub currency_pair: Option<String>,
+    /// Spot FX rate (required for FX curves).
+    #[serde(default)]
+    pub spot: Option<f64>,
+    /// ID of a previously built domestic yield curve (required for IRP
+    /// methods).
+    #[serde(default)]
+    pub domestic_curve_id: Option<String>,
+    /// ID of a previously built foreign yield curve (required for IRP
+    /// methods).
+    #[serde(default)]
+    pub foreign_curve_id: Option<String>,
 }
 
 fn default_tolerance() -> f64 { 1e-10 }
@@ -141,6 +171,9 @@ pub struct CurvePillar {
     /// Hazard rate at this pillar (credit curves only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hazard_rate: Option<f64>,
+    /// FX forward rate at this pillar (FX curves only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_forward: Option<f64>,
 }
 
 /// Forward rate point on a daily grid.
@@ -169,6 +202,9 @@ pub struct ChartGridPoint {
     pub forward_rate: f64,
     /// Date label for chart axis (e.g.
     pub label: String,
+    /// FX forward rate at this grid point (FX curves only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_forward: Option<f64>,
 }
 
 /// Jacobian matrix data for curve sensitivity analysis.
@@ -216,8 +252,14 @@ pub struct CurveBuildResponse {
     /// Jacobian matrix d(log DF)/dr (finite-difference).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jacobian: Option<JacobianData>,
-    /// Type of curve that was built ("rate" or "credit").
+    /// Type of curve that was built ("rate", "credit", or "fx").
     pub curve_type: String,
+    /// Spot FX rate (FX curves only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spot: Option<f64>,
+    /// Currency pair (FX curves only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency_pair: Option<String>,
 }
 
 /// Request to get discount factor from a cached curve.

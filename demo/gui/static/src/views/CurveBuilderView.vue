@@ -56,6 +56,7 @@ const {
   enabledInstruments,
   hasChanges,
   isCreditCurve,
+  isFxCurve,
   summaryStats,
   curveTableRows,
   annotatedInterpolationMethods,
@@ -67,6 +68,7 @@ const {
   exportRates,
   updateRate,
   updateSpike,
+  updatePips,
   updateCoupon,
   toggleEnabled,
   toggleAll,
@@ -144,6 +146,7 @@ watch(chartType, () => {
           @toggle-all="toggleAll"
           @update-rate="updateRate"
           @update-spike="updateSpike"
+          @update-pips="updatePips"
           @update-coupon="updateCoupon"
         />
 
@@ -151,42 +154,62 @@ watch(chartType, () => {
         <div class="glass-card p-5">
           <div class="section-header" style="margin-top: 0">Build Settings</div>
           <div class="config-grid">
-            <div class="grid-label">Calibration</div>
-            <div class="grid-input">
-              <v-select
-                v-model="calibrationMethod"
-                :items="calibrationMethods.map(m => ({ title: m.label, value: m.value }))"
-                density="compact"
-                variant="outlined"
-                hide-details
-              />
-            </div>
-            <div class="grid-label">Interpolation</div>
-            <div class="grid-input">
-              <v-select
-                v-model="interpolation"
-                :items="annotatedInterpolationMethods.map(m => ({ title: m.displayLabel, value: m.value }))"
-                density="compact"
-                variant="outlined"
-                hide-details
-              />
-            </div>
-            <div v-if="compatibilityHint" class="grid-span">
-              <p
-                class="text-xs px-2 py-1.5 rounded"
-                :class="{
-                  'text-emerald-400 bg-emerald-500/10': compatibilityHint.level === 'good',
-                  'text-amber-400 bg-amber-500/10': compatibilityHint.level === 'warn',
-                  'text-sky-400 bg-sky-500/10': compatibilityHint.level === 'info',
-                }"
-              >
-                {{ compatibilityHint.message }}
-              </p>
-            </div>
-            <div class="grid-label">Extrap.</div>
-            <div class="grid-input">
-              <v-switch v-model="allowExtrapolation" color="primary" density="compact" hide-details />
-            </div>
+            <template v-if="isFxCurve">
+              <div class="grid-label">Method</div>
+              <div class="grid-input">
+                <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve?.fxCurveMethod === 'irp_generic' ? 'Interest Rate Parity' : 'Flat Forward Points' }}</span>
+              </div>
+              <template v-if="selectedCurve?.domesticCurve">
+                <div class="grid-label">Domestic</div>
+                <div class="grid-input">
+                  <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve.domesticCurve }}</span>
+                </div>
+              </template>
+              <template v-if="selectedCurve?.foreignCurve">
+                <div class="grid-label">Foreign</div>
+                <div class="grid-input">
+                  <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve.foreignCurve }}</span>
+                </div>
+              </template>
+            </template>
+            <template v-else>
+              <div class="grid-label">Calibration</div>
+              <div class="grid-input">
+                <v-select
+                  v-model="calibrationMethod"
+                  :items="calibrationMethods.map(m => ({ title: m.label, value: m.value }))"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
+              </div>
+              <div class="grid-label">Interpolation</div>
+              <div class="grid-input">
+                <v-select
+                  v-model="interpolation"
+                  :items="annotatedInterpolationMethods.map(m => ({ title: m.displayLabel, value: m.value }))"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
+              </div>
+              <div v-if="compatibilityHint" class="grid-span">
+                <p
+                  class="text-xs px-2 py-1.5 rounded"
+                  :class="{
+                    'text-emerald-400 bg-emerald-500/10': compatibilityHint.level === 'good',
+                    'text-amber-400 bg-amber-500/10': compatibilityHint.level === 'warn',
+                    'text-sky-400 bg-sky-500/10': compatibilityHint.level === 'info',
+                  }"
+                >
+                  {{ compatibilityHint.message }}
+                </p>
+              </div>
+              <div class="grid-label">Extrap.</div>
+              <div class="grid-input">
+                <v-switch v-model="allowExtrapolation" color="primary" density="compact" hide-details />
+              </div>
+            </template>
           </div>
         </div>
 
@@ -239,27 +262,34 @@ watch(chartType, () => {
         <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-              {{ isCreditCurve ? 'Credit Curve' : 'Yield Curve' }}
+              {{ isFxCurve ? 'FX Forward Curve' : isCreditCurve ? 'Credit Curve' : 'Yield Curve' }}
             </h3>
             <div v-if="buildResult?.short_term_grid" class="flex gap-2">
-              <button
-                :class="[
-                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
-                  chartType === 'forward_rate' ? 'bg-emerald-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
-                ]"
-                @click="chartType = 'forward_rate'"
-              >
-                {{ isCreditCurve ? 'Hazard Rate' : 'Forward Rate' }}
-              </button>
-              <button
-                :class="[
-                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
-                  chartType === 'discount_factor' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
-                ]"
-                @click="chartType = 'discount_factor'"
-              >
-                {{ isCreditCurve ? 'Survival Prob' : 'Discount Factor' }}
-              </button>
+              <template v-if="isFxCurve">
+                <button
+                  class="px-3 py-1.5 text-xs rounded-lg bg-cyan-500 text-white"
+                >FX Forward Rate</button>
+              </template>
+              <template v-else>
+                <button
+                  :class="[
+                    'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                    chartType === 'forward_rate' ? 'bg-emerald-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                  ]"
+                  @click="chartType = 'forward_rate'"
+                >
+                  {{ isCreditCurve ? 'Hazard Rate' : 'Forward Rate' }}
+                </button>
+                <button
+                  :class="[
+                    'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                    chartType === 'discount_factor' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                  ]"
+                  @click="chartType = 'discount_factor'"
+                >
+                  {{ isCreditCurve ? 'Survival Prob' : 'Discount Factor' }}
+                </button>
+              </template>
             </div>
           </div>
 
@@ -332,8 +362,8 @@ watch(chartType, () => {
                   <tr class="border-b border-[var(--glass-border)] curve-table-header">
                     <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Date</th>
                     <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Time (Y)</th>
-                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">{{ isCreditCurve ? 'Hazard Rate (%)' : 'Fwd Rate (%)' }}</th>
-                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">{{ isCreditCurve ? 'SP' : 'DF' }}</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">{{ isFxCurve ? 'FX Forward' : isCreditCurve ? 'Hazard Rate (%)' : 'Fwd Rate (%)' }}</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">{{ isFxCurve ? 'Fwd Pts' : isCreditCurve ? 'SP' : 'DF' }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -344,8 +374,8 @@ watch(chartType, () => {
                   >
                     <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ row.date }}</td>
                     <td class="py-1.5 px-2 text-xs text-right text-[var(--text-secondary)] font-mono">{{ row.time.toFixed(4) }}</td>
-                    <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ (row.fwd * 100).toFixed(4) }}</td>
-                    <td class="py-1.5 px-2 text-xs text-right font-mono text-[var(--text-primary)]">{{ row.df.toFixed(8) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ isFxCurve ? row.fwd.toFixed(4) : (row.fwd * 100).toFixed(4) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-[var(--text-primary)]">{{ isFxCurve ? (row.fwd - (buildResult?.spot ?? row.fwd)).toFixed(6) : row.df.toFixed(8) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -355,7 +385,7 @@ watch(chartType, () => {
 
         <!-- Jacobian Card (below Yield Curve, same width) -->
         <CurveJacobianHeatmap
-          v-if="buildResult?.jacobian"
+          v-if="buildResult?.jacobian && !isFxCurve"
           :jacobian="buildResult.jacobian"
         />
       </div>
