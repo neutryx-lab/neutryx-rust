@@ -591,13 +591,10 @@ impl Trade {
         self.legs
             .iter()
             .flat_map(move |leg| leg.future_cashflows(ref_date))
-            .chain(
-                self.event_legs
-                    .iter()
-                    .flat_map(move |el| {
-                        el.legs().flat_map(move |leg| leg.future_cashflows(ref_date))
-                    }),
-            )
+            .chain(self.event_legs.iter().flat_map(move |el| {
+                el.legs()
+                    .flat_map(move |leg| leg.future_cashflows(ref_date))
+            }))
     }
 
     /// Returns the total number of cashflows across all legs.

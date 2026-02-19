@@ -28,6 +28,7 @@ export const usePricerStore = defineStore('pricer', () => {
   const instruments = ref<Instrument[]>([]);
   const selectedInstrumentId = ref('');
   const instrumentParams = ref<Record<string, string | number>>({});
+  const assetTab = ref('Rates');
 
   // Trade Expansion
   const expandedTrade = ref<ExpandedTrade | null>(null);
@@ -107,6 +108,12 @@ export const usePricerStore = defineStore('pricer', () => {
     return groups;
   });
 
+  const assetClasses = computed<string[]>(() => Object.keys(groupedInstruments.value));
+
+  const filteredInstruments = computed<Instrument[]>(() =>
+    groupedInstruments.value[assetTab.value] ?? [],
+  );
+
   const hasEdits = computed(() => Object.keys(editedCashflows.value).length > 0);
 
   const summaryStats = computed<SummaryStat[]>(() => {
@@ -153,6 +160,7 @@ export const usePricerStore = defineStore('pricer', () => {
     instruments,
     selectedInstrumentId,
     instrumentParams,
+    assetTab,
     expandedTrade,
     editedCashflows,
     pricingResult,
@@ -188,6 +196,8 @@ export const usePricerStore = defineStore('pricer', () => {
     // Getters
     selectedInstrument,
     groupedInstruments,
+    assetClasses,
+    filteredInstruments,
     hasEdits,
     summaryStats,
     selectedModelConfig,

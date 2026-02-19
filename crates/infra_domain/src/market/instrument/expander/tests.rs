@@ -54,7 +54,9 @@ mod tests {
         assert!(t.trade_type.is_swaption());
         assert_eq!(t.num_legs(), 2);
         assert!(t.has_event_legs());
-        let el = t.first_event_leg().expect("Swaption must have an event leg");
+        let el = t
+            .first_event_leg()
+            .expect("Swaption must have an event leg");
         assert_eq!(el.exercise_type(), ExerciseType::European);
         assert_eq!(el.settlement_type(), SettlementType::Cash);
         assert!(el.fixed_leg().is_some());
@@ -362,10 +364,7 @@ mod tests {
             credit_events: vec![CreditEvent::Bankruptcy, CreditEvent::FailureToPay],
         };
         let t = cds.expand_to_trade("CDS", vd(), &c).unwrap();
-        assert!(matches!(
-            t.trade_type,
-            TradeType::CreditDefaultSwap { .. }
-        ));
+        assert!(matches!(t.trade_type, TradeType::CreditDefaultSwap { .. }));
         assert_eq!(t.num_legs(), 2);
 
         let idx = CdsIndex {
@@ -395,10 +394,7 @@ mod tests {
             currency: Currency::USD,
         };
         let t = cfwd.expand_to_trade("COMM-FWD", vd(), &c).unwrap();
-        assert!(matches!(
-            t.trade_type,
-            TradeType::CommodityForward { .. }
-        ));
+        assert!(matches!(t.trade_type, TradeType::CommodityForward { .. }));
 
         let cswap = CommoditySwap {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),

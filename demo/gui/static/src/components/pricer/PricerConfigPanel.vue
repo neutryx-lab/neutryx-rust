@@ -51,8 +51,16 @@ function getFieldError(fieldName: string): string | undefined {
   return store.validationErrors.find((e) => e.field === fieldName)?.message;
 }
 
+const assetTabIcons: Record<string, string> = {
+  Rates: 'mdi-chart-line',
+  FX: 'mdi-swap-horizontal',
+  Equity: 'mdi-trending-up',
+  Credit: 'mdi-shield-half-full',
+  Commodity: 'mdi-barrel',
+};
+
 const instrumentItems = computed(() =>
-  store.instruments.map((inst) => ({
+  store.filteredInstruments.map((inst) => ({
     label: inst.displayName || inst.name || inst.instrumentType || '',
     id: inst.instrumentType || inst.id || inst.type || '',
   })),
@@ -212,6 +220,24 @@ watch(
       <div class="config-grid">
         <!-- ═══ TRADE ═══ -->
         <div class="section-header">Trade</div>
+
+        <!-- Asset Class Tabs -->
+        <div class="grid-span">
+          <div class="flex gap-1 mb-1 p-0.5 rounded-lg bg-[var(--surface)]">
+            <button
+              v-for="tab in store.assetClasses"
+              :key="tab"
+              class="flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1"
+              :class="store.assetTab === tab
+                ? 'bg-[var(--primary)] text-white shadow-sm'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'"
+              @click="store.assetTab = tab"
+            >
+              <v-icon :icon="assetTabIcons[tab] || 'mdi-tag'" size="12" />
+              {{ tab }}
+            </button>
+          </div>
+        </div>
 
         <div class="grid-label">Type</div>
         <div class="grid-input">

@@ -320,6 +320,13 @@ watch(chartType, () => {
                   ]"
                   @click="chartType = 'fx_basis'"
                 >Implied Yield</button>
+                <button
+                  :class="[
+                    'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                    chartType === 'fx_overnight' ? 'bg-amber-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                  ]"
+                  @click="chartType = 'fx_overnight'"
+                >Implied Rate</button>
               </template>
               <template v-else>
                 <button

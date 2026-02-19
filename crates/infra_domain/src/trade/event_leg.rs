@@ -39,14 +39,10 @@ pub struct EventLeg {
 impl EventLeg {
     /// Creates a new event leg.
     #[must_use]
-    pub fn new(exercise: ExerciseEvent, legs: Vec<Leg>) -> Self {
-        Self { exercise, legs }
-    }
+    pub fn new(exercise: ExerciseEvent, legs: Vec<Leg>) -> Self { Self { exercise, legs } }
 
     /// Returns an iterator over the conditional legs.
-    pub fn legs(&self) -> impl Iterator<Item = &Leg> {
-        self.legs.iter()
-    }
+    pub fn legs(&self) -> impl Iterator<Item = &Leg> { self.legs.iter() }
 
     /// Returns all cashflows across all conditional legs.
     pub fn all_cashflows(&self) -> impl Iterator<Item = &Cashflow> {
@@ -55,9 +51,7 @@ impl EventLeg {
 
     /// Returns the number of conditional legs.
     #[must_use]
-    pub fn num_legs(&self) -> usize {
-        self.legs.len()
-    }
+    pub fn num_legs(&self) -> usize { self.legs.len() }
 
     /// Returns the fixed leg among the conditional legs, if any.
     #[must_use]
@@ -75,21 +69,15 @@ impl EventLeg {
 
     /// Returns the exercise dates.
     #[must_use]
-    pub fn exercise_dates(&self) -> &[Date] {
-        &self.exercise.exercise_dates
-    }
+    pub fn exercise_dates(&self) -> &[Date] { &self.exercise.exercise_dates }
 
     /// Returns the exercise type.
     #[must_use]
-    pub fn exercise_type(&self) -> ExerciseType {
-        self.exercise.exercise_type
-    }
+    pub fn exercise_type(&self) -> ExerciseType { self.exercise.exercise_type }
 
     /// Returns the settlement type.
     #[must_use]
-    pub fn settlement_type(&self) -> SettlementType {
-        self.exercise.settlement_type
-    }
+    pub fn settlement_type(&self) -> SettlementType { self.exercise.settlement_type }
 }
 
 #[cfg(test)]

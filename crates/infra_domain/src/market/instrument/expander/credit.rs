@@ -9,8 +9,8 @@ use crate::{
     },
     time::Date,
     trade::{
-        Cashflow, CashflowType, Direction, Leg, LegType, OptionType, Payoff, ProtectionSide,
-        Trade, TradeType,
+        Cashflow, CashflowType, Direction, Leg, LegType, OptionType, Payoff, ProtectionSide, Trade,
+        TradeType,
     },
 };
 
@@ -127,8 +127,7 @@ impl InstrumentExpander for CdsOption {
             exercise_type: crate::trade::ExerciseType::European,
             settlement_type: crate::trade::SettlementType::Physical,
         };
-        let event_leg =
-            crate::trade::EventLeg::new(exercise, vec![premium_leg, protection_leg]);
+        let event_leg = crate::trade::EventLeg::new(exercise, vec![premium_leg, protection_leg]);
 
         Ok(Trade::with_event_legs(
             trade_id,

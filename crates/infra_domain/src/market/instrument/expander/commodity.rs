@@ -11,9 +11,7 @@ use crate::{
         },
     },
     time::Date,
-    trade::{
-        Cashflow, CashflowType, Direction, IndexType, Leg, LegType, Payoff, Trade, TradeType,
-    },
+    trade::{Cashflow, CashflowType, Direction, IndexType, Leg, LegType, Payoff, Trade, TradeType},
 };
 
 impl InstrumentExpander for CommodityForward {

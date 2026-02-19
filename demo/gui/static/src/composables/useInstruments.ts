@@ -52,8 +52,11 @@ export function useInstruments() {
       const data = await fetchInstruments();
       store.instruments = data.instruments || [];
 
-      // Auto-select first instrument (typically IRS) and apply API defaults
-      const first = store.instruments[0];
+      // Set initial asset tab and auto-select first instrument
+      if (store.assetClasses.length > 0) {
+        store.assetTab = store.assetClasses[0];
+      }
+      const first = store.filteredInstruments[0] ?? store.instruments[0];
       if (first) {
         skipWatcher = true;
         store.selectedInstrumentId = first.instrumentType || first.id || first.type || '';
@@ -94,6 +97,24 @@ export function useInstruments() {
     () => {
       if (skipWatcher) return;
       resetDependentState();
+    },
+  );
+
+  // Auto-select first instrument when asset tab changes
+  watch(
+    () => store.assetTab,
+    () => {
+      const first = store.filteredInstruments[0];
+      if (first) {
+        skipWatcher = true;
+        store.selectedInstrumentId = first.instrumentType || first.id || first.type || '';
+        store.instrumentParams = buildDefaults(first);
+        store.expandedTrade = null;
+        store.editedCashflows = {};
+        store.pricingResult = null;
+        store.greeksResult = null;
+        skipWatcher = false;
+      }
     },
   );
 

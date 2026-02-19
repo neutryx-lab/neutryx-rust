@@ -212,6 +212,11 @@ pub struct ChartGridPoint {
     /// FX forward rate at this grid point (FX curves only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fx_forward: Option<f64>,
+    /// Overnight implied rate differential at this grid point (FX curves only).
+    /// Equals `r_domestic(t) − r_foreign(t)` computed as `ln(F(t+1d)/F(t)) /
+    /// dt`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub implied_overnight_rate: Option<f64>,
 }
 
 /// Jacobian matrix data for curve sensitivity analysis.

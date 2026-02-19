@@ -116,6 +116,7 @@ export interface ChartGridPoint {
   forward_rate: number;
   label: string;
   fx_forward?: number;
+  implied_overnight_rate?: number;
 }
 
 export interface JacobianData {

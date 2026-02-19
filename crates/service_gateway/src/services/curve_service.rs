@@ -608,8 +608,11 @@ impl CurveService {
                 )
             }
             FxCurveMethod::IrpBasis => {
-                let ref_entry =
-                    Self::get_cached_curve(state, request.reference_curve_id.as_ref(), "reference")?;
+                let ref_entry = Self::get_cached_curve(
+                    state,
+                    request.reference_curve_id.as_ref(),
+                    "reference",
+                )?;
                 let basis_pillars: Vec<(f64, f64)> =
                     pillar_specs.iter().map(|(t, _, bps)| (*t, *bps)).collect();
                 FxCurveEnum::irp_basis(

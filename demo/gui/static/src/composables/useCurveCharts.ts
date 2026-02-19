@@ -46,7 +46,7 @@ export function useCurveCharts() {
   let longTermChartInstance: Chart | null = null;
 
   // Chart display mode
-  const chartType = ref<'discount_factor' | 'forward_rate' | 'fx_basis'>('forward_rate');
+  const chartType = ref<'discount_factor' | 'forward_rate' | 'fx_basis' | 'fx_overnight'>('forward_rate');
 
   // ------ Chart option factory ------
 
@@ -65,7 +65,9 @@ export function useCurveCharts() {
             title: (items: { label: string }[]) => items[0].label,
             label: (item: { raw: unknown }) => {
               const value = item.raw as number;
-              if (isFx && chartType.value === 'fx_basis') {
+              if (isFx && chartType.value === 'fx_overnight') {
+                return `Implied Rate: ${value.toFixed(4)}%`;
+              } else if (isFx && chartType.value === 'fx_basis') {
                 return `Implied Yield: ${value.toFixed(4)}%`;
               } else if (isFx) {
                 return `FX Forward: ${value.toFixed(4)}`;
@@ -108,13 +110,20 @@ export function useCurveCharts() {
     if (existing) existing.destroy();
 
     const labels = grid.map(pt => pt.label);
-    const data = isFx
-      ? (chartType.value === 'fx_basis'
-        ? grid.map(pt => pt.time > 0 ? Math.log(pt.forward_rate / _fxSpot) / pt.time * 100 : 0)
-        : grid.map(pt => pt.forward_rate))
-      : chartType.value === 'forward_rate'
+    let data: number[];
+    if (isFx) {
+      if (chartType.value === 'fx_overnight') {
+        data = grid.map(pt => (pt.implied_overnight_rate ?? 0) * 100);
+      } else if (chartType.value === 'fx_basis') {
+        data = grid.map(pt => pt.time > 0 ? Math.log(pt.forward_rate / _fxSpot) / pt.time * 100 : 0);
+      } else {
+        data = grid.map(pt => pt.forward_rate);
+      }
+    } else {
+      data = chartType.value === 'forward_rate'
         ? grid.map(pt => pt.forward_rate * 100)
         : grid.map(pt => pt.discount_factor);
+    }
 
     // Compute milestone index -> [dateLabel, term]
     const milestoneAt = new Map<number, string[]>();
@@ -140,8 +149,9 @@ export function useCurveCharts() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    // Flat Forward: use stepped line for forward rate charts to show flat segments
-    const isFlatFwd = interpolationValue === 'flat_forward' && chartType.value === 'forward_rate';
+    // Flat Forward: use stepped line for forward rate / overnight rate charts
+    const isOvernightFx = isFx && chartType.value === 'fx_overnight';
+    const isFlatFwd = (interpolationValue === 'flat_forward' && chartType.value === 'forward_rate') || isOvernightFx;
 
     return new Chart(ctx, {
       type: 'line',
@@ -175,9 +185,13 @@ export function useCurveCharts() {
 
     if (isFx) {
       _fxSpot = result.spot ?? 0;
-      const isBasis = chartType.value === 'fx_basis';
-      const fxLabel = isBasis ? 'Implied Yield (%)' : 'FX Forward Rate';
-      const fxColor = isBasis ? '#10b981' : '#06b6d4'; // emerald / cyan
+      const ct = chartType.value;
+      const fxLabel = ct === 'fx_overnight' ? 'Implied Rate Diff (%)'
+        : ct === 'fx_basis' ? 'Implied Yield (%)'
+        : 'FX Forward Rate';
+      const fxColor = ct === 'fx_overnight' ? '#f59e0b'  // amber
+        : ct === 'fx_basis' ? '#10b981'                    // emerald
+        : '#06b6d4';                                        // cyan
 
       shortTermChartInstance = renderChart(
         shortTermChartCanvas.value, shortTermChartInstance, shortGrid, fxLabel, fxColor, SHORT_MILESTONES, interpolationValue, true,
