@@ -1,6 +1,6 @@
 //! Credit instrument expansion implementations.
 
-use super::{credit_premium_leg, settlement_trade, InstrumentExpander};
+use super::{credit_premium_leg, InstrumentExpander};
 use crate::{
     ids::TradeId,
     market::{
@@ -8,7 +8,10 @@ use crate::{
         instrument::{Cds, CdsIndex, CdsOption, InstrumentError, NtdBasket},
     },
     time::Date,
-    trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
+    trade::{
+        Cashflow, CashflowType, Direction, Leg, LegType, OptionType, Payoff, ProtectionSide,
+        Trade, TradeType,
+    },
 };
 
 impl InstrumentExpander for Cds {
@@ -41,14 +44,18 @@ impl InstrumentExpander for Cds {
         let protection_leg = Leg::new(
             vec![protection_cf],
             Direction::Receiver,
-            LegType::Generic,
+            LegType::Protection,
             self.currency,
         );
 
         Ok(Trade::new(
             trade_id,
             vec![premium_leg, protection_leg],
-            TradeType::Swap,
+            TradeType::CreditDefaultSwap {
+                reference_entity: self.reference_entity.clone(),
+                entity_id: None,
+                protection_side: ProtectionSide::Buyer,
+            },
         ))
     }
 }
@@ -70,7 +77,16 @@ impl InstrumentExpander for CdsIndex {
             self.currency,
         );
 
-        Ok(Trade::new(trade_id, vec![premium_leg], TradeType::Swap))
+        Ok(Trade::new(
+            trade_id,
+            vec![premium_leg],
+            TradeType::CreditDefaultSwapIndex {
+                index_name: self.index_name.clone(),
+                series: self.series,
+                version: Some(self.version),
+                protection_side: ProtectionSide::Buyer,
+            },
+        ))
     }
 }
 
@@ -81,14 +97,44 @@ impl InstrumentExpander for CdsOption {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        Ok(settlement_trade(
-            trade_id,
+        let premium_leg = credit_premium_leg(
             self.exercise_date,
+            self.underlying_maturity,
             self.notional,
             self.strike_spread,
             self.currency,
+        );
+
+        let protection_cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.underlying_maturity,
+            self.exercise_date,
+            self.underlying_maturity,
+            0.0,
+            self.notional * 0.6,
+            Payoff::fixed(1.0),
+            self.currency,
+        );
+        let protection_leg = Leg::new(
+            vec![protection_cf],
             Direction::Receiver,
-            TradeType::Generic,
+            LegType::Protection,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![premium_leg, protection_leg],
+            TradeType::CreditDefaultSwapOption {
+                reference_entity: self.reference_entity.clone(),
+                option_type: if self.is_payer {
+                    OptionType::Call
+                } else {
+                    OptionType::Put
+                },
+                exercise_type: crate::trade::ExerciseType::European,
+                expiry_date: self.exercise_date,
+            },
         ))
     }
 }
@@ -108,6 +154,31 @@ impl InstrumentExpander for NtdBasket {
             self.currency,
         );
 
-        Ok(Trade::new(trade_id, vec![premium_leg], TradeType::Swap))
+        let protection_cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.maturity,
+            self.start_date,
+            self.maturity,
+            0.0,
+            self.notional * 0.6,
+            Payoff::fixed(1.0),
+            self.currency,
+        );
+        let protection_leg = Leg::new(
+            vec![protection_cf],
+            Direction::Receiver,
+            LegType::Protection,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![premium_leg, protection_leg],
+            TradeType::NtdBasket {
+                constituents: self.constituents.clone(),
+                nth_to_default: self.nth_to_default,
+                protection_side: ProtectionSide::Buyer,
+            },
+        ))
     }
 }

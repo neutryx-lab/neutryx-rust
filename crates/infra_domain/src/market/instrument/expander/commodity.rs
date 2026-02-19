@@ -1,6 +1,6 @@
 //! Commodity instrument expansion implementations.
 
-use super::{coupon_swap_trade, settlement_trade, InstrumentExpander};
+use super::{coupon_swap_trade, InstrumentExpander};
 use crate::{
     ids::TradeId,
     market::{
@@ -11,7 +11,9 @@ use crate::{
         },
     },
     time::Date,
-    trade::{Direction, LegType, Trade, TradeType},
+    trade::{
+        Cashflow, CashflowType, Direction, IndexType, Leg, LegType, Payoff, Trade, TradeType,
+    },
 };
 
 impl InstrumentExpander for CommodityForward {
@@ -21,14 +23,29 @@ impl InstrumentExpander for CommodityForward {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        Ok(settlement_trade(
-            trade_id,
+        let cf = Cashflow::new(
+            CashflowType::Settlement,
             self.delivery_date,
+            self.delivery_date,
+            self.delivery_date,
+            0.0,
             self.quantity * self.forward_price,
-            1.0,
+            Payoff::fixed(1.0),
             self.currency,
-            Direction::Payer,
-            TradeType::FxForward,
+        );
+
+        let leg = Leg::new(vec![cf], Direction::Payer, LegType::Generic, self.currency);
+
+        Ok(Trade::new(
+            trade_id,
+            vec![leg],
+            TradeType::CommodityForward {
+                commodity: self.commodity.to_string(),
+                delivery_date: self.delivery_date,
+                forward_price: self.forward_price,
+                quantity: self.quantity,
+                quantity_unit: format!("{:?}", self.unit),
+            },
         ))
     }
 }
@@ -62,14 +79,44 @@ impl InstrumentExpander for CommodityVanillaOption {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        Ok(settlement_trade(
-            trade_id,
+        let comm_index = IndexType::Commodity {
+            name: self.commodity.to_string(),
+        };
+
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
             self.expiry,
-            self.quantity * self.strike,
-            1.0,
+            self.expiry,
+            self.expiry,
+            0.0,
+            self.quantity,
+            Payoff::VanillaOption {
+                index: comm_index,
+                strike: self.strike,
+                option_type: self.option_type,
+            },
             self.currency,
+        );
+
+        let settlement_leg = Leg::new(
+            vec![settlement_cf],
             Direction::Receiver,
-            TradeType::Generic,
+            LegType::Generic,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![settlement_leg],
+            TradeType::CommodityOption {
+                commodity: self.commodity.to_string(),
+                option_type: self.option_type,
+                strike: self.strike,
+                exercise_type: self.exercise_style,
+                expiry_date: self.expiry,
+                quantity: self.quantity,
+                quantity_unit: format!("{:?}", self.unit),
+            },
         ))
     }
 }
@@ -81,14 +128,50 @@ impl InstrumentExpander for CommodityAsianOption {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        Ok(settlement_trade(
-            trade_id,
+        let comm_index = IndexType::Commodity {
+            name: self.commodity.to_string(),
+        };
+
+        let observation_dates = super::rates::generate_payment_dates(
+            self.averaging_start,
+            self.averaging_end,
+            self.observation_frequency,
+        );
+
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
             self.expiry,
-            self.quantity * self.strike,
-            1.0,
+            self.expiry,
+            self.expiry,
+            0.0,
+            self.quantity,
+            Payoff::VanillaOption {
+                index: comm_index,
+                strike: self.strike,
+                option_type: self.option_type,
+            },
             self.currency,
+        );
+
+        let settlement_leg = Leg::new(
+            vec![settlement_cf],
             Direction::Receiver,
-            TradeType::Generic,
+            LegType::Generic,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![settlement_leg],
+            TradeType::CommodityAsianOption {
+                commodity: self.commodity.to_string(),
+                option_type: self.option_type,
+                strike: self.strike,
+                observation_dates,
+                expiry_date: self.expiry,
+                quantity: self.quantity,
+                quantity_unit: format!("{:?}", self.unit),
+            },
         ))
     }
 }
@@ -100,14 +183,43 @@ impl InstrumentExpander for SpreadOption {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        Ok(settlement_trade(
-            trade_id,
+        let comm_index = IndexType::Commodity {
+            name: self.commodity_1.to_string(),
+        };
+
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
             self.expiry,
+            self.expiry,
+            self.expiry,
+            0.0,
             self.quantity,
-            self.spread_strike,
+            Payoff::VanillaOption {
+                index: comm_index,
+                strike: self.spread_strike,
+                option_type: self.option_type,
+            },
             self.currency,
+        );
+
+        let settlement_leg = Leg::new(
+            vec![settlement_cf],
             Direction::Receiver,
-            TradeType::Generic,
+            LegType::Generic,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![settlement_leg],
+            TradeType::SpreadOption {
+                commodity_1: self.commodity_1.to_string(),
+                commodity_2: self.commodity_2.to_string(),
+                option_type: self.option_type,
+                spread_strike: self.spread_strike,
+                expiry_date: self.expiry,
+                quantity: self.quantity,
+            },
         ))
     }
 }

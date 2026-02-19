@@ -501,9 +501,13 @@ mod tests {
     #[test]
     fn test_vol_surface_validate_all_models_supported() {
         for model in CalibrationModel::all() {
-            let surface = VolSurfaceDefinition::new("USD-Vol", vec!["inst1".to_string()])
-                .with_model(*model);
-            assert!(surface.validate().is_ok(), "{:?} should be supported", model);
+            let surface =
+                VolSurfaceDefinition::new("USD-Vol", vec!["inst1".to_string()]).with_model(*model);
+            assert!(
+                surface.validate().is_ok(),
+                "{:?} should be supported",
+                model
+            );
         }
     }
 

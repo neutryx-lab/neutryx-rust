@@ -166,9 +166,7 @@ impl<T: Float> VolSurfaceEnum<T> {
     pub fn polynomial(surface: PolynomialVolSurface<T>) -> Self { Self::Polynomial(surface) }
 
     /// Wraps an existing Variance Gamma surface.
-    pub fn variance_gamma(surface: VarianceGammaSurface<T>) -> Self {
-        Self::VarianceGamma(surface)
-    }
+    pub fn variance_gamma(surface: VarianceGammaSurface<T>) -> Self { Self::VarianceGamma(surface) }
 
     /// Returns `true` for parametric models that produce implied
     /// volatilities directly; `false` for grid-based models (local vol)

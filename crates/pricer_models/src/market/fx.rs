@@ -182,15 +182,11 @@ impl<T: Float> BasisFxCurve<T> {
     }
 
     /// Returns a reference to the underlying yield curve.
-    pub fn reference_curve(&self) -> &CurveEnum<T> {
-        &self.reference_curve
-    }
+    pub fn reference_curve(&self) -> &CurveEnum<T> { &self.reference_curve }
 }
 
 impl<T: Float> FxCurve<T> for BasisFxCurve<T> {
-    fn spot(&self) -> T {
-        self.spot
-    }
+    fn spot(&self) -> T { self.spot }
 
     fn forward_rate(&self, t: T) -> Result<T, MarketDataError> {
         if t < T::zero() {
@@ -211,9 +207,7 @@ impl<T: Float> FxCurve<T> for BasisFxCurve<T> {
         Ok(self.spot * df_ref * (basis_adj * t).exp())
     }
 
-    fn currency_pair(&self) -> CurrencyPair {
-        self.currency_pair
-    }
+    fn currency_pair(&self) -> CurrencyPair { self.currency_pair }
 }
 
 /// Enum wrapper for different FX curve types (static dispatch via

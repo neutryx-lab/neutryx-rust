@@ -13,10 +13,7 @@
 use num_traits::Float;
 use thiserror::Error;
 
-use crate::math::{
-    numeric::from_f64,
-    smoothing::smooth_log,
-};
+use crate::math::{numeric::from_f64, smoothing::smooth_log};
 
 /// Default smoothing epsilon.
 const DEFAULT_EPSILON: f64 = 1e-10;
@@ -117,8 +114,16 @@ pub fn vanna_volga_implied_vol<T: Float>(
     let denom1 = ln_k2_k1 * ln_k3_k1;
     let denom3 = ln_k3_k1 * ln_k3_k2;
 
-    let safe_denom1 = if denom1.abs() < epsilon { epsilon } else { denom1 };
-    let safe_denom3 = if denom3.abs() < epsilon { epsilon } else { denom3 };
+    let safe_denom1 = if denom1.abs() < epsilon {
+        epsilon
+    } else {
+        denom1
+    };
+    let safe_denom3 = if denom3.abs() < epsilon {
+        epsilon
+    } else {
+        denom3
+    };
 
     // Weights
     let x1 = (ln_k2_k * ln_k3_k) / safe_denom1;

@@ -120,28 +120,31 @@ pub enum BootstrapInterpolation {
     #[default]
     #[serde(rename = "log_linear_df", alias = "log_linear")]
     LogLinear,
-    /// Flat forward interpolation (constant simple forward rate between pillars).
+    /// Flat forward interpolation (constant simple forward rate between
+    /// pillars).
     FlatForward,
-    /// Cubic spline on forward rates (not yet implemented, falls back to LogLinear).
+    /// Cubic spline on forward rates (not yet implemented, falls back to
+    /// LogLinear).
     CubicSplineFwd,
-    /// Monotone convex (Hagan-West) (not yet implemented, falls back to LogLinear).
+    /// Monotone convex (Hagan-West) (not yet implemented, falls back to
+    /// LogLinear).
     MonotoneConvex,
-    /// Log-cubic on discount factors (not yet implemented, falls back to LogLinear).
+    /// Log-cubic on discount factors (not yet implemented, falls back to
+    /// LogLinear).
     #[serde(rename = "log_cubic_df")]
     LogCubicDF,
-    /// Tension spline on forward rates (not yet implemented, falls back to LogLinear).
+    /// Tension spline on forward rates (not yet implemented, falls back to
+    /// LogLinear).
     TensionSpline,
 }
 
 impl BootstrapInterpolation {
-    /// Returns true if the interpolation method requires precomputed spline coefficients.
+    /// Returns true if the interpolation method requires precomputed spline
+    /// coefficients.
     pub fn requires_spline_coefficients(self) -> bool {
         matches!(
             self,
-            Self::CubicSplineFwd
-                | Self::MonotoneConvex
-                | Self::LogCubicDF
-                | Self::TensionSpline
+            Self::CubicSplineFwd | Self::MonotoneConvex | Self::LogCubicDF | Self::TensionSpline
         )
     }
 }
@@ -512,8 +515,8 @@ impl<T: Float> BootstrappedCurve<T> {
     /// Returns the jump data.
     pub fn jumps(&self) -> &[(T, T)] { &self.jumps }
 
-
-    /// Recomputes spline coefficients from the current pillars and discount factors.
+    /// Recomputes spline coefficients from the current pillars and discount
+    /// factors.
     ///
     /// Called automatically during construction when the interpolation method
     /// requires spline coefficients. Call this again if the discount factors
@@ -558,16 +561,13 @@ impl<T: Float> BootstrappedCurve<T> {
             if k == 0 {
                 let dt = self.pillars[1] - self.pillars[0];
                 if dt > T::zero() {
-                    fwd[0] = -(self.discount_factors[1].ln()
-                        - self.discount_factors[0].ln())
-                        / dt;
+                    fwd[0] = -(self.discount_factors[1].ln() - self.discount_factors[0].ln()) / dt;
                 }
             } else if k == n - 1 {
                 let dt = self.pillars[k] - self.pillars[k - 1];
                 if dt > T::zero() {
-                    fwd[k] = -(self.discount_factors[k].ln()
-                        - self.discount_factors[k - 1].ln())
-                        / dt;
+                    fwd[k] =
+                        -(self.discount_factors[k].ln() - self.discount_factors[k - 1].ln()) / dt;
                 }
             } else {
                 let dt = self.pillars[k + 1] - self.pillars[k - 1];

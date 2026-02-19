@@ -19,8 +19,8 @@ use crate::{
         FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
         ImpliedPdfRequest, ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
         IrVolQuotesResponse, SabrSmileRequest, SmilePoint, SmileResponse, SwaptionInstrument,
-        VolSmileRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
-        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        VolSmileRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
+        VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     services::helpers,
     state::AppState,
@@ -664,9 +664,7 @@ impl VolcubeService {
     ///   Black-Scholes PDF.
     /// - **Normal** (beta < 0.5, IR): linear strikes, normal vol conversion,
     ///   Bachelier PDF.
-    pub fn compute_sabr_smile(
-        request: &SabrSmileRequest,
-    ) -> Result<SmileResponse, ServerError> {
+    pub fn compute_sabr_smile(request: &SabrSmileRequest) -> Result<SmileResponse, ServerError> {
         use pricer_core::math::formulas::{
             sabr::{sabr_implied_vol, SabrImpliedVolParams},
             BlackScholes,
@@ -971,9 +969,7 @@ impl VolcubeService {
         range: f64,
         params: &serde_json::Value,
     ) -> Result<SmileResponse, ServerError> {
-        use pricer_core::math::formulas::vanna_volga::{
-            vanna_volga_implied_vol, VannaVolgaParams,
-        };
+        use pricer_core::math::formulas::vanna_volga::{vanna_volga_implied_vol, VannaVolgaParams};
 
         let vv = VannaVolgaParams {
             sigma_atm: json_f64(params, "sigmaAtm", 0.10),
@@ -1091,9 +1087,8 @@ impl VolcubeService {
             .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
             .unwrap_or_else(|| vec![0.15, 0.30]);
 
-        let mix = MixtureLognormalParams::new(weights, forwards, volatilities).map_err(|e| {
-            ServerError::InvalidRequest(format!("Invalid mixture params: {e}"))
-        })?;
+        let mix = MixtureLognormalParams::new(weights, forwards, volatilities)
+            .map_err(|e| ServerError::InvalidRequest(format!("Invalid mixture params: {e}")))?;
 
         let step = 2.0 * range / (n - 1) as f64;
         let mut offsets = Vec::with_capacity(n);
@@ -1103,8 +1098,7 @@ impl VolcubeService {
         for i in 0..n {
             let offset_bp = -range + i as f64 * step;
             let strike = (forward * (offset_bp / 10_000.0).exp()).max(1e-8);
-            let vol =
-                mixture_lognormal_implied_vol(&mix, strike, forward, expiry).unwrap_or(0.0);
+            let vol = mixture_lognormal_implied_vol(&mix, strike, forward, expiry).unwrap_or(0.0);
             offsets.push(offset_bp);
             strikes.push(strike);
             vols.push(vol);
@@ -1128,9 +1122,7 @@ impl VolcubeService {
         range: f64,
         params: &serde_json::Value,
     ) -> Result<SmileResponse, ServerError> {
-        use pricer_core::math::formulas::variance_gamma::{
-            vg_implied_vol, VarianceGammaParams,
-        };
+        use pricer_core::math::formulas::variance_gamma::{vg_implied_vol, VarianceGammaParams};
 
         let vg = VarianceGammaParams {
             sigma: json_f64(params, "sigma", 0.2),
@@ -1450,12 +1442,7 @@ fn json_f64(v: &serde_json::Value, key: &str, default: f64) -> f64 {
 }
 
 /// Breeden-Litzenberger density via Black-Scholes call prices.
-fn breeden_litzenberger_bs(
-    strikes: &[f64],
-    vols: &[f64],
-    forward: f64,
-    expiry: f64,
-) -> Vec<f64> {
+fn breeden_litzenberger_bs(strikes: &[f64], vols: &[f64], forward: f64, expiry: f64) -> Vec<f64> {
     use pricer_core::math::formulas::BlackScholes;
 
     let n = strikes.len();

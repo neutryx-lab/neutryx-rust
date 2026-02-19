@@ -7,16 +7,16 @@ use infra_domain::{
     market::{
         instrument::{
             convention::ConventionSet, AgricultureType, AsianOption, AveragingType,
-            BarrierDirection, BarrierType, BasketComponent, BasketOption, BasisSpread, BasisSwap,
-            Bond, BondType, CapFloor, CapFloorType, Cds, CdsIndex, CdsOption, CommodityAsianOption,
-            CommodityForward, CommoditySwap, CommodityType, CommodityVanillaOption, CreditEvent,
-            CrossCurrencyBasisSwap, Deposit, EnergyType, EquityBarrierOption, EquityForward,
-            CmsSwap, EquityReturnType, EquitySwap, EquityUnderlying, EquityVanillaOption,
-            ExerciseStyle, Fra, Frn, Futures, FxBarrierOption, FxForward, FxSpot, FxSwap,
-            FxVanillaOption,
-            InflationSwap, InstrumentExpander, InterestRateSwap, LookbackOption, LookbackType,
-            MetalType, MonitoringFrequency, NotionalSchedule, NtdBasket, Ois, PayerReceiver,
-            QuantityUnit, SpreadOption, SwapType, Swaption, XccyBasisConvention, XccyLeg,
+            BarrierDirection, BarrierType, BasisSpread, BasisSwap, BasketComponent, BasketOption,
+            Bond, BondType, CapFloor, CapFloorType, Cds, CdsIndex, CdsOption, CmsSwap,
+            CommodityAsianOption, CommodityForward, CommoditySwap, CommodityType,
+            CommodityVanillaOption, CreditEvent, CrossCurrencyBasisSwap, Deposit, EnergyType,
+            EquityBarrierOption, EquityForward, EquityReturnType, EquitySwap, EquityUnderlying,
+            EquityVanillaOption, ExerciseStyle, Fra, Frn, Futures, FxBarrierOption, FxForward,
+            FxSpot, FxSwap, FxVanillaOption, InflationSwap, InstrumentExpander, InterestRateSwap,
+            LookbackOption, LookbackType, MetalType, MonitoringFrequency, NotionalSchedule,
+            NtdBasket, Ois, PayerReceiver, QuantityUnit, SpreadOption, SwapType, Swaption,
+            XccyBasisConvention, XccyLeg,
         },
         Currency, CurrencyPair, RateIndex,
     },
@@ -36,13 +36,12 @@ use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest,
-        DemoAdvancedGreeksResult, DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult,
-        DemoPathDistribution, DemoPricingMethod, DemoPricingRequest, DemoPricingResult,
-        DemoTreeType, ExpandedTrade, FactorGreeks, FactorGreeksEntry, LegResult,
-        PricerGraphEdge, PricerGraphMetadata, PricerGraphNode, PricerGraphRequest,
-        PricerGraphResponse, PricingLeg, RiskFactor, TradeExpandRequest, TradeLeg,
-        TradeMetadata,
+        Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
+        DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult, DemoPathDistribution,
+        DemoPricingMethod, DemoPricingRequest, DemoPricingResult, DemoTreeType, ExpandedTrade,
+        FactorGreeks, FactorGreeksEntry, LegResult, PricerGraphEdge, PricerGraphMetadata,
+        PricerGraphNode, PricerGraphRequest, PricerGraphResponse, PricingLeg, RiskFactor,
+        TradeExpandRequest, TradeLeg, TradeMetadata,
     },
     state::AppState,
 };
@@ -211,7 +210,8 @@ fn build_domain_legs(
         .collect()
 }
 
-/// Map a `RateIndex` to the `CurveName` expected by `CurveSet::forward_rate_for_index`.
+/// Map a `RateIndex` to the `CurveName` expected by
+/// `CurveSet::forward_rate_for_index`.
 fn rate_index_to_curve_name(ri: RateIndex) -> CurveName {
     match ri {
         RateIndex::Sofr => CurveName::Sofr,
@@ -395,12 +395,8 @@ fn price_with_rates(
     currency_rates: &[(Currency, f64)],
     dto_legs: &[PricingLeg],
 ) -> Result<f64, ServerError> {
-    let market = build_market_env_with_rates(
-        valuation_date,
-        reporting_currency,
-        currency_rates,
-        dto_legs,
-    )?;
+    let market =
+        build_market_env_with_rates(valuation_date, reporting_currency, currency_rates, dto_legs)?;
     let calc = CalcSetting::builder()
         .reporting_currency(reporting_currency)
         .build();
@@ -455,8 +451,13 @@ fn compute_factor_greeks(
                 }
             })
             .collect();
-        let pv_up =
-            price_with_rates(trade, valuation_date, reporting_currency, &rates_up, dto_legs)?;
+        let pv_up = price_with_rates(
+            trade,
+            valuation_date,
+            reporting_currency,
+            &rates_up,
+            dto_legs,
+        )?;
 
         let rates_down: Vec<(Currency, f64)> = currencies
             .iter()
@@ -468,8 +469,13 @@ fn compute_factor_greeks(
                 }
             })
             .collect();
-        let pv_down =
-            price_with_rates(trade, valuation_date, reporting_currency, &rates_down, dto_legs)?;
+        let pv_down = price_with_rates(
+            trade,
+            valuation_date,
+            reporting_currency,
+            &rates_down,
+            dto_legs,
+        )?;
 
         let delta = (pv_up - pv_down) / (2.0 * h);
         let gamma = (pv_up - 2.0 * base_pv + pv_down) / (h * h);
@@ -634,7 +640,8 @@ fn domain_trade_to_dto(
     }
 }
 
-/// Parse a commodity type string into `(CommodityType, QuantityUnit, delivery_location)`.
+/// Parse a commodity type string into `(CommodityType, QuantityUnit,
+/// delivery_location)`.
 fn parse_commodity_type(s: Option<&str>) -> (CommodityType, QuantityUnit, String) {
     match s.unwrap_or("CrudeOil") {
         "CrudeOil" => (
@@ -689,13 +696,11 @@ fn build_domain_trade(
     params: &serde_json::Value,
 ) -> Result<(Trade, &'static str), ServerError> {
     let param_str = |key: &str| params.get(key).and_then(|v| v.as_str());
-    let param_f64 = |key: &str, default: f64| {
-        params.get(key).and_then(|v| v.as_f64()).unwrap_or(default)
-    };
+    let param_f64 =
+        |key: &str, default: f64| params.get(key).and_then(|v| v.as_f64()).unwrap_or(default);
     let param_date = |key: &str| -> Result<Date, ServerError> {
-        let s = param_str(key).ok_or_else(|| {
-            ServerError::InvalidRequest(format!("Missing required param: {key}"))
-        })?;
+        let s = param_str(key)
+            .ok_or_else(|| ServerError::InvalidRequest(format!("Missing required param: {key}")))?;
         parse_date(s)
     };
 
@@ -704,952 +709,948 @@ fn build_domain_trade(
         .map_err(|e| ServerError::Internal(format!("Default valuation date: {e}")))?;
 
     Ok(match instrument_type {
-            "IRS" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let fixed_rate = param_f64("fixedRate", 0.05);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
+        "IRS" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let fixed_rate = param_f64("fixedRate", 0.05);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
 
-                let rate_index_str = param_str("rateIndex")
-                    .map(String::from)
-                    .unwrap_or_else(|| default_rate_index(currency).to_string());
-                let rate_index = parse_rate_index(&rate_index_str)?;
+            let rate_index_str = param_str("rateIndex")
+                .map(String::from)
+                .unwrap_or_else(|| default_rate_index(currency).to_string());
+            let rate_index = parse_rate_index(&rate_index_str)?;
 
-                let swap_type = param_str("swapType").unwrap_or("Vanilla");
+            let swap_type = param_str("swapType").unwrap_or("Vanilla");
 
-                if swap_type == "OIS" {
-                    let ois = Ois {
-                        rate_index,
-                        fixed_rate,
-                        start_date,
-                        end_date,
-                        notional,
-                        currency,
-                        payer_receiver: PayerReceiver::Payer,
-                        payment_frequency: Frequency::Annual,
-                    };
-                    let t = ois
-                        .expand_to_trade("DEMO-OIS", valuation_date, &conventions)
-                        .map_err(|e| ServerError::Internal(format!("OIS expansion: {e}")))?;
-                    (t, "OIS")
-                } else {
-                    let (fixed_freq, float_freq) = default_swap_frequencies(rate_index);
-                    let tenor = compute_tenor(start_date, end_date);
-                    let irs = InterestRateSwap {
-                        start_date,
-                        tenor,
-                        fixed_rate,
-                        spread: 0.0,
-                        notional,
-                        currency,
-                        payer_receiver: PayerReceiver::Payer,
-                        fixed_frequency: fixed_freq,
-                        float_frequency: float_freq,
-                        rate_index,
-                    };
-                    let t = irs
-                        .expand_to_trade("DEMO-IRS", valuation_date, &conventions)
-                        .map_err(|e| ServerError::Internal(format!("IRS expansion: {e}")))?;
-                    (t, "IRS")
-                }
-            }
-            "FxForward" => {
-                let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
-                let pair = parse_currency_pair(pair_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let settlement_date = param_date("endDate")
-                    .or_else(|_| param_date("settlementDate"))
-                    .unwrap_or_else(|_| {
-                        Tenor::SixMonths.add_to_date(
-                            valuation_date,
-                            infra_domain::time::EndOfMonthRule::Adjust,
-                        )
-                    });
-                let forward_rate = param_f64("forwardRate", 1.0);
-
-                let fx = FxForward {
-                    currency_pair: pair,
-                    forward_rate,
-                    settlement_date,
-                    notional,
-                    notional_currency: pair.base,
-                };
-                let t = fx
-                    .expand_to_trade("DEMO-FXFWD", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("FxForward expansion: {e}")))?;
-                (t, "FxForward")
-            }
-            "BasisSwap" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let spread = param_f64("spread", 0.0) / 10_000.0;
-                let rate_index_str = param_str("rateIndex")
-                    .map(String::from)
-                    .unwrap_or_else(|| default_rate_index(currency).to_string());
-                let rate_index = parse_rate_index(&rate_index_str)?;
-                let tenor = compute_tenor(start_date, end_date);
-
-                let basis = BasisSwap {
-                    start_date,
-                    tenor,
-                    notional,
-                    currency,
-                    payer_receiver: PayerReceiver::Payer,
-                    leg1_index: rate_index,
-                    leg1_spread: spread,
-                    leg1_frequency: Frequency::Quarterly,
-                    leg2_index: default_rate_index(currency),
-                    leg2_spread: 0.0,
-                    leg2_frequency: Frequency::Quarterly,
-                };
-                let t = basis
-                    .expand_to_trade("DEMO-BASIS", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("BasisSwap expansion: {e}")))?;
-                (t, "BasisSwap")
-            }
-            "Swaption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 0.05);
-                let expiry = param_date("expiry")?;
-
-                let swaption = Swaption {
-                    underlying_swap_tenor: Tenor::FiveYears,
-                    expiry,
-                    exercise_type: ExerciseStyle::European,
-                    settlement_type: SettlementType::Cash,
-                    strike,
-                    notional,
-                    currency,
-                    payer_receiver: PayerReceiver::Payer,
-                };
-                let t = swaption
-                    .expand_to_trade("DEMO-SWAPTION", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("Swaption expansion: {e}")))?;
-                (t, "Swaption")
-            }
-            "CapFloor" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 0.05);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let rate_index_str = param_str("rateIndex")
-                    .map(String::from)
-                    .unwrap_or_else(|| default_rate_index(currency).to_string());
-                let rate_index = parse_rate_index(&rate_index_str)?;
-                let tenor = compute_tenor(start_date, end_date);
-
-                let cap = CapFloor {
-                    cap_floor_type: CapFloorType::Cap,
-                    strikes: vec![strike],
-                    index: rate_index,
-                    start_date,
-                    tenor,
-                    notional_schedule: NotionalSchedule {
-                        notionals: vec![notional],
-                    },
-                    payment_frequency: Frequency::Quarterly,
-                    currency,
-                };
-                let t = cap
-                    .expand_to_trade("DEMO-CAPFLOOR", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CapFloor expansion: {e}")))?;
-                (t, "CapFloor")
-            }
-            "Deposit" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let rate = param_f64("fixedRate", 0.05);
-                let tenor = compute_tenor(start_date, end_date);
-
-                let deposit = Deposit {
-                    start_date,
-                    tenor,
-                    rate,
-                    notional,
-                    currency,
-                };
-                let t = deposit
-                    .expand_to_trade("DEMO-DEPOSIT", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("Deposit expansion: {e}")))?;
-                (t, "Deposit")
-            }
-            "Fra" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let strike = param_f64("strike", 0.05);
-                let rate_index_str = param_str("rateIndex")
-                    .map(String::from)
-                    .unwrap_or_else(|| default_rate_index(currency).to_string());
-                let rate_index = parse_rate_index(&rate_index_str)?;
-                let tenor = compute_tenor(start_date, end_date);
-
-                let fra = Fra {
-                    fixing_date: start_date,
-                    start_date,
-                    tenor,
-                    strike,
-                    notional,
-                    currency,
+            if swap_type == "OIS" {
+                let ois = Ois {
                     rate_index,
-                };
-                let t = fra
-                    .expand_to_trade("DEMO-FRA", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("FRA expansion: {e}")))?;
-                (t, "FRA")
-            }
-            "Bond" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let coupon_rate = param_f64("fixedRate", 0.03);
-
-                let bond = Bond {
-                    issuer: "DEMO".to_string(),
-                    coupon_rate,
-                    coupon_frequency: Frequency::SemiAnnual,
-                    start_date,
-                    maturity: end_date,
-                    notional,
-                    currency,
-                    bond_type: BondType::Government,
-                    rating: None,
-                };
-                let t = bond
-                    .expand_to_trade("DEMO-BOND", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("Bond expansion: {e}")))?;
-                (t, "Bond")
-            }
-            "FxVanillaOption" => {
-                let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
-                let pair = parse_currency_pair(pair_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 1.1);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-
-                let opt = FxVanillaOption {
-                    currency_pair: pair,
-                    strike,
-                    expiry,
-                    delivery_date: expiry,
-                    option_type,
-                    exercise_style: ExerciseStyle::European,
-                    notional,
-                    notional_currency: pair.base,
-                };
-                let t = opt
-                    .expand_to_trade("DEMO-FXOPT", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("FxVanillaOption expansion: {e}")))?;
-                (t, "FxVanillaOption")
-            }
-            "FxBarrierOption" => {
-                let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
-                let pair = parse_currency_pair(pair_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 1.1);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-
-                let vanilla = FxVanillaOption {
-                    currency_pair: pair,
-                    strike,
-                    expiry,
-                    delivery_date: expiry,
-                    option_type,
-                    exercise_style: ExerciseStyle::European,
-                    notional,
-                    notional_currency: pair.base,
-                };
-                let barrier = FxBarrierOption {
-                    vanilla,
-                    barrier_level: strike * 1.1,
-                    barrier_type: BarrierType::KnockOut,
-                    barrier_direction: BarrierDirection::Up,
-                    rebate: None,
-                };
-                let t = barrier
-                    .expand_to_trade("DEMO-FXBARRIER", valuation_date, &conventions)
-                    .map_err(|e| {
-                        ServerError::Internal(format!("FxBarrierOption expansion: {e}"))
-                    })?;
-                (t, "FxBarrierOption")
-            }
-            "EquityForward" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let settlement_date = param_date("endDate")?;
-
-                let eq_fwd = EquityForward {
-                    underlying: EquityUnderlying::Index {
-                        name: "SPX".to_string(),
-                    },
-                    forward_price: 100.0,
-                    settlement_date,
-                    notional,
-                    currency,
-                };
-                let t = eq_fwd
-                    .expand_to_trade("DEMO-EQFWD", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("EquityForward expansion: {e}")))?;
-                (t, "EquityForward")
-            }
-            "EquityVanillaOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 100.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-
-                let eq_opt = EquityVanillaOption {
-                    underlying: EquityUnderlying::Index {
-                        name: "SPX".to_string(),
-                    },
-                    strike,
-                    expiry,
-                    option_type,
-                    exercise_style: ExerciseStyle::European,
-                    notional,
-                    currency,
-                };
-                let t = eq_opt
-                    .expand_to_trade("DEMO-EQOPT", valuation_date, &conventions)
-                    .map_err(|e| {
-                        ServerError::Internal(format!("EquityVanillaOption expansion: {e}"))
-                    })?;
-                (t, "EquityVanillaOption")
-            }
-            "AsianOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 100.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-
-                let asian = AsianOption {
-                    underlying: EquityUnderlying::Index {
-                        name: "SPX".to_string(),
-                    },
-                    strike,
-                    expiry,
-                    option_type,
-                    averaging_type: AveragingType::Arithmetic,
-                    observation_frequency: Frequency::Monthly,
-                    observed_values: vec![],
-                    notional,
-                    currency,
-                };
-                let t = asian
-                    .expand_to_trade("DEMO-ASIAN", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("AsianOption expansion: {e}")))?;
-                (t, "AsianOption")
-            }
-            "CDS" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let spread = param_f64("spread", 100.0) / 10_000.0;
-
-                let cds = Cds {
-                    reference_entity: "DEMO Corp".to_string(),
-                    notional,
-                    spread,
-                    start_date,
-                    maturity: end_date,
-                    recovery_rate: Some(0.4),
-                    currency,
-                    credit_events: vec![
-                        CreditEvent::Bankruptcy,
-                        CreditEvent::FailureToPay,
-                    ],
-                };
-                let t = cds
-                    .expand_to_trade("DEMO-CDS", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CDS expansion: {e}")))?;
-                (t, "CDS")
-            }
-            // ── Rates (new) ────────────────────────────────────────────
-            "Futures" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let expiry = param_date("expiry")?;
-                let price = param_f64("futuresPrice", 95.0);
-                let rate_index_str = param_str("rateIndex")
-                    .map(String::from)
-                    .unwrap_or_else(|| default_rate_index(currency).to_string());
-                let rate_index = parse_rate_index(&rate_index_str)?;
-
-                let futures = Futures {
-                    expiry_date: expiry,
-                    underlying_tenor: Tenor::ThreeMonths,
-                    price,
-                    notional,
-                    currency,
-                    rate_index,
-                };
-                let t = futures
-                    .expand_to_trade("DEMO-FUTURES", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("Futures expansion: {e}")))?;
-                (t, "Futures")
-            }
-            "Frn" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let spread = param_f64("spread", 10.0) / 10_000.0;
-                let rate_index_str = param_str("rateIndex")
-                    .map(String::from)
-                    .unwrap_or_else(|| default_rate_index(currency).to_string());
-                let coupon_index = parse_rate_index(&rate_index_str)?;
-
-                let frn = Frn {
-                    coupon_index,
-                    spread,
-                    reset_frequency: Frequency::Quarterly,
-                    principal_schedule: NotionalSchedule::constant(notional),
-                    start_date,
-                    maturity: end_date,
-                    currency,
-                };
-                let t = frn
-                    .expand_to_trade("DEMO-FRN", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("FRN expansion: {e}")))?;
-                (t, "FRN")
-            }
-            "CmsSwap" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let spread = param_f64("spread", 0.0) / 10_000.0;
-                let cms_tenor = match param_str("cmsTenor") {
-                    Some("5Y") => Tenor::FiveYears,
-                    Some("30Y") => Tenor::months(360),
-                    _ => Tenor::TenYears,
-                };
-                let tenor = compute_tenor(start_date, end_date);
-
-                let cms = CmsSwap {
-                    cms_tenor,
-                    convexity_adjustment: None,
-                    start_date,
-                    tenor,
-                    notional,
-                    currency,
-                    spread,
-                };
-                let t = cms
-                    .expand_to_trade("DEMO-CMS", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CmsSwap expansion: {e}")))?;
-                (t, "CmsSwap")
-            }
-            "InflationSwap" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let fixed_rate = param_f64("fixedRate", 0.025);
-                let inflation_index = param_str("inflationIndex")
-                    .unwrap_or("CPI")
-                    .to_string();
-                let swap_type = match param_str("inflationSwapType") {
-                    Some("YearOnYear") => SwapType::YearOnYear,
-                    _ => SwapType::ZeroCoupon,
-                };
-
-                let infl = InflationSwap {
-                    inflation_index,
-                    lag_months: 3,
-                    swap_type,
-                    start_date,
-                    maturity: end_date,
-                    notional,
-                    currency,
                     fixed_rate,
-                };
-                let t = infl
-                    .expand_to_trade("DEMO-INFLSWAP", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("InflationSwap expansion: {e}")))?;
-                (t, "InflationSwap")
-            }
-            // ── FX (new) ───────────────────────────────────────────────
-            "FxSpot" => {
-                let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
-                let pair = parse_currency_pair(pair_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-
-                let spot = FxSpot {
-                    currency_pair: pair,
-                    spot_rate: 1.0,
-                    settlement_date: Tenor::days(2).add_to_date(
-                        valuation_date,
-                        infra_domain::time::EndOfMonthRule::Adjust,
-                    ),
+                    start_date,
+                    end_date,
                     notional,
-                    notional_currency: pair.base,
+                    currency,
+                    payer_receiver: PayerReceiver::Payer,
+                    payment_frequency: Frequency::Annual,
                 };
-                let t = spot
-                    .expand_to_trade("DEMO-FXSPOT", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("FxSpot expansion: {e}")))?;
-                (t, "FxSpot")
+                let t = ois
+                    .expand_to_trade("DEMO-OIS", valuation_date, &conventions)
+                    .map_err(|e| ServerError::Internal(format!("OIS expansion: {e}")))?;
+                (t, "OIS")
+            } else {
+                let (fixed_freq, float_freq) = default_swap_frequencies(rate_index);
+                let tenor = compute_tenor(start_date, end_date);
+                let irs = InterestRateSwap {
+                    start_date,
+                    tenor,
+                    fixed_rate,
+                    spread: 0.0,
+                    notional,
+                    currency,
+                    payer_receiver: PayerReceiver::Payer,
+                    fixed_frequency: fixed_freq,
+                    float_frequency: float_freq,
+                    rate_index,
+                };
+                let t = irs
+                    .expand_to_trade("DEMO-IRS", valuation_date, &conventions)
+                    .map_err(|e| ServerError::Internal(format!("IRS expansion: {e}")))?;
+                (t, "IRS")
             }
-            "FxSwap" => {
-                let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
-                let pair = parse_currency_pair(pair_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let near_date = param_date("nearDate").unwrap_or_else(|_| {
-                    Tenor::days(2).add_to_date(
-                        valuation_date,
-                        infra_domain::time::EndOfMonthRule::Adjust,
-                    )
+        }
+        "FxForward" => {
+            let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
+            let pair = parse_currency_pair(pair_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let settlement_date = param_date("endDate")
+                .or_else(|_| param_date("settlementDate"))
+                .unwrap_or_else(|_| {
+                    Tenor::SixMonths
+                        .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust)
                 });
-                let far_date = param_date("farDate").unwrap_or_else(|_| {
-                    Tenor::ThreeMonths.add_to_date(
-                        valuation_date,
-                        infra_domain::time::EndOfMonthRule::Adjust,
-                    )
-                });
+            let forward_rate = param_f64("forwardRate", 1.0);
 
-                let fx_swap = FxSwap {
-                    currency_pair: pair,
-                    near_leg_date: near_date,
-                    far_leg_date: far_date,
-                    near_rate: 1.0,
-                    far_rate: 1.001,
-                    notional,
-                    notional_currency: pair.base,
-                };
-                let t = fx_swap
-                    .expand_to_trade("DEMO-FXSWAP", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("FxSwap expansion: {e}")))?;
-                (t, "FxSwap")
-            }
-            "CrossCurrencyBasisSwap" => {
-                let notional = param_f64("notional", 10_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let dom_ccy_str = param_str("domesticCurrency").unwrap_or("USD");
-                let for_ccy_str = param_str("foreignCurrency").unwrap_or("EUR");
-                let domestic_currency = parse_currency(dom_ccy_str)?;
-                let foreign_currency = parse_currency(for_ccy_str)?;
-                let spread_bps = param_f64("spread", -15.0);
+            let fx = FxForward {
+                currency_pair: pair,
+                forward_rate,
+                settlement_date,
+                notional,
+                notional_currency: pair.base,
+            };
+            let t = fx
+                .expand_to_trade("DEMO-FXFWD", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("FxForward expansion: {e}")))?;
+            (t, "FxForward")
+        }
+        "BasisSwap" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let spread = param_f64("spread", 0.0) / 10_000.0;
+            let rate_index_str = param_str("rateIndex")
+                .map(String::from)
+                .unwrap_or_else(|| default_rate_index(currency).to_string());
+            let rate_index = parse_rate_index(&rate_index_str)?;
+            let tenor = compute_tenor(start_date, end_date);
 
-                let dom_index = default_rate_index(domestic_currency);
-                let for_index = default_rate_index(foreign_currency);
+            let basis = BasisSwap {
+                start_date,
+                tenor,
+                notional,
+                currency,
+                payer_receiver: PayerReceiver::Payer,
+                leg1_index: rate_index,
+                leg1_spread: spread,
+                leg1_frequency: Frequency::Quarterly,
+                leg2_index: default_rate_index(currency),
+                leg2_spread: 0.0,
+                leg2_frequency: Frequency::Quarterly,
+            };
+            let t = basis
+                .expand_to_trade("DEMO-BASIS", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("BasisSwap expansion: {e}")))?;
+            (t, "BasisSwap")
+        }
+        "Swaption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 0.05);
+            let expiry = param_date("expiry")?;
 
-                let xccy = CrossCurrencyBasisSwap {
-                    domestic_currency,
-                    foreign_currency,
-                    notional,
-                    start_date,
-                    maturity: end_date,
-                    domestic_leg: XccyLeg::new(domestic_currency, dom_index, Frequency::Quarterly),
-                    foreign_leg: XccyLeg::new(foreign_currency, for_index, Frequency::Quarterly),
-                    basis_spread: BasisSpread::from_bps(spread_bps),
-                    convention: XccyBasisConvention::default(),
-                };
-                let t = xccy
-                    .expand_to_trade("DEMO-XCCY", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("XCCY expansion: {e}")))?;
-                (t, "CrossCurrencyBasisSwap")
-            }
-            // ── Equity (new) ───────────────────────────────────────────
-            "EquityBarrierOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 100.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-                let barrier_level = param_f64("barrierLevel", strike * 1.1);
-                let barrier_type = match param_str("barrierType") {
-                    Some("KnockIn") => BarrierType::KnockIn,
-                    _ => BarrierType::KnockOut,
-                };
-                let barrier_direction = match param_str("barrierDirection") {
-                    Some("Down") => BarrierDirection::Down,
-                    _ => BarrierDirection::Up,
-                };
+            let swaption = Swaption {
+                underlying_swap_tenor: Tenor::FiveYears,
+                expiry,
+                exercise_type: ExerciseStyle::European,
+                settlement_type: SettlementType::Cash,
+                strike,
+                notional,
+                currency,
+                payer_receiver: PayerReceiver::Payer,
+            };
+            let t = swaption
+                .expand_to_trade("DEMO-SWAPTION", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("Swaption expansion: {e}")))?;
+            (t, "Swaption")
+        }
+        "CapFloor" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 0.05);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let rate_index_str = param_str("rateIndex")
+                .map(String::from)
+                .unwrap_or_else(|| default_rate_index(currency).to_string());
+            let rate_index = parse_rate_index(&rate_index_str)?;
+            let tenor = compute_tenor(start_date, end_date);
 
-                let vanilla = EquityVanillaOption {
-                    underlying: EquityUnderlying::Index { name: "SPX".to_string() },
-                    strike,
-                    expiry,
-                    option_type,
-                    exercise_style: ExerciseStyle::European,
-                    notional,
-                    currency,
-                };
-                let barrier = EquityBarrierOption {
-                    vanilla,
-                    barrier_level,
-                    barrier_type,
-                    barrier_direction,
-                    monitoring_frequency: MonitoringFrequency::Continuous,
-                    rebate: None,
-                };
-                let t = barrier
-                    .expand_to_trade("DEMO-EQBARRIER", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("EquityBarrierOption expansion: {e}")))?;
-                (t, "EquityBarrierOption")
-            }
-            "LookbackOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-                let lookback_type = match param_str("lookbackType") {
-                    Some("FixedStrike") => LookbackType::FixedStrike,
-                    _ => LookbackType::FloatingStrike,
-                };
-                let strike = if lookback_type == LookbackType::FixedStrike {
-                    Some(param_f64("strike", 100.0))
-                } else {
-                    None
-                };
+            let cap = CapFloor {
+                cap_floor_type: CapFloorType::Cap,
+                strikes: vec![strike],
+                index: rate_index,
+                start_date,
+                tenor,
+                notional_schedule: NotionalSchedule {
+                    notionals: vec![notional],
+                },
+                payment_frequency: Frequency::Quarterly,
+                currency,
+            };
+            let t = cap
+                .expand_to_trade("DEMO-CAPFLOOR", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("CapFloor expansion: {e}")))?;
+            (t, "CapFloor")
+        }
+        "Deposit" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let rate = param_f64("fixedRate", 0.05);
+            let tenor = compute_tenor(start_date, end_date);
 
-                let lookback = LookbackOption {
-                    underlying: EquityUnderlying::Index { name: "SPX".to_string() },
-                    strike,
-                    expiry,
-                    option_type,
-                    lookback_type,
-                    observation_start: valuation_date,
-                    notional,
-                    currency,
-                };
-                let t = lookback
-                    .expand_to_trade("DEMO-LOOKBACK", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("LookbackOption expansion: {e}")))?;
-                (t, "LookbackOption")
-            }
-            "EquitySwap" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let funding_spread = param_f64("spread", 10.0) / 10_000.0;
-                let return_type = match param_str("returnType") {
-                    Some("Price") => EquityReturnType::Price,
-                    _ => EquityReturnType::TotalReturn,
-                };
+            let deposit = Deposit {
+                start_date,
+                tenor,
+                rate,
+                notional,
+                currency,
+            };
+            let t = deposit
+                .expand_to_trade("DEMO-DEPOSIT", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("Deposit expansion: {e}")))?;
+            (t, "Deposit")
+        }
+        "Fra" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let strike = param_f64("strike", 0.05);
+            let rate_index_str = param_str("rateIndex")
+                .map(String::from)
+                .unwrap_or_else(|| default_rate_index(currency).to_string());
+            let rate_index = parse_rate_index(&rate_index_str)?;
+            let tenor = compute_tenor(start_date, end_date);
 
-                let eq_swap = EquitySwap {
-                    underlying: EquityUnderlying::Index { name: "SPX".to_string() },
-                    return_type,
-                    funding_index: default_rate_index(currency).to_string(),
-                    funding_spread,
-                    start_date,
-                    maturity: end_date,
-                    notional,
-                    currency,
-                };
-                let t = eq_swap
-                    .expand_to_trade("DEMO-EQSWAP", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("EquitySwap expansion: {e}")))?;
-                (t, "EquitySwap")
-            }
-            "BasketOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 1_000_000.0);
-                let strike = param_f64("strike", 100.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
+            let fra = Fra {
+                fixing_date: start_date,
+                start_date,
+                tenor,
+                strike,
+                notional,
+                currency,
+                rate_index,
+            };
+            let t = fra
+                .expand_to_trade("DEMO-FRA", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("FRA expansion: {e}")))?;
+            (t, "FRA")
+        }
+        "Bond" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let coupon_rate = param_f64("fixedRate", 0.03);
 
-                let basket = BasketOption {
-                    components: vec![
-                        BasketComponent {
-                            underlying: EquityUnderlying::stock("AAPL"),
-                            weight: 0.5,
-                        },
-                        BasketComponent {
-                            underlying: EquityUnderlying::stock("MSFT"),
-                            weight: 0.5,
-                        },
-                    ],
-                    strike,
-                    expiry,
-                    option_type,
-                    exercise_style: ExerciseStyle::European,
-                    notional,
-                    currency,
-                    correlation_matrix_ref: None,
-                };
-                let t = basket
-                    .expand_to_trade("DEMO-BASKET", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("BasketOption expansion: {e}")))?;
-                (t, "BasketOption")
-            }
-            // ── Credit (new) ───────────────────────────────────────────
-            "CdsIndex" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 10_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let spread = param_f64("spread", 60.0) / 10_000.0;
-                let index_name = param_str("indexName")
-                    .unwrap_or("CDX.NA.IG")
-                    .to_string();
+            let bond = Bond {
+                issuer: "DEMO".to_string(),
+                coupon_rate,
+                coupon_frequency: Frequency::SemiAnnual,
+                start_date,
+                maturity: end_date,
+                notional,
+                currency,
+                bond_type: BondType::Government,
+                rating: None,
+            };
+            let t = bond
+                .expand_to_trade("DEMO-BOND", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("Bond expansion: {e}")))?;
+            (t, "Bond")
+        }
+        "FxVanillaOption" => {
+            let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
+            let pair = parse_currency_pair(pair_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 1.1);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
 
-                let cds_idx = CdsIndex {
-                    index_name,
-                    series: 39,
-                    version: 1,
-                    constituent_count: 125,
-                    notional,
-                    spread,
-                    start_date,
-                    maturity: end_date,
-                    currency,
-                };
-                let t = cds_idx
-                    .expand_to_trade("DEMO-CDSIDX", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CdsIndex expansion: {e}")))?;
-                (t, "CdsIndex")
-            }
-            "CdsOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 10_000_000.0);
-                let exercise_date = param_date("expiry")?;
-                let underlying_maturity = param_date("endDate").unwrap_or_else(|_| {
-                    Tenor::FiveYears.add_to_date(
-                        exercise_date,
-                        infra_domain::time::EndOfMonthRule::Adjust,
-                    )
-                });
-                let strike_spread = param_f64("spread", 100.0) / 10_000.0;
-                let is_payer = param_str("isPayer") != Some("false");
+            let opt = FxVanillaOption {
+                currency_pair: pair,
+                strike,
+                expiry,
+                delivery_date: expiry,
+                option_type,
+                exercise_style: ExerciseStyle::European,
+                notional,
+                notional_currency: pair.base,
+            };
+            let t = opt
+                .expand_to_trade("DEMO-FXOPT", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("FxVanillaOption expansion: {e}")))?;
+            (t, "FxVanillaOption")
+        }
+        "FxBarrierOption" => {
+            let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
+            let pair = parse_currency_pair(pair_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 1.1);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
 
-                let cds_opt = CdsOption {
-                    reference_entity: "DEMO Corp".to_string(),
-                    strike_spread,
-                    exercise_date,
-                    underlying_maturity,
-                    notional,
-                    currency,
-                    is_payer,
-                };
-                let t = cds_opt
-                    .expand_to_trade("DEMO-CDSOPT", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CdsOption expansion: {e}")))?;
-                (t, "CdsOption")
-            }
-            "NtdBasket" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let notional = param_f64("notional", 10_000_000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let spread = param_f64("spread", 150.0) / 10_000.0;
-                let nth = param_f64("nthToDefault", 1.0) as u32;
+            let vanilla = FxVanillaOption {
+                currency_pair: pair,
+                strike,
+                expiry,
+                delivery_date: expiry,
+                option_type,
+                exercise_style: ExerciseStyle::European,
+                notional,
+                notional_currency: pair.base,
+            };
+            let barrier = FxBarrierOption {
+                vanilla,
+                barrier_level: strike * 1.1,
+                barrier_type: BarrierType::KnockOut,
+                barrier_direction: BarrierDirection::Up,
+                rebate: None,
+            };
+            let t = barrier
+                .expand_to_trade("DEMO-FXBARRIER", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("FxBarrierOption expansion: {e}")))?;
+            (t, "FxBarrierOption")
+        }
+        "EquityForward" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let settlement_date = param_date("endDate")?;
 
-                let ntd = NtdBasket {
-                    constituents: vec![
-                        "ACME Corp".into(), "Beta Inc".into(), "Gamma Ltd".into(),
-                        "Delta SA".into(), "Epsilon AG".into(),
-                    ],
-                    nth_to_default: nth,
-                    notional,
-                    spread,
-                    start_date,
-                    maturity: end_date,
-                    currency,
-                    correlation_parameter: Some(0.3),
-                };
-                let t = ntd
-                    .expand_to_trade("DEMO-NTD", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("NtdBasket expansion: {e}")))?;
-                (t, "NtdBasket")
-            }
-            // ── Commodity (new) ────────────────────────────────────────
-            "CommodityForward" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let quantity = param_f64("quantity", 1000.0);
-                let delivery_date = param_date("endDate")?;
-                let forward_price = param_f64("forwardPrice", 75.0);
-                let (commodity, unit, location) = parse_commodity_type(param_str("commodityType"));
+            let eq_fwd = EquityForward {
+                underlying: EquityUnderlying::Index {
+                    name: "SPX".to_string(),
+                },
+                forward_price: 100.0,
+                settlement_date,
+                notional,
+                currency,
+            };
+            let t = eq_fwd
+                .expand_to_trade("DEMO-EQFWD", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("EquityForward expansion: {e}")))?;
+            (t, "EquityForward")
+        }
+        "EquityVanillaOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 100.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
 
-                let fwd = CommodityForward {
-                    commodity,
-                    delivery_location: location,
-                    delivery_date,
-                    quantity,
-                    unit,
-                    forward_price,
-                    currency,
-                };
-                let t = fwd
-                    .expand_to_trade("DEMO-COMMFWD", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CommodityForward expansion: {e}")))?;
-                (t, "CommodityForward")
-            }
-            "CommoditySwap" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let quantity = param_f64("quantity", 1000.0);
-                let start_date = param_date("startDate")?;
-                let end_date = param_date("endDate")?;
-                let fixed_price = param_f64("fixedPrice", 75.0);
-                let (commodity, unit, _) = parse_commodity_type(param_str("commodityType"));
+            let eq_opt = EquityVanillaOption {
+                underlying: EquityUnderlying::Index {
+                    name: "SPX".to_string(),
+                },
+                strike,
+                expiry,
+                option_type,
+                exercise_style: ExerciseStyle::European,
+                notional,
+                currency,
+            };
+            let t = eq_opt
+                .expand_to_trade("DEMO-EQOPT", valuation_date, &conventions)
+                .map_err(|e| {
+                    ServerError::Internal(format!("EquityVanillaOption expansion: {e}"))
+                })?;
+            (t, "EquityVanillaOption")
+        }
+        "AsianOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 100.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
 
-                let swap = CommoditySwap {
-                    commodity,
-                    fixed_price,
-                    floating_index: "Spot Index".to_string(),
-                    start_date,
-                    maturity: end_date,
-                    quantity_per_period: quantity,
-                    unit,
-                    payment_frequency: Frequency::Monthly,
-                    currency,
-                };
-                let t = swap
-                    .expand_to_trade("DEMO-COMMSWAP", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CommoditySwap expansion: {e}")))?;
-                (t, "CommoditySwap")
-            }
-            "CommodityVanillaOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let quantity = param_f64("quantity", 1000.0);
-                let strike = param_f64("strike", 75.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-                let (commodity, unit, _) = parse_commodity_type(param_str("commodityType"));
+            let asian = AsianOption {
+                underlying: EquityUnderlying::Index {
+                    name: "SPX".to_string(),
+                },
+                strike,
+                expiry,
+                option_type,
+                averaging_type: AveragingType::Arithmetic,
+                observation_frequency: Frequency::Monthly,
+                observed_values: vec![],
+                notional,
+                currency,
+            };
+            let t = asian
+                .expand_to_trade("DEMO-ASIAN", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("AsianOption expansion: {e}")))?;
+            (t, "AsianOption")
+        }
+        "CDS" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let spread = param_f64("spread", 100.0) / 10_000.0;
 
-                let opt = CommodityVanillaOption {
-                    commodity,
-                    strike,
-                    expiry,
-                    option_type,
-                    exercise_style: ExerciseStyle::European,
-                    quantity,
-                    unit,
-                    settlement_type: SettlementType::Cash,
-                    currency,
-                };
-                let t = opt
-                    .expand_to_trade("DEMO-COMMOPT", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CommodityVanillaOption expansion: {e}")))?;
-                (t, "CommodityVanillaOption")
-            }
-            "CommodityAsianOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let quantity = param_f64("quantity", 1000.0);
-                let strike = param_f64("strike", 75.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
-                let (commodity, unit, _) = parse_commodity_type(param_str("commodityType"));
+            let cds = Cds {
+                reference_entity: "DEMO Corp".to_string(),
+                notional,
+                spread,
+                start_date,
+                maturity: end_date,
+                recovery_rate: Some(0.4),
+                currency,
+                credit_events: vec![CreditEvent::Bankruptcy, CreditEvent::FailureToPay],
+            };
+            let t = cds
+                .expand_to_trade("DEMO-CDS", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("CDS expansion: {e}")))?;
+            (t, "CDS")
+        }
+        // ── Rates (new) ────────────────────────────────────────────
+        "Futures" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let expiry = param_date("expiry")?;
+            let price = param_f64("futuresPrice", 95.0);
+            let rate_index_str = param_str("rateIndex")
+                .map(String::from)
+                .unwrap_or_else(|| default_rate_index(currency).to_string());
+            let rate_index = parse_rate_index(&rate_index_str)?;
 
-                let asian = CommodityAsianOption {
-                    commodity,
-                    strike,
-                    expiry,
-                    option_type,
-                    averaging_start: valuation_date,
-                    averaging_end: expiry,
-                    observation_frequency: Frequency::Daily,
-                    quantity,
-                    unit,
-                    currency,
-                };
-                let t = asian
-                    .expand_to_trade("DEMO-COMMASIAN", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("CommodityAsianOption expansion: {e}")))?;
-                (t, "CommodityAsianOption")
-            }
-            "SpreadOption" => {
-                let currency_str = param_str("currency").unwrap_or("USD");
-                let currency = parse_currency(currency_str)?;
-                let quantity = param_f64("quantity", 1000.0);
-                let spread_strike = param_f64("spreadStrike", 10.0);
-                let expiry = param_date("expiry")?;
-                let option_type = match param_str("optionType") {
-                    Some("Put") => OptionType::Put,
-                    _ => OptionType::Call,
-                };
+            let futures = Futures {
+                expiry_date: expiry,
+                underlying_tenor: Tenor::ThreeMonths,
+                price,
+                notional,
+                currency,
+                rate_index,
+            };
+            let t = futures
+                .expand_to_trade("DEMO-FUTURES", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("Futures expansion: {e}")))?;
+            (t, "Futures")
+        }
+        "Frn" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let spread = param_f64("spread", 10.0) / 10_000.0;
+            let rate_index_str = param_str("rateIndex")
+                .map(String::from)
+                .unwrap_or_else(|| default_rate_index(currency).to_string());
+            let coupon_index = parse_rate_index(&rate_index_str)?;
 
-                let spread = SpreadOption {
-                    commodity_1: CommodityType::Energy(EnergyType::CrudeOil),
-                    commodity_2: CommodityType::Energy(EnergyType::HeatingOil),
-                    spread_strike,
-                    expiry,
-                    option_type,
-                    quantity,
-                    unit: QuantityUnit::Barrels,
-                    currency,
-                };
-                let t = spread
-                    .expand_to_trade("DEMO-SPREAD", valuation_date, &conventions)
-                    .map_err(|e| ServerError::Internal(format!("SpreadOption expansion: {e}")))?;
-                (t, "SpreadOption")
-            }
-            other => {
-                return Err(ServerError::InvalidRequest(format!(
-                    "Instrument expansion not yet supported: {other}"
-                )))
-            }
-        })
+            let frn = Frn {
+                coupon_index,
+                spread,
+                reset_frequency: Frequency::Quarterly,
+                principal_schedule: NotionalSchedule::constant(notional),
+                start_date,
+                maturity: end_date,
+                currency,
+            };
+            let t = frn
+                .expand_to_trade("DEMO-FRN", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("FRN expansion: {e}")))?;
+            (t, "FRN")
+        }
+        "CmsSwap" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let spread = param_f64("spread", 0.0) / 10_000.0;
+            let cms_tenor = match param_str("cmsTenor") {
+                Some("5Y") => Tenor::FiveYears,
+                Some("30Y") => Tenor::months(360),
+                _ => Tenor::TenYears,
+            };
+            let tenor = compute_tenor(start_date, end_date);
+
+            let cms = CmsSwap {
+                cms_tenor,
+                convexity_adjustment: None,
+                start_date,
+                tenor,
+                notional,
+                currency,
+                spread,
+            };
+            let t = cms
+                .expand_to_trade("DEMO-CMS", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("CmsSwap expansion: {e}")))?;
+            (t, "CmsSwap")
+        }
+        "InflationSwap" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let fixed_rate = param_f64("fixedRate", 0.025);
+            let inflation_index = param_str("inflationIndex").unwrap_or("CPI").to_string();
+            let swap_type = match param_str("inflationSwapType") {
+                Some("YearOnYear") => SwapType::YearOnYear,
+                _ => SwapType::ZeroCoupon,
+            };
+
+            let infl = InflationSwap {
+                inflation_index,
+                lag_months: 3,
+                swap_type,
+                start_date,
+                maturity: end_date,
+                notional,
+                currency,
+                fixed_rate,
+            };
+            let t = infl
+                .expand_to_trade("DEMO-INFLSWAP", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("InflationSwap expansion: {e}")))?;
+            (t, "InflationSwap")
+        }
+        // ── FX (new) ───────────────────────────────────────────────
+        "FxSpot" => {
+            let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
+            let pair = parse_currency_pair(pair_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+
+            let spot = FxSpot {
+                currency_pair: pair,
+                spot_rate: 1.0,
+                settlement_date: Tenor::days(2)
+                    .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust),
+                notional,
+                notional_currency: pair.base,
+            };
+            let t = spot
+                .expand_to_trade("DEMO-FXSPOT", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("FxSpot expansion: {e}")))?;
+            (t, "FxSpot")
+        }
+        "FxSwap" => {
+            let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
+            let pair = parse_currency_pair(pair_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let near_date = param_date("nearDate").unwrap_or_else(|_| {
+                Tenor::days(2)
+                    .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust)
+            });
+            let far_date = param_date("farDate").unwrap_or_else(|_| {
+                Tenor::ThreeMonths
+                    .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust)
+            });
+
+            let fx_swap = FxSwap {
+                currency_pair: pair,
+                near_leg_date: near_date,
+                far_leg_date: far_date,
+                near_rate: 1.0,
+                far_rate: 1.001,
+                notional,
+                notional_currency: pair.base,
+            };
+            let t = fx_swap
+                .expand_to_trade("DEMO-FXSWAP", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("FxSwap expansion: {e}")))?;
+            (t, "FxSwap")
+        }
+        "CrossCurrencyBasisSwap" => {
+            let notional = param_f64("notional", 10_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let dom_ccy_str = param_str("domesticCurrency").unwrap_or("USD");
+            let for_ccy_str = param_str("foreignCurrency").unwrap_or("EUR");
+            let domestic_currency = parse_currency(dom_ccy_str)?;
+            let foreign_currency = parse_currency(for_ccy_str)?;
+            let spread_bps = param_f64("spread", -15.0);
+
+            let dom_index = default_rate_index(domestic_currency);
+            let for_index = default_rate_index(foreign_currency);
+
+            let xccy = CrossCurrencyBasisSwap {
+                domestic_currency,
+                foreign_currency,
+                notional,
+                start_date,
+                maturity: end_date,
+                domestic_leg: XccyLeg::new(domestic_currency, dom_index, Frequency::Quarterly),
+                foreign_leg: XccyLeg::new(foreign_currency, for_index, Frequency::Quarterly),
+                basis_spread: BasisSpread::from_bps(spread_bps),
+                convention: XccyBasisConvention::default(),
+            };
+            let t = xccy
+                .expand_to_trade("DEMO-XCCY", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("XCCY expansion: {e}")))?;
+            (t, "CrossCurrencyBasisSwap")
+        }
+        // ── Equity (new) ───────────────────────────────────────────
+        "EquityBarrierOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 100.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
+            let barrier_level = param_f64("barrierLevel", strike * 1.1);
+            let barrier_type = match param_str("barrierType") {
+                Some("KnockIn") => BarrierType::KnockIn,
+                _ => BarrierType::KnockOut,
+            };
+            let barrier_direction = match param_str("barrierDirection") {
+                Some("Down") => BarrierDirection::Down,
+                _ => BarrierDirection::Up,
+            };
+
+            let vanilla = EquityVanillaOption {
+                underlying: EquityUnderlying::Index {
+                    name: "SPX".to_string(),
+                },
+                strike,
+                expiry,
+                option_type,
+                exercise_style: ExerciseStyle::European,
+                notional,
+                currency,
+            };
+            let barrier = EquityBarrierOption {
+                vanilla,
+                barrier_level,
+                barrier_type,
+                barrier_direction,
+                monitoring_frequency: MonitoringFrequency::Continuous,
+                rebate: None,
+            };
+            let t = barrier
+                .expand_to_trade("DEMO-EQBARRIER", valuation_date, &conventions)
+                .map_err(|e| {
+                    ServerError::Internal(format!("EquityBarrierOption expansion: {e}"))
+                })?;
+            (t, "EquityBarrierOption")
+        }
+        "LookbackOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
+            let lookback_type = match param_str("lookbackType") {
+                Some("FixedStrike") => LookbackType::FixedStrike,
+                _ => LookbackType::FloatingStrike,
+            };
+            let strike = if lookback_type == LookbackType::FixedStrike {
+                Some(param_f64("strike", 100.0))
+            } else {
+                None
+            };
+
+            let lookback = LookbackOption {
+                underlying: EquityUnderlying::Index {
+                    name: "SPX".to_string(),
+                },
+                strike,
+                expiry,
+                option_type,
+                lookback_type,
+                observation_start: valuation_date,
+                notional,
+                currency,
+            };
+            let t = lookback
+                .expand_to_trade("DEMO-LOOKBACK", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("LookbackOption expansion: {e}")))?;
+            (t, "LookbackOption")
+        }
+        "EquitySwap" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let funding_spread = param_f64("spread", 10.0) / 10_000.0;
+            let return_type = match param_str("returnType") {
+                Some("Price") => EquityReturnType::Price,
+                _ => EquityReturnType::TotalReturn,
+            };
+
+            let eq_swap = EquitySwap {
+                underlying: EquityUnderlying::Index {
+                    name: "SPX".to_string(),
+                },
+                return_type,
+                funding_index: default_rate_index(currency).to_string(),
+                funding_spread,
+                start_date,
+                maturity: end_date,
+                notional,
+                currency,
+            };
+            let t = eq_swap
+                .expand_to_trade("DEMO-EQSWAP", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("EquitySwap expansion: {e}")))?;
+            (t, "EquitySwap")
+        }
+        "BasketOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let strike = param_f64("strike", 100.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
+
+            let basket = BasketOption {
+                components: vec![
+                    BasketComponent {
+                        underlying: EquityUnderlying::stock("AAPL"),
+                        weight: 0.5,
+                    },
+                    BasketComponent {
+                        underlying: EquityUnderlying::stock("MSFT"),
+                        weight: 0.5,
+                    },
+                ],
+                strike,
+                expiry,
+                option_type,
+                exercise_style: ExerciseStyle::European,
+                notional,
+                currency,
+                correlation_matrix_ref: None,
+            };
+            let t = basket
+                .expand_to_trade("DEMO-BASKET", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("BasketOption expansion: {e}")))?;
+            (t, "BasketOption")
+        }
+        // ── Credit (new) ───────────────────────────────────────────
+        "CdsIndex" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 10_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let spread = param_f64("spread", 60.0) / 10_000.0;
+            let index_name = param_str("indexName").unwrap_or("CDX.NA.IG").to_string();
+
+            let cds_idx = CdsIndex {
+                index_name,
+                series: 39,
+                version: 1,
+                constituent_count: 125,
+                notional,
+                spread,
+                start_date,
+                maturity: end_date,
+                currency,
+            };
+            let t = cds_idx
+                .expand_to_trade("DEMO-CDSIDX", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("CdsIndex expansion: {e}")))?;
+            (t, "CdsIndex")
+        }
+        "CdsOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 10_000_000.0);
+            let exercise_date = param_date("expiry")?;
+            let underlying_maturity = param_date("endDate").unwrap_or_else(|_| {
+                Tenor::FiveYears
+                    .add_to_date(exercise_date, infra_domain::time::EndOfMonthRule::Adjust)
+            });
+            let strike_spread = param_f64("spread", 100.0) / 10_000.0;
+            let is_payer = param_str("isPayer") != Some("false");
+
+            let cds_opt = CdsOption {
+                reference_entity: "DEMO Corp".to_string(),
+                strike_spread,
+                exercise_date,
+                underlying_maturity,
+                notional,
+                currency,
+                is_payer,
+            };
+            let t = cds_opt
+                .expand_to_trade("DEMO-CDSOPT", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("CdsOption expansion: {e}")))?;
+            (t, "CdsOption")
+        }
+        "NtdBasket" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 10_000_000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let spread = param_f64("spread", 150.0) / 10_000.0;
+            let nth = param_f64("nthToDefault", 1.0) as u32;
+
+            let ntd = NtdBasket {
+                constituents: vec![
+                    "ACME Corp".into(),
+                    "Beta Inc".into(),
+                    "Gamma Ltd".into(),
+                    "Delta SA".into(),
+                    "Epsilon AG".into(),
+                ],
+                nth_to_default: nth,
+                notional,
+                spread,
+                start_date,
+                maturity: end_date,
+                currency,
+                correlation_parameter: Some(0.3),
+            };
+            let t = ntd
+                .expand_to_trade("DEMO-NTD", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("NtdBasket expansion: {e}")))?;
+            (t, "NtdBasket")
+        }
+        // ── Commodity (new) ────────────────────────────────────────
+        "CommodityForward" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let quantity = param_f64("quantity", 1000.0);
+            let delivery_date = param_date("endDate")?;
+            let forward_price = param_f64("forwardPrice", 75.0);
+            let (commodity, unit, location) = parse_commodity_type(param_str("commodityType"));
+
+            let fwd = CommodityForward {
+                commodity,
+                delivery_location: location,
+                delivery_date,
+                quantity,
+                unit,
+                forward_price,
+                currency,
+            };
+            let t = fwd
+                .expand_to_trade("DEMO-COMMFWD", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("CommodityForward expansion: {e}")))?;
+            (t, "CommodityForward")
+        }
+        "CommoditySwap" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let quantity = param_f64("quantity", 1000.0);
+            let start_date = param_date("startDate")?;
+            let end_date = param_date("endDate")?;
+            let fixed_price = param_f64("fixedPrice", 75.0);
+            let (commodity, unit, _) = parse_commodity_type(param_str("commodityType"));
+
+            let swap = CommoditySwap {
+                commodity,
+                fixed_price,
+                floating_index: "Spot Index".to_string(),
+                start_date,
+                maturity: end_date,
+                quantity_per_period: quantity,
+                unit,
+                payment_frequency: Frequency::Monthly,
+                currency,
+            };
+            let t = swap
+                .expand_to_trade("DEMO-COMMSWAP", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("CommoditySwap expansion: {e}")))?;
+            (t, "CommoditySwap")
+        }
+        "CommodityVanillaOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let quantity = param_f64("quantity", 1000.0);
+            let strike = param_f64("strike", 75.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
+            let (commodity, unit, _) = parse_commodity_type(param_str("commodityType"));
+
+            let opt = CommodityVanillaOption {
+                commodity,
+                strike,
+                expiry,
+                option_type,
+                exercise_style: ExerciseStyle::European,
+                quantity,
+                unit,
+                settlement_type: SettlementType::Cash,
+                currency,
+            };
+            let t = opt
+                .expand_to_trade("DEMO-COMMOPT", valuation_date, &conventions)
+                .map_err(|e| {
+                    ServerError::Internal(format!("CommodityVanillaOption expansion: {e}"))
+                })?;
+            (t, "CommodityVanillaOption")
+        }
+        "CommodityAsianOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let quantity = param_f64("quantity", 1000.0);
+            let strike = param_f64("strike", 75.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
+            let (commodity, unit, _) = parse_commodity_type(param_str("commodityType"));
+
+            let asian = CommodityAsianOption {
+                commodity,
+                strike,
+                expiry,
+                option_type,
+                averaging_start: valuation_date,
+                averaging_end: expiry,
+                observation_frequency: Frequency::Daily,
+                quantity,
+                unit,
+                currency,
+            };
+            let t = asian
+                .expand_to_trade("DEMO-COMMASIAN", valuation_date, &conventions)
+                .map_err(|e| {
+                    ServerError::Internal(format!("CommodityAsianOption expansion: {e}"))
+                })?;
+            (t, "CommodityAsianOption")
+        }
+        "SpreadOption" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let quantity = param_f64("quantity", 1000.0);
+            let spread_strike = param_f64("spreadStrike", 10.0);
+            let expiry = param_date("expiry")?;
+            let option_type = match param_str("optionType") {
+                Some("Put") => OptionType::Put,
+                _ => OptionType::Call,
+            };
+
+            let spread = SpreadOption {
+                commodity_1: CommodityType::Energy(EnergyType::CrudeOil),
+                commodity_2: CommodityType::Energy(EnergyType::HeatingOil),
+                spread_strike,
+                expiry,
+                option_type,
+                quantity,
+                unit: QuantityUnit::Barrels,
+                currency,
+            };
+            let t = spread
+                .expand_to_trade("DEMO-SPREAD", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("SpreadOption expansion: {e}")))?;
+            (t, "SpreadOption")
+        }
+        other => {
+            return Err(ServerError::InvalidRequest(format!(
+                "Instrument expansion not yet supported: {other}"
+            )))
+        }
+    })
 }
 
 impl DemoService {
@@ -1893,8 +1894,10 @@ impl DemoService {
         let currencies = collect_currencies(&request.legs, reporting_currency)?;
 
         // Build base rates: all currencies at DEFAULT_DISCOUNT_RATE.
-        let base_rates: Vec<(Currency, f64)> =
-            currencies.iter().map(|&c| (c, DEFAULT_DISCOUNT_RATE)).collect();
+        let base_rates: Vec<(Currency, f64)> = currencies
+            .iter()
+            .map(|&c| (c, DEFAULT_DISCOUNT_RATE))
+            .collect();
 
         // Base PV.
         let base_pv = price_with_rates(
@@ -1954,8 +1957,7 @@ impl DemoService {
     pub fn get_pricer_graph(
         request: &PricerGraphRequest,
     ) -> Result<PricerGraphResponse, ServerError> {
-        let (trade, label) =
-            build_domain_trade(&request.instrument_type, &request.params)?;
+        let (trade, label) = build_domain_trade(&request.instrument_type, &request.params)?;
         let trade_id = format!("PRICER-{label}");
         let now = chrono::Utc::now().to_rfc3339();
         let detail = request.detail_level.as_deref().unwrap_or("scope");
@@ -2045,13 +2047,10 @@ impl DemoService {
                 let payoff_label = if leg.leg_type == LegType::Floating {
                     format!("{lt} payoff ({cf_count} CFs)")
                 } else {
-                    let rate = leg
-                        .cashflows()
-                        .next()
-                        .and_then(|cf| match &cf.payoff {
-                            Payoff::Fixed { rate } => Some(*rate),
-                            _ => None,
-                        });
+                    let rate = leg.cashflows().next().and_then(|cf| match &cf.payoff {
+                        Payoff::Fixed { rate } => Some(*rate),
+                        _ => None,
+                    });
                     match rate {
                         Some(r) => format!("{lt} payoff r={r:.4} ({cf_count} CFs)"),
                         None => format!("{lt} payoff ({cf_count} CFs)"),

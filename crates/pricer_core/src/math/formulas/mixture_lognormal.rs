@@ -143,8 +143,7 @@ fn norm_cdf_precise<T: Float>(x: T) -> T {
     let t3 = t2 * t;
     let t4 = t3 * t;
     let t5 = t4 * t;
-    let y = one - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5)
-        * (-abs_x * abs_x * half).exp();
+    let y = one - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * (-abs_x * abs_x * half).exp();
 
     half * (one + sign * y)
 }
@@ -289,22 +288,12 @@ mod tests {
     use super::*;
 
     fn bimodal_params() -> MixtureLognormalParams<f64> {
-        MixtureLognormalParams::new(
-            vec![0.6, 0.4],
-            vec![100.0, 100.0],
-            vec![0.15, 0.30],
-        )
-        .unwrap()
+        MixtureLognormalParams::new(vec![0.6, 0.4], vec![100.0, 100.0], vec![0.15, 0.30]).unwrap()
     }
 
     #[test]
     fn test_single_component_matches_bs() {
-        let p = MixtureLognormalParams::new(
-            vec![1.0],
-            vec![100.0],
-            vec![0.20],
-        )
-        .unwrap();
+        let p = MixtureLognormalParams::new(vec![1.0], vec![100.0], vec![0.20]).unwrap();
         let price = mixture_lognormal_call_price(&p, 100.0, 1.0).unwrap();
         let bs_price = bs_call_price(100.0, 100.0, 0.20, 1.0, 1e-10);
         assert_relative_eq!(price, bs_price, epsilon = 1e-8);
@@ -312,12 +301,7 @@ mod tests {
 
     #[test]
     fn test_single_component_implied_vol() {
-        let p = MixtureLognormalParams::new(
-            vec![1.0],
-            vec![100.0],
-            vec![0.20],
-        )
-        .unwrap();
+        let p = MixtureLognormalParams::new(vec![1.0], vec![100.0], vec![0.20]).unwrap();
         let vol = mixture_lognormal_implied_vol(&p, 100.0, 100.0, 1.0).unwrap();
         assert_relative_eq!(vol, 0.20, epsilon = 1e-4);
     }
@@ -334,7 +318,11 @@ mod tests {
         let p = bimodal_params();
         let vol = mixture_lognormal_implied_vol(&p, 100.0, 100.0, 1.0).unwrap();
         // Should be between the two component vols
-        assert!(vol > 0.10 && vol < 0.35, "Vol {} out of expected range", vol);
+        assert!(
+            vol > 0.10 && vol < 0.35,
+            "Vol {} out of expected range",
+            vol
+        );
     }
 
     #[test]
@@ -345,23 +333,14 @@ mod tests {
 
     #[test]
     fn test_validate_bad_weights() {
-        let p = MixtureLognormalParams::new(
-            vec![0.3, 0.3],
-            vec![100.0, 100.0],
-            vec![0.2, 0.3],
-        )
-        .unwrap();
+        let p = MixtureLognormalParams::new(vec![0.3, 0.3], vec![100.0, 100.0], vec![0.2, 0.3])
+            .unwrap();
         assert!(p.validate().is_err()); // weights sum to 0.6
     }
 
     #[test]
     fn test_f32_compatibility() {
-        let p = MixtureLognormalParams::new(
-            vec![1.0_f32],
-            vec![100.0],
-            vec![0.20],
-        )
-        .unwrap();
+        let p = MixtureLognormalParams::new(vec![1.0_f32], vec![100.0], vec![0.20]).unwrap();
         let vol = mixture_lognormal_implied_vol(&p, 100.0_f32, 100.0, 1.0).unwrap();
         assert!(vol > 0.0);
     }

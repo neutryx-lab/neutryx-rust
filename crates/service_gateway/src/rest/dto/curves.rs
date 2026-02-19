@@ -18,7 +18,8 @@ pub enum BootstrapMethod {
     Global,
     /// Levenberg-Marquardt non-linear least squares.
     LevenbergMarquardt,
-    /// Penalised (regularised) global calibration with forward smoothness penalty.
+    /// Penalised (regularised) global calibration with forward smoothness
+    /// penalty.
     Penalised,
     /// Best fit via QR least squares (for overdetermined systems).
     BestFit,

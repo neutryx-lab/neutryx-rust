@@ -62,10 +62,7 @@ impl<T: Float> PolynomialVolSurface<T> {
     /// Interpolates polynomial coefficients to the target expiry.
     ///
     /// Each coefficient is interpolated independently.
-    fn interpolate_params(
-        &self,
-        expiry: T,
-    ) -> Result<PolynomialVolParams<T>, VolSurfaceError> {
+    fn interpolate_params(&self, expiry: T) -> Result<PolynomialVolParams<T>, VolSurfaceError> {
         let n = self.expiries.len();
 
         if n == 1 {
@@ -103,14 +100,20 @@ impl<T: Float> PolynomialVolSurface<T> {
                     let var_hi = c_hi * t_hi;
                     let var = linear_interp(t_lo, var_lo, t_hi, var_hi, expiry);
                     let eps = T::from(1e-14).unwrap_or_else(|| T::epsilon());
-                    if expiry > eps { var / expiry } else { c_lo }
+                    if expiry > eps {
+                        var / expiry
+                    } else {
+                        c_lo
+                    }
                 }
                 _ => linear_interp(t_lo, c_lo, t_hi, c_hi, expiry),
             };
             coeffs.push(c);
         }
 
-        Ok(PolynomialVolParams { coefficients: coeffs })
+        Ok(PolynomialVolParams {
+            coefficients: coeffs,
+        })
     }
 }
 
@@ -132,7 +135,9 @@ mod tests {
     fn test_flat_surface() {
         let s = PolynomialVolSurface::from_calibrated_slices(
             vec![1.0],
-            vec![PolynomialVolParams { coefficients: vec![0.04] }],
+            vec![PolynomialVolParams {
+                coefficients: vec![0.04],
+            }],
             TimeInterpolation::LinearVariance,
         )
         .unwrap();
@@ -155,8 +160,12 @@ mod tests {
         let s = PolynomialVolSurface::from_calibrated_slices(
             vec![0.5, 2.0],
             vec![
-                PolynomialVolParams { coefficients: vec![0.02] },
-                PolynomialVolParams { coefficients: vec![0.06] },
+                PolynomialVolParams {
+                    coefficients: vec![0.02],
+                },
+                PolynomialVolParams {
+                    coefficients: vec![0.06],
+                },
             ],
             TimeInterpolation::LinearVol,
         )

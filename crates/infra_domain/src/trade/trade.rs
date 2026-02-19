@@ -223,6 +223,114 @@ pub enum TradeType {
         quantity_unit: String,
     },
 
+    /// Equity barrier option.
+    EquityBarrierOption {
+        /// Underlying equity ticker/identifier.
+        underlyer: String,
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Barrier level.
+        barrier: f64,
+        /// Barrier type (knock-in or knock-out).
+        barrier_type: crate::market::instrument::BarrierType,
+        /// Barrier direction (up or down).
+        barrier_direction: crate::market::instrument::BarrierDirection,
+        /// Monitoring frequency.
+        monitoring_frequency: crate::market::instrument::MonitoringFrequency,
+        /// Expiry date.
+        expiry_date: Date,
+    },
+
+    /// Asian option (path-dependent average price).
+    AsianOption {
+        /// Underlying ticker/identifier.
+        underlyer: String,
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Averaging type (Arithmetic/Geometric).
+        averaging_type: crate::market::instrument::AveragingType,
+        /// Observation dates.
+        observation_dates: Vec<Date>,
+        /// Expiry date.
+        expiry_date: Date,
+    },
+
+    /// Lookback option (path-dependent extremum).
+    LookbackOption {
+        /// Underlying ticker/identifier.
+        underlyer: String,
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Lookback type (FixedStrike/FloatingStrike).
+        lookback_type: crate::market::instrument::LookbackType,
+        /// Strike price (for fixed strike lookback).
+        strike: Option<f64>,
+        /// Observation start date.
+        observation_start: Date,
+        /// Expiry date.
+        expiry_date: Date,
+    },
+
+    /// Basket option on multiple underlyings.
+    BasketOption {
+        /// Components as (underlyer, weight) pairs.
+        components: Vec<(String, f64)>,
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Expiry date.
+        expiry_date: Date,
+    },
+
+    /// Commodity Asian option.
+    CommodityAsianOption {
+        /// Commodity name/code.
+        commodity: String,
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Observation dates.
+        observation_dates: Vec<Date>,
+        /// Expiry date.
+        expiry_date: Date,
+        /// Quantity.
+        quantity: f64,
+        /// Quantity unit.
+        quantity_unit: String,
+    },
+
+    /// Spread option on two commodities.
+    SpreadOption {
+        /// First commodity name/code.
+        commodity_1: String,
+        /// Second commodity name/code.
+        commodity_2: String,
+        /// Option type (Call/Put on the spread).
+        option_type: super::OptionType,
+        /// Spread strike.
+        spread_strike: f64,
+        /// Expiry date.
+        expiry_date: Date,
+        /// Quantity.
+        quantity: f64,
+    },
+
+    /// Nth-to-default credit basket.
+    NtdBasket {
+        /// Basket constituents (reference entities).
+        constituents: Vec<String>,
+        /// N parameter (which default triggers payout).
+        nth_to_default: u32,
+        /// Protection buyer or seller.
+        protection_side: ProtectionSide,
+    },
+
     /// Generic trade (catch-all).
     #[default]
     Generic,
@@ -275,6 +383,10 @@ impl TradeType {
             self,
             TradeType::EquityForward { .. }
                 | TradeType::EquityOption { .. }
+                | TradeType::EquityBarrierOption { .. }
+                | TradeType::AsianOption { .. }
+                | TradeType::LookbackOption { .. }
+                | TradeType::BasketOption { .. }
                 | TradeType::EquitySwap { .. }
         )
     }
@@ -287,6 +399,7 @@ impl TradeType {
             TradeType::CreditDefaultSwap { .. }
                 | TradeType::CreditDefaultSwapIndex { .. }
                 | TradeType::CreditDefaultSwapOption { .. }
+                | TradeType::NtdBasket { .. }
         )
     }
 
@@ -298,6 +411,8 @@ impl TradeType {
             TradeType::CommodityForward { .. }
                 | TradeType::CommoditySwap { .. }
                 | TradeType::CommodityOption { .. }
+                | TradeType::CommodityAsianOption { .. }
+                | TradeType::SpreadOption { .. }
         )
     }
 
@@ -311,8 +426,14 @@ impl TradeType {
                 | TradeType::FxOption { .. }
                 | TradeType::FxBarrierOption { .. }
                 | TradeType::EquityOption { .. }
+                | TradeType::EquityBarrierOption { .. }
+                | TradeType::AsianOption { .. }
+                | TradeType::LookbackOption { .. }
+                | TradeType::BasketOption { .. }
                 | TradeType::CreditDefaultSwapOption { .. }
                 | TradeType::CommodityOption { .. }
+                | TradeType::CommodityAsianOption { .. }
+                | TradeType::SpreadOption { .. }
         )
     }
 }

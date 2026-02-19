@@ -31,8 +31,8 @@ use crate::{
     error::ServerError,
     rest::dto::{
         BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, CurveType,
-        DiscountFactorRequest, DiscountFactorResponse, FxCurveMethod, ForwardRatePoint,
-        ForwardRateRequest, ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse,
+        DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
+        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse, FxCurveMethod,
         JacobianData,
     },
     state::{AppState, CurveEntry, InstrumentInput},
@@ -151,9 +151,7 @@ impl CurveService {
             | BootstrapMethod::BestFit => {
                 let damping = match request.bootstrap_method {
                     BootstrapMethod::LevenbergMarquardt => Some(1e-3),
-                    BootstrapMethod::Penalised => {
-                        Some(request.penalty_weight.unwrap_or(1e-4))
-                    }
+                    BootstrapMethod::Penalised => Some(request.penalty_weight.unwrap_or(1e-4)),
                     _ => None,
                 };
                 let global_config = GlobalBootstrapConfig {
@@ -568,8 +566,9 @@ impl CurveService {
 
                 // Fit a flat forward-points-per-year by using the 1Y point if available,
                 // otherwise average the annualised rates.
-                let fwd_pts_per_year = if let Some((t, _, pts)) =
-                    pillar_specs.iter().find(|(t, _, _)| (*t - 1.0).abs() < 0.01)
+                let fwd_pts_per_year = if let Some((t, _, pts)) = pillar_specs
+                    .iter()
+                    .find(|(t, _, _)| (*t - 1.0).abs() < 0.01)
                 {
                     // Use 1Y forward point directly: fwd_pts = ln(F/S) where F = S + pts/scale.
                     let fwd = spot + pts / pip_scale;
@@ -595,8 +594,10 @@ impl CurveService {
                 FxCurveEnum::flat(spot, fwd_pts_per_year, currency_pair)
             }
             FxCurveMethod::IrpGeneric => {
-                let dom_entry = Self::get_cached_curve(state, &request.domestic_curve_id, "domestic")?;
-                let for_entry = Self::get_cached_curve(state, &request.foreign_curve_id, "foreign")?;
+                let dom_entry =
+                    Self::get_cached_curve(state, request.domestic_curve_id.as_ref(), "domestic")?;
+                let for_entry =
+                    Self::get_cached_curve(state, request.foreign_curve_id.as_ref(), "foreign")?;
                 FxCurveEnum::irp_generic(
                     spot,
                     CurveEnum::bootstrapped(dom_entry.curve.clone()),
@@ -606,11 +607,9 @@ impl CurveService {
             }
             FxCurveMethod::IrpBasis => {
                 let ref_entry =
-                    Self::get_cached_curve(state, &request.reference_curve_id, "reference")?;
-                let basis_pillars: Vec<(f64, f64)> = pillar_specs
-                    .iter()
-                    .map(|(t, _, bps)| (*t, *bps))
-                    .collect();
+                    Self::get_cached_curve(state, request.reference_curve_id.as_ref(), "reference")?;
+                let basis_pillars: Vec<(f64, f64)> =
+                    pillar_specs.iter().map(|(t, _, bps)| (*t, *bps)).collect();
                 FxCurveEnum::irp_basis(
                     spot,
                     CurveEnum::bootstrapped(ref_entry.curve.clone()),
@@ -696,24 +695,17 @@ impl CurveService {
     fn parse_currency_pair(
         pair_str: &str,
     ) -> Result<infra_domain::trade::instrument_def::CurrencyPair, ServerError> {
-        use infra_domain::market::Currency;
-        use infra_domain::trade::instrument_def::CurrencyPair;
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
         if pair_str.len() < 6 {
             return Err(ServerError::InvalidRequest(format!(
                 "Currency pair must be 6 characters (e.g. EURUSD), got '{pair_str}'"
             )));
         }
         let base: Currency = pair_str[..3].parse().map_err(|_| {
-            ServerError::InvalidRequest(format!(
-                "Unknown base currency: {}",
-                &pair_str[..3]
-            ))
+            ServerError::InvalidRequest(format!("Unknown base currency: {}", &pair_str[..3]))
         })?;
         let quote: Currency = pair_str[3..6].parse().map_err(|_| {
-            ServerError::InvalidRequest(format!(
-                "Unknown quote currency: {}",
-                &pair_str[3..6]
-            ))
+            ServerError::InvalidRequest(format!("Unknown quote currency: {}", &pair_str[3..6]))
         })?;
         Ok(CurrencyPair::new(base, quote))
     }
@@ -721,15 +713,15 @@ impl CurveService {
     /// Retrieve a cached yield curve by ID field.
     fn get_cached_curve(
         state: &Arc<AppState>,
-        curve_id_opt: &Option<String>,
+        curve_id_opt: Option<&String>,
         label: &str,
     ) -> Result<CurveEntry, ServerError> {
-        let id_str = curve_id_opt.as_ref().ok_or_else(|| {
+        let id_str = curve_id_opt.ok_or_else(|| {
             ServerError::InvalidRequest(format!("{label}_curve_id is required for IRP FX curves"))
         })?;
-        let id: uuid::Uuid = id_str.parse().map_err(|_| {
-            ServerError::InvalidRequest(format!("Invalid {label}_curve_id format"))
-        })?;
+        let id: uuid::Uuid = id_str
+            .parse()
+            .map_err(|_| ServerError::InvalidRequest(format!("Invalid {label}_curve_id format")))?;
         state.curve_cache.get(&id).ok_or_else(|| {
             ServerError::NotFound(format!(
                 "{} curve {} not found — build the rate curve first",

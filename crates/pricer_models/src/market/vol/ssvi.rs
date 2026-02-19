@@ -78,7 +78,11 @@ impl<T: Float> SsviSurface<T> {
             let (t0, theta0) = self.atm_total_variances[0];
             // Scale linearly: θ(T) = θ₀ · (T / T₀)
             let eps = T::from(1e-14).unwrap_or_else(|| T::epsilon());
-            let theta = if t0 > eps { theta0 * expiry / t0 } else { theta0 };
+            let theta = if t0 > eps {
+                theta0 * expiry / t0
+            } else {
+                theta0
+            };
             return Ok((expiry, theta));
         }
 
@@ -115,7 +119,9 @@ impl<T: Float> VolSurface<T> for SsviSurface<T> {
         let atm_vol = if expiry > eps {
             (theta / expiry).sqrt()
         } else {
-            return Err(VolSurfaceError::InvalidInput("expiry too small".to_string()));
+            return Err(VolSurfaceError::InvalidInput(
+                "expiry too small".to_string(),
+            ));
         };
 
         ssvi_implied_vol(&self.params, strike, forward, expiry, atm_vol)
@@ -132,7 +138,11 @@ mod tests {
     fn test_surface() -> SsviSurface<f64> {
         SsviSurface::new(
             vec![(0.5, 0.02), (1.0, 0.04), (2.0, 0.08)],
-            SsviParams { rho: -0.3, eta: 1.0, gamma: 0.5 },
+            SsviParams {
+                rho: -0.3,
+                eta: 1.0,
+                gamma: 0.5,
+            },
         )
         .unwrap()
         .with_extrapolation(true)
@@ -147,7 +157,11 @@ mod tests {
     fn test_construction_empty() {
         let r = SsviSurface::<f64>::new(
             vec![],
-            SsviParams { rho: -0.3, eta: 1.0, gamma: 0.5 },
+            SsviParams {
+                rho: -0.3,
+                eta: 1.0,
+                gamma: 0.5,
+            },
         );
         assert!(r.is_err());
     }
@@ -156,7 +170,11 @@ mod tests {
     fn test_non_decreasing_violation() {
         let r = SsviSurface::<f64>::new(
             vec![(1.0, 0.04), (2.0, 0.02)], // decreasing θ
-            SsviParams { rho: -0.3, eta: 1.0, gamma: 0.5 },
+            SsviParams {
+                rho: -0.3,
+                eta: 1.0,
+                gamma: 0.5,
+            },
         );
         assert!(r.is_err());
     }

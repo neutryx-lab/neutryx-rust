@@ -55,6 +55,10 @@ pub enum LegType {
     CapFloor,
     /// Principal exchange leg.
     Principal,
+    /// Premium payment leg (option premium).
+    Premium,
+    /// Protection leg (credit protection payout).
+    Protection,
     /// Generic leg (catch-all).
     Generic,
 }

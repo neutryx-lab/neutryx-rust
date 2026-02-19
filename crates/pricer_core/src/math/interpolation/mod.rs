@@ -9,11 +9,11 @@ pub mod cubic_spline;
 pub mod monotone_convex;
 pub mod tension_spline;
 
+use std::fmt;
+
 pub use cubic_spline::CubicSpline;
 pub use monotone_convex::MonotoneConvexInterpolator;
 pub use tension_spline::TensionSpline;
-
-use std::fmt;
 
 /// Error type for interpolation operations.
 #[derive(Debug, Clone, PartialEq)]

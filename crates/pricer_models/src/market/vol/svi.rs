@@ -192,8 +192,20 @@ mod tests {
         let s = SviSurface::from_calibrated_slices(
             vec![0.5, 2.0],
             vec![
-                SviParams { a: 0.02, b: 0.3, rho: -0.3, m: 0.0, sigma: 0.1 },
-                SviParams { a: 0.06, b: 0.5, rho: -0.5, m: 0.0, sigma: 0.1 },
+                SviParams {
+                    a: 0.02,
+                    b: 0.3,
+                    rho: -0.3,
+                    m: 0.0,
+                    sigma: 0.1,
+                },
+                SviParams {
+                    a: 0.06,
+                    b: 0.5,
+                    rho: -0.5,
+                    m: 0.0,
+                    sigma: 0.1,
+                },
             ],
             TimeInterpolation::LinearVol,
         )
@@ -209,8 +221,20 @@ mod tests {
         let s = SviSurface::from_calibrated_slices(
             vec![0.5, 1.0],
             vec![
-                SviParams { a: 0.04, b: 0.4, rho: -0.4, m: 0.0, sigma: 0.1 },
-                SviParams { a: 0.04, b: 0.4, rho: -0.4, m: 0.0, sigma: 0.1 },
+                SviParams {
+                    a: 0.04,
+                    b: 0.4,
+                    rho: -0.4,
+                    m: 0.0,
+                    sigma: 0.1,
+                },
+                SviParams {
+                    a: 0.04,
+                    b: 0.4,
+                    rho: -0.4,
+                    m: 0.0,
+                    sigma: 0.1,
+                },
             ],
             TimeInterpolation::LinearVariance,
         )
@@ -223,8 +247,16 @@ mod tests {
         let s = single_slice();
         let surface_vol = s.implied_vol(105.0, 1.0, 100.0).unwrap();
         let direct_vol = svi_implied_vol(
-            &SviParams { a: 0.04, b: 0.4, rho: -0.4, m: 0.0, sigma: 0.1 },
-            105.0, 100.0, 1.0,
+            &SviParams {
+                a: 0.04,
+                b: 0.4,
+                rho: -0.4,
+                m: 0.0,
+                sigma: 0.1,
+            },
+            105.0,
+            100.0,
+            1.0,
         )
         .unwrap();
         assert_relative_eq!(surface_vol, direct_vol, epsilon = 1e-12);

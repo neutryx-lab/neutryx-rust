@@ -265,7 +265,8 @@ pub enum CalibrationMethod {
     /// Levenberg-Marquardt non-linear least squares.
     #[serde(rename = "levenberg_marquardt")]
     LevenbergMarquardt,
-    /// Penalised (regularised) global calibration with forward smoothness penalty.
+    /// Penalised (regularised) global calibration with forward smoothness
+    /// penalty.
     Penalised,
     /// Best fit via QR least squares (for overdetermined systems).
     #[serde(rename = "best_fit")]

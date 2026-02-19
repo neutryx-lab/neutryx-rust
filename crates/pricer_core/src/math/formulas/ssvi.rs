@@ -104,8 +104,7 @@ pub fn ssvi_total_variance<T: Float>(
     let phi = ssvi_phi(params, atm_total_var, epsilon);
 
     let phi_k = phi * log_moneyness;
-    let inner = (phi_k + params.rho) * (phi_k + params.rho)
-        + (one - params.rho * params.rho);
+    let inner = (phi_k + params.rho) * (phi_k + params.rho) + (one - params.rho * params.rho);
     let sqrt_term = smooth_sqrt(inner, epsilon);
 
     (atm_total_var / two) * (one + params.rho * phi_k + sqrt_term)

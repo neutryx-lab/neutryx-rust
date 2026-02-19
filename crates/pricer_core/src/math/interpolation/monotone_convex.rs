@@ -18,9 +18,8 @@
 
 use num_traits::Float;
 
-use crate::math::numeric::from_f64;
-
 use super::InterpolationError;
+use crate::math::numeric::from_f64;
 
 /// Monotone convex interpolator on forward rates.
 #[derive(Debug, Clone, PartialEq)]
@@ -145,8 +144,8 @@ impl<T: Float> MonotoneConvexInterpolator<T> {
         // Boundary: linear extrapolation from last two discrete forwards
         let dt_n1 = times[n] - times[n - 1];
         let dt_n2 = times[n - 1] - times[n - 2];
-        f_inst[n] =
-            discrete_fwds[n - 1] + (discrete_fwds[n - 1] - discrete_fwds[n - 2]) * dt_n1 / (dt_n1 + dt_n2);
+        f_inst[n] = discrete_fwds[n - 1]
+            + (discrete_fwds[n - 1] - discrete_fwds[n - 2]) * dt_n1 / (dt_n1 + dt_n2);
 
         // Apply Hagan-West monotonicity constraints to all knots
         // Constraint: f_inst[i] must lie in [0, 2*f_d] for each adjacent
@@ -357,7 +356,11 @@ mod tests {
         for i in 0..fwds.len() {
             let dt = times[i + 1] - times[i];
             cumulative += fwds[i] * dt;
-            assert_relative_eq!(mc.integrated_forward(times[i + 1]), cumulative, epsilon = 1e-8);
+            assert_relative_eq!(
+                mc.integrated_forward(times[i + 1]),
+                cumulative,
+                epsilon = 1e-8
+            );
         }
     }
 

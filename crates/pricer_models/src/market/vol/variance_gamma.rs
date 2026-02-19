@@ -120,7 +120,11 @@ mod tests {
     fn test_construction_valid() {
         let s = VarianceGammaSurface::from_calibrated_slices(
             vec![1.0],
-            vec![VarianceGammaParams { sigma: 0.20, nu: 0.25, theta: -0.10 }],
+            vec![VarianceGammaParams {
+                sigma: 0.20,
+                nu: 0.25,
+                theta: -0.10,
+            }],
             vec![100.0],
             TimeInterpolation::LinearVol,
         );
@@ -142,7 +146,11 @@ mod tests {
     fn test_implied_vol_positive() {
         let s = VarianceGammaSurface::from_calibrated_slices(
             vec![1.0],
-            vec![VarianceGammaParams { sigma: 0.20, nu: 0.25, theta: -0.10 }],
+            vec![VarianceGammaParams {
+                sigma: 0.20,
+                nu: 0.25,
+                theta: -0.10,
+            }],
             vec![100.0],
             TimeInterpolation::LinearVol,
         )

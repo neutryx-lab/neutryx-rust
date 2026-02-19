@@ -101,8 +101,12 @@ fn norm_cdf<T: Float>(x: T) -> T {
     let half: T = from_f64(0.5);
     let one = T::one();
 
-    if x < from_f64(-8.0) { return T::zero(); }
-    if x > from_f64(8.0) { return one; }
+    if x < from_f64(-8.0) {
+        return T::zero();
+    }
+    if x > from_f64(8.0) {
+        return one;
+    }
 
     let a1: T = from_f64(0.254829592);
     let a2: T = from_f64(-0.284496736);
@@ -118,8 +122,7 @@ fn norm_cdf<T: Float>(x: T) -> T {
     let t3 = t2 * t;
     let t4 = t3 * t;
     let t5 = t4 * t;
-    let y = one - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5)
-        * (-abs_x * abs_x * half).exp();
+    let y = one - (a1 * t + a2 * t2 + a3 * t3 + a4 * t4 + a5 * t5) * (-abs_x * abs_x * half).exp();
 
     half * (one + sign * y)
 }
@@ -143,7 +146,9 @@ fn bs_call<T: Float>(forward: T, strike: T, vol: T, expiry: T, epsilon: T) -> T 
 fn bs_vega<T: Float>(forward: T, strike: T, vol: T, expiry: T, epsilon: T) -> T {
     let half: T = from_f64(0.5);
     let vol_sqrt_t = vol * expiry.sqrt();
-    if vol_sqrt_t < epsilon { return T::zero(); }
+    if vol_sqrt_t < epsilon {
+        return T::zero();
+    }
     let d1 = ((forward / strike).ln() + half * vol_sqrt_t * vol_sqrt_t) / vol_sqrt_t;
     forward * expiry.sqrt() * norm_pdf(d1)
 }
@@ -172,7 +177,7 @@ pub fn vg_call_price<T: Float>(
 
     let omega = params.omega();
     let shape = expiry / params.nu; // T/ν
-    let scale = params.nu;          // ν
+    let scale = params.nu; // ν
 
     // Gauss-Laguerre nodes and weights (precomputed for n=32)
     // Approximation: use a simpler Gamma integration via change of variable
@@ -196,8 +201,8 @@ pub fn vg_call_price<T: Float>(
         let g_f64 = dg * (i as f64 - 0.5);
         let g: T = from_f64(g_f64);
 
-        // Gamma PDF: f(g; shape, scale) = g^(shape-1) * exp(-g/scale) / (scale^shape * Γ(shape))
-        // Log version for numerical stability
+        // Gamma PDF: f(g; shape, scale) = g^(shape-1) * exp(-g/scale) / (scale^shape *
+        // Γ(shape)) Log version for numerical stability
         let log_pdf = (shape_f64 - 1.0) * g_f64.ln()
             - g_f64 / scale_f64
             - shape_f64 * scale_f64.ln()
@@ -225,7 +230,8 @@ pub fn vg_call_price<T: Float>(
     // Normalise by total weight for numerical robustness
     if total_weight > epsilon {
         price = price / total_weight;
-        // Re-scale by expected weight (should be ~1.0 for well-behaved integral)
+        // Re-scale by expected weight (should be ~1.0 for well-behaved
+        // integral)
     }
 
     if !price.is_finite() {
@@ -293,12 +299,18 @@ pub fn vg_implied_vol<T: Float>(
 
         if vega < epsilon {
             let half: T = from_f64(0.5);
-            if diff > T::zero() { vol = vol * half; } else { vol = vol * from_f64(1.5); }
+            if diff > T::zero() {
+                vol = vol * half;
+            } else {
+                vol = vol * from_f64(1.5);
+            }
             continue;
         }
 
         vol = vol - diff / vega;
-        if vol <= T::zero() { vol = from_f64(0.001); }
+        if vol <= T::zero() {
+            vol = from_f64(0.001);
+        }
     }
 
     let final_price = bs_call(forward, strike, vol, expiry, epsilon);
@@ -306,7 +318,9 @@ pub fn vg_implied_vol<T: Float>(
         return Ok(vol);
     }
 
-    Err(VarianceGammaError::InversionFailed(MAX_INVERSION_ITERATIONS))
+    Err(VarianceGammaError::InversionFailed(
+        MAX_INVERSION_ITERATIONS,
+    ))
 }
 
 #[cfg(test)]
@@ -362,8 +376,14 @@ mod tests {
         let price_90 = vg_call_price(&p, 100.0, 90.0, 1.0).unwrap();
         let price_100 = vg_call_price(&p, 100.0, 100.0, 1.0).unwrap();
         let price_110 = vg_call_price(&p, 100.0, 110.0, 1.0).unwrap();
-        assert!(price_90 > price_100, "Call price should decrease with strike");
-        assert!(price_100 > price_110, "Call price should decrease with strike");
+        assert!(
+            price_90 > price_100,
+            "Call price should decrease with strike"
+        );
+        assert!(
+            price_100 > price_110,
+            "Call price should decrease with strike"
+        );
     }
 
     #[test]

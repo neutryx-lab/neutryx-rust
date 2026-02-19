@@ -231,29 +231,47 @@ impl InstrumentExpander for Swaption {
         _valuation_date: Date,
         conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let _swaption_conv = conventions.get_swaption()?;
+        let swaption_conv = conventions.get_swaption()?;
+        let swap_conv = &swaption_conv.underlying_swap;
 
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
-            self.expiry,
-            self.expiry,
-            self.expiry,
-            0.0,
+        let swap_start = self.expiry;
+        let swap_end = self
+            .underlying_swap_tenor
+            .add_to_date(swap_start, EndOfMonthRule::Adjust);
+
+        let fixed_dates =
+            generate_payment_dates(swap_start, swap_end, swap_conv.fixed_leg.payment_frequency);
+        let float_dates =
+            generate_payment_dates(swap_start, swap_end, swap_conv.float_leg.payment_frequency);
+
+        let fixed_cashflows = generate_fixed_leg_cashflows(
+            &fixed_dates,
+            swap_start,
+            self.strike,
             self.notional,
-            Payoff::fixed(self.strike),
+            self.currency,
+        );
+        let floating_cashflows = super::generate_floating_leg_cashflows(
+            &float_dates,
+            swap_conv.float_index,
+            self.notional,
             self.currency,
         );
 
-        let leg = Leg::new(
-            vec![settlement_cf],
-            Direction::Receiver,
-            LegType::Generic,
-            self.currency,
-        );
+        let (fixed_dir, float_dir) =
+            if self.payer_receiver == crate::market::instrument::PayerReceiver::Payer {
+                (Direction::Payer, Direction::Receiver)
+            } else {
+                (Direction::Receiver, Direction::Payer)
+            };
+
+        let fixed_leg = Leg::new(fixed_cashflows, fixed_dir, LegType::Fixed, self.currency);
+        let floating_leg =
+            Leg::new(floating_cashflows, float_dir, LegType::Floating, self.currency);
 
         Ok(Trade::new(
             trade_id,
-            vec![leg],
+            vec![fixed_leg, floating_leg],
             TradeType::Swaption {
                 exercise_dates: vec![self.expiry],
                 exercise_type: self.exercise_type,

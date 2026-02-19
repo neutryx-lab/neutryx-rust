@@ -66,7 +66,7 @@ export function useCurveCharts() {
             label: (item: { raw: unknown }) => {
               const value = item.raw as number;
               if (isFx && chartType.value === 'fx_basis') {
-                return `Fwd Basis: ${value.toFixed(4)}`;
+                return `Implied Yield: ${value.toFixed(4)}%`;
               } else if (isFx) {
                 return `FX Forward: ${value.toFixed(4)}`;
               } else if (chartType.value === 'discount_factor') {
@@ -110,7 +110,7 @@ export function useCurveCharts() {
     const labels = grid.map(pt => pt.label);
     const data = isFx
       ? (chartType.value === 'fx_basis'
-        ? grid.map(pt => pt.forward_rate - _fxSpot)
+        ? grid.map(pt => pt.time > 0 ? Math.log(pt.forward_rate / _fxSpot) / pt.time * 100 : 0)
         : grid.map(pt => pt.forward_rate))
       : chartType.value === 'forward_rate'
         ? grid.map(pt => pt.forward_rate * 100)
@@ -176,8 +176,8 @@ export function useCurveCharts() {
     if (isFx) {
       _fxSpot = result.spot ?? 0;
       const isBasis = chartType.value === 'fx_basis';
-      const fxLabel = isBasis ? 'FX Fwd Basis' : 'FX Forward Rate';
-      const fxColor = isBasis ? '#f59e0b' : '#06b6d4'; // amber / cyan
+      const fxLabel = isBasis ? 'Implied Yield (%)' : 'FX Forward Rate';
+      const fxColor = isBasis ? '#10b981' : '#06b6d4'; // emerald / cyan
 
       shortTermChartInstance = renderChart(
         shortTermChartCanvas.value, shortTermChartInstance, shortGrid, fxLabel, fxColor, SHORT_MILESTONES, interpolationValue, true,

@@ -70,10 +70,7 @@ impl<T: Float> VannaVolgaSurface<T> {
     pub fn time_interpolation(&self) -> TimeInterpolation { self.time_interpolation }
 
     /// Interpolates VV parameters to the target expiry.
-    fn interpolate_params(
-        &self,
-        expiry: T,
-    ) -> Result<VannaVolgaParams<T>, VolSurfaceError> {
+    fn interpolate_params(&self, expiry: T) -> Result<VannaVolgaParams<T>, VolSurfaceError> {
         let n = self.expiries.len();
 
         if n == 1 {
@@ -101,19 +98,33 @@ impl<T: Float> VannaVolgaSurface<T> {
         Ok(VannaVolgaParams {
             sigma_atm: linear_interp(t_lo, p_lo.sigma_atm, t_hi, p_hi.sigma_atm, expiry),
             sigma_25d_put: linear_interp(
-                t_lo, p_lo.sigma_25d_put, t_hi, p_hi.sigma_25d_put, expiry,
+                t_lo,
+                p_lo.sigma_25d_put,
+                t_hi,
+                p_hi.sigma_25d_put,
+                expiry,
             ),
             sigma_25d_call: linear_interp(
-                t_lo, p_lo.sigma_25d_call, t_hi, p_hi.sigma_25d_call, expiry,
+                t_lo,
+                p_lo.sigma_25d_call,
+                t_hi,
+                p_hi.sigma_25d_call,
+                expiry,
             ),
-            strike_atm: linear_interp(
-                t_lo, p_lo.strike_atm, t_hi, p_hi.strike_atm, expiry,
-            ),
+            strike_atm: linear_interp(t_lo, p_lo.strike_atm, t_hi, p_hi.strike_atm, expiry),
             strike_25d_put: linear_interp(
-                t_lo, p_lo.strike_25d_put, t_hi, p_hi.strike_25d_put, expiry,
+                t_lo,
+                p_lo.strike_25d_put,
+                t_hi,
+                p_hi.strike_25d_put,
+                expiry,
             ),
             strike_25d_call: linear_interp(
-                t_lo, p_lo.strike_25d_call, t_hi, p_hi.strike_25d_call, expiry,
+                t_lo,
+                p_lo.strike_25d_call,
+                t_hi,
+                p_hi.strike_25d_call,
+                expiry,
             ),
         })
     }

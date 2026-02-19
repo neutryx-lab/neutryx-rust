@@ -190,8 +190,9 @@ pub fn zabr_implied_vol<T: Float>(
     let twenty_four: T = from_f64(24.0);
 
     let fk_pow = smooth_pow(fk, one_minus_beta * half, epsilon);
-    let correction = params.gamma_mix * params.nu * params.nu * expiry
-        * one_minus_beta * params.rho / (twenty_four * fk_pow);
+    let correction =
+        params.gamma_mix * params.nu * params.nu * expiry * one_minus_beta * params.rho
+            / (twenty_four * fk_pow);
 
     let vol = base_vol * (one + correction);
 
@@ -291,7 +292,12 @@ mod tests {
         let vol_low = zabr_implied_vol(&p, 100.0, 90.0, 1.0).unwrap();
         let vol_atm = zabr_implied_vol(&p, 100.0, 100.0, 1.0).unwrap();
         let vol_high = zabr_implied_vol(&p, 100.0, 110.0, 1.0).unwrap();
-        assert!(vol_low > vol_high, "Expected negative skew: {} > {}", vol_low, vol_high);
+        assert!(
+            vol_low > vol_high,
+            "Expected negative skew: {} > {}",
+            vol_low,
+            vol_high
+        );
         assert!(vol_atm > 0.0);
     }
 

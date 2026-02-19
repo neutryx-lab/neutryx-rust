@@ -206,7 +206,12 @@ pub(crate) fn generate_fx_chart_grids<C: FxCurve<f64>>(
             t <= max_time
         })
         .collect();
-    let short_grid = build_fx_chart_grid(ref_date, &short_term_dates, fx_curve, format_short_term_label);
+    let short_grid = build_fx_chart_grid(
+        ref_date,
+        &short_term_dates,
+        fx_curve,
+        format_short_term_label,
+    );
 
     let long_term_dates = generate_long_term_dates(ref_date);
     let long_term_dates: Vec<_> = long_term_dates
@@ -216,7 +221,8 @@ pub(crate) fn generate_fx_chart_grids<C: FxCurve<f64>>(
             t <= max_time
         })
         .collect();
-    let long_grid = build_fx_chart_grid(ref_date, &long_term_dates, fx_curve, format_long_term_label);
+    let long_grid =
+        build_fx_chart_grid(ref_date, &long_term_dates, fx_curve, format_long_term_label);
 
     (short_grid, long_grid)
 }

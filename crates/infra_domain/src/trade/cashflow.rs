@@ -66,6 +66,8 @@ pub enum CashflowType {
     Fee,
     /// Settlement payment (e.g., option exercise).
     Settlement,
+    /// Premium payment (e.g., option premium).
+    Premium,
 }
 
 impl CashflowType {

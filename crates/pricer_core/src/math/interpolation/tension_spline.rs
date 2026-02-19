@@ -20,9 +20,8 @@
 
 use num_traits::Float;
 
-use crate::math::numeric::from_f64;
-
 use super::InterpolationError;
+use crate::math::numeric::from_f64;
 
 /// Tension spline interpolant.
 ///
@@ -126,8 +125,7 @@ impl<T: Float> TensionSpline<T> {
                 lower[k] = h_prev;
                 diag[k] = two * (h_prev + h_next);
                 upper[k] = h_next;
-                rhs[k] = six
-                    * ((ys[i + 1] - ys[i]) / h_next - (ys[i] - ys[i - 1]) / h_prev);
+                rhs[k] = six * ((ys[i + 1] - ys[i]) / h_next - (ys[i] - ys[i - 1]) / h_prev);
             } else {
                 // Tension spline coefficients
                 let th_prev = tau * h_prev;
@@ -143,8 +141,7 @@ impl<T: Float> TensionSpline<T> {
                 lower[k] = beta_prev;
                 diag[k] = two * (alpha_prev + alpha_next);
                 upper[k] = beta_next;
-                rhs[k] = tau * tau
-                    * ((ys[i + 1] - ys[i]) / h_next - (ys[i] - ys[i - 1]) / h_prev);
+                rhs[k] = tau * tau * ((ys[i + 1] - ys[i]) / h_next - (ys[i] - ys[i - 1]) / h_prev);
             }
         }
 
@@ -164,8 +161,9 @@ impl<T: Float> TensionSpline<T> {
         sigma
     }
 
-    /// α(τh) = (1/tanh(τh) - 1/(τh)) / h = (τh·cosh(τh) - sinh(τh)) / (h·τh·sinh(τh))
-    /// For the tridiagonal system coefficient on the diagonal.
+    /// α(τh) = (1/tanh(τh) - 1/(τh)) / h = (τh·cosh(τh) - sinh(τh)) /
+    /// (h·τh·sinh(τh)) For the tridiagonal system coefficient on the
+    /// diagonal.
     fn tension_alpha(th: T) -> T {
         let epsilon = from_f64::<T>(1e-4);
         if th.abs() < epsilon {
@@ -272,8 +270,7 @@ impl<T: Float> TensionSpline<T> {
             let s_i = self.sigma[i];
             let s_j = self.sigma[i + 1];
 
-            -s_i * v * v / (two * h)
-                + s_j * u * u / (two * h)
+            -s_i * v * v / (two * h) + s_j * u * u / (two * h)
                 - (self.knots_y[i] / h - s_i * h / six)
                 + (self.knots_y[i + 1] / h - s_j * h / six)
         } else {
@@ -302,11 +299,7 @@ impl<T: Float> TensionSpline<T> {
 
         for i in i0..=i1 {
             let seg_start = if i == i0 { x0 } else { self.knots_x[i] };
-            let seg_end = if i == i1 {
-                x1
-            } else {
-                self.knots_x[i + 1]
-            };
+            let seg_end = if i == i1 { x1 } else { self.knots_x[i + 1] };
 
             total = total + self.integrate_segment(i, seg_start, seg_end);
         }
@@ -402,11 +395,7 @@ mod tests {
 
         for i in 0..40 {
             let x = i as f64 * 0.25;
-            assert_relative_eq!(
-                tension.evaluate(x),
-                cubic.evaluate(x),
-                epsilon = 1e-6,
-            );
+            assert_relative_eq!(tension.evaluate(x), cubic.evaluate(x), epsilon = 1e-6,);
         }
     }
 

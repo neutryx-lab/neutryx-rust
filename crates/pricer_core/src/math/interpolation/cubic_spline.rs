@@ -16,9 +16,8 @@
 
 use num_traits::Float;
 
-use crate::math::numeric::from_f64;
-
 use super::InterpolationError;
+use crate::math::numeric::from_f64;
 
 /// Natural cubic spline interpolant.
 ///
@@ -218,20 +217,14 @@ impl<T: Float> CubicSpline<T> {
         for i in i0..=i1 {
             let [a, b, c, d] = self.coefficients[i];
             let seg_start = if i == i0 { x0 } else { self.knots_x[i] };
-            let seg_end = if i == i1 {
-                x1
-            } else {
-                self.knots_x[i + 1]
-            };
+            let seg_end = if i == i1 { x1 } else { self.knots_x[i + 1] };
 
             let lo = seg_start - self.knots_x[i];
             let hi = seg_end - self.knots_x[i];
 
             // Antiderivative of a + b*t + c*t^2 + d*t^3
             // = a*t + b*t^2/2 + c*t^3/3 + d*t^4/4
-            let anti = |t: T| -> T {
-                t * (a + t * (b / two + t * (c / three + t * d / four)))
-            };
+            let anti = |t: T| -> T { t * (a + t * (b / two + t * (c / three + t * d / four))) };
 
             total = total + anti(hi) - anti(lo);
         }

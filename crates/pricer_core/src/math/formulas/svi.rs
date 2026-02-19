@@ -103,9 +103,7 @@ pub fn svi_implied_vol<T: Float>(
     let epsilon: T = from_f64(DEFAULT_EPSILON);
 
     if strike <= T::zero() {
-        return Err(SviError::InvalidStrike(
-            strike.to_f64().unwrap_or(f64::NAN),
-        ));
+        return Err(SviError::InvalidStrike(strike.to_f64().unwrap_or(f64::NAN)));
     }
 
     let log_moneyness = smooth_log(strike / forward, epsilon);
@@ -199,7 +197,12 @@ mod tests {
         let vol_high = svi_implied_vol(&p, 110.0, 100.0, 1.0).unwrap();
 
         // Negative rho → left skew (low strikes have higher vol)
-        assert!(vol_low > vol_high, "Expected negative skew: {} > {}", vol_low, vol_high);
+        assert!(
+            vol_low > vol_high,
+            "Expected negative skew: {} > {}",
+            vol_low,
+            vol_high
+        );
         assert!(vol_atm > 0.0);
     }
 

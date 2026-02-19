@@ -98,7 +98,11 @@ impl<T: Float> ZabrSurface<T> {
                 let var_hi = p_hi.alpha * p_hi.alpha * t_hi;
                 let var = linear_interp(t_lo, var_lo, t_hi, var_hi, expiry);
                 let eps = T::from(1e-14).unwrap_or_else(|| T::epsilon());
-                if expiry > eps { (var / expiry).abs().sqrt() } else { p_lo.alpha }
+                if expiry > eps {
+                    (var / expiry).abs().sqrt()
+                } else {
+                    p_lo.alpha
+                }
             }
             _ => linear_interp(t_lo, p_lo.alpha, t_hi, p_hi.alpha, expiry),
         };
@@ -114,8 +118,12 @@ impl<T: Float> ZabrSurface<T> {
 
         let backbone = match (&p_lo.backbone, &p_hi.backbone) {
             (
-                ZabrBackbone::Displaced { displacement: d_lo, .. },
-                ZabrBackbone::Displaced { displacement: d_hi, .. },
+                ZabrBackbone::Displaced {
+                    displacement: d_lo, ..
+                },
+                ZabrBackbone::Displaced {
+                    displacement: d_hi, ..
+                },
             ) => ZabrBackbone::Displaced {
                 beta,
                 displacement: linear_interp(t_lo, *d_lo, t_hi, *d_hi, expiry),

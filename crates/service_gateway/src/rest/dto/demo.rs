@@ -435,7 +435,8 @@ pub struct FactorGreeksEntry {
     pub greeks: FactorGreeks,
 }
 
-/// Advanced Greeks result by factor (mirrors `pricer_risk::GreeksResultByFactor`).
+/// Advanced Greeks result by factor (mirrors
+/// `pricer_risk::GreeksResultByFactor`).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoAdvancedGreeksResult {

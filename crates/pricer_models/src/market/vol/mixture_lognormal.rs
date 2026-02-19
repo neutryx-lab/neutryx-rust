@@ -9,10 +9,7 @@ use pricer_core::{
     traits::Float,
 };
 
-use super::{
-    interp::find_bracket,
-    VolSurface, VolSurfaceError,
-};
+use super::{interp::find_bracket, VolSurface, VolSurfaceError};
 
 /// A term-structure mixture-lognormal surface.
 #[derive(Clone, Debug)]
@@ -91,7 +88,11 @@ impl<T: Float> MixtureLognormalSurface<T> {
         let t_lo = self.expiries[lo];
         let t_hi = self.expiries[hi];
         let mid = (t_lo + t_hi) / (T::one() + T::one());
-        if expiry <= mid { Ok(lo) } else { Ok(hi) }
+        if expiry <= mid {
+            Ok(lo)
+        } else {
+            Ok(hi)
+        }
     }
 }
 
@@ -109,12 +110,7 @@ mod tests {
 
     #[test]
     fn test_single_component() {
-        let params = MixtureLognormalParams::new(
-            vec![1.0],
-            vec![100.0],
-            vec![0.20],
-        )
-        .unwrap();
+        let params = MixtureLognormalParams::new(vec![1.0], vec![100.0], vec![0.20]).unwrap();
 
         let s = MixtureLognormalSurface::from_calibrated_slices(
             vec![1.0],
@@ -130,12 +126,9 @@ mod tests {
 
     #[test]
     fn test_bimodal() {
-        let params = MixtureLognormalParams::new(
-            vec![0.6, 0.4],
-            vec![100.0, 100.0],
-            vec![0.15, 0.30],
-        )
-        .unwrap();
+        let params =
+            MixtureLognormalParams::new(vec![0.6, 0.4], vec![100.0, 100.0], vec![0.15, 0.30])
+                .unwrap();
 
         let s = MixtureLognormalSurface::from_calibrated_slices(
             vec![1.0],

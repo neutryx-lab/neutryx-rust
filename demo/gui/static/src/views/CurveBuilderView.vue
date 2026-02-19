@@ -316,10 +316,10 @@ watch(chartType, () => {
                 <button
                   :class="[
                     'px-3 py-1.5 text-xs rounded-lg transition-colors',
-                    chartType === 'fx_basis' ? 'bg-amber-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                    chartType === 'fx_basis' ? 'bg-emerald-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
                   ]"
                   @click="chartType = 'fx_basis'"
-                >FX Fwd Basis</button>
+                >Implied Yield</button>
               </template>
               <template v-else>
                 <button
