@@ -604,7 +604,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
         // For IRP method, auto-build domestic and foreign curves
         if (selectedCurve.value.fxCurveMethod === 'irp_generic') {
           if (selectedCurve.value.domesticCurve) {
-            let domId = builtCurveIds.value[selectedCurve.value.domesticCurve];
+            let domId: string | undefined = builtCurveIds.value[selectedCurve.value.domesticCurve];
             if (!domId) {
               domId = await autoBuildDiscountCurve(selectedCurve.value.domesticCurve);
               if (!domId) throw new Error(`Failed to auto-build domestic curve "${selectedCurve.value.domesticCurve}"`);
@@ -612,7 +612,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
             requestBody.domestic_curve_id = domId;
           }
           if (selectedCurve.value.foreignCurve) {
-            let forId = builtCurveIds.value[selectedCurve.value.foreignCurve];
+            let forId: string | undefined = builtCurveIds.value[selectedCurve.value.foreignCurve];
             if (!forId) {
               forId = await autoBuildDiscountCurve(selectedCurve.value.foreignCurve);
               if (!forId) throw new Error(`Failed to auto-build foreign curve "${selectedCurve.value.foreignCurve}"`);
@@ -623,7 +623,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
 
         // For IRP Basis method, auto-build reference curve
         if (selectedCurve.value.fxCurveMethod === 'irp_basis' && selectedCurve.value.referenceCurve) {
-          let refId = builtCurveIds.value[selectedCurve.value.referenceCurve];
+          let refId: string | undefined = builtCurveIds.value[selectedCurve.value.referenceCurve];
           if (!refId) {
             refId = await autoBuildDiscountCurve(selectedCurve.value.referenceCurve);
             if (!refId) throw new Error(`Failed to auto-build reference curve "${selectedCurve.value.referenceCurve}"`);
