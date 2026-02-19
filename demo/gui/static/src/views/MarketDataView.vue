@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 
 // Types
-type AssetClass = 'Rates' | 'FX' | 'IRVol' | 'FXVol' | 'Events' | 'Holidays';
+type AssetClass = 'Rates' | 'FX' | 'Bond' | 'Credit' | 'IRVol' | 'FXVol' | 'Events' | 'Holidays';
 
 interface Holiday {
   id: string;
@@ -11,6 +11,39 @@ interface Holiday {
   country: string;
   currency?: string;
   type: string; // 'bank', 'market', 'settlement'
+}
+
+interface BondQuote {
+  id: string;
+  currency: string;
+  issuer: string;
+  maturity: string;
+  couponRate: number;
+  ytm: number;
+  price: number;
+  duration: number;
+  convexity: number;
+  couponFrequency: string;
+  rating: string;
+  bondType: string; // 'government', 'corporate', 'agency'
+  source: string;
+  isStale: boolean;
+}
+
+interface CreditQuote {
+  id: string;
+  name: string;
+  currency: string;
+  tenor: string;
+  spread: number;
+  upfront: number;
+  recoveryRate: number;
+  indexType: string; // 'CDX.NA.IG', 'CDX.NA.HY', 'iTraxx.EUR.Main', 'iTraxx.EUR.Xover', 'Single Name'
+  series?: number;
+  version?: number;
+  rating?: string;
+  source: string;
+  isStale: boolean;
 }
 
 interface MarketRate {
@@ -95,11 +128,15 @@ interface MarketEvent {
 // State
 const assetClass = ref<AssetClass>('Rates');
 const rates = ref<MarketRate[]>([]);
+const bondQuotes = ref<BondQuote[]>([]);
+const creditQuotes = ref<CreditQuote[]>([]);
 const irVolQuotes = ref<IrVolQuote[]>([]);
 const fxVolQuotes = ref<FxVolQuote[]>([]);
 const events = ref<MarketEvent[]>([]);
 const holidays = ref<Holiday[]>([]);
 const selectedRateId = ref<string | null>(null);
+const selectedBondId = ref<string | null>(null);
+const selectedCreditId = ref<string | null>(null);
 const selectedIrVolId = ref<string | null>(null);
 const selectedFxVolId = ref<string | null>(null);
 const selectedEventId = ref<string | null>(null);
@@ -111,7 +148,7 @@ const isLoading = ref(false);
 const lastUpdated = ref<Date | null>(null);
 
 // Computed
-const assetClasses: AssetClass[] = ['Rates', 'FX', 'IRVol', 'FXVol', 'Events', 'Holidays'];
+const assetClasses: AssetClass[] = ['Rates', 'FX', 'Bond', 'Credit', 'IRVol', 'FXVol', 'Events', 'Holidays'];
 
 const filteredRates = computed(() => {
   let result = rates.value;
@@ -120,12 +157,12 @@ const filteredRates = computed(() => {
   }
   // Filter by asset class
   const typeMap: Record<string, string[]> = {
-    Rates: ['deposit', 'swap', 'ois', 'fra', 'future', 'xccybasis'],
-    FX: ['fxspot', 'fxforward'],
+    Rates: ['DEPO', 'SWAP', 'OIS', 'FRA', 'FUT', 'XCCY'],
+    FX: ['FXSPOT', 'FXFWD'],
   };
   const types = typeMap[assetClass.value] || [];
   if (types.length > 0) {
-    result = result.filter(r => types.includes(r.rateType?.toLowerCase() || ''));
+    result = result.filter(r => types.includes(r.rateType?.toUpperCase() || ''));
   }
   // Sort by currency then tenor (shortest first)
   result = [...result].sort((a, b) => {
@@ -140,6 +177,46 @@ const currencies = computed(() => {
   const set = new Set<string>();
   rates.value.forEach(r => set.add(r.currency));
   return Array.from(set).sort();
+});
+
+// Currency options for Bond tab
+const bondCurrencies = computed(() => {
+  const set = new Set<string>();
+  bondQuotes.value.forEach(b => set.add(b.currency));
+  return Array.from(set).sort();
+});
+
+// Filtered bonds
+const filteredBonds = computed(() => {
+  let result = bondQuotes.value;
+  if (currencyFilter.value) {
+    result = result.filter(b => b.currency.toLowerCase() === currencyFilter.value.toLowerCase());
+  }
+  return [...result].sort((a, b) => {
+    const currDiff = a.currency.localeCompare(b.currency);
+    if (currDiff !== 0) return currDiff;
+    return a.maturity.localeCompare(b.maturity);
+  });
+});
+
+// Currency options for Credit tab
+const creditCurrencies = computed(() => {
+  const set = new Set<string>();
+  creditQuotes.value.forEach(c => set.add(c.currency));
+  return Array.from(set).sort();
+});
+
+// Filtered credit quotes
+const filteredCreditQuotes = computed(() => {
+  let result = creditQuotes.value;
+  if (currencyFilter.value) {
+    result = result.filter(c => c.currency.toLowerCase() === currencyFilter.value.toLowerCase());
+  }
+  return [...result].sort((a, b) => {
+    const typeDiff = a.indexType.localeCompare(b.indexType);
+    if (typeDiff !== 0) return typeDiff;
+    return tenorToOrder(a.tenor) - tenorToOrder(b.tenor);
+  });
 });
 
 // Currency options for IRVol tab
@@ -234,6 +311,22 @@ const filteredHolidays = computed(() => {
 });
 
 const summaryStats = computed(() => {
+  if (assetClass.value === 'Bond') {
+    return [
+      { label: 'Total Bonds', value: bondQuotes.value.length, icon: 'fa-landmark', color: '#3b82f6' },
+      { label: 'Currencies', value: new Set(bondQuotes.value.map(b => b.currency)).size, icon: 'fa-money-bill', color: '#10b981' },
+      { label: 'Displayed', value: filteredBonds.value.length, icon: 'fa-eye', color: '#8b5cf6' },
+      { label: 'Status', value: 'Live', icon: 'fa-signal', color: '#10b981' },
+    ];
+  }
+  if (assetClass.value === 'Credit') {
+    return [
+      { label: 'Total Quotes', value: creditQuotes.value.length, icon: 'fa-shield-alt', color: '#3b82f6' },
+      { label: 'Indices', value: new Set(creditQuotes.value.map(c => c.indexType)).size, icon: 'fa-layer-group', color: '#10b981' },
+      { label: 'Displayed', value: filteredCreditQuotes.value.length, icon: 'fa-eye', color: '#8b5cf6' },
+      { label: 'Status', value: 'Live', icon: 'fa-signal', color: '#10b981' },
+    ];
+  }
   if (assetClass.value === 'IRVol') {
     return [
       { label: 'Total Quotes', value: irVolQuotes.value.length, icon: 'fa-chart-area', color: '#3b82f6' },
@@ -275,6 +368,8 @@ const summaryStats = computed(() => {
 });
 
 const selectedRate = computed(() => rates.value.find(r => r.id === selectedRateId.value) || null);
+const selectedBond = computed(() => bondQuotes.value.find(b => b.id === selectedBondId.value) || null);
+const selectedCredit = computed(() => creditQuotes.value.find(c => c.id === selectedCreditId.value) || null);
 const selectedIrVol = computed(() => irVolQuotes.value.find(q => q.id === selectedIrVolId.value) || null);
 const selectedFxVol = computed(() => fxVolQuotes.value.find(q => q.id === selectedFxVolId.value) || null);
 const selectedEvent = computed(() => events.value.find(e => e.id === selectedEventId.value) || null);
@@ -300,7 +395,7 @@ function tenorToOrder(tenor: string): number {
 }
 
 function formatRate(value: number, rateType: string): string {
-  if (rateType === 'fxspot' || rateType === 'fxforward') return value.toFixed(4);
+  if (rateType === 'FXSPOT' || rateType === 'FXFWD') return value.toFixed(4);
   return `${(value * 100).toFixed(4)}%`;
 }
 
@@ -568,6 +663,36 @@ async function loadEventsData() {
   }
 }
 
+async function loadBondData() {
+  isLoading.value = true;
+  try {
+    const response = await fetch('/api/market/bonds');
+    if (!response.ok) throw new Error('Failed to load bonds');
+    const data = await response.json();
+    bondQuotes.value = data.quotes || [];
+    lastUpdated.value = new Date();
+  } catch (error) {
+    console.error('Failed to load bond data:', error);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function loadCreditData() {
+  isLoading.value = true;
+  try {
+    const response = await fetch('/api/market/credit');
+    if (!response.ok) throw new Error('Failed to load credit');
+    const data = await response.json();
+    creditQuotes.value = data.quotes || [];
+    lastUpdated.value = new Date();
+  } catch (error) {
+    console.error('Failed to load credit data:', error);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
 async function loadHolidaysData() {
   isLoading.value = true;
   try {
@@ -603,6 +728,8 @@ async function loadHolidaysData() {
 async function refresh() {
   if (assetClass.value === 'IRVol') await loadIrVolData();
   else if (assetClass.value === 'FXVol') await loadFxVolData();
+  else if (assetClass.value === 'Bond') await loadBondData();
+  else if (assetClass.value === 'Credit') await loadCreditData();
   else if (assetClass.value === 'Events') await loadEventsData();
   else if (assetClass.value === 'Holidays') await loadHolidaysData();
   else await loadRates();
@@ -627,6 +754,22 @@ function selectIrVol(quoteId: string) {
 
 function selectFxVol(quoteId: string) {
   selectedFxVolId.value = selectedFxVolId.value === quoteId ? null : quoteId;
+}
+
+function selectBond(bondId: string) {
+  selectedBondId.value = selectedBondId.value === bondId ? null : bondId;
+}
+
+function selectCredit(creditId: string) {
+  selectedCreditId.value = selectedCreditId.value === creditId ? null : creditId;
+}
+
+function formatBps(value: number): string {
+  return `${(value * 10000).toFixed(1)} bps`;
+}
+
+function formatPct(value: number): string {
+  return `${(value * 100).toFixed(3)}%`;
 }
 
 function selectEvent(eventId: string) {
@@ -658,12 +801,16 @@ async function exportData(format: 'csv' | 'json') {
 // Watch asset class changes
 watch(assetClass, (newClass) => {
   selectedRateId.value = null;
+  selectedBondId.value = null;
+  selectedCreditId.value = null;
   selectedIrVolId.value = null;
   selectedFxVolId.value = null;
   selectedEventId.value = null;
   selectedHolidayId.value = null;
   currencyFilter.value = '';
-  if (newClass === 'IRVol' && irVolQuotes.value.length === 0) loadIrVolData();
+  if (newClass === 'Bond' && bondQuotes.value.length === 0) loadBondData();
+  else if (newClass === 'Credit' && creditQuotes.value.length === 0) loadCreditData();
+  else if (newClass === 'IRVol' && irVolQuotes.value.length === 0) loadIrVolData();
   else if (newClass === 'FXVol' && fxVolQuotes.value.length === 0) loadFxVolData();
   else if (newClass === 'Events' && events.value.length === 0) loadEventsData();
   else if (newClass === 'Holidays' && holidays.value.length === 0) loadHolidaysData();
@@ -718,6 +865,24 @@ onMounted(() => {
         >
           <option value="">All Currencies</option>
           <option v-for="ccy in currencies" :key="ccy" :value="ccy">{{ ccy }}</option>
+        </select>
+        <!-- Currency filter for Bond -->
+        <select
+          v-if="assetClass === 'Bond'"
+          v-model="currencyFilter"
+          class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        >
+          <option value="">All Currencies</option>
+          <option v-for="ccy in bondCurrencies" :key="ccy" :value="ccy">{{ ccy }}</option>
+        </select>
+        <!-- Currency filter for Credit -->
+        <select
+          v-if="assetClass === 'Credit'"
+          v-model="currencyFilter"
+          class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        >
+          <option value="">All Currencies</option>
+          <option v-for="ccy in creditCurrencies" :key="ccy" :value="ccy">{{ ccy }}</option>
         </select>
         <!-- Currency filter for IRVol -->
         <select
@@ -780,7 +945,7 @@ onMounted(() => {
         <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-              {{ assetClass === 'IRVol' ? 'IR Volatility' : assetClass === 'FXVol' ? 'FX Volatility' : assetClass === 'Events' ? 'Market Events' : assetClass === 'Holidays' ? 'Market Holidays' : 'Market Rates' }}
+              {{ assetClass === 'Bond' ? 'Bond Market' : assetClass === 'Credit' ? 'Credit / CDX' : assetClass === 'IRVol' ? 'IR Volatility' : assetClass === 'FXVol' ? 'FX Volatility' : assetClass === 'Events' ? 'Market Events' : assetClass === 'Holidays' ? 'Market Holidays' : 'Market Rates' }}
             </h3>
             <span v-if="lastUpdated" class="text-xs text-[var(--text-muted)]">
               Updated: {{ lastUpdated.toLocaleTimeString() }}
@@ -833,6 +998,112 @@ onMounted(() => {
                         <i v-if="rate.isStale" class="fas fa-clock mr-1"></i>
                         {{ rate.isStale ? 'Stale' : 'Live' }}
                       </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <!-- Bond Table -->
+          <template v-else-if="assetClass === 'Bond'">
+            <div v-if="filteredBonds.length === 0" class="text-center py-12">
+              <i class="fas fa-landmark text-4xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">No bond data available</p>
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-[var(--glass-border)]">
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Issuer</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Ccy</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Maturity</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Coupon</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">YTM</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Price</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Duration</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="bond in filteredBonds"
+                    :key="bond.id"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedBondId === bond.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    @click="selectBond(bond.id)"
+                  >
+                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ bond.issuer }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ bond.currency }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)] font-mono text-xs">{{ bond.maturity }}</td>
+                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatPct(bond.couponRate) }}</td>
+                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatPct(bond.ytm) }}</td>
+                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ bond.price.toFixed(3) }}</td>
+                    <td class="py-3 px-3 text-right font-mono text-[var(--text-secondary)]">{{ bond.duration.toFixed(2) }}</td>
+                    <td class="py-3 px-3">
+                      <span :class="[
+                        'px-2 py-0.5 rounded text-xs',
+                        bond.rating.startsWith('AAA') ? 'bg-green-500/10 text-green-400' :
+                        bond.rating.startsWith('AA') ? 'bg-blue-500/10 text-blue-400' :
+                        bond.rating.startsWith('A') ? 'bg-cyan-500/10 text-cyan-400' :
+                        'bg-yellow-500/10 text-yellow-400'
+                      ]">{{ bond.rating }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+
+          <!-- Credit / CDX Table -->
+          <template v-else-if="assetClass === 'Credit'">
+            <div v-if="filteredCreditQuotes.length === 0" class="text-center py-12">
+              <i class="fas fa-shield-alt text-4xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">No credit data available</p>
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-[var(--glass-border)]">
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Name</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Ccy</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Spread</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Upfront</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Recovery</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="cds in filteredCreditQuotes"
+                    :key="cds.id"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedCreditId === cds.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    @click="selectCredit(cds.id)"
+                  >
+                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ cds.name }}</td>
+                    <td class="py-3 px-3">
+                      <span :class="[
+                        'px-2 py-0.5 rounded text-xs',
+                        cds.indexType === 'Single Name' ? 'bg-purple-500/10 text-purple-400' :
+                        cds.indexType.includes('HY') || cds.indexType.includes('Xover') ? 'bg-orange-500/10 text-orange-400' :
+                        'bg-blue-500/10 text-blue-400'
+                      ]">{{ cds.indexType }}</span>
+                    </td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ cds.currency }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ cds.tenor }}</td>
+                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatBps(cds.spread) }}</td>
+                    <td class="py-3 px-3 text-right font-mono" :class="cds.upfront !== 0 ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">{{ cds.upfront !== 0 ? formatPct(cds.upfront) : '-' }}</td>
+                    <td class="py-3 px-3 text-right font-mono text-[var(--text-secondary)]">{{ formatPct(cds.recoveryRate) }}</td>
+                    <td class="py-3 px-3">
+                      <span :class="[
+                        'px-2 py-0.5 rounded text-xs',
+                        cds.rating === 'IG' ? 'bg-green-500/10 text-green-400' :
+                        cds.rating === 'HY' ? 'bg-orange-500/10 text-orange-400' :
+                        cds.rating?.startsWith('A') ? 'bg-blue-500/10 text-blue-400' :
+                        cds.rating?.startsWith('BBB') ? 'bg-yellow-500/10 text-yellow-400' :
+                        'bg-red-500/10 text-red-400'
+                      ]">{{ cds.rating || '-' }}</span>
                     </td>
                   </tr>
                 </tbody>
@@ -1059,6 +1330,191 @@ onMounted(() => {
                   <span :class="selectedRate.isStale ? 'text-yellow-400' : 'text-green-400'">
                     {{ selectedRate.isStale ? 'Stale' : 'Live' }}
                   </span>
+                </div>
+              </div>
+            </template>
+          </template>
+
+          <!-- Bond Details -->
+          <template v-else-if="assetClass === 'Bond'">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Bond Details</h3>
+
+            <div v-if="!selectedBond" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select a bond to view details</p>
+            </div>
+
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">ID</span>
+                  <span class="text-[var(--text-primary)] font-mono text-xs">{{ selectedBond.id }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Issuer</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedBond.issuer }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedBond.currency }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Type</span>
+                  <span :class="[
+                    'px-2 py-0.5 rounded text-xs',
+                    selectedBond.bondType === 'government' ? 'bg-blue-500/10 text-blue-400' :
+                    selectedBond.bondType === 'agency' ? 'bg-cyan-500/10 text-cyan-400' :
+                    'bg-purple-500/10 text-purple-400'
+                  ]">{{ selectedBond.bondType }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Maturity</span>
+                  <span class="text-[var(--text-primary)] font-mono">{{ selectedBond.maturity }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Coupon</span>
+                  <span class="text-[var(--text-primary)] font-mono">{{ formatPct(selectedBond.couponRate) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Frequency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedBond.couponFrequency }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Rating</span>
+                  <span :class="[
+                    'px-2 py-0.5 rounded text-xs',
+                    selectedBond.rating.startsWith('AAA') ? 'bg-green-500/10 text-green-400' :
+                    selectedBond.rating.startsWith('AA') ? 'bg-blue-500/10 text-blue-400' :
+                    selectedBond.rating.startsWith('A') ? 'bg-cyan-500/10 text-cyan-400' :
+                    'bg-yellow-500/10 text-yellow-400'
+                  ]">{{ selectedBond.rating }}</span>
+                </div>
+              </div>
+
+              <!-- Pricing -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Pricing</h4>
+                <div class="space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Clean Price</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ selectedBond.price.toFixed(4) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">YTM</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatPct(selectedBond.ytm) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Risk Measures -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Risk Measures</h4>
+                <div class="space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Modified Duration</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ selectedBond.duration.toFixed(3) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Convexity</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ selectedBond.convexity.toFixed(3) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">DV01 (per 1M)</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ (selectedBond.duration * 0.0001 * 10000).toFixed(2) }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </template>
+
+          <!-- Credit / CDX Details -->
+          <template v-else-if="assetClass === 'Credit'">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Credit Details</h3>
+
+            <div v-if="!selectedCredit" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select an instrument to view details</p>
+            </div>
+
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">ID</span>
+                  <span class="text-[var(--text-primary)] font-mono text-xs">{{ selectedCredit.id }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Name</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedCredit.name }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Type</span>
+                  <span :class="[
+                    'px-2 py-0.5 rounded text-xs',
+                    selectedCredit.indexType === 'Single Name' ? 'bg-purple-500/10 text-purple-400' :
+                    selectedCredit.indexType.includes('HY') || selectedCredit.indexType.includes('Xover') ? 'bg-orange-500/10 text-orange-400' :
+                    'bg-blue-500/10 text-blue-400'
+                  ]">{{ selectedCredit.indexType }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedCredit.currency }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Tenor</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedCredit.tenor }}</span>
+                </div>
+                <div v-if="selectedCredit.series" class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Series / Version</span>
+                  <span class="text-[var(--text-primary)]">S{{ selectedCredit.series }} V{{ selectedCredit.version }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Rating</span>
+                  <span :class="[
+                    'px-2 py-0.5 rounded text-xs',
+                    selectedCredit.rating === 'IG' ? 'bg-green-500/10 text-green-400' :
+                    selectedCredit.rating === 'HY' ? 'bg-orange-500/10 text-orange-400' :
+                    selectedCredit.rating?.startsWith('A') ? 'bg-blue-500/10 text-blue-400' :
+                    selectedCredit.rating?.startsWith('BBB') ? 'bg-yellow-500/10 text-yellow-400' :
+                    'bg-red-500/10 text-red-400'
+                  ]">{{ selectedCredit.rating || '-' }}</span>
+                </div>
+              </div>
+
+              <!-- Spread & Pricing -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Spread & Pricing</h4>
+                <div class="space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Spread</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatBps(selectedCredit.spread) }}</span>
+                  </div>
+                  <div v-if="selectedCredit.upfront !== 0" class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Upfront</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatPct(selectedCredit.upfront) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Recovery Rate</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatPct(selectedCredit.recoveryRate) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Convention -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Convention</h4>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Day Count</span>
+                    <span class="text-[var(--text-primary)]">ACT/360</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Payment Freq</span>
+                    <span class="text-[var(--text-primary)]">Quarterly</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Source</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedCredit.source }}</span>
+                  </div>
                 </div>
               </div>
             </template>

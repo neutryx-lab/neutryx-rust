@@ -1,0 +1,45 @@
+{
+  "issuer": "German Bund",
+  "currency": "EUR",
+  "bond_type": "government",
+  "reference_date": "2026-02-13",
+  "rating": "AAA",
+  "instruments": [
+    {
+      "maturity": "2027-02-15",
+      "coupon_rate": 0.0200,
+      "coupon_frequency": "annual",
+      "ytm": 0.0235,
+      "price": 99.6573,
+      "duration": 0.948,
+      "convexity": 1.373
+    },
+    {
+      "maturity": "2029-07-04",
+      "coupon_rate": 0.0250,
+      "coupon_frequency": "annual",
+      "ytm": 0.0245,
+      "price": 100.1528,
+      "duration": 3.220,
+      "convexity": 11.871
+    },
+    {
+      "maturity": "2034-01-04",
+      "coupon_rate": 0.0275,
+      "coupon_frequency": "annual",
+      "ytm": 0.0265,
+      "price": 100.7381,
+      "duration": 7.133,
+      "convexity": 56.966
+    },
+    {
+      "maturity": "2044-07-04",
+      "coupon_rate": 0.0300,
+      "coupon_frequency": "annual",
+      "ytm": 0.0290,
+      "price": 101.3620,
+      "duration": 14.285,
+      "convexity": 225.184
+    }
+  ]
+}

@@ -6,21 +6,21 @@ steps:
       - '-f'
       - 'Dockerfile.gui'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/frictional-bank:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/ergodic-bank:$COMMIT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/frictional-bank:latest'
+      - 'gcr.io/$PROJECT_ID/ergodic-bank:latest'
       - '.'
 
   # Push to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/frictional-bank:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/ergodic-bank:$COMMIT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/frictional-bank:latest'
+      - 'gcr.io/$PROJECT_ID/ergodic-bank:latest'
 
   # Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
@@ -28,9 +28,9 @@ steps:
       - 'gcloud'
       - 'run'
       - 'deploy'
-      - 'frictional-bank'
+      - 'ergodic-bank'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/frictional-bank:$COMMIT_SHA'
+      - 'gcr.io/$PROJECT_ID/ergodic-bank:$COMMIT_SHA'
       - '--region'
       - '${_REGION}'
       - '--platform'

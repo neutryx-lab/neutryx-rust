@@ -18,6 +18,8 @@ pub struct InstrumentSpec {
     /// Expected rate spike for Event instruments (as decimal, e.g., -0.0025
     /// for.
     pub expected_rate_spike: Option<f64>,
+    /// Coupon rate for Bond instruments (as decimal, e.g., 0.04 for 4%).
+    pub coupon_rate: Option<f64>,
 }
 
 impl InstrumentSpec {
@@ -29,6 +31,7 @@ impl InstrumentSpec {
             rate,
             event_date: None,
             expected_rate_spike: None,
+            coupon_rate: None,
         }
     }
 
@@ -40,6 +43,7 @@ impl InstrumentSpec {
             rate: expected_rate_spike,
             event_date: Some(event_date.into()),
             expected_rate_spike: Some(expected_rate_spike),
+            coupon_rate: None,
         }
     }
 
@@ -110,6 +114,16 @@ impl InstrumentSpec {
             "event" => {
                 let spike = self.expected_rate_spike.unwrap_or(self.rate);
                 Ok(MarketInstrument::event_with_rate(0.0, spike))
+            }
+            "bond" => {
+                let tenor_years = self.tenor_years()?;
+                let coupon_rate =
+                    self.coupon_rate
+                        .ok_or_else(|| InstrumentParseError::InvalidRate {
+                            rate: self.rate,
+                            reason: "Bond requires coupon_rate field".to_string(),
+                        })?;
+                Ok(MarketInstrument::bond(tenor_years, self.rate, coupon_rate))
             }
             _ => Err(InstrumentParseError::UnknownType {
                 instrument_type: self.instrument_type.clone(),

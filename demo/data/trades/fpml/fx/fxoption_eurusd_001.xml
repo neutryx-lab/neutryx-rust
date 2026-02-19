@@ -10,8 +10,8 @@
   <trade>
     <tradeHeader>
       <partyTradeIdentifier>
-        <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T20002-01</tradeId>
+        <partyReference href="EB_NA"/>
+        <tradeId tradeIdScheme="http://www.ergodicbank.com/trade-id">T20002-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
@@ -21,7 +21,7 @@
       <book>FX_G10</book>
     </tradeHeader>
     <fxOption>
-      <buyerPartyReference href="FB_NA"/>
+      <buyerPartyReference href="EB_NA"/>
       <sellerPartyReference href="GOLDMAN"/>
       <expiryDateTime>
         <expiryDate>2025-10-15</expiryDate>
@@ -54,7 +54,7 @@
         </asian>
       </features>
       <premium>
-        <payerPartyReference href="FB_NA"/>
+        <payerPartyReference href="EB_NA"/>
         <receiverPartyReference href="GOLDMAN"/>
         <paymentAmount>
           <currency>USD</currency>
@@ -75,9 +75,9 @@
       </premium>
     </fxOption>
   </trade>
-  <party id="FB_NA">
+  <party id="EB_NA">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
-    <partyName>FrictionalBank N.A.</partyName>
+    <partyName>Ergodic Bank N.A.</partyName>
   </party>
   <party id="GOLDMAN">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">W22LROWP2IHZNBB6K528</partyId>

@@ -17,7 +17,7 @@ use pricer_pricing::{
         thread_local::{current_thread_index, ParallelWorkspaces},
         GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams,
     },
-    path_dependent::PathPayoffType,
+    payoff::PayoffKind,
     tree::{BinomialTree, TrinomialTree},
 };
 use rayon::prelude::*;
@@ -255,7 +255,7 @@ fn bench_checkpoint_time_overhead(c: &mut Criterion) {
     let n_paths = 10_000;
     let n_steps = 252; // 1 year of daily observations
     let gbm = GbmParams::default();
-    let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+    let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
     let df = (-0.05_f64 * 1.0).exp();
 
     // Baseline: No checkpoints
@@ -331,7 +331,7 @@ fn bench_checkpoint_memory_usage(c: &mut Criterion) {
     let n_paths = 10_000;
     let n_steps = 252;
     let gbm = GbmParams::default();
-    let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+    let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
     let df = (-0.05_f64 * 1.0).exp();
 
     // Test memory usage for different intervals
@@ -388,7 +388,7 @@ fn bench_checkpoint_payoff_types(c: &mut Criterion) {
         let strategy = CheckpointStrategy::Uniform { interval };
         let config = CheckpointPricingConfig::new(mc_config, strategy);
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -407,7 +407,7 @@ fn bench_checkpoint_payoff_types(c: &mut Criterion) {
         let strategy = CheckpointStrategy::Uniform { interval };
         let config = CheckpointPricingConfig::new(mc_config, strategy);
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_call(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -426,7 +426,7 @@ fn bench_checkpoint_payoff_types(c: &mut Criterion) {
         let strategy = CheckpointStrategy::Uniform { interval };
         let config = CheckpointPricingConfig::new(mc_config, strategy);
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::barrier_up_out_call(100.0, 150.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_out_call(100.0, 150.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -445,7 +445,7 @@ fn bench_checkpoint_payoff_types(c: &mut Criterion) {
         let strategy = CheckpointStrategy::Uniform { interval };
         let config = CheckpointPricingConfig::new(mc_config, strategy);
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::lookback_fixed_call(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_call(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -464,7 +464,7 @@ fn bench_checkpoint_payoff_types(c: &mut Criterion) {
         let strategy = CheckpointStrategy::Uniform { interval };
         let config = CheckpointPricingConfig::new(mc_config, strategy);
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::lookback_floating_call(1e-6);
+        let payoff = PayoffKind::lookback_floating_call(1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -489,7 +489,7 @@ fn bench_path_scaling(c: &mut Criterion) {
 
     let n_steps = 100;
     let gbm = GbmParams::default();
-    let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+    let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
     let df = (-0.05_f64 * 1.0).exp();
 
     // Test path count scaling
@@ -531,7 +531,7 @@ fn bench_step_scaling(c: &mut Criterion) {
 
     let n_paths = 10_000;
     let gbm = GbmParams::default();
-    let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+    let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
     let df = (-0.05_f64 * 1.0).exp();
 
     // Test step count scaling
@@ -591,7 +591,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -606,7 +606,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::asian_arithmetic_put(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_put(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -621,7 +621,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_call(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -636,7 +636,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::asian_geometric_put(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_put(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -651,7 +651,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::barrier_up_out_call(100.0, 150.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_out_call(100.0, 150.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -666,7 +666,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6);
+        let payoff = PayoffKind::barrier_down_out_put(100.0, 80.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -681,7 +681,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::barrier_up_in_call(100.0, 150.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_in_call(100.0, 150.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -696,7 +696,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::barrier_down_in_put(100.0, 80.0, 1e-6);
+        let payoff = PayoffKind::barrier_down_in_put(100.0, 80.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -711,7 +711,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::lookback_fixed_call(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_call(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -726,7 +726,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::lookback_fixed_put(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_put(100.0, 1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -741,7 +741,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::lookback_floating_call(1e-6);
+        let payoff = PayoffKind::lookback_floating_call(1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);
@@ -756,7 +756,7 @@ fn bench_payoff_type_comparison(c: &mut Criterion) {
             CheckpointStrategy::Uniform { interval: 20 },
         );
         let mut pricer = CheckpointPricer::new(config).unwrap();
-        let payoff = PathPayoffType::lookback_floating_put(1e-6);
+        let payoff = PayoffKind::lookback_floating_put(1e-6);
 
         b.iter(|| {
             pricer.reset_with_seed(42);

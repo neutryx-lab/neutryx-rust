@@ -5,7 +5,7 @@ use infra_domain::{
     market::RateIndex,
     time::{Date, DayCounter},
 };
-use pricer_models::market::YieldCurve;
+use pricer_models::market::{fx::FxCurve, YieldCurve};
 
 use crate::rest::dto::ChartGridPoint;
 
@@ -136,19 +136,31 @@ fn build_chart_grid<C: YieldCurve<f64>>(
                 discount_factor: df,
                 forward_rate: fwd,
                 label: label_fn(*date),
+                fx_forward: None,
+                implied_overnight_rate: None,
             })
         })
         .collect()
 }
 
 /// Generate short-term and long-term chart grids for a curve.
+///
+/// `pillar_times` are merged into the fixed visualisation grid so that
+/// curve features at pillar dates (jumps, kinks) are faithfully captured.
 pub(crate) fn generate_chart_grids<C: YieldCurve<f64>>(
     ref_date: NaiveDate,
     curve: &C,
     day_counter: DayCounter,
+    pillar_times: &[f64],
 ) -> (Vec<ChartGridPoint>, Vec<ChartGridPoint>) {
-    let short_term_dates = generate_short_term_dates(ref_date);
-    let long_term_dates = generate_long_term_dates(ref_date);
+    let pillar_dates = times_to_dates(ref_date, pillar_times);
+
+    let mut short_term_dates = generate_short_term_dates(ref_date);
+    merge_pillar_dates(&mut short_term_dates, &pillar_dates, ref_date, 1.0);
+
+    let mut long_term_dates = generate_long_term_dates(ref_date);
+    merge_pillar_dates(&mut long_term_dates, &pillar_dates, ref_date, 30.0);
+
     let short_term_grid = build_chart_grid(
         ref_date,
         &short_term_dates,
@@ -164,4 +176,144 @@ pub(crate) fn generate_chart_grids<C: YieldCurve<f64>>(
         day_counter,
     );
     (short_term_grid, long_term_grid)
+}
+
+/// Compute the overnight implied rate differential at a given date.
+///
+/// Returns `r_domestic(t) − r_foreign(t)` ≈ `ln(F(t+1d) / F(t)) / dt`,
+/// i.e. the instantaneous FX implied rate analogous to `overnight_forward_rate`
+/// for yield curves.
+fn overnight_fx_implied_rate<C: FxCurve<f64>>(
+    fx_curve: &C,
+    ref_date: NaiveDate,
+    date: NaiveDate,
+) -> Option<f64> {
+    let d = (date - ref_date).num_days();
+    let t1 = MODEL_DAY_COUNTER.year_fraction_from_days(d);
+    let t2 = MODEL_DAY_COUNTER.year_fraction_from_days(d + 1);
+    let f1 = if t1 <= 0.0 {
+        fx_curve.forward_rate(0.0).ok()?
+    } else {
+        fx_curve.forward_rate(t1).ok()?
+    };
+    let f2 = fx_curve.forward_rate(t2).ok()?;
+    let dt = t2 - t1;
+    if dt <= 0.0 || f1 <= 0.0 {
+        return None;
+    }
+    Some((f2 / f1).ln() / dt)
+}
+
+/// Build `ChartGridPoint` vec from grid dates for an FX forward curve.
+fn build_fx_chart_grid<C: FxCurve<f64>>(
+    ref_date: NaiveDate,
+    dates: &[NaiveDate],
+    fx_curve: &C,
+    label_fn: fn(NaiveDate) -> String,
+) -> Vec<ChartGridPoint> {
+    dates
+        .iter()
+        .filter_map(|date| {
+            let time = MODEL_DAY_COUNTER.year_fraction_from_days((*date - ref_date).num_days());
+            let fwd = fx_curve.forward_rate(time).ok()?;
+            let implied_rate = if time > 0.0 {
+                overnight_fx_implied_rate(fx_curve, ref_date, *date)
+            } else {
+                None
+            };
+            Some(ChartGridPoint {
+                date: date.format("%Y-%m-%d").to_string(),
+                time,
+                discount_factor: 0.0,
+                forward_rate: fwd,
+                label: label_fn(*date),
+                fx_forward: Some(fwd),
+                implied_overnight_rate: implied_rate,
+            })
+        })
+        .collect()
+}
+
+/// Generate short-term and long-term chart grids for an FX forward curve.
+///
+/// `pillar_times` from underlying rate curves are merged into the grid so
+/// that rate-curve features (jumps, kinks) are reflected in FX forwards.
+pub(crate) fn generate_fx_chart_grids<C: FxCurve<f64>>(
+    ref_date: NaiveDate,
+    fx_curve: &C,
+    max_time: f64,
+    pillar_times: &[f64],
+) -> (Vec<ChartGridPoint>, Vec<ChartGridPoint>) {
+    let pillar_dates = times_to_dates(ref_date, pillar_times);
+
+    let mut short_term_dates = generate_short_term_dates(ref_date);
+    merge_pillar_dates(
+        &mut short_term_dates,
+        &pillar_dates,
+        ref_date,
+        max_time.min(1.0),
+    );
+    let short_term_dates: Vec<_> = short_term_dates
+        .into_iter()
+        .filter(|d| {
+            let t = MODEL_DAY_COUNTER.year_fraction_from_days((*d - ref_date).num_days());
+            t <= max_time
+        })
+        .collect();
+    let short_grid = build_fx_chart_grid(
+        ref_date,
+        &short_term_dates,
+        fx_curve,
+        format_short_term_label,
+    );
+
+    let mut long_term_dates = generate_long_term_dates(ref_date);
+    merge_pillar_dates(&mut long_term_dates, &pillar_dates, ref_date, max_time);
+    let long_term_dates: Vec<_> = long_term_dates
+        .into_iter()
+        .filter(|d| {
+            let t = MODEL_DAY_COUNTER.year_fraction_from_days((*d - ref_date).num_days());
+            t <= max_time
+        })
+        .collect();
+    let long_grid =
+        build_fx_chart_grid(ref_date, &long_term_dates, fx_curve, format_long_term_label);
+
+    (short_grid, long_grid)
+}
+
+// ---------------------------------------------------------------------------
+// Pillar-date merging helpers
+// ---------------------------------------------------------------------------
+
+/// Convert year-fraction times to `NaiveDate`s relative to `ref_date`.
+fn times_to_dates(ref_date: NaiveDate, times: &[f64]) -> Vec<NaiveDate> {
+    times
+        .iter()
+        .filter_map(|&t| {
+            let days = (t * 365.0).round() as i64;
+            if days <= 0 {
+                return None;
+            }
+            ref_date.checked_add_signed(chrono::Duration::days(days))
+        })
+        .collect()
+}
+
+/// Merge `extra` dates into `grid`, keeping only those within `max_years`
+/// of `ref_date`.  Deduplicates and re-sorts.
+fn merge_pillar_dates(
+    grid: &mut Vec<NaiveDate>,
+    extra: &[NaiveDate],
+    ref_date: NaiveDate,
+    max_years: f64,
+) {
+    for &d in extra {
+        let t = MODEL_DAY_COUNTER.year_fraction_from_days((d - ref_date).num_days());
+        if t > 0.0 && t <= max_years && !grid.contains(&d) {
+            grid.push(d);
+        }
+    }
+    grid.sort();
+    grid.dedup();
 }

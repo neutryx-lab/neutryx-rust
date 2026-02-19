@@ -27,30 +27,6 @@ pub trait InstrumentExpander {
     ) -> Result<Trade, InstrumentError>;
 }
 
-/// Creates a single-leg settlement trade (options, forwards, etc.).
-pub(super) fn settlement_trade(
-    trade_id: impl Into<TradeId>,
-    date: Date,
-    notional: f64,
-    payoff_value: f64,
-    currency: Currency,
-    direction: Direction,
-    trade_type: TradeType,
-) -> Trade {
-    let cf = Cashflow::new(
-        CashflowType::Settlement,
-        date,
-        date,
-        date,
-        0.0,
-        notional,
-        Payoff::fixed(payoff_value),
-        currency,
-    );
-    let leg = Leg::new(vec![cf], direction, LegType::Generic, currency);
-    Trade::new(trade_id, vec![leg], trade_type)
-}
-
 /// Creates a two-leg FX exchange trade (FX spot, FX forward).
 pub(super) fn fx_exchange_trade(
     trade_id: impl Into<TradeId>,
@@ -200,8 +176,12 @@ pub(super) fn credit_premium_leg(
 
 macro_rules! dispatch_expand {
     ($self:expr, $tid:expr, $vd:expr, $conv:expr; $($Variant:ident),+ $(,)?) => {
+        #[allow(unreachable_patterns)]
         match $self {
             $(InstrumentDefinition::$Variant(inner) => inner.expand_to_trade($tid, $vd, $conv),)+
+            other => Err(InstrumentError::invalid_parameter(
+                format!("Instrument expansion not yet supported for {other}"),
+            )),
         }
     };
 }
@@ -216,7 +196,7 @@ impl InstrumentExpander for InstrumentDefinition {
         self.validate()?;
         dispatch_expand!(self, trade_id, valuation_date, conventions;
             Deposit, Fra, Futures, InterestRateSwap, BasisSwap, Ois,
-            Swaption, CapFloor, Frn, CmsSwap, InflationSwap,
+            Swaption, CapFloor, Bond, Frn, CmsSwap, InflationSwap,
             FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap, CrossCurrencyBasisSwap,
             EquityForward, EquityVanillaOption, EquityBarrierOption, AsianOption, LookbackOption, EquitySwap, BasketOption,
             Cds, CdsIndex, CdsOption, NtdBasket,

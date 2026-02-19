@@ -329,6 +329,63 @@ impl InterestRateSwap {
     pub fn tenor_years(&self) -> f64 { (self.end_date() - self.start_date) as f64 / 365.0 }
 }
 
+/// Bond type classification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum BondType {
+    /// Government bond (e.g., US Treasury, Bund, Gilt, JGB).
+    Government,
+    /// Corporate bond.
+    Corporate,
+    /// Agency bond (e.g., FNMA, FHLB).
+    Agency,
+}
+
+/// Fixed-coupon bond instrument.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Bond {
+    /// Issuer name (e.g., "US Treasury", "Apple Inc").
+    pub issuer: String,
+    /// Coupon rate (as decimal, e.g., 0.04375 for 4.375%).
+    pub coupon_rate: f64,
+    /// Coupon payment frequency.
+    pub coupon_frequency: Frequency,
+    /// Issue / settlement date.
+    pub start_date: Date,
+    /// Maturity date.
+    pub maturity: Date,
+    /// Notional (face value).
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Bond type (government, corporate, agency).
+    pub bond_type: BondType,
+    /// Credit rating (e.g., "AA+", "A").
+    pub rating: Option<String>,
+}
+
+impl Bond {
+    /// Validates the bond parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_not_empty(&self.issuer, "Issuer")?;
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_range(self.coupon_rate, -0.05, 0.5, "Coupon rate")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
+        Ok(())
+    }
+
+    /// Returns true if this is a government bond.
+    #[must_use]
+    pub fn is_government(&self) -> bool { self.bond_type == BondType::Government }
+
+    /// Returns true if this is a corporate bond.
+    #[must_use]
+    pub fn is_corporate(&self) -> bool { self.bond_type == BondType::Corporate }
+}
+
 /// Basis Swap.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BasisSwap {
@@ -598,5 +655,52 @@ mod tests {
 
         assert_eq!(SwapType::ZeroCoupon, SwapType::ZeroCoupon);
         assert_ne!(SwapType::ZeroCoupon, SwapType::YearOnYear);
+    }
+
+    #[test]
+    fn test_bond_instrument() {
+        let bond = Bond {
+            issuer: "US Treasury".to_string(),
+            coupon_rate: 0.04375,
+            coupon_frequency: Frequency::SemiAnnual,
+            start_date: Date::from_ymd(2024, 5, 15).unwrap(),
+            maturity: Date::from_ymd(2034, 5, 15).unwrap(),
+            notional: 100.0,
+            currency: Currency::USD,
+            bond_type: BondType::Government,
+            rating: Some("AA+".to_string()),
+        };
+        assert!(bond.validate().is_ok());
+        assert!(bond.is_government());
+        assert!(!bond.is_corporate());
+
+        let corp = Bond {
+            issuer: "Apple Inc".to_string(),
+            coupon_rate: 0.0395,
+            coupon_frequency: Frequency::SemiAnnual,
+            start_date: Date::from_ymd(2024, 2, 8).unwrap(),
+            maturity: Date::from_ymd(2029, 2, 8).unwrap(),
+            notional: 100.0,
+            currency: Currency::USD,
+            bond_type: BondType::Corporate,
+            rating: Some("AA+".to_string()),
+        };
+        assert!(corp.validate().is_ok());
+        assert!(corp.is_corporate());
+
+        let mut bad = bond.clone();
+        bad.issuer = "".to_string();
+        assert!(bad.validate().is_err());
+
+        let mut bad = bond.clone();
+        bad.notional = -100.0;
+        assert!(bad.validate().is_err());
+
+        let mut bad = bond.clone();
+        bad.maturity = Date::from_ymd(2020, 1, 1).unwrap();
+        assert!(bad.validate().is_err());
+
+        assert_eq!(BondType::Government, BondType::Government);
+        assert_ne!(BondType::Government, BondType::Corporate);
     }
 }

@@ -7,18 +7,15 @@
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { Instrument, ExpandedTrade, PricingResult, GreeksResult } from '@/types/api';
+import type { Instrument, ExpandedTrade, PricingResult, GreeksResult, PricingMethod, TreeTypeOption } from '@/types/api';
 import { formatCurrency } from '@/utils/format';
 import {
   STOCHASTIC_MODELS,
   type CashflowEdit,
+  type HistoryEntry,
   type ValidationError,
   type ComputationMetrics,
-  type HistoryEntry,
   type SummaryStat,
-  type PvDiff,
-  type CompareResult,
-  type ParamChange,
   type CurrencyAgg,
 } from '@/constants/pricer';
 
@@ -31,6 +28,7 @@ export const usePricerStore = defineStore('pricer', () => {
   const instruments = ref<Instrument[]>([]);
   const selectedInstrumentId = ref('');
   const instrumentParams = ref<Record<string, string | number>>({});
+  const assetTab = ref('Rates');
 
   // Trade Expansion
   const expandedTrade = ref<ExpandedTrade | null>(null);
@@ -42,9 +40,22 @@ export const usePricerStore = defineStore('pricer', () => {
   const pricingResult = ref<PricingResult | null>(null);
   const greeksResult = ref<GreeksResult | null>(null);
 
-  // Valuation Settings
-  const valuationDate = ref(new Date().toISOString().split('T')[0]);
+  // CalcSetting (mirrors Rust CalcSetting)
+  const pricingMethod = ref<PricingMethod>('auto');
+  const computeGreeks = ref(false);
   const reportingCcy = ref('USD');
+
+  // MonteCarloSetting
+  const mcNumPaths = ref(10000);
+  const mcNumSteps = ref(100);
+  const mcSeed = ref<number | null>(null);
+
+  // TreeSetting
+  const treeNumSteps = ref(100);
+  const treeType = ref<TreeTypeOption>('binomial');
+
+  // Valuation
+  const valuationDate = ref(new Date().toISOString().split('T')[0]);
   const useDefaults = ref(true);
   const numPaths = ref(10000);
   const numSteps = ref(100);
@@ -55,8 +66,9 @@ export const usePricerStore = defineStore('pricer', () => {
   const fxBump = ref(1);
   const volBump = ref(1);
 
-  // Market Data
-  const selectedCurveIndex = ref('USD-SOFR');
+  // Market Data Overrides (published curves/vol surfaces activated for pricing)
+  const activeCurveOverrideIds = ref<string[]>([]);
+  const activeVolOverrideIds = ref<string[]>([]);
 
   // Stochastic Model
   const modelType = ref('GBM');
@@ -73,10 +85,8 @@ export const usePricerStore = defineStore('pricer', () => {
   // Metrics
   const computationMetrics = ref<ComputationMetrics | null>(null);
 
-  // History
+  // History (for Greeks Analyser)
   const resultHistory = ref<HistoryEntry[]>([]);
-  const compareMode = ref(false);
-  const compareIndices = ref<[number, number]>([0, 1]);
 
   // ---------------------------------------------------------------------------
   // Getters
@@ -98,13 +108,21 @@ export const usePricerStore = defineStore('pricer', () => {
     return groups;
   });
 
+  const assetClasses = computed<string[]>(() => Object.keys(groupedInstruments.value));
+
+  const filteredInstruments = computed<Instrument[]>(() =>
+    groupedInstruments.value[assetTab.value] ?? [],
+  );
+
   const hasEdits = computed(() => Object.keys(editedCashflows.value).length > 0);
 
   const summaryStats = computed<SummaryStat[]>(() => {
     const pvValue = pricingResult.value
-      ? formatCurrency(pricingResult.value.totalPv ?? pricingResult.value.pv ?? 0)
+      ? formatCurrency(pricingResult.value.totalPv ?? 0)
       : '-';
-    const dv01Value = greeksResult.value ? formatCurrency(greeksResult.value.delta) : '-';
+    const dv01Value = pricingResult.value?.greeks?.delta != null
+      ? formatCurrency(pricingResult.value.greeks.delta)
+      : greeksResult.value ? formatCurrency(greeksResult.value.delta) : '-';
 
     return [
       { label: 'Valuation Date', value: valuationDate.value, icon: 'fa-calendar', color: '#10b981' },
@@ -123,55 +141,11 @@ export const usePricerStore = defineStore('pricer', () => {
     () => STOCHASTIC_MODELS.find((m) => m.type === modelType.value) || STOCHASTIC_MODELS[0],
   );
 
-  const recentHistory = computed(() => resultHistory.value.slice(0, 5));
-
-  const pvDiff = computed<PvDiff | null>(() => {
-    if (resultHistory.value.length < 2) return null;
-    const current = resultHistory.value[0].pricingResult;
-    const previous = resultHistory.value[1].pricingResult;
-    const curPv = current.totalPv ?? current.pv ?? 0;
-    const prevPv = previous.totalPv ?? previous.pv ?? 0;
-    const diff = curPv - prevPv;
-    const pct = prevPv !== 0 ? (diff / Math.abs(prevPv)) * 100 : 0;
-    return { absolute: diff, percent: pct };
-  });
-
-  const comparedResults = computed<CompareResult | null>(() => {
-    if (!compareMode.value || resultHistory.value.length < 2) return null;
-    const [idxA, idxB] = compareIndices.value;
-    const a = resultHistory.value[idxA];
-    const b = resultHistory.value[idxB];
-    if (!a || !b) return null;
-    return { a, b };
-  });
-
-  const changedParams = computed<ParamChange[]>(() => {
-    if (!comparedResults.value) return [];
-    const { a, b } = comparedResults.value;
-    const changes: ParamChange[] = [];
-    const allKeys = new Set([...Object.keys(a.params), ...Object.keys(b.params)]);
-    allKeys.forEach((key) => {
-      if (a.params[key] !== b.params[key]) {
-        changes.push({ name: key, valueA: a.params[key], valueB: b.params[key] });
-      }
-    });
-    if (a.modelType !== b.modelType) {
-      changes.push({ name: 'Model', valueA: a.modelType, valueB: b.modelType });
-    }
-    if (a.curveIndex !== b.curveIndex) {
-      changes.push({ name: 'Curve', valueA: a.curveIndex, valueB: b.curveIndex });
-    }
-    if (a.valuationDate !== b.valuationDate) {
-      changes.push({ name: 'Val Date', valueA: a.valuationDate, valueB: b.valuationDate });
-    }
-    return changes;
-  });
-
   const currencyAggregation = computed<CurrencyAgg[]>(() => {
     if (!pricingResult.value?.legs) return [];
     const byCcy: Record<string, number> = {};
     pricingResult.value.legs.forEach((leg) => {
-      const ccy = (leg as Record<string, unknown>).currency as string || reportingCcy.value;
+      const ccy = leg.currency || reportingCcy.value;
       byCcy[ccy] = (byCcy[ccy] || 0) + leg.pv;
     });
     return Object.entries(byCcy).map(([ccy, pv]) => ({ ccy, pv }));
@@ -186,12 +160,22 @@ export const usePricerStore = defineStore('pricer', () => {
     instruments,
     selectedInstrumentId,
     instrumentParams,
+    assetTab,
     expandedTrade,
     editedCashflows,
     pricingResult,
     greeksResult,
-    valuationDate,
+    // CalcSetting
+    pricingMethod,
+    computeGreeks,
     reportingCcy,
+    mcNumPaths,
+    mcNumSteps,
+    mcSeed,
+    treeNumSteps,
+    treeType,
+    // Valuation
+    valuationDate,
     useDefaults,
     numPaths,
     numSteps,
@@ -199,7 +183,8 @@ export const usePricerStore = defineStore('pricer', () => {
     rateBump,
     fxBump,
     volBump,
-    selectedCurveIndex,
+    activeCurveOverrideIds,
+    activeVolOverrideIds,
     modelType,
     modelParams,
     isExpanding,
@@ -208,18 +193,14 @@ export const usePricerStore = defineStore('pricer', () => {
     validationErrors,
     computationMetrics,
     resultHistory,
-    compareMode,
-    compareIndices,
     // Getters
     selectedInstrument,
     groupedInstruments,
+    assetClasses,
+    filteredInstruments,
     hasEdits,
     summaryStats,
     selectedModelConfig,
-    recentHistory,
-    pvDiff,
-    comparedResults,
-    changedParams,
     currencyAggregation,
   };
 });

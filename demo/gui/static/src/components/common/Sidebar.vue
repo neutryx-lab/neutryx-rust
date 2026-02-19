@@ -53,7 +53,7 @@ function navigateTo(name: string) {
           <div class="logo-icon w-10 h-10 rounded-xl"></div>
           <div class="logo-text leading-tight">
             <div>
-              <span class="font-semibold text-base tracking-wide">Frictional</span>
+              <span class="font-semibold text-base tracking-wide">Ergodic</span>
               <span class="text-[var(--text-muted)] font-light text-[11px] tracking-[0.15em] uppercase">Bank</span>
               <sup class="text-[9px] font-medium text-emerald-400 ml-0.5 tracking-wider">DEMO</sup>
             </div>

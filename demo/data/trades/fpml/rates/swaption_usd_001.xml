@@ -10,8 +10,8 @@
   <trade>
     <tradeHeader>
       <partyTradeIdentifier>
-        <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T10002-01</tradeId>
+        <partyReference href="EB_NA"/>
+        <tradeId tradeIdScheme="http://www.ergodicbank.com/trade-id">T10002-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
@@ -21,10 +21,10 @@
       <book>RATES_NA</book>
     </tradeHeader>
     <swaption>
-      <buyerPartyReference href="FB_NA"/>
+      <buyerPartyReference href="EB_NA"/>
       <sellerPartyReference href="GOLDMAN"/>
       <premium>
-        <payerPartyReference href="FB_NA"/>
+        <payerPartyReference href="EB_NA"/>
         <receiverPartyReference href="GOLDMAN"/>
         <paymentAmount>
           <currency>USD</currency>
@@ -68,7 +68,7 @@
         <followUpConfirmation>true</followUpConfirmation>
       </exerciseProcedure>
       <calculationAgent>
-        <calculationAgentPartyReference href="FB_NA"/>
+        <calculationAgentPartyReference href="EB_NA"/>
       </calculationAgent>
       <cashSettlement>
         <cashSettlementValuationTime>
@@ -103,7 +103,7 @@
       <swap>
         <!-- Underlying 5Y Swap -->
         <swapStream id="fixedLeg">
-          <payerPartyReference href="FB_NA"/>
+          <payerPartyReference href="EB_NA"/>
           <receiverPartyReference href="GOLDMAN"/>
           <calculationPeriodDates id="fixedCalcPeriods">
             <effectiveDate>
@@ -167,7 +167,7 @@
         </swapStream>
         <swapStream id="floatLeg">
           <payerPartyReference href="GOLDMAN"/>
-          <receiverPartyReference href="FB_NA"/>
+          <receiverPartyReference href="EB_NA"/>
           <calculationPeriodDates id="floatCalcPeriods">
             <effectiveDate>
               <unadjustedDate>2026-08-17</unadjustedDate>
@@ -234,9 +234,9 @@
       </swap>
     </swaption>
   </trade>
-  <party id="FB_NA">
+  <party id="EB_NA">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
-    <partyName>FrictionalBank N.A.</partyName>
+    <partyName>Ergodic Bank N.A.</partyName>
   </party>
   <party id="GOLDMAN">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">W22LROWP2IHZNBB6K528</partyId>

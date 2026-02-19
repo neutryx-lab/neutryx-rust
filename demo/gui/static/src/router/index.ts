@@ -11,6 +11,7 @@ const CurveBuilderView = () => import('@/views/CurveBuilderView.vue');
 const VolcubeBuilderView = () => import('@/views/VolcubeBuilderView.vue');
 const PricerView = () => import('@/views/PricerView.vue');
 const GraphView = () => import('@/views/GraphView.vue');
+const GreeksAnalyserView = () => import('@/views/GreeksAnalyserView.vue');
 
 export type ViewId =
   | 'dashboard'
@@ -22,7 +23,8 @@ export type ViewId =
   | 'curve-builder'
   | 'volcube-builder'
   | 'pricer'
-  | 'graph';
+  | 'graph'
+  | 'greeks-analyser';
 
 export interface ViewMeta extends Record<string | symbol, unknown> {
   title: string;
@@ -146,6 +148,17 @@ const routes: RouteRecordRaw[] = [
       navGroup: 'tools',
     } as ViewMeta,
   },
+  {
+    path: '/greeks-analyser',
+    name: 'greeks-analyser',
+    component: GreeksAnalyserView,
+    meta: {
+      title: 'Greeks Analyser',
+      breadcrumb: 'Greeks Analyser',
+      icon: 'fa-wave-square',
+      navGroup: 'tools',
+    } as ViewMeta,
+  },
   // Legacy redirect for trade-expansion
   {
     path: '/trade-expansion',
@@ -162,7 +175,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   const meta = to.meta as ViewMeta | undefined;
   if (meta?.title) {
-    document.title = `${meta.title} | FrictionalBank`;
+    document.title = `${meta.title} | Ergodic Bank`;
   }
 });
 

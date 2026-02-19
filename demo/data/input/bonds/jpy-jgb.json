@@ -1,0 +1,45 @@
+{
+  "issuer": "JGB",
+  "currency": "JPY",
+  "bond_type": "government",
+  "reference_date": "2026-02-13",
+  "rating": "A+",
+  "instruments": [
+    {
+      "maturity": "2028-03-20",
+      "coupon_rate": 0.0050,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0055,
+      "price": 99.8969,
+      "duration": 1.978,
+      "convexity": 4.306
+    },
+    {
+      "maturity": "2031-06-20",
+      "coupon_rate": 0.0080,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0085,
+      "price": 99.7377,
+      "duration": 5.037,
+      "convexity": 27.382
+    },
+    {
+      "maturity": "2036-03-20",
+      "coupon_rate": 0.0100,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0110,
+      "price": 99.0417,
+      "duration": 9.100,
+      "convexity": 89.734
+    },
+    {
+      "maturity": "2046-03-20",
+      "coupon_rate": 0.0180,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0190,
+      "price": 98.2183,
+      "duration": 15.838,
+      "convexity": 275.624
+    }
+  ]
+}

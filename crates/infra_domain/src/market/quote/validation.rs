@@ -107,6 +107,8 @@ impl QuoteValidator for StandardQuoteValidator {
             QuoteCategory::FxSpot | QuoteCategory::FxForward => self.validate_fx_rate(value),
 
             QuoteCategory::Vol => self.validate_volatility(value),
+
+            QuoteCategory::Bond | QuoteCategory::CreditSpread => self.validate_interest_rate(value),
         }
     }
 }

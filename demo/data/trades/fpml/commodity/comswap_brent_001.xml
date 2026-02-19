@@ -10,8 +10,8 @@
   <trade>
     <tradeHeader>
       <partyTradeIdentifier>
-        <partyReference href="FB_UK"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T50001-01</tradeId>
+        <partyReference href="EB_UK"/>
+        <tradeId tradeIdScheme="http://www.ergodicbank.com/trade-id">T50001-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="BARCLAYS"/>
@@ -45,7 +45,7 @@
       </terminationDate>
       <!-- Fixed Leg -->
       <fixedLeg>
-        <payerPartyReference href="FB_UK"/>
+        <payerPartyReference href="EB_UK"/>
         <receiverPartyReference href="BARCLAYS"/>
         <calculationDates>
           <calculationSchedule>
@@ -68,7 +68,7 @@
       <!-- Floating Leg -->
       <floatingLeg>
         <payerPartyReference href="BARCLAYS"/>
-        <receiverPartyReference href="FB_UK"/>
+        <receiverPartyReference href="EB_UK"/>
         <calculationDates>
           <calculationSchedule>
             <periodMultiplier>1</periodMultiplier>
@@ -97,9 +97,9 @@
       </floatingLeg>
     </commoditySwap>
   </trade>
-  <party id="FB_UK">
+  <party id="EB_UK">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0003UK</partyId>
-    <partyName>FrictionalBank UK Limited</partyName>
+    <partyName>Ergodic Bank UK Limited</partyName>
   </party>
   <party id="BARCLAYS">
     <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">G5GSEF7VJP5I7OUK5573</partyId>

@@ -1,0 +1,107 @@
+{
+  "reference_date": "2026-02-13",
+  "issuers": [
+    {
+      "issuer": "Apple Inc",
+      "currency": "USD",
+      "bond_type": "corporate",
+      "rating": "AA+",
+      "instruments": [
+        {
+          "maturity": "2029-02-08",
+          "coupon_rate": 0.0395,
+          "coupon_frequency": "semi_annual",
+          "ytm": 0.0450,
+          "price": 98.4370,
+          "duration": 2.714,
+          "convexity": 8.440
+        }
+      ]
+    },
+    {
+      "issuer": "JPMorgan",
+      "currency": "USD",
+      "bond_type": "corporate",
+      "rating": "A+",
+      "instruments": [
+        {
+          "maturity": "2031-04-22",
+          "coupon_rate": 0.0450,
+          "coupon_frequency": "semi_annual",
+          "ytm": 0.0510,
+          "price": 97.0381,
+          "duration": 4.520,
+          "convexity": 23.184
+        }
+      ]
+    },
+    {
+      "issuer": "Goldman Sachs",
+      "currency": "USD",
+      "bond_type": "corporate",
+      "rating": "A",
+      "instruments": [
+        {
+          "maturity": "2030-10-21",
+          "coupon_rate": 0.0525,
+          "coupon_frequency": "semi_annual",
+          "ytm": 0.0560,
+          "price": 98.5042,
+          "duration": 3.937,
+          "convexity": 17.729
+        }
+      ]
+    },
+    {
+      "issuer": "Siemens AG",
+      "currency": "EUR",
+      "bond_type": "corporate",
+      "rating": "A+",
+      "instruments": [
+        {
+          "maturity": "2030-09-10",
+          "coupon_rate": 0.0300,
+          "coupon_frequency": "semi_annual",
+          "ytm": 0.0330,
+          "price": 98.6751,
+          "duration": 4.099,
+          "convexity": 19.166
+        }
+      ]
+    },
+    {
+      "issuer": "BNP Paribas",
+      "currency": "EUR",
+      "bond_type": "corporate",
+      "rating": "A",
+      "instruments": [
+        {
+          "maturity": "2029-05-15",
+          "coupon_rate": 0.0375,
+          "coupon_frequency": "semi_annual",
+          "ytm": 0.0400,
+          "price": 99.2538,
+          "duration": 2.885,
+          "convexity": 9.492
+        }
+      ]
+    },
+    {
+      "issuer": "HSBC Holdings",
+      "currency": "GBP",
+      "bond_type": "corporate",
+      "rating": "A",
+      "instruments": [
+        {
+          "maturity": "2031-03-11",
+          "coupon_rate": 0.0475,
+          "coupon_frequency": "semi_annual",
+          "ytm": 0.0510,
+          "price": 98.2841,
+          "duration": 4.320,
+          "convexity": 21.265
+        }
+      ]
+    }
+  ]
+}

@@ -5,7 +5,7 @@ const store = usePricerStore();
 </script>
 
 <template>
-  <v-card v-if="store.computationMetrics" variant="tonal">
+  <v-card v-if="store.computationMetrics" variant="outlined">
     <v-card-text class="d-flex justify-space-between text-caption text-medium-emphasis">
       <span>
         <v-icon icon="mdi-timer-outline" size="14" class="mr-1" />

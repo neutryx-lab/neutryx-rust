@@ -13,20 +13,27 @@ use pricer_models::{
         BootstrapConfig, CurveBootstrapper, GlobalBootstrapConfig, GlobalBootstrapper,
         JacobianMatrix,
     },
-    market::{build_forward_rate_shift_grid, BootstrapInterpolation, YieldCurve},
+    market::{
+        build_forward_rate_shift_grid,
+        curves::CurveEnum,
+        fx::{FxCurve, FxCurveEnum},
+        BootstrapInterpolation, MarketInstrument, YieldCurve,
+    },
 };
 
 use super::chart_grid::{
-    generate_chart_grids, overnight_forward_rate, resolve_day_counter, MODEL_DAY_COUNTER,
+    generate_chart_grids, generate_fx_chart_grids, overnight_forward_rate, resolve_day_counter,
+    MODEL_DAY_COUNTER,
 };
 #[cfg(test)]
 use crate::rest::dto::CurveInstrumentInput;
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
-        DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest, ForwardRateResponse,
-        ForwardSwapRateRequest, ForwardSwapRateResponse, JacobianData,
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, CurveType,
+        DiscountFactorRequest, DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest,
+        ForwardRateResponse, ForwardSwapRateRequest, ForwardSwapRateResponse, FxCurveMethod,
+        JacobianData,
     },
     state::{AppState, CurveEntry, InstrumentInput},
 };
@@ -48,6 +55,16 @@ impl CurveService {
         } else {
             chrono::Utc::now().date_naive()
         };
+
+        // Branch: credit curve bootstrap from CDS spreads.
+        if request.curve_type == CurveType::Credit {
+            return Self::build_credit_curve(request, state, reference_date, start);
+        }
+
+        // Branch: FX forward curve construction.
+        if request.curve_type == CurveType::Fx {
+            return Self::build_fx_curve(request, state, reference_date, start);
+        }
 
         let mut regular_specs: Vec<InstrumentSpec> = Vec::new();
         let mut jump_pillars: Vec<JumpPillar> = Vec::new();
@@ -80,6 +97,7 @@ impl CurveService {
                     rate: i.rate,
                     event_date: None,
                     expected_rate_spike: None,
+                    coupon_rate: i.coupon_rate,
                 });
             }
         }
@@ -127,21 +145,38 @@ impl CurveService {
                     .map_err(|e| ServerError::Pricing(format!("Bootstrap failed: {e}")))?;
                 (curve, Some(jac), "bootstrapping")
             }
-            BootstrapMethod::Global => {
+            BootstrapMethod::Global
+            | BootstrapMethod::LevenbergMarquardt
+            | BootstrapMethod::Penalised
+            | BootstrapMethod::BestFit => {
+                let damping = match request.bootstrap_method {
+                    BootstrapMethod::LevenbergMarquardt => Some(1e-3),
+                    BootstrapMethod::Penalised => Some(request.penalty_weight.unwrap_or(1e-4)),
+                    _ => None,
+                };
                 let global_config = GlobalBootstrapConfig {
                     tolerance: request.tolerance,
                     param_tolerance: request.tolerance,
                     max_iterations: request.max_iterations,
                     interpolation,
+                    damping_factor: damping,
                     ..Default::default()
                 };
                 let global = GlobalBootstrapper::new(global_config);
 
                 let n = market_instruments.len();
+                let method_label = match request.bootstrap_method {
+                    BootstrapMethod::LevenbergMarquardt => "levenberg_marquardt",
+                    BootstrapMethod::Penalised => "penalised",
+                    BootstrapMethod::BestFit => "best_fit",
+                    _ => "global",
+                };
 
                 let result = global
                     .calibrate_with_shift_grid(&market_instruments, &jump_data)
-                    .map_err(|e| ServerError::Pricing(format!("Global bootstrap failed: {e}")))?;
+                    .map_err(|e| {
+                        ServerError::Pricing(format!("{} calibration failed: {e}", method_label))
+                    })?;
                 let jacobian = result.jacobian_inverse.as_ref().map(|j_inv| {
                     let size = n.min(j_inv.nrows());
                     let mut data = vec![vec![0.0; size]; size];
@@ -157,7 +192,7 @@ impl CurveService {
                 } else {
                     result.curve.with_jumps(jump_data.clone())
                 };
-                (curve, jacobian, "global")
+                (curve, jacobian, method_label)
             }
         };
 
@@ -173,6 +208,7 @@ impl CurveService {
                         "fra" => "FRA",
                         "swap" | "irs" => "IRS",
                         "future" | "futures" => "Fut",
+                        "bond" => "Bond",
                         _ => &lower,
                     };
                     (t, format!("{}-{}", type_label, spec.tenor))
@@ -227,6 +263,9 @@ impl CurveService {
                     discount_factor: df,
                     zero_rate: zero_rate_from_df(df, *time),
                     forward_rate: fwd,
+                    survival_probability: None,
+                    hazard_rate: None,
+                    fx_forward: None,
                 })
             })
             .collect();
@@ -249,13 +288,18 @@ impl CurveService {
             })
             .collect();
 
+        let pillar_times: Vec<f64> = curve.pillars().to_vec();
         let (short_term_grid, long_term_grid) =
-            generate_chart_grids(reference_date, &curve, day_counter);
+            generate_chart_grids(reference_date, &curve, day_counter, &pillar_times);
 
         let interpolation_str = match interpolation {
             BootstrapInterpolation::Linear => "linear_df",
             BootstrapInterpolation::LogLinear => "log_linear_df",
             BootstrapInterpolation::FlatForward => "flat_forward",
+            BootstrapInterpolation::CubicSplineFwd => "cubic_spline_fwd",
+            BootstrapInterpolation::MonotoneConvex => "monotone_convex",
+            BootstrapInterpolation::LogCubicDF => "log_cubic_df",
+            BootstrapInterpolation::TensionSpline => "tension_spline",
         }
         .to_string();
 
@@ -290,7 +334,419 @@ impl CurveService {
             calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
             bootstrap_method: actual_method.to_string(),
             jacobian: jacobian_data,
+            curve_type: "rate".to_string(),
+            spot: None,
+            currency_pair: None,
         })
+    }
+
+    /// Build a credit (survival probability) curve from CDS spreads.
+    fn build_credit_curve(
+        request: &CurveBuildRequest,
+        state: &Arc<AppState>,
+        reference_date: chrono::NaiveDate,
+        start: Instant,
+    ) -> Result<CurveBuildResponse, ServerError> {
+        // Retrieve the risk-free discount curve from cache.
+        let discount_curve_id = request
+            .discount_curve_id
+            .as_ref()
+            .ok_or_else(|| {
+                ServerError::InvalidRequest(
+                    "discount_curve_id is required for credit curves".to_string(),
+                )
+            })?
+            .parse()
+            .map_err(|_| {
+                ServerError::InvalidRequest("Invalid discount_curve_id format".to_string())
+            })?;
+
+        let rf_entry = state.curve_cache.get(&discount_curve_id).ok_or_else(|| {
+            ServerError::NotFound(format!(
+                "Discount curve {} not found — build the rate curve first",
+                request.discount_curve_id.as_deref().unwrap_or("?")
+            ))
+        })?;
+
+        // Determine max maturity from CDS instruments.
+        let cds_specs: Vec<(String, f64, f64)> = request
+            .instruments
+            .iter()
+            .filter(|i| {
+                let t = i.instrument_type.to_lowercase();
+                t == "cds" || t == "credit"
+            })
+            .map(|i| {
+                let tenor_years = parse_tenor_to_years(&i.tenor).unwrap_or(1.0);
+                (i.tenor.clone(), tenor_years, i.rate)
+            })
+            .collect();
+
+        if cds_specs.is_empty() {
+            return Err(ServerError::InvalidRequest(
+                "At least one CDS instrument is required for credit curves".to_string(),
+            ));
+        }
+
+        let max_maturity = cds_specs.iter().map(|(_, t, _)| *t).fold(1.0_f64, f64::max);
+
+        // Pre-sample risk-free DFs at quarterly intervals.
+        let rf_dfs = Self::sample_discount_factors(&rf_entry.curve, max_maturity);
+
+        // Convert to MarketInstrument::Cds.
+        let recovery = request.recovery_rate;
+        let mut market_instruments: Vec<MarketInstrument<f64>> = cds_specs
+            .iter()
+            .map(|(_, tenor_years, spread)| {
+                MarketInstrument::cds(*tenor_years, *spread, recovery, rf_dfs.clone())
+            })
+            .collect();
+        market_instruments.sort_by(|a, b| {
+            a.maturity()
+                .partial_cmp(&b.maturity())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        market_instruments.dedup_by(|a, b| (a.maturity() - b.maturity()).abs() < 1e-10);
+
+        // Bootstrap using the standard bootstrapper.
+        let interpolation = request.interpolation;
+        let config = BootstrapConfig {
+            interpolation,
+            ..BootstrapConfig::new(request.tolerance, request.max_iterations)
+        };
+        let bootstrapper = CurveBootstrapper::with_config(config);
+
+        let (curve, jacobian) = bootstrapper
+            .bootstrap_to_curve_with_jacobian(&market_instruments, &[])
+            .map_err(|e| ServerError::Pricing(format!("Credit curve bootstrap failed: {e}")))?;
+
+        // Build Jacobian data with CDS labels.
+        let jacobian_data = {
+            let labels: Vec<String> = cds_specs
+                .iter()
+                .map(|(tenor, _, _)| format!("CDS-{}", tenor))
+                .collect();
+            let size = jacobian.size;
+            let matrix = jacobian.data;
+            Some(JacobianData {
+                row_labels: labels.clone(),
+                col_labels: labels,
+                matrix,
+                size,
+            })
+        };
+
+        let day_counter = resolve_day_counter(&request.index);
+
+        // Build pillars with survival probability and hazard rate.
+        let pillars: Vec<CurvePillar> = curve
+            .pillars()
+            .iter()
+            .filter_map(|time| {
+                let sp = curve.discount_factor(*time).ok()?;
+                let days = (*time * 365.0).round() as i64;
+                let date = reference_date + chrono::Duration::days(days);
+                let hazard = if *time > 0.0 { -sp.ln() / *time } else { 0.0 };
+                Some(CurvePillar {
+                    date: date.format("%Y-%m-%d").to_string(),
+                    time: *time,
+                    discount_factor: sp,
+                    zero_rate: zero_rate_from_df(sp, *time),
+                    forward_rate: hazard,
+                    survival_probability: Some(sp),
+                    hazard_rate: Some(hazard),
+                    fx_forward: None,
+                })
+            })
+            .collect();
+
+        // Forward curve: hazard rate on daily grid.
+        let max_days = curve
+            .pillars()
+            .last()
+            .map(|t| (t * 365.0).round() as i64)
+            .unwrap_or(365);
+        let forward_curve: Vec<ForwardRatePoint> = (0..max_days)
+            .filter_map(|day| {
+                let date = reference_date + chrono::Duration::days(day);
+                let time = MODEL_DAY_COUNTER.year_fraction_from_days(day);
+                let fwd = overnight_forward_rate(&curve, reference_date, date, day_counter)?;
+                Some(ForwardRatePoint {
+                    date: date.format("%Y-%m-%d").to_string(),
+                    time,
+                    forward_rate: fwd,
+                })
+            })
+            .collect();
+
+        let pillar_times: Vec<f64> = curve.pillars().to_vec();
+        let (short_term_grid, long_term_grid) =
+            generate_chart_grids(reference_date, &curve, day_counter, &pillar_times);
+
+        let interpolation_str = match interpolation {
+            BootstrapInterpolation::Linear => "linear_df",
+            BootstrapInterpolation::LogLinear => "log_linear_df",
+            BootstrapInterpolation::FlatForward => "flat_forward",
+            BootstrapInterpolation::CubicSplineFwd => "cubic_spline_fwd",
+            BootstrapInterpolation::MonotoneConvex => "monotone_convex",
+            BootstrapInterpolation::LogCubicDF => "log_cubic_df",
+            BootstrapInterpolation::TensionSpline => "tension_spline",
+        }
+        .to_string();
+
+        let instrument_inputs: Vec<InstrumentInput> = request
+            .instruments
+            .iter()
+            .map(|i| InstrumentInput {
+                instrument_type: i.instrument_type.clone(),
+                tenor: i.tenor.clone(),
+                rate: i.rate,
+            })
+            .collect();
+
+        let curve_id = state.curve_cache.add(CurveEntry {
+            curve,
+            instruments: instrument_inputs,
+        });
+
+        let elapsed = start.elapsed();
+
+        Ok(CurveBuildResponse {
+            curve_id: curve_id.to_string(),
+            index: request.index.clone(),
+            currency: request.currency.clone(),
+            pillars,
+            forward_curve,
+            short_term_grid,
+            long_term_grid,
+            instrument_count: cds_specs.len(),
+            interpolation: interpolation_str,
+            converged: true,
+            calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            bootstrap_method: "bootstrapping".to_string(),
+            jacobian: jacobian_data,
+            curve_type: "credit".to_string(),
+            spot: None,
+            currency_pair: None,
+        })
+    }
+
+    /// Build an FX forward curve.
+    fn build_fx_curve(
+        request: &CurveBuildRequest,
+        state: &Arc<AppState>,
+        reference_date: chrono::NaiveDate,
+        start: Instant,
+    ) -> Result<CurveBuildResponse, ServerError> {
+        let spot = request.spot.ok_or_else(|| {
+            ServerError::InvalidRequest("spot is required for FX curves".to_string())
+        })?;
+        let pair_str = request.currency_pair.as_deref().ok_or_else(|| {
+            ServerError::InvalidRequest("currency_pair is required for FX curves".to_string())
+        })?;
+
+        let currency_pair = Self::parse_currency_pair(pair_str)?;
+
+        // Collect pillar times from forward/basis instruments.
+        let fx_inst_types = ["fx_forward", "xccy_basis"];
+        let pillar_specs: Vec<(f64, String, f64)> = request
+            .instruments
+            .iter()
+            .filter(|i| fx_inst_types.contains(&i.instrument_type.to_lowercase().as_str()))
+            .filter_map(|i| {
+                let tenor_years = parse_tenor_to_years(&i.tenor).ok()?;
+                Some((tenor_years, i.tenor.clone(), i.rate))
+            })
+            .collect();
+
+        let fx_curve: FxCurveEnum<f64> = match request.fx_curve_method {
+            FxCurveMethod::Flat => {
+                // Compute annualised forward points from pips.
+                // Determine pip scaling from pair (JPY pairs use 100, others use 10000).
+                let is_jpy_pair = pair_str.contains("JPY");
+                let pip_scale = if is_jpy_pair { 100.0 } else { 10_000.0 };
+
+                // Fit a flat forward-points-per-year by using the 1Y point if available,
+                // otherwise average the annualised rates.
+                let fwd_pts_per_year = if let Some((t, _, pts)) = pillar_specs
+                    .iter()
+                    .find(|(t, _, _)| (*t - 1.0).abs() < 0.01)
+                {
+                    // Use 1Y forward point directly: fwd_pts = ln(F/S) where F = S + pts/scale.
+                    let fwd = spot + pts / pip_scale;
+                    (fwd / spot).ln() / t
+                } else if !pillar_specs.is_empty() {
+                    // Average annualised log forward points.
+                    let sum: f64 = pillar_specs
+                        .iter()
+                        .map(|(t, _, pts)| {
+                            let fwd = spot + pts / pip_scale;
+                            if *t > 0.0 {
+                                (fwd / spot).ln() / t
+                            } else {
+                                0.0
+                            }
+                        })
+                        .sum();
+                    sum / pillar_specs.len() as f64
+                } else {
+                    0.0
+                };
+
+                FxCurveEnum::flat(spot, fwd_pts_per_year, currency_pair)
+            }
+            FxCurveMethod::IrpGeneric => {
+                let dom_entry =
+                    Self::get_cached_curve(state, request.domestic_curve_id.as_ref(), "domestic")?;
+                let for_entry =
+                    Self::get_cached_curve(state, request.foreign_curve_id.as_ref(), "foreign")?;
+                FxCurveEnum::irp_generic(
+                    spot,
+                    CurveEnum::bootstrapped(dom_entry.curve.clone()),
+                    CurveEnum::bootstrapped(for_entry.curve.clone()),
+                    currency_pair,
+                )
+            }
+            FxCurveMethod::IrpBasis => {
+                let ref_entry = Self::get_cached_curve(
+                    state,
+                    request.reference_curve_id.as_ref(),
+                    "reference",
+                )?;
+                let basis_pillars: Vec<(f64, f64)> =
+                    pillar_specs.iter().map(|(t, _, bps)| (*t, *bps)).collect();
+                FxCurveEnum::irp_basis(
+                    spot,
+                    CurveEnum::bootstrapped(ref_entry.curve.clone()),
+                    basis_pillars,
+                    currency_pair,
+                )
+            }
+        };
+
+        // Determine max time for chart grids.
+        let max_time = pillar_specs
+            .iter()
+            .map(|(t, _, _)| *t)
+            .fold(2.0_f64, f64::max);
+
+        // Build pillars at input tenors.
+        let pillars: Vec<CurvePillar> = pillar_specs
+            .iter()
+            .filter_map(|(tenor_years, _tenor_str, _pips)| {
+                let fwd = fx_curve.forward_rate(*tenor_years).ok()?;
+                let days = (*tenor_years * 365.0).round() as i64;
+                let date = reference_date + chrono::Duration::days(days);
+                Some(CurvePillar {
+                    date: date.format("%Y-%m-%d").to_string(),
+                    time: *tenor_years,
+                    discount_factor: 0.0,
+                    zero_rate: 0.0,
+                    forward_rate: fwd,
+                    survival_probability: None,
+                    hazard_rate: None,
+                    fx_forward: Some(fwd),
+                })
+            })
+            .collect();
+
+        // Daily forward curve grid.
+        let max_days = (max_time * 365.0).round() as i64;
+        let forward_curve: Vec<ForwardRatePoint> = (0..=max_days)
+            .filter_map(|day| {
+                let time = MODEL_DAY_COUNTER.year_fraction_from_days(day);
+                let fwd = fx_curve.forward_rate(time).ok()?;
+                let date = reference_date + chrono::Duration::days(day);
+                Some(ForwardRatePoint {
+                    date: date.format("%Y-%m-%d").to_string(),
+                    time,
+                    forward_rate: fwd,
+                })
+            })
+            .collect();
+
+        let fx_pillar_times = fx_curve.grid_times();
+        let (short_term_grid, long_term_grid) =
+            generate_fx_chart_grids(reference_date, &fx_curve, max_time, &fx_pillar_times);
+
+        let elapsed = start.elapsed();
+
+        Ok(CurveBuildResponse {
+            curve_id: uuid::Uuid::new_v4().to_string(),
+            index: request.index.clone(),
+            currency: request.currency.clone(),
+            pillars,
+            forward_curve,
+            short_term_grid,
+            long_term_grid,
+            instrument_count: pillar_specs.len(),
+            interpolation: "fx_forward".to_string(),
+            converged: true,
+            calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
+            bootstrap_method: match request.fx_curve_method {
+                FxCurveMethod::Flat => "flat",
+                FxCurveMethod::IrpGeneric => "irp_generic",
+                FxCurveMethod::IrpBasis => "irp_basis",
+            }
+            .to_string(),
+            jacobian: None,
+            curve_type: "fx".to_string(),
+            spot: Some(spot),
+            currency_pair: Some(pair_str.to_string()),
+        })
+    }
+
+    /// Parse a 6-character currency pair string (e.g. "EURUSD") into a
+    /// `CurrencyPair`.
+    fn parse_currency_pair(
+        pair_str: &str,
+    ) -> Result<infra_domain::trade::instrument_def::CurrencyPair, ServerError> {
+        use infra_domain::{market::Currency, trade::instrument_def::CurrencyPair};
+        if pair_str.len() < 6 {
+            return Err(ServerError::InvalidRequest(format!(
+                "Currency pair must be 6 characters (e.g. EURUSD), got '{pair_str}'"
+            )));
+        }
+        let base: Currency = pair_str[..3].parse().map_err(|_| {
+            ServerError::InvalidRequest(format!("Unknown base currency: {}", &pair_str[..3]))
+        })?;
+        let quote: Currency = pair_str[3..6].parse().map_err(|_| {
+            ServerError::InvalidRequest(format!("Unknown quote currency: {}", &pair_str[3..6]))
+        })?;
+        Ok(CurrencyPair::new(base, quote))
+    }
+
+    /// Retrieve a cached yield curve by ID field.
+    fn get_cached_curve(
+        state: &Arc<AppState>,
+        curve_id_opt: Option<&String>,
+        label: &str,
+    ) -> Result<CurveEntry, ServerError> {
+        let id_str = curve_id_opt.ok_or_else(|| {
+            ServerError::InvalidRequest(format!("{label}_curve_id is required for IRP FX curves"))
+        })?;
+        let id: uuid::Uuid = id_str
+            .parse()
+            .map_err(|_| ServerError::InvalidRequest(format!("Invalid {label}_curve_id format")))?;
+        state.curve_cache.get(&id).ok_or_else(|| {
+            ServerError::NotFound(format!(
+                "{} curve {} not found — build the rate curve first",
+                label, id_str
+            ))
+        })
+    }
+
+    /// Pre-sample risk-free discount factors at quarterly intervals.
+    fn sample_discount_factors(curve: &dyn YieldCurve<f64>, max_maturity: f64) -> Vec<(f64, f64)> {
+        let step = 0.25_f64;
+        let n = ((max_maturity / step).ceil() as usize).max(1) + 1;
+        (0..=n)
+            .filter_map(|i| {
+                let t = (i as f64) * step;
+                let df = curve.discount_factor(t).ok()?;
+                Some((t, df))
+            })
+            .collect()
     }
 
     /// Get discount factor from a cached curve.
@@ -450,6 +906,7 @@ mod tests {
             event_date: None,
             expected_rate_spike: None,
             end_date: None,
+            coupon_rate: None,
         }
     }
 
@@ -461,6 +918,7 @@ mod tests {
             event_date: Some(date.to_string()),
             expected_rate_spike: Some(spike),
             end_date: end.map(String::from),
+            coupon_rate: None,
         }
     }
 
@@ -477,6 +935,17 @@ mod tests {
             bootstrap_method: BootstrapMethod::Bootstrapping,
             tolerance: 1e-10,
             max_iterations: 100,
+            curve_type: CurveType::Rate,
+            discount_curve_id: None,
+            recovery_rate: 0.40,
+            tension: None,
+            penalty_weight: None,
+            fx_curve_method: FxCurveMethod::Flat,
+            currency_pair: None,
+            spot: None,
+            domestic_curve_id: None,
+            foreign_curve_id: None,
+            reference_curve_id: None,
         }
     }
 

@@ -37,10 +37,12 @@
 //!
 //! ## Module Organisation
 //!
-//! - [`stochastic`] - Stochastic process models (GBM, Heston, Hull-White, CIR)
+//! - [`process`] - Stochastic process models (GBM, Heston, Hull-White, CIR)
 //! - [`analytic`] - Analytical pricing with instrument wrappers
 //! - [`builder`] - Yield curve bootstrapping and market data calibration
 //! - [`compiler`] - Instrument compilation for pricing engines
+//! - [`payoff`] - Unified MC payoff trait and implementations (vanilla, Asian,
+//!   Barrier, Lookback)
 //!
 //! ## Analytical Formulas
 //!
@@ -60,14 +62,11 @@
 pub mod analytic;
 pub mod builder;
 pub mod compiler;
-mod direction_ext;
-pub mod jump;
 pub mod market;
-pub mod stochastic;
-
-// Re-export extension traits for direction types (infra_domain types not
-// re-exported)
-pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
+pub mod payoff;
+pub mod process;
+/// Backwards-compatible alias — process sub-modules use `crate::stochastic::`.
+pub use process as stochastic;
 
 #[cfg(test)]
 mod tests {

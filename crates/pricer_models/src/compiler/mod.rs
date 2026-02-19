@@ -5,6 +5,7 @@ mod callable;
 mod exotic;
 mod index_mapper;
 mod linear;
+pub mod script_product;
 mod xccy;
 
 pub use callable::{CallableCompiler, Cashflow, CashflowSchedule};
@@ -12,6 +13,10 @@ pub use exotic::ExoticCompiler;
 pub use index_mapper::{CmsIndex, ForwardIndexType, IndexMapper};
 pub use linear::LinearProductsCompiler;
 use pricer_core::kernel::{CompileError, PricingKernel};
+pub use script_product::{
+    DownsideProtection, MemoryCouponConfig, ObservationAction, ObservationSchedule, ScriptProduct,
+    ScriptProductType, TargetConfig,
+};
 pub use xccy::XCcyCompiler;
 
 /// Trait for compiling `Trade` definitions into `PricingKernel` IR.

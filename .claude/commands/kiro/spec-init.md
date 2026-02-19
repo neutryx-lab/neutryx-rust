@@ -19,11 +19,11 @@ argument-hint: <project-description>
 Generate a unique feature name from the project description ($ARGUMENTS) and initialize the specification structure.
 
 ## Execution Steps
-1. **Check Uniqueness**: Verify `.kiro/specs/` for naming conflicts (append number suffix if needed)
-2. **Create Directory**: `.kiro/specs/[feature-name]/`
+1. **Check Uniqueness**: Verify `.claude/specs/` for naming conflicts (append number suffix if needed)
+2. **Create Directory**: `.claude/specs/[feature-name]/`
 3. **Initialize Files Using Templates**:
-   - Read `.kiro/settings/templates/specs/init.json`
-   - Read `.kiro/settings/templates/specs/requirements-init.md`
+   - Read `.claude/settings/kiro/templates/specs/init.json`
+   - Read `.claude/settings/kiro/templates/specs/requirements-init.md`
    - Replace placeholders:
      - `{{FEATURE_NAME}}` → generated feature name
      - `{{TIMESTAMP}}` → current ISO 8601 timestamp
@@ -60,6 +60,6 @@ Provide output in the language specified in `spec.json` with the following struc
 
 ## Safety & Fallback
 - **Ambiguous Feature Name**: If feature name generation is unclear, propose 2-3 options and ask user to select
-- **Template Missing**: If template files don't exist in `.kiro/settings/templates/specs/`, report error with specific missing file path and suggest checking repository setup
+- **Template Missing**: If template files don't exist in `.claude/settings/kiro/templates/specs/`, report error with specific missing file path and suggest checking repository setup
 - **Directory Conflict**: If feature name already exists, append numeric suffix (e.g., `feature-name-2`) and notify user of automatic conflict resolution
 - **Write Failure**: Report error with specific path and suggest checking permissions or disk space

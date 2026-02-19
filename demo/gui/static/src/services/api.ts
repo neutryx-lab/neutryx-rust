@@ -1,5 +1,5 @@
 /**
- * API Service for FrictionalBank Dashboard
+ * API Service for Ergodic Bank Dashboard
  * Centralised HTTP client for all backend API calls.
  */
 
@@ -12,6 +12,8 @@ import type {
   PricingResult,
   GreeksRequest,
   GreeksResult,
+  AdvancedGreeksRequest,
+  AdvancedGreeksResult,
   MarketRatesResponse,
   MarketConfigResponse,
   MarketRate,
@@ -41,10 +43,14 @@ import type {
   FxVolCalibrateRequest,
   SabrSmileRequest,
   SabrSmileResponse,
+  SmileResponse,
+  VolSmileRequest,
   ImpliedPdfRequest,
   ImpliedPdfResponse,
   PricerGraphRequest,
   PricerGraphResponse,
+  ExoticProductDef,
+  ExoticPricingResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -105,6 +111,22 @@ export async function priceTrade(request: PricingRequest): Promise<PricingResult
 
 export async function calculateGreeks(request: GreeksRequest): Promise<GreeksResult> {
   return postJson<GreeksRequest, GreeksResult>(`${API_BASE}/pricer/greeks`, request);
+}
+
+export async function computeAdvancedGreeks(request: AdvancedGreeksRequest): Promise<AdvancedGreeksResult> {
+  return postJson<AdvancedGreeksRequest, AdvancedGreeksResult>(`${API_BASE}/pricer/advanced-greeks`, request);
+}
+
+// =============================================================================
+// Utility API
+// =============================================================================
+
+export async function resolveTenor(tenor: string, base?: string): Promise<string> {
+  const res = await postJson<{ tenor: string; base?: string }, { date: string }>(
+    `${API_BASE}/utils/resolve-tenor`,
+    { tenor, ...(base ? { base } : {}) },
+  );
+  return res.date;
 }
 
 // =============================================================================
@@ -233,6 +255,10 @@ export async function computeSabrSmile(request: SabrSmileRequest): Promise<SabrS
   return postJson<SabrSmileRequest, SabrSmileResponse>(`${API_BASE}/volcube/sabr-smile`, request);
 }
 
+export async function computeModelSmile(request: VolSmileRequest): Promise<SmileResponse> {
+  return postJson<VolSmileRequest, SmileResponse>(`${API_BASE}/volcube/model-smile`, request);
+}
+
 export async function computeImpliedPdf(request: ImpliedPdfRequest): Promise<ImpliedPdfResponse> {
   return postJson<ImpliedPdfRequest, ImpliedPdfResponse>(`${API_BASE}/volcube/implied-pdf`, request);
 }
@@ -320,4 +346,16 @@ export async function fetchPortfolioTrades(): Promise<TradeListResponse> {
 
 export async function fetchPricerGraph(request: PricerGraphRequest): Promise<PricerGraphResponse> {
   return postJson<PricerGraphRequest, PricerGraphResponse>(`${API_BASE}/pricer/graph`, request);
+}
+
+// =============================================================================
+// Exotic Products API
+// =============================================================================
+
+export async function fetchExoticProducts(): Promise<ExoticProductDef[]> {
+  return fetchJson<ExoticProductDef[]>(`${API_BASE}/pricer/exotic-products`);
+}
+
+export async function priceExotic(request: Record<string, any>): Promise<ExoticPricingResponse> {
+  return postJson<Record<string, any>, ExoticPricingResponse>(`${API_BASE}/pricer/price-exotic`, request);
 }

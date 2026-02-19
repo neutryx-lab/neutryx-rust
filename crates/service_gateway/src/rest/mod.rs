@@ -92,6 +92,12 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/pricer/expand", post(handlers::demo::expand_trade))
         .route("/pricer/price", post(handlers::demo::price_trade))
         .route("/pricer/greeks", post(handlers::demo::calculate_greeks))
+        .route("/pricer/graph", post(handlers::demo::get_pricer_graph))
+        .route(
+            "/pricer/advanced-greeks",
+            post(handlers::demo::calculate_advanced_greeks),
+        )
+        .route("/utils/resolve-tenor", post(handlers::demo::resolve_tenor))
         .route("/curves", get(handlers::demo::get_available_curves))
         .route("/curves/indices", get(handlers::demo::get_curve_indices))
         .route(
@@ -125,6 +131,10 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route(
             "/volcube/sabr-smile",
             post(handlers::demo::compute_sabr_smile),
+        )
+        .route(
+            "/volcube/model-smile",
+            post(handlers::demo::compute_model_smile),
         )
         .route("/fxvol/calibrate", post(handlers::demo::calibrate_fxvol))
         .route("/market/rates", get(handlers::demo::get_market_rates))
@@ -166,6 +176,8 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/market/events", get(handlers::demo::get_events))
         .route("/market/events/types", get(handlers::demo::get_event_types))
         .route("/market/holidays", get(handlers::demo::get_holidays))
+        .route("/market/bonds", get(handlers::demo::get_bond_quotes))
+        .route("/market/credit", get(handlers::demo::get_credit_quotes))
         .route("/market/export/csv", get(handlers::demo::export_market_csv))
         .route(
             "/market/export/json",
@@ -184,6 +196,11 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
             "/fxvol/quotes/:pair",
             get(handlers::demo::get_fx_vol_quotes),
         )
+        .route(
+            "/pricer/exotic-products",
+            get(handlers::demo::get_exotic_products),
+        )
+        .route("/pricer/price-exotic", post(handlers::demo::price_exotic))
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))
         .with_state(state)

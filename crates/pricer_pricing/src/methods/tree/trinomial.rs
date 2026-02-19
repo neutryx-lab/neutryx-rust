@@ -1,7 +1,7 @@
 //! Trinomial tree implementation for option pricing.
 
 use super::common::TreeBase;
-use crate::generic_pricer::ConfigError;
+use crate::pricer::ConfigError;
 
 /// Trinomial tree parameters.
 #[derive(Debug, Clone, Copy)]

@@ -5,8 +5,6 @@
  * across composables, stores, and components.
  */
 
-import type { PricingResult, GreeksResult } from '@/types/api';
-
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -32,20 +30,6 @@ export interface CurveOption {
   currency: string;
 }
 
-export interface HistoryEntry {
-  id: number;
-  timestamp: number;
-  instrumentId: string;
-  instrumentName: string;
-  params: Record<string, string | number>;
-  pricingResult: PricingResult;
-  greeksResult: GreeksResult | null;
-  valuationDate: string;
-  reportingCcy: string;
-  modelType: string;
-  curveIndex: string;
-}
-
 export interface ValidationError {
   field: string;
   message: string;
@@ -64,22 +48,6 @@ export interface SummaryStat {
   color: string;
 }
 
-export interface PvDiff {
-  absolute: number;
-  percent: number;
-}
-
-export interface CompareResult {
-  a: HistoryEntry;
-  b: HistoryEntry;
-}
-
-export interface ParamChange {
-  name: string;
-  valueA: string | number;
-  valueB: string | number;
-}
-
 export interface CurrencyAgg {
   ccy: string;
   pv: number;
@@ -88,6 +56,18 @@ export interface CurrencyAgg {
 export interface CashflowEdit {
   notional?: number;
   rate?: number;
+}
+
+export interface HistoryEntry {
+  id: string;
+  timestamp: number;
+  instrumentId: string;
+  instrumentName: string;
+  valuationDate: string;
+  reportingCcy: string;
+  totalPv: number;
+  legs: import('@/types/api').PricingLeg[];
+  pricingResult: import('@/types/api').PricingResult;
 }
 
 // =============================================================================

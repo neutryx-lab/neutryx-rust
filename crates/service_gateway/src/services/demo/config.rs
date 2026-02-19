@@ -79,133 +79,984 @@ impl DemoService {
 
     /// Get available instruments.
     pub fn get_instruments(_state: &Arc<AppState>) -> Result<InstrumentsResponse, ServerError> {
+        use crate::rest::dto::demo::{ParameterOption, ParameterValidation};
+
+        // --- Reusable param builders -------------------------------------------
+        let notional_param = || ParameterDef {
+            name: "notional".into(),
+            label: Some("Notional".into()),
+            field_type: FieldType::Number,
+            default_value: Some(serde_json::json!(1_000_000)),
+            options: None,
+            validation: Some(ParameterValidation {
+                min: Some(0.0),
+                max: None,
+            }),
+        };
+        let currency_param = || ParameterDef {
+            name: "currency".into(),
+            label: Some("Currency".into()),
+            field_type: FieldType::Select,
+            default_value: Some(serde_json::json!("USD")),
+            options: Some(vec![
+                ParameterOption {
+                    value: "USD".into(),
+                    label: "USD".into(),
+                },
+                ParameterOption {
+                    value: "EUR".into(),
+                    label: "EUR".into(),
+                },
+                ParameterOption {
+                    value: "GBP".into(),
+                    label: "GBP".into(),
+                },
+                ParameterOption {
+                    value: "JPY".into(),
+                    label: "JPY".into(),
+                },
+                ParameterOption {
+                    value: "CHF".into(),
+                    label: "CHF".into(),
+                },
+            ]),
+            validation: None,
+        };
+        let start_date_param = || ParameterDef {
+            name: "startDate".into(),
+            label: Some("Start Date".into()),
+            field_type: FieldType::Date,
+            default_value: None,
+            options: None,
+            validation: None,
+        };
+        let end_date_param = || ParameterDef {
+            name: "endDate".into(),
+            label: Some("End Date".into()),
+            field_type: FieldType::Date,
+            default_value: None,
+            options: None,
+            validation: None,
+        };
+        let rate_index_param = || ParameterDef {
+            name: "rateIndex".into(),
+            label: Some("Float Index".into()),
+            field_type: FieldType::Select,
+            default_value: Some(serde_json::json!("SOFR")),
+            options: Some(vec![
+                ParameterOption {
+                    value: "SOFR".into(),
+                    label: "USD SOFR".into(),
+                },
+                ParameterOption {
+                    value: "ESTR".into(),
+                    label: "EUR ESTR".into(),
+                },
+                ParameterOption {
+                    value: "EURIBOR3M".into(),
+                    label: "EUR EURIBOR 3M".into(),
+                },
+                ParameterOption {
+                    value: "EURIBOR6M".into(),
+                    label: "EUR EURIBOR 6M".into(),
+                },
+                ParameterOption {
+                    value: "SONIA".into(),
+                    label: "GBP SONIA".into(),
+                },
+                ParameterOption {
+                    value: "TONA".into(),
+                    label: "JPY TONA".into(),
+                },
+                ParameterOption {
+                    value: "SARON".into(),
+                    label: "CHF SARON".into(),
+                },
+            ]),
+            validation: None,
+        };
+        let fixed_rate_param = |default: f64| ParameterDef {
+            name: "fixedRate".into(),
+            label: Some("Fixed Rate".into()),
+            field_type: FieldType::Number,
+            default_value: Some(serde_json::json!(default)),
+            options: None,
+            validation: Some(ParameterValidation {
+                min: Some(-0.1),
+                max: Some(0.5),
+            }),
+        };
+        let strike_param = || ParameterDef {
+            name: "strike".into(),
+            label: Some("Strike".into()),
+            field_type: FieldType::Number,
+            default_value: None,
+            options: None,
+            validation: None,
+        };
+        let currency_pair_param = || ParameterDef {
+            name: "currencyPair".into(),
+            label: Some("Currency Pair".into()),
+            field_type: FieldType::Select,
+            default_value: Some(serde_json::json!("EURUSD")),
+            options: Some(vec![
+                ParameterOption {
+                    value: "EURUSD".into(),
+                    label: "EUR/USD".into(),
+                },
+                ParameterOption {
+                    value: "USDJPY".into(),
+                    label: "USD/JPY".into(),
+                },
+                ParameterOption {
+                    value: "GBPUSD".into(),
+                    label: "GBP/USD".into(),
+                },
+                ParameterOption {
+                    value: "USDCHF".into(),
+                    label: "USD/CHF".into(),
+                },
+                ParameterOption {
+                    value: "USDJPY".into(),
+                    label: "USD/JPY".into(),
+                },
+            ]),
+            validation: None,
+        };
+        let option_type_param = || ParameterDef {
+            name: "optionType".into(),
+            label: Some("Option Type".into()),
+            field_type: FieldType::Select,
+            default_value: Some(serde_json::json!("Call")),
+            options: Some(vec![
+                ParameterOption {
+                    value: "Call".into(),
+                    label: "Call".into(),
+                },
+                ParameterOption {
+                    value: "Put".into(),
+                    label: "Put".into(),
+                },
+            ]),
+            validation: None,
+        };
+        let expiry_param = || ParameterDef {
+            name: "expiry".into(),
+            label: Some("Expiry".into()),
+            field_type: FieldType::Date,
+            default_value: None,
+            options: None,
+            validation: None,
+        };
+        let spread_param = |default: f64| ParameterDef {
+            name: "spread".into(),
+            label: Some("Spread (bp)".into()),
+            field_type: FieldType::Number,
+            default_value: Some(serde_json::json!(default)),
+            options: None,
+            validation: None,
+        };
+
+        let barrier_level_param = || ParameterDef {
+            name: "barrierLevel".into(),
+            label: Some("Barrier Level".into()),
+            field_type: FieldType::Number,
+            default_value: None,
+            options: None,
+            validation: None,
+        };
+        let barrier_type_param = || ParameterDef {
+            name: "barrierType".into(),
+            label: Some("Barrier Type".into()),
+            field_type: FieldType::Select,
+            default_value: Some(serde_json::json!("KnockOut")),
+            options: Some(vec![
+                ParameterOption {
+                    value: "KnockOut".into(),
+                    label: "Knock-Out".into(),
+                },
+                ParameterOption {
+                    value: "KnockIn".into(),
+                    label: "Knock-In".into(),
+                },
+            ]),
+            validation: None,
+        };
+        let barrier_direction_param = || ParameterDef {
+            name: "barrierDirection".into(),
+            label: Some("Barrier Direction".into()),
+            field_type: FieldType::Select,
+            default_value: Some(serde_json::json!("Up")),
+            options: Some(vec![
+                ParameterOption {
+                    value: "Up".into(),
+                    label: "Up".into(),
+                },
+                ParameterOption {
+                    value: "Down".into(),
+                    label: "Down".into(),
+                },
+            ]),
+            validation: None,
+        };
+        let quantity_param = || ParameterDef {
+            name: "quantity".into(),
+            label: Some("Quantity".into()),
+            field_type: FieldType::Number,
+            default_value: Some(serde_json::json!(1000)),
+            options: None,
+            validation: Some(ParameterValidation {
+                min: Some(0.0),
+                max: None,
+            }),
+        };
+        let commodity_param = || ParameterDef {
+            name: "commodityType".into(),
+            label: Some("Commodity".into()),
+            field_type: FieldType::Select,
+            default_value: Some(serde_json::json!("CrudeOil")),
+            options: Some(vec![
+                ParameterOption {
+                    value: "CrudeOil".into(),
+                    label: "Crude Oil".into(),
+                },
+                ParameterOption {
+                    value: "NaturalGas".into(),
+                    label: "Natural Gas".into(),
+                },
+                ParameterOption {
+                    value: "Gold".into(),
+                    label: "Gold".into(),
+                },
+                ParameterOption {
+                    value: "Silver".into(),
+                    label: "Silver".into(),
+                },
+                ParameterOption {
+                    value: "Copper".into(),
+                    label: "Copper".into(),
+                },
+                ParameterOption {
+                    value: "Wheat".into(),
+                    label: "Wheat".into(),
+                },
+                ParameterOption {
+                    value: "Corn".into(),
+                    label: "Corn".into(),
+                },
+            ]),
+            validation: None,
+        };
+        let forward_price_param = |default: f64| ParameterDef {
+            name: "forwardPrice".into(),
+            label: Some("Forward Price".into()),
+            field_type: FieldType::Number,
+            default_value: Some(serde_json::json!(default)),
+            options: None,
+            validation: Some(ParameterValidation {
+                min: Some(0.0),
+                max: None,
+            }),
+        };
+
+        let def = |typ: &str,
+                   id: &str,
+                   name: &str,
+                   class: &str,
+                   req: Vec<ParameterDef>,
+                   opt: Vec<ParameterDef>| InstrumentDef {
+            instrument_type: typ.into(),
+            id: Some(id.into()),
+            display_name: Some(name.into()),
+            asset_class_name: Some(class.into()),
+            required_params: req,
+            optional_params: opt,
+        };
+
         let instruments = vec![
-            InstrumentDef {
-                instrument_type: "IRS".to_string(),
-                id: Some("irs".to_string()),
-                display_name: Some("Interest Rate Swap".to_string()),
-                asset_class_name: Some("Rates".to_string()),
-                required_params: vec![
+            // ── Rates ──────────────────────────────────────────────────────
+            def(
+                "IRS",
+                "irs",
+                "Interest Rate Swap",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![
+                    fixed_rate_param(0.05),
+                    rate_index_param(),
                     ParameterDef {
-                        name: "notional".to_string(),
-                        label: Some("Notional".to_string()),
+                        name: "swapType".into(),
+                        label: Some("Swap Type".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("Vanilla")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "Vanilla".into(),
+                                label: "Vanilla".into(),
+                            },
+                            ParameterOption {
+                                value: "OIS".into(),
+                                label: "OIS".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
+            ),
+            def(
+                "BasisSwap",
+                "basis-swap",
+                "Basis Swap",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![rate_index_param(), spread_param(0.0)],
+            ),
+            def(
+                "Swaption",
+                "swaption",
+                "Swaption",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![option_type_param()],
+            ),
+            def(
+                "CapFloor",
+                "cap-floor",
+                "Cap / Floor",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![rate_index_param()],
+            ),
+            def(
+                "Deposit",
+                "deposit",
+                "Deposit",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![fixed_rate_param(0.05)],
+            ),
+            def(
+                "Fra",
+                "fra",
+                "FRA",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                    strike_param(),
+                ],
+                vec![rate_index_param()],
+            ),
+            def(
+                "Bond",
+                "bond",
+                "Bond",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![fixed_rate_param(0.03)],
+            ),
+            def(
+                "Futures",
+                "futures",
+                "IR Futures",
+                "Rates",
+                vec![notional_param(), currency_param(), expiry_param()],
+                vec![
+                    rate_index_param(),
+                    ParameterDef {
+                        name: "futuresPrice".into(),
+                        label: Some("Futures Price".into()),
                         field_type: FieldType::Number,
-                        default_value: Some(serde_json::json!(1_000_000)),
+                        default_value: Some(serde_json::json!(95.0)),
                         options: None,
-                        validation: Some(crate::rest::dto::demo::ParameterValidation {
+                        validation: Some(ParameterValidation {
+                            min: Some(80.0),
+                            max: Some(110.0),
+                        }),
+                    },
+                ],
+            ),
+            def(
+                "Frn",
+                "frn",
+                "Floating Rate Note",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![rate_index_param(), spread_param(10.0)],
+            ),
+            def(
+                "CmsSwap",
+                "cms-swap",
+                "CMS Swap",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![
+                    spread_param(0.0),
+                    ParameterDef {
+                        name: "cmsTenor".into(),
+                        label: Some("CMS Tenor".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("10Y")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "5Y".into(),
+                                label: "5Y".into(),
+                            },
+                            ParameterOption {
+                                value: "10Y".into(),
+                                label: "10Y".into(),
+                            },
+                            ParameterOption {
+                                value: "30Y".into(),
+                                label: "30Y".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
+            ),
+            def(
+                "InflationSwap",
+                "inflation-swap",
+                "Inflation Swap",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![
+                    fixed_rate_param(0.025),
+                    ParameterDef {
+                        name: "inflationIndex".into(),
+                        label: Some("Inflation Index".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("CPI")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "CPI".into(),
+                                label: "US CPI".into(),
+                            },
+                            ParameterOption {
+                                value: "HICP".into(),
+                                label: "EUR HICP".into(),
+                            },
+                            ParameterOption {
+                                value: "RPI".into(),
+                                label: "UK RPI".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                    ParameterDef {
+                        name: "inflationSwapType".into(),
+                        label: Some("Swap Type".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("ZeroCoupon")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "ZeroCoupon".into(),
+                                label: "Zero Coupon".into(),
+                            },
+                            ParameterOption {
+                                value: "YearOnYear".into(),
+                                label: "Year-on-Year".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
+            ),
+            // ── FX ─────────────────────────────────────────────────────────
+            def(
+                "FxSpot",
+                "fx-spot",
+                "FX Spot",
+                "FX",
+                vec![notional_param(), currency_pair_param()],
+                vec![],
+            ),
+            def(
+                "FxForward",
+                "fx-forward",
+                "FX Forward",
+                "FX",
+                vec![notional_param(), currency_pair_param()],
+                vec![end_date_param()],
+            ),
+            def(
+                "FxVanillaOption",
+                "fx-vanilla-option",
+                "FX Vanilla Option",
+                "FX",
+                vec![
+                    notional_param(),
+                    currency_pair_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![option_type_param()],
+            ),
+            def(
+                "FxBarrierOption",
+                "fx-barrier-option",
+                "FX Barrier Option",
+                "FX",
+                vec![
+                    notional_param(),
+                    currency_pair_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![
+                    option_type_param(),
+                    barrier_level_param(),
+                    barrier_type_param(),
+                    barrier_direction_param(),
+                ],
+            ),
+            def(
+                "FxSwap",
+                "fx-swap",
+                "FX Swap",
+                "FX",
+                vec![notional_param(), currency_pair_param()],
+                vec![
+                    ParameterDef {
+                        name: "nearDate".into(),
+                        label: Some("Near Leg Date".into()),
+                        field_type: FieldType::Date,
+                        default_value: None,
+                        options: None,
+                        validation: None,
+                    },
+                    ParameterDef {
+                        name: "farDate".into(),
+                        label: Some("Far Leg Date".into()),
+                        field_type: FieldType::Date,
+                        default_value: None,
+                        options: None,
+                        validation: None,
+                    },
+                ],
+            ),
+            def(
+                "CrossCurrencyBasisSwap",
+                "xccy-basis-swap",
+                "Cross-Currency Basis Swap",
+                "FX",
+                vec![notional_param(), start_date_param(), end_date_param()],
+                vec![
+                    ParameterDef {
+                        name: "domesticCurrency".into(),
+                        label: Some("Domestic Currency".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("USD")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "USD".into(),
+                                label: "USD".into(),
+                            },
+                            ParameterOption {
+                                value: "EUR".into(),
+                                label: "EUR".into(),
+                            },
+                            ParameterOption {
+                                value: "GBP".into(),
+                                label: "GBP".into(),
+                            },
+                            ParameterOption {
+                                value: "JPY".into(),
+                                label: "JPY".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                    ParameterDef {
+                        name: "foreignCurrency".into(),
+                        label: Some("Foreign Currency".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("EUR")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "USD".into(),
+                                label: "USD".into(),
+                            },
+                            ParameterOption {
+                                value: "EUR".into(),
+                                label: "EUR".into(),
+                            },
+                            ParameterOption {
+                                value: "GBP".into(),
+                                label: "GBP".into(),
+                            },
+                            ParameterOption {
+                                value: "JPY".into(),
+                                label: "JPY".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                    spread_param(-15.0),
+                ],
+            ),
+            // ── Equity ─────────────────────────────────────────────────────
+            def(
+                "EquityForward",
+                "equity-forward",
+                "Equity Forward",
+                "Equity",
+                vec![notional_param(), currency_param(), end_date_param()],
+                vec![],
+            ),
+            def(
+                "EquityVanillaOption",
+                "equity-vanilla-option",
+                "Equity Vanilla Option",
+                "Equity",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![option_type_param()],
+            ),
+            def(
+                "EquityBarrierOption",
+                "equity-barrier-option",
+                "Equity Barrier Option",
+                "Equity",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![
+                    option_type_param(),
+                    barrier_level_param(),
+                    barrier_type_param(),
+                    barrier_direction_param(),
+                ],
+            ),
+            def(
+                "AsianOption",
+                "asian-option",
+                "Asian Option",
+                "Equity",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![option_type_param()],
+            ),
+            def(
+                "LookbackOption",
+                "lookback-option",
+                "Lookback Option",
+                "Equity",
+                vec![notional_param(), currency_param(), expiry_param()],
+                vec![
+                    option_type_param(),
+                    strike_param(),
+                    ParameterDef {
+                        name: "lookbackType".into(),
+                        label: Some("Lookback Type".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("FloatingStrike")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "FixedStrike".into(),
+                                label: "Fixed Strike".into(),
+                            },
+                            ParameterOption {
+                                value: "FloatingStrike".into(),
+                                label: "Floating Strike".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
+            ),
+            def(
+                "EquitySwap",
+                "equity-swap",
+                "Equity Swap",
+                "Equity",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![
+                    spread_param(10.0),
+                    ParameterDef {
+                        name: "returnType".into(),
+                        label: Some("Return Type".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("TotalReturn")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "TotalReturn".into(),
+                                label: "Total Return".into(),
+                            },
+                            ParameterOption {
+                                value: "Price".into(),
+                                label: "Price Return".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
+            ),
+            def(
+                "BasketOption",
+                "basket-option",
+                "Basket Option",
+                "Equity",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![option_type_param()],
+            ),
+            // ── Credit ─────────────────────────────────────────────────────
+            def(
+                "CDS",
+                "cds",
+                "Credit Default Swap",
+                "Credit",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![spread_param(100.0)],
+            ),
+            def(
+                "CdsIndex",
+                "cds-index",
+                "CDS Index",
+                "Credit",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![
+                    spread_param(60.0),
+                    ParameterDef {
+                        name: "indexName".into(),
+                        label: Some("Index Name".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("CDX.NA.IG")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "CDX.NA.IG".into(),
+                                label: "CDX NA IG".into(),
+                            },
+                            ParameterOption {
+                                value: "CDX.NA.HY".into(),
+                                label: "CDX NA HY".into(),
+                            },
+                            ParameterOption {
+                                value: "iTraxx Europe".into(),
+                                label: "iTraxx Europe".into(),
+                            },
+                            ParameterOption {
+                                value: "iTraxx Xover".into(),
+                                label: "iTraxx Crossover".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
+            ),
+            def(
+                "CdsOption",
+                "cds-option",
+                "CDS Option",
+                "Credit",
+                vec![notional_param(), currency_param(), expiry_param()],
+                vec![
+                    spread_param(100.0),
+                    end_date_param(),
+                    ParameterDef {
+                        name: "isPayer".into(),
+                        label: Some("Payer/Receiver".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("true")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "true".into(),
+                                label: "Payer (Buy Protection)".into(),
+                            },
+                            ParameterOption {
+                                value: "false".into(),
+                                label: "Receiver (Sell Protection)".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                ],
+            ),
+            def(
+                "NtdBasket",
+                "ntd-basket",
+                "Nth-to-Default Basket",
+                "Credit",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![
+                    spread_param(150.0),
+                    ParameterDef {
+                        name: "nthToDefault".into(),
+                        label: Some("N (Nth-to-Default)".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(1)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(1.0),
+                            max: Some(10.0),
+                        }),
+                    },
+                ],
+            ),
+            // ── Commodity ──────────────────────────────────────────────────
+            def(
+                "CommodityForward",
+                "commodity-forward",
+                "Commodity Forward",
+                "Commodity",
+                vec![quantity_param(), currency_param(), end_date_param()],
+                vec![commodity_param(), forward_price_param(75.0)],
+            ),
+            def(
+                "CommoditySwap",
+                "commodity-swap",
+                "Commodity Swap",
+                "Commodity",
+                vec![
+                    quantity_param(),
+                    currency_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![
+                    commodity_param(),
+                    ParameterDef {
+                        name: "fixedPrice".into(),
+                        label: Some("Fixed Price".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(75.0)),
+                        options: None,
+                        validation: Some(ParameterValidation {
                             min: Some(0.0),
                             max: None,
                         }),
                     },
-                    ParameterDef {
-                        name: "currency".to_string(),
-                        label: Some("Currency".to_string()),
-                        field_type: FieldType::Select,
-                        default_value: Some(serde_json::json!("USD")),
-                        options: Some(vec![
-                            crate::rest::dto::demo::ParameterOption {
-                                value: "USD".to_string(),
-                                label: "USD".to_string(),
-                            },
-                            crate::rest::dto::demo::ParameterOption {
-                                value: "EUR".to_string(),
-                                label: "EUR".to_string(),
-                            },
-                            crate::rest::dto::demo::ParameterOption {
-                                value: "JPY".to_string(),
-                                label: "JPY".to_string(),
-                            },
-                        ]),
-                        validation: None,
-                    },
-                    ParameterDef {
-                        name: "startDate".to_string(),
-                        label: Some("Start Date".to_string()),
-                        field_type: FieldType::Date,
-                        default_value: None,
-                        options: None,
-                        validation: None,
-                    },
-                    ParameterDef {
-                        name: "endDate".to_string(),
-                        label: Some("End Date".to_string()),
-                        field_type: FieldType::Date,
-                        default_value: None,
-                        options: None,
-                        validation: None,
-                    },
                 ],
-                optional_params: vec![ParameterDef {
-                    name: "fixedRate".to_string(),
-                    label: Some("Fixed Rate".to_string()),
-                    field_type: FieldType::Number,
-                    default_value: Some(serde_json::json!(0.05)),
-                    options: None,
-                    validation: Some(crate::rest::dto::demo::ParameterValidation {
-                        min: Some(-0.1),
-                        max: Some(0.5),
-                    }),
-                }],
-            },
-            InstrumentDef {
-                instrument_type: "FxForward".to_string(),
-                id: Some("fx-forward".to_string()),
-                display_name: Some("FX Forward".to_string()),
-                asset_class_name: Some("FX".to_string()),
-                required_params: vec![
-                    ParameterDef {
-                        name: "notional".to_string(),
-                        label: Some("Notional".to_string()),
-                        field_type: FieldType::Number,
-                        default_value: Some(serde_json::json!(1_000_000)),
-                        options: None,
-                        validation: None,
-                    },
-                    ParameterDef {
-                        name: "currencyPair".to_string(),
-                        label: Some("Currency Pair".to_string()),
-                        field_type: FieldType::Select,
-                        default_value: Some(serde_json::json!("EURUSD")),
-                        options: Some(vec![
-                            crate::rest::dto::demo::ParameterOption {
-                                value: "EURUSD".to_string(),
-                                label: "EUR/USD".to_string(),
-                            },
-                            crate::rest::dto::demo::ParameterOption {
-                                value: "USDJPY".to_string(),
-                                label: "USD/JPY".to_string(),
-                            },
-                        ]),
-                        validation: None,
-                    },
+            ),
+            def(
+                "CommodityVanillaOption",
+                "commodity-vanilla-option",
+                "Commodity Option",
+                "Commodity",
+                vec![
+                    quantity_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
                 ],
-                optional_params: vec![],
-            },
-            InstrumentDef {
-                instrument_type: "FxVanillaOption".to_string(),
-                id: Some("fx-vanilla-option".to_string()),
-                display_name: Some("FX Vanilla Option".to_string()),
-                asset_class_name: Some("FX".to_string()),
-                required_params: vec![
-                    ParameterDef {
-                        name: "notional".to_string(),
-                        label: Some("Notional".to_string()),
-                        field_type: FieldType::Number,
-                        default_value: Some(serde_json::json!(1_000_000)),
-                        options: None,
-                        validation: None,
-                    },
-                    ParameterDef {
-                        name: "strike".to_string(),
-                        label: Some("Strike".to_string()),
-                        field_type: FieldType::Number,
-                        default_value: None,
-                        options: None,
-                        validation: None,
-                    },
+                vec![commodity_param(), option_type_param()],
+            ),
+            def(
+                "CommodityAsianOption",
+                "commodity-asian-option",
+                "Commodity Asian Option",
+                "Commodity",
+                vec![
+                    quantity_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
                 ],
-                optional_params: vec![],
-            },
+                vec![commodity_param(), option_type_param()],
+            ),
+            def(
+                "SpreadOption",
+                "spread-option",
+                "Spread Option",
+                "Commodity",
+                vec![quantity_param(), currency_param(), expiry_param()],
+                vec![
+                    ParameterDef {
+                        name: "spreadStrike".into(),
+                        label: Some("Spread Strike".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(10.0)),
+                        options: None,
+                        validation: None,
+                    },
+                    option_type_param(),
+                ],
+            ),
         ];
 
         Ok(InstrumentsResponse { instruments })

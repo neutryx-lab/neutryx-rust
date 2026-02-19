@@ -40,7 +40,7 @@ pub use error::LinearAlgebraError;
 pub use sparse_strategy::SparseLUStrategy;
 pub use strategy::{
     forward_substitution, lower_triangular_inverse, LUStrategy, LinearSolveStrategy,
-    LowerTriangularStrategy,
+    LowerTriangularStrategy, QRStrategy,
 };
 pub use wrappers::{
     cholesky, cholesky_solve, determinant, frobenius_norm, inverse, lu_decompose, lu_solve,

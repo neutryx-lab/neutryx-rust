@@ -29,6 +29,11 @@ pub enum QuoteCategory {
 
     /// Central bank meeting or scheduled market event (rate jump).
     Event,
+
+    /// Fixed-coupon bond (government, corporate, agency).
+    Bond,
+    /// Credit spread quote (CDS, CDX, iTraxx).
+    CreditSpread,
 }
 
 impl QuoteCategory {
@@ -46,6 +51,8 @@ impl QuoteCategory {
             QuoteCategory::FxForward => "FXFWD",
             QuoteCategory::Vol => "VOL",
             QuoteCategory::Event => "EVENT",
+            QuoteCategory::Bond => "BOND",
+            QuoteCategory::CreditSpread => "CREDIT",
         }
     }
 
@@ -76,6 +83,14 @@ impl QuoteCategory {
     /// Returns true if this is an event category (rate jump).
     #[must_use]
     pub const fn is_event(&self) -> bool { matches!(self, QuoteCategory::Event) }
+
+    /// Returns true if this is a bond quote.
+    #[must_use]
+    pub const fn is_bond(&self) -> bool { matches!(self, QuoteCategory::Bond) }
+
+    /// Returns true if this is a credit spread quote.
+    #[must_use]
+    pub const fn is_credit(&self) -> bool { matches!(self, QuoteCategory::CreditSpread) }
 }
 
 impl fmt::Display for QuoteCategory {
@@ -109,5 +124,11 @@ mod tests {
         assert!(!QuoteCategory::Vol.is_interest_rate());
         assert!(QuoteCategory::Event.is_event());
         assert!(!QuoteCategory::Event.is_interest_rate());
+
+        assert!(QuoteCategory::Bond.is_bond());
+        assert!(!QuoteCategory::Bond.is_interest_rate());
+        assert!(!QuoteCategory::Bond.is_fx());
+        assert!(QuoteCategory::CreditSpread.is_credit());
+        assert!(!QuoteCategory::CreditSpread.is_interest_rate());
     }
 }

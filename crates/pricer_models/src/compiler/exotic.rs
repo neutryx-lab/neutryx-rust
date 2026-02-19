@@ -23,7 +23,10 @@
 use infra_domain::{market::Currency, time::Date, trade::Payoff};
 use pricer_core::kernel::{BarrierType, CompileError, ScriptKernel, ScriptKernelBuilder, ScriptOp};
 
-use super::IndexMapper;
+use super::{
+    script_product::{ObservationAction, ScriptProduct, ScriptProductType},
+    IndexMapper,
+};
 
 /// Compiler for exotic options (barriers, Asians).
 ///
@@ -342,6 +345,354 @@ impl ExoticCompiler {
         builder.build()
     }
 
+    /// Compiles a generic `ScriptProduct` into a `ScriptKernel`.
+    ///
+    /// Dispatches to the appropriate compilation method based on
+    /// the product type.
+    ///
+    /// # Arguments
+    ///
+    /// * `product` - The script product configuration to compile
+    ///
+    /// # Errors
+    ///
+    /// Returns error if the product configuration is invalid.
+    pub fn compile_script_product(
+        &mut self,
+        product: &ScriptProduct,
+    ) -> Result<ScriptKernel, CompileError> {
+        match product.product_type {
+            ScriptProductType::Tarf => self.compile_tarf(product),
+            ScriptProductType::Autocallable => self.compile_autocallable(product),
+            ScriptProductType::AccumulatorForward => self.compile_accumulator(product),
+            ScriptProductType::SnowballNote => self.compile_snowball(product),
+        }
+    }
+
+    /// Compiles a TARF product into a `ScriptKernel`.
+    ///
+    /// Each observation generates the following op sequence:
+    /// 1. `Accumulate` - observe spot
+    /// 2. `CalcAverage` - set current_value to observed spot
+    /// 3. `ApplyPayoff` - apply call payoff (spot - strike)+
+    /// 4. `ApplyNotional` - scale by notional per fixing
+    /// 5. `Accumulate` - track P&L in accumulated_sum
+    /// 6. `CheckTarget` - terminate if target reached
+    /// 7. `PayIntermediate` - discount at current observation time
+    fn compile_tarf(&mut self, product: &ScriptProduct) -> Result<ScriptKernel, CompileError> {
+        if product.observations.is_empty() {
+            return Err(CompileError::EmptyTrade(
+                "TARF requires at least one observation".to_string(),
+            ));
+        }
+
+        let target_config = product.target.as_ref().ok_or_else(|| {
+            CompileError::EmptyTrade("TARF requires target configuration".to_string())
+        })?;
+
+        let ccy_id = product.currency_id;
+        let dc_id = product.discount_curve_id;
+
+        let mut builder = ScriptKernelBuilder::new().trade_id(&product.trade_id);
+
+        // Add all observation times
+        for obs in &product.observations {
+            builder = builder.add_observation_time(obs.time);
+        }
+
+        // Add constants: collect unique values needed
+        let target_idx = builder.add_constant(target_config.target_level);
+
+        // Generate ops per observation
+        for obs in &product.observations {
+            if let ObservationAction::TarfAccrual {
+                strike,
+                notional_per_fixing,
+                ..
+            } = &obs.action
+            {
+                let strike_idx = builder.add_constant(*strike);
+                let notional_idx = builder.add_constant(*notional_per_fixing);
+
+                // Observe spot price
+                builder = builder.push_op(ScriptOp::Accumulate);
+                // Set current_value = average (i.e., latest spot since we reset)
+                builder = builder.push_op(ScriptOp::CalcAverage);
+                // Apply call payoff: max(spot - strike, 0)
+                builder = builder.push_op(ScriptOp::ApplyPayoff {
+                    strike_idx,
+                    is_call: true,
+                });
+                // Scale by notional per fixing
+                builder = builder.push_op(ScriptOp::ApplyNotional { notional_idx });
+                // Track P&L in accumulated_sum
+                builder = builder.push_op(ScriptOp::Accumulate);
+                // Check if target reached
+                builder = builder.push_op(ScriptOp::CheckTarget {
+                    target_idx,
+                    terminate_above: true,
+                });
+                // Pay at current observation time
+                builder = builder.push_op(ScriptOp::PayIntermediate { ccy_id, dc_id });
+            }
+        }
+
+        builder.build()
+    }
+
+    /// Compiles an Autocallable product into a `ScriptKernel`.
+    ///
+    /// Per observation (except final):
+    /// 1. `CheckBarrier(UpIn)` - check autocall barrier
+    /// 2. `CalcFixed` - coupon + principal amount
+    /// 3. `PayIntermediate` - pay at current observation time
+    /// 4. `EarlyTerminate` - terminate the product
+    /// 5. `EndIf` - end of conditional block
+    ///
+    /// Final observation adds downside protection if configured.
+    fn compile_autocallable(
+        &mut self,
+        product: &ScriptProduct,
+    ) -> Result<ScriptKernel, CompileError> {
+        if product.observations.is_empty() {
+            return Err(CompileError::EmptyTrade(
+                "Autocallable requires at least one observation".to_string(),
+            ));
+        }
+
+        let ccy_id = product.currency_id;
+        let dc_id = product.discount_curve_id;
+
+        let mut builder = ScriptKernelBuilder::new().trade_id(&product.trade_id);
+
+        // Add all observation times
+        for obs in &product.observations {
+            builder = builder.add_observation_time(obs.time);
+        }
+
+        // Generate ops per observation
+        for obs in &product.observations {
+            if let ObservationAction::AutocallCheck {
+                barrier_level,
+                coupon_amount,
+                principal_return,
+            } = &obs.action
+            {
+                let barrier_idx = builder.add_constant(*barrier_level);
+                let payment_amount = *coupon_amount + *principal_return;
+                let payment_idx = builder.add_constant(payment_amount);
+
+                // Check autocall barrier (UpIn: spot >= barrier triggers)
+                builder = builder.push_op(ScriptOp::CheckBarrier {
+                    barrier_idx,
+                    barrier_type: BarrierType::UpIn,
+                });
+                // Set current_value to coupon + principal
+                builder = builder.push_op(ScriptOp::CalcFixed {
+                    amount_idx: payment_idx,
+                });
+                // Pay at current observation time
+                builder = builder.push_op(ScriptOp::PayIntermediate { ccy_id, dc_id });
+                // Terminate the product
+                builder = builder.push_op(ScriptOp::EarlyTerminate);
+                // End conditional block
+                builder = builder.push_op(ScriptOp::EndIf);
+            }
+        }
+
+        // Add downside protection at final observation if configured
+        if let Some(downside) = &product.downside {
+            let ki_barrier_idx = builder.add_constant(downside.barrier_level);
+            let put_strike_idx = builder.add_constant(downside.put_strike);
+            let notional_idx = builder.add_constant(product.notional);
+
+            // Check knock-in barrier
+            builder = builder.push_op(ScriptOp::CheckBarrier {
+                barrier_idx: ki_barrier_idx,
+                barrier_type: downside.barrier_type,
+            });
+            // Apply put payoff: max(strike - spot, 0)
+            builder = builder.push_op(ScriptOp::ApplyPayoff {
+                strike_idx: put_strike_idx,
+                is_call: false,
+            });
+            // Scale by notional
+            builder = builder.push_op(ScriptOp::ApplyNotional { notional_idx });
+            // Pay at maturity
+            builder = builder.push_op(ScriptOp::Pay { ccy_id, dc_id });
+        }
+
+        builder.build()
+    }
+
+    /// Compiles an Accumulator Forward product into a `ScriptKernel`.
+    ///
+    /// Per observation:
+    /// 1. `AccumulateQuantity` - track accumulated quantity
+    /// 2. `CalcFloat` - observe spot price
+    /// 3. `ApplyPayoff` - apply call payoff (spot - strike)+
+    /// 4. `ApplyNotional` - scale by quantity per fixing
+    /// 5. `Accumulate` - track P&L in accumulated_sum
+    /// 6. `CheckTarget` - terminate if target quantity reached
+    /// 7. `PayIntermediate` - discount at current observation time
+    fn compile_accumulator(
+        &mut self,
+        product: &ScriptProduct,
+    ) -> Result<ScriptKernel, CompileError> {
+        if product.observations.is_empty() {
+            return Err(CompileError::EmptyTrade(
+                "Accumulator requires at least one observation".to_string(),
+            ));
+        }
+
+        let ccy_id = product.currency_id;
+        let dc_id = product.discount_curve_id;
+
+        let mut builder = ScriptKernelBuilder::new().trade_id(&product.trade_id);
+
+        // Add all observation times
+        for obs in &product.observations {
+            builder = builder.add_observation_time(obs.time);
+        }
+
+        // Add target constant
+        let target_level = product
+            .target
+            .as_ref()
+            .map(|t| t.target_level)
+            .unwrap_or(f64::MAX);
+        let target_idx = builder.add_constant(target_level);
+
+        // Generate ops per observation
+        for obs in &product.observations {
+            if let ObservationAction::AccumulatorFixing {
+                strike,
+                quantity_per_fixing,
+            } = &obs.action
+            {
+                let strike_idx = builder.add_constant(*strike);
+                let qty_idx = builder.add_constant(*quantity_per_fixing);
+                let gearing_idx = builder.add_constant(1.0);
+                let spread_idx = builder.add_constant(0.0);
+
+                // Track accumulated quantity
+                builder = builder.push_op(ScriptOp::AccumulateQuantity {
+                    quantity_idx: qty_idx,
+                });
+                // Observe spot price
+                builder = builder.push_op(ScriptOp::CalcFloat {
+                    index_id: product.underlying_index,
+                    gearing_idx,
+                    spread_idx,
+                });
+                // Apply call payoff: max(spot - strike, 0)
+                builder = builder.push_op(ScriptOp::ApplyPayoff {
+                    strike_idx,
+                    is_call: true,
+                });
+                // Scale by quantity per fixing
+                builder = builder.push_op(ScriptOp::ApplyNotional {
+                    notional_idx: qty_idx,
+                });
+                // Track P&L in accumulated_sum
+                builder = builder.push_op(ScriptOp::Accumulate);
+                // Check if target quantity reached
+                builder = builder.push_op(ScriptOp::CheckTarget {
+                    target_idx,
+                    terminate_above: true,
+                });
+                // Pay at current observation time
+                builder = builder.push_op(ScriptOp::PayIntermediate { ccy_id, dc_id });
+            }
+        }
+
+        builder.build()
+    }
+
+    /// Compiles a Snowball Note product into a `ScriptKernel`.
+    ///
+    /// Per observation (except final):
+    /// 1. `CouponMemory` - accumulate memory coupon
+    /// 2. `CheckBarrier(UpIn)` - check autocall barrier
+    /// 3. `PayIntermediate` - pay accumulated memory coupons
+    /// 4. `EarlyTerminate` - terminate the product
+    /// 5. `EndIf` - end of conditional block
+    ///
+    /// Final observation adds put payoff if configured.
+    fn compile_snowball(&mut self, product: &ScriptProduct) -> Result<ScriptKernel, CompileError> {
+        if product.observations.is_empty() {
+            return Err(CompileError::EmptyTrade(
+                "Snowball requires at least one observation".to_string(),
+            ));
+        }
+
+        let ccy_id = product.currency_id;
+        let dc_id = product.discount_curve_id;
+
+        let mut builder = ScriptKernelBuilder::new().trade_id(&product.trade_id);
+
+        // Add all observation times
+        for obs in &product.observations {
+            builder = builder.add_observation_time(obs.time);
+        }
+
+        // Generate ops per observation
+        for obs in &product.observations {
+            match &obs.action {
+                ObservationAction::SnowballCoupon {
+                    coupon_amount,
+                    barrier_level,
+                } => {
+                    let coupon_idx = builder.add_constant(*coupon_amount);
+                    let barrier_idx = builder.add_constant(*barrier_level);
+
+                    // Accumulate memory coupon
+                    builder = builder.push_op(ScriptOp::CouponMemory { coupon_idx });
+                    // Check autocall barrier (UpIn: spot >= barrier triggers)
+                    builder = builder.push_op(ScriptOp::CheckBarrier {
+                        barrier_idx,
+                        barrier_type: BarrierType::UpIn,
+                    });
+                    // Pay accumulated memory coupons at current observation time
+                    builder = builder.push_op(ScriptOp::PayIntermediate { ccy_id, dc_id });
+                    // Terminate the product
+                    builder = builder.push_op(ScriptOp::EarlyTerminate);
+                    // End conditional block
+                    builder = builder.push_op(ScriptOp::EndIf);
+                }
+                ObservationAction::FinalPayoff {
+                    strike,
+                    is_call,
+                    notional,
+                } => {
+                    let strike_idx = builder.add_constant(*strike);
+                    let notional_idx = builder.add_constant(*notional);
+                    let gearing_idx = builder.add_constant(1.0);
+                    let spread_idx = builder.add_constant(0.0);
+
+                    // Get underlying value at maturity
+                    builder = builder.push_op(ScriptOp::CalcFloat {
+                        index_id: product.underlying_index,
+                        gearing_idx,
+                        spread_idx,
+                    });
+                    // Apply payoff
+                    builder = builder.push_op(ScriptOp::ApplyPayoff {
+                        strike_idx,
+                        is_call: *is_call,
+                    });
+                    // Scale by notional
+                    builder = builder.push_op(ScriptOp::ApplyNotional { notional_idx });
+                    // Pay at maturity
+                    builder = builder.push_op(ScriptOp::Pay { ccy_id, dc_id });
+                }
+                _ => {}
+            }
+        }
+
+        builder.build()
+    }
+
     /// Determines if a payoff requires ScriptKernel compilation.
     ///
     /// Returns true for path-dependent payoffs (barriers, Asians).
@@ -649,5 +1000,155 @@ mod tests {
             .filter(|op| matches!(op, ScriptOp::Accumulate))
             .count();
         assert_eq!(accum_count, 12);
+    }
+
+    #[test]
+    fn test_compile_script_product_tarf() {
+        let mapper = IndexMapper::new();
+        let mut compiler = ExoticCompiler::new(mapper);
+
+        let product = ScriptProduct::tarf(
+            "TARF_SCRIPT",
+            100.0,
+            1_000_000.0,
+            50_000.0,
+            vec![0.25, 0.5, 0.75, 1.0],
+        );
+
+        let kernel = compiler
+            .compile_script_product(&product)
+            .expect("Valid TARF product");
+
+        assert_eq!(kernel.trade_id, "TARF_SCRIPT");
+        assert_eq!(kernel.observation_count(), 4);
+        assert!(kernel.has_accumulation());
+    }
+
+    #[test]
+    fn test_compile_script_product_autocallable() {
+        let mapper = IndexMapper::new();
+        let mut compiler = ExoticCompiler::new(mapper);
+
+        let product = ScriptProduct::autocallable(
+            "AUTO_SCRIPT",
+            1_000_000.0,
+            105.0,
+            0.10,
+            vec![0.25, 0.5, 0.75, 1.0],
+            70.0,
+            100.0,
+        );
+
+        let kernel = compiler
+            .compile_script_product(&product)
+            .expect("Valid Autocallable product");
+
+        assert_eq!(kernel.trade_id, "AUTO_SCRIPT");
+        assert_eq!(kernel.observation_count(), 4);
+        assert!(kernel.has_barriers());
+    }
+
+    #[test]
+    fn test_compile_script_product_accumulator() {
+        let mapper = IndexMapper::new();
+        let mut compiler = ExoticCompiler::new(mapper);
+
+        let product = ScriptProduct::accumulator(
+            "ACCUM_SCRIPT",
+            100.0,
+            1_000.0,
+            50_000.0,
+            vec![0.25, 0.5, 0.75, 1.0],
+        );
+
+        let kernel = compiler
+            .compile_script_product(&product)
+            .expect("Valid Accumulator product");
+
+        assert_eq!(kernel.trade_id, "ACCUM_SCRIPT");
+        assert_eq!(kernel.observation_count(), 4);
+        assert!(kernel.has_accumulation());
+
+        // Should have 4 AccumulateQuantity operations
+        let qty_count = kernel
+            .ops
+            .iter()
+            .filter(|op| matches!(op, ScriptOp::AccumulateQuantity { .. }))
+            .count();
+        assert_eq!(qty_count, 4);
+    }
+
+    #[test]
+    fn test_compile_script_product_snowball() {
+        let mapper = IndexMapper::new();
+        let mut compiler = ExoticCompiler::new(mapper);
+
+        let product = ScriptProduct::snowball(
+            "SNOW_SCRIPT",
+            1_000_000.0,
+            10_000.0,
+            105.0,
+            vec![0.25, 0.5, 0.75, 1.0],
+            90.0,
+        );
+
+        let kernel = compiler
+            .compile_script_product(&product)
+            .expect("Valid Snowball product");
+
+        assert_eq!(kernel.trade_id, "SNOW_SCRIPT");
+        assert!(kernel.has_barriers());
+
+        // Should have 4 CouponMemory operations
+        let memory_count = kernel
+            .ops
+            .iter()
+            .filter(|op| matches!(op, ScriptOp::CouponMemory { .. }))
+            .count();
+        assert_eq!(memory_count, 4);
+    }
+
+    #[test]
+    fn test_compile_accumulator_empty_observations() {
+        let mapper = IndexMapper::new();
+        let mut compiler = ExoticCompiler::new(mapper);
+
+        let product = ScriptProduct {
+            product_type: ScriptProductType::AccumulatorForward,
+            trade_id: "ACCUM_EMPTY".to_string(),
+            underlying_index: 1,
+            currency_id: 0,
+            discount_curve_id: 0,
+            notional: 1_000.0,
+            observations: vec![],
+            target: None,
+            downside: None,
+            memory_coupon: None,
+        };
+
+        let result = compiler.compile_script_product(&product);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_compile_snowball_empty_observations() {
+        let mapper = IndexMapper::new();
+        let mut compiler = ExoticCompiler::new(mapper);
+
+        let product = ScriptProduct {
+            product_type: ScriptProductType::SnowballNote,
+            trade_id: "SNOW_EMPTY".to_string(),
+            underlying_index: 1,
+            currency_id: 0,
+            discount_curve_id: 0,
+            notional: 1_000_000.0,
+            observations: vec![],
+            target: None,
+            downside: None,
+            memory_coupon: None,
+        };
+
+        let result = compiler.compile_script_product(&product);
+        assert!(result.is_err());
     }
 }

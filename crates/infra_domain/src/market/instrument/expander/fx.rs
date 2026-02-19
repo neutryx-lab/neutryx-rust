@@ -2,7 +2,7 @@
 
 use super::{
     fx_exchange_trade, generate_floating_leg_cashflows, rates::generate_payment_dates,
-    settlement_trade, InstrumentExpander,
+    InstrumentExpander,
 };
 use crate::{
     ids::TradeId,
@@ -62,14 +62,45 @@ impl InstrumentExpander for FxVanillaOption {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        Ok(settlement_trade(
-            trade_id,
+        use crate::trade::IndexType;
+
+        let fx_index = IndexType::Fx {
+            base: self.currency_pair.base.to_string(),
+            quote: self.currency_pair.quote.to_string(),
+        };
+
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
             self.delivery_date,
+            self.expiry,
+            self.delivery_date,
+            0.0,
             self.notional,
-            self.strike,
+            Payoff::VanillaOption {
+                index: fx_index,
+                strike: self.strike,
+                option_type: self.option_type,
+            },
             self.notional_currency,
+        );
+
+        let settlement_leg = Leg::new(
+            vec![settlement_cf],
             Direction::Receiver,
-            TradeType::Generic,
+            LegType::Generic,
+            self.notional_currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![settlement_leg],
+            TradeType::FxOption {
+                option_type: self.option_type,
+                strike: self.strike,
+                exercise_type: self.exercise_style,
+                settlement_type: crate::trade::SettlementType::Cash,
+                expiry_date: self.expiry,
+            },
         ))
     }
 }
@@ -78,10 +109,52 @@ impl InstrumentExpander for FxBarrierOption {
     fn expand_to_trade(
         &self,
         trade_id: impl Into<TradeId>,
-        vd: Date,
-        conv: &ConventionSet,
+        _vd: Date,
+        _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        self.vanilla.expand_to_trade(trade_id, vd, conv)
+        use crate::trade::IndexType;
+
+        let v = &self.vanilla;
+        let fx_index = IndexType::Fx {
+            base: v.currency_pair.base.to_string(),
+            quote: v.currency_pair.quote.to_string(),
+        };
+
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
+            v.delivery_date,
+            v.expiry,
+            v.delivery_date,
+            0.0,
+            v.notional,
+            Payoff::VanillaOption {
+                index: fx_index,
+                strike: v.strike,
+                option_type: v.option_type,
+            },
+            v.notional_currency,
+        );
+
+        let settlement_leg = Leg::new(
+            vec![settlement_cf],
+            Direction::Receiver,
+            LegType::Generic,
+            v.notional_currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![settlement_leg],
+            TradeType::FxBarrierOption {
+                option_type: v.option_type,
+                strike: v.strike,
+                barrier: self.barrier_level,
+                barrier_type: self.barrier_type,
+                barrier_direction: self.barrier_direction,
+                exercise_type: v.exercise_style,
+                expiry_date: v.expiry,
+            },
+        ))
     }
 }
 

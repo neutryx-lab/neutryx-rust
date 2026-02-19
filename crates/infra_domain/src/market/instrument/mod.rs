@@ -45,7 +45,8 @@ pub use ir_vol::{
     SwaptionBuilder,
 };
 pub use rates::{
-    BasisSwap, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap, InterestRateSwap, Ois, SwapType,
+    BasisSwap, Bond, BondType, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
+    InterestRateSwap, Ois, SwapType,
 };
 pub use xccy::{
     BasisSpread, CrossCurrencyBasisSwap, NotionalExchange, SpreadLeg, XccyBasisConvention, XccyLeg,
@@ -78,6 +79,8 @@ pub enum InstrumentDefinition {
     CmsSwap(CmsSwap),
     /// Inflation-linked swap.
     InflationSwap(InflationSwap),
+    /// Fixed-coupon bond (government, corporate, agency).
+    Bond(Bond),
 
     /// FX spot transaction.
     FxSpot(FxSpot),
@@ -143,7 +146,8 @@ impl InstrumentDefinition {
             | InstrumentDefinition::CapFloor(_)
             | InstrumentDefinition::Frn(_)
             | InstrumentDefinition::CmsSwap(_)
-            | InstrumentDefinition::InflationSwap(_) => AssetClass::Rates,
+            | InstrumentDefinition::InflationSwap(_)
+            | InstrumentDefinition::Bond(_) => AssetClass::Rates,
 
             InstrumentDefinition::FxSpot(_)
             | InstrumentDefinition::FxForward(_)
@@ -269,7 +273,7 @@ impl InstrumentDefinition {
         }
         dispatch_validate!(self;
             Deposit, Fra, Futures, InterestRateSwap, BasisSwap, Ois,
-            Swaption, CapFloor, Frn, CmsSwap, InflationSwap,
+            Swaption, CapFloor, Frn, CmsSwap, InflationSwap, Bond,
             FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap,
             EquityForward, EquityVanillaOption, EquityBarrierOption, AsianOption, LookbackOption, EquitySwap, BasketOption,
             Cds, CdsIndex, CdsOption, NtdBasket,
@@ -292,7 +296,7 @@ impl std::fmt::Display for InstrumentDefinition {
                 Deposit => "Deposit", Fra => "FRA", Futures => "Futures",
                 InterestRateSwap => "IRS", BasisSwap => "BasisSwap", Ois => "OIS",
                 Swaption => "Swaption", CapFloor => "CapFloor", Frn => "FRN",
-                CmsSwap => "CMSSwap", InflationSwap => "InflationSwap",
+                CmsSwap => "CMSSwap", InflationSwap => "InflationSwap", Bond => "Bond",
                 FxSpot => "FXSpot", FxForward => "FXForward",
                 FxVanillaOption => "FXVanillaOption", FxBarrierOption => "FXBarrierOption",
                 FxSwap => "FXSwap", CrossCurrencyBasisSwap => "XCCY",
@@ -401,6 +405,20 @@ mod tests {
         })
     }
 
+    fn bond() -> InstrumentDefinition {
+        InstrumentDefinition::Bond(Bond {
+            issuer: "US Treasury".to_string(),
+            coupon_rate: 0.04375,
+            coupon_frequency: crate::time::Frequency::SemiAnnual,
+            start_date: Date::from_ymd(2024, 5, 15).unwrap(),
+            maturity: Date::from_ymd(2034, 5, 15).unwrap(),
+            notional: 100.0,
+            currency: Currency::USD,
+            bond_type: BondType::Government,
+            rating: Some("AA+".to_string()),
+        })
+    }
+
     #[test]
     fn test_asset_class() {
         assert_eq!(swaption().asset_class(), AssetClass::Rates);
@@ -408,6 +426,7 @@ mod tests {
         assert_eq!(eq_fwd().asset_class(), AssetClass::Equity);
         assert_eq!(cds().asset_class(), AssetClass::Credit);
         assert_eq!(comm_fwd().asset_class(), AssetClass::Commodity);
+        assert_eq!(bond().asset_class(), AssetClass::Rates);
     }
 
     #[test]
@@ -465,6 +484,11 @@ mod tests {
         assert_eq!(swaption().to_string(), "Swaption");
         assert_eq!(fx_spot().to_string(), "FXSpot");
         assert_eq!(cds().to_string(), "CDS");
+        assert_eq!(bond().to_string(), "Bond");
+        assert!(bond().validate().is_ok());
+        assert!(!bond().is_option());
+        assert!(!bond().is_swap());
+        assert!(!bond().is_forward());
     }
 
     #[test]

@@ -11,19 +11,26 @@ use axum::{
 
 use crate::{
     error::{ServerError, ValidatedJson},
-    rest::dto::demo::{
-        AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
-        CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
-        DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade,
-        ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse,
-        HolidaysResponse, ImpliedPdfRequest, ImpliedPdfResponse, IndexConventionsResponse,
-        IndexRatesResponse, InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse,
-        MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
-        RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse, SabrSmileRequest,
-        SabrSmileResponse, TradeExpandRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
-        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
+    rest::dto::{
+        demo::{
+            AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse, Convention,
+            ConventionsResponse, CreditQuotesResponse, CurveIndicesResponse,
+            CurveInstrumentsResponse, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
+            DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult,
+            EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FxVolCalibrateRequest,
+            FxVolPairsResponse, FxVolQuotesResponse, HolidaysResponse, ImpliedPdfRequest,
+            ImpliedPdfResponse, IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
+            IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
+            MarketRateDetailResponse, MarketRatesResponse, PricerGraphRequest, PricerGraphResponse,
+            RateCashflowsResponse, RateIndexDetailResponse, RateIndicesResponse,
+            RateInstrumentResponse, ResolveTenorRequest, ResolveTenorResponse, SabrSmileRequest,
+            SmileResponse, TradeExpandRequest, VolSmileRequest, VolcubeCalibrateRequest,
+            VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
+            VolcubeModelsResponse,
+        },
+        exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
     },
-    services::{DemoService, VolcubeService},
+    services::{DemoService, ExoticService, VolcubeService},
     state::AppState,
 };
 
@@ -93,6 +100,10 @@ state_handler!(/// GET /api/market/events/types.
     get_event_types, DemoService::get_event_types -> EventTypesResponse);
 state_handler!(/// GET /api/market/holidays.
     get_holidays, DemoService::get_holidays -> HolidaysResponse);
+state_handler!(/// GET /api/market/bonds.
+    get_bond_quotes, DemoService::get_bond_quotes -> BondQuotesResponse);
+state_handler!(/// GET /api/market/credit.
+    get_credit_quotes, DemoService::get_credit_quotes -> CreditQuotesResponse);
 state_handler!(/// GET /api/curves.
     get_available_curves, DemoService::get_available_curves -> AvailableCurvesResponse);
 state_handler!(/// GET /api/curves/indices.
@@ -137,6 +148,8 @@ state_body_handler!(/// POST /api/pricer/price.
     price_trade, DemoService::price_trade(DemoPricingRequest) -> DemoPricingResult);
 state_body_handler!(/// POST /api/pricer/greeks.
     calculate_greeks, DemoService::calculate_greeks(DemoGreeksRequest) -> DemoGreeksResult);
+state_body_handler!(/// POST /api/pricer/advanced-greeks.
+    calculate_advanced_greeks, DemoService::calculate_advanced_greeks(DemoAdvancedGreeksRequest) -> DemoAdvancedGreeksResult);
 state_body_handler!(/// POST /api/volcube/calibrate.
     calibrate_volcube, VolcubeService::calibrate_volcube(VolcubeCalibrateRequest) -> VolcubeCalibrateResponse);
 state_body_handler!(/// POST /api/fxvol/calibrate.
@@ -145,7 +158,13 @@ state_body_handler!(/// POST /api/fxvol/calibrate.
 body_handler!(/// POST /api/volcube/implied-pdf.
     compute_implied_pdf, VolcubeService::compute_implied_pdf(ImpliedPdfRequest) -> ImpliedPdfResponse);
 body_handler!(/// POST /api/volcube/sabr-smile.
-    compute_sabr_smile, VolcubeService::compute_sabr_smile(SabrSmileRequest) -> SabrSmileResponse);
+    compute_sabr_smile, VolcubeService::compute_sabr_smile(SabrSmileRequest) -> SmileResponse);
+body_handler!(/// POST /api/volcube/model-smile.
+    compute_model_smile, VolcubeService::compute_model_smile(VolSmileRequest) -> SmileResponse);
+body_handler!(/// POST /api/utils/resolve-tenor.
+    resolve_tenor, DemoService::resolve_tenor(ResolveTenorRequest) -> ResolveTenorResponse);
+body_handler!(/// POST /api/pricer/graph.
+    get_pricer_graph, DemoService::get_pricer_graph(PricerGraphRequest) -> PricerGraphResponse);
 
 /// POST /api/market/rates/refresh.
 pub async fn refresh_market_rates(
@@ -187,4 +206,17 @@ pub async fn export_market_json(
         )
         .body(Body::from(data))
         .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))
+}
+
+/// GET /api/pricer/exotic-products.
+pub async fn get_exotic_products() -> Json<Vec<ExoticProductDef>> {
+    Json(ExoticService::get_exotic_products())
+}
+
+/// POST /api/pricer/price-exotic.
+pub async fn price_exotic(
+    Json(request): Json<ExoticProductRequest>,
+) -> Result<Json<ExoticPricingResponse>, ServerError> {
+    let response = ExoticService::price_exotic(&request).map_err(|e| ServerError::Pricing(e))?;
+    Ok(Json(response))
 }

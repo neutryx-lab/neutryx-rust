@@ -83,6 +83,8 @@ struct ExecutionState {
     has_knock_in: bool,
     registers: [f64; 8],
     total_pv: f64,
+    memory_coupon_sum: f64,    // Accumulated unpaid coupons (Snowball)
+    accumulated_quantity: f64, // Accumulated quantity (Accumulator Forward)
 }
 
 impl Default for ExecutionState {
@@ -96,6 +98,8 @@ impl Default for ExecutionState {
             has_knock_in: false,
             registers: [0.0; 8],
             total_pv: 0.0,
+            memory_coupon_sum: 0.0,
+            accumulated_quantity: 0.0,
         }
     }
 }
@@ -252,6 +256,45 @@ impl ScriptEngine {
                         state.current_value = state.registers[register as usize];
                     }
                 }
+
+                ScriptOp::CheckTarget {
+                    target_idx,
+                    terminate_above,
+                } => {
+                    let target = kernel.constant(target_idx);
+                    let exceeded = if terminate_above {
+                        state.accumulated_sum >= target
+                    } else {
+                        state.accumulated_sum <= target
+                    };
+                    if exceeded {
+                        state.is_alive = false;
+                    }
+                }
+
+                ScriptOp::PayIntermediate { ccy_id: _, dc_id } => {
+                    if state.should_pay() {
+                        let payment_days =
+                            (current_time * 365.0) as i32 + provider.valuation_date_days();
+                        let df = provider.discount_factor(dc_id, payment_days);
+                        state.total_pv += state.current_value * df;
+                    }
+                    state.current_value = 0.0;
+                }
+
+                ScriptOp::EarlyTerminate => {
+                    state.is_alive = false;
+                }
+
+                ScriptOp::CouponMemory { coupon_idx } => {
+                    let coupon = kernel.constant(coupon_idx);
+                    state.memory_coupon_sum += coupon;
+                }
+
+                ScriptOp::AccumulateQuantity { quantity_idx } => {
+                    let quantity = kernel.constant(quantity_idx);
+                    state.accumulated_quantity += quantity;
+                }
             }
         }
 
@@ -402,6 +445,101 @@ impl ScriptEngine {
                         is_knocked_in: state.is_knocked_in,
                         skipped: false,
                     }
+                }
+
+                ScriptOp::CheckTarget {
+                    target_idx,
+                    terminate_above,
+                } => {
+                    let target = kernel.constant(target_idx);
+                    let exceeded = if terminate_above {
+                        state.accumulated_sum >= target
+                    } else {
+                        state.accumulated_sum <= target
+                    };
+                    if exceeded {
+                        state.is_alive = false;
+                    }
+
+                    TraceStep {
+                        op_idx,
+                        op_name: format!("CheckTarget(target={target}, exceeded={exceeded})"),
+                        time: Some(current_time),
+                        spot: None,
+                        barrier: Some(target),
+                        triggered: Some(exceeded),
+                        current_value: state.accumulated_sum,
+                        is_alive: state.is_alive,
+                        is_knocked_in: state.is_knocked_in,
+                        skipped: false,
+                    }
+                }
+
+                ScriptOp::PayIntermediate { ccy_id: _, dc_id } => {
+                    let payment_days =
+                        (current_time * 365.0) as i32 + provider.valuation_date_days();
+                    let df = provider.discount_factor(dc_id, payment_days);
+                    let pv = if state.should_pay() {
+                        state.current_value * df
+                    } else {
+                        0.0
+                    };
+                    state.total_pv += pv;
+                    state.current_value = 0.0;
+
+                    TraceStep {
+                        op_idx,
+                        op_name: format!("PayIntermediate(DF={df:.4})"),
+                        time: Some(current_time),
+                        spot: None,
+                        barrier: None,
+                        triggered: None,
+                        current_value: pv,
+                        is_alive: state.is_alive,
+                        is_knocked_in: state.is_knocked_in,
+                        skipped: false,
+                    }
+                }
+
+                ScriptOp::EarlyTerminate => {
+                    state.is_alive = false;
+
+                    TraceStep::executed(
+                        op_idx,
+                        "EarlyTerminate".to_string(),
+                        state.current_value,
+                        &state,
+                    )
+                }
+
+                ScriptOp::CouponMemory { coupon_idx } => {
+                    let coupon = kernel.constant(coupon_idx);
+                    state.memory_coupon_sum += coupon;
+
+                    TraceStep::executed(
+                        op_idx,
+                        format!(
+                            "CouponMemory(coupon={coupon}, total={})",
+                            state.memory_coupon_sum
+                        ),
+                        state.memory_coupon_sum,
+                        &state,
+                    )
+                }
+
+                ScriptOp::AccumulateQuantity { quantity_idx } => {
+                    let quantity = kernel.constant(quantity_idx);
+                    state.accumulated_quantity += quantity;
+
+                    TraceStep::executed(
+                        op_idx,
+                        format!(
+                            "AccumulateQuantity(qty={quantity}, total={})",
+                            state.accumulated_quantity
+                        ),
+                        state.accumulated_quantity,
+                        &state,
+                    )
                 }
 
                 _ => TraceStep::executed(op_idx, format!("{op:?}"), state.current_value, &state),
@@ -1035,5 +1173,135 @@ mod tests {
             "PV should be scaled by notional, got {pv}"
         );
         assert!(pv < 16_000_000.0, "PV should be around 15M, got {pv}");
+    }
+
+    #[test]
+    fn test_tarf_target_accrual() {
+        // TARF-style test: accumulate spot observations, pay intermediate, then check
+        // target. With a low target, the product should terminate early after
+        // accumulated spot exceeds the target level, but the first fixing
+        // payment is made before the target check.
+        let provider = create_flat_provider(110.0);
+
+        let mut builder = ScriptKernelBuilder::new()
+            .add_observation_time(0.25)
+            .add_observation_time(0.5)
+            .add_observation_time(0.75)
+            .add_observation_time(1.0);
+
+        let strike_idx = builder.add_constant(100.0);
+        let notional_idx = builder.add_constant(1.0);
+        // Set a low target so it triggers after first accumulation
+        // (spot at 0.25 with 110 base * exp(0.05*0.25) ~ 111.38 > target of 50)
+        let target_idx = builder.add_constant(50.0);
+
+        // Per observation: Accumulate (observe spot, adds to accumulated_sum),
+        // CalcAverage, ApplyPayoff(call), ApplyNotional, PayIntermediate, CheckTarget
+        // Note: PayIntermediate comes BEFORE CheckTarget so the current fixing
+        // payment is settled before potential early termination.
+        let kernel = builder
+            // Obs 1: accumulate spot, compute payoff, pay, then check target
+            .push_op(ScriptOp::Accumulate)
+            .push_op(ScriptOp::CalcAverage)
+            .push_op(ScriptOp::ApplyPayoff { strike_idx, is_call: true })
+            .push_op(ScriptOp::ApplyNotional { notional_idx })
+            .push_op(ScriptOp::PayIntermediate { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::CheckTarget { target_idx, terminate_above: true })
+            // Obs 2: should be skipped due to early termination
+            .push_op(ScriptOp::Accumulate)
+            .push_op(ScriptOp::CalcAverage)
+            .push_op(ScriptOp::ApplyPayoff { strike_idx, is_call: true })
+            .push_op(ScriptOp::ApplyNotional { notional_idx })
+            .push_op(ScriptOp::PayIntermediate { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::CheckTarget { target_idx, terminate_above: true })
+            .build()
+            .expect("Valid kernel");
+
+        let pv = ScriptEngine::price(&kernel, &provider);
+
+        // The product should have positive PV from the first observation's payoff
+        assert!(
+            pv > 0.0,
+            "TARF should have positive PV from first fixing, got {pv}"
+        );
+    }
+
+    #[test]
+    fn test_autocallable_early_terminate() {
+        // Autocallable: CheckBarrier(UpIn) + CalcFixed(coupon+principal) +
+        // PayIntermediate + EarlyTerminate Spot is above the barrier so
+        // autocall should trigger at first observation.
+        let provider = create_flat_provider(110.0);
+
+        let mut builder = ScriptKernelBuilder::new()
+            .add_observation_time(0.25)
+            .add_observation_time(0.5);
+
+        let barrier_idx = builder.add_constant(105.0); // Autocall barrier
+        let coupon_principal_idx = builder.add_constant(1_100_000.0); // Coupon + principal
+
+        let kernel = builder
+            // Obs 1: check autocall barrier
+            .push_op(ScriptOp::CheckBarrier {
+                barrier_idx,
+                barrier_type: BarrierType::UpIn,
+            })
+            .push_op(ScriptOp::CalcFixed { amount_idx: coupon_principal_idx })
+            .push_op(ScriptOp::PayIntermediate { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::EarlyTerminate)
+            .push_op(ScriptOp::EndIf)
+            // Obs 2: would be skipped due to early termination
+            .push_op(ScriptOp::CheckBarrier {
+                barrier_idx,
+                barrier_type: BarrierType::UpIn,
+            })
+            .push_op(ScriptOp::CalcFixed { amount_idx: coupon_principal_idx })
+            .push_op(ScriptOp::PayIntermediate { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::EarlyTerminate)
+            .push_op(ScriptOp::EndIf)
+            .build()
+            .expect("Valid kernel");
+
+        let pv = ScriptEngine::price(&kernel, &provider);
+
+        // Should have positive PV from the autocall coupon payment
+        assert!(
+            pv > 1_000_000.0,
+            "Autocallable PV should include coupon+principal, got {pv}"
+        );
+    }
+
+    #[test]
+    fn test_coupon_memory_accumulation() {
+        // Test that CouponMemory accumulates the memory coupon sum correctly.
+        let provider = create_flat_provider(100.0);
+
+        let mut builder = ScriptKernelBuilder::new()
+            .add_observation_time(0.25)
+            .add_observation_time(0.5)
+            .add_observation_time(0.75);
+
+        let coupon_idx = builder.add_constant(5000.0); // 5000 per period
+
+        let kernel = builder
+            .push_op(ScriptOp::CouponMemory { coupon_idx })
+            .push_op(ScriptOp::CouponMemory { coupon_idx })
+            .push_op(ScriptOp::CouponMemory { coupon_idx })
+            .push_op(ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            })
+            .build()
+            .expect("Valid kernel");
+
+        // Use trace to verify memory coupon sum accumulates
+        let trace = ScriptEngine::trace(&kernel, &provider);
+
+        // Third CouponMemory step should show total of 15000
+        assert!(
+            trace.steps[2].current_value > 14999.0 && trace.steps[2].current_value < 15001.0,
+            "Memory coupon sum should be 15000, got {}",
+            trace.steps[2].current_value
+        );
     }
 }

@@ -1,0 +1,102 @@
+{
+  "index": "usd-treasury",
+  "currency": "USD",
+  "reference_date": "2026-01-29",
+  "instruments": [
+    {
+      "type": "deposit",
+      "tenor": "ON",
+      "tenor_years": 0.00274,
+      "rate": 0.0433,
+      "frequency": "annual",
+      "description": "Fed Funds overnight"
+    },
+    {
+      "type": "deposit",
+      "tenor": "1M",
+      "tenor_years": 0.0833,
+      "rate": 0.0430,
+      "frequency": "annual",
+      "description": "T-Bill 1M"
+    },
+    {
+      "type": "deposit",
+      "tenor": "3M",
+      "tenor_years": 0.25,
+      "rate": 0.0425,
+      "frequency": "annual",
+      "description": "T-Bill 3M"
+    },
+    {
+      "type": "deposit",
+      "tenor": "6M",
+      "tenor_years": 0.5,
+      "rate": 0.0415,
+      "frequency": "annual",
+      "description": "T-Bill 6M"
+    },
+    {
+      "type": "bond",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.0385,
+      "coupon_rate": 0.0375,
+      "frequency": "semi_annual",
+      "description": "US Treasury 2Y Note"
+    },
+    {
+      "type": "bond",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.0395,
+      "coupon_rate": 0.0400,
+      "frequency": "semi_annual",
+      "description": "US Treasury 3Y Note"
+    },
+    {
+      "type": "bond",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.0410,
+      "coupon_rate": 0.0400,
+      "frequency": "semi_annual",
+      "description": "US Treasury 5Y Note"
+    },
+    {
+      "type": "bond",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.0430,
+      "coupon_rate": 0.0425,
+      "frequency": "semi_annual",
+      "description": "US Treasury 7Y Note"
+    },
+    {
+      "type": "bond",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.0435,
+      "coupon_rate": 0.0425,
+      "frequency": "semi_annual",
+      "description": "US Treasury 10Y Note"
+    },
+    {
+      "type": "bond",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.0455,
+      "coupon_rate": 0.0450,
+      "frequency": "semi_annual",
+      "description": "US Treasury 20Y Bond"
+    },
+    {
+      "type": "bond",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.0465,
+      "coupon_rate": 0.0450,
+      "frequency": "semi_annual",
+      "description": "US Treasury 30Y Bond"
+    }
+  ]
+}

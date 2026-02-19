@@ -1,25 +1,55 @@
 {
   "metadata": {
     "description": "Configuration for market data file paths and defaults",
-    "version": "1.0"
+    "version": "2.0"
   },
   "paths": {
     "rates": "demo/data/input/rates/market_quotes.json",
+    "curve_files": [
+      "demo/data/input/rates/usd-sofr.json",
+      "demo/data/input/rates/eur-estr.json",
+      "demo/data/input/rates/jpy-tona.json"
+    ],
     "fx_spots": "demo/data/input/fx/fx_spots.json",
     "fx_forwards": "demo/data/input/fx/fx_forwards.json",
     "xccy_basis": "demo/data/input/fx/xccy_basis.json",
     "conventions": "demo/data/input/conventions/conventions.json",
+    "bonds": {
+      "government": [
+        "demo/data/input/bonds/usd-treasury.json",
+        "demo/data/input/bonds/eur-bund.json",
+        "demo/data/input/bonds/gbp-gilt.json",
+        "demo/data/input/bonds/jpy-jgb.json"
+      ],
+      "corporate": "demo/data/input/bonds/corporate.json"
+    },
+    "credit": {
+      "indices": [
+        "demo/data/input/credit/cdx-na-ig.json",
+        "demo/data/input/credit/cdx-na-hy.json",
+        "demo/data/input/credit/itraxx-europe-ig.json",
+        "demo/data/input/credit/itraxx-europe-xover.json"
+      ],
+      "single_name": "demo/data/input/credit/single-name-cds.json"
+    },
     "events": {
       "central_banks": "demo/data/input/events/central_banks.json",
       "central_bank_meetings": "demo/data/input/events/central_bank_meetings.json",
       "economic_releases": "demo/data/input/events/economic_releases.json",
-      "holidays": "demo/data/input/events/holidays.json"
-    }
+      "turns": "demo/data/input/events/turns.json"
+    },
+    "holidays": "demo/data/input/holidays.json"
   },
   "defaults": {
     "source": "Internal",
     "quote_type": "Mid",
     "staleness_threshold_ms": 300000
+  },
+  "index_display_names": {
+    "CDX-NA-IG": "CDX.NA.IG",
+    "CDX-NA-HY": "CDX.NA.HY",
+    "ITRAXX-EUROPE-IG": "iTraxx.EUR.Main",
+    "ITRAXX-EUROPE-XOVER": "iTraxx.EUR.Xover"
   },
   "convention_mapping": {
     "patterns": [

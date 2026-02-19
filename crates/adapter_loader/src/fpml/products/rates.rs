@@ -4,8 +4,8 @@ use infra_domain::{
     market::RateIndex,
     time::Date,
     trade::{
-        Cashflow, CashflowType, Direction, ExerciseType, Leg, LegType, Payoff, SettlementType,
-        Trade, TradeType,
+        Cashflow, CashflowType, Direction, EventLeg, ExerciseEvent, ExerciseType, Leg, LegType,
+        Payoff, SettlementType, Trade, TradeType,
     },
 };
 
@@ -205,20 +205,20 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
         return Err(FpmlError::MissingElement("underlying swap".to_string()));
     };
 
-    let trade_type = TradeType::Swaption {
+    let metadata = build_metadata(&header);
+
+    let underlying_legs: Vec<Leg> = underlying_swap.legs().cloned().collect();
+    let exercise = ExerciseEvent {
         exercise_dates,
         exercise_type,
         settlement_type,
     };
-
-    let metadata = build_metadata(&header);
-
-    let legs: Vec<Leg> = underlying_swap.legs().cloned().collect();
+    let event_leg = EventLeg::new(exercise, underlying_legs);
 
     Ok(Trade::builder()
         .id(header.trade_id)
-        .legs(legs)
-        .trade_type(trade_type)
+        .event_legs(vec![event_leg])
+        .trade_type(TradeType::Swaption)
         .metadata(metadata)
         .build())
 }

@@ -252,7 +252,11 @@ impl CurveConstructionEngine {
             infra_domain::market::InterpolationMethod::LogLinear => {
                 BootstrapInterpolation::LogLinear
             }
-            infra_domain::market::InterpolationMethod::FlatForward => {
+            infra_domain::market::InterpolationMethod::FlatForward
+            | infra_domain::market::InterpolationMethod::CubicSplineFwd
+            | infra_domain::market::InterpolationMethod::MonotoneConvex
+            | infra_domain::market::InterpolationMethod::LogCubicDF
+            | infra_domain::market::InterpolationMethod::TensionSpline => {
                 BootstrapInterpolation::FlatForward
             }
         };

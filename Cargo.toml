@@ -1,59 +1,3 @@
-[package]
-name = "neutryx"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-authors.workspace = true
-description = "Unified facade crate for Neutryx derivatives pricing library"
-
-[dependencies]
-# --- Infra Layer (always included) ---
-infra_domain = { path = "crates/infra_domain" }
-
-# --- Infra Layer (optional) ---
-infra_config = { path = "crates/infra_config", optional = true }
-
-# --- Pricer Layer (optional) ---
-pricer_core = { path = "crates/pricer_core", optional = true }
-pricer_models = { path = "crates/pricer_models", optional = true }
-pricer_pricing = { path = "crates/pricer_pricing", optional = true }
-pricer_risk = { path = "crates/pricer_risk", optional = true }
-
-[features]
-default = ["full"]
-
-# Minimal: Master data only (dates, currencies, trade definitions)
-minimal = []
-
-# Analytics: Curve building, models, analytical pricing
-analytics = [
-    "dep:pricer_core",
-    "dep:pricer_models",
-]
-
-# Full: Complete pricing and risk functionality
-full = [
-    "analytics",
-    "dep:infra_config",
-    "dep:pricer_pricing",
-    "dep:pricer_risk",
-]
-
-# Enzyme automatic differentiation (requires nightly + LLVM 18)
-enzyme-ad = [
-    "pricer_risk?/enzyme-ad",
-]
-
-[dev-dependencies]
-approx.workspace = true
-
-[lints]
-workspace = true
-
-# =============================================================================
-# Workspace Configuration
-# =============================================================================
 [workspace]
 members = [
     # --- A: Adapter Layer (Input) ---
@@ -64,9 +8,7 @@ members = [
     "crates/infra_domain",
 
     # --- P: Pricer Layer (The Kernel) ---
-    "crates/pricer_checkpoint",
     "crates/pricer_core",
-    "crates/pricer_graph",
     "crates/pricer_models",
     "crates/pricer_pricing",
     "crates/pricer_risk",

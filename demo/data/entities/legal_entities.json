@@ -7,8 +7,8 @@
   "legal_entities": [
     {
       "id": "LE-001",
-      "legal_name": "FrictionalBank N.A.",
-      "short_name": "FB NA",
+      "legal_name": "Ergodic Bank N.A.",
+      "short_name": "EB NA",
       "lei": "549300EXAMPLE0001NA",
       "country": "US",
       "regulatory_capital_regime": "Basel III",
@@ -17,8 +17,8 @@
     },
     {
       "id": "LE-002",
-      "legal_name": "FrictionalBank Europe GmbH",
-      "short_name": "FB Europe",
+      "legal_name": "Ergodic Bank Europe GmbH",
+      "short_name": "EB Europe",
       "lei": "549300EXAMPLE0002EU",
       "country": "DE",
       "regulatory_capital_regime": "CRR/CRD",
@@ -27,8 +27,8 @@
     },
     {
       "id": "LE-003",
-      "legal_name": "FrictionalBank UK Limited",
-      "short_name": "FB UK",
+      "legal_name": "Ergodic Bank UK Limited",
+      "short_name": "EB UK",
       "lei": "549300EXAMPLE0003UK",
       "country": "GB",
       "regulatory_capital_regime": "PRA",
@@ -37,8 +37,8 @@
     },
     {
       "id": "LE-004",
-      "legal_name": "FrictionalBank Japan K.K.",
-      "short_name": "FB Japan",
+      "legal_name": "Ergodic Bank Japan K.K.",
+      "short_name": "EB Japan",
       "lei": "549300EXAMPLE0004JP",
       "country": "JP",
       "regulatory_capital_regime": "JFSA",

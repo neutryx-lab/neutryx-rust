@@ -262,6 +262,15 @@ pub enum CalibrationMethod {
     Sequential,
     /// Global calibration (all pillars simultaneously).
     Global,
+    /// Levenberg-Marquardt non-linear least squares.
+    #[serde(rename = "levenberg_marquardt")]
+    LevenbergMarquardt,
+    /// Penalised (regularised) global calibration with forward smoothness
+    /// penalty.
+    Penalised,
+    /// Best fit via QR least squares (for overdetermined systems).
+    #[serde(rename = "best_fit")]
+    BestFit,
 }
 
 /// Interpolation method for the resulting yield curve.
@@ -273,8 +282,16 @@ pub enum InterpolationMethod {
     /// Log-linear interpolation (default, preserves no-arbitrage).
     #[default]
     LogLinear,
-    /// Flat forward interpolation (constant simple forward rate between.
+    /// Flat forward interpolation.
     FlatForward,
+    /// Natural cubic spline on instantaneous forward rates.
+    CubicSplineFwd,
+    /// Monotone convex interpolation (Hagan & West, 2006).
+    MonotoneConvex,
+    /// Natural cubic spline on log(DF).
+    LogCubicDF,
+    /// Tension spline on instantaneous forward rates.
+    TensionSpline,
 }
 
 /// Error type for curve definition validation.
@@ -503,6 +520,9 @@ impl CalibrationMethod {
         match self {
             Self::Sequential => "Sequential Bootstrapping",
             Self::Global => "Global Calibration",
+            Self::LevenbergMarquardt => "Levenberg-Marquardt",
+            Self::Penalised => "Penalised",
+            Self::BestFit => "Best Fit",
         }
     }
 }
@@ -515,6 +535,10 @@ impl InterpolationMethod {
             Self::Linear => "Linear",
             Self::LogLinear => "Log-Linear",
             Self::FlatForward => "Flat Forward",
+            Self::CubicSplineFwd => "Cubic Spline (Fwd)",
+            Self::MonotoneConvex => "Monotone Convex",
+            Self::LogCubicDF => "Log-Cubic DF",
+            Self::TensionSpline => "Tension Spline",
         }
     }
 }

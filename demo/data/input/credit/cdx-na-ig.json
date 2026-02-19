@@ -1,0 +1,60 @@
+{
+  "index": "CDX-NA-IG",
+  "currency": "USD",
+  "reference_date": "2026-01-29",
+  "recovery_rate": 0.40,
+  "series": 43,
+  "version": 1,
+  "rating": "IG",
+  "instruments": [
+    {
+      "type": "cds",
+      "tenor": "6M",
+      "tenor_years": 0.5,
+      "rate": 0.0035,
+      "description": "CDX NA IG 6M CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.0045,
+      "description": "CDX NA IG 1Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.0055,
+      "description": "CDX NA IG 2Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.0065,
+      "description": "CDX NA IG 3Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.0080,
+      "description": "CDX NA IG 5Y CDS spread (benchmark)"
+    },
+    {
+      "type": "cds",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.0090,
+      "description": "CDX NA IG 7Y CDS spread"
+    },
+    {
+      "type": "cds",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.0100,
+      "description": "CDX NA IG 10Y CDS spread"
+    }
+  ]
+}

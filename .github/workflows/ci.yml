@@ -2,553 +2,117 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  RUSTFLAGS: ""
 
 jobs:
-  # ============================================================================
-  # Stable Rust: L1, L2 (pricer_core, pricer_models) + Adapters + Infra
-  # Cross-platform: Linux, Windows, macOS
-  # ============================================================================
-  stable-layers:
-    name: Stable Rust - L1/L2 (${{ matrix.os }})
+  stable:
+    name: Stable (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    # Override target-cpu=native from .cargo/config.toml for CI portability
-    # This ensures tests don't use CPU-specific instructions that may not be available on all runners
-    env:
-      RUSTFLAGS: ""
-
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install stable Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --exclude pricer_pricing --exclude pricer_risk -- -D warnings
+      - run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-stable-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-stable-
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Clippy (stable crates)
-        run: cargo clippy --workspace --exclude pricer_pricing --exclude pricer_risk -- -D warnings
-
-      - name: Build (stable crates)
-        run: cargo build --workspace --exclude pricer_pricing --exclude pricer_risk
-
-      - name: Test (stable crates)
-        run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk
-
-  # ============================================================================
-  # Nightly Rust: L3, L4 (pricer_pricing, pricer_risk)
-  # Linux only (Enzyme requires LLVM infrastructure)
-  # ============================================================================
-  nightly-kernel:
-    name: Nightly Rust - L3/L4
+  nightly:
+    name: Nightly (L3/L4)
     runs-on: ubuntu-latest
-    # Override target-cpu=native from .cargo/config.toml for CI portability
-    # This ensures builds don't use CPU-specific instructions that may not be available on all runners
-    env:
-      RUSTFLAGS: ""
-
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install nightly Rust
-        uses: dtolnay/rust-toolchain@nightly
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          components: rustfmt, clippy, llvm-tools, rust-src
-
-      - name: Check and install Enzyme component
-        id: enzyme-check
+          components: clippy, llvm-tools, rust-src
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Enzyme (optional)
+        id: enzyme
         run: |
-          # Check if rustc-codegen-llvm-enzyme component is available
-          if rustup +nightly component list 2>/dev/null | grep -q "rustc-codegen-llvm-enzyme"; then
-            echo "Enzyme component available, attempting install..."
-            if rustup +nightly component add rustc-codegen-llvm-enzyme 2>/dev/null; then
-              echo "enzyme_available=true" >> $GITHUB_OUTPUT
-              echo "✓ Enzyme backend installed"
-            else
-              echo "enzyme_available=false" >> $GITHUB_OUTPUT
-              echo "⚠ Failed to install Enzyme component"
-            fi
+          if rustup +nightly component add rustc-codegen-llvm-enzyme 2>/dev/null; then
+            echo "available=true" >> $GITHUB_OUTPUT
           else
-            echo "enzyme_available=false" >> $GITHUB_OUTPUT
-            echo "⚠ Enzyme component not available for this nightly/platform"
+            echo "available=false" >> $GITHUB_OUTPUT
           fi
-
-      - name: Cache cargo build (nightly)
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-nightly-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-nightly-
-
-      - name: Build pricer_pricing (with autodiff)
-        if: steps.enzyme-check.outputs.enzyme_available == 'true'
+      - name: Build & test pricer_pricing
         run: |
-          export RUSTFLAGS="-Z autodiff=Enable"
-          cargo +nightly build -p pricer_pricing
-
-      - name: Test pricer_pricing (with autodiff)
-        if: steps.enzyme-check.outputs.enzyme_available == 'true'
-        run: |
-          export RUSTFLAGS="-Z autodiff=Enable"
-          cargo +nightly test -p pricer_pricing
-
-      - name: Clippy pricer_pricing (with autodiff)
-        if: steps.enzyme-check.outputs.enzyme_available == 'true'
-        run: |
-          export RUSTFLAGS="-Z autodiff=Enable"
-          cargo +nightly clippy -p pricer_pricing -- -D warnings
-
-      - name: Build pricer_pricing (fallback without autodiff)
-        if: steps.enzyme-check.outputs.enzyme_available != 'true'
-        run: |
-          echo "⚠ Building without autodiff - Enzyme not available"
-          echo "  pricer_pricing will build but autodiff features are disabled"
-          cargo +nightly build -p pricer_pricing
-
-      - name: Test pricer_pricing (fallback without autodiff)
-        if: steps.enzyme-check.outputs.enzyme_available != 'true'
-        run: |
-          echo "⚠ Testing without autodiff - Enzyme not available"
-          cargo +nightly test -p pricer_pricing
-
-      - name: Clippy pricer_pricing (fallback)
-        if: steps.enzyme-check.outputs.enzyme_available != 'true'
-        run: |
-          cargo +nightly clippy -p pricer_pricing -- -D warnings
-
-      - name: Report autodiff status
-        run: |
-          if [ "${{ steps.enzyme-check.outputs.enzyme_available }}" == "true" ]; then
-            echo "✓ CI ran with native autodiff (Enzyme)"
-          else
-            echo "⚠ CI ran with bump-and-revalue fallback (Enzyme not available)"
-            echo "  This is expected - Enzyme distribution is platform/version dependent"
+          if [ "${{ steps.enzyme.outputs.available }}" == "true" ]; then
+            export RUSTFLAGS="-Z autodiff=Enable"
           fi
-
-      # pricer_risk depends on pricer_pricing, so it needs nightly too
-      - name: Build pricer_risk
+          cargo +nightly build -p pricer_pricing
+          cargo +nightly test -p pricer_pricing
+          cargo +nightly clippy -p pricer_pricing -- -D warnings
+      - name: Build & test pricer_risk
         run: |
-          echo "Building pricer_risk (depends on pricer_pricing)"
           cargo +nightly build -p pricer_risk
-
-      - name: Test pricer_risk
-        run: |
           cargo +nightly test -p pricer_risk
-
-      - name: Clippy pricer_risk
-        run: |
           cargo +nightly clippy -p pricer_risk -- -D warnings
 
-  # ============================================================================
-  # Integration Tests (Full Stack)
-  # ============================================================================
   integration:
-    name: Integration Tests
+    name: Integration
     runs-on: ubuntu-latest
-    needs: [stable-layers, nightly-kernel]
-    env:
-      RUSTFLAGS: ""
-
+    needs: [stable, nightly]
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install nightly Rust
-        uses: dtolnay/rust-toolchain@nightly
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: llvm-tools, rust-src
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo +nightly test --workspace
 
-      - name: Check Enzyme availability
-        id: enzyme-check
-        run: |
-          if rustup +nightly component list 2>/dev/null | grep -q "rustc-codegen-llvm-enzyme"; then
-            if rustup +nightly component add rustc-codegen-llvm-enzyme 2>/dev/null; then
-              echo "enzyme_available=true" >> $GITHUB_OUTPUT
-            else
-              echo "enzyme_available=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "enzyme_available=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run integration tests (with autodiff)
-        if: steps.enzyme-check.outputs.enzyme_available == 'true'
-        run: |
-          export RUSTFLAGS="-Z autodiff=Enable"
-          cargo +nightly test --all-features
-
-      - name: Run integration tests (without autodiff)
-        if: steps.enzyme-check.outputs.enzyme_available != 'true'
-        run: |
-          echo "⚠ Running integration tests without autodiff"
-          cargo +nightly test --workspace
-
-  # ============================================================================
-  # Code Coverage
-  # ============================================================================
   coverage:
-    name: Code Coverage
+    name: Coverage
     runs-on: ubuntu-latest
-    needs: [stable-layers]
-    env:
-      RUSTFLAGS: ""
-
+    needs: [stable]
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install stable Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
-
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-
-      - name: Generate coverage report
-        run: |
-          cargo llvm-cov --workspace --exclude pricer_pricing \
-            --exclude pricer_risk \
-            --lcov --output-path lcov.info
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - run: cargo llvm-cov --workspace --exclude pricer_pricing --exclude pricer_risk --lcov --output-path lcov.info
+      - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
           fail_ci_if_error: false
-          verbose: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  # ============================================================================
-  # Benchmarks (Criterion - time-based)
-  # ============================================================================
   benchmarks:
-    name: Benchmarks (Criterion)
+    name: Benchmarks
     runs-on: ubuntu-latest
-    needs: [stable-layers]
-    env:
-      RUSTFLAGS: ""
-
+    needs: [stable]
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install stable Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo bench -p pricer_models --bench models -- --noplot
+      - uses: actions/upload-artifact@v4
         with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-bench-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-bench-
-
-      - name: Run pricer_models benchmarks
-        run: cargo bench -p pricer_models --bench models -- --noplot
-
-      - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results-criterion
+          name: benchmark-results
           path: target/criterion/
           retention-days: 30
 
-  # ============================================================================
-  # Iai-Callgrind Benchmarks (instruction-count based, reproducible)
-  # ============================================================================
-  benchmarks-iai:
-    name: Benchmarks (Iai-Callgrind)
-    runs-on: ubuntu-latest
-    needs: [nightly-kernel]
-    env:
-      RUSTFLAGS: ""
-    permissions:
-      contents: read
-      pull-requests: write
-
-    steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install nightly Rust
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: llvm-tools, rust-src
-
-      - name: Install Valgrind
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y valgrind
-
-      - name: Install iai-callgrind-runner
-        run: |
-          cargo install iai-callgrind-runner --version 0.14.2
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-iai-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-iai-
-
-      - name: Cache iai baseline
-        uses: actions/cache@v4
-        with:
-          path: target/iai
-          key: ${{ runner.os }}-iai-baseline-${{ github.base_ref || 'main' }}
-          restore-keys: |
-            ${{ runner.os }}-iai-baseline-main
-            ${{ runner.os }}-iai-baseline-
-
-      - name: Run Iai-Callgrind benchmarks
-        run: |
-          cargo +nightly bench -p pricer_pricing --bench engine_iai 2>&1 | tee iai-output.txt
-        continue-on-error: true
-
-      - name: Parse benchmark results
-        id: parse-results
-        run: |
-          # Extract regression information from iai output
-          if grep -q "Performance has regressed" iai-output.txt 2>/dev/null; then
-            echo "regression_detected=true" >> $GITHUB_OUTPUT
-            echo "::warning::Performance regression detected in iai-callgrind benchmarks"
-          else
-            echo "regression_detected=false" >> $GITHUB_OUTPUT
-            echo "::notice::Iai-callgrind benchmarks completed successfully"
-          fi
-
-          # Count benchmarks (avoid capturing both grep output and fallback echo)
-          TOTAL=$(grep -c "engine_iai::" iai-output.txt 2>/dev/null || true)
-          TOTAL=${TOTAL:-0}
-          echo "total_benchmarks=$TOTAL" >> $GITHUB_OUTPUT
-
-      - name: Check regression threshold
-        run: |
-          chmod +x .github/scripts/check_iai_regression.sh
-          ./.github/scripts/check_iai_regression.sh --threshold 10 --output github || true
-
-      - name: Upload Iai benchmark results
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-results-iai
-          path: |
-            target/iai/
-            iai-output.txt
-          retention-days: 30
-
-      - name: Save baseline for main branch
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          echo "Saving new baseline for main branch"
-          # Iai-callgrind automatically saves results that can be used as baseline
-
-      - name: Comment on PR with benchmark results
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-
-            let output = '';
-            try {
-              output = fs.readFileSync('iai-output.txt', 'utf8');
-            } catch (e) {
-              output = 'No benchmark output available';
-            }
-
-            // Extract summary
-            const lines = output.split('\n');
-            const summaryLines = lines.filter(l =>
-              l.includes('Instructions:') ||
-              l.includes('kernel_iai::') ||
-              l.includes('Performance')
-            ).slice(0, 20);
-
-            const body = `## Iai-Callgrind Benchmark Results
-
-            <details>
-            <summary>Benchmark Summary</summary>
-
-            \`\`\`
-            ${summaryLines.join('\n') || 'No summary available'}
-            \`\`\`
-
-            </details>
-
-            > Full results available in the [workflow artifacts](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-            `;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
-  # ============================================================================
-  # Documentation
-  # ============================================================================
   docs:
-    name: Documentation
+    name: Docs
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install stable Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-docs-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-docs-
-
-      - name: Build documentation (stable crates)
-        run: cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps
         env:
           RUSTDOCFLAGS: "-D warnings"
-
-      - name: Check documentation coverage
-        run: |
-          echo "Documentation built successfully for stable crates"
-          echo "Checking for documentation completeness..."
-          cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps 2>&1 | \
-            grep -c "warning:" || echo "No documentation warnings found"
-
-      - name: Upload documentation
-        uses: actions/upload-artifact@v4
-        with:
-          name: documentation
-          path: target/doc/
-          retention-days: 7

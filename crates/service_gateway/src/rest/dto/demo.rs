@@ -1,5 +1,6 @@
 //! Demo DTOs for the demo_gui frontend integration.
 #![allow(dead_code)]
+#![allow(missing_docs)]
 
 use serde::{Deserialize, Serialize};
 use validator::Validate;
@@ -143,7 +144,35 @@ pub struct TradeMetadata {
     pub processing_time_ms: f64,
 }
 
-/// Pricing request.
+/// Pricing method hint (mirrors `PricingMethodHint`).
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum DemoPricingMethod {
+    #[default]
+    Auto,
+    Analytical,
+    MonteCarlo,
+    Tree,
+}
+
+/// Tree type (mirrors `TreeType`).
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum DemoTreeType {
+    #[default]
+    Binomial,
+    Trinomial,
+}
+
+/// Tree configuration (mirrors `TreeSetting`).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoTreeConfig {
+    pub num_steps: Option<usize>,
+    pub tree_type: Option<DemoTreeType>,
+}
+
+/// Pricing request (mirrors `CalcSetting` + trade data).
 #[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoPricingRequest {
@@ -153,8 +182,14 @@ pub struct DemoPricingRequest {
     pub reporting_currency: String,
     #[validate(length(min = 1))]
     pub legs: Vec<PricingLeg>,
+    #[serde(default)]
+    pub method: DemoPricingMethod,
+    #[serde(default)]
+    pub compute_greeks: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_config: Option<DemoModelConfig>,
+    pub mc_config: Option<DemoModelConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tree_config: Option<DemoTreeConfig>,
 }
 
 /// Pricing leg.
@@ -171,8 +206,20 @@ pub struct PricingLeg {
 #[serde(rename_all = "camelCase")]
 pub struct PricingCashflow {
     pub payment_date: String,
-    pub amount: f64,
+    pub notional: f64,
+    pub rate: Option<f64>,
+    pub year_fraction: f64,
+    #[serde(default = "default_payoff_type")]
+    pub payoff_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accrual_start: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accrual_end: Option<String>,
 }
+
+fn default_payoff_type() -> String { "Fixed".to_string() }
 
 /// Model configuration.
 #[derive(Debug, Clone, Deserialize)]
@@ -184,17 +231,45 @@ pub struct DemoModelConfig {
     pub seed: Option<u64>,
 }
 
-/// Pricing result.
+/// Pricing result (mirrors `PricingResult` from result.rs).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DemoPricingResult {
+    pub total_pv: f64,
+    pub reporting_currency: String,
+    pub legs: Vec<LegResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub total_pv: Option<f64>,
+    pub path_distribution: Option<DemoPathDistribution>,
+    /// Pricing method used.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub pv: Option<f64>,
-    pub currency: String,
+    pub method: Option<String>,
+    /// Greeks (if compute_greeks was true).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub legs: Option<Vec<LegResult>>,
+    pub greeks: Option<DemoGreeksInline>,
+    /// Computation time in milliseconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub computation_time_ms: Option<f64>,
+}
+
+/// Inline Greeks returned with pricing result.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoGreeksInline {
+    pub delta: Option<f64>,
+    pub gamma: Option<f64>,
+    pub vega: Option<f64>,
+    pub theta: Option<f64>,
+    pub rho: Option<f64>,
+}
+
+/// Path distribution for Monte Carlo pricing.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoPathDistribution {
+    pub mean: f64,
+    pub std_dev: f64,
+    pub percentiles: Vec<(f64, f64)>,
+    pub path_count: usize,
 }
 
 /// Leg result with detailed breakdown.
@@ -253,6 +328,124 @@ pub struct DemoGreeksResult {
     pub gamma: Option<f64>,
     pub theta: Option<f64>,
     pub vega: Option<f64>,
+}
+
+/// Advanced Greeks configuration — tagged enum keyed on `mode`.
+///
+/// `BumpRevalue` carries user-specified bump sizes; `EnzymeAad` uses
+/// `pricer_risk::GreeksConfig::default()` internally.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "mode", rename_all = "camelCase")]
+pub enum AdvancedGreeksConfig {
+    /// Bump-and-revalue with user-specified bump sizes.
+    #[serde(rename_all = "camelCase")]
+    BumpRevalue {
+        #[serde(default = "default_spot_bump")]
+        spot_bump_relative: f64,
+        #[serde(default = "default_vol_bump")]
+        vol_bump_absolute: f64,
+        #[serde(default = "default_time_bump")]
+        time_bump_years: f64,
+        #[serde(default = "default_rate_bump")]
+        rate_bump_absolute: f64,
+    },
+    /// Enzyme AAD (or FD fallback when `enzyme-ad` feature is disabled).
+    EnzymeAad,
+}
+
+impl AdvancedGreeksConfig {
+    /// Returns `(spot, vol, time, rate)` bump sizes.
+    ///
+    /// `BumpRevalue` returns user-specified values; `EnzymeAad` returns
+    /// `pricer_risk::GreeksConfig::default()` values (used only in FD
+    /// fallback).
+    pub fn effective_bumps(&self) -> (f64, f64, f64, f64) {
+        match self {
+            Self::BumpRevalue {
+                spot_bump_relative,
+                vol_bump_absolute,
+                time_bump_years,
+                rate_bump_absolute,
+            } => (
+                *spot_bump_relative,
+                *vol_bump_absolute,
+                *time_bump_years,
+                *rate_bump_absolute,
+            ),
+            Self::EnzymeAad => {
+                let d = pricer_risk::GreeksConfig::default();
+                (
+                    d.spot_bump_relative,
+                    d.vol_bump_absolute,
+                    d.time_bump_years,
+                    d.rate_bump_absolute,
+                )
+            }
+        }
+    }
+
+    /// Returns `true` if this is the `EnzymeAad` variant.
+    pub fn is_enzyme_aad(&self) -> bool { matches!(self, Self::EnzymeAad) }
+}
+
+fn default_spot_bump() -> f64 { 0.01 }
+fn default_vol_bump() -> f64 { 0.01 }
+fn default_time_bump() -> f64 { 1.0 / 365.0 }
+fn default_rate_bump() -> f64 { 0.0001 }
+
+/// Advanced Greeks request (mirrors `pricer_risk::GreeksConfig` + trade).
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoAdvancedGreeksRequest {
+    #[validate(length(min = 1))]
+    pub valuation_date: String,
+    #[validate(length(min = 1))]
+    pub reporting_currency: String,
+    #[validate(length(min = 1))]
+    pub legs: Vec<PricingLeg>,
+    pub config: AdvancedGreeksConfig,
+}
+
+/// Risk factor identifier (mirrors `pricer_risk::RiskFactorId`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RiskFactor {
+    pub factor_type: String,
+    pub name: String,
+}
+
+/// Greeks for a single risk factor (mirrors `pricer_risk::GreeksResult`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FactorGreeks {
+    pub delta: Option<f64>,
+    pub gamma: Option<f64>,
+    pub vega: Option<f64>,
+    pub theta: Option<f64>,
+    pub rho: Option<f64>,
+    pub vanna: Option<f64>,
+    pub volga: Option<f64>,
+}
+
+/// Per-factor Greeks entry.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FactorGreeksEntry {
+    pub factor: RiskFactor,
+    pub greeks: FactorGreeks,
+}
+
+/// Advanced Greeks result by factor (mirrors
+/// `pricer_risk::GreeksResultByFactor`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DemoAdvancedGreeksResult {
+    pub price: f64,
+    pub currency: String,
+    pub mode: String,
+    pub computation_time_ms: f64,
+    pub factors: Vec<FactorGreeksEntry>,
+    pub totals: FactorGreeks,
 }
 
 /// Market rate.
@@ -724,25 +917,135 @@ pub struct SabrSmileRequest {
     #[validate(range(exclusive_min = 0.0))]
     pub expiry_years: f64,
     /// Number of output points (default: 101).
-    #[serde(default = "default_sabr_n_points")]
+    #[serde(default = "default_smile_n_points")]
     pub n_points: usize,
     /// Strike range in basis points (default: 200, i.e., -200 to +200).
-    #[serde(default = "default_sabr_range_bp")]
+    #[serde(default = "default_smile_range_bp")]
     pub range_bp: f64,
 }
 
-fn default_sabr_n_points() -> usize { 101 }
-fn default_sabr_range_bp() -> f64 { 200.0 }
+fn default_smile_n_points() -> usize { 101 }
+fn default_smile_range_bp() -> f64 { 200.0 }
 
-/// Response with SABR smile and implied density.
+/// Response with smile and implied density (shared across all models).
 #[derive(Debug, Clone, Serialize)]
-pub struct SabrSmileResponse {
+pub struct SmileResponse {
     /// Strike offsets in basis points.
     pub offsets: Vec<f64>,
-    /// Normal volatilities (percentage, same scale as market data).
+    /// Implied volatilities (percentage).
     pub vols: Vec<f64>,
     /// Implied probability density (Breeden-Litzenberger).
     pub density: Vec<f64>,
+}
+
+/// Backward-compatible alias.
+pub type SabrSmileResponse = SmileResponse;
+
+/// Generic vol smile request for any model.
+///
+/// `model` selects the model ("sabr", "svi", "ssvi", etc.).
+/// `params` carries model-specific parameters as a JSON object.
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct VolSmileRequest {
+    /// Model identifier (e.g., "sabr", "svi", "ssvi", "vanna_volga",
+    /// "zabr", "mixture_lognormal", "polynomial", "variance_gamma").
+    pub model: String,
+    /// Forward rate.
+    pub forward: f64,
+    /// Time to expiry in years.
+    pub expiry_years: f64,
+    /// Number of output points (default: 101).
+    #[serde(default = "default_smile_n_points")]
+    pub n_points: usize,
+    /// Strike range in basis points (default: 200).
+    #[serde(default = "default_smile_range_bp")]
+    pub range_bp: f64,
+    /// Model-specific parameters.
+    #[serde(default)]
+    pub params: serde_json::Value,
+}
+
+/// Tenor resolution request.
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveTenorRequest {
+    /// Tenor string (e.g. "TD", "3M", "1Y") or ISO date "YYYY-MM-DD".
+    #[validate(length(min = 1))]
+    pub tenor: String,
+    /// Optional base date (ISO "YYYY-MM-DD"). Defaults to today.
+    pub base: Option<String>,
+}
+
+/// Tenor resolution response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveTenorResponse {
+    /// Resolved ISO date string "YYYY-MM-DD".
+    pub date: String,
+}
+
+/// Pricer graph request (single-instrument computation graph).
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphRequest {
+    #[validate(length(min = 1))]
+    pub instrument_type: String,
+    #[serde(default)]
+    pub params: serde_json::Value,
+    pub detail_level: Option<String>,
+}
+
+/// Graph node DTO.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphNode {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub node_type: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<f64>,
+    pub is_sensitivity_target: bool,
+    pub group: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub trade_ids: Vec<String>,
+}
+
+/// Graph edge DTO.
+#[derive(Debug, Clone, Serialize)]
+pub struct PricerGraphEdge {
+    pub source: String,
+    pub target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weight: Option<f64>,
+}
+
+/// Pricer graph response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphResponse {
+    pub nodes: Vec<PricerGraphNode>,
+    #[serde(rename = "links")]
+    pub edges: Vec<PricerGraphEdge>,
+    pub metadata: PricerGraphMetadata,
+}
+
+/// Pricer graph metadata.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerGraphMetadata {
+    pub node_count: usize,
+    pub edge_count: usize,
+    pub depth: usize,
+    pub generated_at: String,
+    pub trade_count: usize,
+    pub shared_node_count: usize,
+    pub optimisation_ratio: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trade_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_locations: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Export format.
@@ -974,6 +1277,65 @@ pub struct ImpliedPdfResponse {
     pub density: Vec<f64>,
 }
 
+/// Bond market data quote.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BondQuote {
+    pub id: String,
+    pub currency: String,
+    pub issuer: String,
+    pub maturity: String,
+    pub coupon_rate: f64,
+    pub ytm: f64,
+    pub price: f64,
+    pub duration: f64,
+    pub convexity: f64,
+    pub coupon_frequency: String,
+    pub rating: String,
+    /// "government", "corporate", or "agency".
+    pub bond_type: String,
+    pub source: String,
+    pub is_stale: bool,
+}
+
+/// Bond quotes response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BondQuotesResponse {
+    pub quotes: Vec<BondQuote>,
+    pub last_updated: String,
+}
+
+/// Credit market data quote (CDS spread).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreditQuote {
+    pub id: String,
+    pub name: String,
+    pub currency: String,
+    pub tenor: String,
+    pub spread: f64,
+    pub upfront: f64,
+    pub recovery_rate: f64,
+    pub index_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub series: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rating: Option<String>,
+    pub source: String,
+    pub is_stale: bool,
+}
+
+/// Credit quotes response.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreditQuotesResponse {
+    pub quotes: Vec<CreditQuote>,
+    pub last_updated: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -996,5 +1358,38 @@ mod tests {
         let json = r#"{"instrumentType": "IRS", "params": {"type": "VanillaIRS"}}"#;
         let request: TradeExpandRequest = serde_json::from_str(json).unwrap();
         assert_eq!(request.instrument_type, "IRS");
+    }
+
+    #[test]
+    fn test_advanced_greeks_config_bump_revalue() {
+        let json = r#"{"mode": "bumpRevalue", "rateBumpAbsolute": 0.001}"#;
+        let cfg: AdvancedGreeksConfig = serde_json::from_str(json).unwrap();
+        let (spot, _vol, _time, rate) = cfg.effective_bumps();
+        assert!((rate - 0.001).abs() < 1e-10);
+        // spot falls back to default
+        assert!((spot - 0.01).abs() < 1e-10);
+        assert!(!cfg.is_enzyme_aad());
+    }
+
+    #[test]
+    fn test_advanced_greeks_config_bump_revalue_defaults() {
+        let json = r#"{"mode": "bumpRevalue"}"#;
+        let cfg: AdvancedGreeksConfig = serde_json::from_str(json).unwrap();
+        let (spot, vol, _time, rate) = cfg.effective_bumps();
+        assert!((spot - 0.01).abs() < 1e-10);
+        assert!((vol - 0.01).abs() < 1e-10);
+        assert!((rate - 0.0001).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_advanced_greeks_config_enzyme_aad() {
+        let json = r#"{"mode": "enzymeAad"}"#;
+        let cfg: AdvancedGreeksConfig = serde_json::from_str(json).unwrap();
+        assert!(cfg.is_enzyme_aad());
+        // effective_bumps returns pricer_risk defaults
+        let (spot, vol, _time, rate) = cfg.effective_bumps();
+        assert!(spot > 0.0);
+        assert!(vol > 0.0);
+        assert!(rate > 0.0);
     }
 }

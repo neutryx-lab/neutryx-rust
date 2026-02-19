@@ -1,7 +1,7 @@
 //! Binomial tree implementation using the Cox-Ross-Rubinstein (CRR) algorithm.
 
 use super::common::TreeBase;
-use crate::generic_pricer::ConfigError;
+use crate::pricer::ConfigError;
 
 /// CRR (Cox-Ross-Rubinstein) parameters for binomial tree.
 #[derive(Debug, Clone, Copy)]

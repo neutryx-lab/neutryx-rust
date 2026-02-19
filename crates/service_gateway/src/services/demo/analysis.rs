@@ -440,6 +440,63 @@ impl DemoService {
         days / year_basis
     }
 
+    /// Resolve a tenor string (e.g. "TD", "3M", "1Y") to an ISO date.
+    ///
+    /// Accepts ISO dates ("2026-03-15") as pass-through.
+    /// An optional base date may be provided; defaults to today.
+    pub fn resolve_tenor(
+        request: &crate::rest::dto::demo::ResolveTenorRequest,
+    ) -> Result<crate::rest::dto::demo::ResolveTenorResponse, ServerError> {
+        let base = match &request.base {
+            Some(b) => chrono::NaiveDate::parse_from_str(b, "%Y-%m-%d")
+                .map_err(|_| ServerError::InvalidRequest(format!("Invalid base date: {b}")))?,
+            None => chrono::Utc::now().date_naive(),
+        };
+
+        let t = request.tenor.trim().to_uppercase();
+
+        // Pass-through ISO date.
+        if let Ok(d) = chrono::NaiveDate::parse_from_str(&t, "%Y-%m-%d") {
+            return Ok(crate::rest::dto::demo::ResolveTenorResponse {
+                date: d.format("%Y-%m-%d").to_string(),
+            });
+        }
+
+        // Today aliases.
+        if matches!(t.as_str(), "TD" | "TODAY" | "T") {
+            return Ok(crate::rest::dto::demo::ResolveTenorResponse {
+                date: base.format("%Y-%m-%d").to_string(),
+            });
+        }
+
+        // Parse <N><D|W|M|Y>.
+        let (num_str, unit) = t
+            .strip_suffix('D')
+            .map(|n| (n, 'D'))
+            .or_else(|| t.strip_suffix('W').map(|n| (n, 'W')))
+            .or_else(|| t.strip_suffix('M').map(|n| (n, 'M')))
+            .or_else(|| t.strip_suffix('Y').map(|n| (n, 'Y')))
+            .ok_or_else(|| {
+                ServerError::InvalidRequest(format!("Unrecognised tenor: {}", request.tenor))
+            })?;
+
+        let n: i32 = num_str
+            .parse()
+            .map_err(|_| ServerError::InvalidRequest(format!("Invalid tenor number: {num_str}")))?;
+
+        let resolved = match unit {
+            'D' => base + chrono::Duration::days(i64::from(n)),
+            'W' => base + chrono::Duration::weeks(i64::from(n)),
+            'M' => Self::add_months(base, n),
+            'Y' => Self::add_months(base, n * 12),
+            _ => unreachable!(),
+        };
+
+        Ok(crate::rest::dto::demo::ResolveTenorResponse {
+            date: resolved.format("%Y-%m-%d").to_string(),
+        })
+    }
+
     /// Get instruments for a specific curve index.
     pub fn get_curve_instruments(
         index: &str,

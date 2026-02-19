@@ -1,5 +1,5 @@
 /**
- * API Response Types for Neutryx FrictionalBank Dashboard
+ * API Response Types for Neutryx Ergodic Bank Dashboard
  * These types mirror the Rust backend API responses.
  */
 
@@ -108,11 +108,31 @@ export interface TradeMetadata {
 // Pricing Types
 // =============================================================================
 
+// Mirrors `PricingMethodHint`
+export type PricingMethod = 'auto' | 'analytical' | 'monteCarlo' | 'tree';
+
+// Mirrors `TreeType`
+export type TreeTypeOption = 'binomial' | 'trinomial';
+
+export interface McConfig {
+  numPaths: number;
+  numSteps: number;
+  seed?: number | null;
+}
+
+export interface TreeConfig {
+  numSteps?: number;
+  treeType?: TreeTypeOption;
+}
+
 export interface PricingRequest {
   valuationDate: DateString;
   reportingCurrency: Currency;
   legs: PricingLeg[];
-  modelConfig?: ModelConfig | null;
+  method: PricingMethod;
+  computeGreeks: boolean;
+  mcConfig?: McConfig | null;
+  treeConfig?: TreeConfig | null;
 }
 
 export interface PricingLeg {
@@ -123,25 +143,54 @@ export interface PricingLeg {
 
 export interface PricingCashflow {
   paymentDate: DateString;
-  amount: number;
+  notional: number;
+  rate: number | null;
+  yearFraction: number;
+  payoffType?: string;
+  rateIndex?: string | null;
+  accrualStart?: DateString;
+  accrualEnd?: DateString;
 }
 
-export interface ModelConfig {
-  numPaths: number;
-  numSteps: number;
-  seed?: number | null;
-}
-
+// Mirrors `PricingResult` from result.rs
 export interface PricingResult {
-  totalPv?: number;
-  pv?: number;
-  currency: Currency;
-  legs?: LegResult[];
+  totalPv: number;
+  reportingCurrency: Currency;
+  legs: LegResult[];
+  pathDistribution?: PathDistribution | null;
+  method?: string;
+  greeks?: GreeksInline | null;
+  computationTimeMs?: number;
 }
 
 export interface LegResult {
   direction: string;
   pv: number;
+  currency: Currency;
+  pvOriginal?: number;
+  fxRate?: number;
+  cashflows?: CashflowPvResult[];
+}
+
+export interface CashflowPvResult {
+  pv: number;
+  discountFactor: number;
+  paymentDate: DateString;
+}
+
+export interface PathDistribution {
+  mean: number;
+  stdDev: number;
+  percentiles: [number, number][];
+  pathCount: number;
+}
+
+export interface GreeksInline {
+  delta?: number | null;
+  gamma?: number | null;
+  vega?: number | null;
+  theta?: number | null;
+  rho?: number | null;
 }
 
 // =============================================================================
@@ -164,6 +213,73 @@ export interface GreeksResult {
   gamma: number | null;
   theta: number | null;
   vega: number | null;
+}
+
+// =============================================================================
+// Advanced Greeks Types (mirrors pricer_risk::GreeksConfig / GreeksResult)
+// =============================================================================
+
+export type AdvancedGreeksMode = 'bumpRevalue' | 'enzymeAad';
+
+export type AdvancedGreeksConfig =
+  | {
+      mode: 'bumpRevalue';
+      spotBumpRelative: number;
+      volBumpAbsolute: number;
+      timeBumpYears: number;
+      rateBumpAbsolute: number;
+    }
+  | {
+      mode: 'enzymeAad';
+    };
+
+export interface AdvancedGreeksRequest {
+  valuationDate: DateString;
+  reportingCurrency: Currency;
+  legs: PricingLeg[];
+  config: AdvancedGreeksConfig;
+}
+
+export interface RiskFactor {
+  factorType: string;
+  name: string;
+}
+
+export interface FactorGreeks {
+  delta?: number | null;
+  gamma?: number | null;
+  vega?: number | null;
+  theta?: number | null;
+  rho?: number | null;
+  vanna?: number | null;
+  volga?: number | null;
+}
+
+export interface FactorGreeksEntry {
+  factor: RiskFactor;
+  greeks: FactorGreeks;
+}
+
+export interface AdvancedGreeksResult {
+  price: number;
+  currency: Currency;
+  mode: string;
+  computationTimeMs: number;
+  factors: FactorGreeksEntry[];
+  totals: FactorGreeks;
+}
+
+// =============================================================================
+// Utility Types
+// =============================================================================
+
+export interface ResolveTenorRequest {
+  tenor: string;
+  base?: DateString;
+}
+
+export interface ResolveTenorResponse {
+  date: DateString;
 }
 
 // =============================================================================
@@ -680,6 +796,19 @@ export interface SabrSmileResponse {
   density: number[];
 }
 
+/** Generic smile response (same shape as SABR, shared by all models). */
+export type SmileResponse = SabrSmileResponse;
+
+/** Generic smile request for any model via /volcube/model-smile. */
+export interface VolSmileRequest {
+  model: string;
+  forward: number;
+  expiryYears: number;
+  nPoints?: number;
+  rangeBp?: number;
+  params: Record<string, unknown>;
+}
+
 export interface ImpliedPdfSmilePoint {
   strike_offset_bp: number;
   vol: number;
@@ -696,4 +825,38 @@ export interface ImpliedPdfRequest {
 export interface ImpliedPdfResponse {
   offsets: number[];
   density: number[];
+}
+
+// =============================================================================
+// Exotic Product Types
+// =============================================================================
+
+export interface ExoticProductDef {
+  productType: string;
+  displayName: string;
+  description: string;
+  parameters: ExoticParameterDef[];
+}
+
+export interface ExoticParameterDef {
+  name: string;
+  displayName: string;
+  fieldType: string;
+  required: boolean;
+  defaultValue?: any;
+  description?: string;
+}
+
+export interface ExoticPricingResponse {
+  price: number;
+  currency: string;
+  productType: string;
+  mcStats?: MonteCarloStats;
+  calculationTimeMs: number;
+}
+
+export interface MonteCarloStats {
+  numPaths: number;
+  stdError: number;
+  confidence95: [number, number];
 }

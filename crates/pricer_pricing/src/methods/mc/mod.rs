@@ -16,6 +16,11 @@ pub mod workspace_enum;
 pub mod workspace_timestep_first;
 pub mod workspace_trait;
 
+#[cfg(test)]
+mod e2e_path_dependent;
+#[cfg(test)]
+mod yield_curve_tests;
+
 pub use aligned_buffer::AlignedPathBuffer;
 pub use config::{AdMode, MonteCarloConfig, MonteCarloConfigBuilder};
 pub use error::{LayoutConfigError, MonteCarloConfigError};

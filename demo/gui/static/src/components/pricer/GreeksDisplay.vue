@@ -30,22 +30,20 @@ const greekItems = computed<GreekItem[]>(() => {
 </script>
 
 <template>
-  <v-card v-if="store.greeksResult">
-    <v-card-title>Greeks</v-card-title>
-    <v-card-text>
-      <v-row dense>
-        <v-col v-for="g in greekItems" :key="g.label" cols="6">
-          <v-sheet rounded="lg" class="pa-3 text-center" color="surface-variant">
-            <div class="text-caption text-medium-emphasis">{{ g.label }}</div>
-            <div
-              class="text-subtitle-1 font-weight-bold"
-              :class="g.colored ? (g.value >= 0 ? 'text-success' : 'text-error') : ''"
-            >
-              {{ formatCurrency(g.value) }}
-            </div>
-          </v-sheet>
-        </v-col>
-      </v-row>
-    </v-card-text>
-  </v-card>
+  <div v-if="store.greeksResult" class="glass-card p-4">
+    <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Greeks</div>
+    <v-row dense>
+      <v-col v-for="g in greekItems" :key="g.label" cols="6">
+        <div class="bg-surface-alt rounded-lg p-3 text-center">
+          <div class="stat-label">{{ g.label }}</div>
+          <div
+            class="text-base font-bold"
+            :class="g.colored ? (g.value >= 0 ? 'text-success' : 'text-error') : ''"
+          >
+            {{ formatCurrency(g.value) }}
+          </div>
+        </div>
+      </v-col>
+    </v-row>
+  </div>
 </template>

@@ -1,0 +1,72 @@
+{
+  "issuer": "US Treasury",
+  "currency": "USD",
+  "bond_type": "government",
+  "reference_date": "2026-02-13",
+  "rating": "AA+",
+  "instruments": [
+    {
+      "maturity": "2026-05-15",
+      "coupon_rate": 0.04375,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0420,
+      "price": 100.1547,
+      "duration": 0.242,
+      "convexity": 0.121
+    },
+    {
+      "maturity": "2027-11-15",
+      "coupon_rate": 0.04250,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0415,
+      "price": 100.1638,
+      "duration": 1.657,
+      "convexity": 3.139
+    },
+    {
+      "maturity": "2029-05-15",
+      "coupon_rate": 0.04125,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0405,
+      "price": 100.2023,
+      "duration": 2.905,
+      "convexity": 9.560
+    },
+    {
+      "maturity": "2031-11-15",
+      "coupon_rate": 0.04000,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0400,
+      "price": 100.0000,
+      "duration": 5.109,
+      "convexity": 28.665
+    },
+    {
+      "maturity": "2034-05-15",
+      "coupon_rate": 0.03875,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0395,
+      "price": 99.6127,
+      "duration": 7.076,
+      "convexity": 54.847
+    },
+    {
+      "maturity": "2044-05-15",
+      "coupon_rate": 0.04250,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0420,
+      "price": 100.5847,
+      "duration": 12.562,
+      "convexity": 176.310
+    },
+    {
+      "maturity": "2054-11-15",
+      "coupon_rate": 0.04500,
+      "coupon_frequency": "semi_annual",
+      "ytm": 0.0445,
+      "price": 100.7542,
+      "duration": 16.892,
+      "convexity": 324.567
+    }
+  ]
+}

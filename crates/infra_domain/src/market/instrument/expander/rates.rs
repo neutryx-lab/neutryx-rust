@@ -8,8 +8,8 @@ use crate::{
     market::{
         convention::ConventionSet,
         instrument::{
-            BasisSwap, CapFloor, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
-            InstrumentError, InterestRateSwap, Ois, Swaption,
+            BasisSwap, Bond, CapFloor, CapFloorType, CmsSwap, Deposit, Fra, Frn, Futures,
+            InflationSwap, InstrumentError, InterestRateSwap, Ois, Swaption,
         },
         Currency, RateIndex,
     },
@@ -231,34 +231,60 @@ impl InstrumentExpander for Swaption {
         _valuation_date: Date,
         conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let _swaption_conv = conventions.get_swaption()?;
+        let swaption_conv = conventions.get_swaption()?;
+        let swap_conv = &swaption_conv.underlying_swap;
 
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
-            self.expiry,
-            self.expiry,
-            self.expiry,
-            0.0,
+        let swap_start = self.expiry;
+        let swap_end = self
+            .underlying_swap_tenor
+            .add_to_date(swap_start, EndOfMonthRule::Adjust);
+
+        let fixed_dates =
+            generate_payment_dates(swap_start, swap_end, swap_conv.fixed_leg.payment_frequency);
+        let float_dates =
+            generate_payment_dates(swap_start, swap_end, swap_conv.float_leg.payment_frequency);
+
+        let fixed_cashflows = generate_fixed_leg_cashflows(
+            &fixed_dates,
+            swap_start,
+            self.strike,
             self.notional,
-            Payoff::fixed(self.strike),
+            self.currency,
+        );
+        let floating_cashflows = super::generate_floating_leg_cashflows(
+            &float_dates,
+            swap_conv.float_index,
+            self.notional,
             self.currency,
         );
 
-        let leg = Leg::new(
-            vec![settlement_cf],
-            Direction::Receiver,
-            LegType::Generic,
+        let (fixed_dir, float_dir) =
+            if self.payer_receiver == crate::market::instrument::PayerReceiver::Payer {
+                (Direction::Payer, Direction::Receiver)
+            } else {
+                (Direction::Receiver, Direction::Payer)
+            };
+
+        let fixed_leg = Leg::new(fixed_cashflows, fixed_dir, LegType::Fixed, self.currency);
+        let floating_leg = Leg::new(
+            floating_cashflows,
+            float_dir,
+            LegType::Floating,
             self.currency,
         );
 
-        Ok(Trade::new(
+        let exercise = crate::trade::ExerciseEvent {
+            exercise_dates: vec![self.expiry],
+            exercise_type: self.exercise_type,
+            settlement_type: self.settlement_type,
+        };
+        let event_leg = crate::trade::EventLeg::new(exercise, vec![fixed_leg, floating_leg]);
+
+        Ok(Trade::with_event_legs(
             trade_id,
-            vec![leg],
-            TradeType::Swaption {
-                exercise_dates: vec![self.expiry],
-                exercise_type: self.exercise_type,
-                settlement_type: self.settlement_type,
-            },
+            vec![],
+            vec![event_leg],
+            TradeType::Swaption,
         ))
     }
 }
@@ -270,29 +296,80 @@ impl InstrumentExpander for CapFloor {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let mut cashflows = Vec::new();
+        let end_date = self.end_date();
+        let notional = self.notional_schedule.notional_at(0);
 
-        let strike = self.strikes.first().copied().unwrap_or(0.0);
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
-            self.start_date,
-            self.start_date,
-            self.start_date,
-            0.0,
-            self.notional_schedule.notional_at(0),
-            Payoff::fixed(strike),
+        let payment_dates =
+            generate_payment_dates(self.start_date, end_date, self.payment_frequency);
+
+        let floating_cashflows = super::generate_floating_leg_cashflows(
+            &payment_dates,
+            self.index,
+            notional,
             self.currency,
         );
-        cashflows.push(settlement_cf);
+
+        let direction = match self.cap_floor_type {
+            CapFloorType::Cap => Direction::Receiver,
+            CapFloorType::Floor => Direction::Payer,
+            CapFloorType::Collar => Direction::Receiver,
+        };
 
         let leg = Leg::new(
-            cashflows,
-            Direction::Receiver,
+            floating_cashflows,
+            direction,
             LegType::CapFloor,
             self.currency,
         );
 
         Ok(Trade::new(trade_id, vec![leg], TradeType::CapFloor))
+    }
+}
+
+impl InstrumentExpander for Bond {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let coupon_cf = Cashflow::new(
+            CashflowType::Coupon,
+            self.maturity,
+            self.start_date,
+            self.maturity,
+            1.0,
+            self.notional,
+            Payoff::fixed(self.coupon_rate),
+            self.currency,
+        );
+
+        let principal_cf = Cashflow::new(
+            CashflowType::Principal,
+            self.maturity,
+            self.maturity,
+            self.maturity,
+            0.0,
+            self.notional,
+            Payoff::fixed(1.0),
+            self.currency,
+        );
+
+        let leg = Leg::new(
+            vec![coupon_cf, principal_cf],
+            Direction::Receiver,
+            LegType::Fixed,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![leg],
+            TradeType::Bond {
+                issuer_id: Some(self.issuer.clone().into()),
+                seniority: None,
+            },
+        ))
     }
 }
 

@@ -201,6 +201,38 @@ impl ScriptKernel {
     pub fn has_accumulation(&self) -> bool {
         self.ops.iter().any(|op| matches!(op, ScriptOp::Accumulate))
     }
+
+    /// Checks if the kernel contains target accrual operations.
+    #[must_use]
+    pub fn has_target_accrual(&self) -> bool {
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::CheckTarget { .. }))
+    }
+
+    /// Checks if the kernel contains early termination operations.
+    #[must_use]
+    pub fn has_early_termination(&self) -> bool {
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::EarlyTerminate))
+    }
+
+    /// Checks if the kernel contains memory coupon operations.
+    #[must_use]
+    pub fn has_coupon_memory(&self) -> bool {
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::CouponMemory { .. }))
+    }
+
+    /// Checks if the kernel contains quantity accumulation operations.
+    #[must_use]
+    pub fn has_quantity_accumulation(&self) -> bool {
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::AccumulateQuantity { .. }))
+    }
 }
 
 /// Script operation codes.
@@ -311,6 +343,57 @@ pub enum ScriptOp {
     Load {
         /// Register index (0-7).
         register: u8,
+    },
+
+    /// Compare accumulated value against target for TARF-style early
+    /// termination.
+    ///
+    /// Checks if the running accumulated sum exceeds (or falls below) a target
+    /// level. If the condition is met, the option is terminated (`is_alive
+    /// = false`).
+    CheckTarget {
+        /// Index into constants for the target level.
+        target_idx: u16,
+        /// If true, terminate when accumulated >= target.
+        /// If false, terminate when accumulated <= target.
+        terminate_above: bool,
+    },
+
+    /// Emit an intermediate payment at the current observation time.
+    ///
+    /// Unlike `Pay` which discounts at maturity, this discounts at the
+    /// current observation time. Used for periodic coupon payments and
+    /// TARF settlement fixings.
+    PayIntermediate {
+        /// Currency ID for the payment.
+        ccy_id: u8,
+        /// Discount curve ID.
+        dc_id: u8,
+    },
+
+    /// Force early termination of the product.
+    ///
+    /// Sets `is_alive = false`. Used after an autocall barrier triggers
+    /// and the coupon/principal has been paid via `PayIntermediate`.
+    EarlyTerminate,
+
+    /// Accumulate a memory coupon for Snowball-style products.
+    ///
+    /// Adds the coupon amount to a running memory sum. When a barrier
+    /// is subsequently triggered, all accumulated memory coupons can
+    /// be paid out.
+    CouponMemory {
+        /// Index into constants for the per-period coupon amount.
+        coupon_idx: u16,
+    },
+
+    /// Accumulate notional quantity for Accumulator Forward products.
+    ///
+    /// Tracks accumulated quantity separately from P&L accumulation.
+    /// Used for products where quantity (not value) determines settlement.
+    AccumulateQuantity {
+        /// Index into constants for the quantity per fixing.
+        quantity_idx: u16,
     },
 }
 
@@ -790,5 +873,77 @@ mod tests {
         assert!((kernel.observation_time(1) - 0.5).abs() < 1e-10);
         assert!((kernel.observation_time(2) - 0.75).abs() < 1e-10);
         assert!((kernel.observation_time(3) - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_has_target_accrual() {
+        let kernel = ScriptKernel::new(
+            vec![1.0],
+            vec![
+                ScriptOp::CheckTarget {
+                    target_idx: 0,
+                    terminate_above: true,
+                },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
+            ],
+            vec![50.0],
+        )
+        .expect("Valid kernel");
+        assert!(kernel.has_target_accrual());
+        assert!(!kernel.has_early_termination());
+    }
+
+    #[test]
+    fn test_has_early_termination() {
+        let kernel = ScriptKernel::new(
+            vec![1.0],
+            vec![
+                ScriptOp::EarlyTerminate,
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
+            ],
+            vec![],
+        )
+        .expect("Valid kernel");
+        assert!(kernel.has_early_termination());
+    }
+
+    #[test]
+    fn test_has_coupon_memory() {
+        let kernel = ScriptKernel::new(
+            vec![1.0],
+            vec![
+                ScriptOp::CouponMemory { coupon_idx: 0 },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
+            ],
+            vec![100.0],
+        )
+        .expect("Valid kernel");
+        assert!(kernel.has_coupon_memory());
+    }
+
+    #[test]
+    fn test_has_quantity_accumulation() {
+        let kernel = ScriptKernel::new(
+            vec![1.0],
+            vec![
+                ScriptOp::AccumulateQuantity { quantity_idx: 0 },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
+            ],
+            vec![1000.0],
+        )
+        .expect("Valid kernel");
+        assert!(kernel.has_quantity_accumulation());
     }
 }

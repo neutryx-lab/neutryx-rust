@@ -1,6 +1,7 @@
 //! Monte Carlo pricing engine.
 
 use pricer_core::math::rng::PricerRng;
+use pricer_models::payoff::{McPayoff, PathObserver, PayoffKind};
 
 use super::{
     config::MonteCarloConfig,
@@ -13,7 +14,6 @@ use super::{
     },
     workspace::PathWorkspace,
 };
-use crate::methods::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
 
 /// Greek type for selection.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -79,7 +79,7 @@ pub struct MonteCarloPricer {
 #[derive(Clone, Copy)]
 enum PricingMode {
     European(PayoffParams),
-    PathDependent(PathPayoffType<f64>),
+    PathDependent(PayoffKind<f64>),
 }
 
 impl MonteCarloPricer {
@@ -485,7 +485,7 @@ impl MonteCarloPricer {
     pub fn price_path_dependent(
         &mut self,
         gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
+        payoff: PayoffKind<f64>,
         discount_factor: f64,
     ) -> PricingResult {
         let n_paths = self.config.n_paths();
@@ -535,7 +535,7 @@ impl MonteCarloPricer {
     pub fn price_path_dependent_with_greeks(
         &mut self,
         gbm: GbmParams,
-        payoff: PathPayoffType<f64>,
+        payoff: PayoffKind<f64>,
         discount_factor: f64,
         greeks: &[Greek],
     ) -> PricingResult {
@@ -936,7 +936,7 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent(gbm, payoff, df);
@@ -957,7 +957,7 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_geometric_call(100.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent(gbm, payoff, df);
@@ -979,12 +979,12 @@ mod tests {
 
         let mut pricer1 = MonteCarloPricer::new(config.clone()).unwrap();
         let arith_price = pricer1
-            .price_path_dependent(gbm, PathPayoffType::asian_arithmetic_call(100.0, 1e-6), df)
+            .price_path_dependent(gbm, PayoffKind::asian_arithmetic_call(100.0, 1e-6), df)
             .price;
 
         let mut pricer2 = MonteCarloPricer::new(config).unwrap();
         let geom_price = pricer2
-            .price_path_dependent(gbm, PathPayoffType::asian_geometric_call(100.0, 1e-6), df)
+            .price_path_dependent(gbm, PayoffKind::asian_geometric_call(100.0, 1e-6), df)
             .price;
 
         assert!(
@@ -1006,7 +1006,7 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::barrier_up_out_call(100.0, 150.0, 1e-6);
+        let payoff = PayoffKind::barrier_up_out_call(100.0, 150.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent(gbm, payoff, df);
@@ -1025,7 +1025,7 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::lookback_fixed_call(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_call(100.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent(gbm, payoff, df);
@@ -1044,7 +1044,7 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::lookback_floating_call(1e-6);
+        let payoff = PayoffKind::lookback_floating_call(1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent(gbm, payoff, df);
@@ -1062,7 +1062,7 @@ mod tests {
             .unwrap();
 
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = 0.95;
 
         let mut pricer1 = MonteCarloPricer::new(config.clone()).unwrap();
@@ -1086,7 +1086,7 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let payoff = PayoffKind::asian_arithmetic_call(100.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent_with_greeks(gbm, payoff, df, &[Greek::Delta]);
@@ -1112,7 +1112,7 @@ mod tests {
 
         let mut pricer = MonteCarloPricer::new(config).unwrap();
         let gbm = GbmParams::default();
-        let payoff = PathPayoffType::lookback_fixed_call(100.0, 1e-6);
+        let payoff = PayoffKind::lookback_fixed_call(100.0, 1e-6);
         let df = (-0.05_f64).exp();
 
         let result = pricer.price_path_dependent_with_greeks(gbm, payoff, df, &[Greek::Vega]);

@@ -38,13 +38,8 @@
 #![deny(rustdoc::private_intra_doc_links)]
 #![allow(unknown_lints)]
 
-#[cfg(test)]
-mod integration_tests;
-
 /// Pricing Kernel IR runtime engine.
 pub mod kernel;
-
-pub mod numeric;
 
 pub mod methods;
 
@@ -53,7 +48,7 @@ pub mod checkpoint;
 
 pub mod graph;
 
-pub mod generic_pricer;
+pub mod pricer;
 
 pub mod result;
 
@@ -64,7 +59,12 @@ pub use graph::{
 pub use methods::{
     mc,
     mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult},
-    path_dependent, tree,
+    tree,
     tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType},
+};
+pub use pricer::{CalcSetting, MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting};
+pub use pricer_models::{
+    market::{MarketEnvironment, MarketEnvironmentBuilder},
+    payoff,
 };
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

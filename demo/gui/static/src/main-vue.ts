@@ -1,5 +1,5 @@
 /**
- * FrictionalBank Dashboard - Vue 3 Entry Point
+ * Ergodic Bank Dashboard - Vue 3 Entry Point
  * Vue 3 + Pinia + Vue Router + Vuetify (Material UI)
  */
 
@@ -29,4 +29,4 @@ app.use(vuetify);
 app.mount('#app');
 
 // Log initialization
-console.log('[Vue] FrictionalBank Dashboard initialized');
+console.log('[Vue] Ergodic Bank Dashboard initialized');

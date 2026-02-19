@@ -462,7 +462,7 @@ fn get_instrument_type_name(trade_type: &TradeType) -> String {
         TradeType::Ois => "OIS".to_string(),
         TradeType::BasisSwap => "Basis Swap".to_string(),
         TradeType::CrossCurrencySwap => "XCCY Swap".to_string(),
-        TradeType::Swaption { .. } => "Swaption".to_string(),
+        TradeType::Swaption => "Swaption".to_string(),
         TradeType::Bond { .. } => "Bond".to_string(),
         TradeType::CapFloor => "Cap/Floor".to_string(),
         TradeType::FxSpot => "FX Spot".to_string(),
@@ -479,6 +479,13 @@ fn get_instrument_type_name(trade_type: &TradeType) -> String {
         TradeType::CommodityForward { .. } => "Commodity Fwd".to_string(),
         TradeType::CommoditySwap { .. } => "Commodity Swap".to_string(),
         TradeType::CommodityOption { .. } => "Commodity Opt".to_string(),
+        TradeType::CommodityAsianOption { .. } => "Commodity Asian".to_string(),
+        TradeType::SpreadOption { .. } => "Spread Option".to_string(),
+        TradeType::EquityBarrierOption { .. } => "Equity Barrier".to_string(),
+        TradeType::AsianOption { .. } => "Asian Option".to_string(),
+        TradeType::LookbackOption { .. } => "Lookback Option".to_string(),
+        TradeType::BasketOption { .. } => "Basket Option".to_string(),
+        TradeType::NtdBasket { .. } => "NTD Basket".to_string(),
         TradeType::Generic => "Generic".to_string(),
     }
 }
@@ -568,7 +575,7 @@ fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGrap
 
     let params: &[&str] = match &trade.trade_type {
         TradeType::Swap | TradeType::Ois | TradeType::BasisSwap => &["rate", "spread"],
-        TradeType::Swaption { .. } | TradeType::CapFloor => &["rate", "vol", "strike"],
+        TradeType::Swaption | TradeType::CapFloor => &["rate", "vol", "strike"],
         TradeType::FxForward | TradeType::FxSpot | TradeType::FxSwap => {
             &["spot", "rate_dom", "rate_for"]
         }

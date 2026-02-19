@@ -3,7 +3,9 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Result;
-use service_gateway::{rest, AppState, GraphAppState, WsAppState};
+#[cfg(not(feature = "demo"))]
+use service_gateway::WsAppState;
+use service_gateway::{rest, AppState, GraphAppState};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

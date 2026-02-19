@@ -14,17 +14,17 @@ const iconMap: Record<string, string> = {
 <template>
   <v-row class="mb-4">
     <v-col v-for="stat in store.summaryStats" :key="stat.label" cols="6" md="3">
-      <v-card>
-        <v-card-text class="d-flex align-center justify-space-between">
+      <div class="stat-card glass-card">
+        <div class="d-flex align-center justify-space-between">
           <div>
-            <div class="text-caption text-medium-emphasis">{{ stat.label }}</div>
-            <div class="text-h6 font-weight-bold text-truncate">{{ stat.value }}</div>
+            <div class="stat-label">{{ stat.label }}</div>
+            <div class="stat-value text-truncate">{{ stat.value }}</div>
           </div>
           <v-avatar :color="stat.color" size="40" variant="tonal">
             <v-icon :icon="iconMap[stat.icon] || 'mdi-information'" />
           </v-avatar>
-        </v-card-text>
-      </v-card>
+        </div>
+      </div>
     </v-col>
   </v-row>
 </template>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { fetchPortfolioGraph, fetchPortfolioTrades } from '@/services/api';
+import { useMarketEnvStore } from '@/stores/marketEnv';
 import type {
   GraphNode,
   GraphEdge,
@@ -43,6 +44,10 @@ type AnalysisMode = 'none' | 'critical-path' | 'path-finder';
 // =============================================================================
 // State
 // =============================================================================
+
+// Market Environment
+const marketEnv = useMarketEnvStore();
+const selectedPricerGraphId = ref('');
 
 // Data state
 const nodes = ref<GraphNode[]>([]);
@@ -1077,8 +1082,29 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 // =============================================================================
+// Pricer Graph
+// =============================================================================
+
+function loadPricerGraph(graphId: string) {
+  const entry = marketEnv.getPricerGraph(graphId);
+  if (!entry) return;
+  clearAnalysis();
+  nodes.value = entry.graphResponse.nodes || [];
+  edges.value = entry.graphResponse.links || [];
+  metadata.value = entry.graphResponse.metadata || null;
+  buildAdjacencyMap();
+  renderGraph();
+}
+
+// =============================================================================
 // Watchers & Lifecycle
 // =============================================================================
+
+watch(selectedPricerGraphId, (id) => {
+  if (id && activeTab.value === 'pricer') {
+    loadPricerGraph(id);
+  }
+});
 
 watch(selectedTradeId, () => {
   loadGraph();
@@ -1590,14 +1616,14 @@ onUnmounted(() => {
 
     <!-- ==================== Pricer Graph Tab ==================== -->
     <template v-if="activeTab === 'pricer'">
-      <div class="glass-card p-8">
+      <!-- No saved graphs -->
+      <div v-if="marketEnv.pricerGraphs.length === 0" class="glass-card p-8">
         <div class="flex flex-col items-center justify-center min-h-[400px] text-[var(--text-muted)]">
           <i class="fas fa-flask text-5xl mb-4 opacity-30"></i>
           <p class="text-lg font-medium text-[var(--text-secondary)] mb-2">Pricer Graph</p>
           <p class="text-sm text-center max-w-lg mb-4">
-            TracedFloat-based computation graph extraction from individual pricing executions.
-            This feature visualises the exact arithmetic DAG constructed during a pricing calculation,
-            showing every operation from market data inputs to the final PV.
+            No saved pricer graphs yet. Use the <strong>Save Graph</strong> button in the Pricer
+            to capture a TracedFloat computation graph and view it here.
           </p>
           <div class="flex flex-col items-center gap-2 text-xs">
             <div class="flex items-center gap-2">
@@ -1613,11 +1639,152 @@ onUnmounted(() => {
               <span>Automatic scope generation via <code class="px-1 py-0.5 rounded bg-[var(--surface)] text-[var(--text-primary)]">#[traced_scope]</code> macro</span>
             </div>
           </div>
-          <p class="mt-6 text-xs text-[var(--text-muted)]">
-            Requires the <code class="px-1 py-0.5 rounded bg-[var(--surface)]">POST /api/pricer/graph</code> backend endpoint.
-          </p>
         </div>
       </div>
+
+      <!-- Saved graphs available -->
+      <template v-else>
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div class="flex items-center gap-4">
+            <select
+              v-model="selectedPricerGraphId"
+              class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            >
+              <option value="">Select a saved graph...</option>
+              <option v-for="g in marketEnv.pricerGraphs" :key="g.id" :value="g.id">
+                {{ g.label }} ({{ g.detailLevel }}, {{ g.graphResponse.metadata?.node_count ?? 0 }} nodes)
+              </option>
+            </select>
+            <button
+              v-if="selectedPricerGraphId"
+              class="px-3 py-2 rounded-lg bg-red-500/20 text-red-400 text-xs border border-red-500/30 hover:bg-red-500/30 transition-colors"
+              @click="marketEnv.removePricerGraph(selectedPricerGraphId); selectedPricerGraphId = ''"
+            >
+              <i class="fas fa-trash mr-1"></i>Remove
+            </button>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Layout Mode -->
+            <div class="flex items-center gap-1 bg-[var(--surface)] rounded-lg p-1">
+              <button
+                :class="layoutMode === 'force' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-secondary)]'"
+                class="px-3 py-1.5 rounded-md text-xs transition-colors"
+                @click="setLayoutMode('force')"
+              >
+                Force
+              </button>
+              <button
+                :class="layoutMode === 'hierarchical' ? 'bg-[var(--primary)] text-white' : 'text-[var(--text-secondary)]'"
+                class="px-3 py-1.5 rounded-md text-xs transition-colors"
+                @click="setLayoutMode('hierarchical')"
+              >
+                Layered
+              </button>
+            </div>
+            <!-- Zoom -->
+            <div class="flex items-center gap-1">
+              <button class="p-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" @click="zoomIn"><i class="fas fa-search-plus"></i></button>
+              <button class="p-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" @click="zoomOut"><i class="fas fa-search-minus"></i></button>
+              <button class="p-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" @click="resetZoom"><i class="fas fa-undo"></i></button>
+              <button class="p-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]" @click="fitToView"><i class="fas fa-expand"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Graph + Details -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div class="lg:col-span-3">
+            <div class="glass-card p-4 relative" style="min-height: 500px; height: calc(100vh - 420px); max-height: 700px;">
+              <!-- Empty state -->
+              <div v-if="!selectedPricerGraphId || nodes.length === 0" class="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
+                <i class="fas fa-project-diagram text-5xl mb-4 opacity-30"></i>
+                <p class="text-sm">Select a saved graph to visualise</p>
+              </div>
+              <!-- Graph container (shared) -->
+              <div ref="containerRef" class="w-full h-full"></div>
+              <!-- Legend -->
+              <div v-if="nodes.length > 0 && selectedPricerGraphId" class="absolute bottom-4 left-4 glass-card p-3">
+                <div class="text-xs font-medium text-[var(--text-muted)] mb-2">Node Types</div>
+                <div class="grid grid-cols-3 gap-x-4 gap-y-1">
+                  <div v-for="item in legendItems" :key="item.type" class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: item.color }"></span>
+                    <span class="text-xs text-[var(--text-secondary)]">{{ item.type }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Node Details -->
+          <div class="space-y-6">
+            <div class="glass-card p-6">
+              <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Node Details</h3>
+              <div v-if="!selectedNode" class="text-center py-8">
+                <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4 opacity-30"></i>
+                <p class="text-sm text-[var(--text-muted)]">Click a node to see details</p>
+              </div>
+              <template v-else>
+                <div class="space-y-3">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">ID</span>
+                    <span class="text-[var(--text-primary)] font-mono text-xs">{{ selectedNode.id }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Type</span>
+                    <span class="px-2 py-0.5 rounded text-xs" :style="{ backgroundColor: `${nodeColours[selectedNode.type] || nodeColours.default}20`, color: nodeColours[selectedNode.type] || nodeColours.default }">
+                      {{ selectedNode.type }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Label</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedNode.label }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Value</span>
+                    <span class="text-[var(--text-primary)] font-mono">
+                      {{ selectedNode.value !== undefined ? selectedNode.value.toFixed(6) : '-' }}
+                    </span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Edges</span>
+                    <span class="text-[var(--text-primary)]">
+                      {{ adjacencyMap.get(selectedNode.id)?.incoming.length ?? 0 }} in / {{ adjacencyMap.get(selectedNode.id)?.outgoing.length ?? 0 }} out
+                    </span>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- Graph Metadata -->
+            <div v-if="metadata && selectedPricerGraphId" class="glass-card p-6">
+              <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Graph Info</h3>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-[var(--text-muted)]">Nodes</span>
+                  <span class="text-[var(--text-primary)]">{{ metadata.node_count }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[var(--text-muted)]">Edges</span>
+                  <span class="text-[var(--text-primary)]">{{ metadata.edge_count }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[var(--text-muted)]">Depth</span>
+                  <span class="text-[var(--text-primary)]">{{ metadata.depth }}</span>
+                </div>
+                <div v-if="(metadata as any).source_locations" class="pt-2 border-t border-[var(--glass-border)]">
+                  <p class="text-xs text-[var(--text-muted)] mb-1">Source Locations</p>
+                  <div class="max-h-32 overflow-y-auto">
+                    <div v-for="(loc, nodeId) in (metadata as any).source_locations" :key="nodeId" class="text-xs font-mono text-[var(--text-secondary)] truncate">
+                      {{ nodeId }}: {{ loc }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
     </template>
   </div>
 </template>

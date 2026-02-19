@@ -1,5 +1,5 @@
 /**
- * Logger utility for FrictionalBank Dashboard
+ * Logger utility for Ergodic Bank Dashboard
  * Integrates with FB_Logger if available, falls back to console.
  */
 

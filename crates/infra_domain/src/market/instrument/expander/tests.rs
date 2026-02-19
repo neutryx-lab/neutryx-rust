@@ -52,18 +52,15 @@ mod tests {
         };
         let t = swaption.expand_to_trade("SWAPTION-001", vd(), &c).unwrap();
         assert!(t.trade_type.is_swaption());
-        assert_eq!(t.num_legs(), 1);
-        if let TradeType::Swaption {
-            exercise_type,
-            settlement_type,
-            ..
-        } = t.trade_type
-        {
-            assert_eq!(exercise_type, ExerciseType::European);
-            assert_eq!(settlement_type, SettlementType::Cash);
-        } else {
-            panic!("Expected TradeType::Swaption");
-        }
+        assert_eq!(t.num_legs(), 2);
+        assert!(t.has_event_legs());
+        let el = t
+            .first_event_leg()
+            .expect("Swaption must have an event leg");
+        assert_eq!(el.exercise_type(), ExerciseType::European);
+        assert_eq!(el.settlement_type(), SettlementType::Cash);
+        assert!(el.fixed_leg().is_some());
+        assert!(el.floating_leg().is_some());
 
         let empty = ConventionSet::default();
         assert!(matches!(
@@ -232,7 +229,14 @@ mod tests {
             notional_currency: Currency::EUR,
         };
         let t = opt.expand_to_trade("FX-OPT", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::Generic);
+        assert!(matches!(
+            t.trade_type,
+            TradeType::FxOption {
+                option_type: OptionType::Call,
+                ..
+            }
+        ));
+        assert_eq!(t.num_legs(), 1);
 
         let barrier = FxBarrierOption {
             vanilla: opt,
@@ -242,7 +246,14 @@ mod tests {
             rebate: Some(5000.0),
         };
         let t = barrier.expand_to_trade("FX-BARRIER", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::Generic);
+        assert!(matches!(
+            t.trade_type,
+            TradeType::FxBarrierOption {
+                barrier_type: BarrierType::KnockOut,
+                barrier_direction: BarrierDirection::Up,
+                ..
+            }
+        ));
 
         let swap = FxSwap {
             currency_pair: pair.clone(),
@@ -280,6 +291,7 @@ mod tests {
             currency: Currency::USD,
         };
         let t = fwd.expand_to_trade("EQ-FWD", vd(), &c).unwrap();
+        assert!(matches!(t.trade_type, TradeType::EquityForward { .. }));
         assert_eq!(t.num_legs(), 1);
 
         let opt = EquityVanillaOption {
@@ -294,7 +306,13 @@ mod tests {
             currency: Currency::USD,
         };
         let t = opt.expand_to_trade("EQ-OPT", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::Generic);
+        assert!(matches!(
+            t.trade_type,
+            TradeType::EquityOption {
+                option_type: OptionType::Call,
+                ..
+            }
+        ));
         assert!(t.total_cashflows() >= 1);
 
         let asian = AsianOption {
@@ -309,7 +327,7 @@ mod tests {
             currency: Currency::USD,
         };
         let t = asian.expand_to_trade("ASIAN", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::Generic);
+        assert!(matches!(t.trade_type, TradeType::AsianOption { .. }));
 
         let asian_empty = AsianOption {
             observed_values: vec![],
@@ -346,7 +364,7 @@ mod tests {
             credit_events: vec![CreditEvent::Bankruptcy, CreditEvent::FailureToPay],
         };
         let t = cds.expand_to_trade("CDS", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::Swap);
+        assert!(matches!(t.trade_type, TradeType::CreditDefaultSwap { .. }));
         assert_eq!(t.num_legs(), 2);
 
         let idx = CdsIndex {
@@ -361,7 +379,10 @@ mod tests {
             currency: Currency::USD,
         };
         let t = idx.expand_to_trade("CDS-IDX", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::Swap);
+        assert!(matches!(
+            t.trade_type,
+            TradeType::CreditDefaultSwapIndex { .. }
+        ));
 
         let cfwd = CommodityForward {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
@@ -373,7 +394,7 @@ mod tests {
             currency: Currency::USD,
         };
         let t = cfwd.expand_to_trade("COMM-FWD", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::FxForward);
+        assert!(matches!(t.trade_type, TradeType::CommodityForward { .. }));
 
         let cswap = CommoditySwap {
             commodity: CommodityType::Energy(EnergyType::CrudeOil),
@@ -402,7 +423,13 @@ mod tests {
             currency: Currency::USD,
         };
         let t = copt.expand_to_trade("COMM-OPT", vd(), &c).unwrap();
-        assert_eq!(t.trade_type, TradeType::Generic);
+        assert!(matches!(
+            t.trade_type,
+            TradeType::CommodityOption {
+                option_type: OptionType::Call,
+                ..
+            }
+        ));
     }
 
     #[test]

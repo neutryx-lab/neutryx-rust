@@ -1,15 +1,14 @@
 /**
  * Composable orchestrating the full pricing flow:
- * validation → trade expansion → pricing + Greeks → metrics.
+ * validation → trade expansion → pricing → metrics.
  *
- * Depends on useCashflowEditor for building pricing legs
- * and usePricerHistory for recording results.
+ * Builds a PricingRequest that mirrors Rust CalcSetting.
  */
 
 import { usePricerStore } from '@/stores/pricer';
 import { useToast } from '@/composables/useToast';
 import { useCashflowEditor } from '@/composables/useCashflowEditor';
-import { usePricerHistory } from '@/composables/usePricerHistory';
+
 import { expandTrade, priceTrade, calculateGreeks } from '@/services/api';
 import type { PricingRequest, GreeksRequest, TradeExpandRequest } from '@/types/api';
 import type { ValidationError } from '@/constants/pricer';
@@ -18,7 +17,6 @@ export function usePricer() {
   const store = usePricerStore();
   const toast = useToast();
   const { buildPricingLegs } = useCashflowEditor();
-  const { addToHistory } = usePricerHistory();
 
   /**
    * Validate required instrument parameters.
@@ -95,8 +93,33 @@ export function usePricer() {
   }
 
   /**
-   * Run priceTrade and calculateGreeks in parallel, update the store,
-   * and record computation metrics. Greeks failure is non-fatal.
+   * Build a PricingRequest mirroring CalcSetting.
+   */
+  function buildPricingRequest(legs: ReturnType<typeof buildPricingLegs>): PricingRequest {
+    const method = store.pricingMethod;
+
+    const mcConfig = (method === 'monteCarlo' || method === 'auto')
+      ? { numPaths: store.mcNumPaths, numSteps: store.mcNumSteps, seed: store.mcSeed }
+      : null;
+
+    const treeConfig = (method === 'tree' || method === 'auto')
+      ? { numSteps: store.treeNumSteps, treeType: store.treeType }
+      : null;
+
+    return {
+      valuationDate: store.valuationDate,
+      reportingCurrency: store.reportingCcy,
+      legs,
+      method,
+      computeGreeks: store.computeGreeks,
+      mcConfig,
+      treeConfig,
+    };
+  }
+
+  /**
+   * Run pricing (with optional inline Greeks), update the store,
+   * and record computation metrics.
    */
   async function calculateAll(): Promise<void> {
     if (!store.selectedInstrumentId || !store.expandedTrade) return;
@@ -106,58 +129,56 @@ export function usePricer() {
 
     try {
       const legs = buildPricingLegs();
+      const request = buildPricingRequest(legs);
 
-      // Build request with typed fields + extra backend fields
-      const baseRequest = {
-        valuationDate: store.valuationDate,
-        reportingCurrency: store.reportingCcy,
-        legs,
-        modelConfig: store.useDefaults
-          ? null
-          : { numPaths: store.numPaths, numSteps: store.numSteps, seed: store.seed },
-        curveIndex: store.selectedCurveIndex,
-        modelType: store.modelType,
-        modelParams: { ...store.modelParams },
-      };
-
-      const greeksRequest = {
-        ...baseRequest,
-        bumpSizes: {
-          rateBumpBp: store.rateBump,
-          fxBumpPct: store.fxBump,
-          volBumpPct: store.volBump,
-        },
-      };
-
-      const [priceResult, greeksResult] = await Promise.allSettled([
-        priceTrade(baseRequest as PricingRequest),
-        calculateGreeks(greeksRequest as GreeksRequest),
-      ]);
-
+      // Run pricing (Greeks are inline if computeGreeks is true).
+      const priceResult = await priceTrade(request);
       const endTime = performance.now();
 
-      if (priceResult.status === 'fulfilled') {
-        store.pricingResult = priceResult.value;
-      } else {
-        toast.error(`Pricing failed: ${priceResult.reason?.message || 'Unknown error'}`);
-      }
+      store.pricingResult = priceResult;
 
-      if (greeksResult.status === 'fulfilled') {
-        store.greeksResult = greeksResult.value;
+      // Backward-compat: also run separate Greeks endpoint if computeGreeks is off
+      // (for the old GreeksDisplay component).
+      if (!store.computeGreeks) {
+        try {
+          const greeksRequest: GreeksRequest = {
+            ...request,
+            bumpSizes: {
+              rateBumpBp: store.rateBump,
+              fxBumpPct: store.fxBump,
+              volBumpPct: store.volBump,
+            },
+          };
+          store.greeksResult = await calculateGreeks(greeksRequest);
+        } catch {
+          // Non-fatal
+        }
       } else {
-        toast.warning('Greeks calculation failed. PV result may still be valid.');
+        store.greeksResult = null;
       }
 
       store.computationMetrics = {
-        pricingTimeMs: endTime - startTime,
-        method: store.modelType,
+        pricingTimeMs: priceResult.computationTimeMs ?? (endTime - startTime),
+        method: priceResult.method ?? store.pricingMethod,
         timestamp: Date.now(),
       };
 
-      if (store.pricingResult) {
-        addToHistory();
-        toast.success('Pricing complete');
-      }
+      // Save to history for Greeks Analyser.
+      const inst = store.selectedInstrument;
+      store.resultHistory.unshift({
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        instrumentId: store.selectedInstrumentId,
+        instrumentName: inst?.displayName || inst?.name || store.selectedInstrumentId,
+        valuationDate: store.valuationDate,
+        reportingCcy: store.reportingCcy,
+        totalPv: priceResult.totalPv,
+        legs,
+        pricingResult: priceResult,
+      });
+      if (store.resultHistory.length > 50) store.resultHistory.length = 50;
+
+      toast.success('Pricing complete');
     } catch (error) {
       console.error('Calculation failed:', error);
       toast.error(`Calculation failed: ${(error as Error).message}`);

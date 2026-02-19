@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { usePricerStore } from '@/stores/pricer';
+import { resolveTenor } from '@/services/api';
+import { ref } from 'vue';
 
 const store = usePricerStore();
 
@@ -9,40 +11,109 @@ const ccyItems = [
   { title: 'GBP', value: 'GBP' },
   { title: 'JPY', value: 'JPY' },
 ];
+
+// Tenor-first valuation date input
+const valDateDisplay = ref(store.valuationDate);
+
+function onValInput(raw: string) {
+  valDateDisplay.value = raw;
+}
+
+async function onValCommit() {
+  const raw = valDateDisplay.value;
+  if (!raw) return;
+  try {
+    const resolved = await resolveTenor(raw);
+    store.valuationDate = resolved;
+    valDateDisplay.value = resolved;
+  } catch {
+    valDateDisplay.value = store.valuationDate;
+  }
+}
+
+async function applyValTenor(tenor: string) {
+  try {
+    const resolved = await resolveTenor(tenor);
+    store.valuationDate = resolved;
+    valDateDisplay.value = resolved;
+  } catch { /* ignore */ }
+}
+
+function onValCalendarPick(date: unknown) {
+  const d = String(date);
+  store.valuationDate = d;
+  valDateDisplay.value = d;
+}
 </script>
 
 <template>
-  <div class="d-flex flex-column" style="gap: 12px">
-    <v-text-field v-model="store.valuationDate" label="Valuation Date" type="date" />
-    <v-select v-model="store.reportingCcy" :items="ccyItems" label="Reporting Currency" />
+  <div class="config-grid">
+    <div class="grid-label">Val Date</div>
+    <div class="grid-input">
+      <v-text-field
+        :model-value="valDateDisplay"
+        density="compact"
+        variant="outlined"
+        hide-details
+        placeholder="TD, 1D or YYYY-MM-DD"
+        @update:model-value="onValInput"
+        @blur="onValCommit"
+        @keydown.enter="onValCommit"
+      >
+        <template #prepend-inner>
+          <div class="d-flex" style="gap: 1px">
+            <v-btn v-for="t in ['TD', '1D']" :key="t" size="x-small" variant="text" density="compact" class="tenor-chip" @click="applyValTenor(t)">{{ t }}</v-btn>
+          </div>
+        </template>
+        <template #append-inner>
+          <v-menu :close-on-content-click="false" location="bottom end">
+            <template #activator="{ props: menuProps }">
+              <v-btn v-bind="menuProps" icon density="compact" variant="text" size="x-small" tabindex="-1">
+                <v-icon size="14">mdi-calendar</v-icon>
+              </v-btn>
+            </template>
+            <v-date-picker
+              :model-value="store.valuationDate || undefined"
+              @update:model-value="onValCalendarPick"
+            />
+          </v-menu>
+        </template>
+      </v-text-field>
+    </div>
 
-    <v-switch
-      v-model="store.useDefaults"
-      label="Use Default Model Config"
-      color="primary"
-      density="compact"
-      hide-details
-    />
+    <div class="grid-label">Rpt Ccy</div>
+    <div class="grid-input">
+      <v-select v-model="store.reportingCcy" :items="ccyItems" density="compact" variant="outlined" hide-details />
+    </div>
 
-    <v-row v-if="!store.useDefaults" dense>
-      <v-col cols="6">
-        <v-text-field v-model.number="store.numPaths" label="Paths" type="number" />
-      </v-col>
-      <v-col cols="6">
-        <v-text-field v-model.number="store.numSteps" label="Steps" type="number" />
-      </v-col>
-    </v-row>
+    <div class="grid-label">Defaults</div>
+    <div class="grid-input">
+      <v-switch v-model="store.useDefaults" color="primary" density="compact" hide-details />
+    </div>
 
-    <v-row dense>
-      <v-col cols="4">
-        <v-text-field v-model.number="store.rateBump" label="Rate (bp)" type="number" step="0.1" />
-      </v-col>
-      <v-col cols="4">
-        <v-text-field v-model.number="store.fxBump" label="FX (%)" type="number" step="0.1" />
-      </v-col>
-      <v-col cols="4">
-        <v-text-field v-model.number="store.volBump" label="Vol (%)" type="number" step="0.1" />
-      </v-col>
-    </v-row>
+    <template v-if="!store.useDefaults">
+      <div class="grid-label">Paths</div>
+      <div class="grid-input">
+        <v-text-field v-model.number="store.numPaths" type="number" density="compact" variant="outlined" hide-details />
+      </div>
+      <div class="grid-label">Steps</div>
+      <div class="grid-input">
+        <v-text-field v-model.number="store.numSteps" type="number" density="compact" variant="outlined" hide-details />
+      </div>
+    </template>
+
+    <div class="grid-label">Rate bp</div>
+    <div class="grid-input">
+      <v-text-field v-model.number="store.rateBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
+    </div>
+    <div class="grid-label">FX %</div>
+    <div class="grid-input">
+      <v-text-field v-model.number="store.fxBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
+    </div>
+    <div class="grid-label">Vol %</div>
+    <div class="grid-input">
+      <v-text-field v-model.number="store.volBump" type="number" step="0.1" density="compact" variant="outlined" hide-details />
+    </div>
   </div>
 </template>
+

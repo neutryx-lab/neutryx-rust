@@ -34,6 +34,8 @@ pub enum InstrumentType {
     Futures,
     /// Event instrument (CB meetings, year-end turns) with expected rate spike.
     Event,
+    /// Fixed-coupon bond (government or corporate).
+    Bond,
 }
 
 impl InstrumentType {
@@ -213,6 +215,56 @@ impl<T: Float> CompiledInstrument<T> {
         })
     }
 
+    /// Creates a Bond instrument with coupon schedule.
+    ///
+    /// `market_ytm` is the yield-to-maturity, `coupon_rate` the annual coupon,
+    /// and `frequency` the payment frequency (typically `SemiAnnual`).
+    /// The coupon rate is stored in `fixed_rate`.
+    pub fn bond(
+        market_ytm: T,
+        coupon_rate: T,
+        maturity: T,
+        frequency: crate::market::curves::Frequency,
+    ) -> Result<Self, String> {
+        use pricer_core::math::numeric::from_usize;
+
+        if maturity <= T::zero() {
+            return Err("maturity must be positive".to_string());
+        }
+
+        let dt = frequency.period_years::<T>();
+        let num_periods = (maturity / dt).ceil().to_usize().unwrap_or(1).max(1);
+
+        let mut cashflow_times = Vec::with_capacity(num_periods);
+        let mut year_fractions = Vec::with_capacity(num_periods);
+        let mut notionals = Vec::with_capacity(num_periods);
+
+        for i in 1..=num_periods {
+            let t_i = dt * from_usize::<T>(i);
+            let t = if t_i > maturity { maturity } else { t_i };
+            let tau = if i == 1 {
+                t
+            } else if i == num_periods {
+                maturity - dt * from_usize::<T>(num_periods - 1)
+            } else {
+                dt
+            };
+            cashflow_times.push(t);
+            year_fractions.push(tau);
+            notionals.push(T::one());
+        }
+
+        Self::new(
+            InstrumentType::Bond,
+            market_ytm,
+            maturity,
+            cashflow_times,
+            year_fractions,
+            notionals,
+            Some(coupon_rate), // Store coupon rate in fixed_rate field
+        )
+    }
+
     /// Returns the instrument type.
     pub fn get_instrument_type(&self) -> InstrumentType { self.instrument_type }
 
@@ -338,6 +390,74 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
                 // needed).
                 Ok(self.market_rate)
             }
+            InstrumentType::Bond => {
+                // Bond: price from curve DFs, then convert to YTM via Newton-Raphson.
+                // Coupon rate is stored in fixed_rate.
+                let coupon_rate = self
+                    .fixed_rate
+                    .ok_or_else(|| MarketDataError::InvalidInput {
+                        message: "Bond must have coupon_rate (stored in fixed_rate)".to_string(),
+                    })?;
+
+                // Step 1: Dirty price from curve DFs
+                let n = self.cashflow_times.len();
+                let mut dirty_price = T::zero();
+                for i in 0..n {
+                    let t = self.cashflow_times[i];
+                    let tau = self.year_fractions[i];
+                    let df = curve.discount_factor(t)?;
+                    let coupon_cf = coupon_rate * tau;
+                    if i == n - 1 {
+                        dirty_price = dirty_price + (coupon_cf + T::one()) * df;
+                    } else {
+                        dirty_price = dirty_price + coupon_cf * df;
+                    }
+                }
+
+                // Step 2: Newton-Raphson price → YTM
+                let mut ytm = coupon_rate;
+                if ytm <= T::zero() {
+                    ytm = from_f64::<T>(0.01);
+                }
+                let tol = from_f64::<T>(1e-12);
+
+                for _ in 0..50 {
+                    let mut p = T::zero();
+                    let mut dp = T::zero();
+                    for i in 0..n {
+                        let t = self.cashflow_times[i];
+                        let tau = self.year_fractions[i];
+                        let disc = (-ytm * t).exp();
+                        let coupon_cf = coupon_rate * tau;
+                        if i == n - 1 {
+                            let cf = coupon_cf + T::one();
+                            p = p + cf * disc;
+                            dp = dp - cf * t * disc;
+                        } else {
+                            p = p + coupon_cf * disc;
+                            dp = dp - coupon_cf * t * disc;
+                        }
+                    }
+                    let f_val = p - dirty_price;
+                    if f_val.abs() < tol {
+                        return Ok(ytm);
+                    }
+                    if dp.abs() < from_f64::<T>(1e-30) {
+                        return Err(MarketDataError::InterpolationFailed {
+                            reason: "Bond YTM derivative near zero".to_string(),
+                        });
+                    }
+                    ytm = ytm - f_val / dp;
+                    if !ytm.is_finite() {
+                        return Err(MarketDataError::InterpolationFailed {
+                            reason: "Bond YTM iteration non-finite".to_string(),
+                        });
+                    }
+                }
+                Err(MarketDataError::InterpolationFailed {
+                    reason: "Bond YTM solver did not converge".to_string(),
+                })
+            }
         }
     }
 
@@ -353,6 +473,7 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
             InstrumentType::Fra => "FRA",
             InstrumentType::Futures => "Futures",
             InstrumentType::Event => "Event",
+            InstrumentType::Bond => "Bond",
         }
     }
 }
@@ -434,6 +555,13 @@ impl<T: Float> InstrumentCompiler<T> {
                 Err(CompileError::UnsupportedInstrument {
                     index,
                     instrument_type: "Event".to_string(),
+                })
+            }
+            InstrumentType::Bond => {
+                // Bond compilation not yet implemented.
+                Err(CompileError::UnsupportedInstrument {
+                    index,
+                    instrument_type: "Bond".to_string(),
                 })
             }
         }

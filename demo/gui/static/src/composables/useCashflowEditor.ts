@@ -34,6 +34,7 @@ export function useCashflowEditor() {
 
   /**
    * Build PricingLeg[] from the expanded trade, applying any edits.
+   * Raw values are passed through — the backend computes the amount.
    */
   function buildPricingLegs(): PricingLeg[] {
     const legs: PricingLeg[] = [];
@@ -44,8 +45,17 @@ export function useCashflowEditor() {
           const key = `${legIdx}-${cfIdx}`;
           const edited = store.editedCashflows[key] || {};
           const notional = edited.notional !== undefined ? edited.notional : cf.notional;
-          const rate = edited.rate !== undefined ? edited.rate : (cf.rate || 0);
-          return { paymentDate: cf.paymentDate, amount: notional * rate * cf.yearFraction };
+          const rate = edited.rate !== undefined ? edited.rate : cf.rate;
+          return {
+            paymentDate: cf.paymentDate,
+            notional,
+            rate,
+            yearFraction: cf.yearFraction,
+            payoffType: cf.payoffType,
+            rateIndex: cf.rateIndex,
+            accrualStart: cf.accrualStart,
+            accrualEnd: cf.accrualEnd,
+          };
         });
 
         legs.push({

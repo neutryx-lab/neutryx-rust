@@ -2129,19 +2129,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "neutryx"
-version = "0.1.0"
-dependencies = [
- "approx",
- "infra_config",
- "infra_domain",
- "pricer_core",
- "pricer_models",
- "pricer_pricing",
- "pricer_risk",
-]
-
-[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2519,14 +2506,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pricer_checkpoint"
-version = "0.1.0"
-dependencies = [
- "num-traits",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "pricer_core"
 version = "0.1.0"
 dependencies = [
@@ -2546,16 +2525,6 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "pricer_graph"
-version = "0.1.0"
-dependencies = [
- "petgraph 0.6.5",
- "serde",
- "serde_json",
  "thiserror 2.0.18",
 ]
 
@@ -2590,6 +2559,7 @@ version = "0.1.0"
 dependencies = [
  "aligned-vec",
  "approx",
+ "bon",
  "chrono",
  "criterion",
  "enum_dispatch",
@@ -2598,9 +2568,8 @@ dependencies = [
  "infra_domain",
  "nalgebra 0.33.2",
  "num-traits",
- "pricer_checkpoint",
+ "petgraph 0.6.5",
  "pricer_core",
- "pricer_graph",
  "pricer_models",
  "proptest",
  "rayon",

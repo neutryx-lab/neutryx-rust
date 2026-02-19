@@ -1,252 +1,67 @@
-# Release workflow for neutryx-rust
-# Triggered by version tags (v*)
-# Generates CHANGELOG and creates GitHub releases
-
 name: Release
 
 on:
   push:
-    tags:
-      - 'v[0-9]+.*'
+    tags: ['v[0-9]+.*']
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
 
 jobs:
-  # Generate changelog using git-cliff
   changelog:
-    name: Generate Changelog
+    name: Changelog
     runs-on: ubuntu-latest
     outputs:
       changelog: ${{ steps.git-cliff.outputs.content }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Extract version from tag
-        id: version
+      - id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog
-        id: git-cliff
+      - id: git-cliff
         uses: orhun/git-cliff-action@v4
         with:
-          config: cliff.toml
+          config: .github/cliff.toml
           args: --verbose --current --strip header
         env:
           OUTPUT: CHANGELOG.md
-          GITHUB_REPO: ${{ github.repository }}
 
-      - name: Upload changelog artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: changelog
-          path: CHANGELOG.md
-
-  # Build and test on stable Rust (L1/L2/L4 layers)
   build:
-    name: Build Release (${{ matrix.os }})
+    name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     needs: changelog
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p pricer_core -p pricer_models -p pricer_risk
+      - run: cargo test --release -p pricer_core -p pricer_models -p pricer_risk
 
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-release-
-
-      - name: Build release (L1/L2/L4 layers)
-        run: |
-          cargo build --release -p pricer_core
-          cargo build --release -p pricer_models
-          cargo build --release -p pricer_risk
-
-      - name: Run tests
-        run: |
-          cargo test --release -p pricer_core
-          cargo test --release -p pricer_models
-          cargo test --release -p pricer_risk
-
-      - name: Run Clippy
-        run: |
-          cargo clippy --release -p pricer_core -p pricer_models -p pricer_risk -- -D warnings
-
-  # Generate documentation
-  docs:
-    name: Generate Documentation
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-docs-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-docs-
-
-      - name: Build documentation
-        env:
-          RUSTDOCFLAGS: "-D warnings"
-        run: cargo doc --no-deps -p pricer_core -p pricer_models -p pricer_risk
-
-      - name: Upload documentation artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: documentation
-          path: target/doc
-
-  # Create GitHub release
   release:
-    name: Create Release
+    name: Release
     runs-on: ubuntu-latest
-    needs: [changelog, build, docs]
+    needs: [changelog, build]
     permissions:
       contents: write
     steps:
-      - name: Checkout repository
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-
-      - name: Retry checkout on failure
-        if: steps.checkout.outcome == 'failure'
-        shell: bash
-        run: |
-          echo "::warning::Checkout failed (GitHub 5xx). Retrying in 60s..."
-          sleep 60
-
-      - name: Checkout repository (retry)
-        if: steps.checkout.outcome == 'failure'
-        uses: actions/checkout@v4
-
-      - name: Download changelog artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+      - id: git-cliff
+        uses: orhun/git-cliff-action@v4
         with:
-          name: changelog
-
-      - name: Download documentation artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: documentation
-          path: docs
-
-      - name: Create release archive
-        run: |
-          tar -czvf docs.tar.gz -C docs .
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+          config: .github/cliff.toml
+          args: --verbose --current --strip header
+        env:
+          OUTPUT: CHANGELOG.md
+      - uses: softprops/action-gh-release@v2
         with:
           name: Release v${{ needs.changelog.outputs.version }}
           body_path: CHANGELOG.md
           draft: false
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
-          files: |
-            docs.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Future: Publish to crates.io
-  # Uncomment and configure when ready for public release
-  # publish:
-  #   name: Publish to crates.io
-  #   runs-on: ubuntu-latest
-  #   needs: [build, release]
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Install Rust toolchain
-  #       uses: dtolnay/rust-action@stable
-  #
-  #     - name: Login to crates.io
-  #       run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
-  #
-  #     - name: Publish pricer_core
-  #       run: cargo publish -p pricer_core --no-verify
-  #       continue-on-error: true
-  #
-  #     - name: Wait for crates.io index update
-  #       run: sleep 30
-  #
-  #     - name: Publish pricer_models
-  #       run: cargo publish -p pricer_models --no-verify
-  #       continue-on-error: true
-  #
-  #     - name: Wait for crates.io index update
-  #       run: sleep 30
-  #
-  #     - name: Publish pricer_risk
-  #       run: cargo publish -p pricer_risk --no-verify
-  #       continue-on-error: true
