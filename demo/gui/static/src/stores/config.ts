@@ -67,7 +67,7 @@ export const useConfigStore = defineStore('config', () => {
   // Apply theme to document body and Vuetify
   function applyTheme() {
     document.documentElement.dataset.theme = theme.value;
-    vuetify.theme.global.name.value = theme.value;
+    vuetify.theme.change(theme.value);
   }
 
   // Apply accent color
