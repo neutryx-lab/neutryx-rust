@@ -288,8 +288,9 @@ impl CurveService {
             })
             .collect();
 
+        let pillar_times: Vec<f64> = curve.pillars().to_vec();
         let (short_term_grid, long_term_grid) =
-            generate_chart_grids(reference_date, &curve, day_counter);
+            generate_chart_grids(reference_date, &curve, day_counter, &pillar_times);
 
         let interpolation_str = match interpolation {
             BootstrapInterpolation::Linear => "linear_df",
@@ -478,8 +479,9 @@ impl CurveService {
             })
             .collect();
 
+        let pillar_times: Vec<f64> = curve.pillars().to_vec();
         let (short_term_grid, long_term_grid) =
-            generate_chart_grids(reference_date, &curve, day_counter);
+            generate_chart_grids(reference_date, &curve, day_counter, &pillar_times);
 
         let interpolation_str = match interpolation {
             BootstrapInterpolation::Linear => "linear_df",
@@ -660,8 +662,9 @@ impl CurveService {
             })
             .collect();
 
+        let fx_pillar_times = fx_curve.grid_times();
         let (short_term_grid, long_term_grid) =
-            generate_fx_chart_grids(reference_date, &fx_curve, max_time);
+            generate_fx_chart_grids(reference_date, &fx_curve, max_time, &fx_pillar_times);
 
         let elapsed = start.elapsed();
 

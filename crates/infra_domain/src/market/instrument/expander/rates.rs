@@ -269,14 +269,19 @@ impl InstrumentExpander for Swaption {
         let floating_leg =
             Leg::new(floating_cashflows, float_dir, LegType::Floating, self.currency);
 
-        Ok(Trade::new(
+        let exercise = crate::trade::ExerciseEvent {
+            exercise_dates: vec![self.expiry],
+            exercise_type: self.exercise_type,
+            settlement_type: self.settlement_type,
+        };
+        let event_leg =
+            crate::trade::EventLeg::new(exercise, vec![fixed_leg, floating_leg]);
+
+        Ok(Trade::with_event_legs(
             trade_id,
-            vec![fixed_leg, floating_leg],
-            TradeType::Swaption {
-                exercise_dates: vec![self.expiry],
-                exercise_type: self.exercise_type,
-                settlement_type: self.settlement_type,
-            },
+            vec![],
+            vec![event_leg],
+            TradeType::Swaption,
         ))
     }
 }

@@ -122,9 +122,18 @@ impl InstrumentExpander for CdsOption {
             self.currency,
         );
 
-        Ok(Trade::new(
+        let exercise = crate::trade::ExerciseEvent {
+            exercise_dates: vec![self.exercise_date],
+            exercise_type: crate::trade::ExerciseType::European,
+            settlement_type: crate::trade::SettlementType::Physical,
+        };
+        let event_leg =
+            crate::trade::EventLeg::new(exercise, vec![premium_leg, protection_leg]);
+
+        Ok(Trade::with_event_legs(
             trade_id,
-            vec![premium_leg, protection_leg],
+            vec![],
+            vec![event_leg],
             TradeType::CreditDefaultSwapOption {
                 reference_entity: self.reference_entity.clone(),
                 option_type: if self.is_payer {
@@ -132,8 +141,6 @@ impl InstrumentExpander for CdsOption {
                 } else {
                     OptionType::Put
                 },
-                exercise_type: crate::trade::ExerciseType::European,
-                expiry_date: self.exercise_date,
             },
         ))
     }

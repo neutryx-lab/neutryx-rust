@@ -559,71 +559,81 @@ fn domain_trade_to_dto(
     trade_type_label: &str,
     elapsed: std::time::Duration,
 ) -> ExpandedTrade {
-    let dto_legs: Vec<TradeLeg> = trade
-        .legs()
-        .enumerate()
-        .map(|(_leg_idx, leg)| {
-            let direction = match leg.direction {
-                Direction::Payer => "Payer",
-                Direction::Receiver => "Receiver",
-            };
-            let leg_type_str = match leg.leg_type {
-                LegType::Fixed => "Fixed",
-                LegType::Floating => "Float",
-                LegType::CapFloor => "CapFloor",
-                LegType::Principal => "Principal",
-                LegType::Generic => "Generic",
-            };
+    let leg_to_dto = |leg: &infra_domain::trade::Leg, prefix: &str| -> TradeLeg {
+        let direction = match leg.direction {
+            Direction::Payer => "Payer",
+            Direction::Receiver => "Receiver",
+        };
+        let base_type = match leg.leg_type {
+            LegType::Fixed => "Fixed",
+            LegType::Floating => "Float",
+            LegType::CapFloor => "CapFloor",
+            LegType::Principal => "Principal",
+            LegType::Premium => "Premium",
+            LegType::Protection => "Protection",
+            LegType::Generic => "Generic",
+        };
+        let leg_type_str = if prefix.is_empty() {
+            base_type.to_string()
+        } else {
+            format!("{prefix}{base_type}")
+        };
 
-            // Determine rate_index from the first floating cashflow in this leg.
-            let leg_rate_index: Option<String> = leg.cashflows().find_map(|cf| {
-                cf.payoff.required_index().map(|idx| match idx {
+        let leg_rate_index: Option<String> = leg.cashflows().find_map(|cf| {
+            cf.payoff.required_index().map(|idx| match idx {
+                IndexType::Rate(ri) => ri.to_string(),
+                other => format!("{other:?}"),
+            })
+        });
+
+        let cashflows: Vec<Cashflow> = leg
+            .cashflows()
+            .map(|cf| {
+                let rate = match &cf.payoff {
+                    Payoff::Fixed { rate } => Some(*rate),
+                    _ => None,
+                };
+                let payoff_type = if cf.payoff.is_fixed() {
+                    "Fixed"
+                } else if cf.payoff.is_linear() {
+                    "Linear"
+                } else {
+                    "Option"
+                };
+                let cf_rate_index = cf.payoff.required_index().map(|idx| match idx {
                     IndexType::Rate(ri) => ri.to_string(),
                     other => format!("{other:?}"),
-                })
-            });
+                });
 
-            let cashflows: Vec<Cashflow> = leg
-                .cashflows()
-                .map(|cf| {
-                    let rate = match &cf.payoff {
-                        Payoff::Fixed { rate } => Some(*rate),
-                        _ => None,
-                    };
-                    let payoff_type = if cf.payoff.is_fixed() {
-                        "Fixed"
-                    } else if cf.payoff.is_linear() {
-                        "Linear"
-                    } else {
-                        "Option"
-                    };
-                    let cf_rate_index = cf.payoff.required_index().map(|idx| match idx {
-                        IndexType::Rate(ri) => ri.to_string(),
-                        other => format!("{other:?}"),
-                    });
+                Cashflow {
+                    payment_date: format_date(cf.payment_date),
+                    accrual_start: format_date(cf.accrual_start),
+                    accrual_end: format_date(cf.accrual_end),
+                    year_fraction: cf.year_fraction,
+                    notional: cf.notional,
+                    rate,
+                    payoff_type: payoff_type.to_string(),
+                    rate_index: cf_rate_index,
+                }
+            })
+            .collect();
 
-                    Cashflow {
-                        payment_date: format_date(cf.payment_date),
-                        accrual_start: format_date(cf.accrual_start),
-                        accrual_end: format_date(cf.accrual_end),
-                        year_fraction: cf.year_fraction,
-                        notional: cf.notional,
-                        rate,
-                        payoff_type: payoff_type.to_string(),
-                        rate_index: cf_rate_index,
-                    }
-                })
-                .collect();
+        TradeLeg {
+            direction: direction.to_string(),
+            currency: leg.currency.code().to_string(),
+            leg_type: leg_type_str,
+            rate_index: leg_rate_index,
+            cashflows,
+        }
+    };
 
-            TradeLeg {
-                direction: direction.to_string(),
-                currency: leg.currency.code().to_string(),
-                leg_type: leg_type_str.to_string(),
-                rate_index: leg_rate_index,
-                cashflows,
-            }
-        })
-        .collect();
+    let mut dto_legs: Vec<TradeLeg> = trade.legs().map(|leg| leg_to_dto(leg, "")).collect();
+
+    for event_leg in trade.event_legs() {
+        for leg in event_leg.legs() {
+            dto_legs.push(leg_to_dto(leg, "[Exercise] "));
+        }
+    }
 
     let total_legs = dto_legs.len();
     let total_cashflows = dto_legs.iter().map(|l| l.cashflows.len()).sum();
@@ -1973,7 +1983,7 @@ impl DemoService {
         let mut seen_ccy = std::collections::HashSet::new();
         let mut seen_idx = std::collections::HashSet::new();
 
-        for leg in trade.legs() {
+        for leg in trade.all_legs() {
             let ccy = leg.currency.code();
             if seen_ccy.insert(ccy.to_string()) {
                 let id = format!("{trade_id}_disc_{ccy}");
@@ -2009,7 +2019,7 @@ impl DemoService {
         // --- Per-leg nodes ---
         let mut leg_pv_ids = Vec::new();
 
-        for (leg_idx, leg) in trade.legs().enumerate() {
+        for (leg_idx, leg) in trade.all_legs().enumerate() {
             let dir = match leg.direction {
                 Direction::Payer => "Pay",
                 Direction::Receiver => "Rec",
@@ -2019,6 +2029,8 @@ impl DemoService {
                 LegType::Floating => "Float",
                 LegType::CapFloor => "CapFloor",
                 LegType::Principal => "Principal",
+                LegType::Premium => "Premium",
+                LegType::Protection => "Protection",
                 LegType::Generic => "Generic",
             };
             let ccy = leg.currency.code();

@@ -4,6 +4,7 @@ use bon::Builder;
 
 use super::{
     cashflow::Cashflow,
+    event_leg::EventLeg,
     leg::{Leg, LegType},
 };
 use crate::{
@@ -48,14 +49,8 @@ pub enum TradeType {
     CrossCurrencySwap,
 
     /// Swaption (option on a swap).
-    Swaption {
-        /// Exercise dates.
-        exercise_dates: Vec<Date>,
-        /// Type of exercise.
-        exercise_type: ExerciseType,
-        /// Settlement method.
-        settlement_type: SettlementType,
-    },
+    /// Exercise metadata lives in `EventLeg`.
+    Swaption,
 
     /// Bond or fixed income security.
     Bond {
@@ -166,15 +161,12 @@ pub enum TradeType {
     },
 
     /// Credit default swap option.
+    /// Exercise metadata lives in `EventLeg`.
     CreditDefaultSwapOption {
         /// Underlying CDS reference entity.
         reference_entity: String,
         /// Option type (payer/receiver).
         option_type: super::OptionType,
-        /// Exercise style.
-        exercise_type: ExerciseType,
-        /// Expiry date.
-        expiry_date: Date,
     },
 
     /// Commodity forward.
@@ -357,7 +349,7 @@ impl TradeType {
 
     /// Returns true if this is a swaption.
     #[must_use]
-    pub fn is_swaption(&self) -> bool { matches!(self, TradeType::Swaption { .. }) }
+    pub fn is_swaption(&self) -> bool { matches!(self, TradeType::Swaption) }
 
     /// Returns true if this is a bond.
     #[must_use]
@@ -421,7 +413,7 @@ impl TradeType {
     pub fn is_option(&self) -> bool {
         matches!(
             self,
-            TradeType::Swaption { .. }
+            TradeType::Swaption
                 | TradeType::CapFloor
                 | TradeType::FxOption { .. }
                 | TradeType::FxBarrierOption { .. }
@@ -491,9 +483,12 @@ pub struct Trade {
     /// Unique identifier for this trade.
     #[builder(into)]
     pub id: TradeId,
-    /// Legs comprising this trade.
+    /// Unconditional legs (always active).
     #[builder(default)]
     legs: Vec<Leg>,
+    /// Conditional event legs (active only upon exercise).
+    #[builder(default)]
+    event_legs: Vec<EventLeg>,
     /// Type of trade.
     #[builder(default)]
     pub trade_type: TradeType,
@@ -503,12 +498,28 @@ pub struct Trade {
 }
 
 impl Trade {
-    /// Creates a new trade.
+    /// Creates a new trade (no event legs).
     #[must_use]
     pub fn new(id: impl Into<TradeId>, legs: Vec<Leg>, trade_type: TradeType) -> Self {
         Self::builder()
             .id(id)
             .legs(legs)
+            .trade_type(trade_type)
+            .build()
+    }
+
+    /// Creates a new trade with event legs.
+    #[must_use]
+    pub fn with_event_legs(
+        id: impl Into<TradeId>,
+        legs: Vec<Leg>,
+        event_legs: Vec<EventLeg>,
+        trade_type: TradeType,
+    ) -> Self {
+        Self::builder()
+            .id(id)
+            .legs(legs)
+            .event_legs(event_legs)
             .trade_type(trade_type)
             .build()
     }
@@ -529,30 +540,80 @@ impl Trade {
             .build()
     }
 
-    /// Returns an iterator over all legs in this trade.
+    // ── Unconditional legs ──
+
+    /// Returns an iterator over unconditional legs only.
     pub fn legs(&self) -> impl Iterator<Item = &Leg> { self.legs.iter() }
 
-    /// Returns the number of legs in this trade.
-    #[must_use]
-    pub fn num_legs(&self) -> usize { self.legs.len() }
+    // ── Event legs ──
 
-    /// Returns an iterator over all cashflows in all legs.
-    pub fn all_cashflows(&self) -> impl Iterator<Item = &Cashflow> {
-        self.legs.iter().flat_map(|leg| leg.cashflows())
+    /// Returns an iterator over event legs.
+    pub fn event_legs(&self) -> impl Iterator<Item = &EventLeg> { self.event_legs.iter() }
+
+    /// Returns true if this trade has event legs.
+    #[must_use]
+    pub fn has_event_legs(&self) -> bool { !self.event_legs.is_empty() }
+
+    /// Returns the first event leg, if any.
+    #[must_use]
+    pub fn first_event_leg(&self) -> Option<&EventLeg> { self.event_legs.first() }
+
+    // ── Aggregate accessors (unconditional + conditional) ──
+
+    /// Returns an iterator over ALL legs (unconditional + inside event legs).
+    pub fn all_legs(&self) -> impl Iterator<Item = &Leg> {
+        self.legs
+            .iter()
+            .chain(self.event_legs.iter().flat_map(|el| el.legs()))
     }
 
-    /// Returns an iterator over future cashflows in all legs.
+    /// Returns the total number of legs (unconditional + inside event legs).
+    #[must_use]
+    pub fn num_legs(&self) -> usize {
+        self.legs.len()
+            + self
+                .event_legs
+                .iter()
+                .map(EventLeg::num_legs)
+                .sum::<usize>()
+    }
+
+    /// Returns an iterator over all cashflows across all legs.
+    pub fn all_cashflows(&self) -> impl Iterator<Item = &Cashflow> {
+        self.legs
+            .iter()
+            .flat_map(|leg| leg.cashflows())
+            .chain(self.event_legs.iter().flat_map(|el| el.all_cashflows()))
+    }
+
+    /// Returns an iterator over future cashflows across all legs.
     pub fn future_cashflows(&self, ref_date: Date) -> impl Iterator<Item = &Cashflow> {
         self.legs
             .iter()
             .flat_map(move |leg| leg.future_cashflows(ref_date))
+            .chain(
+                self.event_legs
+                    .iter()
+                    .flat_map(move |el| {
+                        el.legs().flat_map(move |leg| leg.future_cashflows(ref_date))
+                    }),
+            )
     }
 
     /// Returns the total number of cashflows across all legs.
     #[must_use]
-    pub fn total_cashflows(&self) -> usize { self.legs.iter().map(Leg::len).sum() }
+    pub fn total_cashflows(&self) -> usize {
+        self.legs.iter().map(Leg::len).sum::<usize>()
+            + self
+                .event_legs
+                .iter()
+                .flat_map(|el| el.legs())
+                .map(Leg::len)
+                .sum::<usize>()
+    }
 
-    /// Returns true if this is a vanilla swap (exactly 2 legs: one fixed, one.
+    /// Returns true if this is a vanilla swap (exactly 2 unconditional legs:
+    /// one fixed, one floating).
     #[must_use]
     pub fn is_vanilla_swap(&self) -> bool {
         if !self.trade_type.is_swap() || self.legs.len() != 2 {
@@ -568,21 +629,20 @@ impl Trade {
         has_fixed && has_floating
     }
 
-    /// Returns the first leg if present.
+    /// Returns the first unconditional leg if present.
     #[must_use]
     pub fn first_leg(&self) -> Option<&Leg> { self.legs.first() }
 
-    /// Returns the fixed leg if this is a swap with exactly one fixed leg.
+    /// Returns the fixed leg (searches all legs including event legs).
     #[must_use]
     pub fn fixed_leg(&self) -> Option<&Leg> {
-        self.legs.iter().find(|leg| leg.leg_type == LegType::Fixed)
+        self.all_legs().find(|leg| leg.leg_type == LegType::Fixed)
     }
 
-    /// Returns the floating leg if this is a swap with exactly one floating.
+    /// Returns the floating leg (searches all legs including event legs).
     #[must_use]
     pub fn floating_leg(&self) -> Option<&Leg> {
-        self.legs
-            .iter()
+        self.all_legs()
             .find(|leg| leg.leg_type == LegType::Floating)
     }
 }
@@ -640,13 +700,8 @@ mod tests {
         assert!(TradeType::Ois.is_swap());
         assert!(!TradeType::CapFloor.is_swap());
 
-        let swaption = TradeType::Swaption {
-            exercise_dates: vec![Date::from_ymd(2025, 1, 1).unwrap()],
-            exercise_type: ExerciseType::European,
-            settlement_type: SettlementType::Cash,
-        };
-        assert!(swaption.is_swaption());
-        assert!(swaption.is_option());
+        assert!(TradeType::Swaption.is_swaption());
+        assert!(TradeType::Swaption.is_option());
 
         assert!(TradeType::FxSpot.is_fx());
         assert!(TradeType::EquitySwap {

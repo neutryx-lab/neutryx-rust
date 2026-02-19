@@ -143,13 +143,23 @@ fn build_chart_grid<C: YieldCurve<f64>>(
 }
 
 /// Generate short-term and long-term chart grids for a curve.
+///
+/// `pillar_times` are merged into the fixed visualisation grid so that
+/// curve features at pillar dates (jumps, kinks) are faithfully captured.
 pub(crate) fn generate_chart_grids<C: YieldCurve<f64>>(
     ref_date: NaiveDate,
     curve: &C,
     day_counter: DayCounter,
+    pillar_times: &[f64],
 ) -> (Vec<ChartGridPoint>, Vec<ChartGridPoint>) {
-    let short_term_dates = generate_short_term_dates(ref_date);
-    let long_term_dates = generate_long_term_dates(ref_date);
+    let pillar_dates = times_to_dates(ref_date, pillar_times);
+
+    let mut short_term_dates = generate_short_term_dates(ref_date);
+    merge_pillar_dates(&mut short_term_dates, &pillar_dates, ref_date, 1.0);
+
+    let mut long_term_dates = generate_long_term_dates(ref_date);
+    merge_pillar_dates(&mut long_term_dates, &pillar_dates, ref_date, 30.0);
+
     let short_term_grid = build_chart_grid(
         ref_date,
         &short_term_dates,
@@ -192,13 +202,19 @@ fn build_fx_chart_grid<C: FxCurve<f64>>(
 }
 
 /// Generate short-term and long-term chart grids for an FX forward curve.
+///
+/// `pillar_times` from underlying rate curves are merged into the grid so
+/// that rate-curve features (jumps, kinks) are reflected in FX forwards.
 pub(crate) fn generate_fx_chart_grids<C: FxCurve<f64>>(
     ref_date: NaiveDate,
     fx_curve: &C,
     max_time: f64,
+    pillar_times: &[f64],
 ) -> (Vec<ChartGridPoint>, Vec<ChartGridPoint>) {
-    let short_term_dates = generate_short_term_dates(ref_date);
-    // Filter short-term dates to max_time.
+    let pillar_dates = times_to_dates(ref_date, pillar_times);
+
+    let mut short_term_dates = generate_short_term_dates(ref_date);
+    merge_pillar_dates(&mut short_term_dates, &pillar_dates, ref_date, max_time.min(1.0));
     let short_term_dates: Vec<_> = short_term_dates
         .into_iter()
         .filter(|d| {
@@ -213,7 +229,8 @@ pub(crate) fn generate_fx_chart_grids<C: FxCurve<f64>>(
         format_short_term_label,
     );
 
-    let long_term_dates = generate_long_term_dates(ref_date);
+    let mut long_term_dates = generate_long_term_dates(ref_date);
+    merge_pillar_dates(&mut long_term_dates, &pillar_dates, ref_date, max_time);
     let long_term_dates: Vec<_> = long_term_dates
         .into_iter()
         .filter(|d| {
@@ -225,4 +242,40 @@ pub(crate) fn generate_fx_chart_grids<C: FxCurve<f64>>(
         build_fx_chart_grid(ref_date, &long_term_dates, fx_curve, format_long_term_label);
 
     (short_grid, long_grid)
+}
+
+// ---------------------------------------------------------------------------
+// Pillar-date merging helpers
+// ---------------------------------------------------------------------------
+
+/// Convert year-fraction times to `NaiveDate`s relative to `ref_date`.
+fn times_to_dates(ref_date: NaiveDate, times: &[f64]) -> Vec<NaiveDate> {
+    times
+        .iter()
+        .filter_map(|&t| {
+            let days = (t * 365.0).round() as i64;
+            if days <= 0 {
+                return None;
+            }
+            ref_date.checked_add_signed(chrono::Duration::days(days))
+        })
+        .collect()
+}
+
+/// Merge `extra` dates into `grid`, keeping only those within `max_years`
+/// of `ref_date`.  Deduplicates and re-sorts.
+fn merge_pillar_dates(
+    grid: &mut Vec<NaiveDate>,
+    extra: &[NaiveDate],
+    ref_date: NaiveDate,
+    max_years: f64,
+) {
+    for &d in extra {
+        let t = MODEL_DAY_COUNTER.year_fraction_from_days((d - ref_date).num_days());
+        if t > 0.0 && t <= max_years && !grid.contains(&d) {
+            grid.push(d);
+        }
+    }
+    grid.sort();
+    grid.dedup();
 }

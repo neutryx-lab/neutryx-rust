@@ -183,6 +183,11 @@ impl<T: Float> BasisFxCurve<T> {
 
     /// Returns a reference to the underlying yield curve.
     pub fn reference_curve(&self) -> &CurveEnum<T> { &self.reference_curve }
+
+    /// Returns the basis pillar times (in years).
+    pub fn basis_pillar_times(&self) -> Vec<f64> {
+        self.basis_pillars.iter().map(|(t, _)| *t).collect()
+    }
 }
 
 impl<T: Float> FxCurve<T> for BasisFxCurve<T> {
@@ -260,6 +265,43 @@ impl<T: Float> FxCurveEnum<T> {
             foreign_curve,
             currency_pair,
         ))
+    }
+
+    /// Returns merged grid times from all underlying curves, sorted and
+    /// deduplicated.  Enables chart-grid generation to include the
+    /// reference-curve pillar dates so that rate-curve features (jumps,
+    /// turns at pillar dates) are faithfully reflected in FX forwards.
+    pub fn grid_times(&self) -> Vec<f64> {
+        let mut times: Vec<f64> = Vec::new();
+        match self {
+            Self::Flat(_) | Self::IrpFlat(_) => {}
+            Self::IrpGeneric(c) => {
+                times.extend(
+                    c.domestic_curve()
+                        .grid_times()
+                        .iter()
+                        .filter_map(|t| t.to_f64()),
+                );
+                times.extend(
+                    c.foreign_curve()
+                        .grid_times()
+                        .iter()
+                        .filter_map(|t| t.to_f64()),
+                );
+            }
+            Self::IrpBasis(c) => {
+                times.extend(
+                    c.reference_curve()
+                        .grid_times()
+                        .iter()
+                        .filter_map(|t| t.to_f64()),
+                );
+                times.extend(c.basis_pillar_times());
+            }
+        }
+        times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        times.dedup_by(|a, b| (*a - *b).abs() < 1e-10);
+        times
     }
 
     /// Creates a basis-adjusted FX curve from a reference yield curve and

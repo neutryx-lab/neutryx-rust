@@ -907,6 +907,22 @@ impl<T: Float> CurveEnum<T> {
 
     /// Creates a bootstrapped curve.
     pub fn bootstrapped(curve: BootstrappedCurve<T>) -> Self { Self::Bootstrapped(curve) }
+
+    /// Returns pillar times of the underlying curve (empty for flat curves).
+    pub fn grid_times(&self) -> &[T] {
+        match self {
+            Self::Flat(_) => &[],
+            Self::Bootstrapped(c) => c.pillars(),
+        }
+    }
+
+    /// Returns discount factors at pillar times (empty for flat curves).
+    pub fn grid_discount_factors(&self) -> &[T] {
+        match self {
+            Self::Flat(_) => &[],
+            Self::Bootstrapped(c) => c.discount_factors(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

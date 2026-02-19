@@ -53,17 +53,12 @@ mod tests {
         let t = swaption.expand_to_trade("SWAPTION-001", vd(), &c).unwrap();
         assert!(t.trade_type.is_swaption());
         assert_eq!(t.num_legs(), 2);
-        if let TradeType::Swaption {
-            exercise_type,
-            settlement_type,
-            ..
-        } = t.trade_type
-        {
-            assert_eq!(exercise_type, ExerciseType::European);
-            assert_eq!(settlement_type, SettlementType::Cash);
-        } else {
-            panic!("Expected TradeType::Swaption");
-        }
+        assert!(t.has_event_legs());
+        let el = t.first_event_leg().expect("Swaption must have an event leg");
+        assert_eq!(el.exercise_type(), ExerciseType::European);
+        assert_eq!(el.settlement_type(), SettlementType::Cash);
+        assert!(el.fixed_leg().is_some());
+        assert!(el.floating_leg().is_some());
 
         let empty = ConventionSet::default();
         assert!(matches!(
