@@ -1,0 +1,18 @@
+{
+  "index": "USDJPY-BASIS",
+  "currency": "USD",
+  "currency_pair": "USDJPY",
+  "reference_date": "2026-01-29",
+  "spot": 149.50,
+  "instruments": [
+    { "type": "xccy_basis", "tenor": "1Y",  "tenor_years": 1.0,  "rate": 42.5 },
+    { "type": "xccy_basis", "tenor": "2Y",  "tenor_years": 2.0,  "rate": 38.2 },
+    { "type": "xccy_basis", "tenor": "3Y",  "tenor_years": 3.0,  "rate": 35.0 },
+    { "type": "xccy_basis", "tenor": "5Y",  "tenor_years": 5.0,  "rate": 30.5 },
+    { "type": "xccy_basis", "tenor": "7Y",  "tenor_years": 7.0,  "rate": 27.8 },
+    { "type": "xccy_basis", "tenor": "10Y", "tenor_years": 10.0, "rate": 25.2 },
+    { "type": "xccy_basis", "tenor": "15Y", "tenor_years": 15.0, "rate": 22.0 },
+    { "type": "xccy_basis", "tenor": "20Y", "tenor_years": 20.0, "rate": 20.5 },
+    { "type": "xccy_basis", "tenor": "30Y", "tenor_years": 30.0, "rate": 18.8 }
+  ]
+}

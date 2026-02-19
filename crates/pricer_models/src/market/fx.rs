@@ -121,6 +121,101 @@ impl<T: Float, D: YieldCurve<T>, F: YieldCurve<T>> FxCurve<T> for IrpFxCurve<T, 
     fn currency_pair(&self) -> CurrencyPair { self.currency_pair }
 }
 
+/// FX forward curve based on a reference yield curve + cross-currency basis
+/// spreads.
+///
+/// F(t) = S × df_ref(t) × exp(basis(t) / 10000 × t)
+///
+/// The reference curve provides the interest-rate term structure; the basis
+/// spread (linearly interpolated from pillar quotes in bps) adjusts the
+/// forward to match cross-currency market levels.
+#[derive(Debug, Clone)]
+pub struct BasisFxCurve<T: Float> {
+    spot: T,
+    reference_curve: CurveEnum<T>,
+    /// Sorted (tenor_years, basis_bps) pillars for linear interpolation.
+    basis_pillars: Vec<(f64, f64)>,
+    currency_pair: CurrencyPair,
+}
+
+impl<T: Float> BasisFxCurve<T> {
+    /// Creates a new basis-adjusted FX curve.
+    ///
+    /// `basis_pillars` must be sorted by tenor.
+    pub fn new(
+        spot: T,
+        reference_curve: CurveEnum<T>,
+        mut basis_pillars: Vec<(f64, f64)>,
+        currency_pair: CurrencyPair,
+    ) -> Self {
+        basis_pillars.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        Self {
+            spot,
+            reference_curve,
+            basis_pillars,
+            currency_pair,
+        }
+    }
+
+    /// Linearly interpolates the basis spread (in bps) at time `t`.
+    fn interpolate_basis(&self, t: f64) -> f64 {
+        if self.basis_pillars.is_empty() {
+            return 0.0;
+        }
+        if self.basis_pillars.len() == 1 || t <= self.basis_pillars[0].0 {
+            return self.basis_pillars[0].1;
+        }
+        let last = self.basis_pillars.len() - 1;
+        if t >= self.basis_pillars[last].0 {
+            return self.basis_pillars[last].1;
+        }
+        // Find bracketing pillars.
+        for w in self.basis_pillars.windows(2) {
+            let (t0, b0) = w[0];
+            let (t1, b1) = w[1];
+            if t >= t0 && t <= t1 {
+                let alpha = (t - t0) / (t1 - t0);
+                return b0 + alpha * (b1 - b0);
+            }
+        }
+        self.basis_pillars[last].1
+    }
+
+    /// Returns a reference to the underlying yield curve.
+    pub fn reference_curve(&self) -> &CurveEnum<T> {
+        &self.reference_curve
+    }
+}
+
+impl<T: Float> FxCurve<T> for BasisFxCurve<T> {
+    fn spot(&self) -> T {
+        self.spot
+    }
+
+    fn forward_rate(&self, t: T) -> Result<T, MarketDataError> {
+        if t < T::zero() {
+            return Err(MarketDataError::InvalidInput {
+                message: "time cannot be negative".to_string(),
+            });
+        }
+        if t <= T::zero() {
+            return Ok(self.spot);
+        }
+
+        let df_ref = self.reference_curve.discount_factor(t)?;
+        let t_f64 = t.to_f64().unwrap_or(0.0);
+        let basis_bps = self.interpolate_basis(t_f64);
+        let basis_adj = T::from(basis_bps / 10_000.0).unwrap_or_else(T::zero);
+
+        // F(t) = S × df_ref(t) × exp(basis × t)
+        Ok(self.spot * df_ref * (basis_adj * t).exp())
+    }
+
+    fn currency_pair(&self) -> CurrencyPair {
+        self.currency_pair
+    }
+}
+
 /// Enum wrapper for different FX curve types (static dispatch via
 /// `enum_dispatch`).
 #[derive(Debug, Clone)]
@@ -132,6 +227,8 @@ pub enum FxCurveEnum<T: Float> {
     IrpFlat(IrpFxCurve<T, FlatCurve<T>, FlatCurve<T>>),
     /// IRP-based FX curve using CurveEnum for both legs.
     IrpGeneric(IrpFxCurve<T, CurveEnum<T>, CurveEnum<T>>),
+    /// Basis-adjusted FX curve: reference curve + XCCY basis spreads.
+    IrpBasis(BasisFxCurve<T>),
 }
 
 impl<T: Float> FxCurveEnum<T> {
@@ -167,6 +264,22 @@ impl<T: Float> FxCurveEnum<T> {
             spot,
             domestic_curve,
             foreign_curve,
+            currency_pair,
+        ))
+    }
+
+    /// Creates a basis-adjusted FX curve from a reference yield curve and
+    /// cross-currency basis spread pillars.
+    pub fn irp_basis(
+        spot: T,
+        reference_curve: CurveEnum<T>,
+        basis_pillars: Vec<(f64, f64)>,
+        currency_pair: CurrencyPair,
+    ) -> Self {
+        Self::IrpBasis(BasisFxCurve::new(
+            spot,
+            reference_curve,
+            basis_pillars,
             currency_pair,
         ))
     }

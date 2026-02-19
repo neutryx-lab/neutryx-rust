@@ -8,8 +8,8 @@ use crate::{
     market::{
         convention::ConventionSet,
         instrument::{
-            BasisSwap, Bond, CapFloor, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
-            InstrumentError, InterestRateSwap, Ois, Swaption,
+            BasisSwap, Bond, CapFloor, CapFloorType, CmsSwap, Deposit, Fra, Frn, Futures,
+            InflationSwap, InstrumentError, InterestRateSwap, Ois, Swaption,
         },
         Currency, RateIndex,
     },
@@ -270,24 +270,28 @@ impl InstrumentExpander for CapFloor {
         _valuation_date: Date,
         _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let mut cashflows = Vec::new();
+        let end_date = self.end_date();
+        let notional = self.notional_schedule.notional_at(0);
 
-        let strike = self.strikes.first().copied().unwrap_or(0.0);
-        let settlement_cf = Cashflow::new(
-            CashflowType::Settlement,
-            self.start_date,
-            self.start_date,
-            self.start_date,
-            0.0,
-            self.notional_schedule.notional_at(0),
-            Payoff::fixed(strike),
+        let payment_dates =
+            generate_payment_dates(self.start_date, end_date, self.payment_frequency);
+
+        let floating_cashflows = super::generate_floating_leg_cashflows(
+            &payment_dates,
+            self.index,
+            notional,
             self.currency,
         );
-        cashflows.push(settlement_cf);
+
+        let direction = match self.cap_floor_type {
+            CapFloorType::Cap => Direction::Receiver,
+            CapFloorType::Floor => Direction::Payer,
+            CapFloorType::Collar => Direction::Receiver,
+        };
 
         let leg = Leg::new(
-            cashflows,
-            Direction::Receiver,
+            floating_cashflows,
+            direction,
             LegType::CapFloor,
             self.currency,
         );

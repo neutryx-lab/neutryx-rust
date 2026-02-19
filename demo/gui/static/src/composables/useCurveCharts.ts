@@ -10,6 +10,9 @@ import { Chart, registerables } from 'chart.js';
 import { getChartColors } from '@/composables/useChartTheme';
 import type { BuildResult, ChartGridPoint } from '@/composables/useCurveBuilder';
 
+// Spot stored per-render for FX basis computation
+let _fxSpot = 0;
+
 Chart.register(...registerables);
 
 // ---------------------------------------------------------------------------
@@ -43,7 +46,7 @@ export function useCurveCharts() {
   let longTermChartInstance: Chart | null = null;
 
   // Chart display mode
-  const chartType = ref<'discount_factor' | 'forward_rate'>('forward_rate');
+  const chartType = ref<'discount_factor' | 'forward_rate' | 'fx_basis'>('forward_rate');
 
   // ------ Chart option factory ------
 
@@ -62,7 +65,9 @@ export function useCurveCharts() {
             title: (items: { label: string }[]) => items[0].label,
             label: (item: { raw: unknown }) => {
               const value = item.raw as number;
-              if (isFx) {
+              if (isFx && chartType.value === 'fx_basis') {
+                return `Fwd Basis: ${value.toFixed(4)}`;
+              } else if (isFx) {
                 return `FX Forward: ${value.toFixed(4)}`;
               } else if (chartType.value === 'discount_factor') {
                 return `DF: ${value.toFixed(6)}`;
@@ -104,7 +109,9 @@ export function useCurveCharts() {
 
     const labels = grid.map(pt => pt.label);
     const data = isFx
-      ? grid.map(pt => pt.forward_rate)
+      ? (chartType.value === 'fx_basis'
+        ? grid.map(pt => pt.forward_rate - _fxSpot)
+        : grid.map(pt => pt.forward_rate))
       : chartType.value === 'forward_rate'
         ? grid.map(pt => pt.forward_rate * 100)
         : grid.map(pt => pt.discount_factor);
@@ -167,8 +174,10 @@ export function useCurveCharts() {
     const isFx = result.curve_type === 'fx';
 
     if (isFx) {
-      const fxLabel = 'FX Forward Rate';
-      const fxColor = '#06b6d4'; // cyan
+      _fxSpot = result.spot ?? 0;
+      const isBasis = chartType.value === 'fx_basis';
+      const fxLabel = isBasis ? 'FX Fwd Basis' : 'FX Forward Rate';
+      const fxColor = isBasis ? '#f59e0b' : '#06b6d4'; // amber / cyan
 
       shortTermChartInstance = renderChart(
         shortTermChartCanvas.value, shortTermChartInstance, shortGrid, fxLabel, fxColor, SHORT_MILESTONES, interpolationValue, true,

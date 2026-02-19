@@ -48,7 +48,7 @@ pub use curves::{
     BootstrapInterpolation, BootstrappedCurve, CurveEnum, CurveName, CurveSet, FlatCurve,
     ForwardRateDecomposition, Frequency, MarketInstrument, YieldCurve,
 };
-pub use fx::{FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
+pub use fx::{BasisFxCurve, FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
 pub use jumps::{
     build_forward_rate_shift_grid, convert_jump_pillars, convert_jump_pillars_to_tuples, JumpEntry,
 };

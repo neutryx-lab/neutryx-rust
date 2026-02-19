@@ -48,6 +48,8 @@ pub enum FxCurveMethod {
     Flat,
     /// Interest Rate Parity using bootstrapped yield curves.
     IrpGeneric,
+    /// Reference yield curve + cross-currency basis spreads.
+    IrpBasis,
 }
 
 /// Single instrument input for curve building.
@@ -143,6 +145,10 @@ pub struct CurveBuildRequest {
     /// methods).
     #[serde(default)]
     pub foreign_curve_id: Option<String>,
+    /// ID of a previously built reference yield curve (required for
+    /// `irp_basis` method).
+    #[serde(default)]
+    pub reference_curve_id: Option<String>,
 }
 
 fn default_tolerance() -> f64 { 1e-10 }

@@ -54,6 +54,7 @@ const emit = defineEmits<{
         <span v-else-if="inst.type === 'bond'" class="type-badge bond-badge">BOND</span>
         <span v-else-if="inst.type === 'cds'" class="type-badge cds-badge">CDS</span>
         <span v-else-if="inst.type === 'fx_forward'" class="type-badge fwd-badge">FWD</span>
+        <span v-else-if="inst.type === 'xccy_basis'" class="type-badge basis-badge">BASIS</span>
 
         <!-- Event fields -->
         <template v-if="inst.type === 'event'">
@@ -124,6 +125,20 @@ const emit = defineEmits<{
             @change="emit('updatePips', idx, ($event.target as HTMLInputElement).value)"
           >
           <span class="field-unit">pips</span>
+        </template>
+
+        <!-- XCCY Basis fields -->
+        <template v-else-if="inst.type === 'xccy_basis'">
+          <span class="field-label">Spread</span>
+          <input
+            type="number"
+            :value="inst.rate.toFixed(1)"
+            step="0.5"
+            class="input-field basis-field"
+            title="Cross-currency basis spread (bps)"
+            @change="emit('updatePips', idx, ($event.target as HTMLInputElement).value)"
+          >
+          <span class="field-unit">bps</span>
         </template>
 
         <!-- Regular fields -->
@@ -203,6 +218,9 @@ const emit = defineEmits<{
 .instrument-row.fx_forward {
   border-left: 2px solid #06b6d4;
 }
+.instrument-row.xccy_basis {
+  border-left: 2px solid #f59e0b;
+}
 
 .checkbox {
   width: 14px;
@@ -255,6 +273,10 @@ const emit = defineEmits<{
 .fwd-badge {
   background: rgba(6, 182, 212, 0.15);
   color: #06b6d4;
+}
+.basis-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
 }
 
 /* ─── Input fields (component-specific) ─── */
@@ -309,6 +331,14 @@ const emit = defineEmits<{
 }
 .fwd-field:focus {
   border-color: #06b6d4;
+}
+.basis-field {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #f59e0b;
+}
+.basis-field:focus {
+  border-color: #f59e0b;
 }
 
 .field-unit {

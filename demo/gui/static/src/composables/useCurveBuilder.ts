@@ -21,10 +21,11 @@ export interface CurveConfig {
   discountCurve?: string;
   recoveryRate?: number;
   currencyPair?: string;
-  fxCurveMethod?: 'flat' | 'irp_generic';
+  fxCurveMethod?: 'flat' | 'irp_generic' | 'irp_basis';
   spot?: number;
   domesticCurve?: string;
   foreignCurve?: string;
+  referenceCurve?: string;
 }
 
 export interface CurvesData {
@@ -205,6 +206,7 @@ function buildInstrumentId(type: string, tenor: string, currency: string): strin
     'bond': 'Bond',
     'cds': 'CDS',
     'fx_forward': 'FxFwd',
+    'xccy_basis': 'XCCYBasis',
   };
   const typeLabel = typeMap[type] || type.toUpperCase();
   return `${currency}-${typeLabel}-${tenor}`;
@@ -250,6 +252,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     return curvesConfig.value.curves.map(c => ({
       name: c.name,
       rateIndex: c.rateIndex,
+      curveType: c.curveType ?? 'rate',
     }));
   });
 
@@ -426,6 +429,19 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
           originalRate: rateInst.rate || 0,
           enabled: defaultEnabledIds.has(id),
         });
+      } else if (rateInst.type === 'xccy_basis') {
+        const tenor = rateInst.tenor || '';
+        const pair = rateData.value.currency_pair || '';
+        const id = `${pair}-XCCYBasis-${tenor}`;
+        displayInstruments.push({
+          id,
+          type: 'xccy_basis',
+          tenor,
+          tenorYears: rateInst.tenor_years || 0,
+          rate: rateInst.rate || 0,
+          originalRate: rateInst.rate || 0,
+          enabled: defaultEnabledIds.has(id),
+        });
       } else {
         // Handle regular instruments (deposit, ois, fra, bond, etc.)
         const tenor = rateInst.tenor || '';
@@ -499,11 +515,11 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     try {
       // Build instrument payload including events
       const instrumentPayload = enabledInstruments.value.map(inst => {
-        if (inst.type === 'fx_forward') {
+        if (inst.type === 'fx_forward' || inst.type === 'xccy_basis') {
           return {
-            instrument_type: 'fx_forward',
+            instrument_type: inst.type,
             tenor: inst.tenor,
-            rate: inst.rate,  // raw pips value
+            rate: inst.rate,
           };
         } else if (inst.type === 'event') {
           const payload: Record<string, unknown> = {
@@ -602,6 +618,16 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
             }
             requestBody.foreign_curve_id = forId;
           }
+        }
+
+        // For IRP Basis method, auto-build reference curve
+        if (selectedCurve.value.fxCurveMethod === 'irp_basis' && selectedCurve.value.referenceCurve) {
+          let refId = builtCurveIds.value[selectedCurve.value.referenceCurve];
+          if (!refId) {
+            refId = await autoBuildDiscountCurve(selectedCurve.value.referenceCurve);
+            if (!refId) throw new Error(`Failed to auto-build reference curve "${selectedCurve.value.referenceCurve}"`);
+          }
+          requestBody.reference_curve_id = refId;
         }
       }
 

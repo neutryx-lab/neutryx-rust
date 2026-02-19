@@ -8,6 +8,7 @@ import CurveJacobianHeatmap from '@/components/curve/CurveJacobianHeatmap.vue';
 
 const marketEnv = useMarketEnvStore();
 const publishFeedback = ref(false);
+const assetTab = ref<'rate' | 'credit' | 'fx'>('rate');
 
 function publishToEnvironment() {
   if (!buildResult.value || !selectedCurveName.value) return;
@@ -78,6 +79,19 @@ const {
   }
 });
 
+// Sync asset tab when a curve is selected (e.g. via URL or initial load)
+watch(selectedCurve, (c) => {
+  if (c) assetTab.value = (c.curveType ?? 'rate') as 'rate' | 'credit' | 'fx';
+});
+
+// Auto-select the first curve when switching tabs
+watch(assetTab, (tab) => {
+  const first = curveOptions.value.find(c => c.curveType === tab);
+  selectedCurveName.value = first?.name ?? '';
+  // Reset chart type when switching asset tabs
+  chartType.value = 'forward_rate';
+});
+
 // Watch chart type changes -- re-render when grid data available
 watch(chartType, () => {
   if (buildResult.value?.short_term_grid) {
@@ -117,6 +131,26 @@ watch(chartType, () => {
         <div class="glass-card p-5">
           <div class="section-header" style="margin-top: 0">Curve Selection</div>
 
+          <!-- Asset Type Tabs -->
+          <div class="flex gap-1 mb-3 p-0.5 rounded-lg bg-[var(--surface)]">
+            <button
+              v-for="tab in [
+                { key: 'rate', label: 'Rate', icon: 'fa-chart-line' },
+                { key: 'credit', label: 'Credit', icon: 'fa-shield-halved' },
+                { key: 'fx', label: 'FX', icon: 'fa-exchange-alt' },
+              ]"
+              :key="tab.key"
+              class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              :class="assetTab === tab.key
+                ? 'bg-[var(--primary)] text-white shadow-sm'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'"
+              @click="assetTab = tab.key as 'rate' | 'credit' | 'fx'"
+            >
+              <i :class="['fas', tab.icon]" style="font-size: 10px"></i>
+              {{ tab.label }}
+            </button>
+          </div>
+
           <!-- Error Message -->
           <div v-if="loadError" class="mb-3 p-2 rounded bg-red-500/20 border border-red-500/50">
             <p class="text-xs text-red-400">{{ loadError }}</p>
@@ -127,7 +161,7 @@ watch(chartType, () => {
             <div class="grid-input">
               <v-select
                 v-model="selectedCurveName"
-                :items="curveOptions.map(c => ({ title: c.name, value: c.name }))"
+                :items="curveOptions.filter(c => c.curveType === assetTab).map(c => ({ title: c.name, value: c.name }))"
                 :placeholder="curvesConfig ? 'Select curve...' : 'Loading...'"
                 :disabled="!curvesConfig"
                 density="compact"
@@ -157,7 +191,7 @@ watch(chartType, () => {
             <template v-if="isFxCurve">
               <div class="grid-label">Method</div>
               <div class="grid-input">
-                <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve?.fxCurveMethod === 'irp_generic' ? 'Interest Rate Parity' : 'Flat Forward Points' }}</span>
+                <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve?.fxCurveMethod === 'irp_generic' ? 'Interest Rate Parity' : selectedCurve?.fxCurveMethod === 'irp_basis' ? 'XCCY Basis + IR Curve' : 'Flat Forward Points' }}</span>
               </div>
               <template v-if="selectedCurve?.domesticCurve">
                 <div class="grid-label">Domestic</div>
@@ -169,6 +203,12 @@ watch(chartType, () => {
                 <div class="grid-label">Foreign</div>
                 <div class="grid-input">
                   <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve.foreignCurve }}</span>
+                </div>
+              </template>
+              <template v-if="selectedCurve?.referenceCurve">
+                <div class="grid-label">Reference</div>
+                <div class="grid-input">
+                  <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve.referenceCurve }}</span>
                 </div>
               </template>
             </template>
@@ -216,7 +256,7 @@ watch(chartType, () => {
         <!-- Actions -->
         <div class="glass-card p-5">
           <button
-            :disabled="!selectedCurve || enabledInstruments.length === 0 || isBuilding"
+            :disabled="!selectedCurve || (!isFxCurve && enabledInstruments.length === 0) || isBuilding"
             class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             @click="buildCurve"
           >
@@ -267,8 +307,19 @@ watch(chartType, () => {
             <div v-if="buildResult?.short_term_grid" class="flex gap-2">
               <template v-if="isFxCurve">
                 <button
-                  class="px-3 py-1.5 text-xs rounded-lg bg-cyan-500 text-white"
+                  :class="[
+                    'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                    chartType === 'forward_rate' ? 'bg-cyan-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                  ]"
+                  @click="chartType = 'forward_rate'"
                 >FX Forward Rate</button>
+                <button
+                  :class="[
+                    'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                    chartType === 'fx_basis' ? 'bg-amber-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                  ]"
+                  @click="chartType = 'fx_basis'"
+                >FX Fwd Basis</button>
               </template>
               <template v-else>
                 <button

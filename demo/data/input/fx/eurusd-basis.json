@@ -1,0 +1,18 @@
+{
+  "index": "EURUSD-BASIS",
+  "currency": "EUR",
+  "currency_pair": "EURUSD",
+  "reference_date": "2026-01-29",
+  "spot": 1.0850,
+  "instruments": [
+    { "type": "xccy_basis", "tenor": "1Y",  "tenor_years": 1.0,  "rate": -15.5 },
+    { "type": "xccy_basis", "tenor": "2Y",  "tenor_years": 2.0,  "rate": -12.3 },
+    { "type": "xccy_basis", "tenor": "3Y",  "tenor_years": 3.0,  "rate": -10.8 },
+    { "type": "xccy_basis", "tenor": "5Y",  "tenor_years": 5.0,  "rate": -9.2 },
+    { "type": "xccy_basis", "tenor": "7Y",  "tenor_years": 7.0,  "rate": -8.5 },
+    { "type": "xccy_basis", "tenor": "10Y", "tenor_years": 10.0, "rate": -7.8 },
+    { "type": "xccy_basis", "tenor": "15Y", "tenor_years": 15.0, "rate": -6.5 },
+    { "type": "xccy_basis", "tenor": "20Y", "tenor_years": 20.0, "rate": -5.8 },
+    { "type": "xccy_basis", "tenor": "30Y", "tenor_years": 30.0, "rate": -5.2 }
+  ]
+}

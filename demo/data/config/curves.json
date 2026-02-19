@@ -374,6 +374,42 @@
       "calibrationMethod": "none",
       "interpolation": "flat_forward",
       "allowExtrapolation": true
+    },
+    {
+      "name": "EURUSD-BASIS",
+      "description": "EUR/USD FX forward curve via reference curve + XCCY basis spreads",
+      "rateIndex": "EURUSD-BASIS",
+      "curveType": "fx",
+      "currencyPair": "EURUSD",
+      "fxCurveMethod": "irp_basis",
+      "spot": 1.0850,
+      "referenceCurve": "USD-SOFR",
+      "instruments": [
+        "EURUSD-XCCYBasis-1Y", "EURUSD-XCCYBasis-2Y", "EURUSD-XCCYBasis-3Y",
+        "EURUSD-XCCYBasis-5Y", "EURUSD-XCCYBasis-7Y", "EURUSD-XCCYBasis-10Y",
+        "EURUSD-XCCYBasis-15Y", "EURUSD-XCCYBasis-20Y", "EURUSD-XCCYBasis-30Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "USDJPY-BASIS",
+      "description": "USD/JPY FX forward curve via reference curve + XCCY basis spreads",
+      "rateIndex": "USDJPY-BASIS",
+      "curveType": "fx",
+      "currencyPair": "USDJPY",
+      "fxCurveMethod": "irp_basis",
+      "spot": 149.50,
+      "referenceCurve": "JPY-TONA",
+      "instruments": [
+        "USDJPY-XCCYBasis-1Y", "USDJPY-XCCYBasis-2Y", "USDJPY-XCCYBasis-3Y",
+        "USDJPY-XCCYBasis-5Y", "USDJPY-XCCYBasis-7Y", "USDJPY-XCCYBasis-10Y",
+        "USDJPY-XCCYBasis-15Y", "USDJPY-XCCYBasis-20Y", "USDJPY-XCCYBasis-30Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
     }
   ]
 }

@@ -547,11 +547,12 @@ impl CurveService {
 
         let currency_pair = Self::parse_currency_pair(pair_str)?;
 
-        // Collect pillar times from forward instruments.
+        // Collect pillar times from forward/basis instruments.
+        let fx_inst_types = ["fx_forward", "xccy_basis"];
         let pillar_specs: Vec<(f64, String, f64)> = request
             .instruments
             .iter()
-            .filter(|i| i.instrument_type.to_lowercase() == "fx_forward")
+            .filter(|i| fx_inst_types.contains(&i.instrument_type.to_lowercase().as_str()))
             .filter_map(|i| {
                 let tenor_years = parse_tenor_to_years(&i.tenor).ok()?;
                 Some((tenor_years, i.tenor.clone(), i.rate))
@@ -600,6 +601,20 @@ impl CurveService {
                     spot,
                     CurveEnum::bootstrapped(dom_entry.curve.clone()),
                     CurveEnum::bootstrapped(for_entry.curve.clone()),
+                    currency_pair,
+                )
+            }
+            FxCurveMethod::IrpBasis => {
+                let ref_entry =
+                    Self::get_cached_curve(state, &request.reference_curve_id, "reference")?;
+                let basis_pillars: Vec<(f64, f64)> = pillar_specs
+                    .iter()
+                    .map(|(t, _, bps)| (*t, *bps))
+                    .collect();
+                FxCurveEnum::irp_basis(
+                    spot,
+                    CurveEnum::bootstrapped(ref_entry.curve.clone()),
+                    basis_pillars,
                     currency_pair,
                 )
             }
@@ -666,6 +681,7 @@ impl CurveService {
             bootstrap_method: match request.fx_curve_method {
                 FxCurveMethod::Flat => "flat",
                 FxCurveMethod::IrpGeneric => "irp_generic",
+                FxCurveMethod::IrpBasis => "irp_basis",
             }
             .to_string(),
             jacobian: None,
@@ -931,6 +947,7 @@ mod tests {
             spot: None,
             domestic_curve_id: None,
             foreign_curve_id: None,
+            reference_curve_id: None,
         }
     }
 
