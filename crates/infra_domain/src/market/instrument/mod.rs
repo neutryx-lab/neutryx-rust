@@ -17,12 +17,13 @@ mod xccy;
 pub mod convention;
 
 pub use commodity::{
-    AgricultureType, CommodityAsianOption, CommodityForward, CommoditySwap, CommodityType,
-    CommodityVanillaOption, EnergyType, MetalType, QuantityUnit, SpreadOption,
+    AgricultureType, CommodityAsianOption, CommodityForward, CommodityFuture,
+    CommodityFutureOption, CommoditySwap, CommodityType, CommodityVanillaOption, EnergyType,
+    MetalType, QuantityUnit, SpreadOption,
 };
 pub use common::{
-    AssetClass, BarrierDirection, BarrierType, ExerciseStyle, NotionalSchedule, PayerReceiver,
-    PaymentSchedule,
+    AssetClass, AtmConvention, BarrierDirection, BarrierType, CdsType, ExerciseStyle,
+    ExpiryDeliveryAdjust, InflationIndexType, NotionalSchedule, PayerReceiver, PaymentSchedule,
 };
 pub use credit::{Cds, CdsIndex, CdsOption, CreditEvent, NtdBasket};
 pub use equity::{
@@ -41,8 +42,8 @@ pub use fx_vol::{
     FxVolInstrumentError,
 };
 pub use ir_vol::{
-    CapFloor, CapFloorBuilder, CapFloorType, IrVolInstrument, IrVolInstrumentError, Swaption,
-    SwaptionBuilder,
+    CapFloor, CapFloorBuilder, CapFloorStraddle, CapFloorType, IrVolInstrument,
+    IrVolInstrumentError, Swaption, SwaptionBuilder, SwaptionStraddle,
 };
 pub use rates::{
     BasisSwap, Bond, BondType, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,

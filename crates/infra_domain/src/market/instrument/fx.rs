@@ -1,7 +1,7 @@
 //! Foreign exchange instrument definitions.
 
 use super::{
-    common::{BarrierDirection, BarrierType, ExerciseStyle},
+    common::{BarrierDirection, BarrierType, ExerciseStyle, ExpiryDeliveryAdjust},
     error::InstrumentError,
 };
 pub use crate::market::CurrencyPair;
@@ -74,6 +74,8 @@ pub struct FxVanillaOption {
     pub notional: f64,
     /// Currency of the notional.
     pub notional_currency: Currency,
+    /// Expiry/delivery date adjustment convention.
+    pub expiry_delivery_adjust: ExpiryDeliveryAdjust,
 }
 
 impl FxVanillaOption {
@@ -411,6 +413,7 @@ mod tests {
             exercise_style: ExerciseStyle::European,
             notional: 1_000_000.0,
             notional_currency: Currency::EUR,
+            expiry_delivery_adjust: ExpiryDeliveryAdjust::Forward,
         };
         assert!(opt.validate().is_ok());
         let mut bad = opt.clone();

@@ -181,6 +181,8 @@ pub struct CapFloor {
     pub payment_frequency: Frequency,
     /// Currency.
     pub currency: Currency,
+    /// Whether the first caplet/floorlet is included in pricing.
+    pub is_first_caplet_included: bool,
 }
 
 impl CapFloor {
@@ -389,6 +391,70 @@ impl std::fmt::Display for IrVolInstrument {
     }
 }
 
+/// Swaption straddle (combination of payer and receiver swaption at same strike).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SwaptionStraddle {
+    /// Tenor of the underlying swap.
+    pub underlying_swap_tenor: Tenor,
+    /// Expiry date of the option.
+    pub expiry: Date,
+    /// Strike rate (as decimal).
+    pub strike: f64,
+    /// Notional amount.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Whether premium is paid forward (true) or upfront (false).
+    pub is_forward_premium: bool,
+}
+
+impl SwaptionStraddle {
+    /// Validates the swaption straddle parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_non_negative(self.strike, "Strike")?;
+        if self.underlying_swap_tenor.to_months() == 0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Underlying swap tenor must be at least 1 month",
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Cap/floor straddle (combination of cap and floor at same strike).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CapFloorStraddle {
+    /// Underlying rate index.
+    pub index: RateIndex,
+    /// Start date.
+    pub start_date: Date,
+    /// Tenor of the cap/floor.
+    pub tenor: Tenor,
+    /// Strike rate (as decimal).
+    pub strike: f64,
+    /// Notional amount.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Whether premium is paid forward (true) or upfront (false).
+    pub is_forward_premium: bool,
+}
+
+impl CapFloorStraddle {
+    /// Validates the cap/floor straddle parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_non_negative(self.strike, "Strike")?;
+        if self.tenor.to_months() == 0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Cap/Floor straddle tenor must be at least 1 month",
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Builder for constructing Swaption instances with fluent API.
 #[derive(Debug, Clone)]
 pub struct SwaptionBuilder {
@@ -593,6 +659,7 @@ impl CapFloorBuilder {
             notional_schedule: NotionalSchedule::constant(notional),
             payment_frequency: self.payment_frequency,
             currency: self.currency,
+            is_first_caplet_included: true,
         };
 
         cap_floor.validate()?;
@@ -626,6 +693,7 @@ mod tests {
             notional_schedule: NotionalSchedule::constant(10_000_000.0),
             payment_frequency: Frequency::Quarterly,
             currency: Currency::USD,
+            is_first_caplet_included: true,
         }
     }
 

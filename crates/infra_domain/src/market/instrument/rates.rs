@@ -1,12 +1,13 @@
 //! Interest rate instrument definitions.
 
 use super::{
-    common::{NotionalSchedule, PayerReceiver},
+    common::{InflationIndexType, NotionalSchedule, PayerReceiver},
     error::InstrumentError,
 };
 use crate::{
     market::{Currency, RateIndex},
-    time::{Date, EndOfMonthRule, Frequency, Tenor},
+    time::{Date, EndOfMonthRule, Frequency, StubType, Tenor},
+    trade::{CompoundType, OptionType},
 };
 
 /// Floating rate note (FRN).
@@ -95,6 +96,12 @@ pub struct InflationSwap {
     pub currency: Currency,
     /// Fixed rate (for the fixed leg).
     pub fixed_rate: f64,
+    /// Inflation index type (monthly or interpolated).
+    pub inflation_index_type: InflationIndexType,
+    /// Representative day for interpolation calculation.
+    pub representative_day: Option<u32>,
+    /// Compounding frequency for break-even yield calculation.
+    pub break_even_yield_compound_freq: Option<u32>,
 }
 
 impl InflationSwap {
@@ -130,6 +137,10 @@ pub struct Ois {
     pub payer_receiver: PayerReceiver,
     /// Payment frequency for both legs.
     pub payment_frequency: Frequency,
+    /// Compounding type for OIS rate calculation.
+    pub compound_type: CompoundType,
+    /// Number of cut-off days before payment (default 0).
+    pub cut_off_days: u32,
 }
 
 impl Ois {
@@ -205,6 +216,8 @@ pub struct Fra {
     pub currency: Currency,
     /// Rate index for the floating leg.
     pub rate_index: RateIndex,
+    /// Whether payment is made in arrears (true) or advance (false).
+    pub is_payment_arrear: bool,
 }
 
 impl Fra {
@@ -247,6 +260,10 @@ pub struct Futures {
     pub currency: Currency,
     /// Underlying rate index.
     pub rate_index: RateIndex,
+    /// Compounding type for the underlying rate.
+    pub compound_type: CompoundType,
+    /// Whether a sub-schedule is required for rate calculation.
+    pub need_sub_schedule: bool,
 }
 
 impl Futures {
@@ -298,6 +315,16 @@ pub struct InterestRateSwap {
     pub float_frequency: Frequency,
     /// Rate index for the floating leg.
     pub rate_index: RateIndex,
+    /// Whether principal amounts are exchanged (e.g., for cross-currency).
+    pub has_principal_exchange: bool,
+    /// Whether principal resets with FX rate changes.
+    pub has_fx_reset: bool,
+    /// First period stub type (short/long/none).
+    pub first_stub_type: Option<StubType>,
+    /// Last period stub type (short/long/none).
+    pub last_stub_type: Option<StubType>,
+    /// Whether roll convention uses end-to-end rule.
+    pub is_end_to_end: bool,
 }
 
 impl InterestRateSwap {
@@ -411,6 +438,14 @@ pub struct BasisSwap {
     pub leg2_spread: f64,
     /// Payment frequency for leg 2.
     pub leg2_frequency: Frequency,
+    /// Whether principal amounts are exchanged.
+    pub has_principal_exchange: bool,
+    /// Whether roll convention uses end-to-end rule.
+    pub is_end_to_end: bool,
+    /// First period stub type.
+    pub first_stub_type: Option<StubType>,
+    /// Last period stub type.
+    pub last_stub_type: Option<StubType>,
 }
 
 impl BasisSwap {
@@ -437,6 +472,98 @@ impl BasisSwap {
     pub fn tenor_years(&self) -> f64 { (self.end_date() - self.start_date) as f64 / 365.0 }
 }
 
+/// Bond futures contract.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct BondFuture {
+    /// Currency.
+    pub currency: Currency,
+    /// Coupon payment frequency of the underlying bond.
+    pub bond_frequency: Frequency,
+    /// Coupon rate of the underlying bond (as decimal).
+    pub bond_coupon: f64,
+    /// Term of the underlying bond in years.
+    pub bond_term_years: u32,
+    /// Last trading date of the futures contract.
+    pub last_trading_date: Date,
+    /// Futures price.
+    pub price: f64,
+    /// Contract notional.
+    pub notional: f64,
+}
+
+impl BondFuture {
+    /// Validates the bond future parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_range(self.price, 50.0, 200.0, "Price")?;
+        InstrumentError::check_non_negative(self.bond_coupon, "Bond coupon")?;
+        if self.bond_term_years == 0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Bond term must be at least 1 year",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Converts the quote to a price (market-specific).
+    #[must_use]
+    pub fn quote_to_price(&self, quote: f64) -> f64 { quote }
+}
+
+/// Bond future option.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct BondFutureOption {
+    /// Currency.
+    pub currency: Currency,
+    /// Whether this is futures-style (cash-settled) or physical delivery.
+    pub is_future_style: bool,
+    /// Strike price.
+    pub strike: f64,
+    /// Notional amount.
+    pub notional: f64,
+    /// Option type (Call or Put).
+    pub option_type: OptionType,
+    /// Last trading date of the option.
+    pub last_trading_date: Date,
+}
+
+impl BondFutureOption {
+    /// Validates the bond future option parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
+        Ok(())
+    }
+}
+
+/// Interest rate future option.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct IrFutureOption {
+    /// Currency.
+    pub currency: Currency,
+    /// Whether this is futures-style (cash-settled) or physical delivery.
+    pub is_future_style: bool,
+    /// Strike price.
+    pub strike: f64,
+    /// Notional amount.
+    pub notional: f64,
+    /// Option type (Call or Put).
+    pub option_type: OptionType,
+    /// Last trading date of the option.
+    pub last_trading_date: Date,
+    /// Underlying rate index.
+    pub underlying_rate_index: RateIndex,
+}
+
+impl IrFutureOption {
+    /// Validates the IR future option parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_positive(self.strike, "Strike")?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -461,6 +588,7 @@ mod tests {
             notional: 10_000_000.0,
             currency: Currency::USD,
             rate_index: RateIndex::Sofr,
+            is_payment_arrear: false,
         };
         assert!(fra.validate().is_ok());
 
@@ -472,6 +600,7 @@ mod tests {
             notional: 10_000_000.0,
             currency: Currency::USD,
             rate_index: RateIndex::Sofr,
+            is_payment_arrear: false,
         };
         assert!(bad_fra.validate().is_err());
 
@@ -482,6 +611,8 @@ mod tests {
             notional: 1_000_000.0,
             currency: Currency::USD,
             rate_index: RateIndex::Sofr,
+            compound_type: CompoundType::None,
+            need_sub_schedule: false,
         };
         assert!(futures.validate().is_ok());
         assert!((futures.implied_rate() - 0.045).abs() < 1e-10);
@@ -493,6 +624,8 @@ mod tests {
             notional: 1_000_000.0,
             currency: Currency::USD,
             rate_index: RateIndex::Sofr,
+            compound_type: CompoundType::None,
+            need_sub_schedule: false,
         };
         assert!(bad_futures.validate().is_err());
     }
@@ -510,6 +643,11 @@ mod tests {
             fixed_frequency: Frequency::SemiAnnual,
             float_frequency: Frequency::Quarterly,
             rate_index: RateIndex::Sofr,
+            has_principal_exchange: false,
+            has_fx_reset: false,
+            first_stub_type: None,
+            last_stub_type: None,
+            is_end_to_end: false,
         };
         assert!(irs.validate().is_ok());
         assert!(irs.is_payer());
@@ -524,6 +662,8 @@ mod tests {
             currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
             payment_frequency: Frequency::Annual,
+            compound_type: CompoundType::None,
+            cut_off_days: 0,
         };
         assert!(ois.validate().is_ok());
         assert!(ois.is_payer());
@@ -537,6 +677,8 @@ mod tests {
             currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
             payment_frequency: Frequency::Annual,
+            compound_type: CompoundType::None,
+            cut_off_days: 0,
         };
         assert!(bad_ois.validate().is_err());
 
@@ -552,6 +694,10 @@ mod tests {
             leg2_index: RateIndex::Estr,
             leg2_spread: 0.001,
             leg2_frequency: Frequency::Quarterly,
+            has_principal_exchange: false,
+            is_end_to_end: false,
+            first_stub_type: None,
+            last_stub_type: None,
         };
         assert!(basis.validate().is_ok());
 
@@ -567,6 +713,10 @@ mod tests {
             leg2_index: RateIndex::Estr,
             leg2_spread: 0.001,
             leg2_frequency: Frequency::Quarterly,
+            has_principal_exchange: false,
+            is_end_to_end: false,
+            first_stub_type: None,
+            last_stub_type: None,
         };
         assert!(bad_basis.validate().is_err());
     }
@@ -626,6 +776,9 @@ mod tests {
             notional: 5_000_000.0,
             currency: Currency::USD,
             fixed_rate: 0.025,
+            inflation_index_type: InflationIndexType::Monthly,
+            representative_day: None,
+            break_even_yield_compound_freq: None,
         };
         assert!(infl.validate().is_ok());
 
@@ -638,6 +791,9 @@ mod tests {
             notional: 5_000_000.0,
             currency: Currency::USD,
             fixed_rate: 0.025,
+            inflation_index_type: InflationIndexType::Monthly,
+            representative_day: None,
+            break_even_yield_compound_freq: None,
         };
         assert!(bad_infl.validate().is_err());
 
@@ -650,6 +806,9 @@ mod tests {
             notional: 5_000_000.0,
             currency: Currency::USD,
             fixed_rate: 0.025,
+            inflation_index_type: InflationIndexType::Monthly,
+            representative_day: None,
+            break_even_yield_compound_freq: None,
         };
         assert!(empty_idx.validate().is_err());
 

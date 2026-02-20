@@ -23,9 +23,13 @@ mod registry;
 pub use core::{CompoundingMethod, Currency, CurrencyPair, QuoteCategory};
 
 pub use definition::{
-    CalibrationMethod, CalibrationModel, CurveDefError, CurveDefinition, IndexConventions,
-    InstrumentConventions, InstrumentDefError, InstrumentDefinition, InstrumentTemplate,
-    InterpolationMethod, RateIndexDefError, RateIndexDefinition, StrikeAxisType,
+    BondFutureObservableDef, BondObservableDef, BondObservableSubtype, CalibrationMethod,
+    CalibrationModel, CashObservableDef, CommodityObservableDef, CreditObservableDef,
+    CurveDefError, CurveDefinition, EquityObservableDef, FixingRequirement, FxObservableDef,
+    IndexConventions, InflationObservableDef, InstrumentConventions, InstrumentDefError,
+    InstrumentDefinition, InstrumentTemplate, InterpolationMethod, IrFutureObservableDef,
+    ObservableDefError, ObservableDefinition, RateIndexDefError, RateIndexDefinition,
+    StrikeAxisType, SwapObservableDef,
 };
 pub use event_instrument::EventInstrument;
 pub use index::{

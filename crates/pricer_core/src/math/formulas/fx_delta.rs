@@ -35,7 +35,7 @@
 //!     0.01,   // foreign rate
 //!     1.0,    // expiry (1 year)
 //!     0.10,   // volatility
-//!     DeltaType::SpotDelta,
+//!     DeltaType::SpotPercent,
 //! ).unwrap();
 //!
 //! // Verify round-trip
@@ -47,7 +47,7 @@
 //!     1.0,
 //!     0.10,
 //!     true, // is_call
-//!     DeltaType::SpotDelta,
+//!     DeltaType::SpotPercent,
 //! ).unwrap();
 //!
 //! assert!((recovered_delta - 0.25_f64).abs() < 1e-6);
@@ -93,7 +93,7 @@ pub fn delta_to_strike<T: Float>(
 
     // Calculate d1 based on delta type
     let d1 = match delta_type {
-        DeltaType::SpotDelta => {
+        DeltaType::SpotPercent | DeltaType::SpotPips => {
             // For spot delta: Δ = e^(-rf×T) × N(d1)
             // N(d1) = Δ × e^(rf×T)
             let df_foreign = (-foreign_rate * expiry).exp();
@@ -107,7 +107,7 @@ pub fn delta_to_strike<T: Float>(
                 message: format!("norm_inv_cdf failed: {:?}", e),
             })?
         }
-        DeltaType::ForwardDelta => {
+        DeltaType::ForwardPercent | DeltaType::ForwardPips => {
             // For forward delta: Δ = N(d1)
             let clamped = abs_delta.min(from_f64(0.9999999)).max(from_f64(0.0000001));
             norm_inv_cdf(clamped).map_err(|e| FormulaError::NumericalInstability {
@@ -251,7 +251,7 @@ pub fn strike_to_delta<T: Float>(
 
     // Calculate delta based on delta type
     let delta = match delta_type {
-        DeltaType::SpotDelta => {
+        DeltaType::SpotPercent | DeltaType::SpotPips => {
             // Δ_call = e^(-rf×T) × N(d1)
             // Δ_put = -e^(-rf×T) × N(-d1) = e^(-rf×T) × (N(d1) - 1)
             let df_foreign = (-foreign_rate * expiry).exp();
@@ -262,7 +262,7 @@ pub fn strike_to_delta<T: Float>(
                 df_foreign * (nd1 - T::one())
             }
         }
-        DeltaType::ForwardDelta => {
+        DeltaType::ForwardPercent | DeltaType::ForwardPips => {
             // Δ_call = N(d1)
             // Δ_put = N(d1) - 1
             let nd1 = crate::math::normal_dist::norm_cdf(d1);
@@ -305,7 +305,7 @@ mod tests {
         let t = 1.0;
         let vol = 0.10;
 
-        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::SpotDelta).unwrap();
+        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::SpotPercent).unwrap();
 
         // Strike should be above forward for OTM call
         let forward = spot * ((rd - rf) * t).exp();
@@ -313,7 +313,7 @@ mod tests {
 
         // Verify round-trip
         let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::SpotDelta).unwrap();
+            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::SpotPercent).unwrap();
         assert_relative_eq!(recovered, delta, epsilon = 1e-6);
     }
 
@@ -327,7 +327,7 @@ mod tests {
         let t = 1.0;
         let vol = 0.10;
 
-        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::SpotDelta).unwrap();
+        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::SpotPercent).unwrap();
 
         // Strike should be below forward for OTM put
         let forward = spot * ((rd - rf) * t).exp();
@@ -335,7 +335,7 @@ mod tests {
 
         // Verify round-trip
         let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, false, DeltaType::SpotDelta).unwrap();
+            strike_to_delta(strike, spot, rd, rf, t, vol, false, DeltaType::SpotPercent).unwrap();
         assert_relative_eq!(recovered, delta, epsilon = 1e-6);
     }
 
@@ -352,7 +352,7 @@ mod tests {
         let atm_delta = 0.5 * df_foreign;
 
         let strike =
-            delta_to_strike(atm_delta, spot, rd, rf, t, vol, DeltaType::SpotDelta).unwrap();
+            delta_to_strike(atm_delta, spot, rd, rf, t, vol, DeltaType::SpotPercent).unwrap();
 
         // ATM strike should be close to forward
         let forward = spot * ((rd - rf) * t).exp();
@@ -368,11 +368,11 @@ mod tests {
         let t = 1.0;
         let vol = 0.10;
 
-        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardDelta).unwrap();
+        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardPercent).unwrap();
 
         // Verify round-trip
         let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::ForwardDelta).unwrap();
+            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::ForwardPercent).unwrap();
         assert_relative_eq!(recovered, delta, epsilon = 1e-6);
     }
 
@@ -385,32 +385,32 @@ mod tests {
         let t = 1.0;
         let vol = 0.10;
 
-        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardDelta).unwrap();
+        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardPercent).unwrap();
 
         // Verify round-trip
         let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, false, DeltaType::ForwardDelta).unwrap();
+            strike_to_delta(strike, spot, rd, rf, t, vol, false, DeltaType::ForwardPercent).unwrap();
         assert_relative_eq!(recovered, delta, epsilon = 1e-6);
     }
 
     #[test]
     fn test_invalid_spot() {
-        let result = delta_to_strike(0.25, 0.0, 0.03, 0.01, 1.0, 0.10, DeltaType::SpotDelta);
+        let result = delta_to_strike(0.25, 0.0, 0.03, 0.01, 1.0, 0.10, DeltaType::SpotPercent);
         assert!(matches!(result, Err(FormulaError::InvalidSpot { .. })));
 
-        let result = delta_to_strike(0.25, -1.0, 0.03, 0.01, 1.0, 0.10, DeltaType::SpotDelta);
+        let result = delta_to_strike(0.25, -1.0, 0.03, 0.01, 1.0, 0.10, DeltaType::SpotPercent);
         assert!(matches!(result, Err(FormulaError::InvalidSpot { .. })));
     }
 
     #[test]
     fn test_invalid_volatility() {
-        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, 1.0, 0.0, DeltaType::SpotDelta);
+        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, 1.0, 0.0, DeltaType::SpotPercent);
         assert!(matches!(
             result,
             Err(FormulaError::InvalidVolatility { .. })
         ));
 
-        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, 1.0, -0.10, DeltaType::SpotDelta);
+        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, 1.0, -0.10, DeltaType::SpotPercent);
         assert!(matches!(
             result,
             Err(FormulaError::InvalidVolatility { .. })
@@ -419,16 +419,16 @@ mod tests {
 
     #[test]
     fn test_invalid_expiry() {
-        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, 0.0, 0.10, DeltaType::SpotDelta);
+        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, 0.0, 0.10, DeltaType::SpotPercent);
         assert!(matches!(result, Err(FormulaError::InvalidExpiry { .. })));
 
-        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, -1.0, 0.10, DeltaType::SpotDelta);
+        let result = delta_to_strike(0.25, 1.10, 0.03, 0.01, -1.0, 0.10, DeltaType::SpotPercent);
         assert!(matches!(result, Err(FormulaError::InvalidExpiry { .. })));
     }
 
     #[test]
     fn test_strike_to_delta_invalid_strike() {
-        let result = strike_to_delta(0.0, 1.10, 0.03, 0.01, 1.0, 0.10, true, DeltaType::SpotDelta);
+        let result = strike_to_delta(0.0, 1.10, 0.03, 0.01, 1.0, 0.10, true, DeltaType::SpotPercent);
         assert!(matches!(result, Err(FormulaError::InvalidStrike { .. })));
     }
 
@@ -442,12 +442,12 @@ mod tests {
 
         // Very deep ITM call (high delta)
         let high_delta = 0.90;
-        let result = delta_to_strike(high_delta, spot, rd, rf, t, vol, DeltaType::SpotDelta);
+        let result = delta_to_strike(high_delta, spot, rd, rf, t, vol, DeltaType::SpotPercent);
         assert!(result.is_ok());
 
         // Very deep OTM call (low delta)
         let low_delta = 0.05;
-        let result = delta_to_strike(low_delta, spot, rd, rf, t, vol, DeltaType::SpotDelta);
+        let result = delta_to_strike(low_delta, spot, rd, rf, t, vol, DeltaType::SpotPercent);
         assert!(result.is_ok());
     }
 
@@ -459,11 +459,11 @@ mod tests {
         let t = 0.01; // ~3.6 days
         let vol = 0.10;
 
-        let strike = delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotDelta).unwrap();
+        let strike = delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotPercent).unwrap();
         assert!(strike.is_finite());
 
         let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::SpotDelta).unwrap();
+            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::SpotPercent).unwrap();
         assert_relative_eq!(recovered, 0.25, epsilon = 1e-6);
     }
 
@@ -475,11 +475,11 @@ mod tests {
         let t = 1.0;
         let vol = 0.50; // 50% vol
 
-        let strike = delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotDelta).unwrap();
+        let strike = delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotPercent).unwrap();
         assert!(strike.is_finite());
 
         let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::SpotDelta).unwrap();
+            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::SpotPercent).unwrap();
         assert_relative_eq!(recovered, 0.25, epsilon = 1e-6);
     }
 
@@ -492,9 +492,9 @@ mod tests {
         let vol = 0.10;
 
         let strike_spot =
-            delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotDelta).unwrap();
+            delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotPercent).unwrap();
         let strike_fwd =
-            delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::ForwardDelta).unwrap();
+            delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::ForwardPercent).unwrap();
 
         // They should be different (unless rf = 0)
         assert!((strike_spot - strike_fwd).abs() > 1e-6);
@@ -565,7 +565,7 @@ mod tests {
         let vol = 0.10;
 
         let strike_spot =
-            delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotDelta).unwrap();
+            delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::SpotPercent).unwrap();
         let strike_pa =
             delta_to_strike(0.25, spot, rd, rf, t, vol, DeltaType::PremiumAdjusted).unwrap();
 
