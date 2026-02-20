@@ -649,6 +649,59 @@ impl InflationSwapConvention {
     }
 }
 
+/// Convention for a bond futures contract.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct BondFutureConvention {
+    /// Day count convention.
+    pub day_count: DayCounter,
+    /// Calendar for settlement.
+    pub calendar: CalendarId,
+    /// Contract size (notional per contract).
+    pub contract_size: f64,
+    /// Tick size (minimum price movement).
+    pub tick_size: f64,
+    /// Coupon frequency of the deliverable bond.
+    pub bond_coupon_frequency: Frequency,
+}
+
+super::define_convention_factories! {
+    for BondFutureConvention;
+    /// Returns the CME Treasury bond futures convention.
+    cme_treasury => {
+        day_count: DayCounter::ActualActualIsda, calendar: CalendarId::NewYork,
+        contract_size: 100_000.0, tick_size: 0.015625,
+        bond_coupon_frequency: Frequency::SemiAnnual,
+    };
+    /// Returns the EUREX Bund futures convention.
+    eurex_bund => {
+        day_count: DayCounter::ActualActualIsda, calendar: CalendarId::Target,
+        contract_size: 100_000.0, tick_size: 0.01,
+        bond_coupon_frequency: Frequency::Annual,
+    };
+}
+
+/// Convention for an IR futures option.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct IrFutureOptionConvention {
+    /// Day count convention.
+    pub day_count: DayCounter,
+    /// Calendar for settlement.
+    pub calendar: CalendarId,
+    /// Tick size (minimum price movement).
+    pub tick_size: f64,
+    /// Reference rate index.
+    pub index: RateIndex,
+}
+
+super::define_convention_factories! {
+    for IrFutureOptionConvention;
+    /// Returns the CME SOFR futures option convention.
+    cme_sofr => {
+        day_count: DayCounter::Actual360, calendar: CalendarId::NewYork,
+        tick_size: 0.0025, index: RateIndex::Sofr,
+    };
+}
+
 /// Convention for a leg of a cross-currency basis swap.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct XCcyLegConvention {

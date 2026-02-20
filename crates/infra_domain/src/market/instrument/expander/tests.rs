@@ -77,6 +77,7 @@ mod tests {
             notional_schedule: NotionalSchedule::constant(10_000_000.0),
             payment_frequency: crate::time::Frequency::Quarterly,
             currency: Currency::USD,
+            is_first_caplet_included: true,
         };
         let t = cap.expand_to_trade("CAP-001", vd(), &c).unwrap();
         assert_eq!(t.trade_type, TradeType::CapFloor);
@@ -116,6 +117,9 @@ mod tests {
             notional: 10_000_000.0,
             currency: Currency::USD,
             fixed_rate: 0.02,
+            inflation_index_type: crate::market::instrument::InflationIndexType::Monthly,
+            representative_day: None,
+            break_even_yield_compound_freq: None,
         };
         let t = inf.expand_to_trade("INF-001", vd(), &c).unwrap();
         assert_eq!(t.trade_type, TradeType::Swap);
@@ -133,6 +137,8 @@ mod tests {
             currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
             payment_frequency: crate::time::Frequency::Annual,
+            compound_type: crate::trade::CompoundType::None,
+            cut_off_days: 0,
         };
         let t = ois.expand_to_trade("OIS-001", vd(), &c).unwrap();
         assert_eq!(t.trade_type, TradeType::Swap);
@@ -147,6 +153,8 @@ mod tests {
             currency: Currency::USD,
             payer_receiver: PayerReceiver::Receiver,
             payment_frequency: crate::time::Frequency::Quarterly,
+            compound_type: crate::trade::CompoundType::None,
+            cut_off_days: 0,
         };
         let t = ois_q.expand_to_trade("OIS-002", vd(), &c).unwrap();
         let floating = t.floating_leg().expect("Should have floating leg");
@@ -164,6 +172,8 @@ mod tests {
             currency: Currency::USD,
             payer_receiver: PayerReceiver::Payer,
             payment_frequency: crate::time::Frequency::Monthly,
+            compound_type: crate::trade::CompoundType::None,
+            cut_off_days: 0,
         };
         let t = ois_m.expand_to_trade("OIS-003", vd(), &c).unwrap();
         let floating = t.floating_leg().unwrap();
@@ -226,6 +236,7 @@ mod tests {
             exercise_style: ExerciseStyle::European,
             notional: 1_000_000.0,
             notional_currency: Currency::EUR,
+            expiry_delivery_adjust: crate::market::instrument::ExpiryDeliveryAdjust::Forward,
         };
         let t = opt.expand_to_trade("FX-OPT", vd(), &c).unwrap();
         assert!(matches!(
@@ -361,6 +372,8 @@ mod tests {
             recovery_rate: Some(0.4),
             currency: Currency::USD,
             credit_events: vec![CreditEvent::Bankruptcy, CreditEvent::FailureToPay],
+            initial_payment_lag: 0,
+            cds_type: crate::market::instrument::CdsType::Isda,
         };
         let t = cds.expand_to_trade("CDS", vd(), &c).unwrap();
         assert!(matches!(t.trade_type, TradeType::CreditDefaultSwap { .. }));
@@ -420,6 +433,7 @@ mod tests {
             unit: QuantityUnit::MMBtu,
             settlement_type: SettlementType::Cash,
             currency: Currency::USD,
+            is_future_style: false,
         };
         let t = copt.expand_to_trade("COMM-OPT", vd(), &c).unwrap();
         assert!(matches!(
@@ -500,6 +514,8 @@ mod tests {
             recovery_rate: Some(0.4),
             currency: Currency::USD,
             credit_events: vec![CreditEvent::Bankruptcy],
+            initial_payment_lag: 0,
+            cds_type: crate::market::instrument::CdsType::Isda,
         }
         .validate()
         .is_err());
@@ -573,6 +589,8 @@ mod tests {
             recovery_rate: Some(0.4),
             currency: Currency::USD,
             credit_events: vec![CreditEvent::Bankruptcy],
+            initial_payment_lag: 0,
+            cds_type: crate::market::instrument::CdsType::Isda,
         }
         .expand_to_trade("CDS", vd(), &c);
         assert!(r.is_ok() || r.is_err());

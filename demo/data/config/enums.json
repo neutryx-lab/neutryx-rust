@@ -11,7 +11,14 @@
     "fra",
     "futures",
     "ois",
-    "basis_swap"
+    "basis_swap",
+    "bond_future",
+    "bond_future_option",
+    "ir_future_option",
+    "swaption_straddle",
+    "cap_floor_straddle",
+    "commodity_future",
+    "commodity_future_option"
   ],
   "option_type": ["call", "put"],
   "greeks_method": ["aad", "bump"],

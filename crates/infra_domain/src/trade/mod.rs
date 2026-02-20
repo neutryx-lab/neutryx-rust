@@ -33,7 +33,7 @@ pub use event_leg::{
     MonitoringType,
 };
 pub use fixing::{Fixing, FixingView};
-pub use index::{IndexObservation, IndexType};
+pub use index::{BondIndexSubtype, IndexObservation, IndexType};
 pub use index_requirement::IndexRequirement;
 pub use instrument::Instrument;
 pub use leg::{Direction, Leg, LegType};

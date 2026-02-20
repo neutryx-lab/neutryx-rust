@@ -8,8 +8,9 @@ use crate::{
     market::{
         convention::ConventionSet,
         instrument::{
-            BasisSwap, Bond, CapFloor, CapFloorType, CmsSwap, Deposit, Fra, Frn, Futures,
-            InflationSwap, InstrumentError, InterestRateSwap, Ois, Swaption,
+            BasisSwap, Bond, BondFuture, BondFutureOption, CapFloor, CapFloorStraddle,
+            CapFloorType, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap, InstrumentError,
+            InterestRateSwap, IrFutureOption, Ois, Swaption, SwaptionStraddle,
         },
         Currency, RateIndex,
     },
@@ -693,4 +694,115 @@ fn generate_ois_sub_schedules(
     }
 
     sub_schedules
+}
+
+impl InstrumentExpander for BondFuture {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _vd: Date,
+        _conv: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.last_trading_date,
+            self.last_trading_date,
+            self.last_trading_date,
+            0.0,
+            self.notional,
+            Payoff::fixed(self.price),
+            self.currency,
+        );
+        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
+    }
+}
+
+impl InstrumentExpander for BondFutureOption {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _vd: Date,
+        _conv: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.last_trading_date,
+            self.last_trading_date,
+            self.last_trading_date,
+            0.0,
+            self.notional,
+            Payoff::fixed(self.strike),
+            self.currency,
+        );
+        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
+    }
+}
+
+impl InstrumentExpander for IrFutureOption {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _vd: Date,
+        _conv: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.last_trading_date,
+            self.last_trading_date,
+            self.last_trading_date,
+            0.0,
+            self.notional,
+            Payoff::fixed(self.strike),
+            self.currency,
+        );
+        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
+    }
+}
+
+impl InstrumentExpander for SwaptionStraddle {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _vd: Date,
+        _conv: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.expiry,
+            self.expiry,
+            self.expiry,
+            0.0,
+            self.notional,
+            Payoff::fixed(self.strike),
+            self.currency,
+        );
+        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Swaption))
+    }
+}
+
+impl InstrumentExpander for CapFloorStraddle {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _vd: Date,
+        _conv: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let end_date = self.tenor.add_to_date(self.start_date, EndOfMonthRule::Adjust);
+        let cf = Cashflow::new(
+            CashflowType::Settlement,
+            end_date,
+            self.start_date,
+            end_date,
+            0.0,
+            self.notional,
+            Payoff::fixed(self.strike),
+            self.currency,
+        );
+        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::CapFloor, self.currency);
+        Ok(Trade::new(trade_id, vec![leg], TradeType::CapFloor))
+    }
 }

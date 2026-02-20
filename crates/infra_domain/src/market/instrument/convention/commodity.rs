@@ -87,6 +87,59 @@ super::define_convention_factories! {
     };
 }
 
+/// Convention for commodity futures contracts.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CommodityFutureConvention {
+    /// Delivery convention.
+    pub delivery_convention: DeliveryConvention,
+    /// Price quotation convention.
+    pub price_quotation: PriceQuotation,
+    /// Trading calendar.
+    pub calendar: CalendarId,
+    /// Contract size (standard lot).
+    pub contract_size: f64,
+    /// Tick size (minimum price movement).
+    pub tick_size: f64,
+}
+
+super::define_convention_factories! {
+    for CommodityFutureConvention;
+    /// Returns the NYMEX WTI crude oil futures convention.
+    nymex_wti => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerBarrel,
+        calendar: CalendarId::NewYork, contract_size: 1000.0, tick_size: 0.01,
+    };
+    /// Returns the COMEX gold futures convention.
+    comex_gold => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerTroyOunce,
+        calendar: CalendarId::NewYork, contract_size: 100.0, tick_size: 0.10,
+    };
+}
+
+/// Convention for commodity futures options.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CommodityFutureOptionConvention {
+    /// Delivery convention for the underlying future.
+    pub delivery_convention: DeliveryConvention,
+    /// Price quotation convention.
+    pub price_quotation: PriceQuotation,
+    /// Trading calendar.
+    pub calendar: CalendarId,
+    /// Contract size (standard lot).
+    pub contract_size: f64,
+    /// Whether the option uses future-style margining.
+    pub is_future_style: bool,
+}
+
+super::define_convention_factories! {
+    for CommodityFutureOptionConvention;
+    /// Returns the NYMEX WTI crude oil futures option convention.
+    nymex_wti => {
+        delivery_convention: DeliveryConvention::Physical, price_quotation: PriceQuotation::PerBarrel,
+        calendar: CalendarId::NewYork, contract_size: 1000.0, is_future_style: true,
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -5,6 +5,19 @@ use crate::{
     time::{Date, Frequency},
 };
 
+/// Output type for bond observables.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BondIndexSubtype {
+    /// Bond price (normalised clean/dirty price).
+    #[default]
+    Price,
+    /// Bond yield.
+    Yield,
+    /// Change in bond yield (delta).
+    YieldDelta,
+}
+
 /// Type of market index.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum IndexType {
@@ -70,6 +83,14 @@ pub enum IndexType {
         /// Seniority (e.g., "SNRFOR", "SUBLT2").
         seniority: Option<String>,
     },
+
+    /// Bond price or yield index.
+    Bond {
+        /// Bond identifier (e.g., ISIN, CUSIP, or internal ID).
+        identifier: String,
+        /// Bond observable output type.
+        subtype: BondIndexSubtype,
+    },
 }
 
 impl From<RateIndex> for IndexType {
@@ -121,6 +142,10 @@ impl IndexType {
     /// Returns true if this is a swap rate index.
     #[must_use]
     pub fn is_swap_rate(&self) -> bool { matches!(self, IndexType::SwapRate { .. }) }
+
+    /// Returns true if this is a bond index.
+    #[must_use]
+    pub fn is_bond(&self) -> bool { matches!(self, IndexType::Bond { .. }) }
 }
 
 /// Observation parameters for an index.
@@ -700,5 +725,60 @@ mod tests {
         let debug = format!("{:?}", credit);
         assert!(debug.contains("Credit"));
         assert!(debug.contains("ACME"));
+    }
+
+    #[test]
+    fn test_bond_index() {
+        let index = IndexType::Bond {
+            identifier: "US912810TM53".into(),
+            subtype: BondIndexSubtype::Price,
+        };
+
+        assert!(index.is_bond());
+        assert!(!index.is_rate());
+        assert!(!index.is_bond_future());
+        assert!(!index.is_credit());
+    }
+
+    #[test]
+    fn test_bond_index_yield() {
+        let index = IndexType::Bond {
+            identifier: "US912810TM53".into(),
+            subtype: BondIndexSubtype::Yield,
+        };
+
+        assert!(index.is_bond());
+    }
+
+    #[test]
+    fn test_bond_index_subtype_default() {
+        assert_eq!(BondIndexSubtype::default(), BondIndexSubtype::Price);
+    }
+
+    #[test]
+    fn test_bond_index_hash_and_eq() {
+        use std::collections::HashSet;
+
+        let b1 = IndexType::Bond {
+            identifier: "UST-10Y".into(),
+            subtype: BondIndexSubtype::Price,
+        };
+        let b2 = IndexType::Bond {
+            identifier: "UST-10Y".into(),
+            subtype: BondIndexSubtype::Price,
+        };
+        let b3 = IndexType::Bond {
+            identifier: "UST-10Y".into(),
+            subtype: BondIndexSubtype::Yield,
+        };
+
+        assert_eq!(b1, b2);
+        assert_ne!(b1, b3);
+
+        let mut set = HashSet::new();
+        set.insert(b1);
+        set.insert(b2);
+        set.insert(b3);
+        assert_eq!(set.len(), 2);
     }
 }
