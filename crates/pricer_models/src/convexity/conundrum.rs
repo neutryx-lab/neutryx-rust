@@ -438,8 +438,22 @@ mod tests {
         // CMS coupon pay_date_yf=1.0 => delta=2.0
         let result = adj
             .calc_swaplet_value(
-                10.0, 2.0, 0.03, 0.0, 0.0, 0.5, 1.0, 9.5, 0.97, 0.0, 0.20, 0.0, 1.0, 1.0,
-                &dummy_price_fn, &dummy_tv_fn,
+                10.0,
+                2.0,
+                0.03,
+                0.0,
+                0.0,
+                0.5,
+                1.0,
+                9.5,
+                0.97,
+                0.0,
+                0.20,
+                0.0,
+                1.0,
+                1.0,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 
@@ -455,21 +469,49 @@ mod tests {
 
         let fwd = 0.03;
         let normal_vol = 0.003; // small vol
-        // For SLN with shift=0: sigma_SLN * F ≈ sigma_N => sigma_SLN ≈ sigma_N / F
+                                // For SLN with shift=0: sigma_SLN * F ≈ sigma_N => sigma_SLN ≈ sigma_N / F
         let sln_vol = normal_vol / fwd;
 
         // pay_date_yf=1.0 => delta=2.0
         let normal_result = normal_adj
             .calc_swaplet_value(
-                10.0, 2.0, fwd, 0.0, 0.0, 0.5, 1.0, 9.5, 0.97, normal_vol, 0.0, 0.0, 1.0, 1.0,
-                &dummy_price_fn, &dummy_tv_fn,
+                10.0,
+                2.0,
+                fwd,
+                0.0,
+                0.0,
+                0.5,
+                1.0,
+                9.5,
+                0.97,
+                normal_vol,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 
         let sln_result = sln_adj
             .calc_swaplet_value(
-                10.0, 2.0, fwd, 0.0, 0.0, 0.5, 1.0, 9.5, 0.97, 0.0, sln_vol, 0.0, 1.0, 1.0,
-                &dummy_price_fn, &dummy_tv_fn,
+                10.0,
+                2.0,
+                fwd,
+                0.0,
+                0.0,
+                0.5,
+                1.0,
+                9.5,
+                0.97,
+                0.0,
+                sln_vol,
+                0.0,
+                1.0,
+                1.0,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 
@@ -484,11 +526,27 @@ mod tests {
         let dummy_tv_fn = |_k: f64| 0.0;
 
         let call_price = 0.005; // intrinsic call price
-        // pay_date_yf=1.0 => delta=2.0
+                                // pay_date_yf=1.0 => delta=2.0
         let result = adj
             .calc_caplet_value(
-                10.0, 2.0, 0.03, 0.025, 0.0, 0.0, 0.5, 1.0, 9.5, 0.97, 0.005, 0.0, 0.0, 1.0,
-                1.0, call_price, &dummy_price_fn, &dummy_tv_fn,
+                10.0,
+                2.0,
+                0.03,
+                0.025,
+                0.0,
+                0.0,
+                0.5,
+                1.0,
+                9.5,
+                0.97,
+                0.005,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                call_price,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 
