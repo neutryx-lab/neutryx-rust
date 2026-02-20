@@ -208,6 +208,8 @@ pub struct CommodityVanillaOption {
     pub settlement_type: SettlementType,
     /// Currency.
     pub currency: Currency,
+    /// Whether this option uses future-style margining.
+    pub is_future_style: bool,
 }
 
 impl CommodityVanillaOption {
@@ -292,6 +294,62 @@ impl SpreadOption {
     }
 }
 
+/// Commodity futures contract.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CommodityFuture {
+    /// Commodity type.
+    pub commodity: CommodityType,
+    /// Currency.
+    pub currency: Currency,
+    /// Last trading date.
+    pub last_trading_date: Date,
+    /// Futures price per unit.
+    pub price: f64,
+    /// Quantity.
+    pub quantity: f64,
+    /// Quantity unit.
+    pub unit: QuantityUnit,
+}
+
+impl CommodityFuture {
+    /// Validates the commodity future parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_positive(self.price, "Price")?;
+        InstrumentError::check_positive(self.quantity, "Quantity")?;
+        Ok(())
+    }
+}
+
+/// Commodity futures option.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CommodityFutureOption {
+    /// Commodity type.
+    pub commodity: CommodityType,
+    /// Currency.
+    pub currency: Currency,
+    /// Strike price per unit.
+    pub strike: f64,
+    /// Quantity.
+    pub quantity: f64,
+    /// Quantity unit.
+    pub unit: QuantityUnit,
+    /// Option type (Call or Put).
+    pub option_type: OptionType,
+    /// Last trading date.
+    pub last_trading_date: Date,
+    /// Whether this option uses future-style margining.
+    pub is_future_style: bool,
+}
+
+impl CommodityFutureOption {
+    /// Validates the commodity future option parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_positive(self.strike, "Strike")?;
+        InstrumentError::check_positive(self.quantity, "Quantity")?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -367,6 +425,7 @@ mod tests {
             unit: QuantityUnit::TroyOunces,
             settlement_type: SettlementType::Cash,
             currency: Currency::USD,
+            is_future_style: false,
         };
         assert!(opt.validate().is_ok());
         let mut bad = opt.clone();

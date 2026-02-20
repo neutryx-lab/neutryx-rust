@@ -1,8 +1,9 @@
 //! Holiday calendar definitions and abstractions.
 
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 use chrono::{Datelike, NaiveDate, Weekday};
+use enum_dispatch::enum_dispatch;
 
 use super::types::Date;
 
@@ -76,6 +77,7 @@ impl FromStr for BusinessDayConvention {
 }
 
 /// Calendar trait for business day calculations.
+#[enum_dispatch]
 pub trait Calendar: Send + Sync {
     /// Check if a date is a business day.
     fn is_business_day(&self, date: Date) -> bool;
@@ -137,12 +139,47 @@ pub trait Calendar: Send + Sync {
             }
         }
     }
+
+    /// Count business days between two dates (exclusive of end).
+    fn count_business_days(&self, start: Date, end: Date) -> i64 {
+        if start >= end {
+            return 0;
+        }
+        let mut count = 0i64;
+        let mut current = start + 1;
+        while current <= end {
+            if self.is_business_day(current) {
+                count += 1;
+            }
+            current = current + 1;
+        }
+        count
+    }
+
+    /// Check if a date is the last business day of its month.
+    fn is_last_business_day_of_month(&self, date: Date) -> bool {
+        if !self.is_business_day(date) {
+            return false;
+        }
+        let next_bd = self.next_business_day(date + 1);
+        next_bd.month() != date.month()
+    }
+}
+
+/// Static-dispatch calendar enum (replaces `Box<dyn Calendar>`).
+#[enum_dispatch(Calendar)]
+#[derive(Debug, Clone)]
+pub enum CalendarEnum {
+    /// A concrete single-region calendar.
+    Concrete(ConcreteCalendar),
+    /// A joint calendar combining multiple calendars.
+    Joint(JointCalendar),
 }
 
 /// Calendar identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum CalendarId {
-    /// TARGET (Trans-European Automated Real-time Gross Settlement Express.
+    /// TARGET (Trans-European Automated Real-time Gross Settlement Express).
     Target,
     /// New York.
     NewYork,
@@ -234,14 +271,15 @@ pub enum JointCalendarRule {
 }
 
 /// A calendar that combines multiple calendars.
+#[derive(Debug, Clone)]
 pub struct JointCalendar {
-    calendars: Vec<Box<dyn Calendar>>,
+    calendars: Vec<CalendarEnum>,
     rule: JointCalendarRule,
 }
 
 impl JointCalendar {
     /// Create a new joint calendar.
-    pub fn new(calendars: Vec<Box<dyn Calendar>>, rule: JointCalendarRule) -> Self {
+    pub fn new(calendars: Vec<CalendarEnum>, rule: JointCalendarRule) -> Self {
         Self { calendars, rule }
     }
 
@@ -263,18 +301,25 @@ impl Calendar for JointCalendar {
     }
 }
 
-impl fmt::Debug for JointCalendar {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("JointCalendar")
-            .field("rule", &self.rule)
-            .field("calendar_count", &self.calendars.len())
-            .finish()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn weekend_cal() -> CalendarEnum {
+        CalendarEnum::Concrete(ConcreteCalendar::get(CalendarId::WeekendOnly))
+    }
+
+    fn ny_cal() -> CalendarEnum {
+        CalendarEnum::Concrete(ConcreteCalendar::get(CalendarId::NewYork))
+    }
+
+    fn target_cal() -> CalendarEnum {
+        CalendarEnum::Concrete(ConcreteCalendar::get(CalendarId::Target))
+    }
+
+    fn london_cal() -> CalendarEnum {
+        CalendarEnum::Concrete(ConcreteCalendar::get(CalendarId::London))
+    }
 
     #[test]
     fn test_bdc_name() {
@@ -334,7 +379,7 @@ mod tests {
 
     #[test]
     fn test_weekend_not_business_day() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         assert!(!calendar.is_business_day(saturday));
         let monday = Date::from_ymd(2026, 1, 5).unwrap();
@@ -343,14 +388,14 @@ mod tests {
 
     #[test]
     fn test_is_holiday() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         assert!(calendar.is_holiday(saturday));
     }
 
     #[test]
     fn test_next_business_day() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         let monday = calendar.next_business_day(saturday);
         assert_eq!(monday, Date::from_ymd(2026, 1, 12).unwrap());
@@ -358,7 +403,7 @@ mod tests {
 
     #[test]
     fn test_prev_business_day() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         let friday = calendar.prev_business_day(saturday);
         assert_eq!(friday, Date::from_ymd(2026, 1, 9).unwrap());
@@ -366,7 +411,7 @@ mod tests {
 
     #[test]
     fn test_add_business_days() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let friday = Date::from_ymd(2026, 1, 9).unwrap();
         let monday = calendar.add_business_days(friday, 1);
         assert_eq!(monday, Date::from_ymd(2026, 1, 12).unwrap());
@@ -374,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_adjust_following() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         let adjusted = calendar.adjust(saturday, BusinessDayConvention::Following);
         assert_eq!(adjusted, Date::from_ymd(2026, 1, 12).unwrap());
@@ -382,7 +427,7 @@ mod tests {
 
     #[test]
     fn test_adjust_preceding() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         let adjusted = calendar.adjust(saturday, BusinessDayConvention::Preceding);
         assert_eq!(adjusted, Date::from_ymd(2026, 1, 9).unwrap());
@@ -390,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_adjust_unadjusted() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         let adjusted = calendar.adjust(saturday, BusinessDayConvention::Unadjusted);
         assert_eq!(adjusted, saturday);
@@ -398,7 +443,7 @@ mod tests {
 
     #[test]
     fn test_adjust_modified_following_same_month() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         let adjusted = calendar.adjust(saturday, BusinessDayConvention::ModifiedFollowing);
         assert_eq!(adjusted, Date::from_ymd(2026, 1, 12).unwrap());
@@ -406,7 +451,7 @@ mod tests {
 
     #[test]
     fn test_adjust_modified_following_month_end() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 31).unwrap();
         let adjusted = calendar.adjust(saturday, BusinessDayConvention::ModifiedFollowing);
         assert_eq!(adjusted, Date::from_ymd(2026, 1, 30).unwrap());
@@ -414,7 +459,7 @@ mod tests {
 
     #[test]
     fn test_adjust_modified_preceding_same_month() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let saturday = Date::from_ymd(2026, 1, 10).unwrap();
         let adjusted = calendar.adjust(saturday, BusinessDayConvention::ModifiedPreceding);
         assert_eq!(adjusted, Date::from_ymd(2026, 1, 9).unwrap());
@@ -422,7 +467,7 @@ mod tests {
 
     #[test]
     fn test_adjust_modified_preceding_month_start() {
-        let calendar = ConcreteCalendar::get(CalendarId::WeekendOnly);
+        let calendar = weekend_cal();
         let sunday = Date::from_ymd(2026, 2, 1).unwrap();
         let adjusted = calendar.adjust(sunday, BusinessDayConvention::ModifiedPreceding);
         assert_eq!(adjusted, Date::from_ymd(2026, 2, 2).unwrap());
@@ -430,23 +475,24 @@ mod tests {
 
     #[test]
     fn test_target_holiday() {
-        let calendar = ConcreteCalendar::get(CalendarId::Target);
+        let calendar = target_cal();
         let christmas = Date::from_ymd(2026, 12, 25).unwrap();
         assert!(!calendar.is_business_day(christmas));
     }
 
     #[test]
     fn test_ny_holiday() {
-        let calendar = ConcreteCalendar::get(CalendarId::NewYork);
+        let calendar = ny_cal();
         let independence = Date::from_ymd(2025, 7, 4).unwrap();
         assert!(!calendar.is_business_day(independence));
     }
 
     #[test]
     fn test_joint_calendar_join_holidays() {
-        let ny = Box::new(ConcreteCalendar::get(CalendarId::NewYork));
-        let london = Box::new(ConcreteCalendar::get(CalendarId::London));
-        let joint = JointCalendar::new(vec![ny, london], JointCalendarRule::JoinHolidays);
+        let joint = CalendarEnum::Joint(JointCalendar::new(
+            vec![ny_cal(), london_cal()],
+            JointCalendarRule::JoinHolidays,
+        ));
 
         let monday = Date::from_ymd(2026, 1, 5).unwrap();
         assert!(joint.is_business_day(monday));
@@ -457,8 +503,10 @@ mod tests {
 
     #[test]
     fn test_joint_calendar_join_business_days() {
-        let weekend = Box::new(ConcreteCalendar::get(CalendarId::WeekendOnly));
-        let joint = JointCalendar::new(vec![weekend.clone()], JointCalendarRule::JoinBusinessDays);
+        let joint = CalendarEnum::Joint(JointCalendar::new(
+            vec![weekend_cal()],
+            JointCalendarRule::JoinBusinessDays,
+        ));
 
         let monday = Date::from_ymd(2026, 1, 5).unwrap();
         assert!(joint.is_business_day(monday));
@@ -466,28 +514,59 @@ mod tests {
 
     #[test]
     fn test_joint_calendar_all_must_agree_for_join_holidays() {
-        let target = Box::new(ConcreteCalendar::get(CalendarId::Target));
-        let weekend_only = Box::new(ConcreteCalendar::get(CalendarId::WeekendOnly));
-        let joint = JointCalendar::new(vec![target, weekend_only], JointCalendarRule::JoinHolidays);
+        let joint = CalendarEnum::Joint(JointCalendar::new(
+            vec![target_cal(), weekend_cal()],
+            JointCalendarRule::JoinHolidays,
+        ));
 
         let labour_day = Date::from_ymd(2026, 5, 1).unwrap();
-
         assert!(!joint.is_business_day(labour_day));
     }
 
     #[test]
     fn test_joint_calendar_rule() {
-        let ny = Box::new(ConcreteCalendar::get(CalendarId::NewYork));
-        let joint = JointCalendar::new(vec![ny], JointCalendarRule::JoinHolidays);
+        let joint = JointCalendar::new(vec![ny_cal()], JointCalendarRule::JoinHolidays);
         assert_eq!(joint.rule(), JointCalendarRule::JoinHolidays);
     }
 
     #[test]
     fn test_joint_calendar_debug() {
-        let ny = Box::new(ConcreteCalendar::get(CalendarId::NewYork));
-        let joint = JointCalendar::new(vec![ny], JointCalendarRule::JoinHolidays);
+        let joint = CalendarEnum::Joint(JointCalendar::new(
+            vec![ny_cal()],
+            JointCalendarRule::JoinHolidays,
+        ));
         let debug_str = format!("{:?}", joint);
         assert!(debug_str.contains("JointCalendar"));
         assert!(debug_str.contains("JoinHolidays"));
+    }
+
+    #[test]
+    fn test_count_business_days() {
+        let cal = weekend_cal();
+        // Mon Jan 5 to Fri Jan 9: 4 business days (Tue-Fri)
+        let start = Date::from_ymd(2026, 1, 5).unwrap();
+        let end = Date::from_ymd(2026, 1, 9).unwrap();
+        assert_eq!(cal.count_business_days(start, end), 4);
+    }
+
+    #[test]
+    fn test_count_business_days_over_weekend() {
+        let cal = weekend_cal();
+        // Fri Jan 9 to Mon Jan 12: 1 business day (Mon)
+        let start = Date::from_ymd(2026, 1, 9).unwrap();
+        let end = Date::from_ymd(2026, 1, 12).unwrap();
+        assert_eq!(cal.count_business_days(start, end), 1);
+    }
+
+    #[test]
+    fn test_is_last_business_day_of_month() {
+        let cal = weekend_cal();
+        // Jan 30 2026 is Friday — last business day of Jan
+        let fri = Date::from_ymd(2026, 1, 30).unwrap();
+        assert!(cal.is_last_business_day_of_month(fri));
+
+        // Jan 29 2026 is Thursday — not last
+        let thu = Date::from_ymd(2026, 1, 29).unwrap();
+        assert!(!cal.is_last_business_day_of_month(thu));
     }
 }

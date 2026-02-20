@@ -29,13 +29,18 @@ pub enum FxVolInstrumentError {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum DeltaType {
-    /// Spot delta (standard for most G10 pairs like EURUSD).
+    /// Spot delta in percentage terms (standard for most G10 pairs like
+    /// EURUSD).
     #[default]
-    SpotDelta,
+    SpotPercent,
+    /// Spot delta in pips terms.
+    SpotPips,
+    /// Forward delta in percentage terms.
+    ForwardPercent,
+    /// Forward delta in pips terms.
+    ForwardPips,
     /// Premium-adjusted delta (standard for pairs like USDJPY).
     PremiumAdjusted,
-    /// Forward delta.
-    ForwardDelta,
 }
 
 impl DeltaType {
@@ -43,8 +48,10 @@ impl DeltaType {
     #[must_use]
     pub fn display_name(&self) -> &'static str {
         match self {
-            Self::SpotDelta => "Spot Delta",
-            Self::ForwardDelta => "Forward Delta",
+            Self::SpotPercent => "Spot Delta (Percent)",
+            Self::SpotPips => "Spot Delta (Pips)",
+            Self::ForwardPercent => "Forward Delta (Percent)",
+            Self::ForwardPips => "Forward Delta (Pips)",
             Self::PremiumAdjusted => "Premium-Adjusted Delta",
         }
     }
@@ -53,8 +60,10 @@ impl DeltaType {
     #[must_use]
     pub fn description(&self) -> &'static str {
         match self {
-            Self::SpotDelta => "Premium excluded, standard G10 convention",
-            Self::ForwardDelta => "Premium excluded, measured vs forward",
+            Self::SpotPercent => "Premium excluded, percentage terms, standard G10 convention",
+            Self::SpotPips => "Premium excluded, pips terms",
+            Self::ForwardPercent => "Premium excluded, percentage terms, measured vs forward",
+            Self::ForwardPips => "Premium excluded, pips terms, measured vs forward",
             Self::PremiumAdjusted => "Premium included, common in EM markets",
         }
     }
@@ -92,7 +101,7 @@ pub struct FxVolConvention {
 impl Default for FxVolConvention {
     fn default() -> Self {
         Self {
-            delta_type: DeltaType::SpotDelta,
+            delta_type: DeltaType::SpotPercent,
             premium_currency: Currency::USD,
             cut_off: CutOffTime::NewYork10am,
             calendar: CalendarId::NewYork,
@@ -106,7 +115,7 @@ impl FxVolConvention {
     #[must_use]
     pub fn eurusd() -> Self {
         Self {
-            delta_type: DeltaType::SpotDelta,
+            delta_type: DeltaType::SpotPercent,
             premium_currency: Currency::USD,
             cut_off: CutOffTime::NewYork10am,
             calendar: CalendarId::NewYork,
@@ -508,19 +517,19 @@ mod tests {
         let copied = d;
         assert_eq!(d, copied);
 
-        assert_eq!(DeltaType::default(), DeltaType::SpotDelta);
+        assert_eq!(DeltaType::default(), DeltaType::SpotPercent);
         assert_eq!(CutOffTime::default(), CutOffTime::NewYork10am);
     }
 
     #[test]
     fn test_fx_vol_convention() {
         let def = FxVolConvention::default();
-        assert_eq!(def.delta_type, DeltaType::SpotDelta);
+        assert_eq!(def.delta_type, DeltaType::SpotPercent);
         assert_eq!(def.premium_currency, Currency::USD);
         assert_eq!(def.cut_off, CutOffTime::NewYork10am);
 
         let eurusd = FxVolConvention::eurusd();
-        assert_eq!(eurusd.delta_type, DeltaType::SpotDelta);
+        assert_eq!(eurusd.delta_type, DeltaType::SpotPercent);
         assert_eq!(eurusd.premium_currency, Currency::USD);
 
         let usdjpy = FxVolConvention::usdjpy();
@@ -530,7 +539,7 @@ mod tests {
         let pair_eu = CurrencyPair::new(Currency::EUR, Currency::USD);
         assert_eq!(
             FxVolConvention::for_currency_pair(&pair_eu).delta_type,
-            DeltaType::SpotDelta
+            DeltaType::SpotPercent
         );
         let pair_uj = CurrencyPair::new(Currency::USD, Currency::JPY);
         assert_eq!(

@@ -35,8 +35,8 @@ pub use index::{
 pub use instrument::convention;
 pub use market_instrument::{MarketInstrument, MarketInstrumentError};
 pub use quote::{
-    MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType, QuoteValidator,
-    StandardQuoteValidator, StrikeType, VolQuoteType,
+    FxOptionQuoteType, MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType,
+    QuoteValidator, StandardQuoteValidator, StrikeType, VolQuoteType,
 };
 pub use registry::{DefinitionBundle, DefinitionRegistry, RegistryError};
 pub use source::{

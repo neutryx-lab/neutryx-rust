@@ -197,10 +197,11 @@ fn infra_freq_to_pricer_freq(freq: infra_domain::time::Frequency) -> Frequency {
     match freq {
         InfraFreq::Daily => Frequency::Daily,
         InfraFreq::Weekly => Frequency::Weekly,
-        InfraFreq::Monthly => Frequency::Monthly,
-        InfraFreq::Quarterly => Frequency::Quarterly,
+        InfraFreq::Monthly | InfraFreq::BiMonthly => Frequency::Monthly,
+        InfraFreq::Quarterly | InfraFreq::TriAnnual => Frequency::Quarterly,
         InfraFreq::SemiAnnual => Frequency::SemiAnnual,
         InfraFreq::Annual => Frequency::Annual,
+        InfraFreq::None => Frequency::Annual,
     }
 }
 

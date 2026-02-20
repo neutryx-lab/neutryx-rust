@@ -6,8 +6,8 @@ use crate::{
     market::{
         convention::ConventionSet,
         instrument::{
-            CommodityAsianOption, CommodityForward, CommoditySwap, CommodityVanillaOption,
-            InstrumentError, SpreadOption,
+            CommodityAsianOption, CommodityForward, CommodityFuture, CommodityFutureOption,
+            CommoditySwap, CommodityVanillaOption, InstrumentError, SpreadOption,
         },
     },
     time::Date,
@@ -217,6 +217,84 @@ impl InstrumentExpander for SpreadOption {
                 spread_strike: self.spread_strike,
                 expiry_date: self.expiry,
                 quantity: self.quantity,
+            },
+        ))
+    }
+}
+
+impl InstrumentExpander for CommodityFuture {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _vd: Date,
+        _conv: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.last_trading_date,
+            self.last_trading_date,
+            self.last_trading_date,
+            0.0,
+            self.quantity * self.price,
+            Payoff::fixed(1.0),
+            self.currency,
+        );
+        let leg = Leg::new(vec![cf], Direction::Payer, LegType::Generic, self.currency);
+        Ok(Trade::new(
+            trade_id,
+            vec![leg],
+            TradeType::CommodityForward {
+                commodity: self.commodity.to_string(),
+                delivery_date: self.last_trading_date,
+                forward_price: self.price,
+                quantity: self.quantity,
+                quantity_unit: format!("{:?}", self.unit),
+            },
+        ))
+    }
+}
+
+impl InstrumentExpander for CommodityFutureOption {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _vd: Date,
+        _conv: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let comm_index = IndexType::Commodity {
+            name: self.commodity.to_string(),
+        };
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.last_trading_date,
+            self.last_trading_date,
+            self.last_trading_date,
+            0.0,
+            self.quantity,
+            Payoff::VanillaOption {
+                index: comm_index,
+                strike: self.strike,
+                option_type: self.option_type,
+            },
+            self.currency,
+        );
+        let settlement_leg = Leg::new(
+            vec![settlement_cf],
+            Direction::Receiver,
+            LegType::Generic,
+            self.currency,
+        );
+        Ok(Trade::new(
+            trade_id,
+            vec![settlement_leg],
+            TradeType::CommodityOption {
+                commodity: self.commodity.to_string(),
+                option_type: self.option_type,
+                strike: self.strike,
+                exercise_type: crate::market::instrument::ExerciseStyle::European,
+                expiry_date: self.last_trading_date,
+                quantity: self.quantity,
+                quantity_unit: format!("{:?}", self.unit),
             },
         ))
     }

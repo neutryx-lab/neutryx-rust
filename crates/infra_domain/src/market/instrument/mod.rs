@@ -17,12 +17,13 @@ mod xccy;
 pub mod convention;
 
 pub use commodity::{
-    AgricultureType, CommodityAsianOption, CommodityForward, CommoditySwap, CommodityType,
-    CommodityVanillaOption, EnergyType, MetalType, QuantityUnit, SpreadOption,
+    AgricultureType, CommodityAsianOption, CommodityForward, CommodityFuture,
+    CommodityFutureOption, CommoditySwap, CommodityType, CommodityVanillaOption, EnergyType,
+    MetalType, QuantityUnit, SpreadOption,
 };
 pub use common::{
-    AssetClass, BarrierDirection, BarrierType, ExerciseStyle, NotionalSchedule, PayerReceiver,
-    PaymentSchedule,
+    AssetClass, AtmConvention, BarrierDirection, BarrierType, CdsType, ExerciseStyle,
+    ExpiryDeliveryAdjust, InflationIndexType, NotionalSchedule, PayerReceiver, PaymentSchedule,
 };
 pub use credit::{Cds, CdsIndex, CdsOption, CreditEvent, NtdBasket};
 pub use equity::{
@@ -41,12 +42,12 @@ pub use fx_vol::{
     FxVolInstrumentError,
 };
 pub use ir_vol::{
-    CapFloor, CapFloorBuilder, CapFloorType, IrVolInstrument, IrVolInstrumentError, Swaption,
-    SwaptionBuilder,
+    CapFloor, CapFloorBuilder, CapFloorStraddle, CapFloorType, IrVolInstrument,
+    IrVolInstrumentError, Swaption, SwaptionBuilder, SwaptionStraddle,
 };
 pub use rates::{
-    BasisSwap, Bond, BondType, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
-    InterestRateSwap, Ois, SwapType,
+    BasisSwap, Bond, BondFuture, BondFutureOption, BondType, CmsSwap, Deposit, Fra, Frn, Futures,
+    InflationSwap, InterestRateSwap, IrFutureOption, Ois, SwapType,
 };
 pub use xccy::{
     BasisSpread, CrossCurrencyBasisSwap, NotionalExchange, SpreadLeg, XccyBasisConvention, XccyLeg,
@@ -81,6 +82,16 @@ pub enum InstrumentDefinition {
     InflationSwap(InflationSwap),
     /// Fixed-coupon bond (government, corporate, agency).
     Bond(Bond),
+    /// Bond futures contract.
+    BondFuture(BondFuture),
+    /// Bond futures option.
+    BondFutureOption(BondFutureOption),
+    /// Interest rate futures option.
+    IrFutureOption(IrFutureOption),
+    /// Swaption straddle.
+    SwaptionStraddle(SwaptionStraddle),
+    /// Cap/floor straddle.
+    CapFloorStraddle(CapFloorStraddle),
 
     /// FX spot transaction.
     FxSpot(FxSpot),
@@ -129,6 +140,10 @@ pub enum InstrumentDefinition {
     CommodityAsianOption(CommodityAsianOption),
     /// Spread option on two commodities.
     SpreadOption(SpreadOption),
+    /// Commodity futures contract.
+    CommodityFuture(CommodityFuture),
+    /// Commodity futures option.
+    CommodityFutureOption(CommodityFutureOption),
 }
 
 impl InstrumentDefinition {
@@ -147,7 +162,12 @@ impl InstrumentDefinition {
             | InstrumentDefinition::Frn(_)
             | InstrumentDefinition::CmsSwap(_)
             | InstrumentDefinition::InflationSwap(_)
-            | InstrumentDefinition::Bond(_) => AssetClass::Rates,
+            | InstrumentDefinition::Bond(_)
+            | InstrumentDefinition::BondFuture(_)
+            | InstrumentDefinition::BondFutureOption(_)
+            | InstrumentDefinition::IrFutureOption(_)
+            | InstrumentDefinition::SwaptionStraddle(_)
+            | InstrumentDefinition::CapFloorStraddle(_) => AssetClass::Rates,
 
             InstrumentDefinition::FxSpot(_)
             | InstrumentDefinition::FxForward(_)
@@ -173,7 +193,9 @@ impl InstrumentDefinition {
             | InstrumentDefinition::CommoditySwap(_)
             | InstrumentDefinition::CommodityVanillaOption(_)
             | InstrumentDefinition::CommodityAsianOption(_)
-            | InstrumentDefinition::SpreadOption(_) => AssetClass::Commodity,
+            | InstrumentDefinition::SpreadOption(_)
+            | InstrumentDefinition::CommodityFuture(_)
+            | InstrumentDefinition::CommodityFutureOption(_) => AssetClass::Commodity,
         }
     }
 
@@ -195,6 +217,11 @@ impl InstrumentDefinition {
                 | InstrumentDefinition::CommodityVanillaOption(_)
                 | InstrumentDefinition::CommodityAsianOption(_)
                 | InstrumentDefinition::SpreadOption(_)
+                | InstrumentDefinition::BondFutureOption(_)
+                | InstrumentDefinition::IrFutureOption(_)
+                | InstrumentDefinition::SwaptionStraddle(_)
+                | InstrumentDefinition::CapFloorStraddle(_)
+                | InstrumentDefinition::CommodityFutureOption(_)
         )
     }
 
@@ -227,6 +254,8 @@ impl InstrumentDefinition {
                 | InstrumentDefinition::FxForward(_)
                 | InstrumentDefinition::EquityForward(_)
                 | InstrumentDefinition::CommodityForward(_)
+                | InstrumentDefinition::BondFuture(_)
+                | InstrumentDefinition::CommodityFuture(_)
         )
     }
 
@@ -274,10 +303,12 @@ impl InstrumentDefinition {
         dispatch_validate!(self;
             Deposit, Fra, Futures, InterestRateSwap, BasisSwap, Ois,
             Swaption, CapFloor, Frn, CmsSwap, InflationSwap, Bond,
+            BondFuture, BondFutureOption, IrFutureOption, SwaptionStraddle, CapFloorStraddle,
             FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap,
             EquityForward, EquityVanillaOption, EquityBarrierOption, AsianOption, LookbackOption, EquitySwap, BasketOption,
             Cds, CdsIndex, CdsOption, NtdBasket,
             CommodityForward, CommoditySwap, CommodityVanillaOption, CommodityAsianOption, SpreadOption,
+            CommodityFuture, CommodityFutureOption,
         )
     }
 }
@@ -297,6 +328,9 @@ impl std::fmt::Display for InstrumentDefinition {
                 InterestRateSwap => "IRS", BasisSwap => "BasisSwap", Ois => "OIS",
                 Swaption => "Swaption", CapFloor => "CapFloor", Frn => "FRN",
                 CmsSwap => "CMSSwap", InflationSwap => "InflationSwap", Bond => "Bond",
+                BondFuture => "BondFuture", BondFutureOption => "BondFutureOption",
+                IrFutureOption => "IRFutureOption",
+                SwaptionStraddle => "SwaptionStraddle", CapFloorStraddle => "CapFloorStraddle",
                 FxSpot => "FXSpot", FxForward => "FXForward",
                 FxVanillaOption => "FXVanillaOption", FxBarrierOption => "FXBarrierOption",
                 FxSwap => "FXSwap", CrossCurrencyBasisSwap => "XCCY",
@@ -308,6 +342,7 @@ impl std::fmt::Display for InstrumentDefinition {
                 CommodityForward => "CommodityForward", CommoditySwap => "CommoditySwap",
                 CommodityVanillaOption => "CommodityVanillaOption",
                 CommodityAsianOption => "CommodityAsianOption", SpreadOption => "SpreadOption",
+                CommodityFuture => "CommodityFuture", CommodityFutureOption => "CommodityFutureOption",
             )
         )
     }
@@ -353,6 +388,7 @@ mod tests {
             exercise_style: ExerciseStyle::European,
             notional: 1_000_000.0,
             notional_currency: Currency::EUR,
+            expiry_delivery_adjust: ExpiryDeliveryAdjust::Forward,
         })
     }
     fn eq_fwd() -> InstrumentDefinition {
@@ -376,6 +412,8 @@ mod tests {
             recovery_rate: Some(0.4),
             currency: Currency::USD,
             credit_events: vec![CreditEvent::Bankruptcy],
+            initial_payment_lag: 0,
+            cds_type: CdsType::Isda,
         })
     }
     fn comm_fwd() -> InstrumentDefinition {

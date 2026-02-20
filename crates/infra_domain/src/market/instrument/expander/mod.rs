@@ -201,6 +201,8 @@ impl InstrumentExpander for InstrumentDefinition {
             EquityForward, EquityVanillaOption, EquityBarrierOption, AsianOption, LookbackOption, EquitySwap, BasketOption,
             Cds, CdsIndex, CdsOption, NtdBasket,
             CommodityForward, CommoditySwap, CommodityVanillaOption, CommodityAsianOption, SpreadOption,
+            BondFuture, BondFutureOption, IrFutureOption, SwaptionStraddle, CapFloorStraddle,
+            CommodityFuture, CommodityFutureOption,
         )
     }
 }

@@ -114,6 +114,48 @@ pub enum BarrierDirection {
     Down,
 }
 
+/// ATM strike convention for FX options (from FxStraddleConvention).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AtmConvention {
+    /// ATM Forward strike.
+    AtmForward,
+    /// Delta-neutral straddle in percentage terms.
+    DeltaNeutralPercent,
+    /// Delta-neutral straddle in pips terms.
+    DeltaNeutralPips,
+}
+
+/// Expiry/delivery date adjustment convention for FX options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExpiryDeliveryAdjust {
+    /// Forward adjustment (standard: expiry and delivery derived from forward).
+    Forward,
+    /// Premium adjustment (expiry/delivery adjusted for premium payment).
+    Premium,
+}
+
+/// Inflation index calculation method.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InflationIndexType {
+    /// Monthly index (no interpolation within month).
+    Monthly,
+    /// Interpolated index (linear interpolation between months).
+    Interpolated,
+}
+
+/// CDS convention type (ISDA vs SMBC/CREDIS).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CdsType {
+    /// ISDA standard single-name CDS.
+    Isda,
+    /// SMBC/CREDIS convention CDS.
+    Smbc,
+}
+
 /// Notional schedule for amortising instruments.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct NotionalSchedule {

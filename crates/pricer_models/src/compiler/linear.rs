@@ -3,11 +3,11 @@
 //! This module provides `LinearProductsCompiler` which compiles Trade
 //! structures into PricingKernel IR for linear products.
 
-use std::sync::Arc;
-
 use infra_domain::{
     market::Currency,
-    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date, Tenor},
+    time::{
+        BusinessDayConvention, Calendar, CalendarEnum, CalendarId, ConcreteCalendar, Date, Tenor,
+    },
     trade::{IndexType, Payoff, Trade},
 };
 use pricer_core::kernel::{CompileError, PricingKernel, PricingKernelBuilder};
@@ -54,7 +54,7 @@ pub struct LinearProductsCompiler {
     /// Reference date for converting dates to days from epoch.
     epoch: Date,
     /// Optional calendar for business day adjustment.
-    calendar: Option<Arc<dyn Calendar>>,
+    calendar: Option<CalendarEnum>,
     /// Business day convention for payment dates.
     payment_bdc: BusinessDayConvention,
     /// Business day convention for fixing dates.
@@ -130,7 +130,7 @@ impl LinearProductsCompiler {
         calendar_id: CalendarId,
         convention: BusinessDayConvention,
     ) -> Self {
-        self.calendar = Some(Arc::new(ConcreteCalendar::new(calendar_id)));
+        self.calendar = Some(CalendarEnum::Concrete(ConcreteCalendar::new(calendar_id)));
         self.payment_bdc = convention;
         self.fixing_bdc = convention;
         self
@@ -145,7 +145,7 @@ impl LinearProductsCompiler {
     #[must_use]
     pub fn with_custom_calendar(
         mut self,
-        calendar: Arc<dyn Calendar>,
+        calendar: CalendarEnum,
         convention: BusinessDayConvention,
     ) -> Self {
         self.calendar = Some(calendar);
@@ -262,11 +262,9 @@ impl LinearProductsCompiler {
                 };
                 Ok((*multiplier, *spread, fwd_index_id))
             }
-            Payoff::VanillaOption { .. } | Payoff::Digital { .. } => {
-                Err(CompileError::UnsupportedPayoff(
-                    "Option payoffs not supported in linear compiler".to_string(),
-                ))
-            }
+            _ => Err(CompileError::UnsupportedPayoff(
+                "Non-linear payoffs not supported in linear compiler".to_string(),
+            )),
         }
     }
 }
@@ -848,10 +846,8 @@ mod tests {
 
     #[test]
     fn test_compiler_with_custom_calendar() {
-        use std::sync::Arc;
-
         let mapper = IndexMapper::new();
-        let calendar = Arc::new(ConcreteCalendar::new(CalendarId::Target));
+        let calendar = CalendarEnum::Concrete(ConcreteCalendar::new(CalendarId::Target));
         let compiler = LinearProductsCompiler::new(mapper)
             .with_custom_calendar(calendar, BusinessDayConvention::Following);
 

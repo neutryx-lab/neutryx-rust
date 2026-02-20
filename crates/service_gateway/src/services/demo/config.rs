@@ -1057,6 +1057,137 @@ impl DemoService {
                     option_type_param(),
                 ],
             ),
+            // ── Rates (New) ──────────────────────────────────────────────
+            def(
+                "BondFuture",
+                "bond-future",
+                "Bond Future",
+                "Rates",
+                vec![notional_param(), currency_param(), expiry_param()],
+                vec![
+                    ParameterDef {
+                        name: "price".into(),
+                        label: Some("Futures Price".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(100.0)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: None,
+                        }),
+                    },
+                    ParameterDef {
+                        name: "bondCoupon".into(),
+                        label: Some("Bond Coupon".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(0.06)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: Some(0.5),
+                        }),
+                    },
+                    ParameterDef {
+                        name: "bondTermYears".into(),
+                        label: Some("Bond Term (Years)".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(10)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(1.0),
+                            max: Some(50.0),
+                        }),
+                    },
+                ],
+            ),
+            def(
+                "BondFutureOption",
+                "bond-future-option",
+                "Bond Future Option",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![option_type_param()],
+            ),
+            def(
+                "IrFutureOption",
+                "ir-future-option",
+                "IR Future Option",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![option_type_param(), rate_index_param()],
+            ),
+            def(
+                "SwaptionStraddle",
+                "swaption-straddle",
+                "Swaption Straddle",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![],
+            ),
+            def(
+                "CapFloorStraddle",
+                "cap-floor-straddle",
+                "Cap/Floor Straddle",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    strike_param(),
+                    start_date_param(),
+                    end_date_param(),
+                ],
+                vec![rate_index_param()],
+            ),
+            // ── Commodity (New) ───────────────────────────────────────────
+            def(
+                "CommodityFuture",
+                "commodity-future",
+                "Commodity Future",
+                "Commodity",
+                vec![quantity_param(), currency_param(), expiry_param()],
+                vec![
+                    commodity_param(),
+                    ParameterDef {
+                        name: "price".into(),
+                        label: Some("Futures Price".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(75.0)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: None,
+                        }),
+                    },
+                ],
+            ),
+            def(
+                "CommodityFutureOption",
+                "commodity-future-option",
+                "Commodity Future Option",
+                "Commodity",
+                vec![
+                    quantity_param(),
+                    currency_param(),
+                    strike_param(),
+                    expiry_param(),
+                ],
+                vec![commodity_param(), option_type_param()],
+            ),
         ];
 
         Ok(InstrumentsResponse { instruments })

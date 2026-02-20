@@ -278,7 +278,7 @@ function factorTypeChipColor(factorType: string): string {
         <div v-if="!result" class="d-flex align-center justify-center" style="min-height: 400px">
           <div class="text-center text-medium-emphasis">
             <v-icon size="64" class="mb-4">mdi-chart-bell-curve-cumulative</v-icon>
-            <div class="text-h6">Greeks Analyser</div>
+            <div class="text-h6">Greeks</div>
             <div class="text-body-2 mt-1">
               Select a pricing result from history and click Compute.
             </div>

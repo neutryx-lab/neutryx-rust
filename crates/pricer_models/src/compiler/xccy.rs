@@ -24,11 +24,9 @@
 //! let kernel = compiler.compile(&xccy_swap)?;
 //! ```
 
-use std::sync::Arc;
-
 use infra_domain::{
     market::Currency,
-    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date},
+    time::{BusinessDayConvention, Calendar, CalendarEnum, CalendarId, ConcreteCalendar, Date},
     trade::{IndexType, Payoff, Trade},
 };
 use pricer_core::{
@@ -76,7 +74,7 @@ pub struct XCcyCompiler {
     /// Base (reporting) currency for FX conversion.
     base_currency: Currency,
     /// Optional calendar for business day adjustment.
-    calendar: Option<Arc<dyn Calendar>>,
+    calendar: Option<CalendarEnum>,
     /// Business day convention for payment dates.
     payment_bdc: BusinessDayConvention,
     /// Business day convention for fixing dates.
@@ -168,7 +166,7 @@ impl XCcyCompiler {
         calendar_id: CalendarId,
         convention: BusinessDayConvention,
     ) -> Self {
-        self.calendar = Some(Arc::new(ConcreteCalendar::new(calendar_id)));
+        self.calendar = Some(CalendarEnum::Concrete(ConcreteCalendar::new(calendar_id)));
         self.payment_bdc = convention;
         self.fixing_bdc = convention;
         self
@@ -178,7 +176,7 @@ impl XCcyCompiler {
     #[must_use]
     pub fn with_custom_calendar(
         mut self,
-        calendar: Arc<dyn Calendar>,
+        calendar: CalendarEnum,
         convention: BusinessDayConvention,
     ) -> Self {
         self.calendar = Some(calendar);
@@ -289,11 +287,9 @@ impl XCcyCompiler {
                 };
                 Ok((*multiplier, *spread, fwd_index_id))
             }
-            Payoff::VanillaOption { .. } | Payoff::Digital { .. } => {
-                Err(CompileError::UnsupportedPayoff(
-                    "Option payoffs not supported in X-Ccy compiler".to_string(),
-                ))
-            }
+            _ => Err(CompileError::UnsupportedPayoff(
+                "Non-linear payoffs not supported in X-Ccy compiler".to_string(),
+            )),
         }
     }
 }

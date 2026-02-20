@@ -62,6 +62,7 @@
 pub mod analytic;
 pub mod builder;
 pub mod compiler;
+pub mod convexity;
 pub mod market;
 pub mod payoff;
 pub mod process;

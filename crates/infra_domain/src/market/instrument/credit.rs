@@ -1,6 +1,6 @@
 //! Credit instrument definitions.
 
-use super::error::InstrumentError;
+use super::{common::CdsType, error::InstrumentError};
 use crate::{market::Currency, time::Date};
 
 /// ISDA standard credit events.
@@ -54,6 +54,10 @@ pub struct Cds {
     pub currency: Currency,
     /// Applicable credit events.
     pub credit_events: Vec<CreditEvent>,
+    /// Initial payment lag in days.
+    pub initial_payment_lag: u32,
+    /// CDS convention type (ISDA or SMBC).
+    pub cds_type: CdsType,
 }
 
 impl Cds {
@@ -274,6 +278,8 @@ mod tests {
             recovery_rate: Some(0.4),
             currency: Currency::USD,
             credit_events: vec![CreditEvent::Bankruptcy, CreditEvent::FailureToPay],
+            initial_payment_lag: 0,
+            cds_type: CdsType::Isda,
         };
         assert!(cds.validate().is_ok());
         let mut bad = cds.clone();

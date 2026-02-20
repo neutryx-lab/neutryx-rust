@@ -33,7 +33,10 @@ mod convention_set;
 mod market_convention;
 mod registry;
 
-pub use commodity::{CommodityConvention, DeliveryConvention, PriceQuotation};
+pub use commodity::{
+    CommodityConvention, CommodityFutureConvention, CommodityFutureOptionConvention,
+    DeliveryConvention, PriceQuotation,
+};
 pub use convention_set::ConventionSet;
 pub use credit::CdsConvention;
 pub use equity::{DividendConvention, EquityConvention, EquitySettlementType};
@@ -43,9 +46,9 @@ pub use fx::{
 };
 pub use market_convention::MarketConvention;
 pub use rates::{
-    BasisSpreadLeg, BondConvention, CapFloorConvention, DepositConvention, FraConvention,
-    FuturesConvention, InflationIndex, InflationInterpolation, InflationSwapConvention,
-    SettlementConvention, SwapConvention, SwapLegConvention, SwaptionConvention,
-    XCcyBasisConvention, XCcyLegConvention,
+    BasisSpreadLeg, BondConvention, BondFutureConvention, CapFloorConvention, DepositConvention,
+    FraConvention, FuturesConvention, InflationIndex, InflationInterpolation,
+    InflationSwapConvention, IrFutureOptionConvention, SettlementConvention, SwapConvention,
+    SwapLegConvention, SwaptionConvention, XCcyBasisConvention, XCcyLegConvention,
 };
 pub use registry::{ConventionKey, ConventionRegistry, RegistryError};

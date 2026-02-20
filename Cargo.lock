@@ -1732,6 +1732,7 @@ dependencies = [
  "bon",
  "chrono",
  "derive_more",
+ "enum_dispatch",
  "proptest",
  "serde",
  "serde_json",
