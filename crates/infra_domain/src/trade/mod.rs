@@ -26,7 +26,6 @@ pub mod instrument_def {
 pub use book_assignment::{BookTransferReason, TradeBookAssignment};
 pub use builder::{LegConfig, LegConfigBuilder};
 pub use cashflow::{Cashflow, CashflowType, CompoundType};
-pub use sub_schedule::SubSchedule;
 pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
 pub use event_leg::{
@@ -43,6 +42,7 @@ pub use pricing_instrument::{
     ExerciseStyle, Forward, ForwardDirection, FxOptionType, InstrumentParams, PayoffType,
     PricingInstrument, VanillaOption,
 };
+pub use sub_schedule::SubSchedule;
 pub use trade::{
     ExerciseType, ProtectionSide, SettlementType, Trade, TradeBuilder, TradeMetadata, TradeType,
 };

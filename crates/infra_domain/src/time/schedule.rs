@@ -2,9 +2,7 @@
 
 use chrono::{Datelike, Months, NaiveDate};
 
-use super::error::TimeError;
-use super::frequency::Frequency;
-use super::types::Date;
+use super::{error::TimeError, frequency::Frequency, types::Date};
 
 /// Roll convention for schedule generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -20,7 +18,9 @@ pub enum RollConvention {
 }
 
 /// Stub period type for schedule generation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum StubType {
     /// Short stub period (default).
     #[default]
@@ -172,7 +172,12 @@ mod tests {
     #[test]
     fn test_roll_convention_eom() {
         let first_roll = Date::from_ymd(2024, 1, 31).unwrap();
-        let d = get_roll_date(first_roll, Frequency::Monthly, RollConvention::EndOfMonth, 1);
+        let d = get_roll_date(
+            first_roll,
+            Frequency::Monthly,
+            RollConvention::EndOfMonth,
+            1,
+        );
         assert_eq!(d, Date::from_ymd(2024, 2, 29).unwrap());
     }
 
@@ -189,7 +194,12 @@ mod tests {
     #[test]
     fn test_roll_quarterly() {
         let first_roll = Date::from_ymd(2024, 3, 20).unwrap();
-        let d = get_roll_date(first_roll, Frequency::Quarterly, RollConvention::Standard, 1);
+        let d = get_roll_date(
+            first_roll,
+            Frequency::Quarterly,
+            RollConvention::Standard,
+            1,
+        );
         assert_eq!(d, Date::from_ymd(2024, 6, 20).unwrap());
     }
 

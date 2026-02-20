@@ -77,7 +77,8 @@ impl Frequency {
         }
     }
 
-    /// Returns `true` if this frequency is monthly-based (divisible into months).
+    /// Returns `true` if this frequency is monthly-based (divisible into
+    /// months).
     #[must_use]
     pub fn is_monthly(&self) -> bool {
         matches!(

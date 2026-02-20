@@ -117,10 +117,7 @@ impl Add<Period> for Date {
                     } else {
                         cur.checked_sub_days(chrono::Days::new(1)).unwrap_or(cur)
                     };
-                    if !matches!(
-                        cur.weekday(),
-                        chrono::Weekday::Sat | chrono::Weekday::Sun
-                    ) {
+                    if !matches!(cur.weekday(), chrono::Weekday::Sat | chrono::Weekday::Sun) {
                         remaining -= 1;
                     }
                 }

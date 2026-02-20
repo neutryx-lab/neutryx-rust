@@ -2,10 +2,9 @@
 
 use chrono::{Datelike, Months};
 
-use super::calendars::Calendar;
-use super::date_adjust::DateAdjustMethod;
-use super::schedule::RollConvention;
-use super::types::Date;
+use super::{
+    calendars::Calendar, date_adjust::DateAdjustMethod, schedule::RollConvention, types::Date,
+};
 
 /// Date calculator: computes an adjusted target date from a base date.
 #[derive(Debug, Clone)]
@@ -114,20 +113,17 @@ fn add_months_with_roll(base: Date, months: i32, convention: RollConvention) -> 
             let target_day = base.day();
             let last = last_day(shifted.year(), shifted.month());
             let day = target_day.min(last);
-            chrono::NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), day)
-                .unwrap_or(shifted)
+            chrono::NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), day).unwrap_or(shifted)
         }
         RollConvention::Day29th => {
             let last = last_day(shifted.year(), shifted.month());
             let day = 29u32.min(last);
-            chrono::NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), day)
-                .unwrap_or(shifted)
+            chrono::NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), day).unwrap_or(shifted)
         }
         RollConvention::Day30th => {
             let last = last_day(shifted.year(), shifted.month());
             let day = 30u32.min(last);
-            chrono::NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), day)
-                .unwrap_or(shifted)
+            chrono::NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), day).unwrap_or(shifted)
         }
         RollConvention::EndOfMonth => {
             let last = last_day(shifted.year(), shifted.month());
@@ -169,7 +165,7 @@ mod tests {
             adjust: following_adjust(),
         };
         let base = Date::from_ymd(2026, 1, 5).unwrap(); // Monday
-        // +5 days = Saturday -> adjusted to Monday Jan 12
+                                                        // +5 days = Saturday -> adjusted to Monday Jan 12
         assert_eq!(
             calc.adjusted_date(base),
             Date::from_ymd(2026, 1, 12).unwrap()
@@ -183,7 +179,7 @@ mod tests {
             adjust: following_adjust(),
         };
         let base = Date::from_ymd(2026, 1, 5).unwrap(); // Monday
-        // +1 week = Monday Jan 12
+                                                        // +1 week = Monday Jan 12
         assert_eq!(
             calc.adjusted_date(base),
             Date::from_ymd(2026, 1, 12).unwrap()

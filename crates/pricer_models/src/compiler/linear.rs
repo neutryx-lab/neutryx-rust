@@ -262,11 +262,9 @@ impl LinearProductsCompiler {
                 };
                 Ok((*multiplier, *spread, fwd_index_id))
             }
-            _ => {
-                Err(CompileError::UnsupportedPayoff(
-                    "Non-linear payoffs not supported in linear compiler".to_string(),
-                ))
-            }
+            _ => Err(CompileError::UnsupportedPayoff(
+                "Non-linear payoffs not supported in linear compiler".to_string(),
+            )),
         }
     }
 }

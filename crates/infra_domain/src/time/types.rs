@@ -432,23 +432,14 @@ mod tests {
         let d = Date::from_ymd(2023, 2, 15).unwrap();
         assert_eq!(d.last_day_of_month(), Date::from_ymd(2023, 2, 28).unwrap());
         let d = Date::from_ymd(2024, 12, 1).unwrap();
-        assert_eq!(
-            d.last_day_of_month(),
-            Date::from_ymd(2024, 12, 31).unwrap()
-        );
+        assert_eq!(d.last_day_of_month(), Date::from_ymd(2024, 12, 31).unwrap());
     }
 
     #[test]
     fn test_first_day_of_month() {
         let d = Date::from_ymd(2024, 6, 15).unwrap();
-        assert_eq!(
-            d.first_day_of_month(),
-            Date::from_ymd(2024, 6, 1).unwrap()
-        );
+        assert_eq!(d.first_day_of_month(), Date::from_ymd(2024, 6, 1).unwrap());
         let d = Date::from_ymd(2024, 1, 31).unwrap();
-        assert_eq!(
-            d.first_day_of_month(),
-            Date::from_ymd(2024, 1, 1).unwrap()
-        );
+        assert_eq!(d.first_day_of_month(), Date::from_ymd(2024, 1, 1).unwrap());
     }
 }

@@ -644,9 +644,7 @@ mod tests {
         assert!(inflation.is_inflation());
         assert!(!inflation.is_equity());
 
-        let commodity = IndexType::Commodity {
-            name: "WTI".into(),
-        };
+        let commodity = IndexType::Commodity { name: "WTI".into() };
         assert!(commodity.is_commodity());
         assert!(!commodity.is_equity());
 

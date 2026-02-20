@@ -4,9 +4,11 @@ use std::str::FromStr;
 
 use chrono::{Datelike, NaiveDate};
 
-use super::calendars::{Calendar, CalendarEnum, CalendarId, ConcreteCalendar};
-use super::frequency::Frequency;
-use super::types::Date;
+use super::{
+    calendars::{Calendar, CalendarEnum, CalendarId, ConcreteCalendar},
+    frequency::Frequency,
+    types::Date,
+};
 
 /// Day count convention for interest calculations.
 #[non_exhaustive]
@@ -63,13 +65,15 @@ pub enum DayCounter {
 }
 
 /// Returns `true` if the given year is a leap year.
-fn is_leap_year(year: i32) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
-}
+fn is_leap_year(year: i32) -> bool { (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 }
 
 /// Days in year (365 or 366).
 fn days_in_year(year: i32) -> f64 {
-    if is_leap_year(year) { 366.0 } else { 365.0 }
+    if is_leap_year(year) {
+        366.0
+    } else {
+        365.0
+    }
 }
 
 impl DayCounter {
@@ -109,8 +113,7 @@ impl DayCounter {
             }
             Self::Bus252 => {
                 // Without calendar, use WeekendOnly as fallback.
-                let cal =
-                    CalendarEnum::Concrete(ConcreteCalendar::get(CalendarId::WeekendOnly));
+                let cal = CalendarEnum::Concrete(ConcreteCalendar::get(CalendarId::WeekendOnly));
                 self.year_fraction_with_calendar(start, end, &cal)
             }
             Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => {
@@ -346,10 +349,7 @@ mod tests {
             "ACT/ACT ICMA".parse::<DayCounter>().unwrap(),
             DayCounter::ActualActualIcma
         );
-        assert_eq!(
-            "BUS/252".parse::<DayCounter>().unwrap(),
-            DayCounter::Bus252
-        );
+        assert_eq!("BUS/252".parse::<DayCounter>().unwrap(), DayCounter::Bus252);
     }
 
     #[test]

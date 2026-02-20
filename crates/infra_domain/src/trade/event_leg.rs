@@ -102,13 +102,15 @@ pub enum EventKind {
     Barrier(BarrierEvent),
 }
 
-/// A conditional leg structure that activates upon an exercise or barrier event.
+/// A conditional leg structure that activates upon an exercise or barrier
+/// event.
 ///
 /// For a Swaption, the `EventLeg` contains the underlying swap's
 /// fixed and floating legs, gated by the exercise event.
 /// For a CDS Option, it contains the underlying CDS's premium
 /// and protection legs.
-/// For barrier options, it contains the conditional legs gated by barrier events.
+/// For barrier options, it contains the conditional legs gated by barrier
+/// events.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct EventLeg {
     /// The event that activates these legs.
@@ -172,9 +174,7 @@ impl EventLeg {
     }
 
     /// Returns an iterator over the conditional legs.
-    pub fn legs(&self) -> impl Iterator<Item = &Leg> {
-        self.legs.iter()
-    }
+    pub fn legs(&self) -> impl Iterator<Item = &Leg> { self.legs.iter() }
 
     /// Returns all cashflows across all conditional legs.
     pub fn all_cashflows(&self) -> impl Iterator<Item = &Cashflow> {
@@ -183,9 +183,7 @@ impl EventLeg {
 
     /// Returns the number of conditional legs.
     #[must_use]
-    pub fn num_legs(&self) -> usize {
-        self.legs.len()
-    }
+    pub fn num_legs(&self) -> usize { self.legs.len() }
 
     /// Returns the fixed leg among the conditional legs, if any.
     #[must_use]
@@ -203,15 +201,11 @@ impl EventLeg {
 
     /// Returns true if this event is an exercise.
     #[must_use]
-    pub fn is_exercise(&self) -> bool {
-        matches!(self.event, EventKind::Exercise(_))
-    }
+    pub fn is_exercise(&self) -> bool { matches!(self.event, EventKind::Exercise(_)) }
 
     /// Returns true if this event is a barrier.
     #[must_use]
-    pub fn is_barrier(&self) -> bool {
-        matches!(self.event, EventKind::Barrier(_))
-    }
+    pub fn is_barrier(&self) -> bool { matches!(self.event, EventKind::Barrier(_)) }
 
     /// Returns the exercise event if this is an exercise type.
     #[must_use]
@@ -233,9 +227,7 @@ impl EventLeg {
 
     /// Returns true if this event has a TARN redemption target.
     #[must_use]
-    pub fn has_redemption_target(&self) -> bool {
-        self.redemption_target.is_some()
-    }
+    pub fn has_redemption_target(&self) -> bool { self.redemption_target.is_some() }
 
     /// Returns the exercise dates (only for exercise events).
     #[must_use]

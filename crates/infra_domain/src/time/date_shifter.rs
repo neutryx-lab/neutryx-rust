@@ -1,7 +1,9 @@
 //! Date shifter for single- and multi-calendar adjustments.
 
-use super::calendars::{BusinessDayConvention, Calendar, CalendarEnum};
-use super::types::Date;
+use super::{
+    calendars::{BusinessDayConvention, Calendar, CalendarEnum},
+    types::Date,
+};
 
 /// Date shifter supporting single or multiple calendars.
 #[derive(Debug, Clone)]

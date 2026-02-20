@@ -1,7 +1,7 @@
 //! Sub-schedule types for compound/averaged coupon periods.
 
-use crate::time::Date;
 use super::payoff::Payoff;
+use crate::time::Date;
 
 /// A sub-period within a coupon period, used for averaging or compounding.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -49,7 +49,5 @@ impl SubSchedule {
 
     /// Returns the spread value if set.
     #[must_use]
-    pub fn spread_value(&self) -> f64 {
-        self.spread.unwrap_or(0.0)
-    }
+    pub fn spread_value(&self) -> f64 { self.spread.unwrap_or(0.0) }
 }

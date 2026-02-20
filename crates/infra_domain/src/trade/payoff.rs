@@ -98,7 +98,8 @@ pub enum Payoff {
         spread: f64,
     },
 
-    /// Spread between two indices: multiplier1 * index1 - multiplier2 * index2 + spread.
+    /// Spread between two indices: multiplier1 * index1 - multiplier2 * index2
+    /// + spread.
     Spread {
         /// First index.
         index1: IndexType,

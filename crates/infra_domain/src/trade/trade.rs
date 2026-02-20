@@ -654,20 +654,14 @@ impl Trade {
 
     /// Returns the fixing data for a given index, if available.
     #[must_use]
-    pub fn fixing_for(&self, index: &IndexType) -> Option<&Fixing> {
-        self.fixings.get(index)
-    }
+    pub fn fixing_for(&self, index: &IndexType) -> Option<&Fixing> { self.fixings.get(index) }
 
     /// Returns a mutable reference to fixings.
-    pub fn fixings_mut(&mut self) -> &mut HashMap<IndexType, Fixing> {
-        &mut self.fixings
-    }
+    pub fn fixings_mut(&mut self) -> &mut HashMap<IndexType, Fixing> { &mut self.fixings }
 
     /// Returns true if this trade has any fixing data.
     #[must_use]
-    pub fn has_fixings(&self) -> bool {
-        !self.fixings.is_empty()
-    }
+    pub fn has_fixings(&self) -> bool { !self.fixings.is_empty() }
 }
 
 #[cfg(test)]

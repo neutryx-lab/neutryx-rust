@@ -29,13 +29,17 @@ pub enum FxVolInstrumentError {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum DeltaType {
-    /// Spot delta (standard for most G10 pairs like EURUSD).
+    /// Spot delta in percentage terms (standard for most G10 pairs like EURUSD).
     #[default]
-    SpotDelta,
+    SpotPercent,
+    /// Spot delta in pips terms.
+    SpotPips,
+    /// Forward delta in percentage terms.
+    ForwardPercent,
+    /// Forward delta in pips terms.
+    ForwardPips,
     /// Premium-adjusted delta (standard for pairs like USDJPY).
     PremiumAdjusted,
-    /// Forward delta.
-    ForwardDelta,
 }
 
 impl DeltaType {
@@ -43,8 +47,10 @@ impl DeltaType {
     #[must_use]
     pub fn display_name(&self) -> &'static str {
         match self {
-            Self::SpotDelta => "Spot Delta",
-            Self::ForwardDelta => "Forward Delta",
+            Self::SpotPercent => "Spot Delta (Percent)",
+            Self::SpotPips => "Spot Delta (Pips)",
+            Self::ForwardPercent => "Forward Delta (Percent)",
+            Self::ForwardPips => "Forward Delta (Pips)",
             Self::PremiumAdjusted => "Premium-Adjusted Delta",
         }
     }
@@ -53,8 +59,10 @@ impl DeltaType {
     #[must_use]
     pub fn description(&self) -> &'static str {
         match self {
-            Self::SpotDelta => "Premium excluded, standard G10 convention",
-            Self::ForwardDelta => "Premium excluded, measured vs forward",
+            Self::SpotPercent => "Premium excluded, percentage terms, standard G10 convention",
+            Self::SpotPips => "Premium excluded, pips terms",
+            Self::ForwardPercent => "Premium excluded, percentage terms, measured vs forward",
+            Self::ForwardPips => "Premium excluded, pips terms, measured vs forward",
             Self::PremiumAdjusted => "Premium included, common in EM markets",
         }
     }

@@ -11,9 +11,7 @@ pub struct Fixing {
 }
 
 impl Default for Fixing {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl Fixing {
@@ -27,50 +25,37 @@ impl Fixing {
 
     /// Creates a fixing store from an existing map.
     #[must_use]
-    pub fn from_map(rates: BTreeMap<Date, f64>) -> Self {
-        Self { rates }
-    }
+    pub fn from_map(rates: BTreeMap<Date, f64>) -> Self { Self { rates } }
 
     /// Inserts a fixing rate for a date.
-    pub fn insert(&mut self, date: Date, rate: f64) {
-        self.rates.insert(date, rate);
-    }
+    pub fn insert(&mut self, date: Date, rate: f64) { self.rates.insert(date, rate); }
 
     /// Returns the fixing rate for a date, if available.
     #[must_use]
-    pub fn get(&self, date: Date) -> Option<f64> {
-        self.rates.get(&date).copied()
-    }
+    pub fn get(&self, date: Date) -> Option<f64> { self.rates.get(&date).copied() }
 
     /// Returns true if a fixing rate exists for the given date.
     #[must_use]
-    pub fn has_rate(&self, date: Date) -> bool {
-        self.rates.contains_key(&date)
-    }
+    pub fn has_rate(&self, date: Date) -> bool { self.rates.contains_key(&date) }
 
     /// Returns a reference to the underlying rate map.
     #[must_use]
-    pub fn rates(&self) -> &BTreeMap<Date, f64> {
-        &self.rates
-    }
+    pub fn rates(&self) -> &BTreeMap<Date, f64> { &self.rates }
 
     /// Returns the number of fixing rates stored.
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.rates.len()
-    }
+    pub fn len(&self) -> usize { self.rates.len() }
 
     /// Returns true if no fixing rates are stored.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.rates.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.rates.is_empty() }
 }
 
 /// Layered fixing view providing priority-based lookup.
 ///
 /// Looks up rates in order: additionals (overrides) -> base fixings.
-/// Useful for Monte Carlo simulation where simulated rates overlay historical data.
+/// Useful for Monte Carlo simulation where simulated rates overlay historical
+/// data.
 #[derive(Debug, Clone)]
 pub struct FixingView<'a> {
     base: &'a Fixing,

@@ -628,8 +628,7 @@ fn generate_ois_floating_leg_cashflows(
         let accrual_end = payment_dates[i + 1];
         let payment_date = accrual_end;
 
-        let sub_schedules =
-            generate_ois_sub_schedules(accrual_start, accrual_end, rate_index);
+        let sub_schedules = generate_ois_sub_schedules(accrual_start, accrual_end, rate_index);
 
         let days = (accrual_end - accrual_start) as f64;
         let year_fraction = days / 360.0;

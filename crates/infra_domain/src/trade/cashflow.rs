@@ -4,7 +4,9 @@ use super::{payoff::Payoff, sub_schedule::SubSchedule};
 use crate::{market::Currency, time::Date};
 
 /// Compounding method for multi-period coupons.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum CompoundType {
     /// No compounding (single-period coupon).
     #[default]

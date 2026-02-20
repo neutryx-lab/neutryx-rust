@@ -1,7 +1,9 @@
 //! Date adjustment methods for financial instruments.
 
-use super::calendars::{BusinessDayConvention, Calendar, CalendarEnum};
-use super::types::Date;
+use super::{
+    calendars::{BusinessDayConvention, Calendar, CalendarEnum},
+    types::Date,
+};
 
 /// Lag type for date adjustments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -107,8 +109,7 @@ mod tests {
 
     #[test]
     fn test_business_day_adjust() {
-        let adj =
-            DateAdjustMethod::business_day(weekend_cal(), BusinessDayConvention::Following);
+        let adj = DateAdjustMethod::business_day(weekend_cal(), BusinessDayConvention::Following);
         // Saturday -> Monday
         let sat = Date::from_ymd(2026, 1, 10).unwrap();
         assert_eq!(adj.apply(sat), Date::from_ymd(2026, 1, 12).unwrap());
