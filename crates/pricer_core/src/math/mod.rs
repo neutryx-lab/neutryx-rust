@@ -8,6 +8,7 @@
 //! - `solvers`: Root-finding algorithms for numerical solving
 //! - `numeric`: Numeric conversion utilities (`from_f64`)
 //! - `linalg`: Linear algebra operations
+//! - `quadrature`: Numerical integration via Gaussian quadrature
 //! - `rng`: Random number generation
 
 // Allow standard mathematical single-letter variable names (a, b, c, x, y, etc.)
@@ -19,6 +20,7 @@ pub mod formulas;
 pub mod interpolation;
 pub mod normal_dist;
 pub mod numeric;
+pub mod quadrature;
 pub mod smoothing;
 pub mod solvers;
 
