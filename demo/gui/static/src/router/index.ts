@@ -138,6 +138,17 @@ const routes: RouteRecordRaw[] = [
     } as ViewMeta,
   },
   {
+    path: '/greeks-analyser',
+    name: 'greeks-analyser',
+    component: GreeksAnalyserView,
+    meta: {
+      title: 'Greeks',
+      breadcrumb: 'Greeks',
+      icon: 'fa-wave-square',
+      navGroup: 'tools',
+    } as ViewMeta,
+  },
+  {
     path: '/graph',
     name: 'graph',
     component: GraphView,
@@ -145,17 +156,6 @@ const routes: RouteRecordRaw[] = [
       title: 'Graph',
       breadcrumb: 'Graph',
       icon: 'fa-project-diagram',
-      navGroup: 'tools',
-    } as ViewMeta,
-  },
-  {
-    path: '/greeks-analyser',
-    name: 'greeks-analyser',
-    component: GreeksAnalyserView,
-    meta: {
-      title: 'Greeks Analyser',
-      breadcrumb: 'Greeks Analyser',
-      icon: 'fa-wave-square',
       navGroup: 'tools',
     } as ViewMeta,
   },
