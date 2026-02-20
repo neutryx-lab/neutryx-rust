@@ -368,11 +368,21 @@ mod tests {
         let t = 1.0;
         let vol = 0.10;
 
-        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardPercent).unwrap();
+        let strike =
+            delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardPercent).unwrap();
 
         // Verify round-trip
-        let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, true, DeltaType::ForwardPercent).unwrap();
+        let recovered = strike_to_delta(
+            strike,
+            spot,
+            rd,
+            rf,
+            t,
+            vol,
+            true,
+            DeltaType::ForwardPercent,
+        )
+        .unwrap();
         assert_relative_eq!(recovered, delta, epsilon = 1e-6);
     }
 
@@ -385,11 +395,21 @@ mod tests {
         let t = 1.0;
         let vol = 0.10;
 
-        let strike = delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardPercent).unwrap();
+        let strike =
+            delta_to_strike(delta, spot, rd, rf, t, vol, DeltaType::ForwardPercent).unwrap();
 
         // Verify round-trip
-        let recovered =
-            strike_to_delta(strike, spot, rd, rf, t, vol, false, DeltaType::ForwardPercent).unwrap();
+        let recovered = strike_to_delta(
+            strike,
+            spot,
+            rd,
+            rf,
+            t,
+            vol,
+            false,
+            DeltaType::ForwardPercent,
+        )
+        .unwrap();
         assert_relative_eq!(recovered, delta, epsilon = 1e-6);
     }
 
@@ -428,7 +448,16 @@ mod tests {
 
     #[test]
     fn test_strike_to_delta_invalid_strike() {
-        let result = strike_to_delta(0.0, 1.10, 0.03, 0.01, 1.0, 0.10, true, DeltaType::SpotPercent);
+        let result = strike_to_delta(
+            0.0,
+            1.10,
+            0.03,
+            0.01,
+            1.0,
+            0.10,
+            true,
+            DeltaType::SpotPercent,
+        );
         assert!(matches!(result, Err(FormulaError::InvalidStrike { .. })));
     }
 

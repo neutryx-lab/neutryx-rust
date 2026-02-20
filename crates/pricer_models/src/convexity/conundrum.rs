@@ -5,18 +5,21 @@
 //! - Normal analytic (closed-form under Bachelier dynamics)
 //! - Shifted log-normal analytic (closed-form under SLN dynamics)
 
-use pricer_core::math::normal_dist::norm_cdf;
-use pricer_core::math::numeric::from_f64;
-use pricer_core::traits::Float;
+use pricer_core::{
+    math::{normal_dist::norm_cdf, numeric::from_f64},
+    traits::Float,
+};
 
-use super::params::{ConvexityAdjustCalcMethod, ConvexityAdjusterParams};
-use super::support;
-use super::{ConvexityAdjuster, ConvexityAdjustmentError};
+use super::{
+    params::{ConvexityAdjustCalcMethod, ConvexityAdjusterParams},
+    support, ConvexityAdjuster, ConvexityAdjustmentError,
+};
 
 /// CMS convexity adjuster using the conundrum integrand (replication) method.
 ///
 /// Supports three calculation methods:
-/// - **NumericalIntegration**: Full replication via adaptive integration of OTM option prices.
+/// - **NumericalIntegration**: Full replication via adaptive integration of OTM
+///   option prices.
 /// - **NormalAnalytic**: Closed-form under Normal (Bachelier) vol.
 /// - **SlnAnalytic**: Closed-form under Shifted Log-Normal vol.
 #[derive(Debug, Clone)]
@@ -59,9 +62,7 @@ impl<T: Float> ConundrumIntegrandConvexityAdjuster<T> {
     }
 
     /// Returns the calculation method.
-    pub fn calc_method(&self) -> ConvexityAdjustCalcMethod {
-        self.calc_method
-    }
+    pub fn calc_method(&self) -> ConvexityAdjustCalcMethod { self.calc_method }
 }
 
 impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
@@ -207,10 +208,9 @@ impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
             }
 
             ConvexityAdjustCalcMethod::NormalAnalytic => {
-                let delta = (pay_date_yf - effective_date_yf)
-                    / (first_payment_date_yf - effective_date_yf);
-                let nrd =
-                    support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
+                let delta =
+                    (pay_date_yf - effective_date_yf) / (first_payment_date_yf - effective_date_yf);
+                let nrd = support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
                 let convexity_adjust =
                     nrd * annuity * normal_vol * normal_vol * option_term / discount_factor_pay;
 
@@ -218,10 +218,9 @@ impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
             }
 
             ConvexityAdjustCalcMethod::SlnAnalytic => {
-                let delta = (pay_date_yf - effective_date_yf)
-                    / (first_payment_date_yf - effective_date_yf);
-                let nrd =
-                    support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
+                let delta =
+                    (pay_date_yf - effective_date_yf) / (first_payment_date_yf - effective_date_yf);
+                let nrd = support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
                 let shifted_fwd = fwd_swap + shift_size;
                 let sigma_sq_tau = sln_vol * sln_vol * option_term;
                 // expm1(x) = exp(x) - 1
@@ -288,8 +287,7 @@ impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
                     pay_date_yf,
                 );
 
-                let integral;
-                if fwd_swap <= strike {
+                let integral = if fwd_swap <= strike {
                     // integral = (K - F) * Call(K) + 2 * integrate_call(K -> +inf)
                     let call_at_stk = option_price_fn(stk_vol_dc, true) / daycount_adjust;
                     let base = (strike - fwd_swap) * call_at_stk;
@@ -305,9 +303,10 @@ impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
                         self.params.time_value_tolerance,
                     );
 
-                    integral = base + two * call_integral;
+                    base + two * call_integral
                 } else {
-                    // integral = (K - F) * Put(K) + 2 * integrate_call(F -> +inf) + 2 * integrate_put(K, F)
+                    // integral = (K - F) * Put(K) + 2 * integrate_call(F -> +inf) + 2 *
+                    // integrate_put(K, F)
                     let put_at_stk = option_price_fn(stk_vol_dc, false) / daycount_adjust;
                     let base = (strike - fwd_swap) * put_at_stk;
 
@@ -329,17 +328,16 @@ impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
                         daycount_adjust,
                     );
 
-                    integral = base + two * call_integral + two * put_integral;
-                }
+                    base + two * call_integral + two * put_integral
+                };
 
                 Ok(call_price_at_strike + ratio * integral)
             }
 
             ConvexityAdjustCalcMethod::NormalAnalytic => {
-                let delta = (pay_date_yf - effective_date_yf)
-                    / (first_payment_date_yf - effective_date_yf);
-                let nrd =
-                    support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
+                let delta =
+                    (pay_date_yf - effective_date_yf) / (first_payment_date_yf - effective_date_yf);
+                let nrd = support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
                 let sqrt_tau = option_term.sqrt();
                 let d = (fwd_swap - strike) / (normal_vol * sqrt_tau);
                 let convexity_adjust = nrd * annuity * normal_vol * normal_vol * option_term
@@ -350,10 +348,9 @@ impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
             }
 
             ConvexityAdjustCalcMethod::SlnAnalytic => {
-                let delta = (pay_date_yf - effective_date_yf)
-                    / (first_payment_date_yf - effective_date_yf);
-                let nrd =
-                    support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
+                let delta =
+                    (pay_date_yf - effective_date_yf) / (first_payment_date_yf - effective_date_yf);
+                let nrd = support::numeraire_ratio_derivative(fwd_swap, delta, pay_freq, ref_term);
 
                 let shifted_fwd = fwd_swap + shift_size;
                 let shifted_strike = strike + shift_size;
@@ -361,14 +358,13 @@ impl<T: Float> ConvexityAdjuster<T> for ConundrumIntegrandConvexityAdjuster<T> {
                 let sqrt_tau = option_term.sqrt();
 
                 let d = |x: T| -> T {
-                    ((shifted_fwd / shifted_strike).ln() + x * sigma_sq_tau)
-                        / (sln_vol * sqrt_tau)
+                    ((shifted_fwd / shifted_strike).ln() + x * sigma_sq_tau) / (sln_vol * sqrt_tau)
                 };
 
                 let convexity_adjust = nrd * annuity / discount_factor_pay
-                    * (shifted_fwd * shifted_fwd * sigma_sq_tau.exp()
-                        * norm_cdf(d(from_f64(1.5)))
-                        - shifted_fwd * (shifted_fwd + shifted_strike)
+                    * (shifted_fwd * shifted_fwd * sigma_sq_tau.exp() * norm_cdf(d(from_f64(1.5)))
+                        - shifted_fwd
+                            * (shifted_fwd + shifted_strike)
                             * norm_cdf(d(from_f64(0.5)))
                         + shifted_fwd * shifted_strike * norm_cdf(d(from_f64(-0.5))));
 
@@ -407,20 +403,20 @@ mod tests {
         // CMS 10Y SA, forward=3%, normal vol=50bps, 1Y option, annuity~9.5, df=0.97
         let result = adj
             .calc_swaplet_value(
-                10.0,               // ref_term
-                2.0,                // pay_freq
-                0.03,               // fwd_swap
-                0.0,                // lo_spread
-                0.0,                // effective_date_yf
-                0.5,                // first_payment_date_yf
-                10.5,               // pay_date_yf
-                9.5,                // annuity
-                0.97,               // discount_factor_pay
-                0.005,              // normal_vol (50bps)
-                0.0,                // sln_vol (unused)
-                0.0,                // shift_size (unused)
-                1.0,                // option_term
-                1.0,                // daycount_adjust
+                10.0,  // ref_term
+                2.0,   // pay_freq
+                0.03,  // fwd_swap
+                0.0,   // lo_spread
+                0.0,   // effective_date_yf
+                0.5,   // first_payment_date_yf
+                10.5,  // pay_date_yf
+                9.5,   // annuity
+                0.97,  // discount_factor_pay
+                0.005, // normal_vol (50bps)
+                0.0,   // sln_vol (unused)
+                0.0,   // shift_size (unused)
+                1.0,   // option_term
+                1.0,   // daycount_adjust
                 &dummy_price_fn,
                 &dummy_tv_fn,
             )
@@ -440,8 +436,22 @@ mod tests {
 
         let result = adj
             .calc_swaplet_value(
-                10.0, 2.0, 0.03, 0.0, 0.0, 0.5, 10.5, 9.5, 0.97, 0.0, 0.20, 0.0, 1.0, 1.0,
-                &dummy_price_fn, &dummy_tv_fn,
+                10.0,
+                2.0,
+                0.03,
+                0.0,
+                0.0,
+                0.5,
+                10.5,
+                9.5,
+                0.97,
+                0.0,
+                0.20,
+                0.0,
+                1.0,
+                1.0,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 
@@ -457,20 +467,48 @@ mod tests {
 
         let fwd = 0.03;
         let normal_vol = 0.003; // small vol
-        // For SLN with shift=0: sigma_SLN * F ≈ sigma_N => sigma_SLN ≈ sigma_N / F
+                                // For SLN with shift=0: sigma_SLN * F ≈ sigma_N => sigma_SLN ≈ sigma_N / F
         let sln_vol = normal_vol / fwd;
 
         let normal_result = normal_adj
             .calc_swaplet_value(
-                10.0, 2.0, fwd, 0.0, 0.0, 0.5, 10.5, 9.5, 0.97, normal_vol, 0.0, 0.0, 1.0, 1.0,
-                &dummy_price_fn, &dummy_tv_fn,
+                10.0,
+                2.0,
+                fwd,
+                0.0,
+                0.0,
+                0.5,
+                10.5,
+                9.5,
+                0.97,
+                normal_vol,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 
         let sln_result = sln_adj
             .calc_swaplet_value(
-                10.0, 2.0, fwd, 0.0, 0.0, 0.5, 10.5, 9.5, 0.97, 0.0, sln_vol, 0.0, 1.0, 1.0,
-                &dummy_price_fn, &dummy_tv_fn,
+                10.0,
+                2.0,
+                fwd,
+                0.0,
+                0.0,
+                0.5,
+                10.5,
+                9.5,
+                0.97,
+                0.0,
+                sln_vol,
+                0.0,
+                1.0,
+                1.0,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 
@@ -520,9 +558,22 @@ mod tests {
 
         let result = adj
             .calc_swaplet_value(
-                10.0, 2.0, 0.03, 0.0, 0.0, 0.5, 10.5, 9.5, 0.97, 0.005, 0.0, 0.0,
+                10.0,
+                2.0,
+                0.03,
+                0.0,
+                0.0,
+                0.5,
+                10.5,
+                9.5,
+                0.97,
+                0.005,
+                0.0,
+                0.0,
                 0.0, // option_term = 0
-                1.0, &dummy_price_fn, &dummy_tv_fn,
+                1.0,
+                &dummy_price_fn,
+                &dummy_tv_fn,
             )
             .unwrap();
 

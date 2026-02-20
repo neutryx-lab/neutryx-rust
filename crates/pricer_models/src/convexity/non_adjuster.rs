@@ -15,9 +15,7 @@ pub struct NonConvexityAdjuster<T: Float> {
 }
 
 impl<T: Float> Default for NonConvexityAdjuster<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> NonConvexityAdjuster<T> {
@@ -29,9 +27,7 @@ impl<T: Float> NonConvexityAdjuster<T> {
 }
 
 impl<T: Float> ConvexityAdjuster<T> for NonConvexityAdjuster<T> {
-    fn does_apply(&self, _end_date_yf: T, _payment_date_yf: T) -> bool {
-        false
-    }
+    fn does_apply(&self, _end_date_yf: T, _payment_date_yf: T) -> bool { false }
 
     fn compute_adjustment(
         &self,
@@ -116,7 +112,9 @@ mod tests {
         let price_fn = |_k: f64, _is_call: bool| 0.0;
         let tv_fn = |_k: f64| 0.0;
         let result = adj
-            .compute_adjustment(10.0, 2.0, 0.03, 0.0, 0.0, 10.0, 10.5, &price_fn, &tv_fn, 0.005, 1.0, 1.0)
+            .compute_adjustment(
+                10.0, 2.0, 0.03, 0.0, 0.0, 10.0, 10.5, &price_fn, &tv_fn, 0.005, 1.0, 1.0,
+            )
             .unwrap();
         assert_eq!(result, 0.0);
     }
@@ -142,8 +140,8 @@ mod tests {
         let tv_fn = |_k: f64| 0.0;
         let result = adj
             .calc_caplet_value(
-                10.0, 2.0, 0.03, 0.02, 0.0, 0.0, 0.5, 10.5, 9.5, 0.98, 0.005, 0.20, 0.0, 1.0,
-                1.0, 0.0042, &price_fn, &tv_fn,
+                10.0, 2.0, 0.03, 0.02, 0.0, 0.0, 0.5, 10.5, 9.5, 0.98, 0.005, 0.20, 0.0, 1.0, 1.0,
+                0.0042, &price_fn, &tv_fn,
             )
             .unwrap();
         assert_eq!(result, 0.0042);

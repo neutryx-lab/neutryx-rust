@@ -29,7 +29,8 @@ pub enum FxVolInstrumentError {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum DeltaType {
-    /// Spot delta in percentage terms (standard for most G10 pairs like EURUSD).
+    /// Spot delta in percentage terms (standard for most G10 pairs like
+    /// EURUSD).
     #[default]
     SpotPercent,
     /// Spot delta in pips terms.

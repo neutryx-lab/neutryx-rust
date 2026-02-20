@@ -391,7 +391,8 @@ impl std::fmt::Display for IrVolInstrument {
     }
 }
 
-/// Swaption straddle (combination of payer and receiver swaption at same strike).
+/// Swaption straddle (combination of payer and receiver swaption at same
+/// strike).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SwaptionStraddle {
     /// Tenor of the underlying swap.

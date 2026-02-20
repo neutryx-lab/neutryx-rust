@@ -1,7 +1,6 @@
 //! Configuration parameters and enums for convexity adjustment.
 
-use pricer_core::math::numeric::from_f64;
-use pricer_core::traits::Float;
+use pricer_core::{math::numeric::from_f64, traits::Float};
 use serde::{Deserialize, Serialize};
 
 /// CMS convexity adjustment calculation method.
@@ -22,7 +21,8 @@ pub struct ConvexityAdjusterParams<T: Float> {
     pub upper_limit_sigma: T,
     /// Lower integration bound in sigma multiples (default -5.0).
     pub lower_limit_sigma: T,
-    /// Grace period in days for deciding whether adjustment applies (default 14).
+    /// Grace period in days for deciding whether adjustment applies (default
+    /// 14).
     pub grace_period_days: i32,
     /// Convergence tolerance for adaptive integration (default 1e-7).
     pub integral_tolerance: T,

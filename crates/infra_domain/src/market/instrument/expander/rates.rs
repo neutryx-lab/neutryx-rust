@@ -713,7 +713,12 @@ impl InstrumentExpander for BondFuture {
             Payoff::fixed(self.price),
             self.currency,
         );
-        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        let leg = Leg::new(
+            vec![cf],
+            Direction::Receiver,
+            LegType::Generic,
+            self.currency,
+        );
         Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
     }
 }
@@ -735,7 +740,12 @@ impl InstrumentExpander for BondFutureOption {
             Payoff::fixed(self.strike),
             self.currency,
         );
-        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        let leg = Leg::new(
+            vec![cf],
+            Direction::Receiver,
+            LegType::Generic,
+            self.currency,
+        );
         Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
     }
 }
@@ -757,7 +767,12 @@ impl InstrumentExpander for IrFutureOption {
             Payoff::fixed(self.strike),
             self.currency,
         );
-        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        let leg = Leg::new(
+            vec![cf],
+            Direction::Receiver,
+            LegType::Generic,
+            self.currency,
+        );
         Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
     }
 }
@@ -779,7 +794,12 @@ impl InstrumentExpander for SwaptionStraddle {
             Payoff::fixed(self.strike),
             self.currency,
         );
-        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, self.currency);
+        let leg = Leg::new(
+            vec![cf],
+            Direction::Receiver,
+            LegType::Generic,
+            self.currency,
+        );
         Ok(Trade::new(trade_id, vec![leg], TradeType::Swaption))
     }
 }
@@ -791,7 +811,9 @@ impl InstrumentExpander for CapFloorStraddle {
         _vd: Date,
         _conv: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let end_date = self.tenor.add_to_date(self.start_date, EndOfMonthRule::Adjust);
+        let end_date = self
+            .tenor
+            .add_to_date(self.start_date, EndOfMonthRule::Adjust);
         let cf = Cashflow::new(
             CashflowType::Settlement,
             end_date,
@@ -802,7 +824,12 @@ impl InstrumentExpander for CapFloorStraddle {
             Payoff::fixed(self.strike),
             self.currency,
         );
-        let leg = Leg::new(vec![cf], Direction::Receiver, LegType::CapFloor, self.currency);
+        let leg = Leg::new(
+            vec![cf],
+            Direction::Receiver,
+            LegType::CapFloor,
+            self.currency,
+        );
         Ok(Trade::new(trade_id, vec![leg], TradeType::CapFloor))
     }
 }

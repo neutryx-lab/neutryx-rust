@@ -3,8 +3,7 @@
 //! Provides numeraire ratio calculations, derivatives, and numerical
 //! integration utilities for CMS convexity adjustments.
 
-use pricer_core::math::numeric::from_f64;
-use pricer_core::traits::Float;
+use pricer_core::{math::numeric::from_f64, traits::Float};
 
 // ─── Gauss-Kronrod G7-K15 nodes and weights ─────────────────────
 
@@ -33,6 +32,8 @@ const K15_WEIGHTS: [f64; 8] = [
 ];
 
 /// Gauss weights for the 7-point rule (zero for Kronrod-only nodes).
+/// Reserved for future error estimation (G7 vs K15 comparison).
+#[allow(dead_code)]
 const G7_WEIGHTS: [f64; 8] = [
     0.417959183673469,
     0.0,
@@ -176,7 +177,8 @@ pub fn numeraire_ratio_derivative<T: Float>(strike: T, delta: T, freq: T, tenor:
 
 /// Computes the log numeraire ratio derivative: G'(F + spread) / G(F + spread).
 ///
-/// `delta = (pay_date - effective_date) / (first_payment_date - effective_date)`.
+/// `delta = (pay_date - effective_date) / (first_payment_date -
+/// effective_date)`.
 pub fn calc_log_numeraire_ratio_derivative<T: Float>(
     ref_term: T,
     pay_freq: T,
@@ -204,7 +206,8 @@ pub fn calc_log_numeraire_ratio_derivative<T: Float>(
 /// using adaptive Gauss-Kronrod quadrature with convergence checks.
 ///
 /// # Arguments
-/// * `option_price_fn` - Returns the option price: `fn(strike, is_call) -> price`
+/// * `option_price_fn` - Returns the option price: `fn(strike, is_call) ->
+///   price`
 /// * `time_value_fn` - Returns the time value at a given strike
 /// * `is_call` - `true` for call integration (towards +inf), `false` for put
 /// * `start_strike` - Starting strike for integration
@@ -369,7 +372,7 @@ mod tests {
         // Values just above and below Taylor threshold should be close
         let eps = f64::EPSILON;
         let dcf = 0.5_f64; // freq=2
-        // threshold = (dcf * strike)^2 ~ 10 * eps => strike ~ sqrt(10*eps) / dcf
+                           // threshold = (dcf * strike)^2 ~ 10 * eps => strike ~ sqrt(10*eps) / dcf
         let critical_strike = (10.0 * eps).sqrt() / dcf;
 
         let g_above = numeraire_ratio(critical_strike * 1.1, 1.5, 2.0, 10.0);
@@ -398,9 +401,7 @@ mod tests {
 
     #[test]
     fn log_numeraire_ratio_derivative_basic() {
-        let ratio = calc_log_numeraire_ratio_derivative(
-            10.0, 2.0, 0.03, 0.001, 0.0, 0.5, 10.5,
-        );
+        let ratio = calc_log_numeraire_ratio_derivative(10.0, 2.0, 0.03, 0.001, 0.0, 0.5, 10.5);
         // Should be finite and non-zero for typical CMS parameters
         assert!(ratio.is_finite());
         assert!(ratio.abs() > 0.0);

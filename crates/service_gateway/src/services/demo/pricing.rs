@@ -9,8 +9,8 @@ use infra_domain::{
             convention::ConventionSet, AgricultureType, AsianOption, AveragingType,
             BarrierDirection, BarrierType, BasisSpread, BasisSwap, BasketComponent, BasketOption,
             Bond, BondFuture, BondFutureOption, BondType, CapFloor, CapFloorStraddle, CapFloorType,
-            Cds, CdsIndex, CdsOption, CdsType, CmsSwap, CommodityAsianOption,
-            CommodityForward, CommodityFuture, CommodityFutureOption, CommoditySwap, CommodityType,
+            Cds, CdsIndex, CdsOption, CdsType, CmsSwap, CommodityAsianOption, CommodityForward,
+            CommodityFuture, CommodityFutureOption, CommoditySwap, CommodityType,
             CommodityVanillaOption, CreditEvent, CrossCurrencyBasisSwap, Deposit, EnergyType,
             EquityBarrierOption, EquityForward, EquityReturnType, EquitySwap, EquityUnderlying,
             EquityVanillaOption, ExerciseStyle, ExpiryDeliveryAdjust, Fra, Frn, Futures,
@@ -1773,9 +1773,7 @@ fn build_domain_trade(
             };
             let t = straddle
                 .expand_to_trade("DEMO-SWNSTRADDLE", valuation_date, &conventions)
-                .map_err(|e| {
-                    ServerError::Internal(format!("SwaptionStraddle expansion: {e}"))
-                })?;
+                .map_err(|e| ServerError::Internal(format!("SwaptionStraddle expansion: {e}")))?;
             (t, "SwaptionStraddle")
         }
         "CapFloorStraddle" => {
@@ -1802,9 +1800,7 @@ fn build_domain_trade(
             };
             let t = straddle
                 .expand_to_trade("DEMO-CFSTRADDLE", valuation_date, &conventions)
-                .map_err(|e| {
-                    ServerError::Internal(format!("CapFloorStraddle expansion: {e}"))
-                })?;
+                .map_err(|e| ServerError::Internal(format!("CapFloorStraddle expansion: {e}")))?;
             (t, "CapFloorStraddle")
         }
         "CommodityFuture" => {
