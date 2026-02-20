@@ -87,6 +87,90 @@ pub enum Payoff {
         /// Fixed payout amount (as a rate, e.g., 0.01 for 1%).
         payout: f64,
     },
+
+    /// Reciprocal (inverse) floating rate: multiplier / index + spread.
+    Reciprocal {
+        /// Index to observe.
+        index: IndexType,
+        /// Multiplier (numerator).
+        multiplier: f64,
+        /// Additive spread.
+        spread: f64,
+    },
+
+    /// Spread between two indices: multiplier1 * index1 - multiplier2 * index2 + spread.
+    Spread {
+        /// First index.
+        index1: IndexType,
+        /// Second index.
+        index2: IndexType,
+        /// Multiplier for first index.
+        multiplier1: f64,
+        /// Multiplier for second index.
+        multiplier2: f64,
+        /// Additive spread.
+        spread: f64,
+    },
+
+    /// Capped/floored spread option.
+    SpreadCap {
+        /// First index.
+        index1: IndexType,
+        /// Second index.
+        index2: IndexType,
+        /// Multiplier for first index.
+        multiplier1: f64,
+        /// Multiplier for second index.
+        multiplier2: f64,
+        /// Additive spread.
+        spread: f64,
+        /// Call or Put.
+        option_type: OptionType,
+    },
+
+    /// Product of two indices: multiplier * index1 * index2.
+    Product {
+        /// First index.
+        index1: IndexType,
+        /// Second index.
+        index2: IndexType,
+        /// Multiplier.
+        multiplier: f64,
+    },
+
+    /// Quotient of two indices: multiplier * index1 / index2.
+    Quotient {
+        /// First index (numerator).
+        index1: IndexType,
+        /// Second index (denominator).
+        index2: IndexType,
+        /// Multiplier.
+        multiplier: f64,
+    },
+
+    /// Average of sub-period observations.
+    Average {
+        /// Index to observe.
+        index: IndexType,
+        /// Spread over the averaged rate.
+        spread: f64,
+    },
+
+    /// Capped average rate option.
+    AverageCap {
+        /// Index to observe.
+        index: IndexType,
+        /// Strike rate.
+        strike: f64,
+        /// Call or Put.
+        option_type: OptionType,
+    },
+
+    /// Credit default swap payoff: (1 - recovery_rate) on credit event.
+    Cds {
+        /// Expected recovery rate (e.g., 0.4 for 40%).
+        recovery_rate: f64,
+    },
 }
 
 impl Payoff {
@@ -134,14 +218,82 @@ impl Payoff {
         }
     }
 
+    /// Creates a spread payoff between two indices.
+    #[must_use]
+    pub fn spread(index1: IndexType, index2: IndexType, spread: f64) -> Self {
+        Payoff::Spread {
+            index1,
+            index2,
+            multiplier1: 1.0,
+            multiplier2: 1.0,
+            spread,
+        }
+    }
+
+    /// Creates a product payoff.
+    #[must_use]
+    pub fn product(index1: IndexType, index2: IndexType) -> Self {
+        Payoff::Product {
+            index1,
+            index2,
+            multiplier: 1.0,
+        }
+    }
+
+    /// Creates a quotient payoff.
+    #[must_use]
+    pub fn quotient(index1: IndexType, index2: IndexType) -> Self {
+        Payoff::Quotient {
+            index1,
+            index2,
+            multiplier: 1.0,
+        }
+    }
+
+    /// Creates a CDS payoff.
+    #[must_use]
+    pub fn cds(recovery_rate: f64) -> Self { Payoff::Cds { recovery_rate } }
+
+    /// Creates an average rate payoff.
+    #[must_use]
+    pub fn average(index: IndexType, spread: f64) -> Self { Payoff::Average { index, spread } }
+
     /// Returns the index required for this payoff, if any.
+    ///
+    /// For multi-index payoffs, returns the first index. Use
+    /// [`required_indices`](Self::required_indices) to obtain all indices.
     #[must_use]
     pub fn required_index(&self) -> Option<&IndexType> {
         match self {
-            Payoff::Fixed { .. } => None,
-            Payoff::Linear { index, .. } => Some(index),
-            Payoff::VanillaOption { index, .. } => Some(index),
-            Payoff::Digital { index, .. } => Some(index),
+            Payoff::Fixed { .. } | Payoff::Cds { .. } => None,
+            Payoff::Linear { index, .. }
+            | Payoff::VanillaOption { index, .. }
+            | Payoff::Digital { index, .. }
+            | Payoff::Reciprocal { index, .. }
+            | Payoff::Average { index, .. }
+            | Payoff::AverageCap { index, .. } => Some(index),
+            Payoff::Spread { index1, .. }
+            | Payoff::SpreadCap { index1, .. }
+            | Payoff::Product { index1, .. }
+            | Payoff::Quotient { index1, .. } => Some(index1),
+        }
+    }
+
+    /// Returns all indices required for this payoff.
+    #[must_use]
+    pub fn required_indices(&self) -> Vec<&IndexType> {
+        match self {
+            Payoff::Fixed { .. } | Payoff::Cds { .. } => vec![],
+            Payoff::Linear { index, .. }
+            | Payoff::VanillaOption { index, .. }
+            | Payoff::Digital { index, .. }
+            | Payoff::Reciprocal { index, .. }
+            | Payoff::Average { index, .. }
+            | Payoff::AverageCap { index, .. } => vec![index],
+            Payoff::Spread { index1, index2, .. }
+            | Payoff::SpreadCap { index1, index2, .. }
+            | Payoff::Product { index1, index2, .. }
+            | Payoff::Quotient { index1, index2, .. } => vec![index1, index2],
         }
     }
 
@@ -156,8 +308,36 @@ impl Payoff {
     /// Returns true if this is an option payoff (cap/floor or digital).
     #[must_use]
     pub fn is_option(&self) -> bool {
-        matches!(self, Payoff::VanillaOption { .. } | Payoff::Digital { .. })
+        matches!(
+            self,
+            Payoff::VanillaOption { .. }
+                | Payoff::Digital { .. }
+                | Payoff::SpreadCap { .. }
+                | Payoff::AverageCap { .. }
+        )
     }
+
+    /// Returns true if this is a spread payoff.
+    #[must_use]
+    pub fn is_spread(&self) -> bool {
+        matches!(self, Payoff::Spread { .. } | Payoff::SpreadCap { .. })
+    }
+
+    /// Returns true if this is a multi-index payoff.
+    #[must_use]
+    pub fn is_multi_index(&self) -> bool {
+        matches!(
+            self,
+            Payoff::Spread { .. }
+                | Payoff::SpreadCap { .. }
+                | Payoff::Product { .. }
+                | Payoff::Quotient { .. }
+        )
+    }
+
+    /// Returns true if this is a CDS payoff.
+    #[must_use]
+    pub fn is_cds(&self) -> bool { matches!(self, Payoff::Cds { .. }) }
 }
 
 #[cfg(test)]
@@ -299,5 +479,184 @@ mod tests {
         set.insert(OptionType::Put);
         set.insert(OptionType::Call);
         assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_payoff_reciprocal() {
+        let payoff = Payoff::Reciprocal {
+            index: IndexType::Rate(RateIndex::Sofr),
+            multiplier: 1.0,
+            spread: 0.005,
+        };
+
+        assert!(!payoff.is_fixed());
+        assert!(!payoff.is_linear());
+        assert!(!payoff.is_option());
+        assert!(!payoff.is_multi_index());
+        assert!(payoff.required_index().is_some());
+        assert_eq!(payoff.required_indices().len(), 1);
+    }
+
+    #[test]
+    fn test_payoff_spread_factory() {
+        let idx1 = IndexType::Rate(RateIndex::Sofr);
+        let idx2 = IndexType::Rate(RateIndex::Sonia);
+        let payoff = Payoff::spread(idx1, idx2, 0.002);
+
+        assert!(payoff.is_spread());
+        assert!(payoff.is_multi_index());
+        assert!(!payoff.is_option());
+        assert_eq!(payoff.required_indices().len(), 2);
+
+        if let Payoff::Spread {
+            multiplier1,
+            multiplier2,
+            spread,
+            ..
+        } = &payoff
+        {
+            assert_eq!(*multiplier1, 1.0);
+            assert_eq!(*multiplier2, 1.0);
+            assert_eq!(*spread, 0.002);
+        } else {
+            panic!("Expected Spread payoff");
+        }
+    }
+
+    #[test]
+    fn test_payoff_spread_cap() {
+        let payoff = Payoff::SpreadCap {
+            index1: IndexType::Rate(RateIndex::Sofr),
+            index2: IndexType::Rate(RateIndex::Sonia),
+            multiplier1: 1.0,
+            multiplier2: 1.0,
+            spread: 0.0,
+            option_type: OptionType::Call,
+        };
+
+        assert!(payoff.is_spread());
+        assert!(payoff.is_multi_index());
+        assert!(payoff.is_option());
+        assert_eq!(payoff.required_indices().len(), 2);
+        // required_index returns the first index
+        assert!(payoff.required_index().is_some());
+    }
+
+    #[test]
+    fn test_payoff_product_factory() {
+        let idx1 = IndexType::Rate(RateIndex::Sofr);
+        let idx2 = IndexType::Fx {
+            base: "EUR".into(),
+            quote: "USD".into(),
+        };
+        let payoff = Payoff::product(idx1, idx2);
+
+        assert!(payoff.is_multi_index());
+        assert!(!payoff.is_spread());
+        assert!(!payoff.is_option());
+        assert_eq!(payoff.required_indices().len(), 2);
+
+        if let Payoff::Product { multiplier, .. } = &payoff {
+            assert_eq!(*multiplier, 1.0);
+        } else {
+            panic!("Expected Product payoff");
+        }
+    }
+
+    #[test]
+    fn test_payoff_quotient_factory() {
+        let idx1 = IndexType::Fx {
+            base: "EUR".into(),
+            quote: "USD".into(),
+        };
+        let idx2 = IndexType::Fx {
+            base: "GBP".into(),
+            quote: "USD".into(),
+        };
+        let payoff = Payoff::quotient(idx1, idx2);
+
+        assert!(payoff.is_multi_index());
+        assert!(!payoff.is_spread());
+        assert_eq!(payoff.required_indices().len(), 2);
+
+        if let Payoff::Quotient { multiplier, .. } = &payoff {
+            assert_eq!(*multiplier, 1.0);
+        } else {
+            panic!("Expected Quotient payoff");
+        }
+    }
+
+    #[test]
+    fn test_payoff_average_factory() {
+        let payoff = Payoff::average(IndexType::Rate(RateIndex::Sofr), 0.001);
+
+        assert!(!payoff.is_fixed());
+        assert!(!payoff.is_option());
+        assert!(!payoff.is_multi_index());
+        assert_eq!(payoff.required_indices().len(), 1);
+
+        if let Payoff::Average { spread, .. } = &payoff {
+            assert_eq!(*spread, 0.001);
+        } else {
+            panic!("Expected Average payoff");
+        }
+    }
+
+    #[test]
+    fn test_payoff_average_cap() {
+        let payoff = Payoff::AverageCap {
+            index: IndexType::Rate(RateIndex::Sofr),
+            strike: 0.04,
+            option_type: OptionType::Call,
+        };
+
+        assert!(payoff.is_option());
+        assert!(!payoff.is_multi_index());
+        assert_eq!(payoff.required_indices().len(), 1);
+    }
+
+    #[test]
+    fn test_payoff_cds_factory() {
+        let payoff = Payoff::cds(0.4);
+
+        assert!(payoff.is_cds());
+        assert!(!payoff.is_fixed());
+        assert!(!payoff.is_option());
+        assert!(!payoff.is_multi_index());
+        assert!(payoff.required_index().is_none());
+        assert!(payoff.required_indices().is_empty());
+
+        if let Payoff::Cds { recovery_rate } = &payoff {
+            assert_eq!(*recovery_rate, 0.4);
+        } else {
+            panic!("Expected Cds payoff");
+        }
+    }
+
+    #[test]
+    fn test_required_indices_fixed() {
+        let payoff = Payoff::fixed(0.05);
+        assert!(payoff.required_indices().is_empty());
+    }
+
+    #[test]
+    fn test_required_indices_linear() {
+        let payoff = Payoff::floating(IndexType::Rate(RateIndex::Sofr));
+        let indices = payoff.required_indices();
+        assert_eq!(indices.len(), 1);
+        assert!(matches!(indices[0], IndexType::Rate(RateIndex::Sofr)));
+    }
+
+    #[test]
+    fn test_required_indices_spread() {
+        let payoff = Payoff::spread(
+            IndexType::Rate(RateIndex::Sofr),
+            IndexType::Rate(RateIndex::Sonia),
+            0.0,
+        );
+        let indices = payoff.required_indices();
+        assert_eq!(indices.len(), 2);
+        assert!(matches!(indices[0], IndexType::Rate(RateIndex::Sofr)));
+        assert!(matches!(indices[1], IndexType::Rate(RateIndex::Sonia)));
     }
 }

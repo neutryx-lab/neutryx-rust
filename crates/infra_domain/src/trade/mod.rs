@@ -6,11 +6,13 @@ mod cashflow;
 mod direction;
 mod error;
 mod event_leg;
+mod fixing;
 mod index;
 mod index_requirement;
 mod leg;
 mod payoff;
 mod pricing_instrument;
+mod sub_schedule;
 mod trade;
 
 mod instrument;
@@ -23,10 +25,15 @@ pub mod instrument_def {
 
 pub use book_assignment::{BookTransferReason, TradeBookAssignment};
 pub use builder::{LegConfig, LegConfigBuilder};
-pub use cashflow::{Cashflow, CashflowType, DailyAccrual};
+pub use cashflow::{Cashflow, CashflowType, CompoundType};
+pub use sub_schedule::SubSchedule;
 pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
-pub use event_leg::{EventLeg, ExerciseEvent};
+pub use event_leg::{
+    AccumSide, BarrierEvent, BarrierEventType, BarrierSpec, EventKind, EventLeg, ExerciseEvent,
+    MonitoringType,
+};
+pub use fixing::{Fixing, FixingView};
 pub use index::{IndexObservation, IndexType};
 pub use index_requirement::IndexRequirement;
 pub use instrument::Instrument;

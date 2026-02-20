@@ -57,8 +57,8 @@ mod tests {
         let el = t
             .first_event_leg()
             .expect("Swaption must have an event leg");
-        assert_eq!(el.exercise_type(), ExerciseType::European);
-        assert_eq!(el.settlement_type(), SettlementType::Cash);
+        assert_eq!(el.exercise_type(), Some(ExerciseType::European));
+        assert_eq!(el.settlement_type(), Some(SettlementType::Cash));
         assert!(el.fixed_leg().is_some());
         assert!(el.floating_leg().is_some());
 
@@ -151,8 +151,8 @@ mod tests {
         let t = ois_q.expand_to_trade("OIS-002", vd(), &c).unwrap();
         let floating = t.floating_leg().expect("Should have floating leg");
         for cf in floating.cashflows() {
-            assert!(cf.has_daily_accruals());
-            assert!(!cf.daily_accruals().unwrap().is_empty());
+            assert!(cf.has_sub_schedules());
+            assert!(!cf.sub_schedules().unwrap().is_empty());
         }
 
         let ois_m = Ois {
@@ -168,13 +168,12 @@ mod tests {
         let t = ois_m.expand_to_trade("OIS-003", vd(), &c).unwrap();
         let floating = t.floating_leg().unwrap();
         let cf = floating.cashflows().next().unwrap();
-        let accruals = cf.daily_accruals().unwrap();
-        let mut prev = ois_m.notional;
-        for a in accruals {
-            assert!(a.compounded_notional >= prev);
-            prev = a.compounded_notional;
+        let subs = cf.sub_schedules().unwrap();
+        assert!(!subs.is_empty());
+        // Verify sub-schedules have valid day fractions
+        for s in subs {
+            assert!(s.day_fraction > 0.0);
         }
-        assert!(accruals.last().unwrap().compounded_notional > ois_m.notional);
 
         assert!(ois.validate().is_ok());
         let bad_notional = Ois {

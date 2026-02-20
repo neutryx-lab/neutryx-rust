@@ -23,6 +23,9 @@ pub enum TimeUnit {
     /// Years (12 months).
     #[strum(serialize = "Y")]
     Years,
+    /// Business days (weekday-based without calendar).
+    #[strum(serialize = "BD")]
+    BusinessDays,
 }
 
 /// A generic time period.
@@ -54,6 +57,10 @@ impl Period {
     /// Create a period in years.
     #[must_use]
     pub const fn years(n: i32) -> Self { Self::new(n, TimeUnit::Years) }
+
+    /// Create a period in business days.
+    #[must_use]
+    pub const fn business_days(n: i32) -> Self { Self::new(n, TimeUnit::BusinessDays) }
 }
 
 impl fmt::Display for Period {
@@ -99,6 +106,26 @@ impl Add<Period> for Date {
                     naive.checked_sub_months(Months::new((-months) as u32))
                 }
             }
+            TimeUnit::BusinessDays => {
+                // Weekday-based approximation (no calendar).
+                let step: i64 = if period.length >= 0 { 1 } else { -1 };
+                let mut remaining = period.length.abs();
+                let mut cur = naive;
+                while remaining > 0 {
+                    cur = if step > 0 {
+                        cur.checked_add_days(chrono::Days::new(1)).unwrap_or(cur)
+                    } else {
+                        cur.checked_sub_days(chrono::Days::new(1)).unwrap_or(cur)
+                    };
+                    if !matches!(
+                        cur.weekday(),
+                        chrono::Weekday::Sat | chrono::Weekday::Sun
+                    ) {
+                        remaining -= 1;
+                    }
+                }
+                Some(cur)
+            }
         };
         Date::from_naive(result.unwrap_or(naive))
     }
@@ -137,6 +164,12 @@ pub struct Tenor(pub Period);
 impl Tenor {
     /// Overnight (1D).
     pub const Overnight: Self = Self::new(Period::days(1));
+    /// Tomorrow-Next (1 business day).
+    pub const TomorrowNext: Self = Self(Period::business_days(1));
+    /// Spot-Next (1 business day — alias for TN in some markets).
+    pub const SpotNext: Self = Self(Period::business_days(1));
+    /// Spot (2 business days).
+    pub const Spot: Self = Self(Period::business_days(2));
     /// One week (1W).
     pub const OneWeek: Self = Self::new(Period::weeks(1));
     /// Two weeks (2W).
@@ -147,6 +180,8 @@ impl Tenor {
     pub const TwoMonths: Self = Self::new(Period::months(2));
     /// Three months (3M).
     pub const ThreeMonths: Self = Self::new(Period::months(3));
+    /// Four months (4M).
+    pub const FourMonths: Self = Self::new(Period::months(4));
     /// Six months (6M).
     pub const SixMonths: Self = Self::new(Period::months(6));
     /// Nine months (9M).
@@ -176,6 +211,7 @@ impl Tenor {
     ///
     /// - Days divisible by 7 are promoted to weeks (7D → 1W).
     /// - Months divisible by 12 are promoted to years (12M → 1Y).
+    /// - BusinessDays are never normalised.
     #[must_use]
     const fn normalize(period: Period) -> Period {
         match period.units {
@@ -256,7 +292,7 @@ impl Tenor {
     #[must_use]
     pub const fn to_months(&self) -> u32 {
         match self.0.units {
-            TimeUnit::Days | TimeUnit::Weeks => 0,
+            TimeUnit::Days | TimeUnit::Weeks | TimeUnit::BusinessDays => 0,
             TimeUnit::Months => self.0.length as u32,
             TimeUnit::Years => (self.0.length * 12) as u32,
         }
@@ -270,6 +306,7 @@ impl Tenor {
             TimeUnit::Weeks => (self.0.length * 7) as f64 / 365.0,
             TimeUnit::Months => self.0.length as f64 / 12.0,
             TimeUnit::Years => self.0.length as f64,
+            TimeUnit::BusinessDays => self.0.length as f64 / 252.0,
         }
     }
 
@@ -281,6 +318,7 @@ impl Tenor {
             TimeUnit::Weeks => (self.0.length * 7) as u32,
             TimeUnit::Months => (self.0.length * 30) as u32,
             TimeUnit::Years => (self.0.length * 365) as u32,
+            TimeUnit::BusinessDays => self.0.length as u32,
         }
     }
 
@@ -300,6 +338,10 @@ impl Tenor {
                 let months = self.to_months();
                 add_months_with_eom(naive, months, eom_rule)
             }
+            TimeUnit::BusinessDays => {
+                // Use Period's Date + Period impl (weekday-based).
+                return date + self.0;
+            }
         };
 
         Date::from_naive(result)
@@ -310,6 +352,12 @@ impl fmt::Display for Tenor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if *self == Self::Overnight {
             write!(f, "ON")
+        } else if *self == Self::TomorrowNext {
+            write!(f, "TN")
+        } else if *self == Self::Spot {
+            write!(f, "SPOT")
+        } else if self.0.units == TimeUnit::BusinessDays {
+            write!(f, "{}BD", self.0.length)
         } else {
             write!(f, "{}", self.0)
         }
@@ -321,12 +369,21 @@ impl FromStr for Tenor {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
-        if s.eq_ignore_ascii_case("ON") {
-            return Ok(Self::Overnight);
+        match s.to_uppercase().as_str() {
+            "ON" => return Ok(Self::Overnight),
+            "TN" => return Ok(Self::TomorrowNext),
+            "SN" => return Ok(Self::SpotNext),
+            "SPOT" => return Ok(Self::Spot),
+            _ => {}
         }
         let upper = s.to_uppercase();
         if upper.len() < 2 {
             return Err(format!("Invalid tenor: {s}"));
+        }
+        // Check for BD suffix (e.g., "3BD")
+        if let Some(num_str) = upper.strip_suffix("BD") {
+            let length: i32 = num_str.parse().map_err(|_| format!("Invalid tenor: {s}"))?;
+            return Ok(Self::new(Period::business_days(length)));
         }
         let (num, unit) = upper.split_at(upper.len() - 1);
         let length: i32 = num.parse().map_err(|_| format!("Invalid tenor: {s}"))?;
@@ -411,8 +468,8 @@ pub fn parse_tenor_to_years(s: &str) -> Result<f64, String> {
     }
 
     match s.as_str() {
-        "TN" => return Ok(1.0 / 365.0),
-        "SN" => return Ok(1.0 / 365.0),
+        "TN" | "SN" => return Ok(1.0 / 252.0),
+        "SPOT" => return Ok(2.0 / 252.0),
         _ => {}
     }
 
@@ -859,5 +916,73 @@ mod tests {
         );
         let cloned = period.clone();
         assert_eq!(period, cloned);
+    }
+
+    #[test]
+    fn test_business_days_time_unit_display() {
+        assert_eq!(format!("{}", TimeUnit::BusinessDays), "BD");
+    }
+
+    #[test]
+    fn test_period_business_days() {
+        let p = Period::business_days(3);
+        assert_eq!(p.length, 3);
+        assert_eq!(p.units, TimeUnit::BusinessDays);
+    }
+
+    #[test]
+    fn test_date_add_business_days() {
+        // 2024-01-15 is Monday; +2BD = Wednesday Jan 17
+        let date = Date::from_ymd(2024, 1, 15).unwrap();
+        let result = date + Period::business_days(2);
+        assert_eq!(result, Date::from_ymd(2024, 1, 17).unwrap());
+
+        // Friday +1BD = Monday
+        let fri = Date::from_ymd(2024, 1, 19).unwrap();
+        let result = fri + Period::business_days(1);
+        assert_eq!(result, Date::from_ymd(2024, 1, 22).unwrap());
+    }
+
+    #[test]
+    fn test_tenor_tn_sn_spot() {
+        assert_eq!(Tenor::TomorrowNext.0.units, TimeUnit::BusinessDays);
+        assert_eq!(Tenor::TomorrowNext.0.length, 1);
+        assert_eq!(Tenor::SpotNext.0.length, 1);
+        assert_eq!(Tenor::Spot.0.length, 2);
+    }
+
+    #[test]
+    fn test_tenor_tn_from_str() {
+        assert_eq!("TN".parse::<Tenor>().unwrap(), Tenor::TomorrowNext);
+        assert_eq!("SN".parse::<Tenor>().unwrap(), Tenor::SpotNext);
+        assert_eq!("SPOT".parse::<Tenor>().unwrap(), Tenor::Spot);
+        assert_eq!("spot".parse::<Tenor>().unwrap(), Tenor::Spot);
+    }
+
+    #[test]
+    fn test_tenor_tn_display() {
+        assert_eq!(format!("{}", Tenor::TomorrowNext), "TN");
+        assert_eq!(format!("{}", Tenor::Spot), "SPOT");
+    }
+
+    #[test]
+    fn test_tenor_bd_from_str() {
+        let t3bd = "3BD".parse::<Tenor>().unwrap();
+        assert_eq!(t3bd.0.units, TimeUnit::BusinessDays);
+        assert_eq!(t3bd.0.length, 3);
+    }
+
+    #[test]
+    fn test_tenor_bd_display() {
+        let t3bd = Tenor::new(Period::business_days(3));
+        assert_eq!(format!("{}", t3bd), "3BD");
+    }
+
+    #[test]
+    fn test_spot_add_to_date() {
+        // 2024-01-15 is Monday; +2BD = Wednesday
+        let date = Date::from_ymd(2024, 1, 15).unwrap();
+        let result = Tenor::Spot.add_to_date(date, EndOfMonthRule::Adjust);
+        assert_eq!(result, Date::from_ymd(2024, 1, 17).unwrap());
     }
 }

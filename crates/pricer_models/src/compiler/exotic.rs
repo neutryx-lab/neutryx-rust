@@ -699,10 +699,7 @@ impl ExoticCompiler {
     /// Returns false for linear payoffs that should use PricingKernel.
     #[must_use]
     pub fn requires_script_kernel(payoff: &Payoff) -> bool {
-        match payoff {
-            Payoff::Fixed { .. } | Payoff::Linear { .. } => false,
-            Payoff::VanillaOption { .. } | Payoff::Digital { .. } => true,
-        }
+        !matches!(payoff, Payoff::Fixed { .. } | Payoff::Linear { .. })
     }
 }
 

@@ -13,7 +13,7 @@ use crate::{
         },
         Currency, RateIndex,
     },
-    time::{Date, EndOfMonthRule, Frequency, Tenor},
+    time::{Date, EndOfMonthRule, Frequency, Period, Tenor},
     trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
 };
 
@@ -543,6 +543,10 @@ pub(super) fn generate_payment_dates(start: Date, end: Date, frequency: Frequenc
     let mut dates = Vec::new();
 
     let tenor = match frequency {
+        Frequency::None => {
+            dates.push(end);
+            return dates;
+        }
         Frequency::Daily => {
             dates.push(start);
             dates.push(end);
@@ -550,7 +554,9 @@ pub(super) fn generate_payment_dates(start: Date, end: Date, frequency: Frequenc
         }
         Frequency::Weekly => Tenor::OneWeek,
         Frequency::Monthly => Tenor::OneMonth,
+        Frequency::BiMonthly => Tenor::TwoMonths,
         Frequency::Quarterly => Tenor::ThreeMonths,
+        Frequency::TriAnnual => Tenor(Period::months(4)),
         Frequency::SemiAnnual => Tenor::SixMonths,
         Frequency::Annual => Tenor::OneYear,
     };
@@ -622,18 +628,13 @@ fn generate_ois_floating_leg_cashflows(
         let accrual_end = payment_dates[i + 1];
         let payment_date = accrual_end;
 
-        let daily_accruals =
-            generate_daily_accruals(accrual_start, accrual_end, rate_index, notional);
+        let sub_schedules =
+            generate_ois_sub_schedules(accrual_start, accrual_end, rate_index);
 
         let days = (accrual_end - accrual_start) as f64;
         let year_fraction = days / 360.0;
 
-        let _final_compounded = daily_accruals
-            .last()
-            .map(|a| a.compounded_notional)
-            .unwrap_or(notional);
-
-        let cf = Cashflow::new_with_daily_accruals(
+        let cf = Cashflow::new_with_sub_schedules(
             CashflowType::Coupon,
             payment_date,
             accrual_start,
@@ -642,7 +643,8 @@ fn generate_ois_floating_leg_cashflows(
             notional,
             Payoff::floating(IndexType::Rate(rate_index)),
             currency,
-            daily_accruals,
+            crate::trade::CompoundType::Straight,
+            sub_schedules,
         );
         cashflows.push(cf);
     }
@@ -650,30 +652,18 @@ fn generate_ois_floating_leg_cashflows(
     cashflows
 }
 
-/// Generates daily accrual details for OIS compounding.
-fn generate_daily_accruals(
+/// Generates OIS sub-schedules for daily compounding.
+fn generate_ois_sub_schedules(
     start: Date,
     end: Date,
     rate_index: RateIndex,
-    initial_notional: f64,
-) -> Vec<crate::trade::DailyAccrual> {
+) -> Vec<crate::trade::SubSchedule> {
     use chrono::Weekday;
 
-    use crate::trade::DailyAccrual;
+    use crate::trade::SubSchedule;
 
-    let mut accruals = Vec::new();
+    let mut sub_schedules = Vec::new();
     let mut current_date = start;
-    let mut compounded_notional = initial_notional;
-
-    let base_rate = match rate_index {
-        RateIndex::Sofr => 0.0430,
-        RateIndex::Estr => 0.0390,
-        RateIndex::Euribor3M => 0.0390,
-        RateIndex::Euribor6M => 0.0395,
-        RateIndex::Sonia => 0.0525,
-        RateIndex::Tonar => 0.0010,
-        RateIndex::Saron => 0.0175,
-    };
 
     let day_count_basis = match rate_index {
         RateIndex::Sonia | RateIndex::Tonar => 365.0,
@@ -688,26 +678,20 @@ fn generate_daily_accruals(
             continue;
         }
 
+        let next_date = Tenor::Overnight.add_to_date(current_date, EndOfMonthRule::None);
         let days_to_next = if weekday == Weekday::Fri { 3.0 } else { 1.0 };
         let day_fraction = days_to_next / day_count_basis;
 
-        let day_of_year = current_date.into_inner().ordinal() as f64;
-        let rate_variation = (day_of_year.sin() * 0.0005).abs();
-        let overnight_rate = base_rate + rate_variation;
-
-        let new_compounded = compounded_notional * (1.0 + overnight_rate * day_fraction);
-
-        accruals.push(DailyAccrual::with_compounded_notional(
+        sub_schedules.push(SubSchedule::new(
             current_date,
-            overnight_rate,
+            current_date,
+            next_date,
             day_fraction,
-            new_compounded,
+            Payoff::floating(crate::trade::IndexType::Rate(rate_index)),
         ));
 
-        compounded_notional = new_compounded;
-
-        current_date = Tenor::Overnight.add_to_date(current_date, EndOfMonthRule::None);
+        current_date = next_date;
     }
 
-    accruals
+    sub_schedules
 }

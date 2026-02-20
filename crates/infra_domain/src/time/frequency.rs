@@ -20,6 +20,9 @@ use std::str::FromStr;
 )]
 #[serde(rename_all = "snake_case")]
 pub enum Frequency {
+    /// No payments / zero coupon.
+    #[strum(serialize = "None")]
+    None,
     /// Daily payments (252 business days per year).
     Daily,
     /// Weekly payments (52 per year).
@@ -27,8 +30,14 @@ pub enum Frequency {
     /// Monthly payments (12 per year).
     #[default]
     Monthly,
+    /// Bi-monthly payments (6 per year).
+    #[strum(serialize = "Bi-Monthly")]
+    BiMonthly,
     /// Quarterly payments (4 per year).
     Quarterly,
+    /// Tri-annual payments (3 per year).
+    #[strum(serialize = "Tri-Annual")]
+    TriAnnual,
     /// Semi-annual payments (2 per year).
     #[strum(serialize = "Semi-Annual")]
     SemiAnnual,
@@ -41,9 +50,12 @@ impl Frequency {
     #[must_use]
     pub fn months_per_period(&self) -> u32 {
         match self {
+            Frequency::None => 0,
             Frequency::Annual => 12,
             Frequency::SemiAnnual => 6,
+            Frequency::TriAnnual => 4,
             Frequency::Quarterly => 3,
+            Frequency::BiMonthly => 2,
             Frequency::Monthly => 1,
             Frequency::Weekly | Frequency::Daily => 0,
         }
@@ -53,13 +65,30 @@ impl Frequency {
     #[must_use]
     pub fn periods_per_year(&self) -> u32 {
         match self {
+            Frequency::None => 0,
             Frequency::Annual => 1,
             Frequency::SemiAnnual => 2,
+            Frequency::TriAnnual => 3,
             Frequency::Quarterly => 4,
+            Frequency::BiMonthly => 6,
             Frequency::Monthly => 12,
             Frequency::Weekly => 52,
             Frequency::Daily => 365,
         }
+    }
+
+    /// Returns `true` if this frequency is monthly-based (divisible into months).
+    #[must_use]
+    pub fn is_monthly(&self) -> bool {
+        matches!(
+            self,
+            Frequency::Monthly
+                | Frequency::BiMonthly
+                | Frequency::Quarterly
+                | Frequency::TriAnnual
+                | Frequency::SemiAnnual
+                | Frequency::Annual
+        )
     }
 
     /// Returns the standard name for this frequency.
@@ -73,10 +102,13 @@ impl FromStr for Frequency {
     /// Parses frequency from string (case-insensitive).
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().replace(['-', '_', ' '], "").as_str() {
-            "annual" | "1y" | "yearly" => Ok(Frequency::Annual),
-            "semiannual" | "6m" | "2y" => Ok(Frequency::SemiAnnual),
-            "quarterly" | "3m" | "4y" => Ok(Frequency::Quarterly),
-            "monthly" | "1m" | "12y" => Ok(Frequency::Monthly),
+            "none" | "zero" | "zerocoupon" => Ok(Frequency::None),
+            "annual" | "1y" | "yearly" | "pa" => Ok(Frequency::Annual),
+            "semiannual" | "6m" | "sa" => Ok(Frequency::SemiAnnual),
+            "triannual" | "4m" | "ta" => Ok(Frequency::TriAnnual),
+            "quarterly" | "3m" | "qa" => Ok(Frequency::Quarterly),
+            "bimonthly" | "2m" => Ok(Frequency::BiMonthly),
+            "monthly" | "1m" => Ok(Frequency::Monthly),
             "weekly" | "1w" => Ok(Frequency::Weekly),
             "daily" | "1d" => Ok(Frequency::Daily),
             _ => Err(format!("Unknown frequency: {}", s)),
@@ -89,36 +121,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_frequency_ord_daily_less_than_weekly() {
-        assert!(Frequency::Daily < Frequency::Weekly);
-    }
-
-    #[test]
-    fn test_frequency_ord_weekly_less_than_monthly() {
-        assert!(Frequency::Weekly < Frequency::Monthly);
-    }
-
-    #[test]
-    fn test_frequency_ord_monthly_less_than_quarterly() {
-        assert!(Frequency::Monthly < Frequency::Quarterly);
-    }
-
-    #[test]
-    fn test_frequency_ord_quarterly_less_than_semiannual() {
-        assert!(Frequency::Quarterly < Frequency::SemiAnnual);
-    }
-
-    #[test]
-    fn test_frequency_ord_semiannual_less_than_annual() {
-        assert!(Frequency::SemiAnnual < Frequency::Annual);
-    }
-
-    #[test]
     fn test_frequency_ord_full_chain() {
+        assert!(Frequency::None < Frequency::Daily);
         assert!(Frequency::Daily < Frequency::Weekly);
         assert!(Frequency::Weekly < Frequency::Monthly);
-        assert!(Frequency::Monthly < Frequency::Quarterly);
-        assert!(Frequency::Quarterly < Frequency::SemiAnnual);
+        assert!(Frequency::Monthly < Frequency::BiMonthly);
+        assert!(Frequency::BiMonthly < Frequency::Quarterly);
+        assert!(Frequency::Quarterly < Frequency::TriAnnual);
+        assert!(Frequency::TriAnnual < Frequency::SemiAnnual);
         assert!(Frequency::SemiAnnual < Frequency::Annual);
     }
 
@@ -131,16 +141,22 @@ mod tests {
             Frequency::Monthly,
             Frequency::SemiAnnual,
             Frequency::Weekly,
+            Frequency::None,
+            Frequency::BiMonthly,
+            Frequency::TriAnnual,
         ];
         frequencies.sort();
 
         assert_eq!(
             frequencies,
             vec![
+                Frequency::None,
                 Frequency::Daily,
                 Frequency::Weekly,
                 Frequency::Monthly,
+                Frequency::BiMonthly,
                 Frequency::Quarterly,
+                Frequency::TriAnnual,
                 Frequency::SemiAnnual,
                 Frequency::Annual,
             ]
@@ -154,9 +170,12 @@ mod tests {
 
     #[test]
     fn test_months_per_period() {
+        assert_eq!(Frequency::None.months_per_period(), 0);
         assert_eq!(Frequency::Annual.months_per_period(), 12);
         assert_eq!(Frequency::SemiAnnual.months_per_period(), 6);
+        assert_eq!(Frequency::TriAnnual.months_per_period(), 4);
         assert_eq!(Frequency::Quarterly.months_per_period(), 3);
+        assert_eq!(Frequency::BiMonthly.months_per_period(), 2);
         assert_eq!(Frequency::Monthly.months_per_period(), 1);
         assert_eq!(Frequency::Weekly.months_per_period(), 0);
         assert_eq!(Frequency::Daily.months_per_period(), 0);
@@ -164,12 +183,25 @@ mod tests {
 
     #[test]
     fn test_periods_per_year() {
+        assert_eq!(Frequency::None.periods_per_year(), 0);
         assert_eq!(Frequency::Annual.periods_per_year(), 1);
         assert_eq!(Frequency::SemiAnnual.periods_per_year(), 2);
+        assert_eq!(Frequency::TriAnnual.periods_per_year(), 3);
         assert_eq!(Frequency::Quarterly.periods_per_year(), 4);
+        assert_eq!(Frequency::BiMonthly.periods_per_year(), 6);
         assert_eq!(Frequency::Monthly.periods_per_year(), 12);
         assert_eq!(Frequency::Weekly.periods_per_year(), 52);
         assert_eq!(Frequency::Daily.periods_per_year(), 365);
+    }
+
+    #[test]
+    fn test_is_monthly() {
+        assert!(Frequency::Monthly.is_monthly());
+        assert!(Frequency::Quarterly.is_monthly());
+        assert!(Frequency::Annual.is_monthly());
+        assert!(!Frequency::Weekly.is_monthly());
+        assert!(!Frequency::Daily.is_monthly());
+        assert!(!Frequency::None.is_monthly());
     }
 
     #[test]
@@ -180,10 +212,21 @@ mod tests {
             Frequency::SemiAnnual
         );
         assert_eq!(
+            "tri-annual".parse::<Frequency>().unwrap(),
+            Frequency::TriAnnual
+        );
+        assert_eq!(
             "QUARTERLY".parse::<Frequency>().unwrap(),
             Frequency::Quarterly
         );
+        assert_eq!(
+            "bi-monthly".parse::<Frequency>().unwrap(),
+            Frequency::BiMonthly
+        );
         assert_eq!("Monthly".parse::<Frequency>().unwrap(), Frequency::Monthly);
+        assert_eq!("none".parse::<Frequency>().unwrap(), Frequency::None);
+        assert_eq!("2m".parse::<Frequency>().unwrap(), Frequency::BiMonthly);
+        assert_eq!("4m".parse::<Frequency>().unwrap(), Frequency::TriAnnual);
     }
 
     #[test]

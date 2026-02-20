@@ -8,8 +8,10 @@ mod quote_type;
 mod strike_type;
 mod validation;
 mod vol_quote_type;
+mod fx_option_quote_type;
 
 pub use error::MarketQuoteError;
+pub use fx_option_quote_type::FxOptionQuoteType;
 pub use market_quote::MarketQuote;
 pub use quote_id::QuoteId;
 pub use quote_set::MarketQuoteSet;

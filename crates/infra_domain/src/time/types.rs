@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use chrono::{Datelike, Days, Local, NaiveDate};
+use chrono::{Datelike, Days, Local, NaiveDate, Weekday};
 
 use super::error::TimeError;
 
@@ -61,6 +61,43 @@ impl Date {
     /// Returns the day component (1-31).
     #[must_use]
     pub fn day(&self) -> u32 { self.0.day() }
+
+    /// Returns the day of the week.
+    #[must_use]
+    pub fn weekday(&self) -> Weekday { self.0.weekday() }
+
+    /// Returns `true` if this date is the last day of its month.
+    #[must_use]
+    pub fn is_end_of_month(&self) -> bool {
+        self.0
+            .succ_opt()
+            .map_or(true, |next| next.month() != self.0.month())
+    }
+
+    /// Returns the last day of this date's month.
+    #[must_use]
+    #[allow(clippy::unwrap_used)]
+    pub fn last_day_of_month(&self) -> Date {
+        let year = self.0.year();
+        let month = self.0.month();
+        let last = if month == 12 {
+            NaiveDate::from_ymd_opt(year + 1, 1, 1)
+                .and_then(|d| d.pred_opt())
+                .unwrap()
+        } else {
+            NaiveDate::from_ymd_opt(year, month + 1, 1)
+                .and_then(|d| d.pred_opt())
+                .unwrap()
+        };
+        Date(last)
+    }
+
+    /// Returns the first day of this date's month.
+    #[must_use]
+    #[allow(clippy::unwrap_used)]
+    pub fn first_day_of_month(&self) -> Date {
+        Date(NaiveDate::from_ymd_opt(self.0.year(), self.0.month(), 1).unwrap())
+    }
 
     /// Creates a Date from a NaiveDate.
     #[must_use]
@@ -366,5 +403,52 @@ mod tests {
     fn test_from_serial_valid_61() {
         let date = Date::from_serial(61).unwrap();
         assert_eq!(date, Date::from_ymd(1900, 3, 1).unwrap());
+    }
+
+    #[test]
+    fn test_weekday() {
+        use chrono::Weekday;
+        // 2024-01-01 is a Monday
+        let date = Date::from_ymd(2024, 1, 1).unwrap();
+        assert_eq!(date.weekday(), Weekday::Mon);
+        // 2024-01-06 is a Saturday
+        let sat = Date::from_ymd(2024, 1, 6).unwrap();
+        assert_eq!(sat.weekday(), Weekday::Sat);
+    }
+
+    #[test]
+    fn test_is_end_of_month() {
+        assert!(Date::from_ymd(2024, 1, 31).unwrap().is_end_of_month());
+        assert!(Date::from_ymd(2024, 2, 29).unwrap().is_end_of_month());
+        assert!(!Date::from_ymd(2024, 2, 28).unwrap().is_end_of_month());
+        assert!(Date::from_ymd(2023, 2, 28).unwrap().is_end_of_month());
+        assert!(!Date::from_ymd(2024, 6, 15).unwrap().is_end_of_month());
+    }
+
+    #[test]
+    fn test_last_day_of_month() {
+        let d = Date::from_ymd(2024, 2, 15).unwrap();
+        assert_eq!(d.last_day_of_month(), Date::from_ymd(2024, 2, 29).unwrap());
+        let d = Date::from_ymd(2023, 2, 15).unwrap();
+        assert_eq!(d.last_day_of_month(), Date::from_ymd(2023, 2, 28).unwrap());
+        let d = Date::from_ymd(2024, 12, 1).unwrap();
+        assert_eq!(
+            d.last_day_of_month(),
+            Date::from_ymd(2024, 12, 31).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_first_day_of_month() {
+        let d = Date::from_ymd(2024, 6, 15).unwrap();
+        assert_eq!(
+            d.first_day_of_month(),
+            Date::from_ymd(2024, 6, 1).unwrap()
+        );
+        let d = Date::from_ymd(2024, 1, 31).unwrap();
+        assert_eq!(
+            d.first_day_of_month(),
+            Date::from_ymd(2024, 1, 1).unwrap()
+        );
     }
 }

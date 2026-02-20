@@ -1,10 +1,14 @@
 //! Trade definition types.
 
+use std::collections::HashMap;
+
 use bon::Builder;
 
 use super::{
     cashflow::Cashflow,
     event_leg::EventLeg,
+    fixing::Fixing,
+    index::IndexType,
     leg::{Leg, LegType},
 };
 use crate::{
@@ -495,6 +499,9 @@ pub struct Trade {
     /// Additional metadata.
     #[builder(default)]
     pub metadata: TradeMetadata,
+    /// Historical fixing rates keyed by index type.
+    #[builder(default)]
+    fixings: HashMap<IndexType, Fixing>,
 }
 
 impl Trade {
@@ -641,6 +648,25 @@ impl Trade {
     pub fn floating_leg(&self) -> Option<&Leg> {
         self.all_legs()
             .find(|leg| leg.leg_type == LegType::Floating)
+    }
+
+    // ── Fixings ──
+
+    /// Returns the fixing data for a given index, if available.
+    #[must_use]
+    pub fn fixing_for(&self, index: &IndexType) -> Option<&Fixing> {
+        self.fixings.get(index)
+    }
+
+    /// Returns a mutable reference to fixings.
+    pub fn fixings_mut(&mut self) -> &mut HashMap<IndexType, Fixing> {
+        &mut self.fixings
+    }
+
+    /// Returns true if this trade has any fixing data.
+    #[must_use]
+    pub fn has_fixings(&self) -> bool {
+        !self.fixings.is_empty()
     }
 }
 

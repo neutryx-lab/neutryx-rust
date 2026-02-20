@@ -29,6 +29,10 @@ pub enum TimeError {
     /// Calendar-related error.
     #[error("Calendar error: {0}")]
     CalendarError(String),
+
+    /// Schedule generation error.
+    #[error("Schedule error: {0}")]
+    ScheduleError(String),
 }
 
 /// Convert DateError to TimeError.
@@ -76,6 +80,12 @@ mod tests {
     fn test_calendar_error_display() {
         let err = TimeError::CalendarError("Calendar not found".to_string());
         assert_eq!(format!("{}", err), "Calendar error: Calendar not found");
+    }
+
+    #[test]
+    fn test_schedule_error_display() {
+        let err = TimeError::ScheduleError("invalid frequency".to_string());
+        assert_eq!(format!("{}", err), "Schedule error: invalid frequency");
     }
 
     #[test]

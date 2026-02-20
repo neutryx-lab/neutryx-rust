@@ -46,6 +46,30 @@ pub enum IndexType {
         /// Commodity name (e.g., "WTI", "BRENT").
         name: String,
     },
+
+    /// Interest rate future price index.
+    IrFuture {
+        /// Exchange code (e.g., "CME", "ICE").
+        exchange: String,
+        /// Contract code (e.g., "ED", "SR3").
+        contract: String,
+    },
+
+    /// Bond future price index.
+    BondFuture {
+        /// Exchange code (e.g., "CME", "EUREX").
+        exchange: String,
+        /// Contract code (e.g., "TY", "RX").
+        contract: String,
+    },
+
+    /// Credit spread index (single-name CDS spread).
+    Credit {
+        /// Reference entity name.
+        reference_entity: String,
+        /// Seniority (e.g., "SNRFOR", "SUBLT2").
+        seniority: Option<String>,
+    },
 }
 
 impl From<RateIndex> for IndexType {
@@ -69,6 +93,34 @@ impl IndexType {
             _ => None,
         }
     }
+
+    /// Returns true if this is an equity index.
+    #[must_use]
+    pub fn is_equity(&self) -> bool { matches!(self, IndexType::Equity { .. }) }
+
+    /// Returns true if this is an inflation index.
+    #[must_use]
+    pub fn is_inflation(&self) -> bool { matches!(self, IndexType::Inflation { .. }) }
+
+    /// Returns true if this is a commodity index.
+    #[must_use]
+    pub fn is_commodity(&self) -> bool { matches!(self, IndexType::Commodity { .. }) }
+
+    /// Returns true if this is an IR future index.
+    #[must_use]
+    pub fn is_ir_future(&self) -> bool { matches!(self, IndexType::IrFuture { .. }) }
+
+    /// Returns true if this is a bond future index.
+    #[must_use]
+    pub fn is_bond_future(&self) -> bool { matches!(self, IndexType::BondFuture { .. }) }
+
+    /// Returns true if this is a credit index.
+    #[must_use]
+    pub fn is_credit(&self) -> bool { matches!(self, IndexType::Credit { .. }) }
+
+    /// Returns true if this is a swap rate index.
+    #[must_use]
+    pub fn is_swap_rate(&self) -> bool { matches!(self, IndexType::SwapRate { .. }) }
 }
 
 /// Observation parameters for an index.
@@ -523,5 +575,132 @@ mod tests {
             euribor_obs.compounding_method,
             euribor_metadata.compounding_method
         );
+    }
+
+    #[test]
+    fn test_ir_future_index() {
+        let index = IndexType::IrFuture {
+            exchange: "CME".into(),
+            contract: "SR3".into(),
+        };
+
+        assert!(index.is_ir_future());
+        assert!(!index.is_rate());
+        assert!(!index.is_fx());
+        assert!(!index.is_equity());
+        assert!(!index.is_bond_future());
+        assert!(!index.is_credit());
+    }
+
+    #[test]
+    fn test_bond_future_index() {
+        let index = IndexType::BondFuture {
+            exchange: "EUREX".into(),
+            contract: "RX".into(),
+        };
+
+        assert!(index.is_bond_future());
+        assert!(!index.is_rate());
+        assert!(!index.is_ir_future());
+        assert!(!index.is_credit());
+    }
+
+    #[test]
+    fn test_credit_index() {
+        let index = IndexType::Credit {
+            reference_entity: "ACME Corp".into(),
+            seniority: Some("SNRFOR".into()),
+        };
+
+        assert!(index.is_credit());
+        assert!(!index.is_rate());
+        assert!(!index.is_fx());
+        assert!(!index.is_equity());
+    }
+
+    #[test]
+    fn test_credit_index_without_seniority() {
+        let index = IndexType::Credit {
+            reference_entity: "ACME Corp".into(),
+            seniority: None,
+        };
+
+        assert!(index.is_credit());
+    }
+
+    #[test]
+    fn test_existing_classifier_methods() {
+        let equity = IndexType::Equity {
+            ticker: "SPX".into(),
+        };
+        assert!(equity.is_equity());
+        assert!(!equity.is_inflation());
+        assert!(!equity.is_commodity());
+
+        let inflation = IndexType::Inflation {
+            name: "CPI".into(),
+            region: "US".into(),
+        };
+        assert!(inflation.is_inflation());
+        assert!(!inflation.is_equity());
+
+        let commodity = IndexType::Commodity {
+            name: "WTI".into(),
+        };
+        assert!(commodity.is_commodity());
+        assert!(!commodity.is_equity());
+
+        let swap_rate = IndexType::SwapRate {
+            currency: "USD".into(),
+            tenor: "10Y".into(),
+        };
+        assert!(swap_rate.is_swap_rate());
+        assert!(!swap_rate.is_rate());
+    }
+
+    #[test]
+    fn test_ir_future_hash_and_eq() {
+        use std::collections::HashSet;
+
+        let idx1 = IndexType::IrFuture {
+            exchange: "CME".into(),
+            contract: "SR3".into(),
+        };
+        let idx2 = IndexType::IrFuture {
+            exchange: "CME".into(),
+            contract: "SR3".into(),
+        };
+        let idx3 = IndexType::IrFuture {
+            exchange: "ICE".into(),
+            contract: "SR3".into(),
+        };
+
+        assert_eq!(idx1, idx2);
+        assert_ne!(idx1, idx3);
+
+        let mut set = HashSet::new();
+        set.insert(idx1);
+        set.insert(idx2);
+        set.insert(idx3);
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_new_index_types_debug() {
+        let ir_future = IndexType::IrFuture {
+            exchange: "CME".into(),
+            contract: "ED".into(),
+        };
+        let debug = format!("{:?}", ir_future);
+        assert!(debug.contains("IrFuture"));
+        assert!(debug.contains("CME"));
+
+        let credit = IndexType::Credit {
+            reference_entity: "ACME".into(),
+            seniority: Some("SNRFOR".into()),
+        };
+        let debug = format!("{:?}", credit);
+        assert!(debug.contains("Credit"));
+        assert!(debug.contains("ACME"));
     }
 }

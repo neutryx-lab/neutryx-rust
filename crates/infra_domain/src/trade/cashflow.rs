@@ -1,58 +1,24 @@
 //! Cashflow types for financial instruments.
 
-use super::payoff::Payoff;
+use super::{payoff::Payoff, sub_schedule::SubSchedule};
 use crate::{market::Currency, time::Date};
 
-/// Daily accrual detail for OIS (Overnight Index Swap) compounding.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct DailyAccrual {
-    /// The date for this daily accrual.
-    pub date: Date,
-
-    /// Overnight rate for this date (as decimal, e.g., 0.0425 for 4.25%).
-    pub overnight_rate: f64,
-
-    /// Day count fraction for this date (typically 1/360 or 1/365).
-    pub day_fraction: f64,
-
-    /// Cumulative compounded notional at end of this date.
-    pub compounded_notional: f64,
-}
-
-impl DailyAccrual {
-    /// Creates a new daily accrual.
-    #[must_use]
-    pub fn new(date: Date, overnight_rate: f64, day_fraction: f64, starting_notional: f64) -> Self {
-        let compounded_notional = starting_notional * (1.0 + overnight_rate * day_fraction);
-        Self {
-            date,
-            overnight_rate,
-            day_fraction,
-            compounded_notional,
-        }
-    }
-
-    /// Creates a daily accrual with pre-calculated compounded notional.
-    #[must_use]
-    pub fn with_compounded_notional(
-        date: Date,
-        overnight_rate: f64,
-        day_fraction: f64,
-        compounded_notional: f64,
-    ) -> Self {
-        Self {
-            date,
-            overnight_rate,
-            day_fraction,
-            compounded_notional,
-        }
-    }
-
-    /// Returns the daily interest earned.
-    #[must_use]
-    pub fn daily_interest(&self, starting_notional: f64) -> f64 {
-        self.compounded_notional - starting_notional
-    }
+/// Compounding method for multi-period coupons.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize)]
+pub enum CompoundType {
+    /// No compounding (single-period coupon).
+    #[default]
+    None,
+    /// Arithmetic average of sub-period rates.
+    Average,
+    /// Standard compounding: (1+r1*d1)(1+r2*d2)...-1.
+    Straight,
+    /// Flat compounding (spread compounds on notional only).
+    Flat,
+    /// Spread-exclusive compounding.
+    SpreadExclusive,
+    /// Linear product of rates.
+    LinearProduct,
 }
 
 /// Type of cashflow.
@@ -107,8 +73,14 @@ pub struct Cashflow {
     /// Currency of the cashflow.
     pub currency: Currency,
 
-    /// Daily accrual details for OIS compounding.
-    pub daily_accruals: Option<Vec<DailyAccrual>>,
+    /// Fixing date for floating rate observation.
+    pub fixing_date: Option<Date>,
+
+    /// Compounding method for multi-period coupons.
+    pub compound_type: CompoundType,
+
+    /// Sub-schedule details for compounding/averaging.
+    pub sub_schedules: Option<Vec<SubSchedule>>,
 }
 
 impl Cashflow {
@@ -133,13 +105,15 @@ impl Cashflow {
             notional,
             payoff,
             currency,
-            daily_accruals: None,
+            fixing_date: None,
+            compound_type: CompoundType::None,
+            sub_schedules: None,
         }
     }
 
-    /// Creates a new OIS cashflow with daily accrual details.
+    /// Creates a cashflow with sub-schedules for compounding/averaging.
     #[must_use]
-    pub fn new_with_daily_accruals(
+    pub fn new_with_sub_schedules(
         cf_type: CashflowType,
         payment_date: Date,
         accrual_start: Date,
@@ -148,7 +122,8 @@ impl Cashflow {
         notional: f64,
         payoff: Payoff,
         currency: Currency,
-        daily_accruals: Vec<DailyAccrual>,
+        compound_type: CompoundType,
+        sub_schedules: Vec<SubSchedule>,
     ) -> Self {
         Self {
             cf_type,
@@ -159,17 +134,30 @@ impl Cashflow {
             notional,
             payoff,
             currency,
-            daily_accruals: Some(daily_accruals),
+            fixing_date: None,
+            compound_type,
+            sub_schedules: Some(sub_schedules),
         }
     }
 
-    /// Returns true if this cashflow has daily accrual details.
+    /// Sets the fixing date (builder pattern).
     #[must_use]
-    pub fn has_daily_accruals(&self) -> bool { self.daily_accruals.is_some() }
+    pub fn with_fixing_date(mut self, date: Date) -> Self {
+        self.fixing_date = Some(date);
+        self
+    }
 
-    /// Returns the daily accrual details if present.
+    /// Returns the fixing date if set.
     #[must_use]
-    pub fn daily_accruals(&self) -> Option<&[DailyAccrual]> { self.daily_accruals.as_deref() }
+    pub fn fixing_date(&self) -> Option<Date> { self.fixing_date }
+
+    /// Returns true if this cashflow has sub-schedule details.
+    #[must_use]
+    pub fn has_sub_schedules(&self) -> bool { self.sub_schedules.is_some() }
+
+    /// Returns the sub-schedule details if present.
+    #[must_use]
+    pub fn sub_schedules(&self) -> Option<&[SubSchedule]> { self.sub_schedules.as_deref() }
 
     /// Returns true if this cashflow has a fixed rate (no index dependency).
     #[must_use]
@@ -247,6 +235,9 @@ mod tests {
         assert_eq!(cf.notional, 1_000_000.0);
         assert_eq!(cf.currency, Currency::USD);
         assert_eq!(cf.year_fraction, 0.5);
+        assert!(cf.fixing_date.is_none());
+        assert_eq!(cf.compound_type, CompoundType::None);
+        assert!(!cf.has_sub_schedules());
     }
 
     #[test]
@@ -335,5 +326,44 @@ mod tests {
         set.insert(CashflowType::Principal);
         set.insert(CashflowType::Coupon);
         assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_cashflow_with_fixing_date() {
+        let fixing = Date::from_ymd(2025, 6, 29).unwrap();
+        let cf = make_floating_cashflow().with_fixing_date(fixing);
+        assert_eq!(cf.fixing_date(), Some(fixing));
+    }
+
+    #[test]
+    fn test_cashflow_compound_type_default() {
+        let cf = make_fixed_cashflow();
+        assert_eq!(cf.compound_type, CompoundType::None);
+    }
+
+    #[test]
+    fn test_cashflow_with_sub_schedules() {
+        let sub = SubSchedule::new(
+            Date::from_ymd(2025, 1, 1).unwrap(),
+            Date::from_ymd(2025, 1, 1).unwrap(),
+            Date::from_ymd(2025, 1, 2).unwrap(),
+            1.0 / 360.0,
+            Payoff::floating(IndexType::Rate(RateIndex::Sofr)),
+        );
+        let cf = Cashflow::new_with_sub_schedules(
+            CashflowType::Coupon,
+            Date::from_ymd(2025, 7, 1).unwrap(),
+            Date::from_ymd(2025, 1, 1).unwrap(),
+            Date::from_ymd(2025, 7, 1).unwrap(),
+            0.5,
+            1_000_000.0,
+            Payoff::floating(IndexType::Rate(RateIndex::Sofr)),
+            Currency::USD,
+            CompoundType::Straight,
+            vec![sub],
+        );
+        assert!(cf.has_sub_schedules());
+        assert_eq!(cf.sub_schedules().unwrap().len(), 1);
+        assert_eq!(cf.compound_type, CompoundType::Straight);
     }
 }

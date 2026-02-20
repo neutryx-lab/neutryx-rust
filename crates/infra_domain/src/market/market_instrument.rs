@@ -234,14 +234,8 @@ impl MarketInstrument {
                 convention_type: "XCcyBasis".to_string(),
                 reason: "Cross-currency basis swap expansion not yet implemented".to_string(),
             }),
-            MarketConvention::FxForward(_) => Err(MarketInstrumentError::UnsupportedConvention {
-                convention_type: "FxForward".to_string(),
-                reason: "FX forward expansion not yet implemented".to_string(),
-            }),
-            MarketConvention::FxSwap(_) => Err(MarketInstrumentError::UnsupportedConvention {
-                convention_type: "FxSwap".to_string(),
-                reason: "FX swap expansion not yet implemented".to_string(),
-            }),
+            MarketConvention::FxForward(_) => self.expand_fx_forward(&trade_id),
+            MarketConvention::FxSwap(c) => self.expand_fx_swap(&trade_id, c.clone()),
         }
     }
 
@@ -312,7 +306,11 @@ impl MarketInstrument {
             let (start, end) = (window[0], window[1]);
             let yf = (end - start) as f64 / 365.0;
 
-            let index = crate::trade::IndexType::Rate(crate::market::RateIndex::Sofr);
+            let rate_index = match &self.convention {
+                MarketConvention::Swap(c) | MarketConvention::Ois(c) => c.float_index,
+                _ => unreachable!("expand_swap called for non-swap convention"),
+            };
+            let index = crate::trade::IndexType::Rate(rate_index);
 
             floating_cashflows.push(Cashflow::new(
                 CashflowType::Coupon,
@@ -396,6 +394,124 @@ impl MarketInstrument {
         );
 
         Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
+    }
+
+    /// Expands an FX forward instrument to a trade.
+    ///
+    /// Creates a single-leg trade representing the FX forward contract.
+    /// The `rate_value` is the forward FX rate.
+    #[allow(clippy::unnecessary_wraps)]
+    fn expand_fx_forward(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
+        let cashflow = Cashflow::new(
+            CashflowType::Principal,
+            self.maturity_date,
+            self.effective_date,
+            self.maturity_date,
+            0.0,
+            self.notional,
+            Payoff::Fixed {
+                rate: self.rate_value,
+            },
+            self.currency(),
+        );
+
+        let leg = Leg::new(
+            vec![cashflow],
+            Direction::Receiver,
+            LegType::Principal,
+            self.currency(),
+        );
+
+        Ok(Trade::new(trade_id, vec![leg], TradeType::FxForward))
+    }
+
+    /// Expands an FX swap instrument to a trade.
+    ///
+    /// Creates near and far principal exchange legs.
+    /// The `rate_value` is the near leg rate; far rate = near + swap points.
+    #[allow(clippy::unnecessary_wraps)]
+    fn expand_fx_swap(
+        &self,
+        trade_id: &str,
+        conv: super::convention::FxSwapConvention,
+    ) -> Result<Trade, MarketInstrumentError> {
+        let base_ccy = conv.base_currency;
+        let quote_ccy = conv.quote_currency;
+
+        // Near leg: pay base notional, receive quote notional at near rate
+        let near_pay_cf = Cashflow::new(
+            CashflowType::Principal,
+            self.effective_date,
+            self.effective_date,
+            self.effective_date,
+            0.0,
+            self.notional,
+            Payoff::fixed(1.0),
+            base_ccy,
+        );
+        let near_receive_cf = Cashflow::new(
+            CashflowType::Principal,
+            self.effective_date,
+            self.effective_date,
+            self.effective_date,
+            0.0,
+            self.notional * self.rate_value,
+            Payoff::fixed(1.0),
+            quote_ccy,
+        );
+
+        // Far leg: receive base notional, pay quote notional at far rate (implied)
+        let far_receive_cf = Cashflow::new(
+            CashflowType::Principal,
+            self.maturity_date,
+            self.maturity_date,
+            self.maturity_date,
+            0.0,
+            self.notional,
+            Payoff::fixed(1.0),
+            base_ccy,
+        );
+        let far_pay_cf = Cashflow::new(
+            CashflowType::Principal,
+            self.maturity_date,
+            self.maturity_date,
+            self.maturity_date,
+            0.0,
+            self.notional * self.rate_value,
+            Payoff::fixed(1.0),
+            quote_ccy,
+        );
+
+        let near_pay_leg = Leg::new(
+            vec![near_pay_cf],
+            Direction::Payer,
+            LegType::Principal,
+            base_ccy,
+        );
+        let near_receive_leg = Leg::new(
+            vec![near_receive_cf],
+            Direction::Receiver,
+            LegType::Principal,
+            quote_ccy,
+        );
+        let far_receive_leg = Leg::new(
+            vec![far_receive_cf],
+            Direction::Receiver,
+            LegType::Principal,
+            base_ccy,
+        );
+        let far_pay_leg = Leg::new(
+            vec![far_pay_cf],
+            Direction::Payer,
+            LegType::Principal,
+            quote_ccy,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![near_pay_leg, near_receive_leg, far_receive_leg, far_pay_leg],
+            TradeType::FxSwap,
+        ))
     }
 
     /// Generates an annual schedule from effective to maturity date.
