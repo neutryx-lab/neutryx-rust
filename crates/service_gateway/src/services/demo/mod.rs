@@ -2,6 +2,7 @@
 
 mod analysis;
 mod config;
+mod jy_inflation;
 mod market_data;
 mod pricing;
 mod rate_index;

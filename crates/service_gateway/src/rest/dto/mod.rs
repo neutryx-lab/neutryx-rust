@@ -7,6 +7,12 @@ mod pricing;
 pub mod demo;
 #[cfg(feature = "demo")]
 pub mod exotic;
+#[cfg(feature = "demo")]
+pub mod jy_inflation;
+#[cfg(feature = "demo")]
+pub mod mfm;
+#[cfg(feature = "demo")]
+pub mod xva;
 #[cfg(feature = "models")]
 pub mod models;
 #[cfg(feature = "risk")]

@@ -12,6 +12,8 @@ const VolcubeBuilderView = () => import('@/views/VolcubeBuilderView.vue');
 const PricerView = () => import('@/views/PricerView.vue');
 const GraphView = () => import('@/views/GraphView.vue');
 const GreeksAnalyserView = () => import('@/views/GreeksAnalyserView.vue');
+const XvaEngineView = () => import('@/views/XvaEngineView.vue');
+const MfmView = () => import('@/views/MfmView.vue');
 
 export type ViewId =
   | 'dashboard'
@@ -24,7 +26,9 @@ export type ViewId =
   | 'volcube-builder'
   | 'pricer'
   | 'graph'
-  | 'greeks-analyser';
+  | 'greeks-analyser'
+  | 'xva-engine'
+  | 'mfm';
 
 export interface ViewMeta extends Record<string | symbol, unknown> {
   title: string;
@@ -156,6 +160,28 @@ const routes: RouteRecordRaw[] = [
       title: 'Graph',
       breadcrumb: 'Graph',
       icon: 'fa-project-diagram',
+      navGroup: 'tools',
+    } as ViewMeta,
+  },
+  {
+    path: '/xva-engine',
+    name: 'xva-engine',
+    component: XvaEngineView,
+    meta: {
+      title: 'XVA Engine',
+      breadcrumb: 'XVA Engine',
+      icon: 'fa-shield-alt',
+      navGroup: 'analytics',
+    } as ViewMeta,
+  },
+  {
+    path: '/mfm',
+    name: 'mfm',
+    component: MfmView,
+    meta: {
+      title: 'Markov Functional',
+      breadcrumb: 'MFM',
+      icon: 'fa-atom',
       navGroup: 'tools',
     } as ViewMeta,
   },

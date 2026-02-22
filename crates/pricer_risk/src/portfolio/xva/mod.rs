@@ -1,24 +1,30 @@
 //! XVA calculations (CVA, DVA, FVA).
 
+mod collateral_balance;
 mod cva;
 mod dva;
 mod error;
 mod exposure_soa;
+mod first_to_default;
 mod fva;
 mod integrate;
 mod params;
 mod result;
+mod vm_csa_model;
 
 use std::collections::HashMap;
 
+pub use collateral_balance::{compute_ecb, compute_ecb_weighted};
 pub use cva::{compute_cva, compute_cva_with_survival};
 pub use dva::{compute_dva, compute_dva_with_survival};
 pub use error::XvaError;
 pub use exposure_soa::ExposureSoA;
+pub use first_to_default::{BilateralCvaResult, BilateralXvaCalculator, FvaWithBasisResult};
 pub use fva::{compute_fba, compute_fca, compute_fva};
 pub use params::{FundingParams, OwnCreditParams};
 use rayon::prelude::*;
 pub use result::{CounterpartyXva, NettingSetXva, PortfolioXva};
+pub use vm_csa_model::CollateralAdjuster;
 
 use crate::portfolio::{CounterpartyId, CreditParams, NettingSetId, Portfolio};
 

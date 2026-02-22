@@ -97,6 +97,8 @@ pub mod cir;
 
 pub mod correlated;
 
+pub mod jarrow_yildirim;
+
 // === Re-exports ===
 
 pub use cir::{CIRModel, CIRParams};
@@ -105,8 +107,11 @@ pub use error::ModelError;
 pub use gbm::{GBMModel, GBMParams};
 pub use heston::{HestonError, HestonModel, HestonParams};
 pub use hull_white::{HullWhiteModel, HullWhiteParams, ThetaFunction};
+pub use jarrow_yildirim::{
+    JarrowYildirimError, JarrowYildirimModel, JarrowYildirimParams, ZcisAnalyticalPricer,
+};
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
 pub use stochastic::{
     EquityModel, FxModel, HybridModel, RatesModel, SingleState, StochasticModel, StochasticState,
-    TwoFactorState,
+    ThreeFactorState, TwoFactorState,
 };

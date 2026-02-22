@@ -34,7 +34,8 @@ use super::{
     gbm::{GBMModel, GBMParams},
     heston::{HestonModel, HestonParams},
     hull_white::{HullWhiteModel, HullWhiteParams},
-    stochastic::{SingleState, StochasticState, TwoFactorState},
+    jarrow_yildirim::{JarrowYildirimModel, JarrowYildirimParams},
+    stochastic::{SingleState, StochasticState, ThreeFactorState, TwoFactorState},
 };
 
 /// Unified state type for all models.
@@ -44,6 +45,8 @@ pub enum ModelState<T: Float> {
     Single(SingleState<T>),
     /// Two-factor state (Heston, etc.)
     TwoFactor(TwoFactorState<T>),
+    /// Three-factor state (Jarrow-Yildirim, etc.)
+    ThreeFactor(ThreeFactorState<T>),
 }
 
 impl<T: Float + Default> Default for ModelState<T> {
@@ -56,6 +59,7 @@ impl<T: Float + Default> ModelState<T> {
         match self {
             Self::Single(_) => 1,
             Self::TwoFactor(_) => 2,
+            Self::ThreeFactor(_) => 3,
         }
     }
 
@@ -64,6 +68,7 @@ impl<T: Float + Default> ModelState<T> {
         match self {
             Self::Single(s) => s.get(index),
             Self::TwoFactor(s) => s.get(index),
+            Self::ThreeFactor(s) => s.get(index),
         }
     }
 
@@ -72,6 +77,7 @@ impl<T: Float + Default> ModelState<T> {
         match self {
             Self::Single(s) => s.to_array(),
             Self::TwoFactor(s) => s.to_array(),
+            Self::ThreeFactor(s) => s.to_array(),
         }
     }
 
@@ -83,8 +89,12 @@ impl<T: Float + Default> ModelState<T> {
         match self {
             Self::Single(_) => None,
             Self::TwoFactor(s) => Some(s.second),
+            Self::ThreeFactor(_) => None,
         }
     }
+
+    /// Check if this is a three-factor state.
+    pub fn is_three_factor(&self) -> bool { matches!(self, Self::ThreeFactor(_)) }
 }
 
 /// Unified parameter type for all stochastic models.
@@ -98,18 +108,22 @@ pub enum ModelParams<T: Float> {
     HullWhite(HullWhiteParams<T>),
     /// CIR model parameters
     CIR(CIRParams<T>),
+    /// Jarrow-Yildirim 3-factor inflation model parameters
+    JarrowYildirim(JarrowYildirimParams<T>),
 }
 
 impl<T: Float> ModelParams<T> {
     /// Get the spot/initial price from parameters.
     ///
     /// For interest rate models, this returns the initial short rate.
+    /// For JY, returns the initial nominal rate.
     pub fn spot(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.spot,
             ModelParams::Heston(p) => p.spot,
             ModelParams::HullWhite(p) => p.initial_short_rate,
             ModelParams::CIR(p) => p.initial_rate,
+            ModelParams::JarrowYildirim(p) => p.initial_nominal_rate,
         }
     }
 
@@ -120,6 +134,7 @@ impl<T: Float> ModelParams<T> {
             ModelParams::Heston(p) => p.rate,
             ModelParams::HullWhite(p) => p.mean_reversion,
             ModelParams::CIR(p) => p.mean_reversion,
+            ModelParams::JarrowYildirim(p) => p.nominal_mean_reversion,
         }
     }
 
@@ -130,6 +145,7 @@ impl<T: Float> ModelParams<T> {
             ModelParams::Heston(p) => p.v0.sqrt(),
             ModelParams::HullWhite(p) => p.volatility,
             ModelParams::CIR(p) => p.volatility,
+            ModelParams::JarrowYildirim(p) => p.nominal_volatility,
         }
     }
 
@@ -151,6 +167,7 @@ impl<T: Float> ModelParams<T> {
 /// | `Heston` | 2 | Equity (SV) |
 /// | `HullWhite` | 1 | Rates |
 /// | `CIR` | 1 | Rates |
+/// | `JarrowYildirim` | 3 | Hybrid (Inflation) |
 #[derive(Clone, Debug)]
 pub enum StochasticModelEnum<T: Float> {
     /// Geometric Brownian Motion (1-factor, constant volatility).
@@ -161,6 +178,8 @@ pub enum StochasticModelEnum<T: Float> {
     HullWhite(HullWhiteModel<T>),
     /// Cox-Ingersoll-Ross model (rates, positive rates guaranteed).
     CIR(CIRModel<T>),
+    /// Jarrow-Yildirim 3-factor inflation model (nominal rate, real rate, inflation index).
+    JarrowYildirim(JarrowYildirimModel<T>),
 }
 
 impl<T: Float + Default> Default for StochasticModelEnum<T> {
@@ -175,6 +194,7 @@ macro_rules! dispatch_assoc_fn {
             Self::Heston(_) => HestonModel::<T>::$method(),
             Self::HullWhite(_) => HullWhiteModel::<T>::$method(),
             Self::CIR(_) => CIRModel::<T>::$method(),
+            Self::JarrowYildirim(_) => JarrowYildirimModel::<T>::$method(),
         }
     };
 }
@@ -194,6 +214,11 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     /// Create a new CIR model.
     pub fn cir() -> Self { Self::CIR(CIRModel::new()) }
 
+    /// Create a new Jarrow-Yildirim inflation model.
+    pub fn jarrow_yildirim() -> Self {
+        Self::JarrowYildirim(JarrowYildirimModel::new())
+    }
+
     /// Get the model name.
     pub fn model_name(&self) -> &'static str { dispatch_assoc_fn!(self, model_name) }
 
@@ -202,6 +227,12 @@ impl<T: Float + Default> StochasticModelEnum<T> {
 
     /// Check if this is a two-factor model.
     pub fn is_two_factor(&self) -> bool { matches!(self, Self::Heston(_)) }
+
+    /// Check if this is a three-factor model.
+    pub fn is_three_factor(&self) -> bool { matches!(self, Self::JarrowYildirim(_)) }
+
+    /// Check if this is an inflation model.
+    pub fn is_inflation_model(&self) -> bool { matches!(self, Self::JarrowYildirim(_)) }
 
     /// Check if this is an interest rate model.
     pub fn is_rate_model(&self) -> bool { matches!(self, Self::HullWhite(_) | Self::CIR(_)) }
@@ -220,6 +251,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
                 ModelState::Single(HullWhiteModel::initial_state(p))
             }
             (Self::CIR(_), ModelParams::CIR(p)) => ModelState::Single(CIRModel::initial_state(p)),
+            (Self::JarrowYildirim(_), ModelParams::JarrowYildirim(p)) => {
+                ModelState::ThreeFactor(JarrowYildirimModel::initial_state(p))
+            }
             #[allow(unreachable_patterns)]
             _ => ModelState::default(),
         }
@@ -245,6 +279,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             }
             (Self::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => {
                 ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p))
+            }
+            (Self::JarrowYildirim(_), ModelState::ThreeFactor(s), ModelParams::JarrowYildirim(p)) => {
+                ModelState::ThreeFactor(JarrowYildirimModel::evolve_step(*s, dt, dw, p))
             }
             #[allow(unreachable_patterns)]
             _ => state,

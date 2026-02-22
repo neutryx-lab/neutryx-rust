@@ -51,6 +51,12 @@ import type {
   PricerGraphResponse,
   ExoticProductDef,
   ExoticPricingResponse,
+  XvaDefaultConfigResponse,
+  XvaSimulationRequest,
+  XvaSimulationResponse,
+  XvaBilateralRequest,
+  XvaBilateralResponse,
+  XvaCsvExportResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -358,4 +364,52 @@ export async function fetchExoticProducts(): Promise<ExoticProductDef[]> {
 
 export async function priceExotic(request: Record<string, any>): Promise<ExoticPricingResponse> {
   return postJson<Record<string, any>, ExoticPricingResponse>(`${API_BASE}/pricer/price-exotic`, request);
+}
+
+// =============================================================================
+// MFM (Markov Functional Model) API
+// =============================================================================
+
+export async function fetchMfmProducts(): Promise<import('@/types').MfmProductDef[]> {
+  return fetchJson<import('@/types').MfmProductDef[]>(`${API_BASE}/mfm/products`);
+}
+
+export async function calibrateMfm(request: import('@/types').MfmCalibrateRequest): Promise<import('@/types').MfmCalibrateResponse> {
+  return postJson<import('@/types').MfmCalibrateRequest, import('@/types').MfmCalibrateResponse>(`${API_BASE}/mfm/calibrate`, request);
+}
+
+export async function buildGaussianTree(request: import('@/types').GaussianTreeRequest): Promise<import('@/types').GaussianTreeResponse> {
+  return postJson<import('@/types').GaussianTreeRequest, import('@/types').GaussianTreeResponse>(`${API_BASE}/mfm/gaussian-tree`, request);
+}
+
+export async function evaluateCif(request: import('@/types').CifEvaluateRequest): Promise<import('@/types').CifEvaluateResponse> {
+  return postJson<import('@/types').CifEvaluateRequest, import('@/types').CifEvaluateResponse>(`${API_BASE}/mfm/cif-evaluate`, request);
+}
+
+export async function priceBermudan(request: import('@/types').BermudanPriceRequest): Promise<import('@/types').BermudanPriceResponse> {
+  return postJson<import('@/types').BermudanPriceRequest, import('@/types').BermudanPriceResponse>(`${API_BASE}/mfm/bermudan`, request);
+}
+
+export async function priceTarn(request: import('@/types').TarnPriceRequest): Promise<import('@/types').TarnPriceResponse> {
+  return postJson<import('@/types').TarnPriceRequest, import('@/types').TarnPriceResponse>(`${API_BASE}/mfm/tarn`, request);
+}
+
+// =============================================================================
+// XVA Engine API
+// =============================================================================
+
+export async function fetchXvaConfig(): Promise<XvaDefaultConfigResponse> {
+  return fetchJson<XvaDefaultConfigResponse>(`${API_BASE}/xva/config`);
+}
+
+export async function runXvaSimulation(request: XvaSimulationRequest): Promise<XvaSimulationResponse> {
+  return postJson<XvaSimulationRequest, XvaSimulationResponse>(`${API_BASE}/xva/simulate`, request);
+}
+
+export async function computeXvaBilateral(request: XvaBilateralRequest): Promise<XvaBilateralResponse> {
+  return postJson<XvaBilateralRequest, XvaBilateralResponse>(`${API_BASE}/xva/bilateral`, request);
+}
+
+export async function exportXvaCsv(): Promise<XvaCsvExportResponse> {
+  return fetchJson<XvaCsvExportResponse>(`${API_BASE}/xva/export/csv`);
 }

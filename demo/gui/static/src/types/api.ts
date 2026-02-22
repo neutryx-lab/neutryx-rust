@@ -860,3 +860,366 @@ export interface MonteCarloStats {
   stdError: number;
   confidence95: [number, number];
 }
+
+// =============================================================================
+// MFM (Markov Functional Model) Types
+// =============================================================================
+
+export interface MfmProductDef {
+  productType: string;
+  displayName: string;
+  description: string;
+  parameters: MfmParameterDef[];
+}
+
+export interface MfmParameterDef {
+  name: string;
+  displayName: string;
+  fieldType: string;
+  required: boolean;
+  defaultValue?: any;
+  description?: string;
+  group?: string;
+}
+
+// ── Calibration ──
+
+export interface MfmCalibrateRequest {
+  meanReversion: number;
+  volatility: number;
+  numGridPoints?: number;
+  numStdDevs?: number;
+  volType?: 'normal' | 'lognormal';
+  exerciseTimes: number[];
+  swapTenors: number[];
+  paymentFrequencies: number[];
+  fundingCurve: { rate: number };
+  couponCurve: { rate: number };
+  volSurfaceType?: 'flat' | 'sabr';
+  flatVol?: { normalVolBp: number };
+  sabrVol?: {
+    expiries: number[];
+    tenors: number[];
+    alphas: number[];
+    betas: number[];
+    rhos: number[];
+    nus: number[];
+  };
+}
+
+export interface CalibratedSlice {
+  exerciseTime: number;
+  xGrid: number[];
+  swapRates: number[];
+  discountFactors: number[];
+  annuities: number[];
+}
+
+export interface RateIndexCalibrationDto {
+  rateIndex: string;
+  slices: CalibratedSlice[];
+}
+
+export interface IntegralAdjusterDto {
+  adders: number[];
+  multipliers: number[];
+}
+
+export interface MfmCalibrateResponse {
+  fundingCalibration: RateIndexCalibrationDto;
+  couponSwapCalibration: RateIndexCalibrationDto;
+  couponLiborCalibration: RateIndexCalibrationDto;
+  adjuster: IntegralAdjusterDto;
+  maxNrIterationsUsed: number;
+  maxCalibrationError: number;
+  computationTimeMs: number;
+}
+
+// ── Gaussian Tree ──
+
+export interface GaussianTreeRequest {
+  meanReversion: number;
+  volatility: number;
+  times: number[];
+  numStdDevs?: number;
+  numGridPoints?: number;
+}
+
+export interface GaussianTreeSliceDto {
+  time: number;
+  xGrid: number[];
+  dx: number;
+  conditionalVariance: number;
+}
+
+export interface GaussianTreeResponse {
+  numSteps: number;
+  numNodes: number;
+  slices: GaussianTreeSliceDto[];
+  arrowDebreuPrices: number[][];
+  computationTimeMs: number;
+}
+
+// ── CIF Evaluation ──
+
+export interface CifInstrumentDto {
+  fixedRate: number;
+  leverage: number;
+  floorRate: number;
+  capRate?: number;
+  notional: number;
+}
+
+export interface CifEvaluateRequest {
+  instrument: CifInstrumentDto;
+  couponDates: number[];
+  paymentDates: number[];
+  yearFractions: number[];
+  swapRates: number[][];
+  liborRates: number[][];
+  discountFactors: number[][];
+  forwardSwapRates: number[];
+  forwardLibors: number[];
+  normalVols: number[];
+}
+
+export interface CifComponentsDto {
+  dE: number[];
+  dR: number[];
+  dI: number[];
+  dQ: number[];
+  total: number[];
+}
+
+export interface CifCouponInfoDto {
+  couponIdx: number;
+  couponDateYf: number;
+  paymentDateYf: number;
+  yearFraction: number;
+  forwardSwapRate: number;
+  forwardLibor: number;
+  normalVol: number;
+  components: CifComponentsDto;
+  discountedValues: number[];
+}
+
+export interface CifEvaluateResponse {
+  coupons: CifCouponInfoDto[];
+  computationTimeMs: number;
+}
+
+// ── Bermudan Pricing ──
+
+export interface BermudanPriceRequest {
+  meanReversion: number;
+  volatility: number;
+  numGridPoints?: number;
+  numStdDevs?: number;
+  volType?: 'normal' | 'lognormal';
+  exerciseTimes: number[];
+  swapTenors: number[];
+  paymentFrequencies: number[];
+  fundingCurve: { rate: number };
+  couponCurve: { rate: number };
+  volSurfaceType?: 'flat' | 'sabr';
+  flatVol?: { normalVolBp: number };
+  isCallable?: boolean;
+  flatCoupon?: number;
+}
+
+export interface BermudanPriceResponse {
+  pv: number;
+  continuationValue: number;
+  optionValue: number;
+  exerciseBoundary: number[];
+  computationTimeMs: number;
+}
+
+// ── TARN Pricing ──
+
+export interface TarnPriceRequest {
+  meanReversion: number;
+  volatility: number;
+  numGridPoints?: number;
+  numStdDevs?: number;
+  volType?: 'normal' | 'lognormal';
+  exerciseTimes: number[];
+  swapTenors: number[];
+  paymentFrequencies: number[];
+  fundingCurve: { rate: number };
+  couponCurve: { rate: number };
+  volSurfaceType?: 'flat' | 'sabr';
+  flatVol?: { normalVolBp: number };
+  tarnAmount: number;
+  numCouponGridPoints?: number;
+  excessCouponFlag?: boolean;
+  hasBermudanExercise?: boolean;
+  isCallable?: boolean;
+  flatCoupon?: number;
+}
+
+export interface TarnPriceResponse {
+  pv: number;
+  autoRedemptionProbability: number;
+  expectedRedemptionTime: number;
+  computationTimeMs: number;
+}
+
+// =============================================================================
+// XVA Engine Types
+// =============================================================================
+
+export interface XvaDefaultConfigResponse {
+  nPaths: number;
+  horizonYears: number;
+  timeStep: string;
+  antithetic: boolean;
+  bilateral: boolean;
+  computeFva: boolean;
+  pfePercentiles: number[];
+  counterparties: DemoCounterparty[];
+}
+
+export interface DemoCounterparty {
+  id: string;
+  name: string;
+  creditRating: string;
+  hazardRate: number;
+  lgd: number;
+  nettingSets: DemoNettingSet[];
+}
+
+export interface DemoNettingSet {
+  id: string;
+  hasCsa: boolean;
+  tradeCount: number;
+  tradeTypes: string[];
+}
+
+export interface XvaSimulationRequest {
+  nPaths?: number;
+  horizonYears?: number;
+  timeStep?: string;
+  seed?: number;
+  antithetic?: boolean;
+  pfePercentiles?: number[];
+  bilateral?: boolean;
+  computeFva?: boolean;
+  counterpartyId?: string;
+}
+
+export interface XvaSimulationResponse {
+  config: XvaConfigSummary;
+  timeGrid: number[];
+  nPaths: number;
+  nettingSets: NettingSetResult[];
+  counterpartyResults: CounterpartyXvaResult[];
+  hierarchy: HierarchySummary;
+  computationTimeMs: number;
+}
+
+export interface XvaConfigSummary {
+  nPaths: number;
+  timePoints: number;
+  horizonYears: number;
+  antithetic: boolean;
+  bilateral: boolean;
+  computeFva: boolean;
+  pfePercentiles: number[];
+}
+
+export interface NettingSetResult {
+  nettingSetId: string;
+  epe: number[];
+  ene: number[];
+  ecb: number[];
+  pfe: PfeProfile[];
+  peakEpe: number;
+  peakEne: number;
+  avgEpe: number;
+  avgEne: number;
+}
+
+export interface PfeProfile {
+  percentile: number;
+  label: string;
+  values: number[];
+  peak: number;
+}
+
+export interface CounterpartyXvaResult {
+  counterpartyId: string;
+  creditRating: string;
+  hazardRate: number;
+  lgd: number;
+  ucva: number;
+  udva: number;
+  bcva: number;
+  bdva: number;
+  fca: number;
+  fba: number;
+  fva: number;
+  totalXva: number;
+  nettingSetCount: number;
+  tradeCount: number;
+}
+
+export interface HierarchySummary {
+  counterparties: HierarchyCounterparty[];
+  totalCounterparties: number;
+  totalNettingSets: number;
+  totalTrades: number;
+}
+
+export interface HierarchyCounterparty {
+  id: string;
+  creditRating: string;
+  isdaAgreements: HierarchyIsda[];
+  noDocTradeCount: number;
+}
+
+export interface HierarchyIsda {
+  nettingSetId: string;
+  vmCsas: HierarchyVmCsa[];
+  nonCsaTradeCount: number;
+}
+
+export interface HierarchyVmCsa {
+  csaId: string;
+  thresholdSelf: number;
+  thresholdCtpy: number;
+  mtaSelf: number;
+  mtaCtpy: number;
+  mporDays: number;
+  tradeCount: number;
+}
+
+export interface XvaBilateralRequest {
+  epe: number[];
+  ene: number[];
+  timeGrid: number[];
+  hazardRate: number;
+  lgd: number;
+  ownHazardRate: number;
+  ownLgd: number;
+  fundingSpread?: number;
+  xccyBasis?: number;
+}
+
+export interface XvaBilateralResponse {
+  ucva: number;
+  udva: number;
+  bcva: number;
+  bdva: number;
+  fca: number;
+  fba: number;
+  fva: number;
+  totalXva: number;
+  computationTimeMs: number;
+}
+
+export interface XvaCsvExportResponse {
+  csvData: string;
+  nettingSetId: string;
+  rowCount: number;
+}

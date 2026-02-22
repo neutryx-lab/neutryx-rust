@@ -171,6 +171,62 @@ pub trait RatesModel<T: Float>: StochasticModel<T> {}
 /// Marker trait for FX models (e.g., Garman-Kohlhagen).
 pub trait FxModel<T: Float>: StochasticModel<T> {}
 
+/// Three-factor state (e.g., JY: nominal rate, real rate, inflation index).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ThreeFactorState<T: Float> {
+    /// First state variable (e.g., nominal short rate)
+    pub first: T,
+    /// Second state variable (e.g., real short rate)
+    pub second: T,
+    /// Third state variable (e.g., inflation index level)
+    pub third: T,
+}
+
+impl<T: Float + Default> StochasticState<T> for ThreeFactorState<T> {
+    fn dimension() -> usize { 3 }
+
+    fn get(&self, index: usize) -> Option<T> {
+        match index {
+            0 => Some(self.first),
+            1 => Some(self.second),
+            2 => Some(self.third),
+            _ => None,
+        }
+    }
+
+    fn set(&mut self, index: usize, value: T) -> bool {
+        match index {
+            0 => {
+                self.first = value;
+                true
+            }
+            1 => {
+                self.second = value;
+                true
+            }
+            2 => {
+                self.third = value;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn from_slice(values: &[T]) -> Option<Self> {
+        if values.len() >= 3 {
+            Some(ThreeFactorState {
+                first: values[0],
+                second: values[1],
+                third: values[2],
+            })
+        } else {
+            None
+        }
+    }
+
+    fn to_array(&self) -> Vec<T> { vec![self.first, self.second, self.third] }
+}
+
 /// Marker trait for hybrid/exotic models.
 pub trait HybridModel {}
 
