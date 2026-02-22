@@ -5,10 +5,16 @@ import { useCurveCharts } from '@/composables/useCurveCharts';
 import { useMarketEnvStore } from '@/stores/marketEnv';
 import CurveInstrumentTable from '@/components/curve/CurveInstrumentTable.vue';
 import CurveJacobianHeatmap from '@/components/curve/CurveJacobianHeatmap.vue';
+import { useJyInflationStore } from '@/stores/jyInflation';
+import { useJYInflation } from '@/composables/useJYInflation';
+import JyCurvePanel from '@/components/jy/JyCurvePanel.vue';
+
+const jyStore = useJyInflationStore();
+const { buildCurves: jyBuildCurves } = useJYInflation();
 
 const marketEnv = useMarketEnvStore();
 const publishFeedback = ref(false);
-const assetTab = ref<'rate' | 'credit' | 'fx'>('rate');
+const assetTab = ref<'rate' | 'credit' | 'fx' | 'inflation'>('rate');
 
 function publishToEnvironment() {
   if (!buildResult.value || !selectedCurveName.value) return;
@@ -138,13 +144,14 @@ watch(chartType, () => {
                 { key: 'rate', label: 'Rate', icon: 'fa-chart-line' },
                 { key: 'credit', label: 'Credit', icon: 'fa-shield-halved' },
                 { key: 'fx', label: 'FX', icon: 'fa-exchange-alt' },
+                { key: 'inflation', label: 'Inflation', icon: 'fa-chart-bar' },
               ]"
               :key="tab.key"
               class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
               :class="assetTab === tab.key
                 ? 'bg-[var(--primary)] text-white shadow-sm'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'"
-              @click="assetTab = tab.key as 'rate' | 'credit' | 'fx'"
+              @click="assetTab = tab.key as 'rate' | 'credit' | 'fx' | 'inflation'"
             >
               <i :class="['fas', tab.icon]" style="font-size: 10px"></i>
               {{ tab.label }}

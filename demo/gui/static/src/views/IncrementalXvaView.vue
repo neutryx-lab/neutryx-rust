@@ -1,237 +1,7 @@
-<template>
-  <div class="incremental-xva-view">
-    <div class="page-header">
-      <h1>Incremental XVA Engine</h1>
-      <p class="subtitle">
-        HW1F Outer MC + Analytical Swap Pricing + MFM Grid Cache Lookup
-      </p>
-    </div>
-
-    <!-- Configuration Section -->
-    <div class="config-grid">
-      <!-- HW1F Model Parameters -->
-      <div class="config-card">
-        <h3>HW1F Model</h3>
-        <div class="form-group">
-          <label>Mean Reversion (a)</label>
-          <input type="number" v-model.number="config.hwMeanReversion" step="0.01" min="0.001" />
-        </div>
-        <div class="form-group">
-          <label>Volatility (σ)</label>
-          <input type="number" v-model.number="config.hwVolatility" step="0.001" min="0.001" />
-        </div>
-        <div class="form-group">
-          <label>Initial Rate r(0)</label>
-          <input type="number" v-model.number="config.hwInitialRate" step="0.005" />
-        </div>
-      </div>
-
-      <!-- Simulation Settings -->
-      <div class="config-card">
-        <h3>Simulation</h3>
-        <div class="form-group">
-          <label>Paths</label>
-          <select v-model.number="config.nPaths">
-            <option :value="1000">1,000</option>
-            <option :value="5000">5,000</option>
-            <option :value="10000">10,000</option>
-            <option :value="50000">50,000</option>
-            <option :value="100000">100,000</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Horizon (years)</label>
-          <input type="number" v-model.number="config.horizonYears" step="1" min="1" max="30" />
-        </div>
-        <div class="form-group">
-          <label>Time Step</label>
-          <select v-model="config.timeStep">
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-            <option value="semi-annual">Semi-Annual</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Seed</label>
-          <input type="number" v-model.number="config.seed" />
-        </div>
-        <div class="toggle-group">
-          <label><input type="checkbox" v-model="config.antithetic" /> Antithetic</label>
-          <label><input type="checkbox" v-model="config.bilateral" /> Bilateral</label>
-          <label><input type="checkbox" v-model="config.computeFva" /> FVA</label>
-        </div>
-      </div>
-
-      <!-- Coupling Method -->
-      <div class="config-card">
-        <h3>Model Coupling</h3>
-        <div class="form-group">
-          <label>
-            <input type="radio" v-model="config.couplingMethod" value="swap_rate" />
-            Approach A: Swap Rate Mapping
-          </label>
-          <label>
-            <input type="radio" v-model="config.couplingMethod" value="zscore" />
-            Approach B: Z-Score Matching
-          </label>
-        </div>
-        <div v-if="config.couplingMethod === 'swap_rate'" class="form-group">
-          <label>Benchmark Swap Tenor</label>
-          <input type="number" v-model.number="config.couplingSwapTenor" step="1" />
-        </div>
-      </div>
-
-      <!-- Credit Parameters -->
-      <div class="config-card">
-        <h3>Counterparty Credit</h3>
-        <div class="form-group">
-          <label>Hazard Rate</label>
-          <input type="number" v-model.number="config.hazardRate" step="0.005" min="0" />
-        </div>
-        <div class="form-group">
-          <label>LGD</label>
-          <input type="number" v-model.number="config.lgd" step="0.1" min="0" max="1" />
-        </div>
-        <div class="form-group">
-          <label>Funding Spread (bps)</label>
-          <input type="number" v-model.number="fundingSpreadBps" step="5" min="0" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Portfolio Section -->
-    <div class="portfolio-section">
-      <div class="portfolio-card">
-        <h3>Base Portfolio</h3>
-        <div class="trade-list">
-          <div v-for="swap in config.baseSwaps" :key="swap.tradeId" class="trade-item">
-            <span class="trade-badge swap">{{ swap.isPayer ? 'Pay' : 'Rcv' }}</span>
-            <span>{{ swap.tradeId }}</span>
-            <span>{{ formatNotional(swap.notional) }}</span>
-            <span>{{ (swap.fixedRate * 100).toFixed(2) }}%</span>
-            <span>{{ swap.tenorYears }}Y</span>
-          </div>
-          <div v-for="exotic in config.baseExotics" :key="exotic.tradeId" class="trade-item">
-            <span class="trade-badge exotic">{{ exotic.productType.toUpperCase() }}</span>
-            <span>{{ exotic.tradeId }}</span>
-            <span>{{ formatNotional(exotic.notional) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="portfolio-card incremental">
-        <h3>Incremental Trade</h3>
-        <div class="trade-list">
-          <template v-if="config.incrementalTrade.type === 'swap'">
-            <div class="trade-item highlight">
-              <span class="trade-badge swap">{{ config.incrementalTrade.isPayer ? 'Pay' : 'Rcv' }}</span>
-              <span>{{ config.incrementalTrade.tradeId }}</span>
-              <span>{{ formatNotional(config.incrementalTrade.notional) }}</span>
-              <span>{{ ((config.incrementalTrade.fixedRate || 0) * 100).toFixed(2) }}%</span>
-            </div>
-          </template>
-          <template v-else>
-            <div class="trade-item highlight">
-              <span class="trade-badge exotic">{{ (config.incrementalTrade.productType || 'EXOTIC').toUpperCase() }}</span>
-              <span>{{ config.incrementalTrade.tradeId }}</span>
-              <span>{{ formatNotional(config.incrementalTrade.notional) }}</span>
-            </div>
-          </template>
-        </div>
-      </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="actions">
-      <button class="btn btn-secondary" @click="loadDemo" :disabled="loading">
-        Load Demo
-      </button>
-      <button class="btn btn-primary" @click="runSimulation" :disabled="loading">
-        <span v-if="loading" class="spinner"></span>
-        {{ loading ? 'Computing...' : 'Run Incremental XVA' }}
-      </button>
-    </div>
-
-    <!-- Results Section -->
-    <div v-if="result" class="results-section">
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <div class="summary-card">
-          <h4>Base XVA</h4>
-          <div class="value">{{ formatCurrency(result.baseXva.total) }}</div>
-          <div class="detail">BCVA: {{ formatCurrency(result.baseXva.bcva) }}</div>
-          <div class="detail">BDVA: {{ formatCurrency(result.baseXva.bdva) }}</div>
-          <div class="detail">FVA: {{ formatCurrency(result.baseXva.fva) }}</div>
-        </div>
-        <div class="summary-card">
-          <h4>Full XVA</h4>
-          <div class="value">{{ formatCurrency(result.fullXva.total) }}</div>
-          <div class="detail">BCVA: {{ formatCurrency(result.fullXva.bcva) }}</div>
-          <div class="detail">BDVA: {{ formatCurrency(result.fullXva.bdva) }}</div>
-          <div class="detail">FVA: {{ formatCurrency(result.fullXva.fva) }}</div>
-        </div>
-        <div class="summary-card highlight">
-          <h4>Incremental XVA</h4>
-          <div class="value large" :class="result.incrementalXva.total >= 0 ? 'positive' : 'negative'">
-            {{ formatCurrency(result.incrementalXva.total) }}
-          </div>
-          <div class="detail">BCVA: {{ formatCurrency(result.incrementalXva.bcva) }}</div>
-          <div class="detail">BDVA: {{ formatCurrency(result.incrementalXva.bdva) }}</div>
-          <div class="detail">FVA: {{ formatCurrency(result.incrementalXva.fva) }}</div>
-        </div>
-      </div>
-
-      <!-- Computation Info -->
-      <div class="computation-info">
-        <span>{{ result.nPaths.toLocaleString() }} paths</span>
-        <span>{{ result.timeGrid.length }} time steps</span>
-        <span>Coupling: {{ result.couplingMethod === 'swap_rate' ? 'Swap Rate (A)' : 'Z-Score (B)' }}</span>
-        <span>{{ result.computationTimeMs.toFixed(1) }} ms</span>
-      </div>
-
-      <!-- Exposure Chart -->
-      <div class="chart-section">
-        <h3>Exposure Profiles</h3>
-        <canvas ref="exposureChartRef"></canvas>
-      </div>
-
-      <!-- XVA Waterfall -->
-      <div class="chart-section">
-        <h3>XVA Waterfall</h3>
-        <canvas ref="waterfallChartRef"></canvas>
-      </div>
-
-      <!-- Breakdown Table -->
-      <div class="table-section">
-        <h3>XVA Breakdown</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Metric</th>
-              <th>Base Portfolio</th>
-              <th>Full Portfolio</th>
-              <th>Incremental</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="metric in metricsRows" :key="metric.label">
-              <td>{{ metric.label }}</td>
-              <td>{{ formatCurrency(metric.base) }}</td>
-              <td>{{ formatCurrency(metric.full) }}</td>
-              <td :class="metric.incremental >= 0 ? 'positive' : 'negative'">
-                {{ formatCurrency(metric.incremental) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue'
-import Chart from 'chart.js/auto'
+import { ref, computed, nextTick } from 'vue'
+import { Chart, registerables, type ChartConfiguration, type TooltipItem } from 'chart.js'
+import { getChartColors } from '@/composables/useChartTheme'
 import {
   fetchIncrementalXvaConfig,
   runIncrementalXva,
@@ -241,6 +11,8 @@ import type {
   IncrementalXvaResponse,
 } from '../types/api'
 
+Chart.register(...registerables)
+
 // ── State ───────────────────────────────────────────────────────────────────
 
 const loading = ref(false)
@@ -248,6 +20,7 @@ const result = ref<IncrementalXvaResponse | null>(null)
 const exposureChartRef = ref<HTMLCanvasElement | null>(null)
 const waterfallChartRef = ref<HTMLCanvasElement | null>(null)
 const fundingSpreadBps = ref(50)
+const configExpanded = ref(true)
 
 let exposureChart: Chart | null = null
 let waterfallChart: Chart | null = null
@@ -274,6 +47,16 @@ const config = ref<any>({
 
 // ── Computed ────────────────────────────────────────────────────────────────
 
+const summaryStats = computed(() => {
+  if (!result.value) return []
+  const r = result.value
+  return [
+    { label: 'Base XVA', value: formatCurrency(r.baseXva.total), subtitle: `BCVA: ${formatCurrency(r.baseXva.bcva)}`, icon: 'fa-layer-group', color: '#3b82f6' },
+    { label: 'Full XVA', value: formatCurrency(r.fullXva.total), subtitle: `BCVA: ${formatCurrency(r.fullXva.bcva)}`, icon: 'fa-chart-bar', color: '#8b5cf6' },
+    { label: 'Incremental XVA', value: formatCurrency(r.incrementalXva.total), subtitle: `FVA: ${formatCurrency(r.incrementalXva.fva)}`, icon: 'fa-balance-scale', color: r.incrementalXva.total >= 0 ? '#10b981' : '#ef4444' },
+  ]
+})
+
 const metricsRows = computed(() => {
   if (!result.value) return []
   const r = result.value
@@ -292,9 +75,10 @@ const metricsRows = computed(() => {
 // ── Methods ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(val: number): string {
-  if (Math.abs(val) >= 1e6) return (val / 1e6).toFixed(2) + 'M'
-  if (Math.abs(val) >= 1e3) return (val / 1e3).toFixed(1) + 'K'
-  return val.toFixed(2)
+  const abs = Math.abs(val)
+  if (abs >= 1e6) return `${val >= 0 ? '' : '-'}$${(abs / 1e6).toFixed(2)}M`
+  if (abs >= 1e3) return `${val >= 0 ? '' : '-'}$${(abs / 1e3).toFixed(1)}K`
+  return `$${val.toFixed(2)}`
 }
 
 function formatNotional(val: number): string {
@@ -371,66 +155,44 @@ function renderExposureChart() {
   if (exposureChart) exposureChart.destroy()
 
   const labels = r.timeGrid.map((t: number) => t.toFixed(2) + 'Y')
+  const cc = getChartColors()
 
-  exposureChart = new Chart(exposureChartRef.value, {
+  const chartConfig: ChartConfiguration<'line'> = {
     type: 'line',
     data: {
       labels,
       datasets: [
-        {
-          label: 'Base EPE',
-          data: r.baseEpe,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.1)',
-          borderDash: [5, 5],
-          fill: false,
-          tension: 0.3,
-        },
-        {
-          label: 'Full EPE',
-          data: r.fullEpe,
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59,130,246,0.1)',
-          fill: false,
-          tension: 0.3,
-        },
-        {
-          label: 'Base ENE',
-          data: r.baseEne.map((v: number) => -v),
-          borderColor: '#ef4444',
-          borderDash: [5, 5],
-          fill: false,
-          tension: 0.3,
-        },
-        {
-          label: 'Full ENE',
-          data: r.fullEne.map((v: number) => -v),
-          borderColor: '#ef4444',
-          fill: false,
-          tension: 0.3,
-        },
+        { label: 'Base EPE', data: r.baseEpe, borderColor: '#3b82f6', backgroundColor: '#3b82f61a', borderDash: [5, 5], fill: false, tension: 0.4 },
+        { label: 'Full EPE', data: r.fullEpe, borderColor: '#3b82f6', backgroundColor: '#3b82f61a', fill: true, tension: 0.4 },
+        { label: 'Base ENE', data: r.baseEne.map((v: number) => -v), borderColor: '#ef4444', backgroundColor: '#ef44441a', borderDash: [5, 5], fill: false, tension: 0.4 },
+        { label: 'Full ENE', data: r.fullEne.map((v: number) => -v), borderColor: '#ef4444', backgroundColor: '#ef44441a', fill: true, tension: 0.4 },
       ],
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
       plugins: {
-        legend: { position: 'top' },
+        legend: { display: true, labels: { color: cc.tick } },
         tooltip: {
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
+          padding: 12,
+          cornerRadius: 8,
           callbacks: {
-            label: (ctx: any) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+            label: (ctx: TooltipItem<'line'>) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
           },
         },
       },
       scales: {
-        y: {
-          title: { display: true, text: 'Exposure' },
-        },
-        x: {
-          title: { display: true, text: 'Time' },
-        },
+        x: { grid: { color: cc.grid }, ticks: { color: cc.tick } },
+        y: { grid: { color: cc.grid }, ticks: { color: cc.tick, callback: (v) => formatCurrency(v as number) } },
       },
     },
-  })
+  }
+
+  exposureChart = new Chart(exposureChartRef.value, chartConfig)
 }
 
 function renderWaterfallChart() {
@@ -439,373 +201,374 @@ function renderWaterfallChart() {
 
   if (waterfallChart) waterfallChart.destroy()
 
-  waterfallChart = new Chart(waterfallChartRef.value, {
+  const cc = getChartColors()
+
+  const chartConfig: ChartConfiguration<'bar'> = {
     type: 'bar',
     data: {
       labels: ['BCVA', 'BDVA', 'FVA', 'Total XVA'],
       datasets: [
-        {
-          label: 'Base',
-          data: [r.baseXva.bcva, -r.baseXva.bdva, r.baseXva.fva, r.baseXva.total],
-          backgroundColor: 'rgba(59,130,246,0.6)',
-        },
-        {
-          label: 'Full',
-          data: [r.fullXva.bcva, -r.fullXva.bdva, r.fullXva.fva, r.fullXva.total],
-          backgroundColor: 'rgba(16,185,129,0.6)',
-        },
-        {
-          label: 'Incremental',
-          data: [r.incrementalXva.bcva, -r.incrementalXva.bdva, r.incrementalXva.fva, r.incrementalXva.total],
-          backgroundColor: 'rgba(245,158,11,0.8)',
-        },
+        { label: 'Base', data: [r.baseXva.bcva, -r.baseXva.bdva, r.baseXva.fva, r.baseXva.total], backgroundColor: '#3b82f6cc' },
+        { label: 'Full', data: [r.fullXva.bcva, -r.fullXva.bdva, r.fullXva.fva, r.fullXva.total], backgroundColor: '#10b981cc' },
+        { label: 'Incremental', data: [r.incrementalXva.bcva, -r.incrementalXva.bdva, r.incrementalXva.fva, r.incrementalXva.total], backgroundColor: '#f59e0bcc' },
       ],
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
       plugins: {
-        legend: { position: 'top' },
+        legend: { display: true, labels: { color: cc.tick } },
         tooltip: {
+          backgroundColor: cc.tooltipBg,
+          titleColor: cc.tooltipTitle,
+          bodyColor: cc.tooltipBody,
+          padding: 12,
+          cornerRadius: 8,
           callbacks: {
-            label: (ctx: any) => `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`,
+            label: (ctx: TooltipItem<'bar'>) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
           },
         },
       },
       scales: {
-        y: {
-          title: { display: true, text: 'XVA Value' },
-        },
+        x: { grid: { color: cc.grid }, ticks: { color: cc.tick } },
+        y: { grid: { color: cc.grid }, ticks: { color: cc.tick, callback: (v) => formatCurrency(v as number) } },
       },
     },
-  })
+  }
+
+  waterfallChart = new Chart(waterfallChartRef.value, chartConfig)
 }
 
 // Auto-load demo on mount
 loadDemo()
 </script>
 
+<template>
+  <div class="incremental-xva-view">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-semibold text-[var(--text-primary)]">Portfolio XVA Engine</h2>
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- Summary Stats in Header -->
+        <template v-if="result">
+          <div
+            v-for="stat in summaryStats"
+            :key="stat.label"
+            class="glass-card px-4 py-2 flex items-center gap-3"
+          >
+            <div
+              class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              :style="{ backgroundColor: `${stat.color}1a` }"
+            >
+              <i :class="['fas text-xs', stat.icon]" :style="{ color: stat.color }"></i>
+            </div>
+            <div class="leading-tight">
+              <p class="text-xs text-[var(--text-muted)]">{{ stat.label }}</p>
+              <p class="text-lg font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
+            </div>
+          </div>
+        </template>
+
+        <button
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-all"
+          :disabled="loading"
+          @click="loadDemo"
+        >
+          <i class="fas fa-download mr-2"></i>Load Demo
+        </button>
+        <button
+          :class="[
+            'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+            loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-[var(--primary)] hover:opacity-90'
+          ]"
+          class="text-white"
+          :disabled="loading"
+          @click="runSimulation"
+        >
+          <i :class="['fas mr-2', loading ? 'fa-spinner fa-spin' : 'fa-play']"></i>
+          {{ loading ? 'Computing...' : 'Run Simulation' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuration + Portfolio (side by side) -->
+    <div class="glass-card p-6 mb-6">
+      <button
+        class="w-full flex items-center justify-between"
+        @click="configExpanded = !configExpanded"
+      >
+        <h3 class="text-lg font-semibold text-[var(--text-primary)]">Simulation Configuration</h3>
+        <i :class="['fas fa-chevron-down transition-transform duration-200', { 'rotate-180': !configExpanded }]"></i>
+      </button>
+
+      <Transition name="accordion">
+        <div v-show="configExpanded" class="mt-4 grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <!-- Left: Parameters (3 cols) -->
+          <div class="lg:col-span-3 space-y-4">
+            <!-- HW1F Model Parameters -->
+            <div>
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">HW1F Model</h4>
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Mean Reversion (a)</label>
+                  <input type="number" v-model.number="config.hwMeanReversion" step="0.01" min="0.001"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                </div>
+                <div>
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Volatility (σ)</label>
+                  <input type="number" v-model.number="config.hwVolatility" step="0.001" min="0.001"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                </div>
+                <div>
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Initial Rate r(0)</label>
+                  <input type="number" v-model.number="config.hwInitialRate" step="0.005"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                </div>
+              </div>
+            </div>
+
+            <!-- Simulation Settings -->
+            <div>
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Simulation</h4>
+              <div class="grid grid-cols-4 gap-3">
+                <div>
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Paths</label>
+                  <select v-model.number="config.nPaths"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                    <option :value="1000">1,000</option>
+                    <option :value="5000">5,000</option>
+                    <option :value="10000">10,000</option>
+                    <option :value="50000">50,000</option>
+                    <option :value="100000">100,000</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Horizon (yrs)</label>
+                  <input type="number" v-model.number="config.horizonYears" step="1" min="1" max="30"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                </div>
+                <div>
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Time Step</label>
+                  <select v-model="config.timeStep"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="semi-annual">Semi-Annual</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Seed</label>
+                  <input type="number" v-model.number="config.seed"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                </div>
+              </div>
+              <div class="flex gap-6 mt-3">
+                <div class="flex items-center gap-2">
+                  <input v-model="config.antithetic" type="checkbox" id="antithetic" class="rounded">
+                  <label for="antithetic" class="text-sm text-[var(--text-secondary)]">Antithetic</label>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input v-model="config.bilateral" type="checkbox" id="bilateral" class="rounded">
+                  <label for="bilateral" class="text-sm text-[var(--text-secondary)]">Bilateral</label>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input v-model="config.computeFva" type="checkbox" id="computeFva" class="rounded">
+                  <label for="computeFva" class="text-sm text-[var(--text-secondary)]">FVA</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Coupling & Credit -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Model Coupling</h4>
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+                    <input type="radio" v-model="config.couplingMethod" value="swap_rate" class="text-[var(--primary)]">
+                    Swap Rate Mapping
+                  </label>
+                  <label class="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer">
+                    <input type="radio" v-model="config.couplingMethod" value="zscore" class="text-[var(--primary)]">
+                    Z-Score Matching
+                  </label>
+                </div>
+                <div v-if="config.couplingMethod === 'swap_rate'" class="mt-3">
+                  <label class="text-xs text-[var(--text-muted)] mb-1 block">Benchmark Swap Tenor</label>
+                  <input type="number" v-model.number="config.couplingSwapTenor" step="1"
+                    class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                </div>
+              </div>
+              <div>
+                <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Counterparty Credit</h4>
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="text-xs text-[var(--text-muted)] mb-1 block">Hazard Rate</label>
+                    <input type="number" v-model.number="config.hazardRate" step="0.005" min="0"
+                      class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                  </div>
+                  <div>
+                    <label class="text-xs text-[var(--text-muted)] mb-1 block">LGD</label>
+                    <input type="number" v-model.number="config.lgd" step="0.1" min="0" max="1"
+                      class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                  </div>
+                  <div>
+                    <label class="text-xs text-[var(--text-muted)] mb-1 block">Spread (bps)</label>
+                    <input type="number" v-model.number="fundingSpreadBps" step="5" min="0"
+                      class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Portfolio (2 cols) -->
+          <div class="lg:col-span-2 space-y-4">
+            <!-- Base Portfolio -->
+            <div class="rounded-lg border border-[var(--glass-border)] p-4">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-3">Base Portfolio</h4>
+              <div class="space-y-1.5">
+                <div v-for="swap in config.baseSwaps" :key="swap.tradeId"
+                  class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--surface)] text-sm">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
+                    {{ swap.isPayer ? 'Pay' : 'Rcv' }}
+                  </span>
+                  <span class="text-[var(--text-primary)] font-medium">{{ swap.tradeId }}</span>
+                  <span class="text-[var(--text-secondary)]">{{ formatNotional(swap.notional) }}</span>
+                  <span class="text-[var(--text-secondary)]">{{ (swap.fixedRate * 100).toFixed(2) }}%</span>
+                  <span class="text-[var(--text-muted)]">{{ swap.tenorYears }}Y</span>
+                </div>
+                <div v-for="exotic in config.baseExotics" :key="exotic.tradeId"
+                  class="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--surface)] text-sm">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium bg-pink-500/20 text-pink-400">
+                    {{ exotic.productType.toUpperCase() }}
+                  </span>
+                  <span class="text-[var(--text-primary)] font-medium">{{ exotic.tradeId }}</span>
+                  <span class="text-[var(--text-secondary)]">{{ formatNotional(exotic.notional) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Incremental Trade -->
+            <div class="rounded-lg border border-amber-500/30 p-4">
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-amber-400 mb-3">Incremental Trade</h4>
+              <div class="space-y-1.5">
+                <template v-if="config.incrementalTrade.type === 'swap'">
+                  <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
+                    <span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
+                      {{ config.incrementalTrade.isPayer ? 'Pay' : 'Rcv' }}
+                    </span>
+                    <span class="text-[var(--text-primary)] font-medium">{{ config.incrementalTrade.tradeId }}</span>
+                    <span class="text-[var(--text-secondary)]">{{ formatNotional(config.incrementalTrade.notional) }}</span>
+                    <span class="text-[var(--text-secondary)]">{{ ((config.incrementalTrade.fixedRate || 0) * 100).toFixed(2) }}%</span>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm">
+                    <span class="px-2 py-0.5 rounded text-xs font-medium bg-pink-500/20 text-pink-400">
+                      {{ (config.incrementalTrade.productType || 'EXOTIC').toUpperCase() }}
+                    </span>
+                    <span class="text-[var(--text-primary)] font-medium">{{ config.incrementalTrade.tradeId }}</span>
+                    <span class="text-[var(--text-secondary)]">{{ formatNotional(config.incrementalTrade.notional) }}</span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </div>
+
+    <!-- Exposure Chart -->
+    <div v-if="result" class="glass-card p-6 mb-6">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Exposure Profiles</h3>
+      <div class="h-80">
+        <canvas ref="exposureChartRef"></canvas>
+      </div>
+    </div>
+
+    <!-- XVA Waterfall Chart -->
+    <div v-if="result" class="glass-card p-6 mb-6">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">XVA Waterfall</h3>
+      <div class="h-72">
+        <canvas ref="waterfallChartRef"></canvas>
+      </div>
+    </div>
+
+    <!-- Breakdown Table -->
+    <div v-if="result" class="glass-card p-6 mb-6">
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">XVA Breakdown</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-[var(--glass-border)]">
+              <th class="text-left py-3 px-2 text-[var(--text-muted)] font-medium">Metric</th>
+              <th class="text-right py-3 px-2 text-[var(--text-muted)] font-medium">Base Portfolio</th>
+              <th class="text-right py-3 px-2 text-[var(--text-muted)] font-medium">Full Portfolio</th>
+              <th class="text-right py-3 px-2 text-[var(--text-primary)] font-semibold">Incremental</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="metric in metricsRows"
+              :key="metric.label"
+              class="border-b border-[var(--glass-border)] border-opacity-50 hover:bg-[var(--surface-hover)] transition-colors"
+            >
+              <td class="py-3 px-2 text-[var(--text-primary)] font-medium">{{ metric.label }}</td>
+              <td class="py-3 px-2 text-right text-[var(--text-secondary)]">{{ formatCurrency(metric.base) }}</td>
+              <td class="py-3 px-2 text-right text-[var(--text-secondary)]">{{ formatCurrency(metric.full) }}</td>
+              <td class="py-3 px-2 text-right font-semibold" :class="metric.incremental >= 0 ? 'text-green-400' : 'text-red-400'">
+                {{ formatCurrency(metric.incremental) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Computation Info -->
+    <div v-if="result" class="text-center text-xs text-[var(--text-muted)] pb-6">
+      Computed in {{ result.computationTimeMs.toFixed(1) }}ms |
+      {{ result.nPaths.toLocaleString() }} paths |
+      {{ result.timeGrid.length }} time steps |
+      Coupling: {{ result.couplingMethod === 'swap_rate' ? 'Swap Rate (A)' : 'Z-Score (B)' }}
+    </div>
+
+    <!-- Empty State -->
+    <div v-if="!result && !loading" class="glass-card p-12 text-center">
+      <i class="fas fa-balance-scale text-4xl text-[var(--text-muted)] mb-4"></i>
+      <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">No Simulation Results</h3>
+      <p class="text-sm text-[var(--text-muted)] mb-4">Configure parameters above and click "Run Simulation" to compute incremental XVA.</p>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.incremental-xva-view {
-  padding: 1.5rem;
-  max-width: 1400px;
-  margin: 0 auto;
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
 }
 
-.page-header {
-  margin-bottom: 1.5rem;
+.accordion-enter-active,
+.accordion-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
 }
 
-.page-header h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0;
+.accordion-enter-from,
+.accordion-leave-to {
+  opacity: 0;
+  max-height: 0;
 }
 
-.subtitle {
-  color: #6b7280;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+.accordion-enter-to,
+.accordion-leave-from {
+  opacity: 1;
+  max-height: 800px;
 }
-
-.config-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.config-card {
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.config-card h3 {
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-  margin: 0 0 0.75rem;
-}
-
-.form-group {
-  margin-bottom: 0.5rem;
-}
-
-.form-group label {
-  display: block;
-  font-size: 0.8rem;
-  color: #374151;
-  margin-bottom: 0.25rem;
-}
-
-.form-group input[type="number"],
-.form-group select {
-  width: 100%;
-  padding: 0.375rem 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  background: white;
-}
-
-.form-group input[type="radio"] {
-  margin-right: 0.5rem;
-}
-
-.toggle-group {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
-
-.toggle-group label {
-  font-size: 0.8rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.portfolio-section {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.portfolio-card {
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.portfolio-card.incremental {
-  border-color: #f59e0b;
-  background: #fffbeb;
-}
-
-.portfolio-card h3 {
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem;
-}
-
-.trade-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.trade-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.5rem;
-  background: white;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  border: 1px solid #e5e7eb;
-}
-
-.trade-item.highlight {
-  border-color: #f59e0b;
-  background: #fef3c7;
-}
-
-.trade-badge {
-  padding: 0.125rem 0.375rem;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.trade-badge.swap {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.trade-badge.exotic {
-  background: #fce7f3;
-  color: #be185d;
-}
-
-.actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.btn {
-  padding: 0.5rem 1.25rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  border: none;
-  transition: all 0.15s;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-secondary {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #d1d5db;
-}
-
-.spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-  margin-right: 0.5rem;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.results-section {
-  margin-top: 1.5rem;
-}
-
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.summary-card {
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.summary-card.highlight {
-  border-color: #f59e0b;
-  background: #fffbeb;
-}
-
-.summary-card h4 {
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-  margin: 0 0 0.5rem;
-}
-
-.summary-card .value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.summary-card .value.large {
-  font-size: 1.5rem;
-}
-
-.summary-card .value.positive { color: #059669; }
-.summary-card .value.negative { color: #dc2626; }
-
-.summary-card .detail {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.computation-info {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.8rem;
-  color: #6b7280;
-}
-
-.computation-info span {
-  padding: 0.25rem 0.5rem;
-  background: #f3f4f6;
-  border-radius: 4px;
-}
-
-.chart-section {
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.chart-section h3 {
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem;
-}
-
-.table-section {
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.table-section h3 {
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin: 0 0 0.75rem;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
-}
-
-thead th {
-  background: #f3f4f6;
-  padding: 0.5rem;
-  text-align: right;
-  font-weight: 600;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-thead th:first-child {
-  text-align: left;
-}
-
-tbody td {
-  padding: 0.5rem;
-  text-align: right;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-tbody td:first-child {
-  text-align: left;
-  font-weight: 500;
-}
-
-td.positive { color: #059669; }
-td.negative { color: #dc2626; }
 </style>

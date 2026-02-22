@@ -23,10 +23,7 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   // State
   // ---------------------------------------------------------------------------
 
-  // Active step (0-5)
-  const activeStep = ref(0);
-
-  // Model Parameters (Step 0: Input)
+  // Model Parameters
   const modelParams = ref<JyModelParams>({
     aN: 0.03,
     sigmaN: 0.01,
@@ -72,7 +69,7 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     { instrumentType: 'TIPS', tenor: '30Y', rate: 0.018 },
   ]);
 
-  // Instrument (Step 1)
+  // Instrument
   const instrumentType = ref('ZCIS');
   const notional = ref(10_000_000);
   const fixedRate = ref(0.025);
@@ -80,13 +77,13 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   const maturityYears = ref(5);
   const paymentFrequency = ref('annual');
 
-  // Simulation (Step 3)
+  // Simulation
   const numPaths = ref(5000);
   const numSteps = ref(100);
   const horizon = ref(5.0);
   const numSamplePaths = ref(5);
 
-  // XVA (Step 5)
+  // XVA
   const counterpartyPd = ref(0.01);
   const counterpartyRecovery = ref(0.4);
   const ownPd = ref(0.005);
@@ -116,13 +113,12 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   });
 
   const summaryStats = computed(() => {
-    const step = ['Input', 'Instrument', 'Curves', 'Simulation', 'Pricing', 'XVA'][activeStep.value];
     const inst = instrumentType.value;
     const mtm = pricingResult.value ? formatCcy(pricingResult.value.mtm) : '-';
     const cva = xvaResult.value ? formatCcy(xvaResult.value.cva) : '-';
 
     return [
-      { label: 'Step', value: step, icon: 'fa-list-ol', color: '#10b981' },
+      { label: 'Model', value: 'Jarrow-Yildirim', icon: 'fa-chart-bar', color: '#10b981' },
       { label: 'Instrument', value: `${inst} ${maturityYears.value}Y`, icon: 'fa-file-contract', color: '#3b82f6' },
       { label: 'MtM', value: mtm, icon: 'fa-dollar-sign', color: '#8b5cf6' },
       { label: 'CVA', value: cva, icon: 'fa-shield-alt', color: '#ef4444' },
@@ -147,7 +143,6 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
 
   return {
     // State
-    activeStep,
     modelParams,
     correlation,
     initialNominalRate,

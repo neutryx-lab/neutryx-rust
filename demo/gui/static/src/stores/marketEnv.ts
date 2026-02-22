@@ -7,7 +7,7 @@
 
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { VolcubeCalibrateResponse, PricerGraphResponse } from '@/types/api';
+import type { VolcubeCalibrateResponse, PricerGraphResponse, JyCurveBuildResponse } from '@/types/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,6 +57,13 @@ export interface PublishedVolSurface {
   model: string;
 }
 
+export interface PublishedInflationCurves {
+  id: string;
+  label: string;
+  publishedAt: number;
+  curveResult: JyCurveBuildResponse;
+}
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -64,6 +71,7 @@ export interface PublishedVolSurface {
 export const useMarketEnvStore = defineStore('marketEnv', () => {
   const curves = ref<PublishedCurve[]>([]);
   const volSurfaces = ref<PublishedVolSurface[]>([]);
+  const inflationCurves = ref<PublishedInflationCurves[]>([]);
   const pricerGraphs = ref<PublishedPricerGraph[]>([]);
 
   // -- Actions ---------------------------------------------------------------
@@ -110,6 +118,29 @@ export const useMarketEnvStore = defineStore('marketEnv', () => {
       model,
     });
     return id;
+  }
+
+  function publishInflationCurves(
+    curveResult: JyCurveBuildResponse,
+  ) {
+    const ts = Date.now();
+    const time = new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const id = `custom-inflation-${ts}`;
+    inflationCurves.value.unshift({
+      id,
+      label: `JY Inflation Curves (${time})`,
+      publishedAt: ts,
+      curveResult: { ...curveResult },
+    });
+    return id;
+  }
+
+  function removeInflationCurves(id: string) {
+    inflationCurves.value = inflationCurves.value.filter((c) => c.id !== id);
+  }
+
+  function getInflationCurves(id: string) {
+    return inflationCurves.value.find((c) => c.id === id);
   }
 
   function publishPricerGraph(
@@ -160,15 +191,19 @@ export const useMarketEnvStore = defineStore('marketEnv', () => {
   return {
     curves,
     volSurfaces,
+    inflationCurves,
     pricerGraphs,
     publishCurve,
     publishVolSurface,
+    publishInflationCurves,
     publishPricerGraph,
     removeCurve,
     removeVolSurface,
+    removeInflationCurves,
     removePricerGraph,
     getCurve,
     getVolSurface,
+    getInflationCurves,
     getPricerGraph,
   };
 });

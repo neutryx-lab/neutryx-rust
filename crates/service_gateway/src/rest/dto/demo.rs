@@ -1350,7 +1350,7 @@ pub struct CreditQuotesResponse {
 // ---------------------------------------------------------------------------
 
 /// Request for a commodity forward curve using the Gibson-Schwartz model.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, validator::Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct CommodityForwardCurveRequest {
     /// Commodity type (e.g. "CrudeOil", "Gold", "NaturalGas").

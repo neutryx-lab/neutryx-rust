@@ -1,11 +1,9 @@
 <script setup lang="ts">
 /**
- * PricerView — Orchestrator (Vuetify Material UI)
+ * PricerView — Unified pricer layout.
  *
- * Flexible table-based pricer layout using Vuetify v-data-table,
- * v-card, v-expansion-panels, and Material Design components.
- *
- * Tabs: "Standard" (original pricer) | "Exotic Products" (dynamic exotic pricing)
+ * Standard pricer at top, with Exotic Products and Markov Functional
+ * available as collapsible expansion panels below.
  */
 import { onMounted, ref, computed, reactive } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
@@ -19,17 +17,14 @@ import CashflowTable from '@/components/pricer/CashflowTable.vue';
 
 import DynamicParamField from '@/components/pricer/DynamicParamField.vue';
 
+import MfmView from '@/views/MfmView.vue';
+
 import type { ExoticProductDef, ExoticPricingResponse } from '@/types';
 import { fetchExoticProducts, priceExotic } from '@/services/api';
 
 const store = usePricerStore();
 const { loadInstruments } = useInstruments();
 usePricer();
-
-// ---------------------------------------------------------------------------
-// Tab state
-// ---------------------------------------------------------------------------
-const activeTab = ref<'standard' | 'exotic'>('standard');
 
 // ---------------------------------------------------------------------------
 // Exotic Products state
@@ -41,6 +36,8 @@ const exoticResult = ref<ExoticPricingResponse | null>(null);
 const exoticLoading = ref(false);
 const exoticError = ref<string | null>(null);
 const productsLoading = ref(false);
+const exoticExpanded = ref(false);
+const mfmExpanded = ref(false);
 
 const selectedProduct = computed(() =>
   exoticProducts.value.find((p) => p.productType === selectedProductType.value) ?? null,
@@ -103,11 +100,8 @@ async function submitExoticPricing() {
   }
 }
 
-function onTabChange(tab: 'standard' | 'exotic') {
-  activeTab.value = tab;
-  if (tab === 'exotic') {
-    loadExoticProducts();
-  }
+function onExoticToggle(expanded: boolean) {
+  if (expanded) loadExoticProducts();
 }
 </script>
 
@@ -123,190 +117,210 @@ function onTabChange(tab: 'standard' | 'exotic') {
 
     <!-- Main Layout -->
     <template v-else>
-      <!-- Tabs -->
-      <v-tabs
-        :model-value="activeTab"
-        color="primary"
-        class="mb-4"
-        @update:model-value="onTabChange"
-      >
-        <v-tab value="standard">Standard</v-tab>
-        <v-tab value="exotic">Exotic Products</v-tab>
-      </v-tabs>
+      <!-- Standard Pricer -->
+      <v-row>
+        <!-- Left Panel: Config (4 cols) -->
+        <v-col cols="12" lg="4">
+          <PricerConfigPanel />
+        </v-col>
 
-      <!-- Standard Tab -->
-      <div v-if="activeTab === 'standard'">
-        <v-row>
-          <!-- Left Panel: Config (4 cols) -->
-          <v-col cols="12" lg="4">
-            <PricerConfigPanel />
-          </v-col>
+        <!-- Right Panel: Cashflows (8 cols) -->
+        <v-col cols="12" lg="8">
+          <CashflowTable />
+        </v-col>
+      </v-row>
 
-          <!-- Right Panel: Cashflows (8 cols) -->
-          <v-col cols="12" lg="8">
-            <CashflowTable />
-          </v-col>
-        </v-row>
+      <!-- Results (below, full width) -->
+      <v-row class="mt-2">
+        <v-col cols="12">
+          <PricerResultsPanel />
+        </v-col>
+      </v-row>
 
-        <!-- Results (below, full width) -->
-        <v-row class="mt-2">
-          <v-col cols="12">
-            <PricerResultsPanel />
-          </v-col>
-        </v-row>
-      </div>
+      <!-- Exotic Products (collapsible) -->
+      <v-row class="mt-4">
+        <v-col cols="12">
+          <v-expansion-panels v-model="exoticExpanded" @update:model-value="onExoticToggle(!!exoticExpanded)">
+            <v-expansion-panel value="exotic">
+              <v-expansion-panel-title>
+                <div class="d-flex align-center gap-2">
+                  <v-icon icon="mdi-chart-bell-curve-cumulative" size="20" />
+                  <span class="text-subtitle-1 font-weight-medium">Exotic Products</span>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-row>
+                  <!-- Left Panel: Product selection + parameters -->
+                  <v-col cols="12" lg="4">
+                    <div class="glass-card p-4 mb-4">
+                      <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Select Product</div>
+                        <v-progress-linear
+                          v-if="productsLoading"
+                          indeterminate
+                          color="primary"
+                          class="mb-4"
+                        />
 
-      <!-- Exotic Products Tab -->
-      <div v-if="activeTab === 'exotic'">
-        <v-row>
-          <!-- Left Panel: Product selection + parameters -->
-          <v-col cols="12" lg="4">
-            <div class="glass-card p-4 mb-4">
-              <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Select Product</div>
-                <v-progress-linear
-                  v-if="productsLoading"
-                  indeterminate
-                  color="primary"
-                  class="mb-4"
-                />
+                        <v-alert
+                          v-if="exoticError && !selectedProductType"
+                          type="error"
+                          variant="tonal"
+                          density="compact"
+                          class="mb-3"
+                        >
+                          {{ exoticError }}
+                        </v-alert>
 
-                <v-alert
-                  v-if="exoticError && !selectedProductType"
-                  type="error"
-                  variant="tonal"
-                  density="compact"
-                  class="mb-3"
-                >
-                  {{ exoticError }}
-                </v-alert>
+                        <v-select
+                          v-if="exoticProducts.length > 0"
+                          :model-value="selectedProductType"
+                          :items="exoticProducts"
+                          item-title="displayName"
+                          item-value="productType"
+                          label="Product Type"
+                          variant="outlined"
+                          density="compact"
+                          @update:model-value="selectProduct"
+                        />
 
-                <v-select
-                  v-if="exoticProducts.length > 0"
-                  :model-value="selectedProductType"
-                  :items="exoticProducts"
-                  item-title="displayName"
-                  item-value="productType"
-                  label="Product Type"
-                  variant="outlined"
-                  density="compact"
-                  @update:model-value="selectProduct"
-                />
+                        <p
+                          v-if="selectedProduct"
+                          class="text-body-2 mt-2"
+                          style="color: var(--text-muted)"
+                        >
+                          {{ selectedProduct.description }}
+                        </p>
+                    </div>
 
-                <p
-                  v-if="selectedProduct"
-                  class="text-body-2 mt-2"
-                  style="color: var(--text-muted)"
-                >
-                  {{ selectedProduct.description }}
-                </p>
-            </div>
+                    <!-- Parameter Form -->
+                    <div
+                      v-if="selectedProduct && selectedProduct.parameters.length > 0"
+                      class="glass-card p-4 mb-4"
+                    >
+                      <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Parameters</div>
+                        <DynamicParamField
+                          v-for="param in selectedProduct.parameters"
+                          :key="param.name"
+                          :param="param"
+                          :model-value="exoticParams[param.name]"
+                          @update:model-value="exoticParams[param.name] = $event"
+                        />
 
-            <!-- Parameter Form -->
-            <div
-              v-if="selectedProduct && selectedProduct.parameters.length > 0"
-              class="glass-card p-4 mb-4"
-            >
-              <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Parameters</div>
-                <DynamicParamField
-                  v-for="param in selectedProduct.parameters"
-                  :key="param.name"
-                  :param="param"
-                  :model-value="exoticParams[param.name]"
-                  @update:model-value="exoticParams[param.name] = $event"
-                />
+                        <v-btn
+                          color="primary"
+                          block
+                          :loading="exoticLoading"
+                          :disabled="!selectedProductType || exoticLoading"
+                          class="mt-4"
+                          @click="submitExoticPricing"
+                        >
+                          Price
+                        </v-btn>
+                    </div>
+                  </v-col>
 
-                <v-btn
-                  color="primary"
-                  block
-                  :loading="exoticLoading"
-                  :disabled="!selectedProductType || exoticLoading"
-                  class="mt-4"
-                  @click="submitExoticPricing"
-                >
-                  Price
-                </v-btn>
-            </div>
-          </v-col>
+                  <!-- Right Panel: Results -->
+                  <v-col cols="12" lg="8">
+                    <!-- Error Alert -->
+                    <v-alert
+                      v-if="exoticError && selectedProductType"
+                      type="error"
+                      variant="tonal"
+                      closable
+                      class="mb-4"
+                      @click:close="exoticError = null"
+                    >
+                      {{ exoticError }}
+                    </v-alert>
 
-          <!-- Right Panel: Results -->
-          <v-col cols="12" lg="8">
-            <!-- Error Alert -->
-            <v-alert
-              v-if="exoticError && selectedProductType"
-              type="error"
-              variant="tonal"
-              closable
-              class="mb-4"
-              @click:close="exoticError = null"
-            >
-              {{ exoticError }}
-            </v-alert>
+                    <!-- Results Card -->
+                    <div v-if="exoticResult" class="glass-card p-4">
+                      <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Pricing Result</div>
+                        <v-table density="compact">
+                          <tbody>
+                            <tr>
+                              <td class="font-weight-medium">Product</td>
+                              <td>{{ exoticResult.productType }}</td>
+                            </tr>
+                            <tr>
+                              <td class="font-weight-medium">Price</td>
+                              <td class="text-h6">
+                                {{ exoticResult.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) }}
+                                {{ exoticResult.currency }}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="font-weight-medium">Calculation Time</td>
+                              <td>{{ exoticResult.calculationTimeMs.toFixed(1) }} ms</td>
+                            </tr>
+                          </tbody>
+                        </v-table>
 
-            <!-- Results Card -->
-            <div v-if="exoticResult" class="glass-card p-4">
-              <div class="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Pricing Result</div>
-                <v-table density="compact">
-                  <tbody>
-                    <tr>
-                      <td class="font-weight-medium">Product</td>
-                      <td>{{ exoticResult.productType }}</td>
-                    </tr>
-                    <tr>
-                      <td class="font-weight-medium">Price</td>
-                      <td class="text-h6">
-                        {{ exoticResult.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) }}
-                        {{ exoticResult.currency }}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td class="font-weight-medium">Calculation Time</td>
-                      <td>{{ exoticResult.calculationTimeMs.toFixed(1) }} ms</td>
-                    </tr>
-                  </tbody>
-                </v-table>
+                        <!-- Monte Carlo Statistics -->
+                        <template v-if="exoticResult.mcStats">
+                          <v-divider class="my-3" />
+                          <p class="text-subtitle-2 mb-2">Monte Carlo Statistics</p>
+                          <v-table density="compact">
+                            <tbody>
+                              <tr>
+                                <td class="font-weight-medium">Paths</td>
+                                <td>{{ exoticResult.mcStats.numPaths.toLocaleString() }}</td>
+                              </tr>
+                              <tr>
+                                <td class="font-weight-medium">Std Error</td>
+                                <td>{{ exoticResult.mcStats.stdError.toFixed(6) }}</td>
+                              </tr>
+                              <tr>
+                                <td class="font-weight-medium">95% Confidence</td>
+                                <td>
+                                  [{{ exoticResult.mcStats.confidence95[0].toFixed(4) }},
+                                  {{ exoticResult.mcStats.confidence95[1].toFixed(4) }}]
+                                </td>
+                              </tr>
+                            </tbody>
+                          </v-table>
+                        </template>
+                    </div>
 
-                <!-- Monte Carlo Statistics -->
-                <template v-if="exoticResult.mcStats">
-                  <v-divider class="my-3" />
-                  <p class="text-subtitle-2 mb-2">Monte Carlo Statistics</p>
-                  <v-table density="compact">
-                    <tbody>
-                      <tr>
-                        <td class="font-weight-medium">Paths</td>
-                        <td>{{ exoticResult.mcStats.numPaths.toLocaleString() }}</td>
-                      </tr>
-                      <tr>
-                        <td class="font-weight-medium">Std Error</td>
-                        <td>{{ exoticResult.mcStats.stdError.toFixed(6) }}</td>
-                      </tr>
-                      <tr>
-                        <td class="font-weight-medium">95% Confidence</td>
-                        <td>
-                          [{{ exoticResult.mcStats.confidence95[0].toFixed(4) }},
-                          {{ exoticResult.mcStats.confidence95[1].toFixed(4) }}]
-                        </td>
-                      </tr>
-                    </tbody>
-                  </v-table>
-                </template>
-            </div>
+                    <!-- Empty state -->
+                    <div
+                      v-else-if="!exoticError"
+                      class="glass-card d-flex align-center justify-center"
+                      style="min-height: 200px"
+                    >
+                      <div class="text-center" style="color: var(--text-muted)">
+                        <v-icon icon="mdi-chart-bell-curve-cumulative" size="48" class="mb-2" />
+                        <p class="text-body-1">
+                          Select an exotic product and configure its parameters to begin pricing.
+                        </p>
+                      </div>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-col>
+      </v-row>
 
-            <!-- Empty state -->
-            <div
-              v-else-if="!exoticError"
-              class="glass-card d-flex align-center justify-center"
-              style="min-height: 200px"
-            >
-              <div class="text-center" style="color: var(--text-muted)">
-                <v-icon icon="mdi-chart-bell-curve-cumulative" size="48" class="mb-2" />
-                <p class="text-body-1">
-                  Select an exotic product and configure its parameters to begin pricing.
-                </p>
-              </div>
-            </div>
-          </v-col>
-        </v-row>
-      </div>
+      <!-- Markov Functional Model (collapsible) -->
+      <v-row class="mt-2">
+        <v-col cols="12">
+          <v-expansion-panels v-model="mfmExpanded">
+            <v-expansion-panel value="mfm">
+              <v-expansion-panel-title>
+                <div class="d-flex align-center gap-2">
+                  <v-icon icon="mdi-atom" size="20" />
+                  <span class="text-subtitle-1 font-weight-medium">Markov Functional Model</span>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <MfmView />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-col>
+      </v-row>
     </template>
   </div>
 </template>
