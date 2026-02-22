@@ -73,7 +73,7 @@ impl MfmMtmSlice {
         let mut lo = 0usize;
         let mut hi = n - 1;
         while hi - lo > 1 {
-            let mid = (lo + hi) / 2;
+            let mid = usize::midpoint(lo, hi);
             if self.swap_rates[mid] <= swap_rate {
                 lo = mid;
             } else {

@@ -2204,9 +2204,13 @@ fn price_exotic_or_mfm(
         "BermudanSwaption" => {
             let num_exercises = p("numExercises", 5.0) as usize;
             let swap_tenor = p("swapTenor", 5.0);
-            let exercise_times: Vec<f64> = (1..=num_exercises).map(|i| i as f64).collect();
-            let swap_tenors = vec![swap_tenor; num_exercises];
-            let payment_frequencies = vec![0.5_f64; num_exercises];
+            // Tree builder requires times[0] == 0.
+            let exercise_times: Vec<f64> = std::iter::once(0.0)
+                .chain((1..=num_exercises).map(|i| i as f64))
+                .collect();
+            let n = exercise_times.len();
+            let swap_tenors = vec![swap_tenor; n];
+            let payment_frequencies = vec![0.5_f64; n];
 
             let req = BermudanPriceRequest {
                 mean_reversion: p("meanReversion", 0.03),
@@ -2246,9 +2250,13 @@ fn price_exotic_or_mfm(
         "Tarn" => {
             let num_exercises = p("numExercises", 10.0) as usize;
             let swap_tenor = p("swapTenor", 5.0);
-            let exercise_times: Vec<f64> = (1..=num_exercises).map(|i| i as f64).collect();
-            let swap_tenors = vec![swap_tenor; num_exercises];
-            let payment_frequencies = vec![0.5_f64; num_exercises];
+            // Tree builder requires times[0] == 0.
+            let exercise_times: Vec<f64> = std::iter::once(0.0)
+                .chain((1..=num_exercises).map(|i| i as f64))
+                .collect();
+            let n = exercise_times.len();
+            let swap_tenors = vec![swap_tenor; n];
+            let payment_frequencies = vec![0.5_f64; n];
 
             let req = TarnPriceRequest {
                 mean_reversion: p("meanReversion", 0.03),

@@ -180,7 +180,6 @@ pub struct DemoPricingRequest {
     pub valuation_date: String,
     #[validate(length(min = 1))]
     pub reporting_currency: String,
-    #[validate(length(min = 1))]
     pub legs: Vec<PricingLeg>,
     #[serde(default)]
     pub method: DemoPricingMethod,

@@ -5,9 +5,10 @@
 //! reduction, and the choice of pricing measure.
 
 /// Simulation pricing measure.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum SimulationMeasure {
     /// Risk-neutral (spot) measure.
+    #[default]
     RiskNeutral,
     /// T-forward measure associated with a specific maturity index.
     TForward {
@@ -16,10 +17,6 @@ pub enum SimulationMeasure {
     },
     /// Terminal measure (forward measure at the last time point).
     Terminal,
-}
-
-impl Default for SimulationMeasure {
-    fn default() -> Self { Self::RiskNeutral }
 }
 
 /// Configuration for XVA Monte Carlo simulations.
