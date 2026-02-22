@@ -130,7 +130,78 @@ watch(chartType, () => {
       </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Inflation Curve Builder -->
+    <div v-if="assetTab === 'inflation'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left Panel: JY Curve Build Settings -->
+      <div class="space-y-4">
+        <div class="glass-card p-5">
+          <div class="section-header" style="margin-top: 0">Inflation Curve Build</div>
+          <div class="space-y-3">
+            <div class="flex justify-between text-sm">
+              <span class="text-[var(--text-muted)]">Nominal Rates</span>
+              <span class="text-[var(--text-primary)] font-semibold">{{ jyStore.nominalRates.length }} instruments</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-[var(--text-muted)]">Real Rates (TIPS)</span>
+              <span class="text-[var(--text-primary)] font-semibold">{{ jyStore.realRates.length }} instruments</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-[var(--text-muted)]">Valuation Date</span>
+              <span class="text-[var(--text-primary)]">{{ jyStore.valuationDate }}</span>
+            </div>
+            <p class="text-xs text-[var(--text-muted)] mt-2">
+              <i class="fas fa-info-circle mr-1"></i>
+              Edit rates in Market Data &gt; Inflation tab
+            </p>
+          </div>
+        </div>
+
+        <!-- Model Params Summary -->
+        <div class="glass-card p-5">
+          <div class="section-header" style="margin-top: 0">Model Parameters</div>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-[var(--text-muted)]">a<sub>N</sub> / &sigma;<sub>N</sub></span>
+              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.aN }} / {{ jyStore.modelParams.sigmaN }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-muted)]">a<sub>R</sub> / &sigma;<sub>R</sub></span>
+              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.aR }} / {{ jyStore.modelParams.sigmaR }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-muted)]">&sigma;<sub>I</sub></span>
+              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.sigmaI }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[var(--text-muted)]">&rho; (N-R / N-I / R-I)</span>
+              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.correlation.rhoNr }} / {{ jyStore.correlation.rhoNi }} / {{ jyStore.correlation.rhoRi }}</span>
+            </div>
+            <p class="text-xs text-[var(--text-muted)] mt-2">
+              <i class="fas fa-info-circle mr-1"></i>
+              Edit in Vol Surface &gt; Inflation tab
+            </p>
+          </div>
+        </div>
+
+        <!-- Build Button -->
+        <button
+          class="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-[var(--primary)] text-white hover:opacity-90 transition-all disabled:bg-gray-500 disabled:cursor-not-allowed"
+          :disabled="jyStore.loading || jyStore.nominalRates.length === 0 || jyStore.realRates.length === 0"
+          @click="jyBuildCurves"
+        >
+          <i :class="['fas mr-2', jyStore.loading ? 'fa-spinner fa-spin' : 'fa-hammer']"></i>
+          {{ jyStore.loading ? 'Building...' : 'Build JY Curves' }}
+        </button>
+      </div>
+
+      <!-- Right Panel: Curve Results -->
+      <div class="lg:col-span-2">
+        <JyCurvePanel :result="jyStore.curveResult" />
+      </div>
+    </div>
+
+    <!-- Standard Curve Builder (Rate / Credit / FX) -->
+    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Left Panel: Settings -->
       <div class="space-y-4">
         <!-- Curve Selector -->

@@ -13,7 +13,6 @@ const PricerView = () => import('@/views/PricerView.vue');
 const GraphView = () => import('@/views/GraphView.vue');
 const GreeksAnalyserView = () => import('@/views/GreeksAnalyserView.vue');
 const XvaEngineView = () => import('@/views/XvaEngineView.vue');
-const JYInflationView = () => import('@/views/JYInflationView.vue');
 const IncrementalXvaView = () => import('@/views/IncrementalXvaView.vue');
 
 export type ViewId =
@@ -29,7 +28,6 @@ export type ViewId =
   | 'graph'
   | 'greeks-analyser'
   | 'xva-engine'
-  | 'jy-inflation'
   | 'incremental-xva';
 
 export interface ViewMeta extends Record<string | symbol, unknown> {
@@ -96,6 +94,17 @@ const routes: RouteRecordRaw[] = [
       title: 'Scenarios',
       breadcrumb: 'Scenarios',
       icon: 'fa-flask',
+      navGroup: 'analytics',
+    } as ViewMeta,
+  },
+  {
+    path: '/incremental-xva',
+    name: 'incremental-xva',
+    component: IncrementalXvaView,
+    meta: {
+      title: 'Port. XVA',
+      breadcrumb: 'Port. XVA',
+      icon: 'fa-balance-scale',
       navGroup: 'analytics',
     } as ViewMeta,
   },
@@ -182,25 +191,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/jy-inflation',
-    name: 'jy-inflation',
-    component: JYInflationView,
-    meta: {
-      title: 'JY Inflation',
-      breadcrumb: 'JY Inflation',
-      icon: 'fa-chart-bar',
-      navGroup: 'analytics',
-    } as ViewMeta,
-  },
-  {
-    path: '/incremental-xva',
-    name: 'incremental-xva',
-    component: IncrementalXvaView,
-    meta: {
-      title: 'Port. XVA',
-      breadcrumb: 'Port. XVA',
-      icon: 'fa-balance-scale',
-      navGroup: 'analytics',
-    } as ViewMeta,
+    redirect: '/pricer',
   },
   // Legacy redirect for trade-expansion
   {

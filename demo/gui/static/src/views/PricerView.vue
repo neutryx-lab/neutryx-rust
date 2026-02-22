@@ -18,9 +18,14 @@ import CashflowTable from '@/components/pricer/CashflowTable.vue';
 import DynamicParamField from '@/components/pricer/DynamicParamField.vue';
 
 import MfmView from '@/views/MfmView.vue';
+import JyInstrumentPanel from '@/components/jy/JyInstrumentPanel.vue';
+import JyPricingPanel from '@/components/jy/JyPricingPanel.vue';
+import JyXvaPanel from '@/components/jy/JyXvaPanel.vue';
 
 import type { ExoticProductDef, ExoticPricingResponse } from '@/types';
 import { fetchExoticProducts, priceExotic } from '@/services/api';
+import { useJyInflationStore } from '@/stores/jyInflation';
+import { useJYInflation } from '@/composables/useJYInflation';
 
 const store = usePricerStore();
 const { loadInstruments } = useInstruments();
@@ -38,6 +43,13 @@ const exoticError = ref<string | null>(null);
 const productsLoading = ref(false);
 const exoticExpanded = ref(false);
 const mfmExpanded = ref(false);
+const inflationExpanded = ref(false);
+
+// ---------------------------------------------------------------------------
+// JY Inflation state
+// ---------------------------------------------------------------------------
+const jyStore = useJyInflationStore();
+const { generateCashflows: jyGenerateCashflows, runPricing: jyRunPricing, runXva: jyRunXva } = useJYInflation();
 
 const selectedProduct = computed(() =>
   exoticProducts.value.find((p) => p.productType === selectedProductType.value) ?? null,
@@ -316,6 +328,57 @@ function onExoticToggle(expanded: boolean) {
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <MfmView />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </v-col>
+      </v-row>
+
+      <!-- Inflation Swaps (collapsible) -->
+      <v-row class="mt-2">
+        <v-col cols="12">
+          <v-expansion-panels v-model="inflationExpanded">
+            <v-expansion-panel value="inflation">
+              <v-expansion-panel-title>
+                <div class="d-flex align-center gap-2">
+                  <v-icon icon="mdi-chart-bar" size="20" />
+                  <span class="text-subtitle-1 font-weight-medium">Inflation Swaps (JY Model)</span>
+                </div>
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <!-- Instrument Configuration + Cashflows -->
+                <JyInstrumentPanel @generate="jyGenerateCashflows" />
+
+                <!-- Pricing -->
+                <div class="mt-6">
+                  <div class="d-flex align-center gap-2 mb-4">
+                    <v-btn
+                      color="primary"
+                      :loading="jyStore.loading"
+                      :disabled="jyStore.loading"
+                      @click="jyRunPricing"
+                    >
+                      <v-icon start>mdi-calculator</v-icon>
+                      Price
+                    </v-btn>
+                    <v-btn
+                      color="secondary"
+                      variant="outlined"
+                      :loading="jyStore.loading"
+                      :disabled="jyStore.loading"
+                      @click="jyRunXva"
+                    >
+                      <v-icon start>mdi-shield-half-full</v-icon>
+                      Compute XVA
+                    </v-btn>
+                  </div>
+                  <JyPricingPanel :result="jyStore.pricingResult" />
+                </div>
+
+                <!-- XVA -->
+                <div v-if="jyStore.xvaResult" class="mt-6">
+                  <JyXvaPanel :result="jyStore.xvaResult" />
+                </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
