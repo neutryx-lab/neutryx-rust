@@ -26,9 +26,7 @@ pub struct SwapDefinitionDto {
     pub is_payer: bool,
 }
 
-fn default_payment_freq() -> String {
-    "semi-annual".to_string()
-}
+fn default_payment_freq() -> String { "semi-annual".to_string() }
 
 // ─── Exotic Definition ──────────────────────────────────────────────────────
 
@@ -132,12 +130,14 @@ pub struct IncrementalXvaRequest {
     pub hw_initial_rate: f64,
 
     // ── Model coupling ──
-    /// Coupling method: "swap_rate" (Approach A, default) or "zscore" (Approach B).
+    /// Coupling method: "swap_rate" (Approach A, default) or "zscore" (Approach
+    /// B).
     #[serde(default = "default_coupling_method")]
     pub coupling_method: String,
     /// Benchmark swap tenor for Approach A (years). Default: 10.0.
     pub coupling_swap_tenor: Option<f64>,
-    /// Payment frequency for benchmark swap in Approach A (years). Default: 0.5.
+    /// Payment frequency for benchmark swap in Approach A (years). Default:
+    /// 0.5.
     pub coupling_payment_freq: Option<f64>,
 
     // ── Counterparty credit ──
@@ -163,9 +163,7 @@ pub struct IncrementalXvaRequest {
     pub incremental_trade: IncrementalTradeDto,
 }
 
-fn default_coupling_method() -> String {
-    "swap_rate".to_string()
-}
+fn default_coupling_method() -> String { "swap_rate".to_string() }
 
 // ─── Response ───────────────────────────────────────────────────────────────
 

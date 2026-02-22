@@ -54,9 +54,7 @@ pub fn hw_conditional_variance<T: Float>(a: T, sigma: T, t: T) -> T {
 /// Here the "state variable" `x` is the short rate `r` when using the
 /// standard HW1F SDE.
 #[inline]
-pub fn hw_conditional_mean<T: Float>(a: T, x_s: T, s: T, t: T) -> T {
-    x_s * (-(a * (t - s))).exp()
-}
+pub fn hw_conditional_mean<T: Float>(a: T, x_s: T, s: T, t: T) -> T { x_s * (-(a * (t - s))).exp() }
 
 // ─── Discount curve reconstruction ──────────────────────────────────────────
 
@@ -110,10 +108,7 @@ pub fn hw_swap_rate<T: Float>(
 
     // Number of payment periods
     let n_periods_f = (swap_tenor / payment_freq).round();
-    let n_periods = n_periods_f
-        .to_usize()
-        .unwrap_or(1)
-        .max(1);
+    let n_periods = n_periods_f.to_usize().unwrap_or(1).max(1);
 
     // Terminal discount factor
     let df_end = hw_bond_price(a, sigma, r_star, t, t + swap_tenor, r_t);
@@ -178,11 +173,7 @@ pub fn hw_swap_mtm<T: Float>(
     }
 
     // Filter to remaining payments (payment_time > t)
-    let remaining: Vec<T> = payment_times
-        .iter()
-        .copied()
-        .filter(|&pt| pt > t)
-        .collect();
+    let remaining: Vec<T> = payment_times.iter().copied().filter(|&pt| pt > t).collect();
 
     if remaining.is_empty() {
         return T::zero();
@@ -206,15 +197,13 @@ pub fn hw_swap_mtm<T: Float>(
     }
     let fixed_leg = fixed_rate * annuity;
 
-    let mtm = if is_payer {
+    if is_payer {
         // Pay fixed, receive floating
         notional * (float_leg - fixed_leg)
     } else {
         // Receive fixed, pay floating
         notional * (fixed_leg - float_leg)
-    };
-
-    mtm
+    }
 }
 
 /// Compute the swap MtM using a simplified interface where the remaining
@@ -234,16 +223,23 @@ pub fn hw_swap_mtm_from_tenor<T: Float>(
     is_payer: bool,
 ) -> T {
     let n_periods_f = (remaining_tenor / payment_freq).round();
-    let n_periods = n_periods_f
-        .to_usize()
-        .unwrap_or(1)
-        .max(1);
+    let n_periods = n_periods_f.to_usize().unwrap_or(1).max(1);
 
     let payment_times: Vec<T> = (1..=n_periods)
         .map(|i| t + payment_freq * T::from(i).unwrap_or(T::one()))
         .collect();
 
-    hw_swap_mtm(a, sigma, r_star, t, r_t, fixed_rate, notional, &payment_times, is_payer)
+    hw_swap_mtm(
+        a,
+        sigma,
+        r_star,
+        t,
+        r_t,
+        fixed_rate,
+        notional,
+        &payment_times,
+        is_payer,
+    )
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
@@ -305,7 +301,8 @@ mod tests {
     fn swap_rate_at_par() {
         // At t=0 with r_t = r*, the swap rate should be close to the flat rate
         let sr = hw_swap_rate(A, SIGMA, R_STAR, 0.0, R_STAR, 5.0, 0.5);
-        // For a flat curve, par swap rate ≈ the flat rate (with small convexity correction)
+        // For a flat curve, par swap rate ≈ the flat rate (with small convexity
+        // correction)
         assert!((sr - R_STAR).abs() < 0.005);
     }
 
@@ -320,7 +317,17 @@ mod tests {
         // A swap struck at par should have near-zero MtM
         let sr = hw_swap_rate(A, SIGMA, R_STAR, 0.0, R_STAR, 5.0, 0.5);
         let payments: Vec<f64> = (1..=10).map(|i| i as f64 * 0.5).collect();
-        let mtm = hw_swap_mtm(A, SIGMA, R_STAR, 0.0, R_STAR, sr, 1_000_000.0, &payments, true);
+        let mtm = hw_swap_mtm(
+            A,
+            SIGMA,
+            R_STAR,
+            0.0,
+            R_STAR,
+            sr,
+            1_000_000.0,
+            &payments,
+            true,
+        );
         assert!(mtm.abs() < 1.0); // Should be very close to zero
     }
 

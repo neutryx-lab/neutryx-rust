@@ -366,9 +366,8 @@ fn build_pricer_inputs(
         let (commodity_key, _, _) = parse_commodity_type(Some(commodity_type_str));
         let commodity_name = commodity_key.to_string();
 
-        let vol_surface = VolSurfaceEnum::flat(vol).map_err(|e| {
-            ServerError::Internal(format!("Failed to build flat vol surface: {e}"))
-        })?;
+        let vol_surface = VolSurfaceEnum::flat(vol)
+            .map_err(|e| ServerError::Internal(format!("Failed to build flat vol surface: {e}")))?;
         let vol_key = format!("CMDTY:{}", commodity_name);
 
         let market = MarketEnvironmentBuilder::new(valuation_date)

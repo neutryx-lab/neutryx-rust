@@ -205,7 +205,8 @@ pub enum StochasticModelEnum<T: Float> {
     /// Jarrow-Yildirim 3-factor inflation model (nominal rate, real rate,
     /// inflation index).
     JarrowYildirim(JarrowYildirimModel<T>),
-    /// Gibson-Schwartz 2-factor commodity model (spot price, convenience yield).
+    /// Gibson-Schwartz 2-factor commodity model (spot price, convenience
+    /// yield).
     GibsonSchwartz(GibsonSchwartzModel<T>),
 }
 
@@ -322,11 +323,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
                 ModelState::ThreeFactor(s),
                 ModelParams::JarrowYildirim(p),
             ) => ModelState::ThreeFactor(JarrowYildirimModel::evolve_step(*s, dt, dw, p)),
-            (
-                Self::GibsonSchwartz(_),
-                ModelState::TwoFactor(s),
-                ModelParams::GibsonSchwartz(p),
-            ) => ModelState::TwoFactor(GibsonSchwartzModel::evolve_step(*s, dt, dw, p)),
+            (Self::GibsonSchwartz(_), ModelState::TwoFactor(s), ModelParams::GibsonSchwartz(p)) => {
+                ModelState::TwoFactor(GibsonSchwartzModel::evolve_step(*s, dt, dw, p))
+            }
             #[allow(unreachable_patterns)]
             _ => state,
         }

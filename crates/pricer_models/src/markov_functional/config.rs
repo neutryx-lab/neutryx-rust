@@ -13,16 +13,13 @@ use super::{
 // ─── Volatility type ────────────────────────────────────────────────
 
 /// Volatility convention used for swaption quotes in MFM calibration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MfmVolType {
     /// Normal (Bachelier) volatility.
+    #[default]
     Normal,
     /// Log-normal (Black) volatility.
     Lognormal,
-}
-
-impl Default for MfmVolType {
-    fn default() -> Self { Self::Normal }
 }
 
 // ─── Configuration ──────────────────────────────────────────────────
@@ -108,6 +105,7 @@ impl<T: Float> MfmConfig<T> {
             });
         }
 
+        #[allow(unknown_lints, clippy::manual_is_multiple_of)]
         if self.num_grid_points % 2 == 0 {
             return Err(MfmError::InvalidParameter {
                 name: "num_grid_points",

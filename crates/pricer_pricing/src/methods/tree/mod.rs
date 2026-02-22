@@ -5,8 +5,8 @@ mod binomial;
 pub(crate) mod common;
 mod config;
 pub mod gaussian;
-mod method;
 pub mod grid_cache;
+mod method;
 pub mod tarn_engine;
 mod trinomial;
 

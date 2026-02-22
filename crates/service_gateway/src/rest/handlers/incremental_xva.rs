@@ -11,8 +11,8 @@ use crate::{
 };
 
 /// GET /api/incremental-xva/config - Get default incremental XVA configuration.
-pub async fn get_incremental_xva_config(
-) -> Result<Json<IncrementalXvaDefaultConfig>, ServerError> {
+pub async fn get_incremental_xva_config() -> Result<Json<IncrementalXvaDefaultConfig>, ServerError>
+{
     Ok(Json(IncrementalXvaService::get_default_config()?))
 }
 

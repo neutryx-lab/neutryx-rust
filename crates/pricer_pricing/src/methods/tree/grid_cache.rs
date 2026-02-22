@@ -34,9 +34,7 @@ pub struct MfmMtmSlice {
 impl MfmMtmSlice {
     /// Number of grid points.
     #[inline]
-    pub fn num_nodes(&self) -> usize {
-        self.x_grid.len()
-    }
+    pub fn num_nodes(&self) -> usize { self.x_grid.len() }
 
     /// Linearly interpolate the MtM for a given state variable value `x`.
     ///
@@ -134,9 +132,7 @@ impl MfmGridCache {
 
     /// Number of time slices in the cache.
     #[inline]
-    pub fn num_slices(&self) -> usize {
-        self.slices.len()
-    }
+    pub fn num_slices(&self) -> usize { self.slices.len() }
 
     /// Find the closest slice index for a given time.
     ///

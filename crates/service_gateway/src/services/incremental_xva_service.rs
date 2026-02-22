@@ -154,10 +154,8 @@ impl IncrementalXvaService {
         let bilateral = request.bilateral.unwrap_or(true);
         let compute_fva = request.compute_fva.unwrap_or(true);
 
-        let time_grid = Self::build_time_grid(
-            horizon,
-            request.time_step.as_deref().unwrap_or("quarterly"),
-        );
+        let time_grid =
+            Self::build_time_grid(horizon, request.time_step.as_deref().unwrap_or("quarterly"));
 
         let coupling_method = match request.coupling_method.as_str() {
             "zscore" => CouplingMethod::ZScoreMatching,
@@ -198,9 +196,7 @@ impl IncrementalXvaService {
 
         // ── Build incremental trade ──
         let incremental_trade = match &request.incremental_trade {
-            IncrementalTradeDto::Swap(dto) => {
-                IncrementalTrade::Swap(Self::build_swap_def(dto))
-            }
+            IncrementalTradeDto::Swap(dto) => IncrementalTrade::Swap(Self::build_swap_def(dto)),
             IncrementalTradeDto::Exotic(dto) => {
                 IncrementalTrade::Exotic(Self::build_exotic_def(dto)?)
             }
@@ -267,9 +263,7 @@ impl IncrementalXvaService {
         };
 
         let n_periods = (dto.tenor_years / payment_freq).round() as usize;
-        let payment_times: Vec<f64> = (1..=n_periods)
-            .map(|i| i as f64 * payment_freq)
-            .collect();
+        let payment_times: Vec<f64> = (1..=n_periods).map(|i| i as f64 * payment_freq).collect();
 
         VanillaSwapDef {
             trade_id: dto.trade_id.clone(),
@@ -283,7 +277,8 @@ impl IncrementalXvaService {
     fn build_exotic_def(dto: &ExoticDefinitionDto) -> Result<ExoticTradeDef, ServerError> {
         // Build a synthetic MFM grid cache from the exotic definition.
         // In a production system, this would run full MFM calibration + tree pricing.
-        // For the demo, we build a synthetic grid that maps swap rates to reasonable MtM.
+        // For the demo, we build a synthetic grid that maps swap rates to reasonable
+        // MtM.
         let grid_cache = Self::build_synthetic_grid_cache(dto)?;
 
         Ok(ExoticTradeDef {
@@ -298,9 +293,7 @@ impl IncrementalXvaService {
     /// Creates a realistic-looking grid where MtM varies with the Gaussian
     /// state variable, mimicking what full MFM calibration + tree pricing
     /// would produce.
-    fn build_synthetic_grid_cache(
-        dto: &ExoticDefinitionDto,
-    ) -> Result<MfmGridCache, ServerError> {
+    fn build_synthetic_grid_cache(dto: &ExoticDefinitionDto) -> Result<MfmGridCache, ServerError> {
         let a = dto.mfm_mean_reversion;
         let sigma = dto.mfm_volatility;
         let n_grid = dto.mfm_grid_points.unwrap_or(41);
@@ -355,11 +348,13 @@ impl IncrementalXvaService {
                             // Callable swaption-like payoff
                             let annuity = tenor_remaining * 0.98; // approximate
                             let intrinsic = if dto.is_callable.unwrap_or(true) {
-                                (-diff * annuity).max(0.0) // callable: value when rates drop
+                                (-diff * annuity).max(0.0) // callable: value
+                                                           // when rates drop
                             } else {
                                 (diff * annuity).max(0.0)
                             };
-                            intrinsic * notional / notional // normalised by notional
+                            intrinsic * notional / notional // normalised by
+                                                            // notional
                         }
                         ExoticProductType::Tarn => {
                             // TARN: coupon value with target cap
@@ -398,9 +393,7 @@ impl IncrementalXvaService {
         ))
     }
 
-    fn metrics_to_dto(
-        metrics: &pricer_risk::xva_engine::incremental::XvaMetrics,
-    ) -> XvaMetricsDto {
+    fn metrics_to_dto(metrics: &pricer_risk::xva_engine::incremental::XvaMetrics) -> XvaMetricsDto {
         XvaMetricsDto {
             ucva: metrics.ucva,
             bcva: metrics.bcva,

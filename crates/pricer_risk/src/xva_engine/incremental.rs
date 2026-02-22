@@ -12,17 +12,20 @@
 use std::time::Instant;
 
 use pricer_models::process::{
-    hw1f_analytical,
     hull_white::{HullWhiteModel, HullWhiteParams},
+    hw1f_analytical,
     stochastic::StochasticModel,
 };
 use pricer_pricing::methods::tree::grid_cache::MfmGridCache;
 
-use crate::portfolio::xva::{BilateralXvaCalculator, OwnCreditParams};
-use crate::portfolio::CreditParams;
-
-use super::error::XvaEngineError;
-use super::model_coupler::{CouplingMethod, ModelCoupler};
+use super::{
+    error::XvaEngineError,
+    model_coupler::{CouplingMethod, ModelCoupler},
+};
+use crate::portfolio::{
+    xva::{BilateralXvaCalculator, OwnCreditParams},
+    CreditParams,
+};
 
 // ─── Trade definitions ──────────────────────────────────────────────────────
 
@@ -196,7 +199,11 @@ impl IncrementalXvaEngine {
                 let mut base_total = 0.0;
                 for swap in &portfolio.base_swaps {
                     let mtm = hw1f_analytical::hw_swap_mtm(
-                        a, sigma, r_star, t, r_t,
+                        a,
+                        sigma,
+                        r_star,
+                        t,
+                        r_t,
                         swap.fixed_rate,
                         swap.notional,
                         &swap.payment_times,
@@ -216,15 +223,17 @@ impl IncrementalXvaEngine {
 
                 // ── Incremental trade ──
                 let incr = match &portfolio.incremental_trade {
-                    IncrementalTrade::Swap(swap) => {
-                        hw1f_analytical::hw_swap_mtm(
-                            a, sigma, r_star, t, r_t,
-                            swap.fixed_rate,
-                            swap.notional,
-                            &swap.payment_times,
-                            swap.is_payer,
-                        )
-                    }
+                    IncrementalTrade::Swap(swap) => hw1f_analytical::hw_swap_mtm(
+                        a,
+                        sigma,
+                        r_star,
+                        t,
+                        r_t,
+                        swap.fixed_rate,
+                        swap.notional,
+                        &swap.payment_times,
+                        swap.is_payer,
+                    ),
                     IncrementalTrade::Exotic(exotic) => {
                         let slice_idx = exotic.grid_cache.find_closest_slice(t).unwrap_or(0);
                         let mtm = coupler.lookup_exotic_mtm(t, r_t, &exotic.grid_cache, slice_idx);
@@ -251,10 +260,22 @@ impl IncrementalXvaEngine {
         let full_ene = Self::compute_ene(&full_mtm, n_times, n_paths);
 
         // ── 6. Compute XVA for base and full ──
-        let base_xva =
-            Self::compute_xva_metrics(&base_epe, &base_ene, &config.time_grid, credit_params, own_credit, config)?;
-        let full_xva =
-            Self::compute_xva_metrics(&full_epe, &full_ene, &config.time_grid, credit_params, own_credit, config)?;
+        let base_xva = Self::compute_xva_metrics(
+            &base_epe,
+            &base_ene,
+            &config.time_grid,
+            credit_params,
+            own_credit,
+            config,
+        )?;
+        let full_xva = Self::compute_xva_metrics(
+            &full_epe,
+            &full_ene,
+            &config.time_grid,
+            credit_params,
+            own_credit,
+            config,
+        )?;
 
         // ── 7. Incremental = full - base ──
         let incremental_xva = XvaMetrics {
@@ -307,9 +328,7 @@ impl IncrementalXvaEngine {
             config.hw_volatility,
             FlatCurve::new(config.hw_initial_rate),
         )
-        .ok_or_else(|| {
-            XvaEngineError::ConfigError("Invalid HW1F parameters".to_string())
-        })?;
+        .ok_or_else(|| XvaEngineError::ConfigError("Invalid HW1F parameters".to_string()))?;
 
         let n_paths = if config.antithetic {
             n_paths_base * 2
@@ -504,8 +523,9 @@ fn next_normal(state: &mut u64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_pricing::methods::tree::grid_cache::{ExoticProductType, MfmMtmSlice};
+
+    use super::*;
 
     fn make_config(n_paths: usize) -> IncrementalXvaConfig {
         IncrementalXvaConfig {
@@ -631,14 +651,12 @@ mod tests {
         let result = IncrementalXvaEngine::run(&config, &portfolio, &credit, &own).unwrap();
 
         // Verify: incremental = full - base
-        let diff = (result.incremental_xva.bcva
-            - (result.full_xva.bcva - result.base_xva.bcva))
-            .abs();
+        let diff =
+            (result.incremental_xva.bcva - (result.full_xva.bcva - result.base_xva.bcva)).abs();
         assert!(diff < 1e-10, "BCVA diff: {}", diff);
 
-        let diff_fva = (result.incremental_xva.fva
-            - (result.full_xva.fva - result.base_xva.fva))
-            .abs();
+        let diff_fva =
+            (result.incremental_xva.fva - (result.full_xva.fva - result.base_xva.fva)).abs();
         assert!(diff_fva < 1e-10, "FVA diff: {}", diff_fva);
     }
 

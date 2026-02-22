@@ -111,12 +111,7 @@ impl ModelCoupler {
     /// Look up exotic MtM using the closest time slice (for non-uniform grids).
     ///
     /// Finds the nearest slice by time and delegates to `lookup_exotic_mtm`.
-    pub fn lookup_exotic_mtm_by_time(
-        &self,
-        t: f64,
-        r_t: f64,
-        cache: &MfmGridCache,
-    ) -> f64 {
+    pub fn lookup_exotic_mtm_by_time(&self, t: f64, r_t: f64, cache: &MfmGridCache) -> f64 {
         match cache.find_closest_slice(t) {
             Some(idx) => self.lookup_exotic_mtm(t, r_t, cache, idx),
             None => 0.0,
@@ -128,7 +123,8 @@ impl ModelCoupler {
     /// Maps the HW1F state to the MFM grid via a benchmark swap rate.
     ///
     /// 1. Compute the par swap rate `S_HW(t)` analytically from `r_t`.
-    /// 2. Look up `S_HW(t)` in the MFM slice's swap-rate array via binary search.
+    /// 2. Look up `S_HW(t)` in the MFM slice's swap-rate array via binary
+    ///    search.
     /// 3. Interpolate the MtM at that position.
     fn map_via_swap_rate(
         &self,
@@ -160,13 +156,7 @@ impl ModelCoupler {
     /// 1. Compute Z = (r_t - E[r(t)]) / sqrt(V(t)) for HW1F.
     /// 2. Scale Z by the MFM grid's standard deviation to get x_mfm.
     /// 3. Interpolate the MtM by x on the MFM grid.
-    fn map_via_zscore(
-        &self,
-        t: f64,
-        r_t: f64,
-        slice: &MfmMtmSlice,
-        cache: &MfmGridCache,
-    ) -> f64 {
+    fn map_via_zscore(&self, t: f64, r_t: f64, slice: &MfmMtmSlice, cache: &MfmGridCache) -> f64 {
         let eps = 1e-30;
 
         // HW1F conditional mean: E[r(t)] = r_star * exp(-a*t) + ...
@@ -180,11 +170,8 @@ impl ModelCoupler {
         );
 
         // HW1F conditional variance: V(t) = σ²/(2a) * (1 - exp(-2at))
-        let hw_var = hw1f_analytical::hw_conditional_variance(
-            self.hw_mean_reversion,
-            self.hw_volatility,
-            t,
-        );
+        let hw_var =
+            hw1f_analytical::hw_conditional_variance(self.hw_mean_reversion, self.hw_volatility, t);
 
         let hw_std = hw_var.sqrt().max(eps);
 
@@ -212,8 +199,9 @@ impl ModelCoupler {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_pricing::methods::tree::grid_cache::{ExoticProductType, MfmMtmSlice};
+
+    use super::*;
 
     fn sample_cache() -> MfmGridCache {
         let slices = vec![
@@ -259,26 +247,25 @@ mod tests {
     fn zscore_at_mean_returns_center() {
         let coupler = ModelCoupler::new(
             CouplingMethod::ZScoreMatching,
-            0.05,  // a
-            0.01,  // sigma
-            0.03,  // r_star
+            0.05, // a
+            0.01, // sigma
+            0.03, // r_star
         );
         let cache = sample_cache();
 
         // At the conditional mean, Z=0, so x_mfm=0, and mtm at x=0 is 0.0
         let hw_mean = hw1f_analytical::hw_conditional_mean(0.05, 0.03, 0.0, 1.0);
         let mtm = coupler.lookup_exotic_mtm(1.0, hw_mean, &cache, 0);
-        assert!(mtm.abs() < 50.0, "MtM at mean should be near center: {}", mtm);
+        assert!(
+            mtm.abs() < 50.0,
+            "MtM at mean should be near center: {}",
+            mtm
+        );
     }
 
     #[test]
     fn zscore_above_mean_positive_mtm() {
-        let coupler = ModelCoupler::new(
-            CouplingMethod::ZScoreMatching,
-            0.05,
-            0.01,
-            0.03,
-        );
+        let coupler = ModelCoupler::new(CouplingMethod::ZScoreMatching, 0.05, 0.01, 0.03);
         let cache = sample_cache();
 
         // Well above the mean
@@ -318,12 +305,7 @@ mod tests {
 
     #[test]
     fn lookup_by_time_finds_nearest() {
-        let coupler = ModelCoupler::new(
-            CouplingMethod::ZScoreMatching,
-            0.05,
-            0.01,
-            0.03,
-        );
+        let coupler = ModelCoupler::new(CouplingMethod::ZScoreMatching, 0.05, 0.01, 0.03);
         let cache = sample_cache();
 
         // t=1.1 should find slice 0 (time=1.0), t=1.9 should find slice 1 (time=2.0)

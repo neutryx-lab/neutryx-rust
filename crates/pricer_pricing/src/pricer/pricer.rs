@@ -1158,8 +1158,7 @@ impl Pricer {
                     let theta = cy.cy_long_term_mean;
                     let delta0 = cy.initial_cy;
                     if kappa * t > 1e-12 {
-                        r - (theta
-                            + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t))
+                        r - (theta + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t))
                     } else {
                         r - delta0
                     }
@@ -1232,8 +1231,7 @@ impl Pricer {
                     let theta = cy.cy_long_term_mean;
                     let delta0 = cy.initial_cy;
                     if kappa * t > 1e-12 {
-                        r - (theta
-                            + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t))
+                        r - (theta + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t))
                     } else {
                         r - delta0
                     }
