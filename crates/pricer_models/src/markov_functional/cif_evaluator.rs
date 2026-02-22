@@ -6,10 +6,10 @@
 //! analytically for precision, while the tree handles only callability
 //! and non-linear residuals.
 
-use pricer_core::math::formulas::bachelier::Bachelier;
-use pricer_core::math::normal_dist::norm_cdf;
-use pricer_core::math::numeric::from_f64;
-use pricer_core::traits::Float;
+use pricer_core::{
+    math::{formulas::bachelier::Bachelier, normal_dist::norm_cdf, numeric::from_f64},
+    traits::Float,
+};
 
 use super::MfmError;
 
@@ -87,9 +87,7 @@ impl<T: Float> CifInstrument<T> {
     }
 
     /// Returns the number of coupon periods.
-    pub fn num_coupons(&self) -> usize {
-        self.coupon_dates.len()
-    }
+    pub fn num_coupons(&self) -> usize { self.coupon_dates.len() }
 }
 
 // ─── 4-component Taylor decomposition ───────────────────────────────
@@ -126,9 +124,7 @@ impl<T: Float> Default for CifCouponComponents<T> {
 
 impl<T: Float> CifCouponComponents<T> {
     /// Returns the total coupon value: `dE + dR + dI + dQ`.
-    pub fn total(&self) -> T {
-        self.d_e + self.d_r + self.d_i + self.d_q
-    }
+    pub fn total(&self) -> T { self.d_e + self.d_r + self.d_i + self.d_q }
 }
 
 // ─── Pre-computed node info for one coupon period ───────────────────
@@ -216,7 +212,8 @@ fn cif_coupon_value<T: Float>(
 /// an embedded put option on the Libor rate with strike
 /// `K = (fixed - floor) / leverage`. The floor option value is:
 ///
-///   `leverage * year_fraction * notional * Bachelier_put(fwd_libor, K, vol, T)`
+///   `leverage * year_fraction * notional * Bachelier_put(fwd_libor, K, vol,
+/// T)`
 ///
 /// When `normal_vol` is too small (< 1e-12), falls back to intrinsic value.
 fn analytical_floor_value<T: Float>(
@@ -294,8 +291,8 @@ fn analytical_floor_delta<T: Float>(
     // where N(-d) = P(L > K) under the normal model.
 
     if normal_vol < vol_threshold || option_expiry < expiry_threshold {
-        // In the deterministic limit, delta is either -leverage*yf*N (floor not binding)
-        // or 0 (floor binding).
+        // In the deterministic limit, delta is either -leverage*yf*N (floor not
+        // binding) or 0 (floor binding).
         let scale = -leverage * year_fraction * notional;
         if forward_libor < k_floor {
             return scale;
@@ -343,7 +340,8 @@ fn node_floor_value<T: Float>(
 
 /// Compute the base expected coupon value using the forward Libor rate.
 ///
-/// This is the deterministic part: `max(floor, fixed - leverage * fwd) * yf * N`.
+/// This is the deterministic part: `max(floor, fixed - leverage * fwd) * yf *
+/// N`.
 fn expected_coupon_base<T: Float>(
     fixed_rate: T,
     leverage: T,
@@ -438,8 +436,14 @@ pub fn compute_cif_node_info<T: Float>(
     );
 
     // Base expected coupon at the forward
-    let base_expected =
-        expected_coupon_base(fixed_rate, leverage, floor_rate, forward_libor, year_fraction, notional);
+    let base_expected = expected_coupon_base(
+        fixed_rate,
+        leverage,
+        floor_rate,
+        forward_libor,
+        year_fraction,
+        notional,
+    );
 
     // Delta of the floor option w.r.t. Libor
     let fwd_delta = analytical_floor_delta(
@@ -484,7 +488,13 @@ pub fn compute_cif_node_info<T: Float>(
 
         // (a)-(d) Direct coupon value at this node (deterministic payoff)
         let direct_coupon = cif_coupon_value(
-            fixed_rate, leverage, floor_rate, cap_rate, libor_j, year_fraction, notional,
+            fixed_rate,
+            leverage,
+            floor_rate,
+            cap_rate,
+            libor_j,
+            year_fraction,
+            notional,
         );
 
         // (e) Analytical floor option value at this node's Libor rate
@@ -501,7 +511,12 @@ pub fn compute_cif_node_info<T: Float>(
 
         // (f) Expected coupon at this node = base coupon + floor time value
         let base_j = expected_coupon_base(
-            fixed_rate, leverage, floor_rate, libor_j, year_fraction, notional,
+            fixed_rate,
+            leverage,
+            floor_rate,
+            libor_j,
+            year_fraction,
+            notional,
         );
         let floor_intrinsic_j = {
             let diff = k_floor - libor_j;
@@ -546,12 +561,7 @@ pub fn compute_cif_node_info<T: Float>(
         // Taylor expansion misses.
         let d_q = direct_coupon - d_e - d_r - d_i;
 
-        let comp = CifCouponComponents {
-            d_e,
-            d_r,
-            d_i,
-            d_q,
-        };
+        let comp = CifCouponComponents { d_e, d_r, d_i, d_q };
 
         // (i) Discounted value: comp.total() == direct_coupon by construction
         let disc_val = comp.total() * df_j;
@@ -584,7 +594,8 @@ pub fn compute_cif_node_info<T: Float>(
 /// calibrated slice data.
 ///
 /// Each element of `calibrated_slices` is a tuple:
-/// `(swap_rates, libor_rates, discount_factors, fwd_swap, fwd_libor, normal_vol, option_expiry)`
+/// `(swap_rates, libor_rates, discount_factors, fwd_swap, fwd_libor,
+/// normal_vol, option_expiry)`
 ///
 /// There must be exactly one entry per coupon period.
 ///
@@ -809,11 +820,7 @@ mod tests {
 
         // All floor values should be identical since all Libor rates are the same
         for j in 1..num_nodes {
-            assert_relative_eq!(
-                info.floor_values[j],
-                info.floor_values[0],
-                epsilon = 1e-10
-            );
+            assert_relative_eq!(info.floor_values[j], info.floor_values[0], epsilon = 1e-10);
         }
 
         // dR should be ~0 since all swap rates equal forward
@@ -852,11 +859,7 @@ mod tests {
         // The component total should equal the direct coupon exactly
         let direct = cif_coupon_value(0.06, 1.0, 0.0, None, fwd_libor, 1.0, 1_000_000.0);
         for j in 0..num_nodes {
-            assert_relative_eq!(
-                info.components[j].total(),
-                direct,
-                epsilon = 1e-6,
-            );
+            assert_relative_eq!(info.components[j].total(), direct, epsilon = 1e-6,);
         }
 
         // All discounted values should be the same
@@ -908,7 +911,8 @@ mod tests {
         .unwrap();
 
         // dI should be non-zero for nodes where Libor deviates from forward
-        // Node 0: libor=0.02, deviation = -0.02, dI = -1.0 * 1.0 * 1e6 * (-0.02) = 20000
+        // Node 0: libor=0.02, deviation = -0.02, dI = -1.0 * 1.0 * 1e6 * (-0.02) =
+        // 20000
         assert!(
             info.components[0].d_i.abs() > 1.0,
             "dI[0] should be large for Libor=0.02 vs fwd=0.04"
@@ -939,21 +943,9 @@ mod tests {
         // The component total should equal the direct coupon exactly
         // (by construction: dQ = direct - dE - dR - dI).
         for j in 0..5 {
-            let direct = cif_coupon_value(
-                0.06,
-                1.0,
-                0.0,
-                None,
-                libor_rates[j],
-                1.0,
-                1_000_000.0,
-            );
+            let direct = cif_coupon_value(0.06, 1.0, 0.0, None, libor_rates[j], 1.0, 1_000_000.0);
             let component_total = info.components[j].total();
-            assert_relative_eq!(
-                component_total,
-                direct,
-                epsilon = 1e-6,
-            );
+            assert_relative_eq!(component_total, direct, epsilon = 1e-6,);
         }
     }
 
@@ -1004,9 +996,9 @@ mod tests {
         // The put is OTM but still has time value.
         //
         // Actually, rethinking: the floor binds when raw coupon < floor,
-        // i.e., fixed - leverage * L < floor, i.e., L > (fixed - floor)/leverage = K_floor.
-        // When fwd_libor = 0.05 > K_floor = 0.04, the put is OTM (K < F for a put).
-        // The floor option value is the time value only.
+        // i.e., fixed - leverage * L < floor, i.e., L > (fixed - floor)/leverage =
+        // K_floor. When fwd_libor = 0.05 > K_floor = 0.04, the put is OTM (K <
+        // F for a put). The floor option value is the time value only.
         //
         // For a deep ITM floor, we need fwd_libor << K_floor.
         // Let's set fwd_libor = 0.02 < K_floor = 0.04.
@@ -1033,7 +1025,8 @@ mod tests {
         .unwrap();
 
         // K_floor = 0.04, fwd = 0.02, put intrinsic = 0.02
-        // floor_value >= leverage * yf * N * intrinsic = 1.0 * 1.0 * 1e6 * 0.02 = 20,000
+        // floor_value >= leverage * yf * N * intrinsic = 1.0 * 1.0 * 1e6 * 0.02 =
+        // 20,000
         assert!(
             info_itm.floor_values[0] > 19_000.0,
             "floor_value = {} should be > 19,000 when floor is deep ITM",
@@ -1328,10 +1321,8 @@ mod tests {
     #[test]
     fn test_analytical_floor_value_positive_vol() {
         // With positive vol, value should exceed intrinsic (time value > 0)
-        let intrinsic =
-            analytical_floor_value(0.06, 1.0, 0.0, 0.04, 0.0, 1.0, 1.0, 1_000_000.0);
-        let with_vol =
-            analytical_floor_value(0.06, 1.0, 0.0, 0.04, 0.005, 1.0, 1.0, 1_000_000.0);
+        let intrinsic = analytical_floor_value(0.06, 1.0, 0.0, 0.04, 0.0, 1.0, 1.0, 1_000_000.0);
+        let with_vol = analytical_floor_value(0.06, 1.0, 0.0, 0.04, 0.005, 1.0, 1.0, 1_000_000.0);
         assert!(
             with_vol > intrinsic,
             "Option value with vol ({}) should exceed intrinsic ({})",

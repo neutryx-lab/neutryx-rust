@@ -138,15 +138,9 @@ pub struct JyInstrumentRequest {
     pub real_curve_rate: f64,
 }
 
-fn default_frequency() -> String {
-    "annual".to_string()
-}
-fn default_nominal_rate() -> f64 {
-    0.03
-}
-fn default_real_rate() -> f64 {
-    0.01
-}
+fn default_frequency() -> String { "annual".to_string() }
+fn default_nominal_rate() -> f64 { 0.03 }
+fn default_real_rate() -> f64 { 0.01 }
 
 /// A single cashflow in the instrument schedule.
 #[derive(Debug, Clone, Serialize)]
@@ -224,9 +218,7 @@ pub struct JySimulationRequest {
     pub num_sample_paths: u32,
 }
 
-fn default_sample_paths() -> u32 {
-    5
-}
+fn default_sample_paths() -> u32 { 5 }
 
 /// Statistics for a simulated factor across time steps.
 #[derive(Debug, Clone, Serialize)]

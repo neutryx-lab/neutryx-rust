@@ -5,8 +5,8 @@ use axum::Json;
 use crate::{
     error::{ServerError, ValidatedJson},
     rest::dto::xva::{
-        XvaBilateralRequest, XvaBilateralResponse, XvaDefaultConfigResponse,
-        XvaSimulationRequest, XvaSimulationResponse,
+        XvaBilateralRequest, XvaBilateralResponse, XvaDefaultConfigResponse, XvaSimulationRequest,
+        XvaSimulationResponse,
     },
     services::XvaService,
 };
@@ -23,7 +23,8 @@ pub async fn run_xva_simulation(
     Ok(Json(XvaService::run_simulation(&request)?))
 }
 
-/// POST /api/xva/bilateral - Compute bilateral CVA/DVA/FVA from exposure profiles.
+/// POST /api/xva/bilateral - Compute bilateral CVA/DVA/FVA from exposure
+/// profiles.
 pub async fn compute_xva_bilateral(
     ValidatedJson(request): ValidatedJson<XvaBilateralRequest>,
 ) -> Result<Json<XvaBilateralResponse>, ServerError> {

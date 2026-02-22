@@ -121,6 +121,28 @@ impl MarketProvider {
 }
 
 // ---------------------------------------------------------------------------
+// Convenience Yield Parameters
+// ---------------------------------------------------------------------------
+
+/// Parameters for stochastic convenience yield modelling (Gibson-Schwartz).
+///
+/// Used by commodity pricing to capture the benefit of holding a physical
+/// commodity (storage, seasonal demand) vs. a futures contract.
+#[derive(Debug, Clone)]
+pub struct ConvenienceYieldParams {
+    /// Initial convenience yield level (e.g. 0.05 = 5%).
+    pub initial_cy: f64,
+    /// Mean-reversion speed (κ) for the OU convenience yield process.
+    pub mean_reversion: f64,
+    /// Volatility of the convenience yield process (σ_δ).
+    pub cy_vol: f64,
+    /// Long-term mean of the convenience yield (θ_δ).
+    pub cy_long_term_mean: f64,
+    /// Correlation between spot price and convenience yield (ρ ∈ [-1, 1]).
+    pub rho_spot_cy: f64,
+}
+
+// ---------------------------------------------------------------------------
 // MarketEnvironment
 // ---------------------------------------------------------------------------
 
@@ -138,6 +160,8 @@ pub struct MarketEnvironment {
     /// Generic spot prices keyed by identifier (e.g. equity ticker, commodity
     /// code).
     spot_prices: HashMap<String, f64>,
+    /// Convenience yield parameters keyed by commodity identifier.
+    convenience_yields: HashMap<String, ConvenienceYieldParams>,
 }
 
 impl MarketEnvironment {
@@ -274,6 +298,19 @@ impl MarketEnvironment {
 
     /// Returns a reference to all spot prices.
     pub fn spot_prices(&self) -> &HashMap<String, f64> { &self.spot_prices }
+
+    // -- Convenience yields ------------------------------------------------
+
+    /// Returns the convenience yield parameters for the given commodity key,
+    /// if present.
+    pub fn convenience_yield(&self, key: &str) -> Option<&ConvenienceYieldParams> {
+        self.convenience_yields.get(key)
+    }
+
+    /// Returns a reference to all convenience yield parameter sets.
+    pub fn convenience_yields(&self) -> &HashMap<String, ConvenienceYieldParams> {
+        &self.convenience_yields
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +343,7 @@ pub struct MarketEnvironmentBuilder {
     fx_curves: HashMap<CurrencyPair, FxCurveEnum<f64>>,
     vol_surfaces: HashMap<String, VolSurfaceEnum<f64>>,
     spot_prices: HashMap<String, f64>,
+    convenience_yields: HashMap<String, ConvenienceYieldParams>,
 }
 
 impl MarketEnvironmentBuilder {
@@ -320,6 +358,7 @@ impl MarketEnvironmentBuilder {
             fx_curves: HashMap::new(),
             vol_surfaces: HashMap::new(),
             spot_prices: HashMap::new(),
+            convenience_yields: HashMap::new(),
         }
     }
 
@@ -369,6 +408,17 @@ impl MarketEnvironmentBuilder {
         self
     }
 
+    /// Adds convenience yield parameters for a commodity.
+    #[must_use]
+    pub fn with_convenience_yield(
+        mut self,
+        key: impl Into<String>,
+        params: ConvenienceYieldParams,
+    ) -> Self {
+        self.convenience_yields.insert(key.into(), params);
+        self
+    }
+
     /// Builds a flat [`MarketEnvironment`] for multi-currency trades.
     ///
     /// Creates flat discount curves at `discount_rate` for every currency in
@@ -406,6 +456,7 @@ impl MarketEnvironmentBuilder {
             fx_curves: self.fx_curves,
             vol_surfaces: self.vol_surfaces,
             spot_prices: self.spot_prices,
+            convenience_yields: self.convenience_yields,
         }
     }
 }

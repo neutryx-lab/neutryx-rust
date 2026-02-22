@@ -91,8 +91,7 @@ fn bs_call_price(
     }
 
     let sqrt_t = time_to_maturity.sqrt();
-    let d1 =
-        ((spot / strike).ln() + (rate + 0.5 * vol * vol) * time_to_maturity) / (vol * sqrt_t);
+    let d1 = ((spot / strike).ln() + (rate + 0.5 * vol * vol) * time_to_maturity) / (vol * sqrt_t);
     let d2 = d1 - vol * sqrt_t;
 
     let discount = (-rate * time_to_maturity).exp();
@@ -101,13 +100,7 @@ fn bs_call_price(
 }
 
 /// Forward contract PV: `N * [S - K * exp(-r*T)]`.
-fn forward_price(
-    spot: f64,
-    strike: f64,
-    time_to_maturity: f64,
-    rate: f64,
-    notional: f64,
-) -> f64 {
+fn forward_price(spot: f64, strike: f64, time_to_maturity: f64, rate: f64, notional: f64) -> f64 {
     if time_to_maturity <= 0.0 {
         return notional * (spot - strike);
     }
@@ -156,8 +149,9 @@ fn swap_npv(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // --- Black-Scholes tests ---
 
@@ -303,7 +297,10 @@ mod tests {
 
         // Floating > fixed => positive NPV for receiver of floating.
         let price = pricer.price(0.05, 0.0, 5.0, 1_000_000.0);
-        assert!(price > 0.0, "swap NPV should be positive when floating > fixed, got {price}");
+        assert!(
+            price > 0.0,
+            "swap NPV should be positive when floating > fixed, got {price}"
+        );
     }
 
     #[test]
@@ -315,7 +312,10 @@ mod tests {
 
         // Floating < fixed => negative NPV for receiver of floating.
         let price = pricer.price(0.03, 0.0, 5.0, 1_000_000.0);
-        assert!(price < 0.0, "swap NPV should be negative when floating < fixed, got {price}");
+        assert!(
+            price < 0.0,
+            "swap NPV should be negative when floating < fixed, got {price}"
+        );
     }
 
     #[test]

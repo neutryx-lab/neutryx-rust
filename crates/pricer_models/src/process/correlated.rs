@@ -209,8 +209,8 @@ impl<T: Float> CorrelationMatrix<T> {
     /// 1. Symmetrises the matrix and clamps entries to [-1, 1]
     /// 2. Sets diagonal to 1
     /// 3. If already PD, returns as-is
-    /// 4. Otherwise, binary-searches for the minimum shrinkage λ ∈ [0, 1]
-    ///    such that `C' = (1-λ)·C + λ·I` is positive definite
+    /// 4. Otherwise, binary-searches for the minimum shrinkage λ ∈ [0, 1] such
+    ///    that `C' = (1-λ)·C + λ·I` is positive definite
     ///
     /// # Arguments
     /// - `data`: raw correlation matrix in row-major order (dim × dim)
@@ -271,10 +271,7 @@ impl<T: Float> CorrelationMatrix<T> {
                 .map(|(&c, &id)| one_minus_mid * c + mid * id)
                 .collect();
 
-            let test = Self {
-                data: shrunk,
-                dim,
-            };
+            let test = Self { data: shrunk, dim };
             if test.cholesky().is_ok() {
                 hi = mid;
             } else {

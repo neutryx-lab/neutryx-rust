@@ -2,18 +2,18 @@
 
 use std::time::Instant;
 
-use pricer_models::markov_functional::{
-    CalibratedSlice, FlatSwaptionVolCube, MarkovFunctionalNonParametric1F,
-    MfmCalibrationResult, MfmConfig, MfmRateIndex, MfmVolType, RateIndexCalibration,
-    SabrSwaptionVolCube, SwaptionVolCubeEnum,
+use pricer_models::{
+    market::{CurveEnum, YieldCurve},
+    markov_functional::{
+        cif_evaluator::{compute_cif_node_info, CifInstrument},
+        CalibratedSlice, FlatSwaptionVolCube, MarkovFunctionalNonParametric1F,
+        MfmCalibrationResult, MfmConfig, MfmRateIndex, MfmVolType, RateIndexCalibration,
+        SabrSwaptionVolCube, SwaptionVolCubeEnum,
+    },
 };
-use pricer_models::markov_functional::cif_evaluator::{
-    CifInstrument, compute_cif_node_info,
-};
-use pricer_models::market::{CurveEnum, YieldCurve};
 use pricer_pricing::tree::{
-    BermudanTreeConfig, BermudanTreeEngine, CouponInfo, ExerciseInfo,
-    GaussianTree, GaussianTreeConfig, TarnConfig, TarnCouponInfo, TarnExerciseInfo, TarnTreeEngine,
+    BermudanTreeConfig, BermudanTreeEngine, CouponInfo, ExerciseInfo, GaussianTree,
+    GaussianTreeConfig, TarnConfig, TarnCouponInfo, TarnExerciseInfo, TarnTreeEngine,
 };
 
 use crate::rest::dto::mfm::*;
@@ -53,12 +53,8 @@ impl MfmService {
         let vol_cube = Self::build_vol_cube(request)?;
 
         // Wrap curves as discount factor functions Fn(f64) -> f64
-        let funding_df = |t: f64| -> f64 {
-            funding_curve.discount_factor(t).unwrap_or(1.0)
-        };
-        let coupon_df = |t: f64| -> f64 {
-            coupon_curve.discount_factor(t).unwrap_or(1.0)
-        };
+        let funding_df = |t: f64| -> f64 { funding_curve.discount_factor(t).unwrap_or(1.0) };
+        let coupon_df = |t: f64| -> f64 { coupon_curve.discount_factor(t).unwrap_or(1.0) };
 
         let result = model
             .calibrate(&funding_df, &coupon_df, &vol_cube)
@@ -83,8 +79,7 @@ impl MfmService {
             num_grid_points: request.num_grid_points,
         };
 
-        let tree =
-            GaussianTree::build(config).map_err(|e| format!("Gaussian tree error: {e}"))?;
+        let tree = GaussianTree::build(config).map_err(|e| format!("Gaussian tree error: {e}"))?;
 
         let ad_prices = tree.arrow_debreu_prices();
 
@@ -317,13 +312,8 @@ impl MfmService {
 
         // 5. Price
         let redemption_value = 0.0;
-        let result = TarnTreeEngine::price(
-            &tree,
-            &tarn_config,
-            &coupons,
-            &exercises,
-            redemption_value,
-        );
+        let result =
+            TarnTreeEngine::price(&tree, &tarn_config, &coupons, &exercises, redemption_value);
 
         Ok(TarnPriceResponse {
             pv: result.pv,
@@ -348,9 +338,7 @@ impl MfmService {
 
     // ─── Helpers ────────────────────────────────────────────────────────
 
-    fn build_vol_cube(
-        request: &MfmCalibrateRequest,
-    ) -> Result<SwaptionVolCubeEnum<f64>, String> {
+    fn build_vol_cube(request: &MfmCalibrateRequest) -> Result<SwaptionVolCubeEnum<f64>, String> {
         match request.vol_surface_type {
             MfmVolSurfaceType::Flat => {
                 let vol_bp = request
@@ -364,10 +352,9 @@ impl MfmService {
                 Ok(SwaptionVolCubeEnum::Flat(cube))
             }
             MfmVolSurfaceType::Sabr => {
-                let sabr = request
-                    .sabr_vol
-                    .as_ref()
-                    .ok_or_else(|| "sabr_vol must be provided when vol_surface_type is sabr".to_string())?;
+                let sabr = request.sabr_vol.as_ref().ok_or_else(|| {
+                    "sabr_vol must be provided when vol_surface_type is sabr".to_string()
+                })?;
                 let cube = SabrSwaptionVolCube::new(
                     sabr.expiries.clone(),
                     sabr.tenors.clone(),
@@ -387,9 +374,7 @@ impl MfmService {
         start: Instant,
     ) -> MfmCalibrateResponse {
         MfmCalibrateResponse {
-            funding_calibration: Self::convert_rate_index_calibration(
-                &result.funding_calibration,
-            ),
+            funding_calibration: Self::convert_rate_index_calibration(&result.funding_calibration),
             coupon_swap_calibration: Self::convert_rate_index_calibration(
                 &result.coupon_swap_calibration,
             ),
@@ -406,9 +391,7 @@ impl MfmService {
         }
     }
 
-    fn convert_rate_index_calibration(
-        cal: &RateIndexCalibration<f64>,
-    ) -> RateIndexCalibrationDto {
+    fn convert_rate_index_calibration(cal: &RateIndexCalibration<f64>) -> RateIndexCalibrationDto {
         let rate_index = match cal.rate_index {
             MfmRateIndex::FundingIndexSwapRate => "FundingIndexSwapRate",
             MfmRateIndex::CouponIndexSwapRate => "CouponIndexSwapRate",
@@ -442,17 +425,105 @@ impl MfmService {
             display_name: "MFM Calibration".to_string(),
             description: "Calibrate 1F Non-Parametric Markov Functional Model".to_string(),
             parameters: vec![
-                Self::param("meanReversion", "Mean Reversion (a)", "number", true, Some(serde_json::json!(0.03)), None, Some("Model")),
-                Self::param("volatility", "Gaussian Vol (σ)", "number", true, Some(serde_json::json!(0.01)), None, Some("Model")),
-                Self::param("numGridPoints", "Grid Points", "number", false, Some(serde_json::json!(41)), Some("Odd number (e.g. 41)"), Some("Model")),
-                Self::param("numStdDevs", "Std Devs", "number", false, Some(serde_json::json!(5.0)), None, Some("Model")),
-                Self::param("volType", "Vol Type", "select", false, Some(serde_json::json!("normal")), None, Some("Model")),
-                Self::param("fundingRate", "Funding Rate", "number", true, Some(serde_json::json!(0.03)), Some("OIS flat rate"), Some("Curves")),
-                Self::param("couponRate", "Coupon Rate", "number", true, Some(serde_json::json!(0.035)), Some("Libor/EURIBOR flat rate"), Some("Curves")),
-                Self::param("normalVolBp", "Normal Vol (bp)", "number", true, Some(serde_json::json!(80.0)), Some("Swaption normal vol in bp"), Some("Vol")),
-                Self::param("numExercises", "Exercise Dates", "number", true, Some(serde_json::json!(5)), Some("Number of annual exercise dates"), Some("Schedule")),
-                Self::param("swapTenor", "Swap Tenor", "number", true, Some(serde_json::json!(5.0)), Some("Underlying swap tenor (years)"), Some("Schedule")),
-                Self::param("paymentFreq", "Payment Freq", "number", true, Some(serde_json::json!(0.5)), Some("Year fraction (0.5 = semi-annual)"), Some("Schedule")),
+                Self::param(
+                    "meanReversion",
+                    "Mean Reversion (a)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.03)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "volatility",
+                    "Gaussian Vol (σ)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.01)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "numGridPoints",
+                    "Grid Points",
+                    "number",
+                    false,
+                    Some(serde_json::json!(41)),
+                    Some("Odd number (e.g. 41)"),
+                    Some("Model"),
+                ),
+                Self::param(
+                    "numStdDevs",
+                    "Std Devs",
+                    "number",
+                    false,
+                    Some(serde_json::json!(5.0)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "volType",
+                    "Vol Type",
+                    "select",
+                    false,
+                    Some(serde_json::json!("normal")),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "fundingRate",
+                    "Funding Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.03)),
+                    Some("OIS flat rate"),
+                    Some("Curves"),
+                ),
+                Self::param(
+                    "couponRate",
+                    "Coupon Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.035)),
+                    Some("Libor/EURIBOR flat rate"),
+                    Some("Curves"),
+                ),
+                Self::param(
+                    "normalVolBp",
+                    "Normal Vol (bp)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(80.0)),
+                    Some("Swaption normal vol in bp"),
+                    Some("Vol"),
+                ),
+                Self::param(
+                    "numExercises",
+                    "Exercise Dates",
+                    "number",
+                    true,
+                    Some(serde_json::json!(5)),
+                    Some("Number of annual exercise dates"),
+                    Some("Schedule"),
+                ),
+                Self::param(
+                    "swapTenor",
+                    "Swap Tenor",
+                    "number",
+                    true,
+                    Some(serde_json::json!(5.0)),
+                    Some("Underlying swap tenor (years)"),
+                    Some("Schedule"),
+                ),
+                Self::param(
+                    "paymentFreq",
+                    "Payment Freq",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.5)),
+                    Some("Year fraction (0.5 = semi-annual)"),
+                    Some("Schedule"),
+                ),
             ],
         }
     }
@@ -463,12 +534,60 @@ impl MfmService {
             display_name: "Gaussian Tree".to_string(),
             description: "Build and visualise a Gaussian recombining trinomial tree".to_string(),
             parameters: vec![
-                Self::param("meanReversion", "Mean Reversion (a)", "number", true, Some(serde_json::json!(0.03)), None, Some("Tree")),
-                Self::param("volatility", "Gaussian Vol (σ)", "number", true, Some(serde_json::json!(0.01)), None, Some("Tree")),
-                Self::param("numGridPoints", "Grid Points", "number", false, Some(serde_json::json!(21)), None, Some("Tree")),
-                Self::param("numStdDevs", "Std Devs", "number", false, Some(serde_json::json!(4.0)), None, Some("Tree")),
-                Self::param("numSteps", "Time Steps", "number", true, Some(serde_json::json!(5)), Some("Number of time steps"), Some("Tree")),
-                Self::param("maturity", "Maturity (years)", "number", true, Some(serde_json::json!(5.0)), None, Some("Tree")),
+                Self::param(
+                    "meanReversion",
+                    "Mean Reversion (a)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.03)),
+                    None,
+                    Some("Tree"),
+                ),
+                Self::param(
+                    "volatility",
+                    "Gaussian Vol (σ)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.01)),
+                    None,
+                    Some("Tree"),
+                ),
+                Self::param(
+                    "numGridPoints",
+                    "Grid Points",
+                    "number",
+                    false,
+                    Some(serde_json::json!(21)),
+                    None,
+                    Some("Tree"),
+                ),
+                Self::param(
+                    "numStdDevs",
+                    "Std Devs",
+                    "number",
+                    false,
+                    Some(serde_json::json!(4.0)),
+                    None,
+                    Some("Tree"),
+                ),
+                Self::param(
+                    "numSteps",
+                    "Time Steps",
+                    "number",
+                    true,
+                    Some(serde_json::json!(5)),
+                    Some("Number of time steps"),
+                    Some("Tree"),
+                ),
+                Self::param(
+                    "maturity",
+                    "Maturity (years)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(5.0)),
+                    None,
+                    Some("Tree"),
+                ),
             ],
         }
     }
@@ -479,16 +598,96 @@ impl MfmService {
             display_name: "Bermudan Swaption".to_string(),
             description: "Price Bermudan swaption via MFM + backward induction".to_string(),
             parameters: vec![
-                Self::param("meanReversion", "Mean Reversion", "number", true, Some(serde_json::json!(0.03)), None, Some("Model")),
-                Self::param("volatility", "Gaussian Vol", "number", true, Some(serde_json::json!(0.01)), None, Some("Model")),
-                Self::param("numGridPoints", "Grid Points", "number", false, Some(serde_json::json!(41)), None, Some("Model")),
-                Self::param("fundingRate", "Funding Rate", "number", true, Some(serde_json::json!(0.03)), None, Some("Curves")),
-                Self::param("couponRate", "Coupon Rate", "number", true, Some(serde_json::json!(0.035)), None, Some("Curves")),
-                Self::param("normalVolBp", "Normal Vol (bp)", "number", true, Some(serde_json::json!(80.0)), None, Some("Vol")),
-                Self::param("numExercises", "Exercise Dates", "number", true, Some(serde_json::json!(5)), None, Some("Schedule")),
-                Self::param("swapTenor", "Swap Tenor", "number", true, Some(serde_json::json!(5.0)), None, Some("Schedule")),
-                Self::param("isCallable", "Callable", "boolean", false, Some(serde_json::json!(true)), None, Some("Exercise")),
-                Self::param("flatCoupon", "Flat Coupon", "number", false, Some(serde_json::json!(0.01)), Some("Flat coupon per period"), Some("Coupon")),
+                Self::param(
+                    "meanReversion",
+                    "Mean Reversion",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.03)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "volatility",
+                    "Gaussian Vol",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.01)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "numGridPoints",
+                    "Grid Points",
+                    "number",
+                    false,
+                    Some(serde_json::json!(41)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "fundingRate",
+                    "Funding Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.03)),
+                    None,
+                    Some("Curves"),
+                ),
+                Self::param(
+                    "couponRate",
+                    "Coupon Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.035)),
+                    None,
+                    Some("Curves"),
+                ),
+                Self::param(
+                    "normalVolBp",
+                    "Normal Vol (bp)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(80.0)),
+                    None,
+                    Some("Vol"),
+                ),
+                Self::param(
+                    "numExercises",
+                    "Exercise Dates",
+                    "number",
+                    true,
+                    Some(serde_json::json!(5)),
+                    None,
+                    Some("Schedule"),
+                ),
+                Self::param(
+                    "swapTenor",
+                    "Swap Tenor",
+                    "number",
+                    true,
+                    Some(serde_json::json!(5.0)),
+                    None,
+                    Some("Schedule"),
+                ),
+                Self::param(
+                    "isCallable",
+                    "Callable",
+                    "boolean",
+                    false,
+                    Some(serde_json::json!(true)),
+                    None,
+                    Some("Exercise"),
+                ),
+                Self::param(
+                    "flatCoupon",
+                    "Flat Coupon",
+                    "number",
+                    false,
+                    Some(serde_json::json!(0.01)),
+                    Some("Flat coupon per period"),
+                    Some("Coupon"),
+                ),
             ],
         }
     }
@@ -499,19 +698,123 @@ impl MfmService {
             display_name: "TARN".to_string(),
             description: "Target Accrual Redemption Note with 2D state space".to_string(),
             parameters: vec![
-                Self::param("meanReversion", "Mean Reversion", "number", true, Some(serde_json::json!(0.03)), None, Some("Model")),
-                Self::param("volatility", "Gaussian Vol", "number", true, Some(serde_json::json!(0.01)), None, Some("Model")),
-                Self::param("numGridPoints", "Grid Points", "number", false, Some(serde_json::json!(41)), None, Some("Model")),
-                Self::param("fundingRate", "Funding Rate", "number", true, Some(serde_json::json!(0.03)), None, Some("Curves")),
-                Self::param("couponRate", "Coupon Rate", "number", true, Some(serde_json::json!(0.035)), None, Some("Curves")),
-                Self::param("normalVolBp", "Normal Vol (bp)", "number", true, Some(serde_json::json!(80.0)), None, Some("Vol")),
-                Self::param("numExercises", "Exercise Dates", "number", true, Some(serde_json::json!(10)), None, Some("Schedule")),
-                Self::param("swapTenor", "Swap Tenor", "number", true, Some(serde_json::json!(5.0)), None, Some("Schedule")),
-                Self::param("tarnAmount", "TARN Amount", "number", true, Some(serde_json::json!(0.10)), Some("Target cumulative coupon"), Some("TARN")),
-                Self::param("numCouponGridPoints", "Coupon Grid", "number", false, Some(serde_json::json!(10)), None, Some("TARN")),
-                Self::param("excessCouponFlag", "Excess Coupon", "boolean", false, Some(serde_json::json!(false)), None, Some("TARN")),
-                Self::param("hasBermudanExercise", "Bermudan Exercise", "boolean", false, Some(serde_json::json!(false)), None, Some("TARN")),
-                Self::param("flatCoupon", "Flat Coupon", "number", false, Some(serde_json::json!(0.02)), None, Some("Coupon")),
+                Self::param(
+                    "meanReversion",
+                    "Mean Reversion",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.03)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "volatility",
+                    "Gaussian Vol",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.01)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "numGridPoints",
+                    "Grid Points",
+                    "number",
+                    false,
+                    Some(serde_json::json!(41)),
+                    None,
+                    Some("Model"),
+                ),
+                Self::param(
+                    "fundingRate",
+                    "Funding Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.03)),
+                    None,
+                    Some("Curves"),
+                ),
+                Self::param(
+                    "couponRate",
+                    "Coupon Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.035)),
+                    None,
+                    Some("Curves"),
+                ),
+                Self::param(
+                    "normalVolBp",
+                    "Normal Vol (bp)",
+                    "number",
+                    true,
+                    Some(serde_json::json!(80.0)),
+                    None,
+                    Some("Vol"),
+                ),
+                Self::param(
+                    "numExercises",
+                    "Exercise Dates",
+                    "number",
+                    true,
+                    Some(serde_json::json!(10)),
+                    None,
+                    Some("Schedule"),
+                ),
+                Self::param(
+                    "swapTenor",
+                    "Swap Tenor",
+                    "number",
+                    true,
+                    Some(serde_json::json!(5.0)),
+                    None,
+                    Some("Schedule"),
+                ),
+                Self::param(
+                    "tarnAmount",
+                    "TARN Amount",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.10)),
+                    Some("Target cumulative coupon"),
+                    Some("TARN"),
+                ),
+                Self::param(
+                    "numCouponGridPoints",
+                    "Coupon Grid",
+                    "number",
+                    false,
+                    Some(serde_json::json!(10)),
+                    None,
+                    Some("TARN"),
+                ),
+                Self::param(
+                    "excessCouponFlag",
+                    "Excess Coupon",
+                    "boolean",
+                    false,
+                    Some(serde_json::json!(false)),
+                    None,
+                    Some("TARN"),
+                ),
+                Self::param(
+                    "hasBermudanExercise",
+                    "Bermudan Exercise",
+                    "boolean",
+                    false,
+                    Some(serde_json::json!(false)),
+                    None,
+                    Some("TARN"),
+                ),
+                Self::param(
+                    "flatCoupon",
+                    "Flat Coupon",
+                    "number",
+                    false,
+                    Some(serde_json::json!(0.02)),
+                    None,
+                    Some("Coupon"),
+                ),
             ],
         }
     }
@@ -523,11 +826,51 @@ impl MfmService {
             description: "Callable Inverse Floater coupon decomposition (dE + dR + dI + dQ)"
                 .to_string(),
             parameters: vec![
-                Self::param("fixedRate", "Fixed Rate", "number", true, Some(serde_json::json!(0.07)), None, Some("CIF")),
-                Self::param("leverage", "Leverage", "number", true, Some(serde_json::json!(1.0)), None, Some("CIF")),
-                Self::param("floorRate", "Floor Rate", "number", true, Some(serde_json::json!(0.0)), None, Some("CIF")),
-                Self::param("capRate", "Cap Rate", "number", false, None, None, Some("CIF")),
-                Self::param("notional", "Notional", "number", true, Some(serde_json::json!(1000000.0)), None, Some("CIF")),
+                Self::param(
+                    "fixedRate",
+                    "Fixed Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.07)),
+                    None,
+                    Some("CIF"),
+                ),
+                Self::param(
+                    "leverage",
+                    "Leverage",
+                    "number",
+                    true,
+                    Some(serde_json::json!(1.0)),
+                    None,
+                    Some("CIF"),
+                ),
+                Self::param(
+                    "floorRate",
+                    "Floor Rate",
+                    "number",
+                    true,
+                    Some(serde_json::json!(0.0)),
+                    None,
+                    Some("CIF"),
+                ),
+                Self::param(
+                    "capRate",
+                    "Cap Rate",
+                    "number",
+                    false,
+                    None,
+                    None,
+                    Some("CIF"),
+                ),
+                Self::param(
+                    "notional",
+                    "Notional",
+                    "number",
+                    true,
+                    Some(serde_json::json!(1000000.0)),
+                    None,
+                    Some("CIF"),
+                ),
             ],
         }
     }

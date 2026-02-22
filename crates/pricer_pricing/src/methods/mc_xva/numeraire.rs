@@ -113,8 +113,9 @@ impl NumeraireRatios {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_new_initialized_to_one() {
@@ -133,8 +134,8 @@ mod tests {
     fn test_compute_from_discount_paths() {
         // Two time steps, three paths.
         let discount_paths = vec![
-            vec![0.99, 0.98, 0.97],  // t=0
-            vec![0.96, 0.95, 0.94],  // t=1
+            vec![0.99, 0.98, 0.97], // t=0
+            vec![0.96, 0.95, 0.94], // t=1
         ];
 
         let nr = NumeraireRatios::compute_from_discount_paths(&discount_paths);

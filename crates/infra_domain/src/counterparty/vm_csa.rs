@@ -1,22 +1,22 @@
 //! VM-CSA (Variation Margin Credit Support Annex) with asymmetric terms.
 //!
 //! Models bilateral CSA agreements where self and counterparty have different
-//! thresholds, minimum transfer amounts, haircuts, and PV-linked initial margins.
+//! thresholds, minimum transfer amounts, haircuts, and PV-linked initial
+//! margins.
 
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
 use bon::Builder;
 
-use super::csa::CallFrequency;
-use super::CounterPartyError;
+use super::{csa::CallFrequency, CounterPartyError};
 use crate::market::Currency;
 
 /// Asymmetric VM-CSA terms for bilateral collateral agreements.
 ///
 /// Unlike [`super::CsaTerms`] which uses symmetric parameters, `VmCsa` models
-/// real-world CSAs where each party may have different thresholds, MTAs, haircuts,
-/// and PV-linked initial margin schedules.
+/// real-world CSAs where each party may have different thresholds, MTAs,
+/// haircuts, and PV-linked initial margin schedules.
 ///
 /// # PV-Linked Initial Margin
 ///
@@ -138,15 +138,18 @@ impl VmCsa {
 
     /// Computes the collateral value for a given PV and posting direction.
     ///
-    /// When `is_self_posting` is `true`, self posts collateral (self is the poster).
-    /// Self posts when PV < 0 (we owe counterparty), using self's parameters.
+    /// When `is_self_posting` is `true`, self posts collateral (self is the
+    /// poster). Self posts when PV < 0 (we owe counterparty), using self's
+    /// parameters.
     ///
     /// When `is_self_posting` is `false`, counterparty posts collateral.
-    /// Counterparty posts when PV > 0 (counterparty owes us), using counterparty's parameters.
+    /// Counterparty posts when PV > 0 (counterparty owes us), using
+    /// counterparty's parameters.
     ///
     /// The calculation is:
     /// 1. Determine the unsigned exposure = |PV|
-    /// 2. Subtract the poster's threshold and IA: net = max(exposure - threshold - IA, 0)
+    /// 2. Subtract the poster's threshold and IA: net = max(exposure -
+    ///    threshold - IA, 0)
     /// 3. Apply haircut: collateral = net * (1 - haircut)
     /// 4. Apply MTA filter: if collateral < MTA, return 0
     pub fn collateral_value(&self, pv: f64, is_self_posting: bool) -> f64 {
@@ -483,20 +486,28 @@ mod tests {
 
     #[test]
     fn test_call_frequency_days() {
-        let daily = VmCsa::builder().call_frequency(CallFrequency::Daily).build();
+        let daily = VmCsa::builder()
+            .call_frequency(CallFrequency::Daily)
+            .build();
         assert!((daily.call_frequency_days() - 1.0).abs() < f64::EPSILON);
 
-        let weekly = VmCsa::builder().call_frequency(CallFrequency::Weekly).build();
+        let weekly = VmCsa::builder()
+            .call_frequency(CallFrequency::Weekly)
+            .build();
         assert!((weekly.call_frequency_days() - 5.0).abs() < f64::EPSILON);
 
-        let monthly = VmCsa::builder().call_frequency(CallFrequency::Monthly).build();
+        let monthly = VmCsa::builder()
+            .call_frequency(CallFrequency::Monthly)
+            .build();
         assert!((monthly.call_frequency_days() - 20.0).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_mpor_scaling_short_horizon() {
         // days_from_val_date < call_freq_days -> scaling = sqrt(days / days) = 1.0
-        let csa = VmCsa::builder().call_frequency(CallFrequency::Weekly).build();
+        let csa = VmCsa::builder()
+            .call_frequency(CallFrequency::Weekly)
+            .build();
         let s = csa.mpor_scaling(3.0);
         // min(5, 3) / 3 = 1.0 -> sqrt(1.0) = 1.0
         assert!((s - 1.0).abs() < f64::EPSILON);
@@ -505,7 +516,9 @@ mod tests {
     #[test]
     fn test_mpor_scaling_long_horizon() {
         // days_from_val_date > call_freq_days -> scaling = sqrt(call_freq / days)
-        let csa = VmCsa::builder().call_frequency(CallFrequency::Weekly).build();
+        let csa = VmCsa::builder()
+            .call_frequency(CallFrequency::Weekly)
+            .build();
         let s = csa.mpor_scaling(20.0);
         // min(5, 20) / 20 = 0.25 -> sqrt(0.25) = 0.5
         assert!((s - 0.5).abs() < f64::EPSILON);
@@ -513,7 +526,9 @@ mod tests {
 
     #[test]
     fn test_mpor_scaling_exact_call_frequency() {
-        let csa = VmCsa::builder().call_frequency(CallFrequency::Weekly).build();
+        let csa = VmCsa::builder()
+            .call_frequency(CallFrequency::Weekly)
+            .build();
         let s = csa.mpor_scaling(5.0);
         // min(5, 5) / 5 = 1.0 -> sqrt(1.0) = 1.0
         assert!((s - 1.0).abs() < f64::EPSILON);

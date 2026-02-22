@@ -190,6 +190,15 @@ pub struct DemoPricingRequest {
     pub mc_config: Option<DemoModelConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tree_config: Option<DemoTreeConfig>,
+    /// Instrument type identifier (e.g. "CommodityVanillaOption") — when
+    /// present, the backend creates the actual domain trade (not a generic
+    /// Swap) so that the Pricer dispatches to the correct pricing path.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instrument_type: Option<String>,
+    /// Instrument-specific parameters (JSON object matching the
+    /// `TradeExpandRequest.params` schema).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instrument_params: Option<serde_json::Value>,
 }
 
 /// Pricing leg.

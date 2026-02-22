@@ -14,7 +14,8 @@ pub struct XvaSimulationRequest {
     pub n_paths: Option<usize>,
     /// Time horizon in years (default: 5.0).
     pub horizon_years: Option<f64>,
-    /// Time step frequency: "quarterly", "monthly", "semi-annual" (default: "quarterly").
+    /// Time step frequency: "quarterly", "monthly", "semi-annual" (default:
+    /// "quarterly").
     pub time_step: Option<String>,
     /// Random seed for reproducibility.
     pub seed: Option<u64>,

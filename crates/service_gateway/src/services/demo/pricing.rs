@@ -28,7 +28,7 @@ use infra_domain::{
         OptionType, Payoff, SettlementType, Trade, TradeType,
     },
 };
-use pricer_models::market::{CurveEnum, CurveName};
+use pricer_models::market::{ConvenienceYieldParams, CurveEnum, CurveName, VolSurfaceEnum};
 use pricer_pricing::{
     pricer::GreeksMode, CalcSetting, MarketEnvironment, MarketEnvironmentBuilder,
     MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting, TreeType,
@@ -317,23 +317,81 @@ fn build_calc_setting(request: &DemoPricingRequest) -> Result<CalcSetting, Serve
 }
 
 /// Build unified `Pricer` inputs from a `DemoPricingRequest`.
+///
+/// When `instrument_type` is present, the backend creates the actual domain
+/// trade (CommodityOption, CommodityAsianOption, etc.) and populates the
+/// market environment with the required commodity market data.
 fn build_pricer_inputs(
     request: &DemoPricingRequest,
 ) -> Result<(Trade, MarketEnvironment, CalcSetting), ServerError> {
     let valuation_date = parse_date(&request.valuation_date)?;
     let reporting_currency = parse_currency(&request.reporting_currency)?;
 
-    let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
-    let trade = Trade::new("DEMO-TRADE", domain_legs, TradeType::Swap);
-    let market = build_market_env(
-        valuation_date,
-        reporting_currency,
-        &request.legs,
-        DEFAULT_DISCOUNT_RATE,
-    )?;
-    let calc = build_calc_setting(request)?;
+    // When an instrument_type is provided, build the real domain trade
+    // rather than a generic Swap so the Pricer dispatches correctly.
+    let is_commodity_instrument = request
+        .instrument_type
+        .as_deref()
+        .is_some_and(|t| t.starts_with("Commodity") || t == "SpreadOption");
 
-    Ok((trade, market, calc))
+    if is_commodity_instrument {
+        let instrument_type = request.instrument_type.as_deref().unwrap();
+        let params = request
+            .instrument_params
+            .as_ref()
+            .cloned()
+            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+        let (trade, _label) = build_domain_trade(instrument_type, &params)?;
+
+        // Extract commodity type from params for market data defaults.
+        let commodity_type_str = params
+            .get("commodityType")
+            .and_then(|v| v.as_str())
+            .unwrap_or("CrudeOil");
+        let (spot, vol, cy_params) = commodity_market_defaults(commodity_type_str);
+
+        // Allow user overrides from instrument params.
+        let spot = params
+            .get("spotPrice")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(spot);
+        let vol = params
+            .get("spotVol")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(vol);
+
+        // Build commodity key matching the CommodityType::Display format
+        // used by the instrument expander (e.g. "Energy:CrudeOil").
+        let (commodity_key, _, _) = parse_commodity_type(Some(commodity_type_str));
+        let commodity_name = commodity_key.to_string();
+
+        let vol_surface = VolSurfaceEnum::flat(vol).map_err(|e| {
+            ServerError::Internal(format!("Failed to build flat vol surface: {e}"))
+        })?;
+        let vol_key = format!("CMDTY:{}", commodity_name);
+
+        let market = MarketEnvironmentBuilder::new(valuation_date)
+            .with_discount_curve(reporting_currency, CurveEnum::flat(DEFAULT_DISCOUNT_RATE))
+            .with_spot_price(&commodity_name, spot)
+            .with_vol_surface(vol_key, vol_surface)
+            .with_convenience_yield(&commodity_name, cy_params)
+            .build();
+
+        let calc = build_calc_setting(request)?;
+        Ok((trade, market, calc))
+    } else {
+        // Default path: generic Swap via cashflow discounting.
+        let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
+        let trade = Trade::new("DEMO-TRADE", domain_legs, TradeType::Swap);
+        let market = build_market_env(
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE,
+        )?;
+        let calc = build_calc_setting(request)?;
+        Ok((trade, market, calc))
+    }
 }
 
 /// Price a trade with a specific discount rate (used for bump-and-revalue).
@@ -695,6 +753,105 @@ fn parse_commodity_type(s: Option<&str>) -> (CommodityType, QuantityUnit, String
             CommodityType::Energy(EnergyType::CrudeOil),
             QuantityUnit::Barrels,
             "Cushing, OK".to_string(),
+        ),
+    }
+}
+
+/// Returns `(spot_price, flat_vol, ConvenienceYieldParams)` for a commodity.
+///
+/// Provides sensible demo defaults so that the pricing engine has all
+/// required market data for the Gibson-Schwartz CY-adjusted forward and MC
+/// simulation.
+fn commodity_market_defaults(commodity_type: &str) -> (f64, f64, ConvenienceYieldParams) {
+    match commodity_type {
+        "CrudeOil" => (
+            75.0,
+            0.30,
+            ConvenienceYieldParams {
+                initial_cy: 0.05,
+                mean_reversion: 1.0,
+                cy_vol: 0.10,
+                cy_long_term_mean: 0.05,
+                rho_spot_cy: 0.3,
+            },
+        ),
+        "NaturalGas" => (
+            3.50,
+            0.40,
+            ConvenienceYieldParams {
+                initial_cy: 0.08,
+                mean_reversion: 2.0,
+                cy_vol: 0.20,
+                cy_long_term_mean: 0.06,
+                rho_spot_cy: 0.4,
+            },
+        ),
+        "Gold" => (
+            2000.0,
+            0.15,
+            ConvenienceYieldParams {
+                initial_cy: 0.01,
+                mean_reversion: 0.5,
+                cy_vol: 0.03,
+                cy_long_term_mean: 0.01,
+                rho_spot_cy: 0.1,
+            },
+        ),
+        "Silver" => (
+            25.0,
+            0.25,
+            ConvenienceYieldParams {
+                initial_cy: 0.02,
+                mean_reversion: 0.5,
+                cy_vol: 0.05,
+                cy_long_term_mean: 0.02,
+                rho_spot_cy: 0.15,
+            },
+        ),
+        "Copper" => (
+            8500.0,
+            0.25,
+            ConvenienceYieldParams {
+                initial_cy: 0.04,
+                mean_reversion: 1.0,
+                cy_vol: 0.08,
+                cy_long_term_mean: 0.04,
+                rho_spot_cy: 0.25,
+            },
+        ),
+        "Wheat" => (
+            6.50,
+            0.30,
+            ConvenienceYieldParams {
+                initial_cy: 0.06,
+                mean_reversion: 1.5,
+                cy_vol: 0.12,
+                cy_long_term_mean: 0.05,
+                rho_spot_cy: 0.3,
+            },
+        ),
+        "Corn" => (
+            4.50,
+            0.28,
+            ConvenienceYieldParams {
+                initial_cy: 0.05,
+                mean_reversion: 1.5,
+                cy_vol: 0.10,
+                cy_long_term_mean: 0.04,
+                rho_spot_cy: 0.3,
+            },
+        ),
+        // Fallback to Crude Oil
+        _ => (
+            75.0,
+            0.30,
+            ConvenienceYieldParams {
+                initial_cy: 0.05,
+                mean_reversion: 1.0,
+                cy_vol: 0.10,
+                cy_long_term_mean: 0.05,
+                rho_spot_cy: 0.3,
+            },
         ),
     }
 }

@@ -106,7 +106,7 @@ export function usePricer() {
       ? { numSteps: store.treeNumSteps, treeType: store.treeType }
       : null;
 
-    return {
+    const request: PricingRequest = {
       valuationDate: store.valuationDate,
       reportingCurrency: store.reportingCcy,
       legs,
@@ -115,6 +115,15 @@ export function usePricer() {
       mcConfig,
       treeConfig,
     };
+
+    // Pass instrument context so the backend can build commodity market data
+    // and create the proper domain trade type (instead of generic Swap).
+    if (store.selectedInstrumentId) {
+      request.instrumentType = store.selectedInstrumentId;
+      request.instrumentParams = { type: store.selectedInstrumentId, ...store.instrumentParams };
+    }
+
+    return request;
   }
 
   /**

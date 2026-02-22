@@ -98,8 +98,9 @@ impl XvaRiskIndicators {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_new_risk_indicators() {
@@ -174,10 +175,8 @@ mod tests {
         ri.epe = vec![1.0, 2.0];
         ri.ene = vec![0.5, 1.5];
         ri.ecb = vec![0.1, 0.2];
-        ri.pfe
-            .insert("95.0".to_string(), vec![3.0, 4.0]);
-        ri.pfe
-            .insert("99.0".to_string(), vec![5.0, 6.0]);
+        ri.pfe.insert("95.0".to_string(), vec![3.0, 4.0]);
+        ri.pfe.insert("99.0".to_string(), vec![5.0, 6.0]);
 
         let mut buf = Vec::new();
         ri.to_csv(&mut buf).unwrap();
@@ -245,9 +244,11 @@ mod tests {
 
         let pfe = XvaRiskIndicators::compute_pfe(&values, 0.90);
         assert_eq!(pfe.len(), 2);
-        // First time: 90th percentile of [1..10], index = ceil(0.9*10)-1 = 8, value = 9.0
+        // First time: 90th percentile of [1..10], index = ceil(0.9*10)-1 = 8, value =
+        // 9.0
         assert_relative_eq!(pfe[0], 9.0, epsilon = 1e-10);
-        // Second time: 90th percentile of [11..20], index = ceil(0.9*10)-1 = 8, value = 19.0
+        // Second time: 90th percentile of [11..20], index = ceil(0.9*10)-1 = 8, value =
+        // 19.0
         assert_relative_eq!(pfe[1], 19.0, epsilon = 1e-10);
     }
 }

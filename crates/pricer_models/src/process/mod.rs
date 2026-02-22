@@ -97,7 +97,11 @@ pub mod cir;
 
 pub mod correlated;
 
+pub mod hw1f_analytical;
+
 pub mod jarrow_yildirim;
+
+pub mod gibson_schwartz;
 
 // === Re-exports ===
 
@@ -105,6 +109,10 @@ pub use cir::{CIRModel, CIRParams};
 pub use correlated::{CholeskyFactor, CorrelatedModels, CorrelationError, CorrelationMatrix};
 pub use error::ModelError;
 pub use gbm::{GBMModel, GBMParams};
+pub use gibson_schwartz::{
+    analytical_log_spot_variance, commodity_forward_curve, CommodityAnalyticalPricer,
+    GibsonSchwartzError, GibsonSchwartzModel, GibsonSchwartzParams,
+};
 pub use heston::{HestonError, HestonModel, HestonParams};
 pub use hull_white::{HullWhiteModel, HullWhiteParams, ThetaFunction};
 pub use jarrow_yildirim::{
@@ -112,6 +120,6 @@ pub use jarrow_yildirim::{
 };
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
 pub use stochastic::{
-    EquityModel, FxModel, HybridModel, RatesModel, SingleState, StochasticModel, StochasticState,
-    ThreeFactorState, TwoFactorState,
+    CommodityModel, EquityModel, FxModel, HybridModel, RatesModel, SingleState, StochasticModel,
+    StochasticState, ThreeFactorState, TwoFactorState,
 };

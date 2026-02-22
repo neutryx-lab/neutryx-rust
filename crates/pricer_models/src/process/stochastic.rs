@@ -227,6 +227,9 @@ impl<T: Float + Default> StochasticState<T> for ThreeFactorState<T> {
     fn to_array(&self) -> Vec<T> { vec![self.first, self.second, self.third] }
 }
 
+/// Marker trait for commodity models (e.g., Gibson-Schwartz).
+pub trait CommodityModel<T: Float>: StochasticModel<T> {}
+
 /// Marker trait for hybrid/exotic models.
 pub trait HybridModel {}
 

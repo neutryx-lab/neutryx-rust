@@ -35,14 +35,10 @@ impl XvaEngineConfig {
     /// - `bilateral`: true
     /// - `compute_fva`: true
     /// - `compute_ecb`: true
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Returns a builder for constructing an `XvaEngineConfig`.
-    pub fn builder() -> XvaEngineConfigBuilder {
-        XvaEngineConfigBuilder::default()
-    }
+    pub fn builder() -> XvaEngineConfigBuilder { XvaEngineConfigBuilder::default() }
 
     /// Validates the configuration.
     pub fn validate(&self) -> Result<(), XvaEngineError> {

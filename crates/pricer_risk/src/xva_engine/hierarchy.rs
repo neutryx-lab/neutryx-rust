@@ -2,7 +2,8 @@
 //!
 //! The XVA hierarchy models the real-world legal structure:
 //! - **Counterparty** (top level): the legal entity we trade with
-//! - **ISDA Master Agreement** (middle): netting agreement governing multiple trades
+//! - **ISDA Master Agreement** (middle): netting agreement governing multiple
+//!   trades
 //! - **VM CSA** (bottom): collateral agreement under a specific ISDA
 //!
 //! Trades may also exist outside any ISDA ("no-doc" trades, fully fenced) or
@@ -44,9 +45,7 @@ impl XvaHierarchy {
     }
 
     /// Returns the number of counterparties in the hierarchy.
-    pub fn counterparty_count(&self) -> usize {
-        self.counterparties.len()
-    }
+    pub fn counterparty_count(&self) -> usize { self.counterparties.len() }
 
     /// Collects all trade IDs across the entire hierarchy.
     pub fn all_trade_ids(&self) -> Vec<&TradeId> {
@@ -66,9 +65,7 @@ impl XvaHierarchy {
 }
 
 impl Default for XvaHierarchy {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// A counterparty node in the XVA hierarchy.
@@ -96,34 +93,22 @@ impl XvaCounterparty {
     }
 
     /// Returns the counterparty ID.
-    pub fn id(&self) -> &CounterpartyId {
-        &self.id
-    }
+    pub fn id(&self) -> &CounterpartyId { &self.id }
 
     /// Returns the credit parameters.
-    pub fn credit_params(&self) -> &CreditParams {
-        &self.credit_params
-    }
+    pub fn credit_params(&self) -> &CreditParams { &self.credit_params }
 
     /// Returns the ISDA agreements.
-    pub fn isda_agreements(&self) -> &[IsdaAgreement] {
-        &self.isda_agreements
-    }
+    pub fn isda_agreements(&self) -> &[IsdaAgreement] { &self.isda_agreements }
 
     /// Returns the no-doc trade IDs.
-    pub fn no_doc_trade_ids(&self) -> &[TradeId] {
-        &self.no_doc_trade_ids
-    }
+    pub fn no_doc_trade_ids(&self) -> &[TradeId] { &self.no_doc_trade_ids }
 
     /// Adds an ISDA Master Agreement.
-    pub fn add_isda(&mut self, isda: IsdaAgreement) {
-        self.isda_agreements.push(isda);
-    }
+    pub fn add_isda(&mut self, isda: IsdaAgreement) { self.isda_agreements.push(isda); }
 
     /// Adds a no-doc trade (not under any ISDA).
-    pub fn add_no_doc_trade(&mut self, trade_id: TradeId) {
-        self.no_doc_trade_ids.push(trade_id);
-    }
+    pub fn add_no_doc_trade(&mut self, trade_id: TradeId) { self.no_doc_trade_ids.push(trade_id); }
 }
 
 /// An ISDA Master Agreement node in the XVA hierarchy.
@@ -152,24 +137,16 @@ impl IsdaAgreement {
     }
 
     /// Returns the netting set ID.
-    pub fn id(&self) -> &NettingSetId {
-        &self.id
-    }
+    pub fn id(&self) -> &NettingSetId { &self.id }
 
     /// Returns the VM CSA nodes.
-    pub fn vm_csas(&self) -> &[VmCsaNode] {
-        &self.vm_csas
-    }
+    pub fn vm_csas(&self) -> &[VmCsaNode] { &self.vm_csas }
 
     /// Returns the non-CSA trade IDs.
-    pub fn non_csa_trade_ids(&self) -> &[TradeId] {
-        &self.non_csa_trade_ids
-    }
+    pub fn non_csa_trade_ids(&self) -> &[TradeId] { &self.non_csa_trade_ids }
 
     /// Adds a VM CSA node under this ISDA.
-    pub fn add_vm_csa(&mut self, vm_csa: VmCsaNode) {
-        self.vm_csas.push(vm_csa);
-    }
+    pub fn add_vm_csa(&mut self, vm_csa: VmCsaNode) { self.vm_csas.push(vm_csa); }
 
     /// Adds a trade that is under this ISDA but not covered by any CSA.
     pub fn add_non_csa_trade(&mut self, trade_id: TradeId) {
@@ -216,24 +193,16 @@ impl VmCsaNode {
     }
 
     /// Returns the CSA ID.
-    pub fn csa_id(&self) -> &str {
-        &self.csa_id
-    }
+    pub fn csa_id(&self) -> &str { &self.csa_id }
 
     /// Returns the VM CSA terms.
-    pub fn vm_csa(&self) -> &VmCsa {
-        &self.vm_csa
-    }
+    pub fn vm_csa(&self) -> &VmCsa { &self.vm_csa }
 
     /// Returns the trade IDs.
-    pub fn trade_ids(&self) -> &[TradeId] {
-        &self.trade_ids
-    }
+    pub fn trade_ids(&self) -> &[TradeId] { &self.trade_ids }
 
     /// Adds a trade to this CSA node.
-    pub fn add_trade(&mut self, trade_id: TradeId) {
-        self.trade_ids.push(trade_id);
-    }
+    pub fn add_trade(&mut self, trade_id: TradeId) { self.trade_ids.push(trade_id); }
 }
 
 /// Pre-computed exposure paths from external systems.
@@ -257,9 +226,7 @@ impl OtherExposurePaths {
     }
 
     /// Gets the exposure value at a specific time and path index.
-    pub fn get(&self, time_idx: usize, path_idx: usize) -> f64 {
-        self.paths[time_idx][path_idx]
-    }
+    pub fn get(&self, time_idx: usize, path_idx: usize) -> f64 { self.paths[time_idx][path_idx] }
 
     /// Sets the exposure value at a specific time and path index.
     pub fn set(&mut self, time_idx: usize, path_idx: usize, value: f64) {
@@ -280,9 +247,7 @@ impl OtherExposurePaths {
     }
 
     /// Returns the number of time points.
-    pub fn n_times(&self) -> usize {
-        self.paths.len()
-    }
+    pub fn n_times(&self) -> usize { self.paths.len() }
 
     /// Returns the number of paths.
     pub fn n_paths(&self) -> usize {
@@ -298,13 +263,9 @@ impl OtherExposurePaths {
 mod tests {
     use super::*;
 
-    fn make_credit_params() -> CreditParams {
-        CreditParams::new(0.02, 0.4).unwrap()
-    }
+    fn make_credit_params() -> CreditParams { CreditParams::new(0.02, 0.4).unwrap() }
 
-    fn make_vm_csa() -> VmCsa {
-        VmCsa::builder().build()
-    }
+    fn make_vm_csa() -> VmCsa { VmCsa::builder().build() }
 
     #[test]
     fn test_simple_hierarchy() {
@@ -325,7 +286,10 @@ mod tests {
         let cp_ref = hierarchy.counterparty(&CounterpartyId::new("CP1")).unwrap();
         assert_eq!(cp_ref.isda_agreements().len(), 1);
         assert_eq!(cp_ref.isda_agreements()[0].vm_csas().len(), 1);
-        assert_eq!(cp_ref.isda_agreements()[0].vm_csas()[0].trade_ids().len(), 2);
+        assert_eq!(
+            cp_ref.isda_agreements()[0].vm_csas()[0].trade_ids().len(),
+            2
+        );
 
         let all_ids = hierarchy.all_trade_ids();
         assert_eq!(all_ids.len(), 2);
@@ -343,10 +307,7 @@ mod tests {
             for isda_idx in 0..2 {
                 let ns_id = NettingSetId::new(&format!("NS_{}_{}", cp_idx, isda_idx));
                 let mut isda = IsdaAgreement::new(ns_id);
-                let mut csa = VmCsaNode::new(
-                    format!("CSA_{}_{}",cp_idx, isda_idx),
-                    make_vm_csa(),
-                );
+                let mut csa = VmCsaNode::new(format!("CSA_{}_{}", cp_idx, isda_idx), make_vm_csa());
                 csa.add_trade(TradeId::new(&format!("T_{}_{}", cp_idx, isda_idx)));
                 isda.add_vm_csa(csa);
                 cp.add_isda(isda);

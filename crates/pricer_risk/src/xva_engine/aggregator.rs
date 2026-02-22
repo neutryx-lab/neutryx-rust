@@ -13,15 +13,14 @@ use super::hierarchy::OtherExposurePaths;
 pub struct ExposureAggregator;
 
 impl ExposureAggregator {
-    /// Computes the Expected Positive Exposure profile with numeraire weighting.
+    /// Computes the Expected Positive Exposure profile with numeraire
+    /// weighting.
     ///
-    /// EPE[t] = mean over paths of max(values[t][p], 0) * numeraire_ratios[t][p]
+    /// EPE[t] = mean over paths of max(values[t][p], 0) *
+    /// numeraire_ratios[t][p]
     ///
     /// `values` and `numeraire_ratios` are indexed as [time_idx][path_idx].
-    pub fn compute_epe_weighted(
-        values: &[Vec<f64>],
-        numeraire_ratios: &[Vec<f64>],
-    ) -> Vec<f64> {
+    pub fn compute_epe_weighted(values: &[Vec<f64>], numeraire_ratios: &[Vec<f64>]) -> Vec<f64> {
         values
             .iter()
             .zip(numeraire_ratios.iter())
@@ -40,15 +39,14 @@ impl ExposureAggregator {
             .collect()
     }
 
-    /// Computes the Expected Negative Exposure profile with numeraire weighting.
+    /// Computes the Expected Negative Exposure profile with numeraire
+    /// weighting.
     ///
-    /// ENE[t] = mean over paths of max(-values[t][p], 0) * numeraire_ratios[t][p]
+    /// ENE[t] = mean over paths of max(-values[t][p], 0) *
+    /// numeraire_ratios[t][p]
     ///
     /// `values` and `numeraire_ratios` are indexed as [time_idx][path_idx].
-    pub fn compute_ene_weighted(
-        values: &[Vec<f64>],
-        numeraire_ratios: &[Vec<f64>],
-    ) -> Vec<f64> {
+    pub fn compute_ene_weighted(values: &[Vec<f64>], numeraire_ratios: &[Vec<f64>]) -> Vec<f64> {
         values
             .iter()
             .zip(numeraire_ratios.iter())
@@ -142,8 +140,9 @@ impl ExposureAggregator {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_epe_simple() {
@@ -163,10 +162,7 @@ mod tests {
 
     #[test]
     fn test_ene_simple() {
-        let values = vec![
-            vec![1.0, -2.0, 3.0, -4.0],
-            vec![5.0, -1.0, 2.0, -3.0],
-        ];
+        let values = vec![vec![1.0, -2.0, 3.0, -4.0], vec![5.0, -1.0, 2.0, -3.0]];
 
         let ene = ExposureAggregator::compute_ene(&values);
         assert_eq!(ene.len(), 2);
@@ -178,10 +174,7 @@ mod tests {
 
     #[test]
     fn test_flat_numeraire_matches_unweighted() {
-        let values = vec![
-            vec![1.0, -2.0, 3.0, -4.0],
-            vec![5.0, -1.0, 2.0, -3.0],
-        ];
+        let values = vec![vec![1.0, -2.0, 3.0, -4.0], vec![5.0, -1.0, 2.0, -3.0]];
         // Flat numeraire = 1.0 everywhere
         let numeraire = vec![vec![1.0; 4]; 2];
 
@@ -215,7 +208,7 @@ mod tests {
     fn test_net_exposures() {
         // 2 trades, 2 time points, 3 paths
         let trade_values = vec![
-            vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]],  // trade 0
+            vec![vec![1.0, 2.0, 3.0], vec![4.0, 5.0, 6.0]], // trade 0
             vec![vec![-1.0, -1.0, -1.0], vec![1.0, 1.0, 1.0]], // trade 1
         ];
 

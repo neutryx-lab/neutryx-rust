@@ -5,15 +5,17 @@ mod calibration;
 mod config;
 mod error;
 mod hierarchy;
+pub mod incremental;
+pub mod model_coupler;
 mod risk_indicators;
 mod simulator;
 
 pub use aggregator::ExposureAggregator;
-pub use calibration::{CalibrationDag, CalibrationEntry, CalibrationSolver, GlobalCalibrationTable};
+pub use calibration::{
+    CalibrationDag, CalibrationEntry, CalibrationSolver, GlobalCalibrationTable,
+};
 pub use config::XvaEngineConfig;
 pub use error::XvaEngineError;
-pub use hierarchy::{
-    IsdaAgreement, OtherExposurePaths, VmCsaNode, XvaCounterparty, XvaHierarchy,
-};
+pub use hierarchy::{IsdaAgreement, OtherExposurePaths, VmCsaNode, XvaCounterparty, XvaHierarchy};
 pub use risk_indicators::XvaRiskIndicators;
 pub use simulator::{XvaSimulationResult, XvaSimulator};

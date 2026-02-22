@@ -30,6 +30,7 @@ use pricer_core::math::formulas::{
 use pricer_models::{
     compiler::{ExoticCompiler, IndexMapper, ScriptProduct},
     market::{curves::YieldCurve, CurveEnum, CurveSet, MarketDataError, MarketEnvironment},
+    payoff::PayoffKind,
 };
 
 use super::{
@@ -261,8 +262,25 @@ impl Pricer {
         calc: &CalcSetting,
     ) -> Result<PricingResult, PricingError> {
         let params = Self::extract_option_params(trade, market, calc)?;
-        let (mut mc, gbm, payoff, df) = Self::build_mc_context(&params, calc)?;
-        let mc_result = mc.price_european(gbm, payoff, df);
+        let (mut mc, gbm, _payoff, df) = Self::build_mc_context(&params, calc)?;
+
+        let is_asian = matches!(trade.trade_type, TradeType::CommodityAsianOption { .. });
+
+        let mc_result = if is_asian {
+            let asian_payoff = if params.is_call {
+                PayoffKind::asian_arithmetic_call(params.strike, 1e-6)
+            } else {
+                PayoffKind::asian_arithmetic_put(params.strike, 1e-6)
+            };
+            mc.price_path_dependent(gbm, asian_payoff, df)
+        } else {
+            let payoff = if params.is_call {
+                PayoffParams::call(params.strike)
+            } else {
+                PayoffParams::put(params.strike)
+            };
+            mc.price_european(gbm, payoff, df)
+        };
 
         let pv = mc_result.price * params.multiplier;
         let std_error = mc_result.std_error * params.multiplier;
@@ -290,24 +308,56 @@ impl Pricer {
         start: Instant,
     ) -> Result<UnifiedPricingResult, PricingError> {
         let params = Self::extract_option_params(trade, market, calc)?;
-        let (mut mc, gbm, payoff, df) = Self::build_mc_context(&params, calc)?;
+        let (mut mc, gbm, _payoff, df) = Self::build_mc_context(&params, calc)?;
         let num_paths = mc.config().n_paths();
 
-        let mc_result = if calc.compute_greeks {
-            mc.price_with_greeks(
-                gbm,
-                payoff,
-                df,
-                &[
-                    Greek::Delta,
-                    Greek::Gamma,
-                    Greek::Vega,
-                    Greek::Theta,
-                    Greek::Rho,
-                ],
-            )
+        // Determine if this is a path-dependent trade (e.g. CommodityAsianOption).
+        let is_asian = matches!(trade.trade_type, TradeType::CommodityAsianOption { .. });
+
+        let mc_result = if is_asian {
+            let asian_payoff = if params.is_call {
+                PayoffKind::asian_arithmetic_call(params.strike, 1e-6)
+            } else {
+                PayoffKind::asian_arithmetic_put(params.strike, 1e-6)
+            };
+            if calc.compute_greeks {
+                mc.price_path_dependent_with_greeks(
+                    gbm,
+                    asian_payoff,
+                    df,
+                    &[
+                        Greek::Delta,
+                        Greek::Gamma,
+                        Greek::Vega,
+                        Greek::Theta,
+                        Greek::Rho,
+                    ],
+                )
+            } else {
+                mc.price_path_dependent(gbm, asian_payoff, df)
+            }
         } else {
-            mc.price_european(gbm, payoff, df)
+            let payoff = if params.is_call {
+                PayoffParams::call(params.strike)
+            } else {
+                PayoffParams::put(params.strike)
+            };
+            if calc.compute_greeks {
+                mc.price_with_greeks(
+                    gbm,
+                    payoff,
+                    df,
+                    &[
+                        Greek::Delta,
+                        Greek::Gamma,
+                        Greek::Vega,
+                        Greek::Theta,
+                        Greek::Rho,
+                    ],
+                )
+            } else {
+                mc.price_european(gbm, payoff, df)
+            }
         };
 
         let pv = mc_result.price * params.multiplier;
@@ -449,6 +499,8 @@ impl Pricer {
                     match &trade.trade_type {
                         // Barrier options and other exotics → Script engine.
                         TradeType::FxBarrierOption { .. } => ResolvedMethod::Script,
+                        // Path-dependent commodity options → Monte Carlo.
+                        TradeType::CommodityAsianOption { .. } => ResolvedMethod::MonteCarlo,
                         // Vanilla options → Analytical (closed-form).
                         _ => ResolvedMethod::Analytical,
                     }
@@ -849,15 +901,43 @@ impl Pricer {
         let t = Self::year_fraction(valuation_date, expiry_date)?;
         let r = Self::zero_rate_from_curve(domestic_curve, t)?;
 
-        // Compute forward for vol surface lookup.
-        let forward = spot * (r * t).exp();
+        // Compute CY-adjusted forward for vol surface lookup.
+        let forward = if let Some(cy) = market.convenience_yield(commodity) {
+            let kappa = cy.mean_reversion;
+            let theta = cy.cy_long_term_mean;
+            let delta0 = cy.initial_cy;
+            let delta_bar = if kappa * t > 1e-12 {
+                theta + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t)
+            } else {
+                delta0
+            };
+            spot * ((r - delta_bar) * t).exp()
+        } else {
+            spot * (r * t).exp()
+        };
         let vol_key = format!("CMDTY:{}", commodity);
         let vol = market
             .implied_vol(&vol_key, strike, t, forward)
             .map_err(Self::map_market_error)?;
 
-        let bs = BlackScholes::new(spot, r, vol).map_err(|e| PricingError::InvalidInput {
-            reason: format!("Black-Scholes parameter error: {:?}", e),
+        // Use cost-of-carry rate (r - delta_bar) for Black-Scholes when CY is present.
+        let effective_rate = if let Some(cy) = market.convenience_yield(commodity) {
+            let kappa = cy.mean_reversion;
+            let theta = cy.cy_long_term_mean;
+            let delta0 = cy.initial_cy;
+            if kappa * t > 1e-12 {
+                r - (theta + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t))
+            } else {
+                r - delta0
+            }
+        } else {
+            r
+        };
+
+        let bs = BlackScholes::new(spot, effective_rate, vol).map_err(|e| {
+            PricingError::InvalidInput {
+                reason: format!("Black-Scholes parameter error: {:?}", e),
+            }
         })?;
 
         let is_call = option_type.is_call();
@@ -1054,20 +1134,121 @@ impl Pricer {
                 let t = Self::year_fraction(valuation_date, *expiry_date)?;
                 let r = Self::zero_rate_from_curve(domestic_curve, t)?;
 
-                let forward = spot * (r * t).exp();
+                // CY-adjusted forward
+                let forward = if let Some(cy) = market.convenience_yield(commodity) {
+                    let kappa = cy.mean_reversion;
+                    let theta = cy.cy_long_term_mean;
+                    let delta0 = cy.initial_cy;
+                    let delta_bar = if kappa * t > 1e-12 {
+                        theta + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t)
+                    } else {
+                        delta0
+                    };
+                    spot * ((r - delta_bar) * t).exp()
+                } else {
+                    spot * (r * t).exp()
+                };
                 let vol_key = format!("CMDTY:{}", commodity);
                 let vol = market
                     .implied_vol(&vol_key, *strike, t, forward)
                     .map_err(Self::map_market_error)?;
 
+                let effective_rate = if let Some(cy) = market.convenience_yield(commodity) {
+                    let kappa = cy.mean_reversion;
+                    let theta = cy.cy_long_term_mean;
+                    let delta0 = cy.initial_cy;
+                    if kappa * t > 1e-12 {
+                        r - (theta
+                            + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t))
+                    } else {
+                        r - delta0
+                    }
+                } else {
+                    r
+                };
+
                 Ok(OptionParams {
                     spot,
                     strike: *strike,
-                    rate: r,
+                    rate: effective_rate,
                     vol,
                     t,
                     is_call: option_type.is_call(),
                     is_american: *exercise_type == ExerciseStyle::American,
+                    multiplier: *quantity,
+                    foreign_rate: None,
+                })
+            }
+
+            TradeType::CommodityAsianOption {
+                commodity,
+                option_type,
+                strike,
+                expiry_date,
+                quantity,
+                ..
+            } => {
+                let spot = market.spot_price(commodity).ok_or_else(|| {
+                    PricingError::missing_market_data(format!(
+                        "No commodity spot price for '{}'",
+                        commodity
+                    ))
+                })?;
+
+                let domestic_curve =
+                    market
+                        .discount_curve(&calc.reporting_currency)
+                        .ok_or_else(|| {
+                            PricingError::missing_market_data(format!(
+                                "No discount curve for {:?}",
+                                calc.reporting_currency
+                            ))
+                        })?;
+
+                let t = Self::year_fraction(valuation_date, *expiry_date)?;
+                let r = Self::zero_rate_from_curve(domestic_curve, t)?;
+
+                // CY-adjusted forward
+                let forward = if let Some(cy) = market.convenience_yield(commodity) {
+                    let kappa = cy.mean_reversion;
+                    let theta = cy.cy_long_term_mean;
+                    let delta0 = cy.initial_cy;
+                    let delta_bar = if kappa * t > 1e-12 {
+                        theta + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t)
+                    } else {
+                        delta0
+                    };
+                    spot * ((r - delta_bar) * t).exp()
+                } else {
+                    spot * (r * t).exp()
+                };
+                let vol_key = format!("CMDTY:{}", commodity);
+                let vol = market
+                    .implied_vol(&vol_key, *strike, t, forward)
+                    .map_err(Self::map_market_error)?;
+
+                let effective_rate = if let Some(cy) = market.convenience_yield(commodity) {
+                    let kappa = cy.mean_reversion;
+                    let theta = cy.cy_long_term_mean;
+                    let delta0 = cy.initial_cy;
+                    if kappa * t > 1e-12 {
+                        r - (theta
+                            + (delta0 - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t))
+                    } else {
+                        r - delta0
+                    }
+                } else {
+                    r
+                };
+
+                Ok(OptionParams {
+                    spot,
+                    strike: *strike,
+                    rate: effective_rate,
+                    vol,
+                    t,
+                    is_call: option_type.is_call(),
+                    is_american: false,
                     multiplier: *quantity,
                     foreign_rate: None,
                 })

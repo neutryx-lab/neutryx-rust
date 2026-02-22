@@ -32,6 +32,7 @@ use pricer_core::traits::Float;
 use super::{
     cir::{CIRModel, CIRParams},
     gbm::{GBMModel, GBMParams},
+    gibson_schwartz::{GibsonSchwartzModel, GibsonSchwartzParams},
     heston::{HestonModel, HestonParams},
     hull_white::{HullWhiteModel, HullWhiteParams},
     jarrow_yildirim::{JarrowYildirimModel, JarrowYildirimParams},
@@ -93,6 +94,15 @@ impl<T: Float + Default> ModelState<T> {
         }
     }
 
+    /// Get convenience yield component if available (second element for
+    /// Gibson-Schwartz two-factor state).
+    pub fn convenience_yield(&self) -> Option<T> {
+        match self {
+            Self::TwoFactor(s) => Some(s.second),
+            _ => None,
+        }
+    }
+
     /// Check if this is a three-factor state.
     pub fn is_three_factor(&self) -> bool { matches!(self, Self::ThreeFactor(_)) }
 }
@@ -110,6 +120,8 @@ pub enum ModelParams<T: Float> {
     CIR(CIRParams<T>),
     /// Jarrow-Yildirim 3-factor inflation model parameters
     JarrowYildirim(JarrowYildirimParams<T>),
+    /// Gibson-Schwartz 2-factor commodity model parameters
+    GibsonSchwartz(GibsonSchwartzParams<T>),
 }
 
 impl<T: Float> ModelParams<T> {
@@ -124,6 +136,7 @@ impl<T: Float> ModelParams<T> {
             ModelParams::HullWhite(p) => p.initial_short_rate,
             ModelParams::CIR(p) => p.initial_rate,
             ModelParams::JarrowYildirim(p) => p.initial_nominal_rate,
+            ModelParams::GibsonSchwartz(p) => p.spot,
         }
     }
 
@@ -135,6 +148,7 @@ impl<T: Float> ModelParams<T> {
             ModelParams::HullWhite(p) => p.mean_reversion,
             ModelParams::CIR(p) => p.mean_reversion,
             ModelParams::JarrowYildirim(p) => p.nominal_mean_reversion,
+            ModelParams::GibsonSchwartz(p) => p.rate,
         }
     }
 
@@ -146,6 +160,7 @@ impl<T: Float> ModelParams<T> {
             ModelParams::HullWhite(p) => p.volatility,
             ModelParams::CIR(p) => p.volatility,
             ModelParams::JarrowYildirim(p) => p.nominal_volatility,
+            ModelParams::GibsonSchwartz(p) => p.sigma_spot,
         }
     }
 
@@ -153,6 +168,15 @@ impl<T: Float> ModelParams<T> {
     pub fn initial_variance(&self) -> Option<T> {
         match self {
             ModelParams::Heston(p) => Some(p.v0),
+            _ => None,
+        }
+    }
+
+    /// Get initial convenience yield for Gibson-Schwartz model (returns None
+    /// for other models).
+    pub fn initial_convenience_yield(&self) -> Option<T> {
+        match self {
+            ModelParams::GibsonSchwartz(p) => Some(p.initial_convenience_yield),
             _ => None,
         }
     }
@@ -178,8 +202,11 @@ pub enum StochasticModelEnum<T: Float> {
     HullWhite(HullWhiteModel<T>),
     /// Cox-Ingersoll-Ross model (rates, positive rates guaranteed).
     CIR(CIRModel<T>),
-    /// Jarrow-Yildirim 3-factor inflation model (nominal rate, real rate, inflation index).
+    /// Jarrow-Yildirim 3-factor inflation model (nominal rate, real rate,
+    /// inflation index).
     JarrowYildirim(JarrowYildirimModel<T>),
+    /// Gibson-Schwartz 2-factor commodity model (spot price, convenience yield).
+    GibsonSchwartz(GibsonSchwartzModel<T>),
 }
 
 impl<T: Float + Default> Default for StochasticModelEnum<T> {
@@ -195,6 +222,7 @@ macro_rules! dispatch_assoc_fn {
             Self::HullWhite(_) => HullWhiteModel::<T>::$method(),
             Self::CIR(_) => CIRModel::<T>::$method(),
             Self::JarrowYildirim(_) => JarrowYildirimModel::<T>::$method(),
+            Self::GibsonSchwartz(_) => GibsonSchwartzModel::<T>::$method(),
         }
     };
 }
@@ -215,9 +243,10 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn cir() -> Self { Self::CIR(CIRModel::new()) }
 
     /// Create a new Jarrow-Yildirim inflation model.
-    pub fn jarrow_yildirim() -> Self {
-        Self::JarrowYildirim(JarrowYildirimModel::new())
-    }
+    pub fn jarrow_yildirim() -> Self { Self::JarrowYildirim(JarrowYildirimModel::new()) }
+
+    /// Create a new Gibson-Schwartz commodity model.
+    pub fn gibson_schwartz() -> Self { Self::GibsonSchwartz(GibsonSchwartzModel::new()) }
 
     /// Get the model name.
     pub fn model_name(&self) -> &'static str { dispatch_assoc_fn!(self, model_name) }
@@ -226,7 +255,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn brownian_dim(&self) -> usize { dispatch_assoc_fn!(self, brownian_dim) }
 
     /// Check if this is a two-factor model.
-    pub fn is_two_factor(&self) -> bool { matches!(self, Self::Heston(_)) }
+    pub fn is_two_factor(&self) -> bool {
+        matches!(self, Self::Heston(_) | Self::GibsonSchwartz(_))
+    }
 
     /// Check if this is a three-factor model.
     pub fn is_three_factor(&self) -> bool { matches!(self, Self::JarrowYildirim(_)) }
@@ -236,6 +267,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
 
     /// Check if this is an interest rate model.
     pub fn is_rate_model(&self) -> bool { matches!(self, Self::HullWhite(_) | Self::CIR(_)) }
+
+    /// Check if this is a commodity model.
+    pub fn is_commodity_model(&self) -> bool { matches!(self, Self::GibsonSchwartz(_)) }
 
     /// Get the number of stochastic factors in the model.
     pub fn num_factors(&self) -> usize { dispatch_assoc_fn!(self, num_factors) }
@@ -253,6 +287,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             (Self::CIR(_), ModelParams::CIR(p)) => ModelState::Single(CIRModel::initial_state(p)),
             (Self::JarrowYildirim(_), ModelParams::JarrowYildirim(p)) => {
                 ModelState::ThreeFactor(JarrowYildirimModel::initial_state(p))
+            }
+            (Self::GibsonSchwartz(_), ModelParams::GibsonSchwartz(p)) => {
+                ModelState::TwoFactor(GibsonSchwartzModel::initial_state(p))
             }
             #[allow(unreachable_patterns)]
             _ => ModelState::default(),
@@ -280,9 +317,16 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             (Self::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => {
                 ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p))
             }
-            (Self::JarrowYildirim(_), ModelState::ThreeFactor(s), ModelParams::JarrowYildirim(p)) => {
-                ModelState::ThreeFactor(JarrowYildirimModel::evolve_step(*s, dt, dw, p))
-            }
+            (
+                Self::JarrowYildirim(_),
+                ModelState::ThreeFactor(s),
+                ModelParams::JarrowYildirim(p),
+            ) => ModelState::ThreeFactor(JarrowYildirimModel::evolve_step(*s, dt, dw, p)),
+            (
+                Self::GibsonSchwartz(_),
+                ModelState::TwoFactor(s),
+                ModelParams::GibsonSchwartz(p),
+            ) => ModelState::TwoFactor(GibsonSchwartzModel::evolve_step(*s, dt, dw, p)),
             #[allow(unreachable_patterns)]
             _ => state,
         }

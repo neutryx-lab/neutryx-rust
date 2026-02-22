@@ -1,7 +1,9 @@
 //! Bilateral CVA/DVA with First-to-Default and cross-currency FVA.
 
-use super::integrate::{trapezoidal_xva, trapezoidal_xva_with_survival};
-use super::params::OwnCreditParams;
+use super::{
+    integrate::{trapezoidal_xva, trapezoidal_xva_with_survival},
+    params::OwnCreditParams,
+};
 use crate::portfolio::CreditParams;
 
 /// Result of bilateral CVA/DVA calculation including both unilateral and
@@ -34,7 +36,8 @@ pub struct FvaWithBasisResult {
 pub struct BilateralXvaCalculator;
 
 impl BilateralXvaCalculator {
-    /// Computes unilateral CVA: UCVA = LGD_ctpy * integral(EE(t) * dPD_ctpy(t)).
+    /// Computes unilateral CVA: UCVA = LGD_ctpy * integral(EE(t) *
+    /// dPD_ctpy(t)).
     ///
     /// Delegates to the existing `compute_cva` logic.
     pub fn compute_ucva(ee: &[f64], time_grid: &[f64], credit_params: &CreditParams) -> f64 {
@@ -104,8 +107,10 @@ impl BilateralXvaCalculator {
 
     /// Computes FVA with optional cross-currency basis spread.
     ///
-    /// - FCA = integral(cv_positive(t) * (spread_borrow + xccy_basis(t)) * Q_both(t) * df(t) * dt)
-    /// - FBA = integral(cv_negative(t) * (spread_lend + xccy_basis(t)) * Q_both(t) * df(t) * dt)
+    /// - FCA = integral(cv_positive(t) * (spread_borrow + xccy_basis(t)) *
+    ///   Q_both(t) * df(t) * dt)
+    /// - FBA = integral(cv_negative(t) * (spread_lend + xccy_basis(t)) *
+    ///   Q_both(t) * df(t) * dt)
     /// - FVA = FCA - FBA
     ///
     /// `survival_both[t]` = Q_own(t) * Q_ctpy(t) (joint survival).
@@ -171,17 +176,11 @@ mod tests {
 
     use super::*;
 
-    fn create_test_time_grid() -> Vec<f64> {
-        vec![0.0, 0.25, 0.5, 0.75, 1.0]
-    }
+    fn create_test_time_grid() -> Vec<f64> { vec![0.0, 0.25, 0.5, 0.75, 1.0] }
 
-    fn create_test_credit_params() -> CreditParams {
-        CreditParams::new(0.02, 0.4).unwrap()
-    }
+    fn create_test_credit_params() -> CreditParams { CreditParams::new(0.02, 0.4).unwrap() }
 
-    fn create_test_own_credit() -> OwnCreditParams {
-        OwnCreditParams::new(0.03, 0.4).unwrap()
-    }
+    fn create_test_own_credit() -> OwnCreditParams { OwnCreditParams::new(0.03, 0.4).unwrap() }
 
     fn create_flat_df(rate: f64, times: &[f64]) -> Vec<f64> {
         times.iter().map(|&t| (-rate * t).exp()).collect()

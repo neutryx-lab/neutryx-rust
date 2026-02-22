@@ -133,8 +133,7 @@ impl<T: Float> GaussianTree<T> {
 
         // ---- Terminal (unconditional) variance for a fixed grid ----
         let t_last = config.times[config.times.len() - 1];
-        let terminal_var =
-            (sigma * sigma / (two * a)) * (one - (-two * a * t_last).exp());
+        let terminal_var = (sigma * sigma / (two * a)) * (one - (-two * a * t_last).exp());
 
         // dx based on terminal variance (guarantees grid covers num_std_devs
         // standard deviations at the last step).
@@ -175,8 +174,7 @@ impl<T: Float> GaussianTree<T> {
         for k in 0..num_transitions {
             let dt = config.times[k + 1] - config.times[k];
             let exp_neg_a_dt = (-a * dt).exp();
-            let var_incr =
-                (sigma * sigma / (two * a)) * (one - (-two * a * dt).exp());
+            let var_incr = (sigma * sigma / (two * a)) * (one - (-two * a * dt).exp());
 
             let mut node_transitions = Vec::with_capacity(n);
 
@@ -189,8 +187,7 @@ impl<T: Float> GaussianTree<T> {
                 let j_raw = Self::to_isize(shift) + center_idx as isize;
 
                 // Clamp so that j-1 and j+1 exist.
-                let j_center =
-                    j_raw.max(1).min((n as isize) - 2) as usize;
+                let j_center = j_raw.max(1).min((n as isize) - 2) as usize;
 
                 let x_d = slices[k + 1].x_grid[j_center - 1];
                 let x_m = slices[k + 1].x_grid[j_center];
@@ -200,8 +197,7 @@ impl<T: Float> GaussianTree<T> {
                 //   p_d + p_m + p_u = 1
                 //   p_d*x_d + p_m*x_m + p_u*x_u = mu
                 //   p_d*x_d^2 + p_m*x_m^2 + p_u*x_u^2 = mu^2 + var_incr
-                let (p_d, p_m, p_u) =
-                    Self::solve_probs(x_d, x_m, x_u, mu, var_incr);
+                let (p_d, p_m, p_u) = Self::solve_probs(x_d, x_m, x_u, mu, var_incr);
 
                 node_transitions.push((p_d, p_m, p_u, j_center));
             }
@@ -224,33 +220,23 @@ impl<T: Float> GaussianTree<T> {
 
     /// Number of time steps (= number of slices minus one).
     #[inline]
-    pub fn num_steps(&self) -> usize {
-        self.slices.len().saturating_sub(1)
-    }
+    pub fn num_steps(&self) -> usize { self.slices.len().saturating_sub(1) }
 
     /// Number of spatial grid nodes (same for every slice).
     #[inline]
-    pub fn num_nodes(&self) -> usize {
-        self.config.num_grid_points
-    }
+    pub fn num_nodes(&self) -> usize { self.config.num_grid_points }
 
     /// Returns the spatial grid at the given time step.
     #[inline]
-    pub fn x_grid(&self, step: usize) -> &[T] {
-        &self.slices[step].x_grid
-    }
+    pub fn x_grid(&self, step: usize) -> &[T] { &self.slices[step].x_grid }
 
     /// Returns the time at the given step.
     #[inline]
-    pub fn time(&self, step: usize) -> T {
-        self.slices[step].time
-    }
+    pub fn time(&self, step: usize) -> T { self.slices[step].time }
 
     /// Returns the transition data *from* the given step to the next.
     #[inline]
-    pub fn transition(&self, step: usize) -> &GaussianTreeTransition<T> {
-        &self.transitions[step]
-    }
+    pub fn transition(&self, step: usize) -> &GaussianTreeTransition<T> { &self.transitions[step] }
 
     // ---------------------------------------------------------------------
     // Rollback (backward induction for one step)
@@ -275,9 +261,7 @@ impl<T: Float> GaussianTree<T> {
                 j_center + 1
             };
             let jm = j_center;
-            let val = p_d * values_next[jd]
-                + p_m * values_next[jm]
-                + p_u * values_next[ju];
+            let val = p_d * values_next[jd] + p_m * values_next[jm] + p_u * values_next[ju];
             values.push(val);
         }
         values
@@ -318,7 +302,11 @@ impl<T: Float> GaussianTree<T> {
                 }
 
                 let jd = if j_center == 0 { 0 } else { j_center - 1 };
-                let ju = if j_center >= n - 1 { n - 1 } else { j_center + 1 };
+                let ju = if j_center >= n - 1 {
+                    n - 1
+                } else {
+                    j_center + 1
+                };
 
                 ad_next[jd] = ad_next[jd] + ad_i * p_d;
                 ad_next[j_center] = ad_next[j_center] + ad_i * p_m;
@@ -376,11 +364,7 @@ impl<T: Float> GaussianTree<T> {
 
     /// Converts a generic `Float` to `isize` via `f64` (used only for index
     /// arithmetic).
-    fn to_isize(val: T) -> isize {
-        val.to_f64()
-            .map(|v| v.round() as isize)
-            .unwrap_or(0)
-    }
+    fn to_isize(val: T) -> isize { val.to_f64().map(|v| v.round() as isize).unwrap_or(0) }
 }
 
 // ===========================================================================
@@ -452,8 +436,7 @@ mod tests {
         let tree = GaussianTree::build(cfg).unwrap();
 
         for (k, trans) in tree.transitions.iter().enumerate() {
-            for (i, &(p_d, p_m, p_u, _j)) in trans.transitions.iter().enumerate()
-            {
+            for (i, &(p_d, p_m, p_u, _j)) in trans.transitions.iter().enumerate() {
                 let sum = p_d + p_m + p_u;
                 assert!(
                     (sum - 1.0).abs() < 1e-10,

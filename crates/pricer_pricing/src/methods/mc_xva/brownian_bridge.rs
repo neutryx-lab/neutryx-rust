@@ -48,9 +48,11 @@ impl BrownianBridgeResampler {
 
     /// Returns the Brownian bridge scaling factor.
     ///
-    /// `scaling = sqrt(min(call_frequency_days, days_from_val_date) / days_from_val_date)`
+    /// `scaling = sqrt(min(call_frequency_days, days_from_val_date) /
+    /// days_from_val_date)`
     ///
-    /// When `days_from_val_date == 0.0`, returns `1.0` to avoid division by zero.
+    /// When `days_from_val_date == 0.0`, returns `1.0` to avoid division by
+    /// zero.
     pub fn scaling_factor(&self, days_from_val_date: f64) -> f64 {
         if days_from_val_date <= 0.0 {
             return 1.0;
@@ -70,7 +72,8 @@ impl BrownianBridgeResampler {
     ///
     /// # Arguments
     ///
-    /// * `netted_pv_at_t` - The netted PV values across all paths at a given time.
+    /// * `netted_pv_at_t` - The netted PV values across all paths at a given
+    ///   time.
     /// * `days_from_val_date` - Number of business days from valuation date.
     /// * `rng` - Random number generator for selecting indices.
     pub fn resample(
@@ -107,8 +110,9 @@ impl BrownianBridgeResampler {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_new_valid() {
@@ -118,15 +122,11 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "call_frequency_days must be positive")]
-    fn test_new_zero_frequency_panics() {
-        BrownianBridgeResampler::new(0.0);
-    }
+    fn test_new_zero_frequency_panics() { BrownianBridgeResampler::new(0.0); }
 
     #[test]
     #[should_panic(expected = "call_frequency_days must be positive")]
-    fn test_new_negative_frequency_panics() {
-        BrownianBridgeResampler::new(-1.0);
-    }
+    fn test_new_negative_frequency_panics() { BrownianBridgeResampler::new(-1.0); }
 
     #[test]
     fn test_from_call_frequency_daily() {
@@ -229,7 +229,10 @@ mod tests {
         assert_eq!(resampled.len(), 4);
         // Each resampled value should be one of the original PV values.
         for &val in &resampled {
-            assert!(pvs.contains(&val), "expected {val} to be one of the original PVs");
+            assert!(
+                pvs.contains(&val),
+                "expected {val} to be one of the original PVs"
+            );
         }
     }
 

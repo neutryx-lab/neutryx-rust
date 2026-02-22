@@ -26,7 +26,8 @@ pub fn compute_ecb(collateral_values: &[Vec<f64>]) -> Vec<f64> {
 /// Computes the Radon-Nikodym weighted Expected Collateral Balance at each
 /// time step.
 ///
-/// ECB[t] = mean over paths of |collateral_values[t][p]| * numeraire_ratios[t][p]
+/// ECB[t] = mean over paths of |collateral_values[t][p]| *
+/// numeraire_ratios[t][p]
 ///
 /// This is the measure-change-weighted version, useful when switching between
 /// pricing measures (e.g. risk-neutral to T-forward).

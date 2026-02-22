@@ -80,16 +80,15 @@ impl XvaTimeGrid {
     ///
     /// Returns `None` if no point is within `DEDUP_TOL` of `t`.
     pub fn find_index(&self, t: f64) -> Option<usize> {
-        self.points
-            .iter()
-            .position(|&p| (p - t).abs() < DEDUP_TOL)
+        self.points.iter().position(|&p| (p - t).abs() < DEDUP_TOL)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_regular_grid_quarterly() {
@@ -182,13 +181,9 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "frequency_years must be positive")]
-    fn test_regular_grid_zero_frequency_panics() {
-        XvaTimeGrid::regular(0.0, 1.0, 0.0);
-    }
+    fn test_regular_grid_zero_frequency_panics() { XvaTimeGrid::regular(0.0, 1.0, 0.0); }
 
     #[test]
     #[should_panic(expected = "end")]
-    fn test_regular_grid_end_before_start_panics() {
-        XvaTimeGrid::regular(2.0, 1.0, 0.25);
-    }
+    fn test_regular_grid_end_before_start_panics() { XvaTimeGrid::regular(2.0, 1.0, 0.25); }
 }

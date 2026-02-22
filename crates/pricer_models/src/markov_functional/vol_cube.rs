@@ -5,9 +5,13 @@
 //! and a SABR-based vol cube wrapping the existing SABR formula.
 
 use enum_dispatch::enum_dispatch;
-use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
-use pricer_core::math::numeric::from_f64;
-use pricer_core::traits::Float;
+use pricer_core::{
+    math::{
+        formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams},
+        numeric::from_f64,
+    },
+    traits::Float,
+};
 
 use super::MfmError;
 
@@ -143,13 +147,7 @@ impl<T: Float> SwaptionVolCube<T> for FlatSwaptionVolCube<T> {
         Ok(self.normal_vol_value)
     }
 
-    fn lognormal_vol(
-        &self,
-        _expiry: T,
-        _tenor: T,
-        _strike: T,
-        _forward: T,
-    ) -> Result<T, MfmError> {
+    fn lognormal_vol(&self, _expiry: T, _tenor: T, _strike: T, _forward: T) -> Result<T, MfmError> {
         Ok(self.lognormal_vol_value)
     }
 }
@@ -433,12 +431,12 @@ mod tests {
     fn test_sabr_vol_cube_basic() {
         // Single (1x1) expiry-tenor grid.
         let cube = SabrSwaptionVolCube::new(
-            vec![1.0_f64],       // expiries
-            vec![5.0],           // tenors
-            vec![0.03],          // alphas
-            vec![0.5],           // betas
-            vec![-0.3],          // rhos
-            vec![0.4],           // nus
+            vec![1.0_f64], // expiries
+            vec![5.0],     // tenors
+            vec![0.03],    // alphas
+            vec![0.5],     // betas
+            vec![-0.3],    // rhos
+            vec![0.4],     // nus
         )
         .unwrap();
 
@@ -459,8 +457,8 @@ mod tests {
     fn test_sabr_vol_cube_nearest_lookup() {
         // 2x2 grid with different alphas.
         let cube = SabrSwaptionVolCube::new(
-            vec![1.0_f64, 5.0],  // expiries
-            vec![5.0, 10.0],     // tenors
+            vec![1.0_f64, 5.0],           // expiries
+            vec![5.0, 10.0],              // tenors
             vec![0.03, 0.04, 0.05, 0.06], // alphas
             vec![0.5, 0.5, 0.5, 0.5],     // betas
             vec![-0.3, -0.3, -0.3, -0.3], // rhos
@@ -488,7 +486,7 @@ mod tests {
         let result = SabrSwaptionVolCube::new(
             vec![1.0_f64, 5.0],
             vec![5.0, 10.0],
-            vec![0.03],          // should be 4
+            vec![0.03], // should be 4
             vec![0.5, 0.5, 0.5, 0.5],
             vec![-0.3, -0.3, -0.3, -0.3],
             vec![0.4, 0.4, 0.4, 0.4],
@@ -496,14 +494,8 @@ mod tests {
         assert!(result.is_err());
 
         // Empty expiries.
-        let result = SabrSwaptionVolCube::<f64>::new(
-            vec![],
-            vec![5.0],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        );
+        let result =
+            SabrSwaptionVolCube::<f64>::new(vec![], vec![5.0], vec![], vec![], vec![], vec![]);
         assert!(result.is_err());
     }
 

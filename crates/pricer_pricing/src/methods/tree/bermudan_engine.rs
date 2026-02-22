@@ -89,12 +89,10 @@ impl BermudanTreeEngine {
     ///
     /// * `tree`      - A pre-built [`GaussianTree`].
     /// * `config`    - Bermudan exercise schedule and type.
-    /// * `coupons`   - Slice of `(step_index, CouponInfo)` pairs. Each
-    ///                 entry contributes the coupon cash-flow at the
-    ///                 indicated tree step.
-    /// * `exercises` - Slice of `(step_index, ExerciseInfo)` pairs. Each
-    ///                 entry provides the exercise (termination) value at
-    ///                 the indicated tree step.
+    /// * `coupons`   - Slice of `(step_index, CouponInfo)` pairs. Each entry
+    ///   contributes the coupon cash-flow at the indicated tree step.
+    /// * `exercises` - Slice of `(step_index, ExerciseInfo)` pairs. Each entry
+    ///   provides the exercise (termination) value at the indicated tree step.
     ///
     /// # Returns
     ///
@@ -245,10 +243,7 @@ impl BermudanTreeEngine {
     ///
     /// This is an O(1)-lookup alternative to `HashMap` that works well
     /// because step indices are dense and bounded.
-    fn build_step_lookup<V>(
-        num_steps: usize,
-        items: &[(usize, V)],
-    ) -> Vec<Option<usize>> {
+    fn build_step_lookup<V>(num_steps: usize, items: &[(usize, V)]) -> Vec<Option<usize>> {
         let mut lookup = vec![None; num_steps];
         for (pos, (step, _)) in items.iter().enumerate() {
             if *step < num_steps {
@@ -420,8 +415,7 @@ mod tests {
             coupon_times: vec![],
         };
 
-        let result =
-            BermudanTreeEngine::price(&tree, &config, &[], &exercises);
+        let result = BermudanTreeEngine::price(&tree, &config, &[], &exercises);
 
         // Puttable with exercise_value >> 0 and no coupons: should exercise.
         // PV at root = rollback of constant exercise_value from step 1 to 0.
@@ -473,8 +467,7 @@ mod tests {
             coupon_times: (0..n_steps).map(|s| tree.time(s)).collect(),
         };
 
-        let result =
-            BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
+        let result = BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
 
         // Exercise never chosen => PV = continuation value, option value ~ 0
         assert!(
@@ -539,8 +532,7 @@ mod tests {
             coupon_times: (0..n_steps).map(|s| tree.time(s)).collect(),
         };
 
-        let result =
-            BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
+        let result = BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
 
         assert!(
             result.pv <= result.continuation_value + 1e-10,
@@ -604,8 +596,7 @@ mod tests {
             coupon_times: (0..n_steps).map(|s| tree.time(s)).collect(),
         };
 
-        let result =
-            BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
+        let result = BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
 
         assert!(
             result.pv >= result.continuation_value - 1e-10,
@@ -659,8 +650,12 @@ mod tests {
             })
             .collect();
 
-        let exercises: Vec<(usize, ExerciseInfo<f64>)> =
-            vec![(5, ExerciseInfo { values: exercise_values })];
+        let exercises: Vec<(usize, ExerciseInfo<f64>)> = vec![(
+            5,
+            ExerciseInfo {
+                values: exercise_values,
+            },
+        )];
 
         let config = BermudanTreeConfig {
             is_callable: true, // issuer calls when exercise < hold
@@ -669,8 +664,7 @@ mod tests {
             coupon_times: (0..n_steps).map(|s| tree.time(s)).collect(),
         };
 
-        let result =
-            BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
+        let result = BermudanTreeEngine::price(&tree, &config, &coupons, &exercises);
 
         // There should be exactly one exercise date -> one boundary entry.
         assert_eq!(
@@ -808,18 +802,12 @@ mod tests {
 
         let config = BermudanTreeConfig {
             is_callable: true,
-            exercise_times: vec![
-                tree.time(2),
-                tree.time(4),
-                tree.time(6),
-                tree.time(8),
-            ],
+            exercise_times: vec![tree.time(2), tree.time(4), tree.time(6), tree.time(8)],
             exercise_costs: vec![0.0, 0.0, 0.0, 0.0],
             coupon_times: vec![],
         };
 
-        let result =
-            BermudanTreeEngine::price(&tree, &config, &[], &exercises);
+        let result = BermudanTreeEngine::price(&tree, &config, &[], &exercises);
 
         assert_eq!(
             result.exercise_boundary.len(),

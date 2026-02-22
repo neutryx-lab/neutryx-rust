@@ -87,7 +87,8 @@ pub struct MfmCalibrateRequest {
     pub exercise_times: Vec<f64>,
     /// Swap tenors per exercise date.
     pub swap_tenors: Vec<f64>,
-    /// Payment frequencies per exercise date (year fractions, e.g. 0.5 for semi-annual).
+    /// Payment frequencies per exercise date (year fractions, e.g. 0.5 for
+    /// semi-annual).
     pub payment_frequencies: Vec<f64>,
 
     // ── Curves ──
@@ -226,7 +227,8 @@ pub struct CifEvaluateRequest {
     pub payment_dates: Vec<f64>,
     /// Year fractions for each coupon period.
     pub year_fractions: Vec<f64>,
-    /// Swap rates per node at each coupon date (flattened: n_coupons × n_nodes).
+    /// Swap rates per node at each coupon date (flattened: n_coupons ×
+    /// n_nodes).
     pub swap_rates: Vec<Vec<f64>>,
     /// Libor rates per node at each coupon date.
     pub libor_rates: Vec<Vec<f64>>,
@@ -311,7 +313,8 @@ pub struct BermudanPriceRequest {
     pub is_callable: bool,
 
     // ── Coupon node values (pre-computed or flat) ──
-    /// Flat coupon value per period (simplified). If absent, zero coupons assumed.
+    /// Flat coupon value per period (simplified). If absent, zero coupons
+    /// assumed.
     pub flat_coupon: Option<f64>,
 }
 

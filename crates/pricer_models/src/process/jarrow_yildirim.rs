@@ -1,6 +1,7 @@
 //! Jarrow-Yildirim 3-factor inflation model.
 //!
-//! Three correlated SDEs modelling nominal rates, real rates, and inflation index:
+//! Three correlated SDEs modelling nominal rates, real rates, and inflation
+//! index:
 //!
 //! ```text
 //! dn = [θ_n(t) - a_n * n] dt + σ_n * dW_n    (HW1F nominal)
@@ -183,11 +184,8 @@ impl<T: Float> JarrowYildirimParams<T> {
             nominal_volatility,
             initial_nominal_rate,
         );
-        let real_theta = ThetaFunction::from_flat_curve(
-            real_mean_reversion,
-            real_volatility,
-            initial_real_rate,
-        );
+        let real_theta =
+            ThetaFunction::from_flat_curve(real_mean_reversion, real_volatility, initial_real_rate);
 
         let params = Self {
             nominal_mean_reversion,
@@ -296,14 +294,10 @@ impl<T: Float> JarrowYildirimParams<T> {
     }
 
     /// Advance simulation time by `dt`.
-    pub fn advance_time(&mut self, dt: T) {
-        self.current_time = self.current_time + dt;
-    }
+    pub fn advance_time(&mut self, dt: T) { self.current_time = self.current_time + dt; }
 
     /// Reset simulation time to zero.
-    pub fn reset_time(&mut self) {
-        self.current_time = T::zero();
-    }
+    pub fn reset_time(&mut self) { self.current_time = T::zero(); }
 }
 
 impl Default for JarrowYildirimParams<f64> {
@@ -431,17 +425,11 @@ impl<T: Float + Default> StochasticModel<T> for JarrowYildirimModel<T> {
         }
     }
 
-    fn brownian_dim() -> usize {
-        3
-    }
+    fn brownian_dim() -> usize { 3 }
 
-    fn model_name() -> &'static str {
-        "JarrowYildirim"
-    }
+    fn model_name() -> &'static str { "JarrowYildirim" }
 
-    fn num_factors() -> usize {
-        3
-    }
+    fn num_factors() -> usize { 3 }
 }
 
 impl<T: Float + Default> HybridModel for JarrowYildirimModel<T> {}
@@ -532,9 +520,7 @@ mod tests {
     use super::*;
     use crate::process::stochastic::{StochasticModel, StochasticState};
 
-    fn default_params() -> JarrowYildirimParams<f64> {
-        JarrowYildirimParams::default()
-    }
+    fn default_params() -> JarrowYildirimParams<f64> { JarrowYildirimParams::default() }
 
     // ── Parameter Tests ──
 
@@ -709,7 +695,10 @@ mod tests {
         let dw = [2.0, 0.0, 0.0]; // strong positive shock to nominal rate
 
         let next = JarrowYildirimModel::evolve_step(state, dt, &dw, &p);
-        assert!(next.first > state.first, "Positive shock should raise nominal rate");
+        assert!(
+            next.first > state.first,
+            "Positive shock should raise nominal rate"
+        );
     }
 
     #[test]
@@ -739,7 +728,10 @@ mod tests {
             ];
             state = JarrowYildirimModel::evolve_step(state, dt, &dw, &p);
 
-            assert!(state.first.is_finite(), "Nominal rate non-finite at step {i}");
+            assert!(
+                state.first.is_finite(),
+                "Nominal rate non-finite at step {i}"
+            );
             assert!(state.second.is_finite(), "Real rate non-finite at step {i}");
             assert!(
                 state.third > 0.0 && state.third.is_finite(),
@@ -753,8 +745,7 @@ mod tests {
     fn test_correlation_effect() {
         // With high positive ρ_nr, nominal and real shocks should be correlated
         let p = JarrowYildirimParams::new(
-            0.03, 0.01, 0.03, 0.02, 0.008, 0.01, 0.02, 100.0,
-            0.99, 0.0, 0.0, // high ρ_nr
+            0.03, 0.01, 0.03, 0.02, 0.008, 0.01, 0.02, 100.0, 0.99, 0.0, 0.0, // high ρ_nr
         )
         .unwrap();
         let state = JarrowYildirimModel::initial_state(&p);
@@ -812,8 +803,7 @@ mod tests {
         )
         .unwrap();
         let state = JarrowYildirimModel::initial_state(&p);
-        let next =
-            JarrowYildirimModel::evolve_step(state, 1.0_f32 / 252.0, &[0.5, 0.0, 0.0], &p);
+        let next = JarrowYildirimModel::evolve_step(state, 1.0_f32 / 252.0, &[0.5, 0.0, 0.0], &p);
         assert!(next.first.is_finite() && next.second.is_finite() && next.third > 0.0);
     }
 
@@ -868,17 +858,8 @@ mod tests {
         assert!(infl > 0.0, "Inflation leg PV should be positive");
         assert!(fixed > 0.0, "Fixed leg PV should be positive");
 
-        let mtm = ZcisAnalyticalPricer::price(
-            &p,
-            0.03,
-            0.01,
-            100.0,
-            0.0,
-            5.0,
-            1_000_000.0,
-            0.02,
-            100.0,
-        );
+        let mtm =
+            ZcisAnalyticalPricer::price(&p, 0.03, 0.01, 100.0, 0.0, 5.0, 1_000_000.0, 0.02, 100.0);
         assert!((mtm - (infl - fixed)).abs() < 1e-6, "MtM = Infl - Fixed");
     }
 
@@ -898,18 +879,12 @@ mod tests {
             100.0,
         );
         // MtM should be more positive than at-par
-        let mtm_par = ZcisAnalyticalPricer::price(
-            &p,
-            0.03,
-            0.01,
-            100.0,
-            1.0,
-            5.0,
-            1_000_000.0,
-            0.02,
-            100.0,
+        let mtm_par =
+            ZcisAnalyticalPricer::price(&p, 0.03, 0.01, 100.0, 1.0, 5.0, 1_000_000.0, 0.02, 100.0);
+        assert!(
+            mtm > mtm_par,
+            "Higher index → higher MtM for inflation receiver"
         );
-        assert!(mtm > mtm_par, "Higher index → higher MtM for inflation receiver");
     }
 
     // ── Error Type Tests ──
@@ -920,8 +895,7 @@ mod tests {
             JarrowYildirimError::Param(ParamValidationError::must_be_positive("sigma_n", -0.01));
         assert!(param_err.to_string().contains("sigma_n"));
 
-        let comp_err =
-            JarrowYildirimError::Computation(ComputationError::non_finite("bond price"));
+        let comp_err = JarrowYildirimError::Computation(ComputationError::non_finite("bond price"));
         assert!(comp_err.to_string().contains("bond price"));
 
         let corr_err = JarrowYildirimError::Correlation(CorrelationError::NotPositiveDefinite);

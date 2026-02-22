@@ -134,16 +134,12 @@ impl ScenarioCube {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
 
+    use super::*;
+
     fn sample_cube() -> ScenarioCube {
-        ScenarioCube::new(
-            2,
-            3,
-            4,
-            vec!["NS_001".to_string(), "NS_002".to_string()],
-        )
+        ScenarioCube::new(2, 3, 4, vec!["NS_001".to_string(), "NS_002".to_string()])
     }
 
     #[test]
@@ -218,9 +214,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "netting_set_ids length")]
-    fn test_new_mismatched_ids_panics() {
-        ScenarioCube::new(2, 3, 4, vec!["NS_001".to_string()]);
-    }
+    fn test_new_mismatched_ids_panics() { ScenarioCube::new(2, 3, 4, vec!["NS_001".to_string()]); }
 
     #[test]
     fn test_zero_dimensions() {

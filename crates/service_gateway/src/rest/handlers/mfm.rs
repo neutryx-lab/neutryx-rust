@@ -13,9 +13,7 @@ use crate::{
 };
 
 /// GET /api/mfm/products - List available MFM products.
-pub async fn get_mfm_products() -> Json<Vec<MfmProductDef>> {
-    Json(MfmService::get_products())
-}
+pub async fn get_mfm_products() -> Json<Vec<MfmProductDef>> { Json(MfmService::get_products()) }
 
 /// POST /api/mfm/calibrate - Calibrate the MFM model.
 pub async fn calibrate_mfm(

@@ -1,8 +1,8 @@
 //! XVA simulation configuration and builder.
 //!
-//! Provides [`XvaSimulationConfig`] for controlling Monte Carlo XVA simulations,
-//! including path counts, time grids, seeding, antithetic variance reduction,
-//! and the choice of pricing measure.
+//! Provides [`XvaSimulationConfig`] for controlling Monte Carlo XVA
+//! simulations, including path counts, time grids, seeding, antithetic variance
+//! reduction, and the choice of pricing measure.
 
 /// Simulation pricing measure.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -162,13 +162,13 @@ impl XvaSimulationConfigBuilder {
 
     /// Builds and validates the configuration.
     pub fn build(self) -> Result<XvaSimulationConfig, XvaSimulationConfigError> {
-        let n_paths =
-            self.n_paths
-                .ok_or(XvaSimulationConfigError::MissingParameter { name: "n_paths" })?;
+        let n_paths = self
+            .n_paths
+            .ok_or(XvaSimulationConfigError::MissingParameter { name: "n_paths" })?;
 
-        let time_grid = self.time_grid.ok_or(XvaSimulationConfigError::MissingParameter {
-            name: "time_grid",
-        })?;
+        let time_grid = self
+            .time_grid
+            .ok_or(XvaSimulationConfigError::MissingParameter { name: "time_grid" })?;
 
         let config = XvaSimulationConfig {
             n_paths,
@@ -241,9 +241,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(XvaSimulationConfigError::MissingParameter {
-                name: "time_grid"
-            })
+            Err(XvaSimulationConfigError::MissingParameter { name: "time_grid" })
         ));
     }
 

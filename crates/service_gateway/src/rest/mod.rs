@@ -223,6 +223,15 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/xva/simulate", post(handlers::xva::run_xva_simulation))
         .route("/xva/bilateral", post(handlers::xva::compute_xva_bilateral))
         .route("/xva/export/csv", get(handlers::xva::export_xva_csv))
+        // Incremental XVA engine endpoints
+        .route(
+            "/incremental-xva/config",
+            get(handlers::incremental_xva::get_incremental_xva_config),
+        )
+        .route(
+            "/incremental-xva/run",
+            post(handlers::incremental_xva::run_incremental_xva),
+        )
         .with_state(state)
 }
 

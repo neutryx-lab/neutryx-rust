@@ -84,39 +84,27 @@ impl<T: Float> TarnGrid<T> {
 
     /// Returns the value at Gaussian node `j` and cumulative coupon index `k`.
     #[inline]
-    pub fn get(&self, j: usize, k: usize) -> T {
-        self.data[j * self.num_k + k]
-    }
+    pub fn get(&self, j: usize, k: usize) -> T { self.data[j * self.num_k + k] }
 
     /// Sets the value at Gaussian node `j` and cumulative coupon index `k`.
     #[inline]
-    pub fn set(&mut self, j: usize, k: usize, value: T) {
-        self.data[j * self.num_k + k] = value;
-    }
+    pub fn set(&mut self, j: usize, k: usize, value: T) { self.data[j * self.num_k + k] = value; }
 
     /// Returns the cumulative coupon amount at grid index `k`.
     #[inline]
-    pub fn cumulative_at(&self, k: usize) -> T {
-        from_f64::<T>(k as f64) * self.d_pres
-    }
+    pub fn cumulative_at(&self, k: usize) -> T { from_f64::<T>(k as f64) * self.d_pres }
 
     /// Returns the grid spacing for the cumulative coupon dimension.
     #[inline]
-    pub fn d_pres(&self) -> T {
-        self.d_pres
-    }
+    pub fn d_pres(&self) -> T { self.d_pres }
 
     /// Returns the number of Gaussian state nodes.
     #[inline]
-    pub fn num_j(&self) -> usize {
-        self.num_j
-    }
+    pub fn num_j(&self) -> usize { self.num_j }
 
     /// Returns the number of cumulative coupon grid points.
     #[inline]
-    pub fn num_k(&self) -> usize {
-        self.num_k
-    }
+    pub fn num_k(&self) -> usize { self.num_k }
 
     /// Resets all grid values to zero.
     pub fn fill_zero(&mut self) {
@@ -126,9 +114,7 @@ impl<T: Float> TarnGrid<T> {
     }
 
     /// Returns the total memory usage of the grid data in bytes.
-    pub fn memory_bytes(&self) -> usize {
-        self.data.len() * std::mem::size_of::<T>()
-    }
+    pub fn memory_bytes(&self) -> usize { self.data.len() * std::mem::size_of::<T>() }
 }
 
 // ---------------------------------------------------------------------------
@@ -177,9 +163,10 @@ impl TarnTreeEngine {
     /// # Arguments
     ///
     /// * `tree` - Pre-built Gaussian tree with time slices and transitions.
-    /// * `config` - TARN-specific configuration (target amount, grid size, etc.).
-    /// * `coupons` - Sparse list of `(step_index, coupon_info)` pairs indicating
-    ///   which time steps have coupon payments.
+    /// * `config` - TARN-specific configuration (target amount, grid size,
+    ///   etc.).
+    /// * `coupons` - Sparse list of `(step_index, coupon_info)` pairs
+    ///   indicating which time steps have coupon payments.
     /// * `exercises` - Sparse list of `(step_index, exercise_info)` pairs for
     ///   optional Bermudan exercise dates.
     /// * `redemption_value` - Par value paid on auto-redemption or at maturity.
@@ -258,11 +245,7 @@ impl TarnTreeEngine {
                         // CONTINUE: interpolate in cumulative dimension
                         // Find bracketing k indices in the NEXT grid
                         let k_float = new_cumulative / d_pres;
-                        let k_low = k_float
-                            .floor()
-                            .to_usize()
-                            .unwrap_or(0)
-                            .min(num_k - 1);
+                        let k_low = k_float.floor().to_usize().unwrap_or(0).min(num_k - 1);
                         let k_high = (k_low + 1).min(num_k - 1);
                         let w = k_float - from_f64::<T>(k_low as f64);
                         let w = if w < T::zero() {
@@ -347,8 +330,10 @@ impl TarnTreeEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::gaussian::{GaussianTree, GaussianTreeConfig};
+    use super::{
+        super::gaussian::{GaussianTree, GaussianTreeConfig},
+        *,
+    };
 
     /// Helper: build a small Gaussian tree for testing.
     fn build_test_tree(n_steps: usize) -> GaussianTree<f64> {
@@ -484,13 +469,8 @@ mod tests {
             ));
         }
 
-        let result2 = TarnTreeEngine::price(
-            &tree,
-            &config,
-            &coupons_with_values,
-            &exercises,
-            redemption,
-        );
+        let result2 =
+            TarnTreeEngine::price(&tree, &config, &coupons_with_values, &exercises, redemption);
 
         // PV should be positive (sum of rolled-back coupons)
         assert!(
@@ -542,11 +522,7 @@ mod tests {
 
         // PV should be between 0 and sum of all coupons + redemption
         let total_coupons = coupon_val * tree.num_steps() as f64;
-        assert!(
-            result.pv > 0.0,
-            "PV should be positive, got {}",
-            result.pv
-        );
+        assert!(result.pv > 0.0, "PV should be positive, got {}", result.pv);
         assert!(
             result.pv <= total_coupons + redemption + 1e-6,
             "PV {} exceeds upper bound {}",

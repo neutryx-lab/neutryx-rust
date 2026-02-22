@@ -4,24 +4,28 @@
 //! engine, bilateral CVA/DVA calculations, and FVA computations for the
 //! demo portfolio hierarchy.
 
-use std::collections::HashMap;
-use std::sync::OnceLock;
-use std::time::Instant;
+use std::{collections::HashMap, sync::OnceLock, time::Instant};
 
 use infra_domain::counterparty::VmCsa;
-use pricer_risk::portfolio::xva::{BilateralXvaCalculator, OwnCreditParams};
-use pricer_risk::portfolio::{CounterpartyId, CreditParams, NettingSetId, TradeId};
-use pricer_risk::xva_engine::{
-    IsdaAgreement, VmCsaNode, XvaCounterparty, XvaEngineConfig, XvaHierarchy, XvaRiskIndicators,
-    XvaSimulator,
+use pricer_risk::{
+    portfolio::{
+        xva::{BilateralXvaCalculator, OwnCreditParams},
+        CounterpartyId, CreditParams, NettingSetId, TradeId,
+    },
+    xva_engine::{
+        IsdaAgreement, VmCsaNode, XvaCounterparty, XvaEngineConfig, XvaHierarchy,
+        XvaRiskIndicators, XvaSimulator,
+    },
 };
 
-use crate::error::ServerError;
-use crate::rest::dto::xva::{
-    CounterpartyXvaResult, DemoCounterparty, DemoNettingSet, HierarchyCounterparty, HierarchyIsda,
-    HierarchySummary, HierarchyVmCsa, NettingSetResult, PfeProfile, XvaBilateralRequest,
-    XvaBilateralResponse, XvaConfigSummary, XvaCsvExportResponse, XvaDefaultConfigResponse,
-    XvaSimulationRequest, XvaSimulationResponse,
+use crate::{
+    error::ServerError,
+    rest::dto::xva::{
+        CounterpartyXvaResult, DemoCounterparty, DemoNettingSet, HierarchyCounterparty,
+        HierarchyIsda, HierarchySummary, HierarchyVmCsa, NettingSetResult, PfeProfile,
+        XvaBilateralRequest, XvaBilateralResponse, XvaConfigSummary, XvaCsvExportResponse,
+        XvaDefaultConfigResponse, XvaSimulationRequest, XvaSimulationResponse,
+    },
 };
 
 /// Cached last simulation result for CSV export.
@@ -99,10 +103,8 @@ impl XvaService {
             .clone()
             .unwrap_or_else(|| vec![0.95, 0.975, 0.99]);
 
-        let time_grid = Self::build_time_grid(
-            horizon,
-            request.time_step.as_deref().unwrap_or("quarterly"),
-        );
+        let time_grid =
+            Self::build_time_grid(horizon, request.time_step.as_deref().unwrap_or("quarterly"));
 
         let mut builder = XvaEngineConfig::builder()
             .n_paths(n_paths)
@@ -163,8 +165,8 @@ impl XvaService {
                 for t in 0..n_times {
                     for p in 0..actual_paths {
                         // Synthetic PV = notional * (weighted_factor - 1.0)
-                        let factor_value = factor_weight_0 * paths[0][t][p]
-                            + factor_weight_1 * paths[1][t][p];
+                        let factor_value =
+                            factor_weight_0 * paths[0][t][p] + factor_weight_1 * paths[1][t][p];
                         let trade_pv = notional * (factor_value - 1.0);
                         ns_values[t][p] += trade_pv;
                     }
@@ -381,9 +383,7 @@ impl XvaService {
             .map_err(|e| ServerError::InvalidRequest(format!("Invalid credit params: {e}")))?;
 
         let own_credit = OwnCreditParams::new(request.own_hazard_rate, request.own_lgd)
-            .map_err(|e| {
-                ServerError::InvalidRequest(format!("Invalid own credit params: {e}"))
-            })?;
+            .map_err(|e| ServerError::InvalidRequest(format!("Invalid own credit params: {e}")))?;
 
         let bilateral_result = BilateralXvaCalculator::compute_bilateral_cva(
             &request.epe,
@@ -454,7 +454,10 @@ impl XvaService {
             .ok_or_else(|| ServerError::NotFound("No simulation has been run yet".to_string()))?;
 
         let ri = cached.risk_indicators.get(ns_id).ok_or_else(|| {
-            ServerError::NotFound(format!("Netting set '{}' not found in last simulation", ns_id))
+            ServerError::NotFound(format!(
+                "Netting set '{}' not found in last simulation",
+                ns_id
+            ))
         })?;
 
         let mut csv_buf = Vec::new();

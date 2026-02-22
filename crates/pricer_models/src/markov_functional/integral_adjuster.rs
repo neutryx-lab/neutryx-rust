@@ -5,8 +5,7 @@
 //! to rates and multiplicative corrections to discount factors so that
 //! tree-implied expectations match the analytical values from the yield curve.
 
-use pricer_core::math::numeric::from_f64;
-use pricer_core::traits::Float;
+use pricer_core::{math::numeric::from_f64, traits::Float};
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,8 +34,8 @@ pub struct MomentMatchResult<T: Float> {
 /// Per-time-step additive and multiplicative corrections for a Gaussian tree.
 ///
 /// At each time step the adjuster stores:
-/// - an **adder** (applied to rates so that the tree-implied forward
-///   matches the curve forward), and
+/// - an **adder** (applied to rates so that the tree-implied forward matches
+///   the curve forward), and
 /// - a **multiplier** (applied to discount factors so that the tree-implied
 ///   discount factor matches the curve discount factor).
 #[derive(Debug, Clone)]
@@ -146,9 +145,7 @@ impl<T: Float> IntegralAdjusterNormal<T> {
     // -- per-step accessors ------------------------------------------------
 
     /// Store an additive correction for a given time step.
-    pub fn set_adder(&mut self, step: usize, adder: T) {
-        self.adders[step] = adder;
-    }
+    pub fn set_adder(&mut self, step: usize, adder: T) { self.adders[step] = adder; }
 
     /// Store a multiplicative correction for a given time step.
     pub fn set_multiplier(&mut self, step: usize, multiplier: T) {
@@ -156,14 +153,10 @@ impl<T: Float> IntegralAdjusterNormal<T> {
     }
 
     /// Retrieve the additive correction for a given time step.
-    pub fn adder(&self, step: usize) -> T {
-        self.adders[step]
-    }
+    pub fn adder(&self, step: usize) -> T { self.adders[step] }
 
     /// Retrieve the multiplicative correction for a given time step.
-    pub fn multiplier(&self, step: usize) -> T {
-        self.multipliers[step]
-    }
+    pub fn multiplier(&self, step: usize) -> T { self.multipliers[step] }
 
     // -- convenience: apply stored corrections at a step -------------------
 
@@ -318,10 +311,7 @@ mod tests {
             IntegralAdjusterNormal::compute_additive_correction(&node_values, &probs, val);
         match add_result.correction {
             MomentMatchCorrection::Additive { adder } => {
-                assert!(
-                    adder.abs() < 1e-12,
-                    "expected adder near zero, got {adder}"
-                );
+                assert!(adder.abs() < 1e-12, "expected adder near zero, got {adder}");
             }
             _ => panic!("expected Additive correction"),
         }

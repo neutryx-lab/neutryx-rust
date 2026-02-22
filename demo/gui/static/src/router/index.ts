@@ -14,6 +14,8 @@ const GraphView = () => import('@/views/GraphView.vue');
 const GreeksAnalyserView = () => import('@/views/GreeksAnalyserView.vue');
 const XvaEngineView = () => import('@/views/XvaEngineView.vue');
 const MfmView = () => import('@/views/MfmView.vue');
+const JYInflationView = () => import('@/views/JYInflationView.vue');
+const IncrementalXvaView = () => import('@/views/IncrementalXvaView.vue');
 
 export type ViewId =
   | 'dashboard'
@@ -28,7 +30,9 @@ export type ViewId =
   | 'graph'
   | 'greeks-analyser'
   | 'xva-engine'
-  | 'mfm';
+  | 'mfm'
+  | 'jy-inflation'
+  | 'incremental-xva';
 
 export interface ViewMeta extends Record<string | symbol, unknown> {
   title: string;
@@ -183,6 +187,28 @@ const routes: RouteRecordRaw[] = [
       breadcrumb: 'MFM',
       icon: 'fa-atom',
       navGroup: 'tools',
+    } as ViewMeta,
+  },
+  {
+    path: '/jy-inflation',
+    name: 'jy-inflation',
+    component: JYInflationView,
+    meta: {
+      title: 'JY Inflation',
+      breadcrumb: 'JY Inflation',
+      icon: 'fa-chart-bar',
+      navGroup: 'analytics',
+    } as ViewMeta,
+  },
+  {
+    path: '/incremental-xva',
+    name: 'incremental-xva',
+    component: IncrementalXvaView,
+    meta: {
+      title: 'Incremental XVA',
+      breadcrumb: 'Incremental XVA',
+      icon: 'fa-balance-scale',
+      navGroup: 'analytics',
     } as ViewMeta,
   },
   // Legacy redirect for trade-expansion

@@ -1024,7 +1024,32 @@ impl DemoService {
                     strike_param(),
                     expiry_param(),
                 ],
-                vec![commodity_param(), option_type_param()],
+                vec![
+                    commodity_param(),
+                    option_type_param(),
+                    ParameterDef {
+                        name: "spotPrice".into(),
+                        label: Some("Spot Price (override)".into()),
+                        field_type: FieldType::Number,
+                        default_value: None,
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: None,
+                        }),
+                    },
+                    ParameterDef {
+                        name: "spotVol".into(),
+                        label: Some("Spot Vol (override)".into()),
+                        field_type: FieldType::Number,
+                        default_value: None,
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: Some(5.0),
+                        }),
+                    },
+                ],
             ),
             def(
                 "CommodityAsianOption",
@@ -1037,7 +1062,32 @@ impl DemoService {
                     strike_param(),
                     expiry_param(),
                 ],
-                vec![commodity_param(), option_type_param()],
+                vec![
+                    commodity_param(),
+                    option_type_param(),
+                    ParameterDef {
+                        name: "spotPrice".into(),
+                        label: Some("Spot Price (override)".into()),
+                        field_type: FieldType::Number,
+                        default_value: None,
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: None,
+                        }),
+                    },
+                    ParameterDef {
+                        name: "spotVol".into(),
+                        label: Some("Spot Vol (override)".into()),
+                        field_type: FieldType::Number,
+                        default_value: None,
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: Some(5.0),
+                        }),
+                    },
+                ],
             ),
             def(
                 "SpreadOption",

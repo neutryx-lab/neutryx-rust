@@ -7,9 +7,11 @@
 
 use std::collections::HashMap;
 
-use petgraph::graph::{Graph, NodeIndex};
-use petgraph::visit::Topo;
-use petgraph::Direction;
+use petgraph::{
+    graph::{Graph, NodeIndex},
+    visit::Topo,
+    Direction,
+};
 
 use super::error::XvaEngineError;
 
@@ -40,9 +42,7 @@ pub struct GlobalCalibrationTable {
 
 impl GlobalCalibrationTable {
     /// Creates an empty calibration table.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Adds a calibration entry to the table.
     pub fn add_entry(&mut self, entry: CalibrationEntry) {
@@ -50,9 +50,7 @@ impl GlobalCalibrationTable {
     }
 
     /// Returns a reference to an entry by parameter ID.
-    pub fn get(&self, param_id: &str) -> Option<&CalibrationEntry> {
-        self.entries.get(param_id)
-    }
+    pub fn get(&self, param_id: &str) -> Option<&CalibrationEntry> { self.entries.get(param_id) }
 
     /// Returns a mutable reference to an entry by parameter ID.
     pub fn get_mut(&mut self, param_id: &str) -> Option<&mut CalibrationEntry> {
@@ -70,9 +68,7 @@ impl GlobalCalibrationTable {
     }
 
     /// Returns all parameter IDs.
-    pub fn param_ids(&self) -> Vec<&String> {
-        self.entries.keys().collect()
-    }
+    pub fn param_ids(&self) -> Vec<&String> { self.entries.keys().collect() }
 
     /// Computes residuals: target_value - current_value for each entry.
     pub fn residuals(&self) -> Vec<f64> {
@@ -83,14 +79,10 @@ impl GlobalCalibrationTable {
     }
 
     /// Returns the number of entries.
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
+    pub fn len(&self) -> usize { self.entries.len() }
 
     /// Returns whether the table is empty.
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.entries.is_empty() }
 }
 
 /// Directed Acyclic Graph for calibration dependency tracking.
@@ -305,8 +297,9 @@ impl Default for CalibrationSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn make_entry(
         id: &str,
@@ -487,7 +480,9 @@ mod tests {
         table.add_entry(make_entry("x", 1.0, 0.0, 0.0, 10.0, vec![]));
 
         let solver = CalibrationSolver::new(100, 1e-8);
-        let iters = solver.solve(&mut table, |_param_id, value| 2.0 * value).unwrap();
+        let iters = solver
+            .solve(&mut table, |_param_id, value| 2.0 * value)
+            .unwrap();
 
         let calibrated = table.get("x").unwrap().current_value;
         assert_relative_eq!(calibrated, 0.5, epsilon = 1e-6);
@@ -501,7 +496,9 @@ mod tests {
         table.add_entry(make_entry("x", 4.0, 1.0, 0.0, 10.0, vec![]));
 
         let solver = CalibrationSolver::new(200, 1e-8);
-        let _iters = solver.solve(&mut table, |_param_id, value| value * value).unwrap();
+        let _iters = solver
+            .solve(&mut table, |_param_id, value| value * value)
+            .unwrap();
 
         let calibrated = table.get("x").unwrap().current_value;
         assert_relative_eq!(calibrated, 2.0, epsilon = 1e-4);
@@ -514,14 +511,7 @@ mod tests {
         // Calibrate b: f(b) = b + a -> target 5.0 (so b should be 2.0 after a=3.0)
         let mut table = GlobalCalibrationTable::new();
         table.add_entry(make_entry("a", 3.0, 0.0, 0.0, 10.0, vec![]));
-        table.add_entry(make_entry(
-            "b",
-            5.0,
-            0.0,
-            0.0,
-            10.0,
-            vec!["a".to_string()],
-        ));
+        table.add_entry(make_entry("b", 5.0, 0.0, 0.0, 10.0, vec!["a".to_string()]));
 
         let solver = CalibrationSolver::new(100, 1e-8);
 
@@ -578,7 +568,11 @@ mod tests {
         let json = serde_json::to_string(&entry).unwrap();
         let deserialized: CalibrationEntry = serde_json::from_str(&json).unwrap();
         assert_eq!(entry.param_id, deserialized.param_id);
-        assert_relative_eq!(entry.target_value, deserialized.target_value, epsilon = 1e-10);
+        assert_relative_eq!(
+            entry.target_value,
+            deserialized.target_value,
+            epsilon = 1e-10
+        );
     }
 
     #[test]

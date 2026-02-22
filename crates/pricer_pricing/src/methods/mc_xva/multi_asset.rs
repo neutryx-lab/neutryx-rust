@@ -10,7 +10,8 @@ use super::config::XvaSimulationConfig;
 
 /// Workspace for multi-factor simulation data.
 ///
-/// Layout: `data[factor_idx * (n_times * n_paths) + time_idx * n_paths + path_idx]`
+/// Layout: `data[factor_idx * (n_times * n_paths) + time_idx * n_paths +
+/// path_idx]`
 ///
 /// This layout groups all paths for a given factor and time together,
 /// enabling efficient vectorised operations over paths.
@@ -102,7 +103,8 @@ impl MultiAssetSimulator {
     ///
     /// # Arguments
     ///
-    /// * `config` - Simulation configuration (n_paths, time_grid, antithetic, etc.).
+    /// * `config` - Simulation configuration (n_paths, time_grid, antithetic,
+    ///   etc.).
     /// * `n_factors` - Number of correlated risk factors.
     /// * `drift` - Drift rate for each factor (length `n_factors`).
     /// * `vol` - Volatility for each factor (length `n_factors`).
@@ -112,8 +114,10 @@ impl MultiAssetSimulator {
     /// # Panics
     ///
     /// Panics if:
-    /// - `drift`, `vol`, or `correlation` dimensions are inconsistent with `n_factors`.
-    /// - The correlation matrix is not square or not of size `n_factors x n_factors`.
+    /// - `drift`, `vol`, or `correlation` dimensions are inconsistent with
+    ///   `n_factors`.
+    /// - The correlation matrix is not square or not of size `n_factors x
+    ///   n_factors`.
     /// - Cholesky decomposition fails (matrix not positive semi-definite).
     pub fn simulate(
         config: &XvaSimulationConfig,
@@ -142,7 +146,8 @@ impl MultiAssetSimulator {
         let time_grid = config.time_grid();
         let n_times = time_grid.len();
 
-        // Compute Cholesky decomposition of the correlation matrix (lower triangular L).
+        // Compute Cholesky decomposition of the correlation matrix (lower triangular
+        // L).
         let cholesky = cholesky_decomposition(correlation, n_factors);
 
         let mut workspace = MultiAssetWorkspace::new(n_factors, n_times, n_paths);
@@ -261,8 +266,9 @@ fn cholesky_decomposition(matrix: &[Vec<f64>], n: usize) -> Vec<Vec<f64>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_workspace_new() {
@@ -323,10 +329,7 @@ mod tests {
 
     #[test]
     fn test_cholesky_correlated() {
-        let corr = vec![
-            vec![1.0, 0.5],
-            vec![0.5, 1.0],
-        ];
+        let corr = vec![vec![1.0, 0.5], vec![0.5, 1.0]];
         let l = cholesky_decomposition(&corr, 2);
 
         // L * L^T should reconstruct the correlation matrix.
@@ -432,14 +435,10 @@ mod tests {
 
         let drift = vec![0.03, 0.05];
         let vol = vec![0.2, 0.3];
-        let correlation = vec![
-            vec![1.0, 0.6],
-            vec![0.6, 1.0],
-        ];
+        let correlation = vec![vec![1.0, 0.6], vec![0.6, 1.0]];
 
         let mut rng = PricerRng::from_seed(77);
-        let ws =
-            MultiAssetSimulator::simulate(&config, 2, &drift, &vol, &correlation, &mut rng);
+        let ws = MultiAssetSimulator::simulate(&config, 2, &drift, &vol, &correlation, &mut rng);
 
         assert_eq!(ws.n_factors(), 2);
         assert_eq!(ws.n_paths(), 200);
@@ -485,7 +484,14 @@ mod tests {
             .unwrap();
 
         let mut rng = PricerRng::from_seed(1);
-        MultiAssetSimulator::simulate(&config, 2, &[0.05], &[0.2, 0.3], &[vec![1.0, 0.0], vec![0.0, 1.0]], &mut rng);
+        MultiAssetSimulator::simulate(
+            &config,
+            2,
+            &[0.05],
+            &[0.2, 0.3],
+            &[vec![1.0, 0.0], vec![0.0, 1.0]],
+            &mut rng,
+        );
     }
 
     #[test]
@@ -498,7 +504,14 @@ mod tests {
             .unwrap();
 
         let mut rng = PricerRng::from_seed(1);
-        MultiAssetSimulator::simulate(&config, 2, &[0.05, 0.03], &[0.2], &[vec![1.0, 0.0], vec![0.0, 1.0]], &mut rng);
+        MultiAssetSimulator::simulate(
+            &config,
+            2,
+            &[0.05, 0.03],
+            &[0.2],
+            &[vec![1.0, 0.0], vec![0.0, 1.0]],
+            &mut rng,
+        );
     }
 
     #[test]

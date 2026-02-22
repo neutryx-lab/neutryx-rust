@@ -36,20 +36,14 @@ pub use vol_cube::{
 #[derive(Debug, Clone, PartialEq)]
 pub enum MfmError {
     /// Calibration failed at a specific exercise date.
-    CalibrationFailed {
-        exercise_idx: usize,
-        reason: String,
-    },
+    CalibrationFailed { exercise_idx: usize, reason: String },
     /// Newton-Raphson solver failed to converge at a specific grid node.
     NewtonRaphsonFailed {
         exercise_idx: usize,
         grid_idx: usize,
     },
     /// An invalid parameter was supplied.
-    InvalidParameter {
-        name: &'static str,
-        reason: String,
-    },
+    InvalidParameter { name: &'static str, reason: String },
     /// Market data error.
     MarketData(String),
     /// Volatility surface error.
@@ -142,7 +136,10 @@ mod tests {
     #[test]
     fn error_display_market_data() {
         let e = MfmError::MarketData("missing discount curve".to_string());
-        assert_eq!(format!("{}", e), "market data error: missing discount curve");
+        assert_eq!(
+            format!("{}", e),
+            "market data error: missing discount curve"
+        );
     }
 
     #[test]
@@ -157,10 +154,7 @@ mod tests {
     #[test]
     fn error_display_numerical_instability() {
         let e = MfmError::NumericalInstability("annuity near zero".to_string());
-        assert_eq!(
-            format!("{}", e),
-            "numerical instability: annuity near zero"
-        );
+        assert_eq!(format!("{}", e), "numerical instability: annuity near zero");
     }
 
     #[test]

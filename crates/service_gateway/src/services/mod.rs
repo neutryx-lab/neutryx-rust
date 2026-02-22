@@ -22,6 +22,8 @@ mod volatility_service;
 #[cfg(feature = "demo")]
 mod volcube_service;
 #[cfg(feature = "demo")]
+mod incremental_xva_service;
+#[cfg(feature = "demo")]
 mod xva_service;
 
 pub use curve_service::CurveService;
@@ -42,5 +44,7 @@ pub use risk_service::RiskService;
 pub use volatility_service::VolatilityService;
 #[cfg(feature = "demo")]
 pub use volcube_service::VolcubeService;
+#[cfg(feature = "demo")]
+pub use incremental_xva_service::IncrementalXvaService;
 #[cfg(feature = "demo")]
 pub use xva_service::XvaService;

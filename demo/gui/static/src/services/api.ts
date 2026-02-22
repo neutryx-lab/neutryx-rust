@@ -413,3 +413,39 @@ export async function computeXvaBilateral(request: XvaBilateralRequest): Promise
 export async function exportXvaCsv(): Promise<XvaCsvExportResponse> {
   return fetchJson<XvaCsvExportResponse>(`${API_BASE}/xva/export/csv`);
 }
+
+// =============================================================================
+// Incremental XVA Engine API
+// =============================================================================
+
+export async function fetchIncrementalXvaConfig(): Promise<any> {
+  return fetchJson<any>(`${API_BASE}/incremental-xva/config`);
+}
+
+export async function runIncrementalXva(request: any): Promise<any> {
+  return postJson<any, any>(`${API_BASE}/incremental-xva/run`, request);
+}
+
+// =============================================================================
+// JY (Jarrow-Yildirim) Inflation Model API
+// =============================================================================
+
+export async function jyBuildCurves(request: import('@/types').JyCurveBuildRequest): Promise<import('@/types').JyCurveBuildResponse> {
+  return postJson<import('@/types').JyCurveBuildRequest, import('@/types').JyCurveBuildResponse>(`${API_BASE}/jy/curves/build`, request);
+}
+
+export async function jyInstrumentCashflows(request: import('@/types').JyInstrumentRequest): Promise<import('@/types').JyInstrumentResponse> {
+  return postJson<import('@/types').JyInstrumentRequest, import('@/types').JyInstrumentResponse>(`${API_BASE}/jy/instrument`, request);
+}
+
+export async function jySimulate(request: import('@/types').JySimulationRequest): Promise<import('@/types').JySimulationResponse> {
+  return postJson<import('@/types').JySimulationRequest, import('@/types').JySimulationResponse>(`${API_BASE}/jy/simulate`, request);
+}
+
+export async function jyPrice(request: import('@/types').JyPricingRequest): Promise<import('@/types').JyPricingResponse> {
+  return postJson<import('@/types').JyPricingRequest, import('@/types').JyPricingResponse>(`${API_BASE}/jy/price`, request);
+}
+
+export async function jyXva(request: import('@/types').JyXvaRequest): Promise<import('@/types').JyXvaResponse> {
+  return postJson<import('@/types').JyXvaRequest, import('@/types').JyXvaResponse>(`${API_BASE}/jy/xva`, request);
+}

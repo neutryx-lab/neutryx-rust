@@ -39,9 +39,7 @@ impl VmCsa {
     /// Computes the net independent-amount contribution for the given exposure.
     /// Positive IA reduces the exposure we face (counterparty posts to us).
     #[inline]
-    pub fn initial_margin(&self, _exposure: f64) -> f64 {
-        self.independent_amount
-    }
+    pub fn initial_margin(&self, _exposure: f64) -> f64 { self.independent_amount }
 }
 
 /// Computes collateral-adjusted exposure from raw netted PV paths using
@@ -107,8 +105,7 @@ impl CollateralAdjuster {
                 // high no collateral is posted and the full exposure remains.
                 let exposure_after_collateral = if raw_exposure > 0.0 {
                     // We face the counterparty: ctpy posts collateral.
-                    let collateral =
-                        (raw_exposure - ia_net - vm_csa.threshold_ctpy).max(0.0);
+                    let collateral = (raw_exposure - ia_net - vm_csa.threshold_ctpy).max(0.0);
                     // MTA filter: if the collateral call is below MTA, nothing
                     // is posted.
                     let posted = if collateral >= vm_csa.mta_ctpy {
@@ -119,8 +116,7 @@ impl CollateralAdjuster {
                     raw_exposure - ia_net - posted
                 } else {
                     // Counterparty faces us: we post collateral.
-                    let collateral =
-                        (-raw_exposure - ia_net - vm_csa.threshold_self).max(0.0);
+                    let collateral = (-raw_exposure - ia_net - vm_csa.threshold_self).max(0.0);
                     let posted = if collateral >= vm_csa.mta_self {
                         collateral
                     } else {
@@ -179,9 +175,7 @@ impl CollateralAdjuster {
 mod tests {
     use super::*;
 
-    fn create_test_rng() -> PricerRng {
-        PricerRng::from_seed(42)
-    }
+    fn create_test_rng() -> PricerRng { PricerRng::from_seed(42) }
 
     #[test]
     fn test_zero_threshold_zero_ia_fully_collateralised() {
@@ -191,12 +185,7 @@ mod tests {
         // 3 time steps, 100 paths with constant value 50.
         let netted_pv: Vec<Vec<f64>> = vec![vec![50.0; 100]; 3];
 
-        let cv = CollateralAdjuster::compute_collateral_values(
-            &netted_pv,
-            &vm_csa,
-            1.0,
-            &mut rng,
-        );
+        let cv = CollateralAdjuster::compute_collateral_values(&netted_pv, &vm_csa, 1.0, &mut rng);
 
         assert_eq!(cv.len(), 3);
         // With zero threshold, zero IA, and zero MTA the full exposure is
@@ -223,17 +212,9 @@ mod tests {
         let mut rng = create_test_rng();
 
         // Some varying paths.
-        let netted_pv: Vec<Vec<f64>> = vec![
-            vec![100.0, 100.0, 100.0],
-            vec![120.0, 110.0, 130.0],
-        ];
+        let netted_pv: Vec<Vec<f64>> = vec![vec![100.0, 100.0, 100.0], vec![120.0, 110.0, 130.0]];
 
-        let cv = CollateralAdjuster::compute_collateral_values(
-            &netted_pv,
-            &vm_csa,
-            1.0,
-            &mut rng,
-        );
+        let cv = CollateralAdjuster::compute_collateral_values(&netted_pv, &vm_csa, 1.0, &mut rng);
 
         // With a huge threshold, no collateral is posted so the MTA branch
         // keeps the raw exposure; the result should be approximately the
@@ -284,8 +265,9 @@ mod tests {
     #[test]
     fn test_adjusted_exposure_values() {
         // cv[0] = [-10, 20, -5, 15]
-        //   positive: max(0, -10)=0, max(0,20)=20, max(0,-5)=0, max(0,15)=15 -> mean=8.75
-        //   negative: max(0, 10)=10, max(0,-20)=0, max(0,5)=5, max(0,-15)=0 -> mean=3.75
+        //   positive: max(0, -10)=0, max(0,20)=20, max(0,-5)=0, max(0,15)=15 ->
+        // mean=8.75   negative: max(0, 10)=10, max(0,-20)=0, max(0,5)=5,
+        // max(0,-15)=0 -> mean=3.75
         let cv = vec![vec![-10.0, 20.0, -5.0, 15.0]];
 
         let pae = CollateralAdjuster::positive_adjusted_exposure(&cv);
@@ -324,12 +306,7 @@ mod tests {
         let n_paths = 1000;
         let netted_pv: Vec<Vec<f64>> = vec![vec![100.0; n_paths]; 5];
 
-        let cv = CollateralAdjuster::compute_collateral_values(
-            &netted_pv,
-            &vm_csa,
-            1.0,
-            &mut rng,
-        );
+        let cv = CollateralAdjuster::compute_collateral_values(&netted_pv, &vm_csa, 1.0, &mut rng);
 
         for t in 0..5 {
             let mean_cv: f64 = cv[t].iter().sum::<f64>() / cv[t].len() as f64;

@@ -133,6 +133,10 @@ export interface PricingRequest {
   computeGreeks: boolean;
   mcConfig?: McConfig | null;
   treeConfig?: TreeConfig | null;
+  /** Instrument type (e.g. "CommodityVanillaOption") for non-swap pricing. */
+  instrumentType?: string;
+  /** Instrument-specific parameters for non-swap pricing. */
+  instrumentParams?: Record<string, unknown>;
 }
 
 export interface PricingLeg {
@@ -1222,4 +1226,279 @@ export interface XvaCsvExportResponse {
   csvData: string;
   nettingSetId: string;
   rowCount: number;
+}
+
+// =============================================================================
+// JY (Jarrow-Yildirim) Inflation Model
+// =============================================================================
+
+export interface CurveRatePoint {
+  instrumentType: string;
+  tenor: string;
+  rate: number;
+}
+
+export interface InflationIndexPoint {
+  date: string;
+  level: number;
+}
+
+export interface JyModelParams {
+  aN: number;
+  sigmaN: number;
+  aR: number;
+  sigmaR: number;
+  sigmaI: number;
+}
+
+export interface JyCorrelation {
+  rhoNr: number;
+  rhoNi: number;
+  rhoRi: number;
+}
+
+export interface JyCurvePoint {
+  tenor: number;
+  value: number;
+}
+
+export interface JyCurveBuildRequest {
+  nominalRates: CurveRatePoint[];
+  realRates: CurveRatePoint[];
+  valuationDate: string;
+  modelParams: JyModelParams;
+  correlation: JyCorrelation;
+}
+
+export interface JyCurveBuildResponse {
+  nominalCurve: JyCurvePoint[];
+  realCurve: JyCurvePoint[];
+  breakevenCurve: JyCurvePoint[];
+  nominalDf: JyCurvePoint[];
+  realDf: JyCurvePoint[];
+}
+
+export interface JyCashflow {
+  date: string;
+  yearFraction: number;
+  nominalAmount: number;
+  realAmount?: number;
+  discountFactor: number;
+  presentValue: number;
+}
+
+export interface JyInstrumentSummary {
+  totalFixedPv: number;
+  totalInflationPv: number;
+  netPv: number;
+  numCashflows: number;
+  maturityYears: number;
+}
+
+export interface JyInstrumentRequest {
+  instrumentType: string;
+  notional: number;
+  fixedRate: number;
+  startDate: string;
+  maturityDate: string;
+  paymentFrequency?: string;
+  nominalCurveRate?: number;
+  realCurveRate?: number;
+}
+
+export interface JyInstrumentResponse {
+  instrumentType: string;
+  cashflows: JyCashflow[];
+  summary: JyInstrumentSummary;
+}
+
+export interface JySimulationRequest {
+  modelParams: JyModelParams;
+  correlation: JyCorrelation;
+  numPaths: number;
+  numSteps: number;
+  horizon: number;
+  initialNominalRate: number;
+  initialRealRate: number;
+  initialIndex: number;
+  numSamplePaths?: number;
+}
+
+export interface SimulationPathStats {
+  mean: number[];
+  percentile5: number[];
+  percentile25: number[];
+  percentile75: number[];
+  percentile95: number[];
+}
+
+export interface JySamplePath {
+  nominalRate: number[];
+  realRate: number[];
+  inflationIndex: number[];
+}
+
+export interface JySimulationResponse {
+  timeGrid: number[];
+  nominalRate: SimulationPathStats;
+  realRate: SimulationPathStats;
+  inflationIndex: SimulationPathStats;
+  samplePaths: JySamplePath[];
+  correlationRealized: JyCorrelation;
+  psdEnforced: boolean;
+}
+
+export interface JyGreeks {
+  dv01Nominal: number;
+  dv01Real: number;
+  vegaNominal: number;
+  vegaReal: number;
+  vegaInflation: number;
+  theta: number;
+}
+
+export interface JyPricingRequest {
+  modelParams: JyModelParams;
+  correlation: JyCorrelation;
+  initialNominalRate: number;
+  initialRealRate: number;
+  initialIndex: number;
+  notional: number;
+  fixedRate: number;
+  maturity: number;
+  nominalCurveRate: number;
+  realCurveRate: number;
+}
+
+export interface JyPricingResponse {
+  mtm: number;
+  inflationLegPv: number;
+  fixedLegPv: number;
+  greeks: JyGreeks;
+}
+
+export interface ExposureProfile {
+  timeGrid: number[];
+  expectedExposure: number[];
+  negativeExpectedExposure: number[];
+  pfe95: number[];
+  pfe99: number[];
+}
+
+export interface JyXvaRequest {
+  modelParams: JyModelParams;
+  correlation: JyCorrelation;
+  initialNominalRate: number;
+  initialRealRate: number;
+  initialIndex: number;
+  notional: number;
+  fixedRate: number;
+  maturity: number;
+  nominalCurveRate: number;
+  realCurveRate: number;
+  counterpartyPd: number;
+  counterpartyRecovery: number;
+  ownPd: number;
+  ownRecovery: number;
+  fundingSpread: number;
+  numPaths: number;
+  numSteps: number;
+}
+
+export interface JyXvaResponse {
+  cva: number;
+  dva: number;
+  fva: number;
+  totalXva: number;
+  cleanMtm: number;
+  adjustedMtm: number;
+  exposureProfile: ExposureProfile;
+}
+
+// =============================================================================
+// Incremental XVA Engine Types
+// =============================================================================
+
+export interface IncrementalXvaRequest {
+  nPaths?: number;
+  horizonYears?: number;
+  timeStep?: string;
+  seed?: number;
+  antithetic?: boolean;
+  bilateral?: boolean;
+  computeFva?: boolean;
+  hwMeanReversion: number;
+  hwVolatility: number;
+  hwInitialRate: number;
+  couplingMethod?: string;
+  couplingSwapTenor?: number;
+  hazardRate: number;
+  lgd: number;
+  ownHazardRate?: number;
+  ownLgd?: number;
+  fundingSpread?: number;
+  baseSwaps: SwapDefinitionDto[];
+  baseExotics: ExoticDefinitionDto[];
+  incrementalTrade: IncrementalTradeDto;
+}
+
+export interface SwapDefinitionDto {
+  tradeId: string;
+  notional: number;
+  fixedRate: number;
+  tenorYears: number;
+  paymentFrequency: string;
+  isPayer: boolean;
+}
+
+export interface ExoticDefinitionDto {
+  tradeId: string;
+  productType: string;
+  notional: number;
+  mfmMeanReversion: number;
+  mfmVolatility: number;
+  mfmGridPoints?: number;
+  mfmNumStdDevs?: number;
+  exerciseTimes: number[];
+  swapTenors: number[];
+  paymentFrequency?: number;
+  fundingRate?: number;
+  couponRate?: number;
+  flatVolBps?: number;
+  fixedRate?: number;
+  isCallable?: boolean;
+  tarnTarget?: number;
+  tarnCouponGridPoints?: number;
+  leverage?: number;
+  floorRate?: number;
+  capRate?: number;
+}
+
+export type IncrementalTradeDto =
+  | ({ type: 'swap' } & SwapDefinitionDto)
+  | ({ type: 'exotic' } & ExoticDefinitionDto);
+
+export interface XvaMetricsDto {
+  ucva: number;
+  bcva: number;
+  udva: number;
+  bdva: number;
+  fca: number;
+  fba: number;
+  fva: number;
+  total: number;
+}
+
+export interface IncrementalXvaResponse {
+  timeGrid: number[];
+  nPaths: number;
+  baseXva: XvaMetricsDto;
+  fullXva: XvaMetricsDto;
+  incrementalXva: XvaMetricsDto;
+  baseEpe: number[];
+  baseEne: number[];
+  fullEpe: number[];
+  fullEne: number[];
+  couplingMethod: string;
+  computationTimeMs: number;
 }

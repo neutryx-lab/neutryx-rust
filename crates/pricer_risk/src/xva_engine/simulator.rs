@@ -7,10 +7,10 @@ use std::collections::HashMap;
 
 use pricer_core::math::rng::PricerRng;
 
-use super::aggregator::ExposureAggregator;
-use super::config::XvaEngineConfig;
-use super::error::XvaEngineError;
-use super::risk_indicators::XvaRiskIndicators;
+use super::{
+    aggregator::ExposureAggregator, config::XvaEngineConfig, error::XvaEngineError,
+    risk_indicators::XvaRiskIndicators,
+};
 use crate::portfolio::NettingSetId;
 
 /// Results of an XVA Monte Carlo simulation.
@@ -40,14 +40,10 @@ pub struct XvaSimulator {
 
 impl XvaSimulator {
     /// Creates a new simulator with the given configuration.
-    pub fn new(config: XvaEngineConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: XvaEngineConfig) -> Self { Self { config } }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &XvaEngineConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &XvaEngineConfig { &self.config }
 
     /// Generates multi-asset Monte Carlo paths.
     ///
@@ -190,7 +186,10 @@ impl XvaSimulator {
     pub fn compute_exposure_profiles(
         &self,
         netted_values: &HashMap<NettingSetId, Vec<Vec<f64>>>,
-    ) -> (HashMap<NettingSetId, Vec<f64>>, HashMap<NettingSetId, Vec<f64>>) {
+    ) -> (
+        HashMap<NettingSetId, Vec<f64>>,
+        HashMap<NettingSetId, Vec<f64>>,
+    ) {
         let mut epe_profiles = HashMap::new();
         let mut ene_profiles = HashMap::new();
 
@@ -208,10 +207,7 @@ impl XvaSimulator {
 /// Performs Cholesky decomposition of a symmetric positive-definite matrix.
 ///
 /// Returns the lower-triangular matrix L such that A = L * L^T.
-fn cholesky_decompose(
-    matrix: &[Vec<f64>],
-    n: usize,
-) -> Result<Vec<Vec<f64>>, XvaEngineError> {
+fn cholesky_decompose(matrix: &[Vec<f64>], n: usize) -> Result<Vec<Vec<f64>>, XvaEngineError> {
     let mut l = vec![vec![0.0; n]; n];
 
     for i in 0..n {
@@ -245,8 +241,9 @@ fn cholesky_decompose(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn make_config(n_paths: usize, seed: u64) -> XvaEngineConfig {
         XvaEngineConfig {
@@ -348,7 +345,8 @@ mod tests {
         assert!(result.is_err());
 
         // Wrong vol length
-        let result = sim.simulate_paths(2, &[0.05, 0.05], &[0.2], &[vec![1.0, 0.0], vec![0.0, 1.0]]);
+        let result =
+            sim.simulate_paths(2, &[0.05, 0.05], &[0.2], &[vec![1.0, 0.0], vec![0.0, 1.0]]);
         assert!(result.is_err());
 
         // Wrong correlation dimensions
@@ -424,7 +422,8 @@ mod tests {
 
     #[test]
     fn test_gbm_mean_close_to_drift() {
-        // With many paths, the mean of GBM should be close to E[S_T] = S_0 * exp(mu * T)
+        // With many paths, the mean of GBM should be close to E[S_T] = S_0 * exp(mu *
+        // T)
         let config = make_config(10_000, 42);
         let sim = XvaSimulator::new(config);
 

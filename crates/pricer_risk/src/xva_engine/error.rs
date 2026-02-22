@@ -63,19 +63,13 @@ mod tests {
     #[test]
     fn test_calibration_error_display() {
         let err = XvaEngineError::CalibrationError("convergence failure".to_string());
-        assert_eq!(
-            format!("{}", err),
-            "Calibration error: convergence failure"
-        );
+        assert_eq!(format!("{}", err), "Calibration error: convergence failure");
     }
 
     #[test]
     fn test_hierarchy_error_display() {
         let err = XvaEngineError::HierarchyError("missing counterparty".to_string());
-        assert_eq!(
-            format!("{}", err),
-            "Hierarchy error: missing counterparty"
-        );
+        assert_eq!(format!("{}", err), "Hierarchy error: missing counterparty");
     }
 
     #[test]
@@ -87,10 +81,7 @@ mod tests {
     #[test]
     fn test_aggregation_error_display() {
         let err = XvaEngineError::AggregationError("empty netting set".to_string());
-        assert_eq!(
-            format!("{}", err),
-            "Aggregation error: empty netting set"
-        );
+        assert_eq!(format!("{}", err), "Aggregation error: empty netting set");
     }
 
     #[test]
@@ -108,10 +99,7 @@ mod tests {
     #[test]
     fn test_missing_market_data_display() {
         let err = XvaEngineError::MissingMarketData("USD yield curve".to_string());
-        assert_eq!(
-            format!("{}", err),
-            "Missing market data: USD yield curve"
-        );
+        assert_eq!(format!("{}", err), "Missing market data: USD yield curve");
     }
 
     #[test]

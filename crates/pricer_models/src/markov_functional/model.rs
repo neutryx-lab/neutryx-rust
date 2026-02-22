@@ -5,16 +5,22 @@
 //! Newton-Raphson. Supports multi-curve calibration with three
 //! simultaneous rate index mappings.
 
-use pricer_core::math::normal_dist::{norm_cdf, norm_pdf};
-use pricer_core::math::numeric::from_f64;
-use pricer_core::math::solvers::{NewtonRaphsonSolver, SolverConfig};
-use pricer_core::traits::Float;
+use pricer_core::{
+    math::{
+        normal_dist::{norm_cdf, norm_pdf},
+        numeric::from_f64,
+        solvers::{NewtonRaphsonSolver, SolverConfig},
+    },
+    traits::Float,
+};
 
-use super::config::{MfmCalibrationResult, MfmConfig, MfmVolType};
-use super::integral_adjuster::IntegralAdjusterNormal;
-use super::rate_mapping::{CalibratedSlice, MfmRateIndex, RateIndexCalibration};
-use super::vol_cube::SwaptionVolCube;
-use super::MfmError;
+use super::{
+    config::{MfmCalibrationResult, MfmConfig, MfmVolType},
+    integral_adjuster::IntegralAdjusterNormal,
+    rate_mapping::{CalibratedSlice, MfmRateIndex, RateIndexCalibration},
+    vol_cube::SwaptionVolCube,
+    MfmError,
+};
 
 // ─── Main struct ────────────────────────────────────────────────────
 
@@ -45,9 +51,7 @@ impl<T: Float> MarkovFunctionalNonParametric1F<T> {
     }
 
     /// Returns a reference to the model configuration.
-    pub fn config(&self) -> &MfmConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &MfmConfig<T> { &self.config }
 
     // ── Gaussian grid construction ──────────────────────────────────
 
@@ -333,17 +337,17 @@ impl<T: Float> MarkovFunctionalNonParametric1F<T> {
     ///
     /// * `funding_curve` - Discount factor function for the funding curve:
     ///   `funding_curve(t) -> DF(t)`.
-    /// * `coupon_curve` - Discount factor function for the coupon
-    ///   projection curve: `coupon_curve(t) -> DF(t)`.
+    /// * `coupon_curve` - Discount factor function for the coupon projection
+    ///   curve: `coupon_curve(t) -> DF(t)`.
     /// * `vol_cube` - Swaption volatility cube providing normal vols.
     ///
     /// # Algorithm
     ///
     /// 1. Build the internal Gaussian grid.
-    /// 2. For each exercise date, calibrate three rate index mappings
-    ///    (funding swap, coupon swap, coupon LIBOR).
-    /// 3. Apply integral adjuster corrections so that tree-implied
-    ///    discount factors match the yield curve.
+    /// 2. For each exercise date, calibrate three rate index mappings (funding
+    ///    swap, coupon swap, coupon LIBOR).
+    /// 3. Apply integral adjuster corrections so that tree-implied discount
+    ///    factors match the yield curve.
     /// 4. Assemble and return the [`MfmCalibrationResult`].
     ///
     /// # Errors
@@ -378,8 +382,8 @@ impl<T: Float> MarkovFunctionalNonParametric1F<T> {
             let fwd_funding =
                 self.compute_forward_swap_rate(exercise_time, swap_tenor, pay_freq, funding_curve);
 
-            let sigma_n_funding = vol_cube
-                .normal_vol(exercise_time, swap_tenor, fwd_funding, fwd_funding)?;
+            let sigma_n_funding =
+                vol_cube.normal_vol(exercise_time, swap_tenor, fwd_funding, fwd_funding)?;
 
             let funding_slice = self.calibrate_slice(
                 MfmRateIndex::FundingIndexSwapRate,
@@ -398,8 +402,8 @@ impl<T: Float> MarkovFunctionalNonParametric1F<T> {
             let fwd_coupon =
                 self.compute_forward_swap_rate(exercise_time, swap_tenor, pay_freq, coupon_curve);
 
-            let sigma_n_coupon = vol_cube
-                .normal_vol(exercise_time, swap_tenor, fwd_coupon, fwd_coupon)?;
+            let sigma_n_coupon =
+                vol_cube.normal_vol(exercise_time, swap_tenor, fwd_coupon, fwd_coupon)?;
 
             let coupon_swap_slice = self.calibrate_slice(
                 MfmRateIndex::CouponIndexSwapRate,
@@ -422,8 +426,8 @@ impl<T: Float> MarkovFunctionalNonParametric1F<T> {
             let df_end_libor = coupon_curve(exercise_time + libor_tenor);
             let fwd_libor = (df_start_libor / df_end_libor - T::one()) / libor_tenor;
 
-            let sigma_n_libor = vol_cube
-                .normal_vol(exercise_time, libor_tenor, fwd_libor, fwd_libor)?;
+            let sigma_n_libor =
+                vol_cube.normal_vol(exercise_time, libor_tenor, fwd_libor, fwd_libor)?;
 
             // For LIBOR we calibrate a single-period "swap" with the same
             // machinery, treating the LIBOR fixing as a one-period swap.
@@ -537,9 +541,7 @@ mod tests {
     }
 
     /// Flat discount factor function: DF(t) = exp(-r * t)
-    fn flat_df(rate: f64) -> impl Fn(f64) -> f64 {
-        move |t: f64| (-rate * t).exp()
-    }
+    fn flat_df(rate: f64) -> impl Fn(f64) -> f64 { move |t: f64| (-rate * t).exp() }
 
     // ── Construction tests ──────────────────────────────────────────
 
@@ -908,7 +910,12 @@ mod tests {
 
         // All discount factors should be positive.
         for (i, &df) in slice.discount_factors.iter().enumerate() {
-            assert!(df > 0.0, "discount factor at index {} is non-positive: {}", i, df);
+            assert!(
+                df > 0.0,
+                "discount factor at index {} is non-positive: {}",
+                i,
+                df
+            );
         }
 
         // Annuities should be positive.
@@ -995,7 +1002,12 @@ mod tests {
 
         // All swap rates should be positive under lognormal dynamics.
         for (i, &s) in slice.swap_rates.iter().enumerate() {
-            assert!(s > 0.0, "lognormal: swap rate at index {} is non-positive: {}", i, s);
+            assert!(
+                s > 0.0,
+                "lognormal: swap rate at index {} is non-positive: {}",
+                i,
+                s
+            );
         }
     }
 

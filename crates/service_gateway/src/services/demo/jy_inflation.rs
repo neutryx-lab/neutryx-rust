@@ -7,21 +7,20 @@
 //! - Analytical ZCIS pricing with bump-and-revalue Greeks
 //! - XVA computation (CVA/DVA/FVA) via outer MC
 
+use pricer_models::process::{
+    stochastic::StochasticModel, JarrowYildirimModel, JarrowYildirimParams, ZcisAnalyticalPricer,
+};
+
+use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::jy_inflation::{
         ExposureProfile, JyCashflow, JyCurveBuildRequest, JyCurveBuildResponse, JyCurvePoint,
-        JyGreeks, JyInstrumentRequest, JyInstrumentResponse, JyInstrumentSummary,
-        JyPricingRequest, JyPricingResponse, JySamplePath, JySimulationRequest,
-        JySimulationResponse, JyXvaRequest, JyXvaResponse, SimulationPathStats,
+        JyGreeks, JyInstrumentRequest, JyInstrumentResponse, JyInstrumentSummary, JyPricingRequest,
+        JyPricingResponse, JySamplePath, JySimulationRequest, JySimulationResponse, JyXvaRequest,
+        JyXvaResponse, SimulationPathStats,
     },
 };
-use pricer_models::process::{
-    stochastic::{StochasticModel, ThreeFactorState},
-    JarrowYildirimModel, JarrowYildirimParams, ZcisAnalyticalPricer,
-};
-
-use super::DemoService;
 
 // ─── Simple PRNG (no rand dependency) ───────────────────────────────────────
 
@@ -30,7 +29,11 @@ struct Xorshift64(u64);
 
 impl Xorshift64 {
     fn new(seed: u64) -> Self {
-        Self(if seed == 0 { 0xDEAD_BEEF_CAFE_BABE } else { seed })
+        Self(if seed == 0 {
+            0xDEAD_BEEF_CAFE_BABE
+        } else {
+            seed
+        })
     }
 
     /// Seed from system time.
@@ -53,9 +56,7 @@ impl Xorshift64 {
     }
 
     /// Uniform in (0, 1).
-    fn next_f64(&mut self) -> f64 {
-        (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64
-    }
+    fn next_f64(&mut self) -> f64 { (self.next_u64() >> 11) as f64 / (1u64 << 53) as f64 }
 
     /// Standard normal via Box-Muller transform.
     fn next_normal(&mut self) -> f64 {
@@ -161,7 +162,10 @@ impl DemoService {
         // Breakeven = nominal - real at common tenors
         let mut breakeven_curve = Vec::new();
         for np in &nominal_curve {
-            if let Some(rp) = real_curve.iter().find(|rp| (rp.tenor - np.tenor).abs() < 0.01) {
+            if let Some(rp) = real_curve
+                .iter()
+                .find(|rp| (rp.tenor - np.tenor).abs() < 0.01)
+            {
                 breakeven_curve.push(JyCurvePoint {
                     tenor: np.tenor,
                     value: np.value - rp.value,
@@ -281,9 +285,7 @@ impl DemoService {
     }
 
     /// Run Monte Carlo simulation of the JY 3-factor model.
-    pub fn jy_simulate(
-        request: &JySimulationRequest,
-    ) -> Result<JySimulationResponse, ServerError> {
+    pub fn jy_simulate(request: &JySimulationRequest) -> Result<JySimulationResponse, ServerError> {
         let num_paths = request.num_paths as usize;
         let num_steps = request.num_steps as usize;
         let dt = request.horizon / num_steps as f64;
@@ -364,7 +366,8 @@ impl DemoService {
         })
     }
 
-    /// Price a ZCIS using the analytical JY formula with bump-and-revalue Greeks.
+    /// Price a ZCIS using the analytical JY formula with bump-and-revalue
+    /// Greeks.
     pub fn jy_price(request: &JyPricingRequest) -> Result<JyPricingResponse, ServerError> {
         let params = build_jy_params(
             &request.model_params,
@@ -488,7 +491,15 @@ impl DemoService {
         let mut params_theta = params.clone();
         params_theta.advance_time(day);
         let mtm_theta = ZcisAnalyticalPricer::price(
-            &params_theta, n_t, r_t, i_t, day, maturity, notional, fixed_rate, base_index,
+            &params_theta,
+            n_t,
+            r_t,
+            i_t,
+            day,
+            maturity,
+            notional,
+            fixed_rate,
+            base_index,
         );
         let theta = mtm_theta - mtm;
 
@@ -686,7 +697,8 @@ fn compute_path_stats(paths: &[Vec<f64>], num_steps: usize) -> SimulationPathSta
     }
 }
 
-/// Compute empirical correlation between the three factors from path increments.
+/// Compute empirical correlation between the three factors from path
+/// increments.
 fn compute_empirical_correlation(
     nominal: &[Vec<f64>],
     real: &[Vec<f64>],

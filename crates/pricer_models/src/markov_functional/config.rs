@@ -4,12 +4,11 @@
 //! volatility convention selection, and [`MfmCalibrationResult`] for
 //! collecting calibration outputs.
 
-use pricer_core::math::numeric::from_f64;
-use pricer_core::traits::Float;
+use pricer_core::{math::numeric::from_f64, traits::Float};
 
-use super::integral_adjuster::IntegralAdjusterNormal;
-use super::rate_mapping::RateIndexCalibration;
-use super::MfmError;
+use super::{
+    integral_adjuster::IntegralAdjusterNormal, rate_mapping::RateIndexCalibration, MfmError,
+};
 
 // ─── Volatility type ────────────────────────────────────────────────
 
@@ -23,9 +22,7 @@ pub enum MfmVolType {
 }
 
 impl Default for MfmVolType {
-    fn default() -> Self {
-        Self::Normal
-    }
+    fn default() -> Self { Self::Normal }
 }
 
 // ─── Configuration ──────────────────────────────────────────────────
@@ -41,7 +38,8 @@ pub struct MfmConfig<T: Float> {
     pub mean_reversion: T,
     /// Instantaneous volatility of the Gaussian driver (must be > 0).
     pub volatility: T,
-    /// Number of grid points in the Gaussian recombining tree (must be >= 3 and odd).
+    /// Number of grid points in the Gaussian recombining tree (must be >= 3 and
+    /// odd).
     pub num_grid_points: usize,
     /// Number of standard deviations for grid extent.
     pub num_std_devs: T,
@@ -84,8 +82,8 @@ impl<T: Float> MfmConfig<T> {
     /// - `mean_reversion` must be strictly positive.
     /// - `volatility` must be strictly positive.
     /// - `num_grid_points` must be at least 3 and odd.
-    /// - `exercise_times`, `swap_tenors`, and `payment_frequencies` must
-    ///   all have the same length.
+    /// - `exercise_times`, `swap_tenors`, and `payment_frequencies` must all
+    ///   have the same length.
     pub fn validate(&self) -> Result<(), MfmError> {
         let zero: T = from_f64(0.0);
 

@@ -48,11 +48,10 @@ pub struct CalibratedSlice<T: Float> {
 
 impl<T: Float> CalibratedSlice<T> {
     /// Returns the number of grid nodes in this slice.
-    pub fn num_nodes(&self) -> usize {
-        self.x_grid.len()
-    }
+    pub fn num_nodes(&self) -> usize { self.x_grid.len() }
 
-    /// Linearly interpolates the swap rate for a given state variable value `x`.
+    /// Linearly interpolates the swap rate for a given state variable value
+    /// `x`.
     ///
     /// If `x` is outside the grid range the swap rate is extrapolated flat
     /// (clamped to the boundary value).
@@ -111,17 +110,13 @@ pub struct RateIndexCalibration<T: Float> {
 
 impl<T: Float> RateIndexCalibration<T> {
     /// Returns the number of exercise dates (slices) in this calibration.
-    pub fn num_exercise_dates(&self) -> usize {
-        self.slices.len()
-    }
+    pub fn num_exercise_dates(&self) -> usize { self.slices.len() }
 
     /// Returns a reference to the calibrated slice at index `idx`.
     ///
     /// # Panics
     /// Panics if `idx >= self.slices.len()`.
-    pub fn slice(&self, idx: usize) -> &CalibratedSlice<T> {
-        &self.slices[idx]
-    }
+    pub fn slice(&self, idx: usize) -> &CalibratedSlice<T> { &self.slices[idx] }
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────
@@ -290,10 +285,7 @@ mod tests {
             MfmRateIndex::FundingIndexSwapRate,
             MfmRateIndex::CouponIndexSwapRate
         );
-        assert_ne!(
-            MfmRateIndex::CouponIndexSwapRate,
-            MfmRateIndex::CouponLibor
-        );
+        assert_ne!(MfmRateIndex::CouponIndexSwapRate, MfmRateIndex::CouponLibor);
         assert_ne!(
             MfmRateIndex::FundingIndexSwapRate,
             MfmRateIndex::CouponLibor
