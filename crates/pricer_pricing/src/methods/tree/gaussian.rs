@@ -106,7 +106,7 @@ impl<T: Float> GaussianTree<T> {
                 reason: "volatility must be positive".to_string(),
             });
         }
-        if config.num_grid_points < 3 || config.num_grid_points.is_multiple_of(2) {
+        if config.num_grid_points < 3 || config.num_grid_points % 2 == 0 {
             return Err(ConfigError::InvalidModelParameter {
                 name: "num_grid_points",
                 reason: "num_grid_points must be odd and >= 3".to_string(),
