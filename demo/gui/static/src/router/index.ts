@@ -157,6 +157,17 @@ const routes: RouteRecordRaw[] = [
     } as ViewMeta,
   },
   {
+    path: '/xva-engine',
+    name: 'xva-engine',
+    component: XvaEngineView,
+    meta: {
+      title: 'XVA',
+      breadcrumb: 'XVA',
+      icon: 'fa-shield-alt',
+      navGroup: 'tools',
+    } as ViewMeta,
+  },
+  {
     path: '/graph',
     name: 'graph',
     component: GraphView,
@@ -165,17 +176,6 @@ const routes: RouteRecordRaw[] = [
       breadcrumb: 'Graph',
       icon: 'fa-project-diagram',
       navGroup: 'tools',
-    } as ViewMeta,
-  },
-  {
-    path: '/xva-engine',
-    name: 'xva-engine',
-    component: XvaEngineView,
-    meta: {
-      title: 'XVA Engine',
-      breadcrumb: 'XVA Engine',
-      icon: 'fa-shield-alt',
-      navGroup: 'analytics',
     } as ViewMeta,
   },
   {
