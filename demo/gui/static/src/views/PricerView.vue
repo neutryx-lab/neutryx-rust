@@ -3,10 +3,11 @@
  * PricerView — Unified pricer layout.
  *
  * Standard pricer with all instrument types (including Exotic and MFM products
- * integrated into the standard asset-class tabs), plus JY Inflation Swaps
- * available as a collapsible expansion panel below.
+ * integrated into the standard asset-class tabs).
+ * When the Inflation tab is selected, JY Inflation panels replace the standard
+ * cashflow table and results panels.
  */
-import { onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { usePricerStore } from '@/stores/pricer';
 import { useInstruments } from '@/composables/useInstruments';
 import { usePricer } from '@/composables/usePricer';
@@ -21,18 +22,13 @@ import JyPricingPanel from '@/components/jy/JyPricingPanel.vue';
 import JyXvaPanel from '@/components/jy/JyXvaPanel.vue';
 
 import { useJyInflationStore } from '@/stores/jyInflation';
-import { useJYInflation } from '@/composables/useJYInflation';
 
 const store = usePricerStore();
 const { loadInstruments } = useInstruments();
 usePricer();
 
-// ---------------------------------------------------------------------------
-// JY Inflation state
-// ---------------------------------------------------------------------------
 const jyStore = useJyInflationStore();
-const { generateCashflows: jyGenerateCashflows, runPricing: jyRunPricing, runXva: jyRunXva } = useJYInflation();
-const inflationExpanded = ref(false);
+const isInflation = computed(() => store.assetTab === 'Inflation');
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -54,76 +50,43 @@ onMounted(() => {
 
     <!-- Main Layout -->
     <template v-else>
-      <!-- Standard Pricer -->
       <v-row>
         <!-- Left Panel: Config (4 cols) -->
         <v-col cols="12" lg="4">
           <PricerConfigPanel />
         </v-col>
 
-        <!-- Right Panel: Cashflows (8 cols) -->
+        <!-- Right Panel: Standard Cashflows or Inflation Cashflows -->
         <v-col cols="12" lg="8">
-          <CashflowTable />
+          <template v-if="!isInflation">
+            <CashflowTable />
+          </template>
+          <template v-else>
+            <JyInstrumentPanel class="jy-cashflow-panel" />
+          </template>
         </v-col>
       </v-row>
 
       <!-- Results (below, full width) -->
       <v-row class="mt-2">
         <v-col cols="12">
-          <PricerResultsPanel />
-        </v-col>
-      </v-row>
-
-      <!-- Inflation Swaps (collapsible) -->
-      <v-row class="mt-4">
-        <v-col cols="12">
-          <v-expansion-panels v-model="inflationExpanded">
-            <v-expansion-panel value="inflation">
-              <v-expansion-panel-title>
-                <div class="d-flex align-center gap-2">
-                  <v-icon icon="mdi-chart-bar" size="20" />
-                  <span class="text-subtitle-1 font-weight-medium">Inflation Swaps (JY Model)</span>
-                </div>
-              </v-expansion-panel-title>
-              <v-expansion-panel-text>
-                <!-- Instrument Configuration + Cashflows -->
-                <JyInstrumentPanel @generate="jyGenerateCashflows" />
-
-                <!-- Pricing -->
-                <div class="mt-6">
-                  <div class="d-flex align-center gap-2 mb-4">
-                    <v-btn
-                      color="primary"
-                      :loading="jyStore.loading"
-                      :disabled="jyStore.loading"
-                      @click="jyRunPricing"
-                    >
-                      <v-icon start>mdi-calculator</v-icon>
-                      Price
-                    </v-btn>
-                    <v-btn
-                      color="secondary"
-                      variant="outlined"
-                      :loading="jyStore.loading"
-                      :disabled="jyStore.loading"
-                      @click="jyRunXva"
-                    >
-                      <v-icon start>mdi-shield-half-full</v-icon>
-                      Compute XVA
-                    </v-btn>
-                  </div>
-                  <JyPricingPanel :result="jyStore.pricingResult" />
-                </div>
-
-                <!-- XVA -->
-                <div v-if="jyStore.xvaResult" class="mt-6">
-                  <JyXvaPanel :result="jyStore.xvaResult" />
-                </div>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
+          <template v-if="!isInflation">
+            <PricerResultsPanel />
+          </template>
+          <template v-else>
+            <JyPricingPanel :result="jyStore.pricingResult" />
+            <div v-if="jyStore.xvaResult" class="mt-4">
+              <JyXvaPanel :result="jyStore.xvaResult" />
+            </div>
+          </template>
         </v-col>
       </v-row>
     </template>
   </div>
 </template>
+
+<style scoped>
+.jy-cashflow-panel :deep(.input-field) {
+  font-size: 0.8rem;
+}
+</style>

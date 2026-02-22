@@ -102,8 +102,8 @@ const routes: RouteRecordRaw[] = [
     name: 'incremental-xva',
     component: IncrementalXvaView,
     meta: {
-      title: 'Port. XVA',
-      breadcrumb: 'Port. XVA',
+      title: 'Incr. XVA',
+      breadcrumb: 'Incr. XVA',
       icon: 'fa-balance-scale',
       navGroup: 'analytics',
     } as ViewMeta,

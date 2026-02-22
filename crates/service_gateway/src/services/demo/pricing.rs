@@ -2018,8 +2018,8 @@ fn build_domain_trade(
         }
         // ── Exotic / MFM instruments (placeholder trades for expand) ──
         "Tarf" => {
-            let notional = param_f64("notionalPerFixing", 100_000.0)
-                * param_f64("numFixings", 12.0);
+            let notional =
+                param_f64("notionalPerFixing", 100_000.0) * param_f64("numFixings", 12.0);
             let currency = parse_currency(
                 param_str("currencyPair")
                     .and_then(|s| s.get(..3))
@@ -2067,8 +2067,7 @@ fn build_domain_trade(
             let currency = Currency::USD;
             let num_ex = param_f64("numExercises", 5.0) as i32;
             let tenor = Tenor::months(num_ex * 12);
-            let end = tenor
-                .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
+            let end = tenor.add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
             let yf = num_ex as f64;
             let cf = DomainCashflow::new(
                 CashflowType::Coupon,
@@ -2090,8 +2089,7 @@ fn build_domain_trade(
             let currency = Currency::USD;
             let num_ex = param_f64("numExercises", 10.0) as i32;
             let tenor = Tenor::months(num_ex * 12);
-            let end = tenor
-                .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
+            let end = tenor.add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
             let yf = num_ex as f64;
             let cf = DomainCashflow::new(
                 CashflowType::Coupon,
@@ -2104,10 +2102,7 @@ fn build_domain_trade(
                 currency,
             );
             let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, currency);
-            (
-                Trade::new("DEMO-TARN", vec![leg], TradeType::Swap),
-                "TARN",
-            )
+            (Trade::new("DEMO-TARN", vec![leg], TradeType::Swap), "TARN")
         }
         other => {
             return Err(ServerError::InvalidRequest(format!(
@@ -2164,8 +2159,8 @@ fn price_exotic_or_mfm(
                 num_paths: None,
             };
             let exotic_req = ExoticProductRequest::Tarf(req);
-            let result = ExoticService::price_exotic(&exotic_req)
-                .map_err(|e| ServerError::Pricing(e))?;
+            let result =
+                ExoticService::price_exotic(&exotic_req).map_err(|e| ServerError::Pricing(e))?;
             let elapsed = start.elapsed();
             Ok(DemoPricingResult {
                 total_pv: result.price,
@@ -2193,8 +2188,8 @@ fn price_exotic_or_mfm(
                 num_paths: None,
             };
             let exotic_req = ExoticProductRequest::Autocallable(req);
-            let result = ExoticService::price_exotic(&exotic_req)
-                .map_err(|e| ServerError::Pricing(e))?;
+            let result =
+                ExoticService::price_exotic(&exotic_req).map_err(|e| ServerError::Pricing(e))?;
             let elapsed = start.elapsed();
             Ok(DemoPricingResult {
                 total_pv: result.price,
@@ -2236,8 +2231,7 @@ fn price_exotic_or_mfm(
                 is_callable: p_bool("isCallable", true),
                 flat_coupon: Some(p("flatCoupon", 0.01)),
             };
-            let result =
-                MfmService::price_bermudan(&req).map_err(|e| ServerError::Pricing(e))?;
+            let result = MfmService::price_bermudan(&req).map_err(|e| ServerError::Pricing(e))?;
             let elapsed = start.elapsed();
             Ok(DemoPricingResult {
                 total_pv: result.pv,

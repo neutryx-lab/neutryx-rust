@@ -11,9 +11,29 @@ import { usePricer } from '@/composables/usePricer';
 import { resolveTenor, fetchPricerGraph } from '@/services/api';
 import { STOCHASTIC_MODELS } from '@/constants/pricer';
 
+import { useJyInflationStore } from '@/stores/jyInflation';
+import { useJYInflation } from '@/composables/useJYInflation';
+
 const store = usePricerStore();
 const marketEnv = useMarketEnvStore();
 const { expandCashflows, calculateAll } = usePricer();
+
+// JY Inflation
+const jyStore = useJyInflationStore();
+const { generateCashflows: jyGenerateCashflows, runPricing: jyRunPricing, runXva: jyRunXva } = useJYInflation();
+
+const isInflation = computed(() => store.assetTab === 'Inflation');
+
+const jyInstrumentItems = [
+  { title: 'Zero-Coupon Inflation Swap (ZCIS)', value: 'ZCIS' },
+  { title: 'Year-on-Year Inflation Swap (YoYIS)', value: 'YoYIS' },
+];
+
+const jyFrequencyItems = [
+  { title: 'Annual', value: 'annual' },
+  { title: 'Semi-Annual', value: 'semiannual' },
+  { title: 'Quarterly', value: 'quarterly' },
+];
 
 // ---------------------------------------------------------------------------
 // Save Graph
@@ -57,6 +77,7 @@ const assetTabIcons: Record<string, string> = {
   Equity: 'mdi-trending-up',
   Credit: 'mdi-shield-half-full',
   Commodity: 'mdi-barrel',
+  Inflation: 'mdi-chart-bar',
 };
 
 const instrumentItems = computed(() =>
@@ -239,87 +260,137 @@ watch(
           </div>
         </div>
 
-        <div class="grid-label">Type</div>
-        <div class="grid-input">
-          <v-select
-            v-model="store.selectedInstrumentId"
-            :items="instrumentItems"
-            item-title="label"
-            item-value="id"
-            placeholder="Select..."
-            density="compact"
-            variant="outlined"
-            hide-details="auto"
-            :error-messages="getFieldError('instrumentType')"
-          />
-        </div>
-
-        <template v-for="param in allParams" :key="param.name">
-          <div class="grid-label" :class="{ required: param.required }">
-            {{ param.label || param.name }}
-          </div>
+        <!-- Standard instrument fields -->
+        <template v-if="!isInflation">
+          <div class="grid-label">Type</div>
           <div class="grid-input">
-            <v-text-field
-              v-if="param.fieldType === 'number'"
-              v-model.number="store.instrumentParams[param.name]"
-              type="number"
-              density="compact"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="getFieldError(param.name)"
-            />
-
-            <v-text-field
-              v-else-if="param.fieldType === 'date'"
-              :model-value="getDateDisplay(param.name)"
-              density="compact"
-              variant="outlined"
-              hide-details="auto"
-              placeholder="5Y, 3M, TD"
-              :error-messages="getFieldError(param.name)"
-              @update:model-value="(v: string) => onTenorInput(param.name, v)"
-              @blur="onTenorCommit(param.name)"
-              @keydown.enter="onTenorCommit(param.name)"
-            >
-              <template #prepend-inner>
-                <div class="d-flex" style="gap: 1px">
-                  <v-btn v-for="t in ['TD', '1Y', '5Y']" :key="t" size="x-small" variant="text" density="compact" class="tenor-chip" @click="applyTenorChip(param.name, t)">{{ t }}</v-btn>
-                </div>
-              </template>
-              <template #append-inner>
-                <v-menu :close-on-content-click="false" location="bottom end">
-                  <template #activator="{ props: menuProps }">
-                    <v-btn v-bind="menuProps" icon density="compact" variant="text" size="x-small" tabindex="-1">
-                      <v-icon size="14">mdi-calendar</v-icon>
-                    </v-btn>
-                  </template>
-                  <v-date-picker :model-value="(store.instrumentParams[param.name] as string) ?? undefined" @update:model-value="(v: any) => onCalendarPick(param.name, v)" />
-                </v-menu>
-              </template>
-            </v-text-field>
-
             <v-select
-              v-else-if="param.fieldType === 'select'"
-              v-model="store.instrumentParams[param.name]"
-              :items="(param.options || []).map((o: any) => ({ title: o.label, value: o.value }))"
+              v-model="store.selectedInstrumentId"
+              :items="instrumentItems"
+              item-title="label"
+              item-value="id"
+              placeholder="Select..."
               density="compact"
               variant="outlined"
               hide-details="auto"
-              :error-messages="getFieldError(param.name)"
-            />
-
-            <v-text-field
-              v-else
-              v-model="store.instrumentParams[param.name]"
-              density="compact"
-              variant="outlined"
-              hide-details="auto"
-              :error-messages="getFieldError(param.name)"
+              :error-messages="getFieldError('instrumentType')"
             />
           </div>
+
+          <template v-for="param in allParams" :key="param.name">
+            <div class="grid-label" :class="{ required: param.required }">
+              {{ param.label || param.name }}
+            </div>
+            <div class="grid-input">
+              <v-text-field
+                v-if="param.fieldType === 'number'"
+                v-model.number="store.instrumentParams[param.name]"
+                type="number"
+                density="compact"
+                variant="outlined"
+                hide-details="auto"
+                :error-messages="getFieldError(param.name)"
+              />
+
+              <v-text-field
+                v-else-if="param.fieldType === 'date'"
+                :model-value="getDateDisplay(param.name)"
+                density="compact"
+                variant="outlined"
+                hide-details="auto"
+                placeholder="5Y, 3M, TD"
+                :error-messages="getFieldError(param.name)"
+                @update:model-value="(v: string) => onTenorInput(param.name, v)"
+                @blur="onTenorCommit(param.name)"
+                @keydown.enter="onTenorCommit(param.name)"
+              >
+                <template #prepend-inner>
+                  <div class="d-flex" style="gap: 1px">
+                    <v-btn v-for="t in ['TD', '1Y', '5Y']" :key="t" size="x-small" variant="text" density="compact" class="tenor-chip" @click="applyTenorChip(param.name, t)">{{ t }}</v-btn>
+                  </div>
+                </template>
+                <template #append-inner>
+                  <v-menu :close-on-content-click="false" location="bottom end">
+                    <template #activator="{ props: menuProps }">
+                      <v-btn v-bind="menuProps" icon density="compact" variant="text" size="x-small" tabindex="-1">
+                        <v-icon size="14">mdi-calendar</v-icon>
+                      </v-btn>
+                    </template>
+                    <v-date-picker :model-value="(store.instrumentParams[param.name] as string) ?? undefined" @update:model-value="(v: any) => onCalendarPick(param.name, v)" />
+                  </v-menu>
+                </template>
+              </v-text-field>
+
+              <v-select
+                v-else-if="param.fieldType === 'select'"
+                v-model="store.instrumentParams[param.name]"
+                :items="(param.options || []).map((o: any) => ({ title: o.label, value: o.value }))"
+                density="compact"
+                variant="outlined"
+                hide-details="auto"
+                :error-messages="getFieldError(param.name)"
+              />
+
+              <v-text-field
+                v-else
+                v-model="store.instrumentParams[param.name]"
+                density="compact"
+                variant="outlined"
+                hide-details="auto"
+                :error-messages="getFieldError(param.name)"
+              />
+            </div>
+          </template>
         </template>
 
-        <!-- ═══ CALC SETTING ═══ -->
+        <!-- Inflation instrument fields -->
+        <template v-else>
+          <div class="grid-label">Type</div>
+          <div class="grid-input">
+            <v-select
+              v-model="jyStore.instrumentType"
+              :items="jyInstrumentItems"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </div>
+
+          <div class="grid-label">Notional</div>
+          <div class="grid-input">
+            <v-text-field v-model.number="jyStore.notional" type="number" step="100000" density="compact" variant="outlined" hide-details />
+          </div>
+
+          <div class="grid-label">Fixed Rate</div>
+          <div class="grid-input">
+            <v-text-field v-model.number="jyStore.fixedRate" type="number" step="0.001" density="compact" variant="outlined" hide-details />
+          </div>
+
+          <div class="grid-label">Start Date</div>
+          <div class="grid-input">
+            <v-text-field v-model="jyStore.startDate" type="date" density="compact" variant="outlined" hide-details />
+          </div>
+
+          <div class="grid-label">Maturity (Y)</div>
+          <div class="grid-input">
+            <v-text-field v-model.number="jyStore.maturityYears" type="number" step="1" min="1" max="50" density="compact" variant="outlined" hide-details />
+          </div>
+
+          <div class="grid-label">Mat. Date</div>
+          <div class="grid-input">
+            <v-text-field :model-value="jyStore.maturityDate" disabled density="compact" variant="outlined" hide-details />
+          </div>
+
+          <template v-if="jyStore.instrumentType === 'YoYIS'">
+            <div class="grid-label">Frequency</div>
+            <div class="grid-input">
+              <v-select v-model="jyStore.paymentFrequency" :items="jyFrequencyItems" density="compact" variant="outlined" hide-details />
+            </div>
+          </template>
+        </template>
+
+        <!-- ═══ CALC SETTING (standard only) ═══ -->
+        <template v-if="!isInflation">
         <div class="section-header">CalcSetting</div>
 
         <div class="grid-label">Method</div>
@@ -493,10 +564,11 @@ watch(
             </div>
           </template>
         </template>
+        </template>
       </div>
 
       <!-- ═══ ACTIONS ═══ -->
-      <div class="d-flex mt-3" style="gap: 6px">
+      <div v-if="!isInflation" class="d-flex mt-3" style="gap: 6px">
         <v-btn
           variant="tonal"
           size="small"
@@ -527,6 +599,41 @@ watch(
           @click="saveGraph"
         >
           {{ graphSaveFeedback ? 'Saved!' : 'Save Graph' }}
+        </v-btn>
+      </div>
+
+      <!-- ═══ INFLATION ACTIONS ═══ -->
+      <div v-else class="d-flex flex-column mt-3" style="gap: 6px">
+        <v-btn
+          variant="tonal"
+          size="small"
+          :disabled="jyStore.loading"
+          :loading="jyStore.loading"
+          prepend-icon="mdi-cogs"
+          @click="jyGenerateCashflows"
+        >
+          Cashflows
+        </v-btn>
+        <v-btn
+          color="primary"
+          size="small"
+          :disabled="jyStore.loading"
+          :loading="jyStore.loading"
+          prepend-icon="mdi-calculator"
+          @click="jyRunPricing"
+        >
+          Price
+        </v-btn>
+        <v-btn
+          variant="tonal"
+          size="small"
+          color="secondary"
+          :disabled="jyStore.loading"
+          :loading="jyStore.loading"
+          prepend-icon="mdi-shield-half-full"
+          @click="jyRunXva"
+        >
+          XVA
         </v-btn>
       </div>
     </div>
