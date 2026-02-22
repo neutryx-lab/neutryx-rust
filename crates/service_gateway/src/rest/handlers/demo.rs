@@ -13,7 +13,8 @@ use crate::{
     error::{ServerError, ValidatedJson},
     rest::dto::{
         demo::{
-            AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse, Convention,
+            AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse,
+            CommodityForwardCurveRequest, CommodityForwardCurveResponse, Convention,
             ConventionsResponse, CreditQuotesResponse, CurveIndicesResponse,
             CurveInstrumentsResponse, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
             DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult,
@@ -225,6 +226,11 @@ pub async fn price_exotic(
     let response = ExoticService::price_exotic(&request).map_err(|e| ServerError::Pricing(e))?;
     Ok(Json(response))
 }
+
+// ─── Commodity Forward Curve Handler ─────────────────────────────────────────
+
+body_handler!(/// POST /api/commodity/forward-curve.
+    commodity_forward_curve, DemoService::commodity_forward_curve(CommodityForwardCurveRequest) -> CommodityForwardCurveResponse);
 
 // ─── Jarrow-Yildirim Inflation Model Handlers ──────────────────────────────
 

@@ -38,7 +38,8 @@ use super::DemoService;
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
+        Cashflow, CashflowPvResult, CommodityForwardCurveRequest, CommodityForwardCurveResponse,
+        CommodityForwardPoint, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
         DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult, DemoPathDistribution,
         DemoPricingMethod, DemoPricingRequest, DemoPricingResult, DemoTreeType, ExpandedTrade,
         FactorGreeks, FactorGreeksEntry, LegResult, PricerGraphEdge, PricerGraphMetadata,
@@ -2546,6 +2547,66 @@ impl DemoService {
                 trade_id: Some(trade_id),
                 source_locations: None,
             },
+        })
+    }
+
+    /// Build a commodity forward curve using the Gibson-Schwartz model.
+    ///
+    /// Computes `F(T) = S × exp((r − δ̄(T)) × T)` at standard tenors using
+    /// the average expected convenience yield.
+    pub fn commodity_forward_curve(
+        request: &CommodityForwardCurveRequest,
+    ) -> Result<CommodityForwardCurveResponse, ServerError> {
+        let start = Instant::now();
+
+        let (default_spot, default_vol, default_cy) =
+            commodity_market_defaults(&request.commodity_type);
+
+        let spot = request.spot_price.unwrap_or(default_spot);
+        let vol = request.spot_vol.unwrap_or(default_vol);
+        let r = request.discount_rate.unwrap_or(DEFAULT_DISCOUNT_RATE);
+
+        let initial_cy = request.convenience_yield.unwrap_or(default_cy.initial_cy);
+        let kappa = default_cy.mean_reversion;
+        let theta = default_cy.cy_long_term_mean;
+        let cy_vol = default_cy.cy_vol;
+        let rho = default_cy.rho_spot_cy;
+
+        // Standard tenors for the forward curve (years).
+        let tenors = [
+            0.0833, 0.1667, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 7.0, 10.0,
+        ];
+
+        let forward_curve: Vec<CommodityForwardPoint> = tenors
+            .iter()
+            .map(|&t| {
+                let delta_bar = if kappa * t > 1e-12 {
+                    theta + (initial_cy - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t)
+                } else {
+                    initial_cy
+                };
+                let forward_price = spot * ((r - delta_bar) * t).exp();
+                CommodityForwardPoint {
+                    tenor_years: t,
+                    forward_price,
+                    avg_convenience_yield: delta_bar,
+                }
+            })
+            .collect();
+
+        let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+
+        Ok(CommodityForwardCurveResponse {
+            commodity: request.commodity_type.clone(),
+            spot_price: spot,
+            spot_vol: vol,
+            initial_cy,
+            kappa,
+            theta,
+            cy_vol,
+            rho,
+            forward_curve,
+            computation_time_ms: elapsed,
         })
     }
 }

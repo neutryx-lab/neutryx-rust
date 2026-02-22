@@ -8,7 +8,8 @@
       "EUR": "EUR Curves (ESTR + EURIBOR)",
       "GBP": "GBP Curves (SONIA-based)",
       "JPY": "JPY Curves (TONA-based)",
-      "CHF": "CHF Curves (SARON-based)"
+      "CHF": "CHF Curves (SARON-based)",
+      "Commodity": "Commodity Forward Curves (Gibson-Schwartz)"
     }
   },
   "curves": [
@@ -407,6 +408,50 @@
         "USDJPY-XCCYBasis-5Y", "USDJPY-XCCYBasis-7Y", "USDJPY-XCCYBasis-10Y",
         "USDJPY-XCCYBasis-15Y", "USDJPY-XCCYBasis-20Y", "USDJPY-XCCYBasis-30Y"
       ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "WTI-Forward",
+      "description": "WTI Crude Oil forward curve (Gibson-Schwartz convenience yield model)",
+      "rateIndex": "WTI-Forward",
+      "curveType": "commodity",
+      "commodity": "CrudeOil",
+      "instruments": [],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "NatGas-Forward",
+      "description": "Natural Gas forward curve (Gibson-Schwartz convenience yield model)",
+      "rateIndex": "NatGas-Forward",
+      "curveType": "commodity",
+      "commodity": "NaturalGas",
+      "instruments": [],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "Gold-Forward",
+      "description": "Gold forward curve (Gibson-Schwartz convenience yield model)",
+      "rateIndex": "Gold-Forward",
+      "curveType": "commodity",
+      "commodity": "Gold",
+      "instruments": [],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "Copper-Forward",
+      "description": "Copper forward curve (Gibson-Schwartz convenience yield model)",
+      "rateIndex": "Copper-Forward",
+      "curveType": "commodity",
+      "commodity": "Copper",
+      "instruments": [],
       "calibrationMethod": "none",
       "interpolation": "flat_forward",
       "allowExtrapolation": true

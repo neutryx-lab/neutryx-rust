@@ -201,6 +201,11 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
             get(handlers::demo::get_exotic_products),
         )
         .route("/pricer/price-exotic", post(handlers::demo::price_exotic))
+        // Commodity forward curve endpoint
+        .route(
+            "/commodity/forward-curve",
+            post(handlers::demo::commodity_forward_curve),
+        )
         // JY (Jarrow-Yildirim) inflation model endpoints
         .route("/jy/curves/build", post(handlers::demo::jy_build_curves))
         .route("/jy/instrument", post(handlers::demo::jy_instrument_cashflows))

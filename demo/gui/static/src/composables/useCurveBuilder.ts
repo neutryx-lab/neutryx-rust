@@ -17,7 +17,8 @@ export interface CurveConfig {
   calibrationMethod: string;
   interpolation: string;
   allowExtrapolation: boolean;
-  curveType?: 'rate' | 'credit' | 'fx';
+  curveType?: 'rate' | 'credit' | 'fx' | 'commodity';
+  commodity?: string;
   discountCurve?: string;
   recoveryRate?: number;
   currencyPair?: string;
@@ -286,6 +287,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     selectedCurve.value?.curveType === 'fx'
   );
 
+  const isCommodityCurve = computed(() =>
+    selectedCurve.value?.curveType === 'commodity'
+  );
+
   const summaryStats = computed(() => {
     const eventCount = enabledInstruments.value.filter(i => i.type === 'event').length;
 
@@ -304,6 +309,11 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     if (isFxCurve.value && selectedCurve.value) {
       stats.push({ label: 'Spot', value: (selectedCurve.value.spot ?? 0).toFixed(4), icon: 'fa-exchange-alt', color: '#06b6d4' });
       stats.push({ label: 'Pair', value: selectedCurve.value.currencyPair ?? '-', icon: 'fa-coins', color: '#f97316' });
+    }
+
+    if (isCommodityCurve.value && selectedCurve.value) {
+      stats.push({ label: 'Commodity', value: selectedCurve.value.commodity ?? '-', icon: 'fa-oil-can', color: '#f97316' });
+      stats.push({ label: 'Model', value: 'Gibson-Schwartz', icon: 'fa-chart-line', color: '#8b5cf6' });
     }
 
     return stats;
@@ -491,11 +501,17 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       interpolation.value = normaliseInterpolation(curve.interpolation);
       allowExtrapolation.value = curve.allowExtrapolation;
 
-      // Load rate data for this curve's rate index
-      await loadRateData(curve.rateIndex);
+      // Commodity curves don't have rate data files — skip loading
+      if (curve.curveType === 'commodity') {
+        rateData.value = null;
+        instruments.value = [];
+      } else {
+        // Load rate data for this curve's rate index
+        await loadRateData(curve.rateIndex);
 
-      // Build instruments list
-      loadInstrumentsForCurve();
+        // Build instruments list
+        loadInstrumentsForCurve();
+      }
 
       // Clear previous build result
       buildResult.value = null;
@@ -508,6 +524,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
 
   async function buildCurve() {
     if (!selectedCurve.value) return;
+    // Commodity curves are built via a dedicated endpoint
+    if (selectedCurve.value.curveType === 'commodity') {
+      return buildCommodityCurve();
+    }
     // IRP FX curves have no instruments — allow empty for those
     if (enabledInstruments.value.length === 0 && selectedCurve.value.fxCurveMethod !== 'irp_generic') return;
 
@@ -673,6 +693,83 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('Build failed:', message);
+      buildError.value = message;
+    } finally {
+      isBuilding.value = false;
+    }
+  }
+
+  // ---------- Commodity forward curve ----------
+
+  async function buildCommodityCurve() {
+    if (!selectedCurve.value || selectedCurve.value.curveType !== 'commodity') return;
+
+    isBuilding.value = true;
+    buildError.value = null;
+    try {
+      const commodity = selectedCurve.value.commodity || 'CrudeOil';
+      const response = await fetch('/api/commodity/forward-curve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commodityType: commodity }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        let message = 'Build failed';
+        try {
+          const errorData = JSON.parse(text);
+          message = errorData.error || errorData.message || message;
+        } catch {
+          message = text || message;
+        }
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+
+      // Convert commodity forward curve response to BuildResult format
+      const pillars: CurvePillar[] = (data.forwardPoints || []).map((pt: { tenor: number; forward: number }) => ({
+        date: `T+${pt.tenor.toFixed(1)}Y`,
+        time: pt.tenor,
+        discount_factor: Math.exp(-data.rate * pt.tenor),
+        zero_rate: data.rate,
+        forward_rate: 0,
+        fx_forward: pt.forward,
+      }));
+
+      const gridPoints: ChartGridPoint[] = pillars.map(p => ({
+        date: p.date,
+        time: p.time,
+        discount_factor: p.discount_factor,
+        forward_rate: p.fx_forward || 0,
+        label: p.date,
+        fx_forward: p.fx_forward,
+      }));
+
+      buildResult.value = {
+        curve_id: `commodity-${commodity}`,
+        instrument_count: 0,
+        interpolation: 'gibson-schwartz',
+        calculation_time_ms: data.calculationTimeMs || 0,
+        pillars,
+        short_term_grid: gridPoints.filter(g => g.time <= 2),
+        long_term_grid: gridPoints,
+        curve_type: 'commodity',
+        spot: data.spotPrice,
+      };
+
+      lastBuiltSettings.value = {
+        calibrationMethod: calibrationMethod.value,
+        interpolation: interpolation.value,
+        allowExtrapolation: allowExtrapolation.value,
+      };
+
+      await nextTick();
+      updateChartsCallback();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Commodity curve build failed:', message);
       buildError.value = message;
     } finally {
       isBuilding.value = false;
@@ -896,6 +993,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     hasChanges,
     isCreditCurve,
     isFxCurve,
+    isCommodityCurve,
     summaryStats,
     curveTableRows,
     builtCurveIds,
