@@ -704,11 +704,15 @@ impl DemoService {
             "inflation/nominal_rates.json",
         )?;
 
-        let reference_date = nominal_data
+        let raw_ref_date = nominal_data
             .get("reference_date")
             .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
+            .unwrap_or("");
+        let reference_date = if raw_ref_date.eq_ignore_ascii_case("TODAY") {
+            chrono::Utc::now().format("%Y-%m-%d").to_string()
+        } else {
+            raw_ref_date.to_string()
+        };
         let currency = nominal_data
             .get("currency")
             .and_then(|v| v.as_str())

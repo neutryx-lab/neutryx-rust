@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
+import AssetTabBar from '@/components/common/AssetTabBar.vue';
 import { useJyInflationStore } from '@/stores/jyInflation';
 
 const jyStore = useJyInflationStore();
@@ -152,6 +153,7 @@ const lastUpdated = ref<Date | null>(null);
 
 // Computed
 const assetClasses: AssetClass[] = ['Rates', 'FX', 'Bond', 'Credit', 'IRVol', 'FXVol', 'Events', 'Holidays', 'Inflation'];
+const assetTabs = assetClasses.map(ac => ({ key: ac, label: ac }));
 
 const filteredRates = computed(() => {
   let result = rates.value;
@@ -867,21 +869,7 @@ onMounted(() => {
 
     <!-- Asset Class Tabs & Controls -->
     <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-      <div class="flex gap-2">
-        <button
-          v-for="ac in assetClasses"
-          :key="ac"
-          :class="[
-            'px-4 py-2 rounded-lg font-medium transition-all duration-200',
-            assetClass === ac
-              ? 'bg-[var(--primary)] text-white'
-              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-          ]"
-          @click="assetClass = ac"
-        >
-          {{ ac }}
-        </button>
-      </div>
+      <AssetTabBar v-model="assetClass" :tabs="assetTabs" />
       <div class="flex items-center gap-3">
         <!-- Currency filter for Rates/FX -->
         <select

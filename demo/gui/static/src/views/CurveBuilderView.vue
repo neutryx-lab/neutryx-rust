@@ -7,6 +7,7 @@ import { useMarketEnvStore } from '@/stores/marketEnv';
 import { getChartColors } from '@/composables/useChartTheme';
 import CurveInstrumentTable from '@/components/curve/CurveInstrumentTable.vue';
 import CurveJacobianHeatmap from '@/components/curve/CurveJacobianHeatmap.vue';
+import AssetTabBar from '@/components/common/AssetTabBar.vue';
 import { useJyInflationStore } from '@/stores/jyInflation';
 import { useJYInflation } from '@/composables/useJYInflation';
 
@@ -259,6 +260,18 @@ watch(chartType, () => {
       </div>
     </div>
 
+    <!-- Asset Type Tabs -->
+    <AssetTabBar
+      v-model="assetTab"
+      class="mb-6"
+      :tabs="[
+        { key: 'rate', label: 'Rate', icon: 'fa-chart-line' },
+        { key: 'credit', label: 'Credit', icon: 'fa-shield-halved' },
+        { key: 'fx', label: 'FX', icon: 'fa-exchange-alt' },
+        { key: 'inflation', label: 'Inflation', icon: 'fa-chart-bar' },
+      ]"
+    />
+
     <!-- Unified Curve Builder (all asset types) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Left Panel -->
@@ -266,27 +279,6 @@ watch(chartType, () => {
         <!-- Curve Selector -->
         <div class="glass-card p-5">
           <div class="section-header" style="margin-top: 0">Curve Selection</div>
-
-          <!-- Asset Type Tabs -->
-          <div class="flex gap-1 mb-3 p-0.5 rounded-lg bg-[var(--surface)]">
-            <button
-              v-for="tab in [
-                { key: 'rate', label: 'Rate', icon: 'fa-chart-line' },
-                { key: 'credit', label: 'Credit', icon: 'fa-shield-halved' },
-                { key: 'fx', label: 'FX', icon: 'fa-exchange-alt' },
-                { key: 'inflation', label: 'Inflation', icon: 'fa-chart-bar' },
-              ]"
-              :key="tab.key"
-              class="flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              :class="assetTab === tab.key
-                ? 'bg-[var(--primary)] text-white shadow-sm'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'"
-              @click="assetTab = tab.key as 'rate' | 'credit' | 'fx' | 'inflation'"
-            >
-              <i :class="['fas', tab.icon]" style="font-size: 10px"></i>
-              {{ tab.label }}
-            </button>
-          </div>
 
           <!-- Error Message (non-inflation) -->
           <div v-if="loadError && assetTab !== 'inflation'" class="mb-3 p-2 rounded bg-red-500/20 border border-red-500/50">

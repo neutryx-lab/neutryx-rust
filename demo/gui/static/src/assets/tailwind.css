@@ -253,6 +253,17 @@ body {
     @apply text-sm text-text-muted;
   }
 
+  /* ── Tab button — shared asset-class tab styling ── */
+  .tab-btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2;
+    @apply bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)];
+  }
+
+  .tab-btn[aria-selected="true"],
+  .tab-btn.active {
+    @apply bg-[var(--primary)] text-white;
+  }
+
   .loading-spinner {
     @apply animate-spin h-5 w-5 border-2 border-text-muted border-t-primary rounded-full;
   }

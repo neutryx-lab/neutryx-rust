@@ -123,21 +123,29 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   // Actions
   // ---------------------------------------------------------------------------
 
+  let _loadingPromise: Promise<void> | null = null;
+
   async function loadMarketData() {
     if (marketDataLoaded.value) return;
-    try {
-      const data = await fetchInflationMarketData();
-      nominalRates.value = data.nominalRates;
-      realRates.value = data.realRates;
-      inflationIndex.value = data.inflationIndex;
-      referenceDate.value = data.referenceDate;
-      if (data.referenceDate) {
-        valuationDate.value = data.referenceDate;
+    if (_loadingPromise) return _loadingPromise;
+    _loadingPromise = (async () => {
+      try {
+        const data = await fetchInflationMarketData();
+        nominalRates.value = data.nominalRates;
+        realRates.value = data.realRates;
+        inflationIndex.value = data.inflationIndex;
+        referenceDate.value = data.referenceDate;
+        if (data.referenceDate) {
+          valuationDate.value = data.referenceDate;
+        }
+        marketDataLoaded.value = true;
+      } catch (e) {
+        console.error('Failed to load inflation market data:', e);
+      } finally {
+        _loadingPromise = null;
       }
-      marketDataLoaded.value = true;
-    } catch (e) {
-      console.error('Failed to load inflation market data:', e);
-    }
+    })();
+    return _loadingPromise;
   }
 
   // ---------------------------------------------------------------------------

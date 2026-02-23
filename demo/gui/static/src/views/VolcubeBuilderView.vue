@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { Chart, type ChartDataset, registerables } from 'chart.js';
 import { getChartColors } from '@/composables/useChartTheme';
+import AssetTabBar from '@/components/common/AssetTabBar.vue';
 import type {
   SwaptionInstrument,
   FxVolQuote,
@@ -1168,44 +1169,15 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
       </div>
 
       <!-- Asset Tabs -->
-      <div class="flex gap-2 mb-6">
-        <button
-          :class="[
-            'px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2',
-            activeTab === 'swaption'
-              ? 'bg-[var(--primary)] text-white'
-              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-          ]"
-          @click="activeTab = 'swaption'"
-        >
-          <i class="fas fa-percentage"></i>
-          Swaption
-        </button>
-        <button
-          :class="[
-            'px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2',
-            activeTab === 'fx'
-              ? 'bg-[var(--primary)] text-white'
-              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-          ]"
-          @click="activeTab = 'fx'"
-        >
-          <i class="fas fa-exchange-alt"></i>
-          FX
-        </button>
-        <button
-          :class="[
-            'px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2',
-            activeTab === 'inflation'
-              ? 'bg-[var(--primary)] text-white'
-              : 'bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-          ]"
-          @click="activeTab = 'inflation'"
-        >
-          <i class="fas fa-chart-bar"></i>
-          Inflation
-        </button>
-      </div>
+      <AssetTabBar
+        v-model="activeTab"
+        class="mb-6"
+        :tabs="[
+          { key: 'swaption', label: 'Swaption', icon: 'fa-percentage' },
+          { key: 'fx', label: 'FX', icon: 'fa-exchange-alt' },
+          { key: 'inflation', label: 'Inflation', icon: 'fa-chart-bar' },
+        ]"
+      />
 
       <!-- Inflation Tab Content -->
       <div v-if="activeTab === 'inflation'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
