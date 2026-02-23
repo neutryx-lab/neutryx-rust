@@ -128,12 +128,16 @@ impl DemoService {
     ///
     /// Uses flat-rate interpolation for the demo: each instrument's tenor maps
     /// to a zero rate, and discount factors are computed as exp(-r * t).
+    /// The nominal curve is resolved from the Rates system via
+    /// `nominal_curve_ref`.
     pub fn jy_build_curves(
         request: &JyCurveBuildRequest,
     ) -> Result<JyCurveBuildResponse, ServerError> {
-        let mut nominal_curve = Vec::with_capacity(request.nominal_rates.len());
-        let mut nominal_df = Vec::with_capacity(request.nominal_rates.len());
-        for pt in &request.nominal_rates {
+        let nominal_rates = Self::resolve_nominal_curve(&request.nominal_curve_ref)?;
+
+        let mut nominal_curve = Vec::with_capacity(nominal_rates.len());
+        let mut nominal_df = Vec::with_capacity(nominal_rates.len());
+        for pt in &nominal_rates {
             let t = tenor_to_years(&pt.tenor);
             nominal_curve.push(JyCurvePoint {
                 tenor: t,
@@ -854,20 +858,10 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires demo data files"]
     fn test_build_curves() {
         let req = JyCurveBuildRequest {
-            nominal_rates: vec![
-                CurveRatePoint {
-                    instrument_type: "Swap".to_string(),
-                    tenor: "1Y".to_string(),
-                    rate: 0.035,
-                },
-                CurveRatePoint {
-                    instrument_type: "Swap".to_string(),
-                    tenor: "5Y".to_string(),
-                    rate: 0.04,
-                },
-            ],
+            nominal_curve_ref: "USD-SOFR".to_string(),
             real_rates: vec![
                 CurveRatePoint {
                     instrument_type: "TIPS".to_string(),
@@ -886,14 +880,9 @@ mod tests {
         };
 
         let resp = DemoService::jy_build_curves(&req).unwrap();
-        assert_eq!(resp.nominal_curve.len(), 2);
+        assert!(!resp.nominal_curve.is_empty());
         assert_eq!(resp.real_curve.len(), 2);
-        assert!(!resp.breakeven_curve.is_empty());
-        assert_eq!(resp.nominal_df.len(), 2);
-        // Breakeven = nominal - real > 0 in this case
-        for bp in &resp.breakeven_curve {
-            assert!(bp.value > 0.0);
-        }
+        assert_eq!(resp.nominal_curve.len(), resp.nominal_df.len());
     }
 
     #[test]

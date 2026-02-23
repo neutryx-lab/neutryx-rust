@@ -40,7 +40,12 @@
     },
     "holidays": "demo/data/input/holidays.json",
     "inflation": {
-      "real_rates": "demo/data/input/inflation/real_rates.json"
+      "indices": [
+        "demo/data/input/inflation/real_rates.json",
+        "demo/data/input/inflation/gbp-rpi.json",
+        "demo/data/input/inflation/gbp-cpi.json",
+        "demo/data/input/inflation/jpy-cpi.json"
+      ]
     }
   },
   "defaults": {

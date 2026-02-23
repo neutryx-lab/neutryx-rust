@@ -10,8 +10,8 @@ use pricer_risk::{
     portfolio::{xva::OwnCreditParams, CreditParams},
     xva_engine::{
         incremental::{
-            ExoticTradeDef, InflationSwapDef, IncrementalPortfolio, IncrementalTrade,
-            IncrementalXvaConfig, IncrementalXvaEngine, JyInflationConfig, VanillaSwapDef,
+            ExoticTradeDef, IncrementalPortfolio, IncrementalTrade, IncrementalXvaConfig,
+            IncrementalXvaEngine, InflationSwapDef, JyInflationConfig, VanillaSwapDef,
         },
         model_coupler::CouplingMethod,
     },
@@ -20,8 +20,8 @@ use pricer_risk::{
 use crate::{
     error::ServerError,
     rest::dto::incremental_xva::{
-        ExoticDefinitionDto, InflationSwapDefinitionDto, IncrementalTradeDto,
-        IncrementalXvaDefaultConfig, IncrementalXvaRequest, IncrementalXvaResponse,
+        ExoticDefinitionDto, IncrementalTradeDto, IncrementalXvaDefaultConfig,
+        IncrementalXvaRequest, IncrementalXvaResponse, InflationSwapDefinitionDto,
         SwapDefinitionDto, XvaMetricsDto,
     },
 };

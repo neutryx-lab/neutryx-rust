@@ -8,6 +8,7 @@
   "rating": "HY",
   "instruments": [
     {
+      "id": "ITRAXXO-CDS-1Y",
       "type": "cds",
       "tenor": "1Y",
       "tenor_years": 1.0,
@@ -15,6 +16,7 @@
       "description": "iTraxx Europe Crossover 1Y CDS spread"
     },
     {
+      "id": "ITRAXXO-CDS-2Y",
       "type": "cds",
       "tenor": "2Y",
       "tenor_years": 2.0,
@@ -22,6 +24,7 @@
       "description": "iTraxx Europe Crossover 2Y CDS spread"
     },
     {
+      "id": "ITRAXXO-CDS-3Y",
       "type": "cds",
       "tenor": "3Y",
       "tenor_years": 3.0,
@@ -29,6 +32,7 @@
       "description": "iTraxx Europe Crossover 3Y CDS spread"
     },
     {
+      "id": "ITRAXXO-CDS-5Y",
       "type": "cds",
       "tenor": "5Y",
       "tenor_years": 5.0,
@@ -36,6 +40,7 @@
       "description": "iTraxx Europe Crossover 5Y CDS spread (benchmark)"
     },
     {
+      "id": "ITRAXXO-CDS-7Y",
       "type": "cds",
       "tenor": "7Y",
       "tenor_years": 7.0,
@@ -43,6 +48,7 @@
       "description": "iTraxx Europe Crossover 7Y CDS spread"
     },
     {
+      "id": "ITRAXXO-CDS-10Y",
       "type": "cds",
       "tenor": "10Y",
       "tenor_years": 10.0,

@@ -434,6 +434,18 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
           originalRate: rateInst.rate || 0,
           enabled: defaultEnabledIds.has(id),
         });
+      } else if (rateInst.type === 'cds') {
+        const tenor = rateInst.tenor || '';
+        const id = rateInst.id || buildInstrumentId(rateInst.type, tenor, currency);
+        displayInstruments.push({
+          id,
+          type: 'cds',
+          tenor,
+          tenorYears: rateInst.tenor_years || 0,
+          rate: rateInst.rate || 0,
+          originalRate: rateInst.rate || 0,
+          enabled: defaultEnabledIds.has(id),
+        });
       } else if (rateInst.type === 'xccy_basis') {
         const tenor = rateInst.tenor || '';
         const pair = rateData.value.currency_pair || '';

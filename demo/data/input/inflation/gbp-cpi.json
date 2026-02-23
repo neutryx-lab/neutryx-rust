@@ -1,0 +1,83 @@
+{
+  "curve_id": "gbp-cpi",
+  "currency": "GBP",
+  "country": "GB",
+  "reference_date": "TODAY",
+  "inflation_index": "CPI",
+  "lag_months": 2,
+  "description": "GBP CPI-linked zero-coupon inflation swap curve",
+  "instruments": [
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.032,
+      "description": "1Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.030,
+      "description": "2Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.029,
+      "description": "3Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.028,
+      "description": "5Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.030,
+      "description": "7Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.032,
+      "description": "10Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "15Y",
+      "tenor_years": 15.0,
+      "rate": 0.034,
+      "description": "15Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.035,
+      "description": "20Y GBP CPI ZCIS"
+    },
+    {
+      "type": "inflation_swap",
+      "sub_type": "zcis",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.036,
+      "description": "30Y GBP CPI ZCIS"
+    }
+  ]
+}
