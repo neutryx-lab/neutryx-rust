@@ -158,18 +158,18 @@ impl<T: Float> InflationCurveItp<T> {
     // ── Interpolation ──────────────────────────────────────────────
 
     /// Interpolates the unadjusted rate at the given absolute month.
-    fn interpolate_rate(&self, abs_month: i32) -> Result<T, MarketDataError> {
+    fn interpolate_rate(&self, abs_month: i32) -> T {
         let n = self.grid_months.len();
-        let x = from_f64::<T>(abs_month as f64);
 
         if n == 1 {
-            return Ok(self.grid_rates[0]);
+            return self.grid_rates[0];
         }
 
         match self.interpolation {
             InflationInterpolation::CubicSpline => {
                 if let Some(ref spline) = self.spline {
-                    Ok(spline.evaluate(x))
+                    let x = from_f64::<T>(abs_month as f64);
+                    spline.evaluate(x)
                 } else {
                     self.linear_interpolate(abs_month)
                 }
@@ -179,16 +179,16 @@ impl<T: Float> InflationCurveItp<T> {
     }
 
     /// Linear interpolation with flat extrapolation at boundaries.
-    fn linear_interpolate(&self, abs_month: i32) -> Result<T, MarketDataError> {
+    fn linear_interpolate(&self, abs_month: i32) -> T {
         let n = self.grid_months.len();
 
         // Flat extrapolation below
         if abs_month <= self.grid_months[0] {
-            return Ok(self.grid_rates[0]);
+            return self.grid_rates[0];
         }
         // Flat extrapolation above
         if abs_month >= self.grid_months[n - 1] {
-            return Ok(self.grid_rates[n - 1]);
+            return self.grid_rates[n - 1];
         }
 
         // Find bracketing interval via binary search
@@ -202,7 +202,7 @@ impl<T: Float> InflationCurveItp<T> {
         let x = from_f64::<T>(abs_month as f64);
 
         let w = (x - m0) / (m1 - m0);
-        Ok(r0 * (T::one() - w) + r1 * w)
+        r0 * (T::one() - w) + r1 * w
     }
 
     // ── Shift/Bump operations ──────────────────────────────────────
@@ -302,7 +302,7 @@ impl<T: Float> super::InflationCurve<T> for InflationCurveItp<T> {
 
     fn unadjusted_forward_rate(&self, date: Date) -> Result<T, MarketDataError> {
         let abs_month = absolute_month(date);
-        self.interpolate_rate(abs_month)
+        Ok(self.interpolate_rate(abs_month))
     }
 
     fn base_index_value(&self) -> T {
@@ -318,6 +318,7 @@ impl<T: Float> super::InflationCurve<T> for InflationCurveItp<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::InflationCurve;
     use super::*;
 
     fn sample_curve() -> InflationCurveItp<f64> {
@@ -410,7 +411,6 @@ mod tests {
 
     #[test]
     fn test_forward_rate_with_seasonality() {
-        use super::super::InflationCurve;
         let curve = sample_curve_with_seasonality();
         let d = Date::from_ymd(2025, 1, 1).unwrap();
         let adj = curve.forward_rate(d).unwrap();
@@ -422,7 +422,6 @@ mod tests {
 
     #[test]
     fn test_base_index_and_reference_date() {
-        use super::super::InflationCurve;
         let curve = sample_curve();
         assert!((curve.base_index_value() - 300.0).abs() < 1e-15);
         assert_eq!(
