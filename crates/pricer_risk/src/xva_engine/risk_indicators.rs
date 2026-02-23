@@ -3,8 +3,7 @@
 //! Contains computed risk profiles (EPE, ENE, ECB, PFE) along a time grid,
 //! with support for CSV serialization.
 
-use std::collections::HashMap;
-use std::fmt::Write as _;
+use std::{collections::HashMap, fmt::Write as _};
 
 /// Computed XVA risk indicator profiles along a time grid.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
