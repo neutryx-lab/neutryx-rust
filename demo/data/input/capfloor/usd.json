@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "currency": "USD",
+    "volType": "normal",
+    "description": "USD Cap/Floor Normal Volatility Quotes (ATM flat cap vols on SOFR)",
+    "source": "Demo Data",
+    "lastUpdated": "2026-01-26T00:00:00Z",
+    "rateIndex": "SOFR",
+    "capletFrequency": "3M"
+  },
+  "quotes": [
+    { "maturity": "1Y",  "marketVol": 0.6500, "strike": 0.045 },
+    { "maturity": "2Y",  "marketVol": 0.6200, "strike": 0.043 },
+    { "maturity": "3Y",  "marketVol": 0.5900, "strike": 0.041 },
+    { "maturity": "5Y",  "marketVol": 0.5500, "strike": 0.040 },
+    { "maturity": "7Y",  "marketVol": 0.5200, "strike": 0.039 },
+    { "maturity": "10Y", "marketVol": 0.4900, "strike": 0.038 },
+    { "maturity": "15Y", "marketVol": 0.4600, "strike": 0.037 },
+    { "maturity": "20Y", "marketVol": 0.4400, "strike": 0.036 },
+    { "maturity": "30Y", "marketVol": 0.4200, "strike": 0.035 }
+  ]
+}

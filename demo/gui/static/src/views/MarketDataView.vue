@@ -2,8 +2,12 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import AssetTabBar from '@/components/common/AssetTabBar.vue';
 import { useJyInflationStore } from '@/stores/jyInflation';
+import { useJYInflation } from '@/composables/useJYInflation';
+import JyModelParamsPanel from '@/components/jy/JyModelParamsPanel.vue';
+import JySimulationPanel from '@/components/jy/JySimulationPanel.vue';
 
 const jyStore = useJyInflationStore();
+const { runSimulation: jyRunSimulation } = useJYInflation();
 
 // Types
 type AssetClass = 'Rates' | 'FX' | 'Bond' | 'Credit' | 'IRVol' | 'FXVol' | 'Events' | 'Holidays' | 'Inflation';
@@ -1966,6 +1970,57 @@ onMounted(() => {
             </template>
           </template>
         </div>
+      </div>
+    </div>
+
+    <!-- JY Inflation Model & Simulation (below data grid, full width) -->
+    <div v-if="assetClass === 'Inflation'" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <!-- Left: Model Parameters + Simulation Config -->
+      <div class="space-y-4">
+        <div class="glass-card p-5">
+          <div class="section-header" style="margin-top: 0">JY Model Parameters</div>
+          <JyModelParamsPanel />
+        </div>
+
+        <div class="glass-card p-5">
+          <div class="section-header" style="margin-top: 0">Simulation Config</div>
+          <div class="config-grid">
+            <div class="grid-label">MC Paths</div>
+            <div class="grid-input">
+              <input v-model.number="jyStore.numPaths" type="number" min="100" max="100000" step="100"
+                class="param-input w-full" />
+            </div>
+            <div class="grid-label">Time Steps</div>
+            <div class="grid-input">
+              <input v-model.number="jyStore.numSteps" type="number" min="10" max="5000" step="10"
+                class="param-input w-full" />
+            </div>
+            <div class="grid-label">Horizon (Y)</div>
+            <div class="grid-input">
+              <input v-model.number="jyStore.horizon" type="number" min="0.1" max="50" step="0.5"
+                class="param-input w-full" />
+            </div>
+            <div class="grid-label">Sample Paths</div>
+            <div class="grid-input">
+              <input v-model.number="jyStore.numSamplePaths" type="number" min="0" max="20" step="1"
+                class="param-input w-full" />
+            </div>
+          </div>
+
+          <button
+            class="w-full mt-4 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)] text-white hover:opacity-90 transition-all disabled:bg-gray-500 disabled:cursor-not-allowed"
+            :disabled="jyStore.loading"
+            @click="jyRunSimulation"
+          >
+            <i :class="['fas mr-2', jyStore.loading ? 'fa-spinner fa-spin' : 'fa-play']"></i>
+            {{ jyStore.loading ? 'Simulating...' : 'Run Simulation' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Simulation Results -->
+      <div class="lg:col-span-2">
+        <JySimulationPanel :result="jyStore.simulationResult" />
       </div>
     </div>
   </div>

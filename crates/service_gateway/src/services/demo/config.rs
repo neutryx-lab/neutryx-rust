@@ -489,6 +489,88 @@ impl DemoService {
                 vec![fixed_rate_param(0.03)],
             ),
             def(
+                "TLock",
+                "tlock",
+                "Treasury Lock",
+                "Rates",
+                vec![
+                    notional_param(),
+                    currency_param(),
+                    ParameterDef {
+                        name: "settlementDate".into(),
+                        label: Some("Settlement Date".into()),
+                        field_type: FieldType::Date,
+                        default_value: None,
+                        options: None,
+                        validation: None,
+                    },
+                    ParameterDef {
+                        name: "lockRate".into(),
+                        label: Some("Lock Rate".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(0.04)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(-0.05),
+                            max: Some(0.20),
+                        }),
+                    },
+                ],
+                vec![
+                    ParameterDef {
+                        name: "referenceBondTenor".into(),
+                        label: Some("Reference Bond Tenor".into()),
+                        field_type: FieldType::Select,
+                        default_value: Some(serde_json::json!("10Y")),
+                        options: Some(vec![
+                            ParameterOption {
+                                value: "5Y".into(),
+                                label: "5Y".into(),
+                            },
+                            ParameterOption {
+                                value: "7Y".into(),
+                                label: "7Y".into(),
+                            },
+                            ParameterOption {
+                                value: "10Y".into(),
+                                label: "10Y".into(),
+                            },
+                            ParameterOption {
+                                value: "20Y".into(),
+                                label: "20Y".into(),
+                            },
+                            ParameterOption {
+                                value: "30Y".into(),
+                                label: "30Y".into(),
+                            },
+                        ]),
+                        validation: None,
+                    },
+                    ParameterDef {
+                        name: "referenceBondCoupon".into(),
+                        label: Some("Reference Bond Coupon".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(0.04)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(0.0),
+                            max: Some(0.20),
+                        }),
+                    },
+                    ParameterDef {
+                        name: "marketRate".into(),
+                        label: Some("Market Rate".into()),
+                        field_type: FieldType::Number,
+                        default_value: Some(serde_json::json!(0.05)),
+                        options: None,
+                        validation: Some(ParameterValidation {
+                            min: Some(-0.05),
+                            max: Some(0.20),
+                        }),
+                    },
+                ],
+            ),
+            def(
                 "Futures",
                 "futures",
                 "IR Futures",

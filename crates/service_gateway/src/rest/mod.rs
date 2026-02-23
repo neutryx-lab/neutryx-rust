@@ -136,6 +136,14 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
             "/volcube/model-smile",
             post(handlers::demo::compute_model_smile),
         )
+        .route(
+            "/volcube/capfloor/instruments/:currency",
+            get(handlers::demo::get_capfloor_instruments),
+        )
+        .route(
+            "/volcube/capfloor/calibrate",
+            post(handlers::demo::calibrate_capfloor),
+        )
         .route("/fxvol/calibrate", post(handlers::demo::calibrate_fxvol))
         .route("/market/rates", get(handlers::demo::get_market_rates))
         .route("/market/config", get(handlers::demo::get_market_config))

@@ -27,7 +27,8 @@ use crate::{
             RateInstrumentResponse, ResolveTenorRequest, ResolveTenorResponse, SabrSmileRequest,
             SmileResponse, TradeExpandRequest, VolSmileRequest, VolcubeCalibrateRequest,
             VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
-            VolcubeModelsResponse,
+            VolcubeModelsResponse, CapFloorCalibrateRequest, CapFloorCalibrateResponse,
+            CapFloorInstrumentsResponse,
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
         jy_inflation::{
@@ -147,6 +148,8 @@ state_path_handler!(/// GET /api/fxvol/quotes/:pair.
     get_fx_vol_quotes, VolcubeService::get_fx_vol_quotes -> FxVolQuotesResponse);
 state_path_handler!(/// GET /api/volcube/instruments/:currency.
     get_volcube_instruments, VolcubeService::get_volcube_instruments -> VolcubeInstrumentsResponse);
+state_path_handler!(/// GET /api/volcube/capfloor/instruments/:currency.
+    get_capfloor_instruments, VolcubeService::get_capfloor_instruments -> CapFloorInstrumentsResponse);
 
 state_body_handler!(/// POST /api/trade/expand.
     expand_trade, DemoService::expand_trade(TradeExpandRequest) -> ExpandedTrade);
@@ -160,6 +163,8 @@ state_body_handler!(/// POST /api/volcube/calibrate.
     calibrate_volcube, VolcubeService::calibrate_volcube(VolcubeCalibrateRequest) -> VolcubeCalibrateResponse);
 state_body_handler!(/// POST /api/fxvol/calibrate.
     calibrate_fxvol, VolcubeService::calibrate_fxvol(FxVolCalibrateRequest) -> VolcubeCalibrateResponse);
+state_body_handler!(/// POST /api/volcube/capfloor/calibrate.
+    calibrate_capfloor, VolcubeService::calibrate_capfloor(CapFloorCalibrateRequest) -> CapFloorCalibrateResponse);
 
 body_handler!(/// POST /api/volcube/implied-pdf.
     compute_implied_pdf, VolcubeService::compute_implied_pdf(ImpliedPdfRequest) -> ImpliedPdfResponse);

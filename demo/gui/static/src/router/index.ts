@@ -191,7 +191,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/jy-inflation',
-    redirect: '/pricer',
+    redirect: '/market-data',
   },
   // Legacy redirect for trade-expansion
   {

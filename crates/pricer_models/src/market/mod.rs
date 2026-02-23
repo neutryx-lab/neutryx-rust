@@ -37,6 +37,7 @@ use thiserror::Error;
 
 pub mod curves;
 pub mod fx;
+pub mod inflation;
 pub mod jumps;
 pub mod vol;
 
@@ -51,6 +52,10 @@ pub use curves::{
 pub use fx::{BasisFxCurve, FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
 pub use jumps::{
     build_forward_rate_shift_grid, convert_jump_pillars, convert_jump_pillars_to_tuples, JumpEntry,
+};
+pub use inflation::{
+    absolute_month, InflationCurve, InflationCurveEnum, InflationCurveItp,
+    InflationInterpolation, InflationSeasonalFactor, ShiftRange,
 };
 pub use vol::{VolSurface, VolSurfaceEnum, VolSurfaceError};
 
@@ -162,6 +167,8 @@ pub struct MarketEnvironment {
     spot_prices: HashMap<String, f64>,
     /// Convenience yield parameters keyed by commodity identifier.
     convenience_yields: HashMap<String, ConvenienceYieldParams>,
+    /// Inflation curves keyed by index name (e.g. "CPI", "RPI", "HICP").
+    inflation_curves: HashMap<String, InflationCurveEnum<f64>>,
 }
 
 impl MarketEnvironment {
@@ -311,6 +318,19 @@ impl MarketEnvironment {
     pub fn convenience_yields(&self) -> &HashMap<String, ConvenienceYieldParams> {
         &self.convenience_yields
     }
+
+    // -- Inflation curves --------------------------------------------------
+
+    /// Returns a reference to the inflation curve for the given index name,
+    /// if present.
+    pub fn inflation_curve(&self, key: &str) -> Option<&InflationCurveEnum<f64>> {
+        self.inflation_curves.get(key)
+    }
+
+    /// Returns a reference to all inflation curves.
+    pub fn inflation_curves(&self) -> &HashMap<String, InflationCurveEnum<f64>> {
+        &self.inflation_curves
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -344,6 +364,7 @@ pub struct MarketEnvironmentBuilder {
     vol_surfaces: HashMap<String, VolSurfaceEnum<f64>>,
     spot_prices: HashMap<String, f64>,
     convenience_yields: HashMap<String, ConvenienceYieldParams>,
+    inflation_curves: HashMap<String, InflationCurveEnum<f64>>,
 }
 
 impl MarketEnvironmentBuilder {
@@ -359,6 +380,7 @@ impl MarketEnvironmentBuilder {
             vol_surfaces: HashMap::new(),
             spot_prices: HashMap::new(),
             convenience_yields: HashMap::new(),
+            inflation_curves: HashMap::new(),
         }
     }
 
@@ -419,6 +441,17 @@ impl MarketEnvironmentBuilder {
         self
     }
 
+    /// Adds an inflation curve with the given index name (e.g. "CPI").
+    #[must_use]
+    pub fn with_inflation_curve(
+        mut self,
+        key: impl Into<String>,
+        curve: InflationCurveEnum<f64>,
+    ) -> Self {
+        self.inflation_curves.insert(key.into(), curve);
+        self
+    }
+
     /// Builds a flat [`MarketEnvironment`] for multi-currency trades.
     ///
     /// Creates flat discount curves at `discount_rate` for every currency in
@@ -457,6 +490,7 @@ impl MarketEnvironmentBuilder {
             vol_surfaces: self.vol_surfaces,
             spot_prices: self.spot_prices,
             convenience_yields: self.convenience_yields,
+            inflation_curves: self.inflation_curves,
         }
     }
 }
@@ -580,6 +614,29 @@ mod tests {
         assert_eq!(env.forward_curves().len(), 2);
         assert_eq!(env.fx_spots().len(), 1);
         assert_eq!(env.vol_surfaces().len(), 1);
+    }
+
+    #[test]
+    fn test_inflation_curve_lookup() {
+        let ref_date = sample_date();
+        let base_abs = absolute_month(ref_date);
+        let curve = InflationCurveItp::new(
+            vec![base_abs + 12, base_abs + 60],
+            vec![0.025, 0.023],
+            300.0,
+            ref_date,
+            InflationSeasonalFactor::identity(),
+            InflationInterpolation::Linear,
+        )
+        .unwrap();
+
+        let env = MarketEnvironmentBuilder::new(ref_date)
+            .with_inflation_curve("CPI", InflationCurveEnum::interpolated(curve))
+            .build();
+
+        assert!(env.inflation_curve("CPI").is_some());
+        assert!(env.inflation_curve("RPI").is_none());
+        assert_eq!(env.inflation_curves().len(), 1);
     }
 
     #[test]

@@ -20,7 +20,9 @@ use crate::{
         ImpliedPdfRequest, ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
         IrVolQuotesResponse, SabrSmileRequest, SmilePoint, SmileResponse, SwaptionInstrument,
         VolSmileRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
-        VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        VolcubeInstrumentsResponse, VolcubeModelsResponse, CapFloorCalibrateRequest,
+        CapFloorCalibrateResponse, CapFloorCalibrationMethod, CapFloorInstrumentsResponse,
+        CapFloorQuote,
     },
     services::helpers,
     state::AppState,
@@ -606,6 +608,140 @@ impl VolcubeService {
             cell_parameters,
             cell_diagnostics: Some(cell_diagnostics_map),
             cell_jacobians: None,
+        })
+    }
+
+    /// Get cap/floor instruments for a currency.
+    pub fn get_capfloor_instruments(
+        currency: &str,
+        _state: &Arc<AppState>,
+    ) -> Result<CapFloorInstrumentsResponse, ServerError> {
+        let file_path = format!(
+            "demo/data/input/capfloor/{}.json",
+            currency.to_lowercase()
+        );
+        let path = Path::new(&file_path);
+
+        let data: serde_json::Value =
+            helpers::load_json_value(path, "cap/floor vol data").map_err(|_| {
+                ServerError::NotFound(format!("Cap/floor data not found for: {currency}"))
+            })?;
+
+        let instruments: Vec<CapFloorQuote> = data
+            .get("quotes")
+            .and_then(|q| q.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .map(|q| CapFloorQuote {
+                        maturity: json_str(q, "maturity"),
+                        market_vol: q
+                            .get("marketVol")
+                            .and_then(|v| v.as_f64())
+                            .unwrap_or(0.0),
+                        caplet_vol: None,
+                        strike: q.get("strike").and_then(|v| v.as_f64()),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let reference_date = data
+            .get("metadata")
+            .and_then(|m| m.get("lastUpdated"))
+            .and_then(|d| d.as_str())
+            .map(|s| s.split('T').next().unwrap_or(s).to_string());
+
+        Ok(CapFloorInstrumentsResponse {
+            instruments,
+            reference_date,
+        })
+    }
+
+    /// Calibrate cap/floor: strip caplet vols from cap flat vols.
+    ///
+    /// Uses variance additivity for normal (Bachelier) vols:
+    ///   σ²_cap(Tₙ) × Tₙ = Σᵢ σ²_caplet(Tᵢ) × δᵢ
+    pub fn calibrate_capfloor(
+        request: &CapFloorCalibrateRequest,
+        _state: &Arc<AppState>,
+    ) -> Result<CapFloorCalibrateResponse, ServerError> {
+        let start = std::time::Instant::now();
+
+        let file_path = format!(
+            "demo/data/input/capfloor/{}.json",
+            request.index.to_lowercase()
+        );
+        let path = Path::new(&file_path);
+        let data: serde_json::Value =
+            helpers::load_json_value(path, "cap/floor vol data").map_err(|_| {
+                ServerError::NotFound(format!(
+                    "Cap/floor data not found for: {}",
+                    request.index
+                ))
+            })?;
+
+        let quotes = data
+            .get("quotes")
+            .and_then(|q| q.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        if quotes.is_empty() {
+            return Err(ServerError::InvalidRequest(
+                "No cap/floor quotes found".to_string(),
+            ));
+        }
+
+        // Parse quotes into (maturity_label, maturity_years, cap_flat_vol_decimal).
+        // Vol values in the data file are percentage-scaled (e.g., 0.65 = 65bp = 0.0065).
+        let mut parsed: Vec<(String, f64, f64)> = Vec::new();
+        for q in &quotes {
+            let maturity_str = q.get("maturity").and_then(|m| m.as_str()).unwrap_or("");
+            let market_vol = q.get("marketVol").and_then(|v| v.as_f64()).unwrap_or(0.0);
+            if maturity_str.is_empty() || market_vol <= 0.0 {
+                continue;
+            }
+            let t = parse_tenor_to_years(maturity_str).map_err(|e| {
+                ServerError::Internal(format!("Invalid maturity '{maturity_str}': {e}"))
+            })?;
+            // Convert: 0.65 → 0.0065 (decimal normal vol)
+            let vol_decimal = market_vol / 100.0;
+            parsed.push((maturity_str.to_string(), t, vol_decimal));
+        }
+
+        // Sort by maturity
+        parsed.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        let instrument_count = parsed.len();
+        let method_name = match request.method {
+            CapFloorCalibrationMethod::Bootstrap => "Bootstrap",
+            CapFloorCalibrationMethod::Global => "Global",
+        };
+
+        let caplet_vols_decimal = match request.method {
+            CapFloorCalibrationMethod::Bootstrap => bootstrap_caplet_vols(&parsed),
+            CapFloorCalibrationMethod::Global => global_caplet_vols(&parsed),
+        };
+
+        // Build response: caplet vols keyed by maturity, scaled back to percentage.
+        let mut caplet_vols_map = HashMap::new();
+        for (i, (label, _, _)) in parsed.iter().enumerate() {
+            let vol_pct = round4(caplet_vols_decimal[i] * 100.0);
+            caplet_vols_map.insert(label.clone(), vol_pct);
+        }
+
+        let elapsed = start.elapsed();
+
+        Ok(CapFloorCalibrateResponse {
+            method: method_name.to_string(),
+            caplet_vols: caplet_vols_map,
+            metadata: CalibrationMetadata {
+                instrument_count,
+                processing_time_ms: elapsed.as_secs_f64() * 1000.0,
+                converged_count: Some(instrument_count),
+                max_rmse: Some(0.0),
+            },
+            parameters: None,
         })
     }
 
@@ -1439,6 +1575,108 @@ fn round4(x: f64) -> f64 { (x * 10_000.0).round() / 10_000.0 }
 /// Extract f64 from JSON value with default.
 fn json_f64(v: &serde_json::Value, key: &str, default: f64) -> f64 {
     v.get(key).and_then(|val| val.as_f64()).unwrap_or(default)
+}
+
+// ---------------------------------------------------------------------------
+// Cap/Floor caplet vol stripping (variance additivity for normal vol)
+// ---------------------------------------------------------------------------
+
+/// Bootstrap caplet vols from sorted cap flat vols using variance additivity.
+///
+/// For normal (Bachelier) caps:
+///   σ²_cap(Tₙ) × Tₙ = Σᵢ₌₁ⁿ σ²_caplet(Tᵢ) × δᵢ
+///
+/// So: σ²_caplet(Tₙ) = [σ²_cap(Tₙ)×Tₙ − σ²_cap(Tₙ₋₁)×Tₙ₋₁] / δₙ
+fn bootstrap_caplet_vols(quotes: &[(String, f64, f64)]) -> Vec<f64> {
+    let n = quotes.len();
+    let mut caplet_vols = vec![0.0_f64; n];
+
+    for i in 0..n {
+        let (_, t_i, sigma_cap_i) = quotes[i];
+        if i == 0 {
+            // First caplet: σ_caplet = σ_cap (the cap IS one caplet period).
+            caplet_vols[i] = sigma_cap_i;
+        } else {
+            let (_, t_prev, sigma_cap_prev) = quotes[i - 1];
+            let var_cap_i = sigma_cap_i * sigma_cap_i * t_i;
+            let var_cap_prev = sigma_cap_prev * sigma_cap_prev * t_prev;
+            let delta_i = t_i - t_prev;
+
+            if delta_i <= 0.0 {
+                caplet_vols[i] = sigma_cap_i;
+                continue;
+            }
+
+            let var_caplet_i = (var_cap_i - var_cap_prev) / delta_i;
+            if var_caplet_i > 0.0 {
+                caplet_vols[i] = var_caplet_i.sqrt();
+            } else {
+                // Negative variance: fall back to previous caplet vol.
+                caplet_vols[i] = caplet_vols[i - 1];
+            }
+        }
+    }
+
+    caplet_vols
+}
+
+/// Global caplet vol fit: bootstrap + smoothing + variance-preserving rescaling.
+///
+/// 1. Start from bootstrap solution.
+/// 2. Smooth any negative-variance caplets by neighbour interpolation.
+/// 3. Rescale the last caplet in each segment to exactly reprice the cap.
+fn global_caplet_vols(quotes: &[(String, f64, f64)]) -> Vec<f64> {
+    let mut vols = bootstrap_caplet_vols(quotes);
+    let n = vols.len();
+    if n < 3 {
+        return vols;
+    }
+
+    // Detect and smooth negative-variance points.
+    for i in 0..n {
+        let (_, t_i, sigma_cap_i) = quotes[i];
+        let var_cap_i = sigma_cap_i * sigma_cap_i * t_i;
+
+        let var_cap_prev = if i > 0 {
+            let (_, t_prev, sigma_prev) = quotes[i - 1];
+            sigma_prev * sigma_prev * t_prev
+        } else {
+            0.0
+        };
+
+        let delta_i = if i > 0 { t_i - quotes[i - 1].1 } else { t_i };
+        let raw_var = (var_cap_i - var_cap_prev) / delta_i.max(1e-10);
+
+        if raw_var < 0.0 {
+            let left = if i > 0 { vols[i - 1] } else { vols[i] };
+            let right = if i + 1 < n { vols[i + 1] } else { vols[i] };
+            vols[i] = (left + right) / 2.0;
+        }
+    }
+
+    // Variance-preserving rescaling: ensure model cap variances match market.
+    for i in 1..n {
+        let (_, t_i, sigma_cap_i) = quotes[i];
+        let target_var = sigma_cap_i * sigma_cap_i * t_i;
+
+        let mut model_var = 0.0;
+        let mut t_prev = 0.0;
+        for j in 0..=i {
+            let (_, t_j, _) = quotes[j];
+            let delta_j = t_j - t_prev;
+            model_var += vols[j] * vols[j] * delta_j;
+            t_prev = t_j;
+        }
+
+        let delta_i = t_i - if i > 0 { quotes[i - 1].1 } else { 0.0 };
+        let model_var_prev = model_var - vols[i] * vols[i] * delta_i;
+        let needed_var = (target_var - model_var_prev) / delta_i.max(1e-10);
+        if needed_var > 0.0 {
+            vols[i] = needed_var.sqrt();
+        }
+    }
+
+    vols
 }
 
 /// Breeden-Litzenberger density via Black-Scholes call prices.

@@ -1398,6 +1398,81 @@ pub struct CommodityForwardCurveResponse {
     pub computation_time_ms: f64,
 }
 
+// ---------------------------------------------------------------------------
+// Cap/Floor Caplet Vol Stripping
+// ---------------------------------------------------------------------------
+
+/// Calibration method for cap/floor caplet vol stripping.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CapFloorCalibrationMethod {
+    /// Sequential bootstrap using variance additivity.
+    Bootstrap,
+    /// Global fit with smoothing and variance-preserving rescaling.
+    Global,
+}
+
+/// A single cap/floor volatility quote.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CapFloorQuote {
+    /// Cap maturity tenor (e.g., "1Y", "5Y", "10Y").
+    pub maturity: String,
+    /// Cap flat vol (normal, percentage-scaled, e.g., 0.65 for 65bp).
+    pub market_vol: f64,
+    /// Stripped caplet vol (filled after calibration).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caplet_vol: Option<f64>,
+    /// Strike (absolute rate, optional).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strike: Option<f64>,
+}
+
+/// Response from `GET /api/volcube/capfloor/instruments/{currency}`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CapFloorInstrumentsResponse {
+    pub instruments: Vec<CapFloorQuote>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reference_date: Option<String>,
+}
+
+/// Request for `POST /api/volcube/capfloor/calibrate`.
+#[derive(Debug, Clone, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct CapFloorCalibrateRequest {
+    /// Currency or rate index (e.g., "USD" or "usd-sofr").
+    #[validate(length(min = 1))]
+    pub index: String,
+    /// Reference date (ISO format).
+    pub reference_date: Option<String>,
+    /// Calibration method: "bootstrap" or "global".
+    pub method: CapFloorCalibrationMethod,
+    /// Model identifier (optional, for future parametric stripping).
+    pub model: Option<String>,
+    /// Initial SABR parameter guesses (optional).
+    #[serde(default)]
+    pub initial_params: Option<SabrInitialParams>,
+    /// Fixed SABR parameters (optional).
+    #[serde(default)]
+    pub fixed_params: Option<SabrFixedParams>,
+}
+
+/// Response from `POST /api/volcube/capfloor/calibrate`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CapFloorCalibrateResponse {
+    /// Method used: "Bootstrap" or "Global".
+    pub method: String,
+    /// Stripped caplet vols keyed by maturity tenor.
+    pub caplet_vols: std::collections::HashMap<String, f64>,
+    /// Calibration metadata (instrument count, timing).
+    pub metadata: CalibrationMetadata,
+    /// Aggregate parameters (optional, for future parametric mode).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parameters: Option<CalibrationParameters>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
