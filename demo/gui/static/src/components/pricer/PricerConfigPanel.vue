@@ -20,7 +20,7 @@ const { expandCashflows, calculateAll } = usePricer();
 
 // JY Inflation
 const jyStore = useJyInflationStore();
-const { generateCashflows: jyGenerateCashflows, runPricing: jyRunPricing, runXva: jyRunXva } = useJYInflation();
+const { generateCashflows: jyGenerateCashflows, runPricing: jyRunPricing } = useJYInflation();
 
 const isInflation = computed(() => store.assetTab === 'Inflation');
 
@@ -596,17 +596,6 @@ watch(
           @click="jyRunPricing"
         >
           Price
-        </v-btn>
-        <v-btn
-          variant="tonal"
-          size="small"
-          color="teal"
-          :disabled="jyStore.loading"
-          :loading="jyStore.loading"
-          prepend-icon="mdi-shield-half-full"
-          @click="jyRunXva"
-        >
-          XVA
         </v-btn>
       </div>
     </div>

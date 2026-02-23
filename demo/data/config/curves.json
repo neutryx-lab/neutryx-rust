@@ -496,11 +496,57 @@
       "allowExtrapolation": true
     },
     {
-      "name": "USD-JY-Inflation",
-      "description": "USD Inflation curve (Jarrow-Yildirim model: nominal + real + breakeven)",
-      "rateIndex": "USD-JY-INFLATION",
+      "name": "USD-TIPS",
+      "description": "USD TIPS real yield curve (CPI-U linked, Jarrow-Yildirim)",
+      "rateIndex": "USD-TIPS",
       "curveType": "inflation",
-      "instruments": [],
+      "nominalCurve": "USD-SOFR",
+      "instruments": [
+        "USD-TIPS-1Y", "USD-TIPS-2Y", "USD-TIPS-3Y", "USD-TIPS-5Y",
+        "USD-TIPS-7Y", "USD-TIPS-10Y", "USD-TIPS-20Y", "USD-TIPS-30Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "GBP-RPI",
+      "description": "GBP RPI-linked real yield curve (Index-Linked Gilts, Jarrow-Yildirim)",
+      "rateIndex": "GBP-RPI",
+      "curveType": "inflation",
+      "nominalCurve": "GBP-SONIA",
+      "instruments": [
+        "GBP-ILGilt-2Y", "GBP-ILGilt-5Y", "GBP-ILGilt-10Y",
+        "GBP-ILGilt-20Y", "GBP-ILGilt-30Y", "GBP-ILGilt-50Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "GBP-CPI",
+      "description": "GBP CPI zero-coupon inflation swap curve (Jarrow-Yildirim)",
+      "rateIndex": "GBP-CPI",
+      "curveType": "inflation",
+      "nominalCurve": "GBP-SONIA",
+      "instruments": [
+        "GBP-ZCIS-1Y", "GBP-ZCIS-2Y", "GBP-ZCIS-3Y", "GBP-ZCIS-5Y",
+        "GBP-ZCIS-7Y", "GBP-ZCIS-10Y", "GBP-ZCIS-15Y", "GBP-ZCIS-20Y", "GBP-ZCIS-30Y"
+      ],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "JPY-CPI",
+      "description": "JPY CPI-linked real yield curve (JGBi, Jarrow-Yildirim)",
+      "rateIndex": "JPY-CPI",
+      "curveType": "inflation",
+      "nominalCurve": "JPY-TONA",
+      "instruments": [
+        "JPY-JGBi-2Y", "JPY-JGBi-5Y", "JPY-JGBi-10Y",
+        "JPY-JGBi-20Y", "JPY-JGBi-30Y", "JPY-JGBi-40Y"
+      ],
       "calibrationMethod": "none",
       "interpolation": "flat_forward",
       "allowExtrapolation": true
