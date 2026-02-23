@@ -378,8 +378,8 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       const response = await fetch(`${basePath}/${fileName}.json`);
       if (!response.ok) throw new Error(`Failed to load rate data for ${rateIndex}`);
       rateData.value = await response.json();
-      // Demo: always treat data as realtime — override to today's date
-      if (rateData.value) {
+      // Resolve symbolic date tokens (e.g. "TODAY") to actual ISO dates
+      if (rateData.value?.reference_date?.toUpperCase() === 'TODAY') {
         rateData.value.reference_date = new Date().toISOString().slice(0, 10);
       }
     } catch (error) {

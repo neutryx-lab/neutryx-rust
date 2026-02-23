@@ -1,7 +1,7 @@
 {
   "index": "jpy-tona",
   "currency": "JPY",
-  "reference_date": "2026-01-29",
+  "reference_date": "TODAY",
   "instruments": [
     {
       "type": "deposit",

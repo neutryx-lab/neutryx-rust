@@ -1,7 +1,7 @@
 {
   "curve_id": "usd-tips",
   "currency": "USD",
-  "reference_date": "2026-02-23",
+  "reference_date": "TODAY",
   "inflation_index": "CPI-U",
   "lag_months": 3,
   "description": "USD TIPS real yield curve for JY inflation model",

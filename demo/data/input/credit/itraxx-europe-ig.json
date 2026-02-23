@@ -1,7 +1,7 @@
 {
   "index": "ITRAXX-EUROPE-IG",
   "currency": "EUR",
-  "reference_date": "2026-01-29",
+  "reference_date": "TODAY",
   "recovery_rate": 0.40,
   "series": 42,
   "version": 1,

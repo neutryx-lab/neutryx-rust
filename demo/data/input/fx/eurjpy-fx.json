@@ -2,7 +2,7 @@
   "index": "EURJPY-FX",
   "currency": "EUR",
   "currency_pair": "EURJPY",
-  "reference_date": "2026-01-29",
+  "reference_date": "TODAY",
   "spot": 162.21,
   "instruments": [
     { "type": "fx_forward", "tenor": "1W",  "tenor_years": 0.01923, "rate": 8.5 },
