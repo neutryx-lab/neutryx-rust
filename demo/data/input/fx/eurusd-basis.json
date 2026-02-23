@@ -2,7 +2,7 @@
   "index": "EURUSD-BASIS",
   "currency": "EUR",
   "currency_pair": "EURUSD",
-  "reference_date": "2026-01-29",
+  "reference_date": "TODAY",
   "spot": 1.0850,
   "instruments": [
     { "type": "xccy_basis", "tenor": "1Y",  "tenor_years": 1.0,  "rate": -15.5 },

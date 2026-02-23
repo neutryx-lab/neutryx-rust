@@ -11,10 +11,13 @@ use serde::Deserialize;
 use super::DemoService;
 use crate::{
     error::ServerError,
-    rest::dto::demo::{
-        BondQuote, BondQuotesResponse, Convention, ConventionField, ConventionsResponse,
-        CreditQuote, CreditQuotesResponse, EventType, EventsResponse, ExportFormat, Holiday,
-        HolidaysResponse, Importance, MarketEvent, MarketRate, MarketRatesResponse,
+    rest::dto::{
+        demo::{
+            BondQuote, BondQuotesResponse, Convention, ConventionField, ConventionsResponse,
+            CreditQuote, CreditQuotesResponse, EventType, EventsResponse, ExportFormat, Holiday,
+            HolidaysResponse, Importance, MarketEvent, MarketRate, MarketRatesResponse,
+        },
+        jy_inflation::{CurveRatePoint, InflationMarketDataResponse},
     },
     services::helpers,
     state::AppState,
@@ -46,6 +49,14 @@ struct ConfigPaths {
     credit: CreditPaths,
     events: EventPaths,
     holidays: String,
+    #[serde(default)]
+    inflation: Option<InflationPaths>,
+}
+
+#[derive(Debug, Deserialize)]
+struct InflationPaths {
+    nominal_rates: String,
+    real_rates: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -674,6 +685,104 @@ impl DemoService {
                 Ok(json)
             }
         }
+    }
+
+    /// Get inflation market data (nominal + real rate curves) from input files.
+    pub fn get_inflation_market_data(
+        _state: &Arc<AppState>,
+    ) -> Result<InflationMarketDataResponse, ServerError> {
+        let cfg = load_config()?;
+        let timestamp = chrono::Utc::now().to_rfc3339();
+
+        let inflation_paths = cfg.paths.inflation.ok_or_else(|| {
+            ServerError::Internal(
+                "Inflation paths not configured in market_data_config.json".into(),
+            )
+        })?;
+
+        // Load nominal rates
+        let nominal_data: serde_json::Value = helpers::load_json_value(
+            Path::new(&inflation_paths.nominal_rates),
+            "inflation/nominal_rates.json",
+        )?;
+
+        let raw_ref_date = nominal_data
+            .get("reference_date")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let reference_date = if raw_ref_date.eq_ignore_ascii_case("TODAY") {
+            chrono::Utc::now().format("%Y-%m-%d").to_string()
+        } else {
+            raw_ref_date.to_string()
+        };
+        let currency = nominal_data
+            .get("currency")
+            .and_then(|v| v.as_str())
+            .unwrap_or("USD")
+            .to_string();
+
+        let nominal_rates = nominal_data
+            .get("instruments")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|instr| {
+                        let raw_type = instr.get("type")?.as_str()?;
+                        let tenor = instr.get("tenor")?.as_str()?.to_string();
+                        let rate = instr.get("rate")?.as_f64()?;
+                        let instrument_type = match raw_type {
+                            "deposit" => "Deposit",
+                            "ois" => "OIS",
+                            _ => raw_type,
+                        };
+                        Some(CurveRatePoint {
+                            instrument_type: instrument_type.to_string(),
+                            tenor,
+                            rate,
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Load real rates (TIPS)
+        let real_data: serde_json::Value = helpers::load_json_value(
+            Path::new(&inflation_paths.real_rates),
+            "inflation/real_rates.json",
+        )?;
+
+        let inflation_index = real_data
+            .get("inflation_index")
+            .and_then(|v| v.as_str())
+            .unwrap_or("CPI-U")
+            .to_string();
+
+        let real_rates = real_data
+            .get("instruments")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|instr| {
+                        let tenor = instr.get("tenor")?.as_str()?.to_string();
+                        let rate = instr.get("rate")?.as_f64()?;
+                        Some(CurveRatePoint {
+                            instrument_type: "TIPS".to_string(),
+                            tenor,
+                            rate,
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Ok(InflationMarketDataResponse {
+            nominal_rates,
+            real_rates,
+            reference_date,
+            currency,
+            inflation_index,
+            last_updated: timestamp,
+        })
     }
 
     /// Get bond market data quotes.

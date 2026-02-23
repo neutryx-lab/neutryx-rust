@@ -2,7 +2,7 @@
   "issuer": "German Bund",
   "currency": "EUR",
   "bond_type": "government",
-  "reference_date": "2026-02-13",
+  "reference_date": "TODAY",
   "rating": "AAA",
   "instruments": [
     {

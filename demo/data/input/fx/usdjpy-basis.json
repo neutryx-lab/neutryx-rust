@@ -2,7 +2,7 @@
   "index": "USDJPY-BASIS",
   "currency": "USD",
   "currency_pair": "USDJPY",
-  "reference_date": "2026-01-29",
+  "reference_date": "TODAY",
   "spot": 149.50,
   "instruments": [
     { "type": "xccy_basis", "tenor": "1Y",  "tenor_years": 1.0,  "rate": 42.5 },

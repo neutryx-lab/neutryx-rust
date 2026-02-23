@@ -31,9 +31,9 @@ use crate::{
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
         jy_inflation::{
-            JyCurveBuildRequest, JyCurveBuildResponse, JyInstrumentRequest, JyInstrumentResponse,
-            JyPricingRequest, JyPricingResponse, JySimulationRequest, JySimulationResponse,
-            JyXvaRequest, JyXvaResponse,
+            InflationMarketDataResponse, JyCurveBuildRequest, JyCurveBuildResponse,
+            JyInstrumentRequest, JyInstrumentResponse, JyPricingRequest, JyPricingResponse,
+            JySimulationRequest, JySimulationResponse, JyXvaRequest, JyXvaResponse,
         },
     },
     services::{DemoService, ExoticService, VolcubeService},
@@ -231,6 +231,11 @@ pub async fn price_exotic(
 
 body_handler!(/// POST /api/commodity/forward-curve.
     commodity_forward_curve, DemoService::commodity_forward_curve(CommodityForwardCurveRequest) -> CommodityForwardCurveResponse);
+
+// ─── Inflation Market Data Handler ───────────────────────────────────────────
+
+state_handler!(/// GET /api/market/inflation.
+    get_inflation_market_data, DemoService::get_inflation_market_data -> InflationMarketDataResponse);
 
 // ─── Jarrow-Yildirim Inflation Model Handlers ──────────────────────────────
 

@@ -38,7 +38,11 @@
       "economic_releases": "demo/data/input/events/economic_releases.json",
       "turns": "demo/data/input/events/turns.json"
     },
-    "holidays": "demo/data/input/holidays.json"
+    "holidays": "demo/data/input/holidays.json",
+    "inflation": {
+      "nominal_rates": "demo/data/input/inflation/nominal_rates.json",
+      "real_rates": "demo/data/input/inflation/real_rates.json"
+    }
   },
   "defaults": {
     "source": "Internal",

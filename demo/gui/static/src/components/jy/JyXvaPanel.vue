@@ -84,7 +84,7 @@ function renderExposureChart() {
           bodyColor: cc.tooltipBody,
           padding: 12,
           callbacks: {
-            label: (context: TooltipItem<'line'>) => `${context.dataset.label ?? ''}: ${formatCcy(context.parsed.y)}`,
+            label: (context: TooltipItem<'line'>) => `${context.dataset.label ?? ''}: ${formatCcy(context.parsed.y ?? 0)}`,
           },
         },
       },

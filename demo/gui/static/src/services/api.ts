@@ -427,6 +427,16 @@ export async function runIncrementalXva(request: any): Promise<any> {
 }
 
 // =============================================================================
+// Inflation Market Data API
+// =============================================================================
+
+export async function fetchInflationMarketData(): Promise<import('@/types').InflationMarketDataResponse> {
+  const response = await fetch(`${API_BASE}/market/inflation`);
+  if (!response.ok) throw new Error('Failed to load inflation market data');
+  return response.json();
+}
+
+// =============================================================================
 // JY (Jarrow-Yildirim) Inflation Model API
 // =============================================================================
 

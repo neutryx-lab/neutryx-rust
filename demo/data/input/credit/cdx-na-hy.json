@@ -1,7 +1,7 @@
 {
   "index": "CDX-NA-HY",
   "currency": "USD",
-  "reference_date": "2026-02-13",
+  "reference_date": "TODAY",
   "recovery_rate": 0.40,
   "series": 43,
   "version": 1,

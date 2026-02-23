@@ -1,0 +1,90 @@
+{
+  "curve_id": "usd-tips",
+  "currency": "USD",
+  "reference_date": "TODAY",
+  "inflation_index": "CPI-U",
+  "lag_months": 3,
+  "description": "USD TIPS real yield curve for JY inflation model",
+  "instruments": [
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.008,
+      "coupon_rate": 0.00625,
+      "frequency": "semi_annual",
+      "description": "1Y US TIPS real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.009,
+      "coupon_rate": 0.00625,
+      "frequency": "semi_annual",
+      "description": "2Y US TIPS real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.010,
+      "coupon_rate": 0.0075,
+      "frequency": "semi_annual",
+      "description": "3Y US TIPS real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.012,
+      "coupon_rate": 0.0125,
+      "frequency": "semi_annual",
+      "description": "5Y US TIPS real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.014,
+      "coupon_rate": 0.015,
+      "frequency": "semi_annual",
+      "description": "7Y US TIPS real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.015,
+      "coupon_rate": 0.01375,
+      "frequency": "semi_annual",
+      "description": "10Y US TIPS real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.017,
+      "coupon_rate": 0.02,
+      "frequency": "semi_annual",
+      "description": "20Y US TIPS real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "tips",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.018,
+      "coupon_rate": 0.0225,
+      "frequency": "semi_annual",
+      "description": "30Y US TIPS real yield"
+    }
+  ]
+}
