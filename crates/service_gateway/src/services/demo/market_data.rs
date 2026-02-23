@@ -730,10 +730,7 @@ impl DemoService {
             } else {
                 raw_ref_date.to_string()
             };
-            let lag_months = data
-                .get("lag_months")
-                .and_then(|v| v.as_u64())
-                .unwrap_or(3) as u32;
+            let lag_months = data.get("lag_months").and_then(|v| v.as_u64()).unwrap_or(3) as u32;
             let description = data
                 .get("description")
                 .and_then(|v| v.as_str())

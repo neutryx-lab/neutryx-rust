@@ -16,6 +16,7 @@ import type {
   JyPricingResponse,
   JyXvaResponse,
   CurveRatePoint,
+  InflationIndexData,
 } from '@/types/api';
 import { fetchInflationMarketData } from '@/services/api';
 
@@ -45,6 +46,7 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   const valuationDate = ref(new Date().toISOString().split('T')[0]);
 
   // Market data (loaded from input files via API)
+  const inflationIndices = ref<InflationIndexData[]>([]);
   const realRates = ref<CurveRatePoint[]>([]);
   // Selected nominal curve from the Rates system (e.g. "USD-SOFR")
   const nominalCurveRef = ref('');
@@ -96,15 +98,14 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   });
 
   const summaryStats = computed(() => {
-    const inst = instrumentType.value;
-    const mtm = pricingResult.value ? formatCcy(pricingResult.value.mtm) : '-';
-    const cva = xvaResult.value ? formatCcy(xvaResult.value.cva) : '-';
+    const instCount = realRates.value.length;
+    const built = curveResult.value != null;
 
     return [
-      { label: 'Model', value: 'Jarrow-Yildirim', icon: 'fa-chart-bar', color: '#10b981' },
-      { label: 'Instrument', value: `${inst} ${maturityYears.value}Y`, icon: 'fa-file-contract', color: '#3b82f6' },
-      { label: 'MtM', value: mtm, icon: 'fa-dollar-sign', color: '#8b5cf6' },
-      { label: 'CVA', value: cva, icon: 'fa-shield-alt', color: '#ef4444' },
+      { label: 'Valuation Date', value: valuationDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
+      { label: 'Instruments', value: `${instCount} TIPS`, icon: 'fa-list-alt', color: '#3b82f6' },
+      { label: 'Model', value: 'Jarrow-Yildirim', icon: 'fa-wave-square', color: '#10b981' },
+      { label: 'Status', value: built ? 'Built' : 'Pending', icon: 'fa-info-circle', color: built ? '#10b981' : '#f59e0b' },
     ];
   });
 
@@ -132,11 +133,16 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     _loadingPromise = (async () => {
       try {
         const data = await fetchInflationMarketData();
-        realRates.value = data.realRates;
-        inflationIndex.value = data.inflationIndex;
-        referenceDate.value = data.referenceDate;
-        if (data.referenceDate) {
-          valuationDate.value = data.referenceDate;
+        inflationIndices.value = data.indices;
+        // Use first index as default for Pricer workflow
+        const first = data.indices[0];
+        if (first) {
+          realRates.value = first.instruments;
+          inflationIndex.value = first.inflationIndex;
+          referenceDate.value = first.referenceDate;
+          if (first.referenceDate) {
+            valuationDate.value = first.referenceDate;
+          }
         }
         marketDataLoaded.value = true;
       } catch (e) {
@@ -166,6 +172,7 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     initialRealRate,
     initialIndex,
     valuationDate,
+    inflationIndices,
     realRates,
     nominalCurveRef,
     marketDataLoaded,

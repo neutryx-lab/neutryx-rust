@@ -966,7 +966,10 @@ mod tests {
             base_swaps: vec![],
             base_exotics: vec![],
             base_inflation_swaps: vec![],
-            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(0.02, 1_000_000.0)),
+            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(
+                0.02,
+                1_000_000.0,
+            )),
         };
 
         let credit = CreditParams::new(0.02, 0.6).unwrap();
@@ -993,7 +996,9 @@ mod tests {
             base_swaps: vec![make_payer_swap(0.03, 1_000_000.0)],
             base_exotics: vec![],
             base_inflation_swaps: vec![make_inflation_swap(0.02, 500_000.0)],
-            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(0.025, 500_000.0)),
+            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(
+                0.025, 500_000.0,
+            )),
         };
 
         let credit = CreditParams::new(0.02, 0.6).unwrap();
@@ -1014,7 +1019,10 @@ mod tests {
             base_swaps: vec![],
             base_exotics: vec![],
             base_inflation_swaps: vec![],
-            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(0.02, 1_000_000.0)),
+            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(
+                0.02,
+                1_000_000.0,
+            )),
         };
 
         let credit = CreditParams::new(0.02, 0.6).unwrap();

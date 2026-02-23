@@ -1415,11 +1415,18 @@ export interface JyXvaResponse {
   exposureProfile: ExposureProfile;
 }
 
-export interface InflationMarketDataResponse {
-  realRates: CurveRatePoint[];
-  referenceDate: string;
+export interface InflationIndexData {
+  curveId: string;
   currency: string;
   inflationIndex: string;
+  referenceDate: string;
+  lagMonths: number;
+  description: string;
+  instruments: CurveRatePoint[];
+}
+
+export interface InflationMarketDataResponse {
+  indices: InflationIndexData[];
   lastUpdated: string;
 }
 
