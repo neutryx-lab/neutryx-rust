@@ -183,8 +183,15 @@ const {
   interpolation,
   allowExtrapolation,
 
+  // Prerequisite curve overrides
+  discountCurveOverride,
+  domesticCurveOverride,
+  foreignCurveOverride,
+  referenceCurveOverride,
+
   // Computed
   curveOptions,
+  availableRateCurves,
   enabledInstruments,
   hasChanges,
   isCreditCurve,
@@ -316,7 +323,7 @@ watch(chartType, () => {
               <div class="grid-input">
                 <v-select
                   v-model="jyStore.nominalCurveRef"
-                  :items="curveOptions.filter(c => c.curveType === 'rate').map(c => ({ title: c.name, value: c.name }))"
+                  :items="availableRateCurves"
                   placeholder="Select nominal curve..."
                   density="compact"
                   variant="outlined"
@@ -456,27 +463,59 @@ watch(chartType, () => {
               <div class="grid-input">
                 <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve?.fxCurveMethod === 'irp_generic' ? 'Interest Rate Parity' : selectedCurve?.fxCurveMethod === 'irp_basis' ? 'XCCY Basis + IR Curve' : 'Flat Forward Points' }}</span>
               </div>
-              <template v-if="selectedCurve?.domesticCurve">
+              <template v-if="selectedCurve?.fxCurveMethod === 'irp_generic'">
                 <div class="grid-label">Domestic</div>
                 <div class="grid-input">
-                  <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve.domesticCurve }}</span>
+                  <v-select
+                    v-model="domesticCurveOverride"
+                    :items="availableRateCurves"
+                    placeholder="Select domestic curve..."
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
                 </div>
-              </template>
-              <template v-if="selectedCurve?.foreignCurve">
                 <div class="grid-label">Foreign</div>
                 <div class="grid-input">
-                  <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve.foreignCurve }}</span>
+                  <v-select
+                    v-model="foreignCurveOverride"
+                    :items="availableRateCurves"
+                    placeholder="Select foreign curve..."
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
                 </div>
               </template>
-              <template v-if="selectedCurve?.referenceCurve">
+              <template v-if="selectedCurve?.fxCurveMethod === 'irp_basis'">
                 <div class="grid-label">Reference</div>
                 <div class="grid-input">
-                  <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve.referenceCurve }}</span>
+                  <v-select
+                    v-model="referenceCurveOverride"
+                    :items="availableRateCurves"
+                    placeholder="Select reference curve..."
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
                 </div>
               </template>
             </template>
             <!-- Rate / Credit -->
             <template v-else>
+              <template v-if="isCreditCurve">
+                <div class="grid-label">Discount</div>
+                <div class="grid-input">
+                  <v-select
+                    v-model="discountCurveOverride"
+                    :items="availableRateCurves"
+                    placeholder="Select discount curve..."
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
+                </div>
+              </template>
               <div class="grid-label">Calibration</div>
               <div class="grid-input">
                 <v-select

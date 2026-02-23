@@ -1353,30 +1353,33 @@ onMounted(() => {
 
           <!-- Inflation Table (multi-index, clickable rows) -->
           <template v-else-if="assetClass === 'Inflation'">
-            <div class="overflow-auto" style="max-height: 600px">
+            <div v-if="filteredInflationRows.length === 0" class="text-center py-12">
+              <i class="fas fa-chart-area text-4xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">No inflation data available</p>
+            </div>
+            <div v-else class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="sticky top-0 bg-[var(--surface)]">
+                <thead>
                   <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)]">Index</th>
-                    <th class="text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)]">CCY</th>
-                    <th class="text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                    <th class="text-left py-2 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
-                    <th class="text-right py-2 px-3 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Index</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="(row, i) in filteredInflationRows"
                     :key="row.id"
-                    class="border-b border-[var(--glass-border)] border-opacity-50 cursor-pointer transition-colors"
-                    :class="selectedInflationIdx === i ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]'"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedInflationIdx === i ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
                     @click="selectedInflationIdx = i"
                   >
-                    <td class="py-1.5 px-3 text-xs text-[var(--text-secondary)]">{{ row.inflationIndex }}</td>
-                    <td class="py-1.5 px-3 text-xs text-[var(--text-primary)]">{{ row.currency }}</td>
-                    <td class="py-1.5 px-3 text-xs text-[var(--text-secondary)]">{{ row.instrumentType }}</td>
-                    <td class="py-1.5 px-3 text-xs text-[var(--text-primary)] font-mono">{{ row.tenor }}</td>
-                    <td class="py-1.5 px-3 text-xs text-right font-mono" :class="row.rate >= 0 ? 'text-emerald-400' : 'text-red-400'">{{ (row.rate * 100).toFixed(3) }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ row.inflationIndex }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ row.currency }}</td>
+                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-xs">{{ row.instrumentType }}</span></td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)] font-mono text-xs">{{ row.tenor }}</td>
+                    <td class="py-3 px-3 text-right font-mono" :class="row.rate >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ (row.rate * 100).toFixed(3) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1934,7 +1937,7 @@ onMounted(() => {
                 </div>
                 <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Rate</span>
-                  <span class="font-mono" :class="selectedInflationRow.rate >= 0 ? 'text-emerald-400' : 'text-red-400'">{{ (selectedInflationRow.rate * 100).toFixed(3) }}%</span>
+                  <span class="font-mono" :class="selectedInflationRow.rate >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ (selectedInflationRow.rate * 100).toFixed(3) }}%</span>
                 </div>
               </div>
 
