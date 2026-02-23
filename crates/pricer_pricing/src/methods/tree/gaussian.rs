@@ -106,6 +106,7 @@ impl<T: Float> GaussianTree<T> {
                 reason: "volatility must be positive".to_string(),
             });
         }
+        #[allow(clippy::manual_is_multiple_of)]
         if config.num_grid_points < 3 || config.num_grid_points % 2 == 0 {
             return Err(ConfigError::InvalidModelParameter {
                 name: "num_grid_points",

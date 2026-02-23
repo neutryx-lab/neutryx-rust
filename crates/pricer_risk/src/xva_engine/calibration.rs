@@ -232,13 +232,13 @@ impl CalibrationSolver {
             // If both have the same sign, try midpoint approach (Newton-like fallback)
             let same_sign = f_lo * f_hi > 0.0;
 
-            let mut best_value = (lo + hi) / 2.0;
+            let mut best_value = f64::midpoint(lo, hi);
             let mut best_error = f64::MAX;
 
             for iter in 0..self.max_iterations {
                 total_iterations += 1;
 
-                let mid = (lo + hi) / 2.0;
+                let mid = f64::midpoint(lo, hi);
                 let f_mid = eval_fn(param_id, mid) - target;
 
                 if f_mid.abs() < best_error {

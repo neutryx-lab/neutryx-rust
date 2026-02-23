@@ -4,6 +4,7 @@
 //! with support for CSV serialization.
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 
 /// Computed XVA risk indicator profiles along a time grid.
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -69,7 +70,7 @@ impl XvaRiskIndicators {
         let mut pfe_keys: Vec<&String> = self.pfe.keys().collect();
         pfe_keys.sort();
         for key in &pfe_keys {
-            header.push_str(&format!(",PFE_{}", key));
+            let _ = write!(header, ",PFE_{}", key);
         }
         writeln!(writer, "{}", header)?;
 
@@ -87,7 +88,7 @@ impl XvaRiskIndicators {
                     .and_then(|v| v.get(i))
                     .copied()
                     .unwrap_or(0.0);
-                row.push_str(&format!(",{}", pfe_val));
+                let _ = write!(row, ",{}", pfe_val);
             }
             writeln!(writer, "{}", row)?;
         }
