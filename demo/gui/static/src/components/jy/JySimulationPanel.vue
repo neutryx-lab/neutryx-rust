@@ -137,30 +137,6 @@ function renderFanChart(
 
 <template>
   <div class="space-y-6">
-    <!-- Simulation Config -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-      <div>
-        <label class="text-xs text-[var(--text-muted)] mb-1 block">MC Paths</label>
-        <input v-model.number="store.numPaths" type="number" min="100" max="100000"
-          class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-[var(--surface)] text-[var(--text-primary)]" />
-      </div>
-      <div>
-        <label class="text-xs text-[var(--text-muted)] mb-1 block">Time Steps</label>
-        <input v-model.number="store.numSteps" type="number" min="10" max="5000"
-          class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-[var(--surface)] text-[var(--text-primary)]" />
-      </div>
-      <div>
-        <label class="text-xs text-[var(--text-muted)] mb-1 block">Horizon (years)</label>
-        <input v-model.number="store.horizon" type="number" min="0.1" max="50" step="0.5"
-          class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-[var(--surface)] text-[var(--text-primary)]" />
-      </div>
-      <div>
-        <label class="text-xs text-[var(--text-muted)] mb-1 block">Sample Paths</label>
-        <input v-model.number="store.numSamplePaths" type="number" min="0" max="20"
-          class="w-full px-3 py-1.5 text-sm border border-[var(--border)] rounded-lg bg-[var(--surface)] text-[var(--text-primary)]" />
-      </div>
-    </div>
-
     <!-- Fan Charts -->
     <div v-if="result" class="space-y-6">
       <div>
