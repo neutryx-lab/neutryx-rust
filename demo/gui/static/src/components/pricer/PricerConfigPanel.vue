@@ -13,6 +13,7 @@ import { STOCHASTIC_MODELS } from '@/constants/pricer';
 
 import { useJyInflationStore } from '@/stores/jyInflation';
 import { useJYInflation } from '@/composables/useJYInflation';
+import JyModelParamsPanel from '@/components/jy/JyModelParamsPanel.vue';
 
 const store = usePricerStore();
 const marketEnv = useMarketEnvStore();
@@ -20,7 +21,7 @@ const { expandCashflows, calculateAll } = usePricer();
 
 // JY Inflation
 const jyStore = useJyInflationStore();
-const { generateCashflows: jyGenerateCashflows, runPricing: jyRunPricing, runXva: jyRunXva } = useJYInflation();
+const { generateCashflows: jyGenerateCashflows, runPricing: jyRunPricing } = useJYInflation();
 
 const isInflation = computed(() => store.assetTab === 'Inflation');
 
@@ -43,15 +44,37 @@ const graphSaveFeedback = ref(false);
 const graphDetailLevel = ref<'operation' | 'scope'>('scope');
 
 async function saveGraph() {
-  const inst = store.selectedInstrument;
-  if (!inst) return;
   isSavingGraph.value = true;
   try {
-    const instrumentType = inst.instrumentType || inst.id || inst.type || '';
-    const instrumentName = inst.displayName || inst.name || instrumentType;
+    let instrumentType: string;
+    let instrumentName: string;
+    let params: Record<string, unknown>;
+
+    if (isInflation.value) {
+      instrumentType = 'InflationSwap';
+      instrumentName = `Inflation Swap (${jyStore.instrumentType})`;
+      const today = jyStore.startDate || new Date().toISOString().slice(0, 10);
+      const matDate = jyStore.maturityDate || today;
+      params = {
+        notional: jyStore.notional,
+        currency: 'USD',
+        startDate: today,
+        endDate: matDate,
+        fixedRate: jyStore.fixedRate,
+        inflationIndex: 'CPI',
+        inflationSwapType: jyStore.instrumentType === 'ZCIS' ? 'ZeroCoupon' : 'YearOnYear',
+      };
+    } else {
+      const inst = store.selectedInstrument;
+      if (!inst) return;
+      instrumentType = inst.instrumentType || inst.id || inst.type || '';
+      instrumentName = inst.displayName || inst.name || instrumentType;
+      params = { ...store.instrumentParams };
+    }
+
     const response = await fetchPricerGraph({
       instrumentType,
-      params: { ...store.instrumentParams },
+      params,
       detailLevel: graphDetailLevel.value,
     });
     marketEnv.publishPricerGraph(instrumentType, instrumentName, response, graphDetailLevel.value);
@@ -360,6 +383,12 @@ watch(
               <v-select v-model="jyStore.paymentFrequency" :items="jyFrequencyItems" density="compact" variant="outlined" hide-details />
             </div>
           </template>
+
+          <!-- ═══ JY MODEL PARAMETERS ═══ -->
+          <div class="section-header">JY Model</div>
+          <div class="grid-span">
+            <JyModelParamsPanel />
+          </div>
         </template>
 
         <!-- ═══ CALC SETTING (standard only) ═══ -->
@@ -601,12 +630,12 @@ watch(
           variant="tonal"
           size="small"
           color="teal"
-          :disabled="jyStore.loading"
-          :loading="jyStore.loading"
-          prepend-icon="mdi-shield-half-full"
-          @click="jyRunXva"
+          :disabled="isSavingGraph || graphSaveFeedback"
+          :loading="isSavingGraph"
+          :prepend-icon="graphSaveFeedback ? 'mdi-check' : 'mdi-graph-outline'"
+          @click="saveGraph"
         >
-          XVA
+          {{ graphSaveFeedback ? 'Saved!' : 'Save Graph' }}
         </v-btn>
       </div>
     </div>

@@ -272,7 +272,7 @@ body {
   }
 
   .stat-value {
-    @apply text-2xl font-bold text-text;
+    @apply text-xl font-semibold text-text;
   }
 
   .stat-label {

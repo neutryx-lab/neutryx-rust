@@ -261,6 +261,25 @@ define_phantom_model! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::{
+        stochastic::StochasticModel, test_macros::generate_stochastic_model_tests,
+    };
+
+    generate_stochastic_model_tests! {
+        model: HullWhiteModel<f64>,
+        model_f32: HullWhiteModel<f32>,
+        default_f64_params: HullWhiteParams::new(0.05_f64, 0.01, FlatCurve::new(0.03)).unwrap(),
+        default_f32_params: HullWhiteParams::new(0.1_f32, 0.01, FlatCurve::new(0.03)).unwrap(),
+        model_name: "HullWhite1F",
+        brownian_dim: 1,
+        num_factors: 1,
+        zero_shock: [0.0],
+        positive_shock: [1.0],
+        negative_shock: [-1.0],
+        price_increased: |next: &SingleState<f64>, prev: &SingleState<f64>| next.0 > prev.0,
+        price_decreased: |next: &SingleState<f64>, prev: &SingleState<f64>| next.0 < prev.0,
+        state_finite_check: |s: &SingleState<f64>| s.0.is_finite(),
+    }
 
     #[test]
     fn test_hull_white_params_new_valid() {
@@ -312,63 +331,6 @@ mod tests {
     }
 
     #[test]
-    fn test_hull_white_model_new() {
-        let model: HullWhiteModel<f64> = HullWhiteModel::new();
-        assert_eq!(HullWhiteModel::<f64>::model_name(), "HullWhite1F");
-        assert_eq!(HullWhiteModel::<f64>::brownian_dim(), 1);
-        assert_eq!(HullWhiteModel::<f64>::num_factors(), 1);
-        let _ = model; // Suppress unused warning
-    }
-
-    #[test]
-    fn test_hull_white_initial_state() {
-        let params = HullWhiteParams::new(0.05_f64, 0.01, FlatCurve::new(0.03)).unwrap();
-        let state = HullWhiteModel::initial_state(&params);
-        assert!((state.0 - 0.03).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_hull_white_evolve_step_no_shock() {
-        let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
-        let state = HullWhiteModel::initial_state(&params);
-        let dt = 1.0 / 252.0; // Daily step
-        let dw = [0.0];
-
-        let next_state = HullWhiteModel::evolve_step(state, dt, &dw, &params);
-
-        // With zero shock, should move towards long-term mean
-        // drift = [theta - a * r] * dt = [0.003 - 0.1 * 0.03] * dt = 0 * dt = 0
-        // For flat curve at initial state, drift is approximately zero
-        assert!((next_state.0 - state.0).abs() < 1e-8);
-    }
-
-    #[test]
-    fn test_hull_white_evolve_step_positive_shock() {
-        let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
-        let state = HullWhiteModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let dw = [1.0]; // Positive shock
-
-        let next_state = HullWhiteModel::evolve_step(state, dt, &dw, &params);
-
-        // With positive shock, rate should increase
-        assert!(next_state.0 > state.0);
-    }
-
-    #[test]
-    fn test_hull_white_evolve_step_negative_shock() {
-        let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
-        let state = HullWhiteModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let dw = [-1.0]; // Negative shock
-
-        let next_state = HullWhiteModel::evolve_step(state, dt, &dw, &params);
-
-        // With negative shock, rate should decrease
-        assert!(next_state.0 < state.0);
-    }
-
-    #[test]
     fn test_hull_white_mean_reversion() {
         // Start above long-term mean, should trend down
         let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.02)).unwrap();
@@ -396,41 +358,6 @@ mod tests {
         // Diffusion: 0.05 * sqrt(1/12) * (-3) = -0.0433
         // This should push the rate negative
         assert!(next_state.0 < 0.0);
-    }
-
-    #[test]
-    fn test_hull_white_path_generation() {
-        let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
-        let mut state = HullWhiteModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let n_steps = 252; // One year
-
-        // Generate path with zero shocks
-        for _ in 0..n_steps {
-            state = HullWhiteModel::evolve_step(state, dt, &[0.0], &params);
-        }
-
-        // After one year with zero shocks, should be close to initial
-        // (since we started at the long-term mean for flat curve)
-        assert!(state.0.is_finite());
-    }
-
-    #[test]
-    fn test_hull_white_is_differentiable() {
-        let model: HullWhiteModel<f64> = HullWhiteModel::new();
-        let _: &dyn Differentiable = &model;
-    }
-
-    #[test]
-    fn test_hull_white_f32_compatibility() {
-        let params = HullWhiteParams::new(0.1_f32, 0.01, FlatCurve::new(0.03)).unwrap();
-        let state = HullWhiteModel::initial_state(&params);
-        assert!((state.0 - 0.03_f32).abs() < 1e-6);
-
-        let dt = 1.0_f32 / 252.0;
-        let dw = [0.0_f32];
-        let next_state = HullWhiteModel::evolve_step(state, dt, &dw, &params);
-        assert!(next_state.0.is_finite());
     }
 
     #[test]

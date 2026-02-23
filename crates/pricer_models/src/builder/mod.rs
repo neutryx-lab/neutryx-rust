@@ -40,9 +40,9 @@ pub use engine::{
 };
 pub use enzyme_jacobian::JacobianResult;
 pub use error::{
-    apply_tikhonov_regularisation, estimate_condition_number, should_apply_regularisation,
-    validate_jacobian_dmatrix, validate_jacobian_matrix, CalibrationError, IftError,
-    JacobianQuality, NumericalDiagnostics, RegularisationType,
+    apply_tikhonov_regularisation, estimate_condition_number, validate_jacobian_dmatrix,
+    validate_jacobian_matrix, CalibrationError, IftError, JacobianQuality, NumericalDiagnostics,
+    RegularisationType,
 };
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;

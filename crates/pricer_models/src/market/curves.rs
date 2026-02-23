@@ -138,17 +138,6 @@ pub enum BootstrapInterpolation {
     TensionSpline,
 }
 
-impl BootstrapInterpolation {
-    /// Returns true if the interpolation method requires precomputed spline
-    /// coefficients.
-    pub fn requires_spline_coefficients(self) -> bool {
-        matches!(
-            self,
-            Self::CubicSplineFwd | Self::MonotoneConvex | Self::LogCubicDF | Self::TensionSpline
-        )
-    }
-}
-
 /// Market instrument for yield curve calibration.
 #[derive(Debug, Clone)]
 pub enum MarketInstrument<T: Float> {
@@ -221,6 +210,48 @@ pub enum MarketInstrument<T: Float> {
         /// Stored as (time, df) pairs to avoid runtime curve dependency.
         risk_free_dfs: Vec<(T, T)>,
     },
+}
+
+/// Dispatches a field access across all `MarketInstrument` variants.
+///
+/// Each arm maps the seven variants to the appropriate field, handling the
+/// cases where the logical "rate" or "maturity" concept lives under a
+/// differently-named field (e.g. `expected_jump` for Event, `spread` for Cds,
+/// `end` for Fra maturity).
+macro_rules! dispatch_instrument_field {
+    ($self:expr, rate) => {
+        match $self {
+            Self::Ois { rate, .. }
+            | Self::Irs { rate, .. }
+            | Self::Fra { rate, .. }
+            | Self::Future { rate, .. }
+            | Self::Bond { rate, .. } => *rate,
+            Self::Event { expected_jump, .. } => *expected_jump,
+            Self::Cds { spread, .. } => *spread,
+        }
+    };
+    ($self:expr, maturity) => {
+        match $self {
+            Self::Ois { maturity, .. }
+            | Self::Irs { maturity, .. }
+            | Self::Future { maturity, .. }
+            | Self::Event { maturity, .. }
+            | Self::Bond { maturity, .. }
+            | Self::Cds { maturity, .. } => *maturity,
+            Self::Fra { end, .. } => *end,
+        }
+    };
+    ($self:expr, instrument_type) => {
+        match $self {
+            Self::Ois { .. } => "OIS",
+            Self::Irs { .. } => "IRS",
+            Self::Fra { .. } => "FRA",
+            Self::Future { .. } => "Future",
+            Self::Event { .. } => "Event",
+            Self::Bond { .. } => "Bond",
+            Self::Cds { .. } => "CDS",
+        }
+    };
 }
 
 impl<T: Float> MarketInstrument<T> {
@@ -309,42 +340,14 @@ impl<T: Float> MarketInstrument<T> {
     }
 
     /// Returns the market-quoted rate (or expected jump for Event).
-    pub fn rate(&self) -> T {
-        match self {
-            Self::Ois { rate, .. } => *rate,
-            Self::Irs { rate, .. } => *rate,
-            Self::Fra { rate, .. } => *rate,
-            Self::Future { rate, .. } => *rate,
-            Self::Event { expected_jump, .. } => *expected_jump,
-            Self::Bond { rate, .. } => *rate,
-            Self::Cds { spread, .. } => *spread,
-        }
-    }
+    pub fn rate(&self) -> T { dispatch_instrument_field!(self, rate) }
 
     /// Returns the instrument's maturity.
-    pub fn maturity(&self) -> T {
-        match self {
-            Self::Ois { maturity, .. } => *maturity,
-            Self::Irs { maturity, .. } => *maturity,
-            Self::Fra { end, .. } => *end,
-            Self::Future { maturity, .. } => *maturity,
-            Self::Event { maturity, .. } => *maturity,
-            Self::Bond { maturity, .. } => *maturity,
-            Self::Cds { maturity, .. } => *maturity,
-        }
-    }
+    pub fn maturity(&self) -> T { dispatch_instrument_field!(self, maturity) }
 
     /// Returns a descriptive name for the instrument type.
     pub fn instrument_type(&self) -> &'static str {
-        match self {
-            Self::Ois { .. } => "OIS",
-            Self::Irs { .. } => "IRS",
-            Self::Fra { .. } => "FRA",
-            Self::Future { .. } => "Future",
-            Self::Event { .. } => "Event",
-            Self::Bond { .. } => "Bond",
-            Self::Cds { .. } => "CDS",
-        }
+        dispatch_instrument_field!(self, instrument_type)
     }
 
     /// Returns true if this is an Event instrument.
@@ -448,13 +451,6 @@ pub struct BootstrappedCurve<T: Float> {
     /// The offset is in log-space: adjusted_df = df *
     /// exp(cumulative_offset)
     jumps: Vec<(T, T)>,
-    /// Precomputed spline coefficients for cubic/monotone/tension methods.
-    /// Each entry holds [a, b, c, d] for the polynomial on that segment.
-    #[allow(dead_code)]
-    spline_coefficients: Vec<[T; 4]>,
-    /// Tension parameter for TensionSpline interpolation.
-    #[allow(dead_code)]
-    tension: Option<T>,
 }
 
 /// Decomposition of a forward rate into continuous and jump components.
@@ -482,18 +478,13 @@ impl<T: Float> BootstrappedCurve<T> {
         if pillars.is_empty() {
             return Err("curve must have at least one pillar".to_string());
         }
-        let mut curve = Self {
+        let curve = Self {
             pillars,
             discount_factors,
             interpolation,
             allow_extrapolation,
             jumps: Vec::new(),
-            spline_coefficients: Vec::new(),
-            tension: None,
         };
-        if interpolation.requires_spline_coefficients() {
-            curve.recompute_spline_coefficients();
-        }
         Ok(curve)
     }
 
@@ -514,79 +505,6 @@ impl<T: Float> BootstrappedCurve<T> {
 
     /// Returns the jump data.
     pub fn jumps(&self) -> &[(T, T)] { &self.jumps }
-
-    /// Recomputes spline coefficients from the current pillars and discount
-    /// factors.
-    ///
-    /// Called automatically during construction when the interpolation method
-    /// requires spline coefficients. Call this again if the discount factors
-    /// are mutated externally.
-    pub fn recompute_spline_coefficients(&mut self) {
-        let n = self.pillars.len();
-        if n < 2 {
-            self.spline_coefficients = Vec::new();
-            return;
-        }
-        let fwd = self.derive_instantaneous_forwards();
-        let segments = n - 1;
-        let mut coeffs = Vec::with_capacity(segments);
-
-        for k in 0..segments {
-            let dt = self.pillars[k + 1] - self.pillars[k];
-            if dt <= T::zero() {
-                coeffs.push([T::zero(); 4]);
-                continue;
-            }
-            let f0 = fwd[k];
-            let f1 = fwd[k + 1];
-            // Hermite basis: a + b*u + c*u^2 + d*u^3  where u = (t - t_k) / dt
-            let a = f0;
-            let b = T::zero();
-            let c = from_f64::<T>(3.0) * (f1 - f0);
-            let d = from_f64::<T>(-2.0) * (f1 - f0);
-            coeffs.push([a, b, c, d]);
-        }
-        self.spline_coefficients = coeffs;
-    }
-
-    /// Derives instantaneous forward rates at each pillar from the discount
-    /// factors using finite differences on the log-DF curve.
-    fn derive_instantaneous_forwards(&self) -> Vec<T> {
-        let n = self.pillars.len();
-        let mut fwd = vec![T::zero(); n];
-        if n < 2 {
-            return fwd;
-        }
-        for k in 0..n {
-            if k == 0 {
-                let dt = self.pillars[1] - self.pillars[0];
-                if dt > T::zero() {
-                    fwd[0] = -(self.discount_factors[1].ln() - self.discount_factors[0].ln()) / dt;
-                }
-            } else if k == n - 1 {
-                let dt = self.pillars[k] - self.pillars[k - 1];
-                if dt > T::zero() {
-                    fwd[k] =
-                        -(self.discount_factors[k].ln() - self.discount_factors[k - 1].ln()) / dt;
-                }
-            } else {
-                let dt = self.pillars[k + 1] - self.pillars[k - 1];
-                if dt > T::zero() {
-                    fwd[k] = -(self.discount_factors[k + 1].ln()
-                        - self.discount_factors[k - 1].ln())
-                        / dt;
-                }
-            }
-        }
-        fwd
-    }
-
-    /// Sets the tension parameter (used by TensionSpline interpolation) and
-    /// returns self for builder-style chaining.
-    pub fn with_tension(mut self, tension: T) -> Self {
-        self.tension = Some(tension);
-        self
-    }
 
     /// Returns the cumulative jump offset at time `t`.
     ///
@@ -699,21 +617,13 @@ impl<T: Float> BootstrappedCurve<T> {
                 let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                 Ok(log_df.exp())
             }
+            // Not yet implemented — fall back to log-linear interpolation.
             BootstrapInterpolation::CubicSplineFwd
             | BootstrapInterpolation::MonotoneConvex
             | BootstrapInterpolation::LogCubicDF
             | BootstrapInterpolation::TensionSpline => {
-                if i >= self.spline_coefficients.len() {
-                    // Fallback to log-linear when coefficients are unavailable.
-                    let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
-                    return Ok(log_df.exp());
-                }
-                let [a, b, c, d] = self.spline_coefficients[i];
-                let u = w; // normalised position in segment
-                let fwd_interp = a + u * (b + u * (c + u * d));
-                let dt = t2 - t1;
-                // DF(t) = DF(t1) * exp(-fwd_interp * (t - t1))
-                Ok(df1 * (-fwd_interp * dt * u).exp())
+                let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
+                Ok(log_df.exp())
             }
         }
     }

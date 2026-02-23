@@ -1127,6 +1127,101 @@ fn build_domain_trade(
                 .map_err(|e| ServerError::Internal(format!("Bond expansion: {e}")))?;
             (t, "Bond")
         }
+        "TLock" => {
+            let currency_str = param_str("currency").unwrap_or("USD");
+            let currency = parse_currency(currency_str)?;
+            let notional = param_f64("notional", 1_000_000.0);
+            let lock_rate = param_f64("lockRate", 0.04);
+            let settlement_date = param_date("settlementDate")?;
+            let market_rate = param_f64("marketRate", DEFAULT_DISCOUNT_RATE);
+            let coupon_rate = param_f64("referenceBondCoupon", 0.04);
+
+            // Determine reference bond maturity from tenor.
+            let tenor_str = param_str("referenceBondTenor").unwrap_or("10Y");
+            let tenor: Tenor = tenor_str
+                .parse()
+                .map_err(|e: String| ServerError::InvalidRequest(format!("Invalid tenor: {e}")))?;
+            let ref_bond_maturity =
+                tenor.add_to_date(settlement_date, infra_domain::time::EndOfMonthRule::Adjust);
+
+            // Build and expand the reference Treasury bond.
+            let bond = Bond {
+                issuer: "UST".to_string(),
+                coupon_rate,
+                coupon_frequency: Frequency::SemiAnnual,
+                start_date: settlement_date,
+                maturity: ref_bond_maturity,
+                notional,
+                currency,
+                bond_type: BondType::Government,
+                rating: Some("AAA".to_string()),
+            };
+            let ref_trade = bond
+                .expand_to_trade("TLOCK-REF", valuation_date, &conventions)
+                .map_err(|e| ServerError::Internal(format!("TLock ref bond expansion: {e}")))?;
+
+            // Compute T-Lock settlement value analytically.
+            // Bond price = sum(coupon/(1+r/2)^i) + 100/(1+r/2)^n  (semi-annual)
+            let tenor_years = tenor.to_months() as f64 / 12.0;
+            let n_periods = (tenor_years * 2.0).round() as i32;
+
+            let price_at = |r: f64| -> f64 {
+                let half_r = r / 2.0;
+                let mut pv = 0.0_f64;
+                for i in 1..=n_periods {
+                    pv += (coupon_rate / 2.0) * 100.0 / (1.0 + half_r).powi(i);
+                }
+                pv += 100.0 / (1.0 + half_r).powi(n_periods);
+                pv
+            };
+
+            let price_lock = price_at(lock_rate);
+            let price_market = price_at(market_rate);
+            // Settlement = Notional * (price_at_lock - price_at_market) / 100
+            let settlement_amount = notional * (price_lock - price_market) / 100.0;
+
+            // Leg 1: Reference bond cashflows (for display / transparency).
+            let ref_leg = ref_trade.legs().next().ok_or_else(|| {
+                ServerError::Internal("TLock: expanded bond has no legs".to_string())
+            })?;
+            let bond_cashflows: Vec<DomainCashflow> = ref_leg.cashflows().cloned().collect();
+            let reference_leg = Leg::new(
+                bond_cashflows,
+                Direction::Receiver,
+                LegType::Fixed,
+                currency,
+            );
+
+            // Leg 2: Settlement cashflow (the actual T-Lock payoff).
+            let settlement_direction = if settlement_amount >= 0.0 {
+                Direction::Receiver
+            } else {
+                Direction::Payer
+            };
+            let settlement_cf = DomainCashflow::new(
+                CashflowType::Settlement,
+                settlement_date,
+                settlement_date,
+                settlement_date,
+                0.0,
+                settlement_amount.abs(),
+                Payoff::fixed(1.0),
+                currency,
+            );
+            let settlement_leg = Leg::new(
+                vec![settlement_cf],
+                settlement_direction,
+                LegType::Generic,
+                currency,
+            );
+
+            let t = Trade::new(
+                "DEMO-TLOCK",
+                vec![reference_leg, settlement_leg],
+                TradeType::Swap,
+            );
+            (t, "TLock")
+        }
         "FxVanillaOption" => {
             let pair_str = param_str("currencyPair").unwrap_or("EURUSD");
             let pair = parse_currency_pair(pair_str)?;

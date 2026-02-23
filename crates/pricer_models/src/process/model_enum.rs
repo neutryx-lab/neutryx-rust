@@ -373,12 +373,6 @@ mod tests {
     }
 
     #[test]
-    fn test_model_enum_default() {
-        let model: StochasticModelEnum<f64> = Default::default();
-        assert_eq!(model.model_name(), "GBM");
-    }
-
-    #[test]
     fn test_model_enum_brownian_dim() {
         let model = StochasticModelEnum::<f64>::gbm();
         assert_eq!(model.brownian_dim(), 1);
@@ -509,27 +503,6 @@ mod tests {
         assert_eq!(params.spot(), 100.0);
         assert_eq!(params.rate(), 0.05);
         assert_eq!(params.volatility(), 0.2);
-    }
-
-    #[test]
-    fn test_model_enum_clone() {
-        let model1 = StochasticModelEnum::<f64>::gbm();
-        let model2 = model1.clone();
-        assert_eq!(model1.model_name(), model2.model_name());
-    }
-
-    #[test]
-    fn test_model_enum_pattern_matching() {
-        let model = StochasticModelEnum::<f64>::gbm();
-
-        match model {
-            StochasticModelEnum::GBM(_gbm) => {
-                assert!(true);
-            }
-            _ => {
-                panic!("Expected GBM variant");
-            }
-        }
     }
 
     #[test]

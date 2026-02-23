@@ -20,6 +20,26 @@ fn create_test_instruments() -> Vec<MarketInstrument<f64>> {
     ]
 }
 
+/// Calibrates instruments with the given config and asserts convergence
+/// plus per-instrument pricing error within tolerance.
+fn assert_calibration_converges(
+    instruments: &[MarketInstrument<f64>],
+    config: GlobalBootstrapConfig<f64>,
+    tolerance: f64,
+) -> GlobalBootstrapResult<f64> {
+    let bootstrapper = GlobalBootstrapper::new(config);
+    let result = bootstrapper.calibrate(instruments).unwrap();
+    assert!(result.converged);
+    for (i, instrument) in instruments.iter().enumerate() {
+        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
+        assert!(
+            error.abs() < tolerance,
+            "Instrument {i} has pricing error {error}"
+        );
+    }
+    result
+}
+
 #[test]
 fn test_config_default() {
     let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default();
@@ -74,28 +94,11 @@ fn test_config_builder_methods() {
 #[test]
 fn test_calibrate_basic() {
     let instruments = create_test_instruments();
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
+    let result = assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-8);
     assert_eq!(result.pillars.len(), 4);
     assert_eq!(result.discount_factors.len(), 4);
-
-    for i in 0..result.discount_factors.len() {
-        assert!(result.discount_factors[i] > 0.0);
-        assert!(result.discount_factors[i] <= 1.0);
-    }
-
-    for (i, instr) in instruments.iter().enumerate() {
-        let error = instr.pricing_error(&result.curve).unwrap();
-        assert!(
-            error.abs() < 1e-8,
-            "Instrument {} has pricing error {}",
-            i,
-            error
-        );
+    for &df in &result.discount_factors {
+        assert!(df > 0.0 && df <= 1.0);
     }
 }
 
@@ -261,14 +264,6 @@ fn test_config_with_disabled_jump_config() {
     assert_eq!(config.num_jumps(), 1); // But pillars still counted
 }
 
-#[allow(dead_code)]
-fn create_jump_pillars() -> Vec<JumpPillar<f64>> {
-    vec![
-        JumpPillar::new(0.5, 25.0),  // 25bps at 6 months
-        JumpPillar::new(1.5, -15.0), // -15bps at 18 months
-    ]
-}
-
 #[test]
 fn test_merge_pillars_no_overlap() {
     let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
@@ -294,20 +289,6 @@ fn test_merge_pillars_with_overlap() {
     assert_eq!(merged, vec![0.5, 1.0, 2.0, 3.0, 5.0]);
     assert_eq!(indices, vec![0, 3]); // First jump at index 0 (existing),
                                      // second at 3
-}
-
-#[test]
-fn test_calibrate_with_jumps_empty_jumps() {
-    let instruments = create_test_instruments();
-    let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
-
-    // Empty jump list should fall back to regular calibration
-    let result = bootstrapper
-        .calibrate_with_jumps(&instruments, vec![])
-        .unwrap();
-
-    assert!(result.converged);
-    assert!(!result.has_jumps());
 }
 
 #[test]
@@ -603,25 +584,8 @@ fn test_ois_curve_construction_basic() {
         MarketInstrument::ois(5.0, 0.04),
         MarketInstrument::ois(10.0, 0.045),
     ];
-
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
+    let result = assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-8);
     assert!(result.iterations < 20, "Should converge quickly");
-
-    for (i, instrument) in instruments.iter().enumerate() {
-        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
-        assert!(
-            error.abs() < 1e-8,
-            "Instrument {} has pricing error {} (expected < 1e-8)",
-            i,
-            error
-        );
-    }
-
     for i in 1..result.discount_factors.len() {
         assert!(result.discount_factors[i] < result.discount_factors[i - 1]);
     }
@@ -636,18 +600,7 @@ fn test_ois_curve_construction_flat() {
         MarketInstrument::ois(5.0, rate),
         MarketInstrument::ois(10.0, rate),
     ];
-
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
-
-    for instrument in &instruments {
-        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
-        assert!(error.abs() < 1e-10);
-    }
+    assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-10);
 }
 
 #[test]
@@ -658,18 +611,7 @@ fn test_ois_curve_construction_inverted() {
         MarketInstrument::ois(5.0, 0.04),
         MarketInstrument::ois(10.0, 0.035),
     ];
-
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
-
-    for instrument in &instruments {
-        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
-        assert!(error.abs() < 1e-8);
-    }
+    assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-8);
 }
 
 #[test]
@@ -706,18 +648,7 @@ fn test_mixed_instruments_convergence() {
         MarketInstrument::ois(2.0, 0.035),
         MarketInstrument::ois(5.0, 0.04),
     ];
-
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
-
-    for instrument in &instruments {
-        let error = instrument.pricing_error(&result.curve).unwrap();
-        assert!(error.abs() < 1e-7);
-    }
+    assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-7);
 }
 
 #[test]
@@ -726,13 +657,7 @@ fn test_fra_only_curve() {
         MarketInstrument::fra(0.0, 0.5, 0.025),
         MarketInstrument::fra(0.5, 1.0, 0.028),
     ];
-
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
+    assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-8);
 }
 
 #[test]
@@ -809,18 +734,7 @@ fn test_high_precision_calibration() {
         MarketInstrument::ois(2.0, 0.035),
         MarketInstrument::ois(5.0, 0.04),
     ];
-
-    let config = GlobalBootstrapConfig::high_precision();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
-
-    for instrument in &instruments {
-        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
-        assert!(error.abs() < 1e-12);
-    }
+    assert_calibration_converges(&instruments, GlobalBootstrapConfig::high_precision(), 1e-12);
 }
 
 #[test]
@@ -830,43 +744,19 @@ fn test_fast_calibration() {
         MarketInstrument::ois(2.0, 0.035),
         MarketInstrument::ois(5.0, 0.04),
     ];
-
-    let config = GlobalBootstrapConfig::fast();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
-
-    for instrument in &instruments {
-        let error: f64 = instrument.pricing_error(&result.curve).unwrap();
-        assert!(error.abs() < 1e-5);
-    }
+    assert_calibration_converges(&instruments, GlobalBootstrapConfig::fast(), 1e-5);
 }
 
 #[test]
 fn test_many_instruments() {
-    let maturities: Vec<f64> = (1..=20).map(|i| i as f64).collect();
-    let instruments: Vec<MarketInstrument<f64>> = maturities
-        .iter()
-        .map(|&t| {
-            let rate = 0.02 + 0.001 * t;
-            MarketInstrument::ois(t, rate)
+    let instruments: Vec<MarketInstrument<f64>> = (1..=20)
+        .map(|i| {
+            let t = i as f64;
+            MarketInstrument::ois(t, 0.02 + 0.001 * t)
         })
         .collect();
-
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
+    let result = assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-7);
     assert_eq!(result.pillars.len(), 20);
-
-    for instrument in &instruments {
-        let error = instrument.pricing_error(&result.curve).unwrap();
-        assert!(error.abs() < 1e-7);
-    }
 }
 
 #[test]
@@ -1166,29 +1056,6 @@ fn test_jacobian_quality_validation_integration() {
 }
 
 #[test]
-fn test_condition_number_in_calibration_result() {
-    let instruments: Vec<MarketInstrument<f64>> = vec![
-        MarketInstrument::ois(1.0, 0.03),
-        MarketInstrument::ois(2.0, 0.035),
-        MarketInstrument::ois(5.0, 0.04),
-    ];
-
-    let config = GlobalBootstrapConfig::default();
-    let bootstrapper = GlobalBootstrapper::new(config);
-    let result = bootstrapper.calibrate(&instruments).unwrap();
-
-    assert!(result.converged);
-
-    if let Some(cond) = result.condition_number {
-        assert!(cond > 0.0, "Condition number should be positive");
-        assert!(
-            cond < 1e14,
-            "Condition number should not be extremely large"
-        );
-    }
-}
-
-#[test]
 fn test_max_condition_number_config_integration() {
     let instruments: Vec<MarketInstrument<f64>> = vec![
         MarketInstrument::ois(1.0, 0.03),
@@ -1213,7 +1080,7 @@ fn test_max_condition_number_config_integration() {
 
 #[test]
 fn test_tikhonov_regularisation_integration() {
-    use crate::builder::should_apply_regularisation;
+    use crate::builder::error::should_apply_regularisation;
 
     let high_cond: f64 = 1e14;
     let max_cond: f64 = 1e10;

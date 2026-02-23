@@ -24,10 +24,6 @@ import {
   calibrateCapFloor,
 } from '@/services/api';
 import { useMarketEnvStore } from '@/stores/marketEnv';
-import { useJyInflationStore } from '@/stores/jyInflation';
-import { useJYInflation } from '@/composables/useJYInflation';
-import JyModelParamsPanel from '@/components/jy/JyModelParamsPanel.vue';
-import JySimulationPanel from '@/components/jy/JySimulationPanel.vue';
 
 Chart.register(...registerables);
 
@@ -41,7 +37,7 @@ const SMILE_RANGE_BP = 200;
 const POPOVER_WIDTH = 256; // matches w-64
 const ERROR_AUTO_DISMISS_MS = 8000;
 
-type AssetTab = 'rates' | 'fx' | 'inflation';
+type AssetTab = 'rates' | 'fx';
 type SabrParam = 'alpha' | 'beta' | 'rho' | 'nu';
 
 // ── Model parameter definitions ──────────────────────────────────────────────
@@ -144,9 +140,6 @@ function buildSmileParams(model: string, values: Record<string, number>, forward
 // ── Market Environment ───────────────────────────────────────────────────────
 const marketEnv = useMarketEnvStore();
 
-// ── JY Inflation ─────────────────────────────────────────────────────────────
-const jyStore = useJyInflationStore();
-const { runSimulation: jyRunSimulation } = useJYInflation();
 const volPublishFeedback = ref(false);
 
 function publishVolToEnvironment() {
@@ -1251,63 +1244,11 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
         :tabs="[
           { key: 'rates', label: 'Rates', icon: 'fa-percentage' },
           { key: 'fx', label: 'FX', icon: 'fa-exchange-alt' },
-          { key: 'inflation', label: 'Inflation', icon: 'fa-chart-bar' },
         ]"
       />
 
-      <!-- Inflation Tab Content -->
-      <div v-if="activeTab === 'inflation'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left Panel: JY Model Parameters -->
-        <div class="space-y-4">
-          <div class="glass-card p-5">
-            <div class="section-header" style="margin-top: 0">JY Model Parameters</div>
-            <JyModelParamsPanel />
-          </div>
-
-          <!-- Simulation Config -->
-          <div class="glass-card p-5">
-            <div class="section-header" style="margin-top: 0">Simulation Config</div>
-            <div class="config-grid">
-              <div class="grid-label">MC Paths</div>
-              <div class="grid-input">
-                <input v-model.number="jyStore.numPaths" type="number" min="100" max="100000" step="100"
-                  class="param-input w-full" />
-              </div>
-              <div class="grid-label">Time Steps</div>
-              <div class="grid-input">
-                <input v-model.number="jyStore.numSteps" type="number" min="10" max="5000" step="10"
-                  class="param-input w-full" />
-              </div>
-              <div class="grid-label">Horizon (Y)</div>
-              <div class="grid-input">
-                <input v-model.number="jyStore.horizon" type="number" min="0.1" max="50" step="0.5"
-                  class="param-input w-full" />
-              </div>
-              <div class="grid-label">Sample Paths</div>
-              <div class="grid-input">
-                <input v-model.number="jyStore.numSamplePaths" type="number" min="0" max="20" step="1"
-                  class="param-input w-full" />
-              </div>
-            </div>
-            <button
-              class="w-full mt-4 px-4 py-2 rounded-lg text-sm font-medium bg-[var(--primary)] text-white hover:opacity-90 transition-all disabled:bg-gray-500 disabled:cursor-not-allowed"
-              :disabled="jyStore.loading"
-              @click="jyRunSimulation"
-            >
-              <i :class="['fas mr-2', jyStore.loading ? 'fa-spinner fa-spin' : 'fa-play']"></i>
-              {{ jyStore.loading ? 'Simulating...' : 'Run Simulation' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Right Panel: Simulation Results -->
-        <div class="lg:col-span-2">
-          <JySimulationPanel :result="jyStore.simulationResult" />
-        </div>
-      </div>
-
       <!-- Swaption / FX Content -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Left Panel: Settings -->
         <div class="space-y-4">
           <!-- Swaption Settings -->

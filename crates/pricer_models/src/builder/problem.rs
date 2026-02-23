@@ -1179,34 +1179,60 @@ mod tests {
     }
 
     #[test]
-    fn test_from_compiled_creation() {
+    fn test_from_compiled_basic_operations() {
         let instruments = create_compiled_instruments();
-        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+        let problem = CalibrationProblem::from_compiled(instruments.clone()).unwrap();
 
+        // Creation
         assert_eq!(problem.dimension(), 3);
         assert_eq!(problem.instruments().len(), 3);
         assert_eq!(problem.pillars().len(), 3);
+        assert_eq!(problem.total_cashflows(), 3);
+
+        // Initial guess
+        let guess = problem.initial_guess();
+        assert_eq!(guess.len(), 3);
+        assert_relative_eq!(guess[0], -0.03, epsilon = 1e-10);
+        assert_relative_eq!(guess[1], -0.06, epsilon = 1e-10);
+        assert_relative_eq!(guess[2], -0.15, epsilon = 1e-10);
+
+        // Build curve
+        let curve = problem.build_curve(&guess).unwrap();
+        assert_relative_eq!(
+            curve.discount_factor(1.0).unwrap(),
+            (-0.03f64).exp(),
+            epsilon = 1e-8
+        );
+        assert_relative_eq!(
+            curve.discount_factor(2.0).unwrap(),
+            (-0.06f64).exp(),
+            epsilon = 1e-8
+        );
+        assert_relative_eq!(
+            curve.discount_factor(5.0).unwrap(),
+            (-0.15f64).exp(),
+            epsilon = 1e-8
+        );
+
+        // Evaluate
+        let x = problem.initial_guess_vector();
+        let residuals = problem.evaluate(&x).unwrap();
+        assert_eq!(residuals.len(), 3);
+
+        // Jacobian
+        let jacobian = problem.jacobian(&x).unwrap();
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+        let max_elem: f64 = jacobian.iter().map(|&x| x.abs()).fold(0.0, f64::max);
+        assert!(max_elem > 0.0);
     }
 
     #[test]
     fn test_from_compiled_empty_instruments() {
-        let instruments: Vec<CompiledInstrument<f64>> = vec![];
-        let result = CalibrationProblem::from_compiled(instruments);
-
-        assert!(result.is_err());
         assert!(matches!(
-            result.unwrap_err(),
+            CalibrationProblem::from_compiled(Vec::<CompiledInstrument<f64>>::new()).unwrap_err(),
             CalibrationError::NoInstruments
         ));
-    }
-
-    #[test]
-    fn test_from_compiled_total_cashflows() {
-        let instruments = create_compiled_instruments();
-        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
-
-        // Each deposit has 1 cashflow
-        assert_eq!(problem.total_cashflows(), 3);
     }
 
     #[test]
@@ -1225,64 +1251,6 @@ mod tests {
             problem.config().jacobian_method,
             JacobianMethod::CentralDifference
         );
-        assert_relative_eq!(problem.config().jacobian_epsilon, 1e-6, epsilon = 1e-15);
-    }
-
-    #[test]
-    fn test_from_compiled_initial_guess() {
-        let instruments = create_compiled_instruments();
-        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
-
-        let guess = problem.initial_guess();
-        assert_eq!(guess.len(), 3);
-
-        // Initial guess: log(DF) = -0.03 * t
-        assert_relative_eq!(guess[0], -0.03, epsilon = 1e-10);
-        assert_relative_eq!(guess[1], -0.06, epsilon = 1e-10);
-        assert_relative_eq!(guess[2], -0.15, epsilon = 1e-10);
-    }
-
-    #[test]
-    fn test_from_compiled_build_curve() {
-        let instruments = create_compiled_instruments();
-        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
-
-        let log_df = problem.initial_guess();
-        let curve = problem.build_curve(&log_df).unwrap();
-
-        let df_1y = curve.discount_factor(1.0).unwrap();
-        let df_2y = curve.discount_factor(2.0).unwrap();
-        let df_5y = curve.discount_factor(5.0).unwrap();
-
-        assert_relative_eq!(df_1y, (-0.03f64).exp(), epsilon = 1e-8);
-        assert_relative_eq!(df_2y, (-0.06f64).exp(), epsilon = 1e-8);
-        assert_relative_eq!(df_5y, (-0.15f64).exp(), epsilon = 1e-8);
-    }
-
-    #[test]
-    fn test_from_compiled_evaluate() {
-        let instruments = create_compiled_instruments();
-        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
-
-        let x = problem.initial_guess_vector();
-        let residuals = problem.evaluate(&x).unwrap();
-
-        assert_eq!(residuals.len(), 3);
-    }
-
-    #[test]
-    fn test_from_compiled_jacobian() {
-        let instruments = create_compiled_instruments();
-        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
-
-        let x = problem.initial_guess_vector();
-        let jacobian = problem.jacobian(&x).unwrap();
-
-        assert_eq!(jacobian.nrows(), 3);
-        assert_eq!(jacobian.ncols(), 3);
-
-        let max_elem: f64 = jacobian.iter().map(|&x| x.abs()).fold(0.0, f64::max);
-        assert!(max_elem > 0.0);
     }
 
     #[test]

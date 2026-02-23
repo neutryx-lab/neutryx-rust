@@ -290,7 +290,85 @@ onUnmounted(() => {
 
     <!-- Main 2-column layout -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Left: Results (8 cols) -->
+      <!-- Left: Configuration Sidebar (4 cols) -->
+      <div class="lg:col-span-4">
+        <div class="glass-card p-4 lg:sticky lg:top-4 space-y-4">
+          <h3 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+            <i class="fas fa-cog text-[var(--primary)]"></i>
+            Simulation Configuration
+          </h3>
+
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-[var(--text-muted)] mb-1 block">MC Paths</label>
+              <input
+                v-model.number="nPaths"
+                type="number"
+                min="100"
+                max="100000"
+                step="1000"
+                class="config-input"
+              >
+            </div>
+            <div>
+              <label class="text-xs text-[var(--text-muted)] mb-1 block">Horizon</label>
+              <select v-model.number="horizonYears" class="config-input">
+                <option :value="3">3 Years</option>
+                <option :value="5">5 Years</option>
+                <option :value="7">7 Years</option>
+                <option :value="10">10 Years</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-[var(--text-muted)] mb-1 block">Time Step</label>
+              <select v-model="timeStep" class="config-input">
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="semi-annual">Semi-Annual</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-[var(--text-muted)] mb-1 block">Seed (optional)</label>
+              <input
+                v-model.number="seed"
+                type="number"
+                placeholder="Random"
+                class="config-input"
+              >
+            </div>
+
+            <div class="border-t border-[var(--glass-border)] pt-3 space-y-2">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="antithetic" type="checkbox" class="rounded">
+                <span class="text-sm text-[var(--text-secondary)]">Antithetic Variates</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="bilateral" type="checkbox" class="rounded">
+                <span class="text-sm text-[var(--text-secondary)]">Bilateral CVA/DVA</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input v-model="computeFva" type="checkbox" class="rounded">
+                <span class="text-sm text-[var(--text-secondary)]">Compute FVA</span>
+              </label>
+            </div>
+          </div>
+
+          <button
+            :class="[
+              'w-full px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-[var(--primary)] hover:opacity-90'
+            ]"
+            class="text-white"
+            :disabled="loading"
+            @click="runSimulation"
+          >
+            <i :class="['fas mr-2', loading ? 'fa-spinner fa-spin' : 'fa-play']"></i>
+            {{ loading ? 'Simulating...' : 'Run Simulation' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Results (8 cols) -->
       <div class="lg:col-span-8 space-y-6">
         <!-- Summary Stats (only after simulation) -->
         <div v-if="result" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -302,14 +380,14 @@ onUnmounted(() => {
             <div class="flex items-start justify-between">
               <div>
                 <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
-                <p class="text-2xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
+                <p class="text-xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
                 <p class="text-xs text-[var(--text-muted)] mt-1">{{ stat.subtitle }}</p>
               </div>
               <div
-                class="w-10 h-10 rounded-lg flex items-center justify-center"
+                class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
                 :style="{ backgroundColor: `${stat.color}1a` }"
               >
-                <i :class="['fas', stat.icon]" :style="{ color: stat.color }"></i>
+                <i :class="['fas', stat.icon, 'text-sm']" :style="{ color: stat.color }"></i>
               </div>
             </div>
           </div>
@@ -491,83 +569,6 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Right: Configuration Sidebar (4 cols) -->
-      <div class="lg:col-span-4">
-        <div class="glass-card p-4 lg:sticky lg:top-4 space-y-4">
-          <h3 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-            <i class="fas fa-cog text-[var(--primary)]"></i>
-            Simulation Configuration
-          </h3>
-
-          <div class="space-y-3">
-            <div>
-              <label class="text-xs text-[var(--text-muted)] mb-1 block">MC Paths</label>
-              <input
-                v-model.number="nPaths"
-                type="number"
-                min="100"
-                max="100000"
-                step="1000"
-                class="config-input"
-              >
-            </div>
-            <div>
-              <label class="text-xs text-[var(--text-muted)] mb-1 block">Horizon</label>
-              <select v-model.number="horizonYears" class="config-input">
-                <option :value="3">3 Years</option>
-                <option :value="5">5 Years</option>
-                <option :value="7">7 Years</option>
-                <option :value="10">10 Years</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-[var(--text-muted)] mb-1 block">Time Step</label>
-              <select v-model="timeStep" class="config-input">
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="semi-annual">Semi-Annual</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs text-[var(--text-muted)] mb-1 block">Seed (optional)</label>
-              <input
-                v-model.number="seed"
-                type="number"
-                placeholder="Random"
-                class="config-input"
-              >
-            </div>
-
-            <div class="border-t border-[var(--glass-border)] pt-3 space-y-2">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="antithetic" type="checkbox" class="rounded">
-                <span class="text-sm text-[var(--text-secondary)]">Antithetic Variates</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="bilateral" type="checkbox" class="rounded">
-                <span class="text-sm text-[var(--text-secondary)]">Bilateral CVA/DVA</span>
-              </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input v-model="computeFva" type="checkbox" class="rounded">
-                <span class="text-sm text-[var(--text-secondary)]">Compute FVA</span>
-              </label>
-            </div>
-          </div>
-
-          <button
-            :class="[
-              'w-full px-4 py-2 rounded-lg text-sm font-medium transition-all',
-              loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-[var(--primary)] hover:opacity-90'
-            ]"
-            class="text-white"
-            :disabled="loading"
-            @click="runSimulation"
-          >
-            <i :class="['fas mr-2', loading ? 'fa-spinner fa-spin' : 'fa-play']"></i>
-            {{ loading ? 'Simulating...' : 'Run Simulation' }}
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 </template>

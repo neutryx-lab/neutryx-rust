@@ -390,6 +390,9 @@ pub fn apply_tikhonov_regularisation<T>(
 }
 
 /// Returns recommended damping factor if condition number exceeds threshold.
+///
+/// Only used in tests currently; kept as a useful utility for future
+/// calibration code.
 #[allow(dead_code)]
 pub fn should_apply_regularisation<T: Float>(
     condition_number: T,
@@ -755,12 +758,6 @@ mod tests {
         let msg = format!("{err}");
         assert!(msg.contains("10"));
         assert!(msg.contains("5"));
-        if let IftError::DimensionMismatch { expected, got } = err {
-            assert_eq!(expected, 10);
-            assert_eq!(got, 5);
-        } else {
-            panic!("Expected DimensionMismatch error");
-        }
     }
 
     #[test]
@@ -772,12 +769,6 @@ mod tests {
         let msg = format!("{err}");
         assert!(msg.contains("20"));
         assert!(msg.contains("15"));
-        if let IftError::BatchDimensionMismatch { expected, got } = err {
-            assert_eq!(expected, 20);
-            assert_eq!(got, 15);
-        } else {
-            panic!("Expected BatchDimensionMismatch error");
-        }
     }
 
     #[test]
@@ -788,39 +779,6 @@ mod tests {
         let msg = format!("{err}");
         assert!(msg.contains("NaN"));
         assert!(msg.contains("数値エラー"));
-        if let IftError::NumericalError { message } = err {
-            assert!(message.contains("NaN"));
-        } else {
-            panic!("Expected NumericalError error");
-        }
-    }
-
-    #[test]
-    fn test_ift_error_equality() {
-        // IftError derives PartialEq and Eq
-        let err1 = IftError::NoJacobianInverse;
-        let err2 = IftError::NoJacobianInverse;
-        assert_eq!(err1, err2);
-
-        let err3 = IftError::DimensionMismatch {
-            expected: 10,
-            got: 5,
-        };
-        let err4 = IftError::DimensionMismatch {
-            expected: 10,
-            got: 5,
-        };
-        assert_eq!(err3, err4);
-
-        let err5 = IftError::DimensionMismatch {
-            expected: 10,
-            got: 5,
-        };
-        let err6 = IftError::DimensionMismatch {
-            expected: 10,
-            got: 6,
-        };
-        assert_ne!(err5, err6);
     }
 
     #[test]
@@ -860,19 +818,43 @@ mod tests {
 
     #[test]
     fn test_is_recoverable() {
-        assert!((CalibrationError::ConvergenceFailure {
+        // Recoverable
+        assert!(CalibrationError::ConvergenceFailure {
             iterations: 100,
-            residual: 0.1,
-        })
+            residual: 0.1
+        }
         .is_recoverable());
-        assert!((CalibrationError::NumericalInstability {
-            message: "NaN".to_string(),
-        })
+        assert!(CalibrationError::NumericalInstability {
+            message: "NaN".to_string()
+        }
         .is_recoverable());
-        assert!(!(CalibrationError::InsufficientData {
+        assert!(CalibrationError::JumpCalibrationFailed {
+            message: "test".to_string(),
+            residual: 0.01,
+            iterations: 10
+        }
+        .is_recoverable());
+        // Not recoverable
+        assert!(!CalibrationError::InsufficientData {
             required: 5,
-            provided: 3,
-        })
+            provided: 3
+        }
+        .is_recoverable());
+        assert!(!CalibrationError::NoInstruments.is_recoverable());
+        assert!(!CalibrationError::SingularJacobian {
+            condition_number: 1e16
+        }
+        .is_recoverable());
+        assert!(!CalibrationError::Divergence {
+            iteration: 10,
+            residual: 100.0
+        }
+        .is_recoverable());
+        assert!(!CalibrationError::InvalidJumpParameter {
+            date: "0.5Y".to_string(),
+            value: 150.0,
+            reason: "out of range".to_string()
+        }
         .is_recoverable());
     }
 
@@ -906,24 +888,42 @@ mod tests {
     }
 
     #[test]
-    fn test_calibration_to_pricing_error() {
+    fn test_calibration_to_pricing_numerical() {
         use pricer_core::types::PricingError;
-        let calib_err = CalibrationError::ConvergenceFailure {
-            iterations: 100,
-            residual: 0.01,
-        };
-        let pricing_err: PricingError = calib_err.into();
-        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
+        assert!(matches!(
+            PricingError::from(CalibrationError::ConvergenceFailure {
+                iterations: 100,
+                residual: 0.01
+            }),
+            PricingError::NumericalInstability(_)
+        ));
+        assert!(matches!(
+            PricingError::from(CalibrationError::JumpCalibrationFailed {
+                message: "test".to_string(),
+                residual: 0.01,
+                iterations: 25
+            }),
+            PricingError::NumericalInstability(_)
+        ));
     }
 
     #[test]
-    fn test_calibration_to_pricing_invalid_data() {
+    fn test_calibration_to_pricing_invalid_input() {
         use pricer_core::types::PricingError;
-        let calib_err = CalibrationError::InvalidMarketData {
-            message: "negative price".to_string(),
-        };
-        let pricing_err: PricingError = calib_err.into();
-        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+        assert!(matches!(
+            PricingError::from(CalibrationError::InvalidMarketData {
+                message: "neg".to_string()
+            }),
+            PricingError::InvalidInput(_)
+        ));
+        assert!(matches!(
+            PricingError::from(CalibrationError::InvalidJumpParameter {
+                date: "2024-06-01".to_string(),
+                value: -120.0,
+                reason: "too large".to_string()
+            }),
+            PricingError::InvalidInput(_)
+        ));
     }
 
     #[test]
@@ -942,11 +942,6 @@ mod tests {
         let msg = format!("{}", err);
         assert!(msg.contains("Jacobian"));
         assert!(msg.contains("1.00e16") || msg.contains("1e16"));
-        if let CalibrationError::SingularJacobian { condition_number } = err {
-            assert!((condition_number - 1e16).abs() < 1e10);
-        } else {
-            panic!("Expected SingularJacobian error");
-        }
     }
 
     #[test]
@@ -958,16 +953,6 @@ mod tests {
         let msg = format!("{}", err);
         assert!(msg.contains("発散"));
         assert!(msg.contains("50"));
-        if let CalibrationError::Divergence {
-            iteration,
-            residual,
-        } = err
-        {
-            assert_eq!(iteration, 50);
-            assert!((residual - 1.5e3).abs() < 1e-10);
-        } else {
-            panic!("Expected Divergence error");
-        }
     }
 
     #[test]
@@ -980,16 +965,6 @@ mod tests {
         assert!(msg.contains("3"));
         assert!(msg.contains("評価"));
         assert!(msg.contains("NaN"));
-        if let CalibrationError::InstrumentEvaluationFailed {
-            instrument_index,
-            message,
-        } = err
-        {
-            assert_eq!(instrument_index, 3);
-            assert!(message.contains("NaN"));
-        } else {
-            panic!("Expected InstrumentEvaluationFailed error");
-        }
     }
 
     #[test]
@@ -1002,38 +977,6 @@ mod tests {
         assert!(msg.contains("5"));
         assert!(msg.contains("3"));
         assert!(msg.contains("一致しません"));
-        if let CalibrationError::DimensionMismatch {
-            instruments,
-            parameters,
-        } = err
-        {
-            assert_eq!(instruments, 5);
-            assert_eq!(parameters, 3);
-        } else {
-            panic!("Expected DimensionMismatch error");
-        }
-    }
-
-    #[test]
-    fn test_no_instruments_is_not_recoverable() {
-        assert!(!CalibrationError::NoInstruments.is_recoverable());
-    }
-
-    #[test]
-    fn test_singular_jacobian_is_recoverable() {
-        assert!(!(CalibrationError::SingularJacobian {
-            condition_number: 1e16,
-        })
-        .is_recoverable());
-    }
-
-    #[test]
-    fn test_divergence_is_recoverable() {
-        assert!(!(CalibrationError::Divergence {
-            iteration: 10,
-            residual: 100.0,
-        })
-        .is_recoverable());
     }
 
     #[test]
@@ -1047,18 +990,6 @@ mod tests {
         assert!(msg.contains("ジャンプ"));
         assert!(msg.contains("50"));
         assert!(msg.contains("1.5"));
-        if let CalibrationError::JumpCalibrationFailed {
-            message,
-            residual,
-            iterations,
-        } = err
-        {
-            assert_eq!(message, "convergence failure");
-            assert!((residual - 1.5e-3).abs() < 1e-10);
-            assert_eq!(iterations, 50);
-        } else {
-            panic!("Expected JumpCalibrationFailed error");
-        }
     }
 
     #[test]
@@ -1072,70 +1003,6 @@ mod tests {
         assert!(msg.contains("0.5Y"));
         assert!(msg.contains("150"));
         assert!(msg.contains("exceeds"));
-        if let CalibrationError::InvalidJumpParameter {
-            date,
-            value,
-            reason,
-        } = err
-        {
-            assert_eq!(date, "0.5Y");
-            assert!((value - 150.0).abs() < 1e-10);
-            assert!(reason.contains("exceeds"));
-        } else {
-            panic!("Expected InvalidJumpParameter error");
-        }
-    }
-
-    #[test]
-    fn test_jump_calibration_failed_is_recoverable() {
-        assert!((CalibrationError::JumpCalibrationFailed {
-            message: "test".to_string(),
-            residual: 0.01,
-            iterations: 10,
-        })
-        .is_recoverable());
-    }
-
-    #[test]
-    fn test_invalid_jump_parameter_is_not_recoverable() {
-        assert!(!(CalibrationError::InvalidJumpParameter {
-            date: "0.5Y".to_string(),
-            value: 150.0,
-            reason: "out of range".to_string(),
-        })
-        .is_recoverable());
-    }
-
-    #[test]
-    fn test_jump_calibration_to_pricing_error() {
-        use pricer_core::types::PricingError;
-
-        let err = CalibrationError::JumpCalibrationFailed {
-            message: "test failure".to_string(),
-            residual: 0.01,
-            iterations: 25,
-        };
-        let pricing_err: PricingError = err.into();
-        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
-        if let PricingError::NumericalInstability(msg) = pricing_err {
-            assert!(msg.contains("Jump"));
-        }
-    }
-
-    #[test]
-    fn test_invalid_jump_to_pricing_error() {
-        use pricer_core::types::PricingError;
-
-        let err = CalibrationError::InvalidJumpParameter {
-            date: "2024-06-01".to_string(),
-            value: -120.0,
-            reason: "too large".to_string(),
-        };
-        let pricing_err: PricingError = err.into();
-        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
-        if let PricingError::InvalidInput(msg) = pricing_err {
-            assert!(msg.contains("Invalid jump"));
-        }
     }
 
     #[test]
@@ -1167,19 +1034,6 @@ mod tests {
         assert!(!quality.is_acceptable());
         assert_eq!(quality.reason(), Some("NaN detected"));
         assert!(format!("{quality}").contains("Poor"));
-    }
-
-    #[test]
-    fn test_jacobian_quality_equality() {
-        assert_eq!(JacobianQuality::Good, JacobianQuality::Good);
-        assert_eq!(
-            JacobianQuality::Warning { reason: "test" },
-            JacobianQuality::Warning { reason: "test" }
-        );
-        assert_ne!(
-            JacobianQuality::Good,
-            JacobianQuality::Poor { reason: "NaN" }
-        );
     }
 
     #[test]

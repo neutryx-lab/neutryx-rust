@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import AssetTabBar from '@/components/common/AssetTabBar.vue';
 import { useJyInflationStore } from '@/stores/jyInflation';
+import JySimulationPanel from '@/components/jy/JySimulationPanel.vue';
 
 const jyStore = useJyInflationStore();
 
@@ -907,10 +908,10 @@ onMounted(() => {
         <div class="flex items-start justify-between">
           <div>
             <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
-            <p class="text-2xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
+            <p class="text-xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
           </div>
-          <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" :style="{ backgroundColor: `${stat.color}1a` }">
-            <i :class="['fas', stat.icon]" :style="{ color: stat.color }"></i>
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" :style="{ backgroundColor: `${stat.color}1a` }">
+            <i :class="['fas', stat.icon, 'text-sm']" :style="{ color: stat.color }"></i>
           </div>
         </div>
       </div>
@@ -1967,6 +1968,11 @@ onMounted(() => {
           </template>
         </div>
       </div>
+    </div>
+
+    <!-- JY Inflation Simulation (below data grid, full width) -->
+    <div v-if="assetClass === 'Inflation'" class="mt-6">
+      <JySimulationPanel :result="jyStore.simulationResult" />
     </div>
   </div>
 </template>

@@ -21,8 +21,6 @@ import CashflowTable from '@/components/pricer/CashflowTable.vue';
 
 import JyInstrumentPanel from '@/components/jy/JyInstrumentPanel.vue';
 import JyPricingPanel from '@/components/jy/JyPricingPanel.vue';
-import JyXvaPanel from '@/components/jy/JyXvaPanel.vue';
-
 import { useJyInflationStore } from '@/stores/jyInflation';
 
 const store = usePricerStore();
@@ -97,9 +95,6 @@ onMounted(() => {
           </template>
           <template v-else>
             <JyPricingPanel :result="jyStore.pricingResult" />
-            <div v-if="jyStore.xvaResult" class="mt-4">
-              <JyXvaPanel :result="jyStore.xvaResult" />
-            </div>
           </template>
         </v-col>
       </v-row>

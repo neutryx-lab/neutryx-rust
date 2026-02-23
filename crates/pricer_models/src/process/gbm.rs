@@ -105,143 +105,68 @@ define_phantom_model! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::{
+        stochastic::StochasticModel, test_macros::generate_stochastic_model_tests,
+    };
+
+    generate_stochastic_model_tests! {
+        model: GBMModel<f64>,
+        model_f32: GBMModel<f32>,
+        default_f64_params: GBMParams::new(100.0_f64, 0.05, 0.2).unwrap(),
+        default_f32_params: GBMParams::new(100.0_f32, 0.05, 0.2).unwrap(),
+        model_name: "GBM",
+        brownian_dim: 1,
+        num_factors: 1,
+        zero_shock: [0.0],
+        positive_shock: [1.0],
+        negative_shock: [-1.0],
+        price_increased: |next: &SingleState<f64>, prev: &SingleState<f64>| next.0 > prev.0,
+        price_decreased: |next: &SingleState<f64>, prev: &SingleState<f64>| next.0 < prev.0,
+        state_finite_check: |s: &SingleState<f64>| s.0.is_finite(),
+    }
+
+    // --- GBM-specific tests ---
 
     #[test]
     fn test_gbm_params_new_valid() {
-        let params = GBMParams::new(100.0_f64, 0.05, 0.2);
-        assert!(params.is_some());
-        let p = params.unwrap();
+        let p = GBMParams::new(100.0_f64, 0.05, 0.2).unwrap();
         assert_eq!(p.spot, 100.0);
         assert_eq!(p.rate, 0.05);
         assert_eq!(p.volatility, 0.2);
     }
 
     #[test]
-    fn test_gbm_params_new_invalid_spot() {
-        let params = GBMParams::new(-100.0_f64, 0.05, 0.2);
-        assert!(params.is_none());
-
-        let params_zero = GBMParams::new(0.0_f64, 0.05, 0.2);
-        assert!(params_zero.is_none());
-    }
-
-    #[test]
-    fn test_gbm_params_new_invalid_volatility() {
-        let params = GBMParams::new(100.0_f64, 0.05, -0.1);
-        assert!(params.is_none());
+    fn test_gbm_params_new_invalid() {
+        assert!(GBMParams::new(-100.0_f64, 0.05, 0.2).is_none());
+        assert!(GBMParams::new(0.0_f64, 0.05, 0.2).is_none());
+        assert!(GBMParams::new(100.0_f64, 0.05, -0.1).is_none());
     }
 
     #[test]
     fn test_gbm_params_default() {
-        let params: GBMParams<f64> = Default::default();
-        assert_eq!(params.spot, 100.0);
-        assert_eq!(params.rate, 0.05);
-        assert_eq!(params.volatility, 0.2);
+        let p: GBMParams<f64> = Default::default();
+        assert_eq!(p.spot, 100.0);
+        assert_eq!(p.rate, 0.05);
+        assert_eq!(p.volatility, 0.2);
     }
 
     #[test]
     fn test_gbm_params_with_epsilon() {
-        let params = GBMParams::new(100.0_f64, 0.05, 0.2)
+        let p = GBMParams::new(100.0_f64, 0.05, 0.2)
             .unwrap()
             .with_epsilon(1e-6);
-        assert_eq!(params.smoothing_epsilon, 1e-6);
-    }
-
-    #[test]
-    fn test_gbm_model_new() {
-        let model: GBMModel<f64> = GBMModel::new();
-        assert_eq!(GBMModel::<f64>::model_name(), "GBM");
-        assert_eq!(GBMModel::<f64>::brownian_dim(), 1);
-        assert_eq!(GBMModel::<f64>::num_factors(), 1);
-        let _ = model; // Suppress unused warning
-    }
-
-    #[test]
-    fn test_gbm_initial_state() {
-        let params = GBMParams::new(100.0_f64, 0.05, 0.2).unwrap();
-        let state = GBMModel::initial_state(&params);
-        assert_eq!(state.0, 100.0);
-    }
-
-    #[test]
-    fn test_gbm_evolve_step_no_shock() {
-        let params = GBMParams::new(100.0_f64, 0.05, 0.2).unwrap();
-        let state = GBMModel::initial_state(&params);
-        let dt = 1.0 / 252.0; // daily step
-        let dw = [0.0];
-
-        let next_state = GBMModel::evolve_step(state, dt, &dw, &params);
-
-        // Expected: S * exp((r - 0.5*sigma^2)*dt)
-        let expected_drift = (0.05 - 0.5 * 0.2 * 0.2) * dt;
-        let expected = 100.0 * expected_drift.exp();
-
-        assert!((next_state.0 - expected).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_gbm_evolve_step_positive_shock() {
-        let params = GBMParams::new(100.0_f64, 0.05, 0.2).unwrap();
-        let state = GBMModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let dw = [1.0]; // positive shock
-
-        let next_state = GBMModel::evolve_step(state, dt, &dw, &params);
-
-        // With positive shock, price should increase
-        assert!(next_state.0 > state.0);
-    }
-
-    #[test]
-    fn test_gbm_evolve_step_negative_shock() {
-        let params = GBMParams::new(100.0_f64, 0.05, 0.2).unwrap();
-        let state = GBMModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let dw = [-1.0]; // negative shock
-
-        let next_state = GBMModel::evolve_step(state, dt, &dw, &params);
-
-        // With negative shock, price should decrease
-        assert!(next_state.0 < state.0);
+        assert_eq!(p.smoothing_epsilon, 1e-6);
     }
 
     #[test]
     fn test_gbm_martingale_property() {
-        // Under risk-neutral measure, E[S_T] = S_0 * exp(r*T)
-        // With dW=0 (expected value of Brownian), we get deterministic growth
         let params = GBMParams::new(100.0_f64, 0.05, 0.2).unwrap();
         let mut state = GBMModel::initial_state(&params);
         let dt = 1.0 / 252.0;
-        let dw = [0.0];
-        let n_steps = 252; // 1 year
-
-        for _ in 0..n_steps {
-            state = GBMModel::evolve_step(state, dt, &dw, &params);
+        for _ in 0..252 {
+            state = GBMModel::evolve_step(state, dt, &[0.0], &params);
         }
-
-        // After 1 year with zero volatility effect, S_T approx S_0 * exp((r -
-        // 0.5*sigma^2)*1)
         let expected = 100.0 * ((0.05 - 0.5 * 0.04) * 1.0).exp();
         assert!((state.0 - expected).abs() < 0.01);
-    }
-
-    #[test]
-    fn test_gbm_model_is_differentiable() {
-        // Verify that GBMModel implements Differentiable
-        let model: GBMModel<f64> = GBMModel::new();
-        let _: &dyn Differentiable = &model;
-    }
-
-    #[test]
-    fn test_gbm_model_generic_f32() {
-        // Verify GBM works with f32
-        let params = GBMParams::new(100.0_f32, 0.05, 0.2).unwrap();
-        let state = GBMModel::initial_state(&params);
-        assert_eq!(state.0, 100.0_f32);
-
-        let dt = 1.0_f32 / 252.0;
-        let dw = [0.0_f32];
-        let next_state = GBMModel::evolve_step(state, dt, &dw, &params);
-        assert!(next_state.0.is_finite());
     }
 }

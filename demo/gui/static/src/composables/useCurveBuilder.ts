@@ -28,6 +28,7 @@ export interface CurveConfig {
   domesticCurve?: string;
   foreignCurve?: string;
   referenceCurve?: string;
+  nominalCurve?: string;
 }
 
 export interface CurvesData {
@@ -41,6 +42,7 @@ export interface CurvesData {
 
 export interface RateInstrument {
   type: string;
+  sub_type?: string; // For inflation: 'tips', 'il_gilt', 'zcis', 'jgbi'
   tenor?: string;
   tenor_years?: number;
   rate?: number;
@@ -199,7 +201,18 @@ function normaliseCalibrationMethod(value: string): string {
   return value;
 }
 
-function buildInstrumentId(type: string, tenor: string, currency: string): string {
+function buildInstrumentId(type: string, tenor: string, currency: string, subType?: string): string {
+  // Inflation instruments use sub_type for the ID label
+  if (type === 'inflation_linked_bond' || type === 'inflation_swap') {
+    const inflMap: Record<string, string> = {
+      'tips': 'TIPS',
+      'il_gilt': 'ILGilt',
+      'zcis': 'ZCIS',
+      'jgbi': 'JGBi',
+    };
+    const typeLabel = inflMap[subType || ''] || subType?.toUpperCase() || 'INFL';
+    return `${currency}-${typeLabel}-${tenor}`;
+  }
   const typeMap: Record<string, string> = {
     'deposit': 'Depo',
     'ois': 'OIS',
@@ -246,6 +259,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
   const domesticCurveOverride = ref<string>('');
   const foreignCurveOverride = ref<string>('');
   const referenceCurveOverride = ref<string>('');
+  const nominalCurveOverride = ref<string>('');
 
   // Last-built settings -- used to detect "rebuild required"
   const lastBuiltSettings = ref<{
@@ -309,6 +323,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
 
   const isCommodityCurve = computed(() =>
     selectedCurve.value?.curveType === 'commodity'
+  );
+
+  const isInflationCurve = computed(() =>
+    selectedCurve.value?.curveType === 'inflation'
   );
 
   const summaryStats = computed(() => {
@@ -377,17 +395,32 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       // Convert rate index to file name (e.g., "USD-SOFR" -> "usd-sofr")
       const fileName = rateIndex.toLowerCase().replace('_', '-');
 
-      // Credit curves load from /data/input/credit/, FX from /data/input/fx/, rate curves from /data/input/rates/
+      // Route to the correct data directory based on curve type
       const isCredit = selectedCurve.value?.curveType === 'credit';
       const isFx = selectedCurve.value?.curveType === 'fx';
+      const isInflation = selectedCurve.value?.curveType === 'inflation';
       let basePath: string;
       if (isCredit) basePath = '/data/input/credit';
       else if (isFx) basePath = '/data/input/fx';
+      else if (isInflation) basePath = '/data/input/inflation';
       else basePath = '/data/input/rates';
 
       const response = await fetch(`${basePath}/${fileName}.json`);
       if (!response.ok) throw new Error(`Failed to load rate data for ${rateIndex}`);
-      rateData.value = await response.json();
+
+      if (isInflation) {
+        // Map inflation file format (curve_id, inflation_index) to RateData
+        const raw = await response.json();
+        rateData.value = {
+          index: raw.curve_id || raw.inflation_index || rateIndex,
+          currency: raw.currency,
+          reference_date: raw.reference_date,
+          instruments: raw.instruments,
+        };
+      } else {
+        rateData.value = await response.json();
+      }
+
       // Resolve symbolic date tokens (e.g. "TODAY") to actual ISO dates
       if (rateData.value?.reference_date?.toUpperCase() === 'TODAY') {
         rateData.value.reference_date = new Date().toISOString().slice(0, 10);
@@ -479,6 +512,19 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
           originalRate: rateInst.rate || 0,
           enabled: defaultEnabledIds.has(id),
         });
+      } else if (rateInst.type === 'inflation_linked_bond' || rateInst.type === 'inflation_swap') {
+        const tenor = rateInst.tenor || '';
+        const id = buildInstrumentId(rateInst.type, tenor, currency, rateInst.sub_type);
+        displayInstruments.push({
+          id,
+          type: rateInst.type,
+          tenor,
+          tenorYears: rateInst.tenor_years || 0,
+          rate: rateInst.rate || 0,
+          originalRate: rateInst.rate || 0,
+          enabled: defaultEnabledIds.has(id),
+          couponRate: rateInst.coupon_rate,
+        });
       } else {
         // Handle regular instruments (deposit, ois, fra, bond, etc.)
         const tenor = rateInst.tenor || '';
@@ -532,9 +578,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       domesticCurveOverride.value = curve.domesticCurve || '';
       foreignCurveOverride.value = curve.foreignCurve || '';
       referenceCurveOverride.value = curve.referenceCurve || '';
+      nominalCurveOverride.value = curve.nominalCurve || '';
 
-      // Commodity / inflation curves don't have rate data files — skip loading
-      if (curve.curveType === 'commodity' || curve.curveType === 'inflation') {
+      // Commodity curves don't have rate data files — skip loading
+      if (curve.curveType === 'commodity') {
         rateData.value = null;
         instruments.value = [];
       } else {
@@ -1025,6 +1072,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     domesticCurveOverride,
     foreignCurveOverride,
     referenceCurveOverride,
+    nominalCurveOverride,
 
     // Computed
     curveOptions,
@@ -1034,6 +1082,7 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     isCreditCurve,
     isFxCurve,
     isCommodityCurve,
+    isInflationCurve,
     summaryStats,
     curveTableRows,
     builtCurveIds,
