@@ -74,9 +74,9 @@ pub struct JyCurvePoint {
 #[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct JyCurveBuildRequest {
-    /// Nominal curve market rates (e.g., USD swap rates).
+    /// Reference name of the nominal curve from the Rates system (e.g., "USD-SOFR").
     #[validate(length(min = 1))]
-    pub nominal_rates: Vec<CurveRatePoint>,
+    pub nominal_curve_ref: String,
     /// Real curve market rates (e.g., TIPS yields).
     #[validate(length(min = 1))]
     pub real_rates: Vec<CurveRatePoint>,
@@ -400,8 +400,6 @@ pub struct ExposureProfile {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InflationMarketDataResponse {
-    /// Nominal curve instruments (Deposit, OIS).
-    pub nominal_rates: Vec<CurveRatePoint>,
     /// Real curve instruments (TIPS yields).
     pub real_rates: Vec<CurveRatePoint>,
     /// Reference date for the market data.

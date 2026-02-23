@@ -12,7 +12,7 @@ import {
   jyInstrumentCashflows,
   jySimulate,
   jyPrice,
-  jyXva,
+  runIncrementalXva,
 } from '@/services/api';
 
 export function useJYInflation() {
@@ -23,7 +23,7 @@ export function useJYInflation() {
     store.loading = true;
     try {
       const request = {
-        nominalRates: store.nominalRates,
+        nominalCurveRef: store.nominalCurveRef,
         realRates: store.realRates,
         valuationDate: store.valuationDate,
         modelParams: store.modelParams,
@@ -110,27 +110,71 @@ export function useJYInflation() {
   async function runXva() {
     store.loading = true;
     try {
+      // Convert PD → hazard rate: h ≈ -ln(1 - pd)
+      const cptyHazard = -Math.log(1 - store.counterpartyPd);
+      const ownHazard = -Math.log(1 - store.ownPd);
+
       const request = {
-        modelParams: store.modelParams,
-        correlation: store.correlation,
-        initialNominalRate: store.initialNominalRate,
-        initialRealRate: store.initialRealRate,
-        initialIndex: store.initialIndex,
-        notional: store.notional,
-        fixedRate: store.fixedRate,
-        maturity: store.maturityYears,
-        nominalCurveRate: store.initialNominalRate,
-        realCurveRate: store.initialRealRate,
-        counterpartyPd: store.counterpartyPd,
-        counterpartyRecovery: store.counterpartyRecovery,
-        ownPd: store.ownPd,
-        ownRecovery: store.ownRecovery,
+        nPaths: store.xvaNumPaths,
+        horizonYears: store.maturityYears,
+        timeStep: 'quarterly' as const,
+        antithetic: true,
+        bilateral: true,
+        computeFva: true,
+        // HW1F = JY nominal rate parameters
+        hwMeanReversion: store.modelParams.aN,
+        hwVolatility: store.modelParams.sigmaN,
+        hwInitialRate: store.initialNominalRate,
+        couplingMethod: 'swap_rate',
+        // Credit: PD → hazard, recovery → LGD
+        hazardRate: cptyHazard,
+        lgd: 1 - store.counterpartyRecovery,
+        ownHazardRate: ownHazard,
+        ownLgd: 1 - store.ownRecovery,
         fundingSpread: store.fundingSpread,
-        numPaths: store.xvaNumPaths,
-        numSteps: store.xvaNumSteps,
+        // JY 3-factor parameters
+        jyRealMeanReversion: store.modelParams.aR,
+        jyRealVolatility: store.modelParams.sigmaR,
+        jyInitialRealRate: store.initialRealRate,
+        jyInflationVolatility: store.modelParams.sigmaI,
+        jyInitialIndex: store.initialIndex,
+        jyRhoNominalReal: store.correlation.rhoNr,
+        jyRhoNominalInflation: store.correlation.rhoNi,
+        jyRhoRealInflation: store.correlation.rhoRi,
+        // Portfolio: single inflation swap as incremental
+        baseSwaps: [],
+        baseExotics: [],
+        baseInflationSwaps: [],
+        incrementalTrade: {
+          type: 'inflationSwap' as const,
+          tradeId: 'ZCIS_JY',
+          notional: store.notional,
+          fixedRate: store.fixedRate,
+          maturityYears: store.maturityYears,
+          baseIndex: store.initialIndex,
+        },
       };
-      store.xvaResult = await jyXva(request);
-      toast.success(`XVA computed: CVA=${store.formatCcy(store.xvaResult.cva)}`);
+
+      const result = await runIncrementalXva(request);
+
+      // Map incremental XVA response → JyXvaResponse shape
+      const xva = result.incrementalXva;
+      store.xvaResult = {
+        cva: xva.bcva,
+        dva: xva.bdva,
+        fva: xva.fva,
+        totalXva: xva.total,
+        cleanMtm: 0,
+        adjustedMtm: xva.total,
+        exposureProfile: {
+          timeGrid: result.timeGrid,
+          expectedExposure: result.fullEpe,
+          negativeExpectedExposure: result.fullEne,
+          pfe95: [],
+          pfe99: [],
+        },
+      };
+      toast.success(`XVA computed: CVA=${store.formatCcy(xva.bcva)}`);
     } catch (e) {
       toast.error(`XVA computation failed: ${e instanceof Error ? e.message : 'Unknown error'}`);
     } finally {

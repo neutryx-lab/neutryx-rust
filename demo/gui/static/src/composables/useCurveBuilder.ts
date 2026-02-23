@@ -301,16 +301,6 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
     ];
 
-    if (isCreditCurve.value) {
-      const recovery = selectedCurve.value?.recoveryRate ?? 0.40;
-      stats.push({ label: 'Recovery', value: `${(recovery * 100).toFixed(0)}%`, icon: 'fa-shield-alt', color: '#ef4444' });
-    }
-
-    if (isFxCurve.value && selectedCurve.value) {
-      stats.push({ label: 'Spot', value: (selectedCurve.value.spot ?? 0).toFixed(4), icon: 'fa-exchange-alt', color: '#06b6d4' });
-      stats.push({ label: 'Pair', value: selectedCurve.value.currencyPair ?? '-', icon: 'fa-coins', color: '#f97316' });
-    }
-
     if (isCommodityCurve.value && selectedCurve.value) {
       stats.push({ label: 'Commodity', value: selectedCurve.value.commodity ?? '-', icon: 'fa-oil-can', color: '#f97316' });
       stats.push({ label: 'Model', value: 'Gibson-Schwartz', icon: 'fa-chart-line', color: '#8b5cf6' });

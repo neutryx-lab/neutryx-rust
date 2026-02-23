@@ -55,7 +55,6 @@ struct ConfigPaths {
 
 #[derive(Debug, Deserialize)]
 struct InflationPaths {
-    nominal_rates: String,
     real_rates: String,
 }
 
@@ -687,7 +686,7 @@ impl DemoService {
         }
     }
 
-    /// Get inflation market data (nominal + real rate curves) from input files.
+    /// Get inflation market data (real rate curve + index) from input files.
     pub fn get_inflation_market_data(
         _state: &Arc<AppState>,
     ) -> Result<InflationMarketDataResponse, ServerError> {
@@ -700,13 +699,13 @@ impl DemoService {
             )
         })?;
 
-        // Load nominal rates
-        let nominal_data: serde_json::Value = helpers::load_json_value(
-            Path::new(&inflation_paths.nominal_rates),
-            "inflation/nominal_rates.json",
+        // Load real rates (TIPS)
+        let real_data: serde_json::Value = helpers::load_json_value(
+            Path::new(&inflation_paths.real_rates),
+            "inflation/real_rates.json",
         )?;
 
-        let raw_ref_date = nominal_data
+        let raw_ref_date = real_data
             .get("reference_date")
             .and_then(|v| v.as_str())
             .unwrap_or("");
@@ -715,41 +714,11 @@ impl DemoService {
         } else {
             raw_ref_date.to_string()
         };
-        let currency = nominal_data
+        let currency = real_data
             .get("currency")
             .and_then(|v| v.as_str())
             .unwrap_or("USD")
             .to_string();
-
-        let nominal_rates = nominal_data
-            .get("instruments")
-            .and_then(|v| v.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|instr| {
-                        let raw_type = instr.get("type")?.as_str()?;
-                        let tenor = instr.get("tenor")?.as_str()?.to_string();
-                        let rate = instr.get("rate")?.as_f64()?;
-                        let instrument_type = match raw_type {
-                            "deposit" => "Deposit",
-                            "ois" => "OIS",
-                            _ => raw_type,
-                        };
-                        Some(CurveRatePoint {
-                            instrument_type: instrument_type.to_string(),
-                            tenor,
-                            rate,
-                        })
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        // Load real rates (TIPS)
-        let real_data: serde_json::Value = helpers::load_json_value(
-            Path::new(&inflation_paths.real_rates),
-            "inflation/real_rates.json",
-        )?;
 
         let inflation_index = real_data
             .get("inflation_index")
@@ -776,7 +745,6 @@ impl DemoService {
             .unwrap_or_default();
 
         Ok(InflationMarketDataResponse {
-            nominal_rates,
             real_rates,
             reference_date,
             currency,

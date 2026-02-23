@@ -45,8 +45,9 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   const valuationDate = ref(new Date().toISOString().split('T')[0]);
 
   // Market data (loaded from input files via API)
-  const nominalRates = ref<CurveRatePoint[]>([]);
   const realRates = ref<CurveRatePoint[]>([]);
+  // Selected nominal curve from the Rates system (e.g. "USD-SOFR")
+  const nominalCurveRef = ref('');
   const marketDataLoaded = ref(false);
   const inflationIndex = ref('CPI-U');
   const referenceDate = ref('');
@@ -131,7 +132,6 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     _loadingPromise = (async () => {
       try {
         const data = await fetchInflationMarketData();
-        nominalRates.value = data.nominalRates;
         realRates.value = data.realRates;
         inflationIndex.value = data.inflationIndex;
         referenceDate.value = data.referenceDate;
@@ -148,6 +148,12 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     return _loadingPromise;
   }
 
+  async function refreshMarketData() {
+    marketDataLoaded.value = false;
+    _loadingPromise = null;
+    await loadMarketData();
+  }
+
   // ---------------------------------------------------------------------------
   // Return
   // ---------------------------------------------------------------------------
@@ -160,8 +166,8 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     initialRealRate,
     initialIndex,
     valuationDate,
-    nominalRates,
     realRates,
+    nominalCurveRef,
     marketDataLoaded,
     inflationIndex,
     referenceDate,
@@ -193,6 +199,7 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     summaryStats,
     // Actions
     loadMarketData,
+    refreshMarketData,
     // Helpers
     formatCcy,
   };

@@ -228,6 +228,14 @@ watch(assetTab, (tab) => {
   chartType.value = 'forward_rate';
 });
 
+// Inflation rate CRUD helpers
+function addRealRate() {
+  jyStore.realRates.push({ instrumentType: 'TIPS', tenor: '', rate: 0.01 });
+}
+function removeRealRate(index: number) {
+  jyStore.realRates.splice(index, 1);
+}
+
 // Watch chart type changes -- re-render when grid data available
 watch(chartType, () => {
   if (buildResult.value?.short_term_grid) {
@@ -303,9 +311,18 @@ watch(chartType, () => {
 
           <!-- Inflation curve info -->
           <div v-else class="space-y-3">
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Nominal Rates</span>
-              <span class="text-[var(--text-primary)] font-semibold">{{ jyStore.nominalRates.length }} instruments</span>
+            <div class="config-grid">
+              <div class="grid-label">Nominal Curve</div>
+              <div class="grid-input">
+                <v-select
+                  v-model="jyStore.nominalCurveRef"
+                  :items="curveOptions.filter(c => c.curveType === 'rate').map(c => ({ title: c.name, value: c.name }))"
+                  placeholder="Select nominal curve..."
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                />
+              </div>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-[var(--text-muted)]">Real Rates (TIPS)</span>
@@ -331,55 +348,49 @@ watch(chartType, () => {
           @update-coupon="updateCoupon"
         />
 
-        <!-- Market Rates (inflation) -->
+        <!-- Real Rates (inflation) - editable -->
         <div v-if="assetTab === 'inflation'" class="glass-card p-5">
           <div class="section-header" style="margin-top: 0">
-            Market Rates
+            Real Rates (TIPS)
             <span class="text-xs font-normal text-[var(--text-muted)] ml-2">
-              {{ jyStore.nominalRates.length + jyStore.realRates.length }} instruments
+              {{ jyStore.realRates.length }} instruments
             </span>
+            <button class="text-xs text-[var(--primary)] hover:underline ml-auto" @click="addRealRate">+ Add</button>
           </div>
-          <div class="max-h-64 overflow-y-auto">
+          <div class="max-h-80 overflow-y-auto">
             <table class="w-full text-sm">
               <thead class="sticky top-0 z-10">
                 <tr class="border-b border-[var(--glass-border)] curve-table-header">
                   <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Type</th>
                   <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
                   <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
+                  <th class="py-2 px-1"></th>
                 </tr>
               </thead>
               <tbody>
-                <tr class="border-b border-[var(--glass-border)]">
-                  <td colspan="3" class="py-1.5 px-2 text-xs font-semibold text-blue-400">Nominal</td>
-                </tr>
-                <tr
-                  v-for="(r, idx) in jyStore.nominalRates"
-                  :key="'n-' + idx"
-                  class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
-                >
-                  <td class="py-1.5 px-2 text-xs text-[var(--text-secondary)]">{{ r.instrumentType }}</td>
-                  <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ r.tenor }}</td>
-                  <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ (r.rate * 100).toFixed(3) }}</td>
-                </tr>
-                <tr class="border-b border-[var(--glass-border)]">
-                  <td colspan="3" class="py-1.5 px-2 text-xs font-semibold text-green-400">Real (TIPS)</td>
-                </tr>
                 <tr
                   v-for="(r, idx) in jyStore.realRates"
                   :key="'r-' + idx"
                   class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
                 >
-                  <td class="py-1.5 px-2 text-xs text-[var(--text-secondary)]">{{ r.instrumentType }}</td>
-                  <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ r.tenor }}</td>
-                  <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ (r.rate * 100).toFixed(3) }}</td>
+                  <td class="py-1.5 px-2">
+                    <input v-model="r.instrumentType" class="w-20 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
+                  </td>
+                  <td class="py-1.5 px-2">
+                    <input v-model="r.tenor" class="w-16 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
+                  </td>
+                  <td class="py-1.5 px-2 text-right">
+                    <input v-model.number="r.rate" type="number" step="0.001" class="w-20 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)] text-right" />
+                  </td>
+                  <td class="py-1.5 px-1">
+                    <button class="text-[var(--text-muted)] hover:text-red-500 text-xs" @click="removeRealRate(idx)">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <p class="text-xs text-[var(--text-muted)] mt-2">
-            <i class="fas fa-info-circle mr-1"></i>
-            Edit rates in Market Data &gt; Inflation tab
-          </p>
         </div>
 
         <!-- Build Settings -->
@@ -413,6 +424,30 @@ watch(chartType, () => {
                   <i class="fas fa-info-circle mr-1"></i>
                   Edit in Vol Surface &gt; Inflation tab
                 </p>
+              </div>
+              <!-- Initial Conditions -->
+              <div class="grid-span">
+                <div class="section-header" style="margin-top: 0.5rem">Initial Conditions</div>
+              </div>
+              <div class="grid-label">Valuation Date</div>
+              <div class="grid-input">
+                <input v-model="jyStore.valuationDate" type="date"
+                  class="w-full px-2 py-1.5 text-sm rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
+              </div>
+              <div class="grid-label">r<sub>N</sub>(0)</div>
+              <div class="grid-input">
+                <input v-model.number="jyStore.initialNominalRate" type="number" step="0.001"
+                  class="w-full px-2 py-1.5 text-sm rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
+              </div>
+              <div class="grid-label">r<sub>R</sub>(0)</div>
+              <div class="grid-input">
+                <input v-model.number="jyStore.initialRealRate" type="number" step="0.001"
+                  class="w-full px-2 py-1.5 text-sm rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
+              </div>
+              <div class="grid-label">I(0)</div>
+              <div class="grid-input">
+                <input v-model.number="jyStore.initialIndex" type="number" step="1" min="1"
+                  class="w-full px-2 py-1.5 text-sm rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
               </div>
             </template>
             <!-- FX -->
@@ -488,7 +523,7 @@ watch(chartType, () => {
           <button
             v-if="assetTab === 'inflation'"
             class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            :disabled="jyStore.loading || jyStore.nominalRates.length === 0 || jyStore.realRates.length === 0"
+            :disabled="jyStore.loading || !jyStore.nominalCurveRef || jyStore.realRates.length === 0"
             @click="jyBuildCurves"
           >
             <i :class="['fas', jyStore.loading ? 'fa-spinner fa-spin' : 'fa-hammer']"></i>

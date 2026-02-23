@@ -84,6 +84,27 @@ pub struct ExoticDefinitionDto {
     pub cap_rate: Option<f64>,
 }
 
+// ─── Inflation Swap Definition ──────────────────────────────────────────────
+
+/// Definition of a zero-coupon inflation swap for JY model pricing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InflationSwapDefinitionDto {
+    /// Unique trade identifier.
+    pub trade_id: String,
+    /// Notional amount.
+    pub notional: f64,
+    /// Contractual fixed rate (annual, e.g. 0.02 for 2%).
+    pub fixed_rate: f64,
+    /// Swap maturity in years.
+    pub maturity_years: f64,
+    /// Base inflation index level I(0). Default: 100.0.
+    #[serde(default = "default_base_index")]
+    pub base_index: f64,
+}
+
+fn default_base_index() -> f64 { 100.0 }
+
 // ─── Incremental Trade ──────────────────────────────────────────────────────
 
 /// The incremental trade to be added to the portfolio.
@@ -96,6 +117,9 @@ pub enum IncrementalTradeDto {
     /// An exotic product.
     #[serde(rename = "exotic")]
     Exotic(ExoticDefinitionDto),
+    /// A zero-coupon inflation swap.
+    #[serde(rename = "inflationSwap")]
+    InflationSwap(InflationSwapDefinitionDto),
 }
 
 // ─── Request ────────────────────────────────────────────────────────────────
@@ -152,6 +176,24 @@ pub struct IncrementalXvaRequest {
     /// Funding spread (borrow, decimal). Default: 0.005.
     pub funding_spread: Option<f64>,
 
+    // ── JY inflation model (optional, required when inflation trades present) ──
+    /// Real rate mean reversion speed.
+    pub jy_real_mean_reversion: Option<f64>,
+    /// Real rate volatility.
+    pub jy_real_volatility: Option<f64>,
+    /// Initial real short rate.
+    pub jy_initial_real_rate: Option<f64>,
+    /// Inflation index volatility.
+    pub jy_inflation_volatility: Option<f64>,
+    /// Initial inflation index level.
+    pub jy_initial_index: Option<f64>,
+    /// Correlation: nominal–real.
+    pub jy_rho_nominal_real: Option<f64>,
+    /// Correlation: nominal–inflation.
+    pub jy_rho_nominal_inflation: Option<f64>,
+    /// Correlation: real–inflation.
+    pub jy_rho_real_inflation: Option<f64>,
+
     // ── Portfolio ──
     /// Base portfolio: vanilla swaps.
     #[serde(default)]
@@ -159,6 +201,9 @@ pub struct IncrementalXvaRequest {
     /// Base portfolio: exotic trades.
     #[serde(default)]
     pub base_exotics: Vec<ExoticDefinitionDto>,
+    /// Base portfolio: inflation swaps.
+    #[serde(default)]
+    pub base_inflation_swaps: Vec<InflationSwapDefinitionDto>,
     /// The incremental trade being evaluated.
     pub incremental_trade: IncrementalTradeDto,
 }
@@ -252,10 +297,30 @@ pub struct IncrementalXvaDefaultConfig {
     /// Default LGD.
     pub lgd: f64,
 
+    // ── JY inflation defaults (optional) ──
+    /// Default real rate mean reversion.
+    pub jy_real_mean_reversion: Option<f64>,
+    /// Default real rate volatility.
+    pub jy_real_volatility: Option<f64>,
+    /// Default initial real rate.
+    pub jy_initial_real_rate: Option<f64>,
+    /// Default inflation index volatility.
+    pub jy_inflation_volatility: Option<f64>,
+    /// Default initial index level.
+    pub jy_initial_index: Option<f64>,
+    /// Default nominal–real correlation.
+    pub jy_rho_nominal_real: Option<f64>,
+    /// Default nominal–inflation correlation.
+    pub jy_rho_nominal_inflation: Option<f64>,
+    /// Default real–inflation correlation.
+    pub jy_rho_real_inflation: Option<f64>,
+
     /// Pre-populated base swaps.
     pub base_swaps: Vec<SwapDefinitionDto>,
     /// Pre-populated base exotics.
     pub base_exotics: Vec<ExoticDefinitionDto>,
+    /// Pre-populated base inflation swaps.
+    pub base_inflation_swaps: Vec<InflationSwapDefinitionDto>,
     /// Pre-populated incremental trade.
     pub incremental_trade: IncrementalTradeDto,
 }

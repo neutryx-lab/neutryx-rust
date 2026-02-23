@@ -1263,7 +1263,7 @@ export interface JyCurvePoint {
 }
 
 export interface JyCurveBuildRequest {
-  nominalRates: CurveRatePoint[];
+  nominalCurveRef: string;
   realRates: CurveRatePoint[];
   valuationDate: string;
   modelParams: JyModelParams;
@@ -1416,7 +1416,6 @@ export interface JyXvaResponse {
 }
 
 export interface InflationMarketDataResponse {
-  nominalRates: CurveRatePoint[];
   realRates: CurveRatePoint[];
   referenceDate: string;
   currency: string;
@@ -1446,8 +1445,17 @@ export interface IncrementalXvaRequest {
   ownHazardRate?: number;
   ownLgd?: number;
   fundingSpread?: number;
+  jyRealMeanReversion?: number;
+  jyRealVolatility?: number;
+  jyInitialRealRate?: number;
+  jyInflationVolatility?: number;
+  jyInitialIndex?: number;
+  jyRhoNominalReal?: number;
+  jyRhoNominalInflation?: number;
+  jyRhoRealInflation?: number;
   baseSwaps: SwapDefinitionDto[];
   baseExotics: ExoticDefinitionDto[];
+  baseInflationSwaps: InflationSwapDefinitionDto[];
   incrementalTrade: IncrementalTradeDto;
 }
 
@@ -1483,9 +1491,18 @@ export interface ExoticDefinitionDto {
   capRate?: number;
 }
 
+export interface InflationSwapDefinitionDto {
+  tradeId: string;
+  notional: number;
+  fixedRate: number;
+  maturityYears: number;
+  baseIndex?: number;
+}
+
 export type IncrementalTradeDto =
   | ({ type: 'swap' } & SwapDefinitionDto)
-  | ({ type: 'exotic' } & ExoticDefinitionDto);
+  | ({ type: 'exotic' } & ExoticDefinitionDto)
+  | ({ type: 'inflationSwap' } & InflationSwapDefinitionDto);
 
 export interface XvaMetricsDto {
   ucva: number;

@@ -522,6 +522,10 @@ impl DemoService {
     ///
     /// At each time step, the ZCIS is re-priced using the analytical formula
     /// given the simulated nominal rate, real rate, and inflation index.
+    ///
+    /// DEPRECATED: Use `POST /api/incremental-xva/run` with an
+    /// `inflationSwap` incremental trade instead. This endpoint will be
+    /// removed in a future release.
     pub fn jy_xva(request: &JyXvaRequest) -> Result<JyXvaResponse, ServerError> {
         let num_paths = request.num_paths as usize;
         let num_steps = request.num_steps as usize;

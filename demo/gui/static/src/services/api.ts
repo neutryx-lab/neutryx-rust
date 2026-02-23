@@ -422,8 +422,8 @@ export async function fetchIncrementalXvaConfig(): Promise<any> {
   return fetchJson<any>(`${API_BASE}/incremental-xva/config`);
 }
 
-export async function runIncrementalXva(request: any): Promise<any> {
-  return postJson<any, any>(`${API_BASE}/incremental-xva/run`, request);
+export async function runIncrementalXva(request: import('@/types').IncrementalXvaRequest): Promise<import('@/types').IncrementalXvaResponse> {
+  return postJson<import('@/types').IncrementalXvaRequest, import('@/types').IncrementalXvaResponse>(`${API_BASE}/incremental-xva/run`, request);
 }
 
 // =============================================================================

@@ -40,7 +40,6 @@
     },
     "holidays": "demo/data/input/holidays.json",
     "inflation": {
-      "nominal_rates": "demo/data/input/inflation/nominal_rates.json",
       "real_rates": "demo/data/input/inflation/real_rates.json"
     }
   },
