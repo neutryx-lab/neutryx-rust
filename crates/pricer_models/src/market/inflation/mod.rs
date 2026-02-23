@@ -12,14 +12,13 @@ pub mod seasonality;
 pub mod shift;
 
 use enum_dispatch::enum_dispatch;
-use num_traits::Float;
-
-use super::MarketDataError;
 use infra_domain::time::Date;
-
 pub use interpolated::{InflationCurveItp, InflationInterpolation};
+use num_traits::Float;
 pub use seasonality::InflationSeasonalFactor;
 pub use shift::{make_zero_rate_shifter, ShiftRange, ZeroRateShiftMode};
+
+use super::MarketDataError;
 
 // ─── Absolute month utility ──────────────────────────────────────────
 
@@ -31,9 +30,7 @@ pub use shift::{make_zero_rate_shifter, ShiftRange, ZeroRateShiftMode};
 /// suitable as the X-axis for interpolation.
 #[inline]
 #[must_use]
-pub fn absolute_month(date: Date) -> i32 {
-    date.year() * 12 + (date.month() as i32 - 1)
-}
+pub fn absolute_month(date: Date) -> i32 { date.year() * 12 + (date.month() as i32 - 1) }
 
 /// Inverse of [`absolute_month`]: reconstructs the (year, month) pair.
 ///
@@ -84,9 +81,7 @@ pub enum InflationCurveEnum<T: Float> {
 
 impl<T: Float> InflationCurveEnum<T> {
     /// Wraps an interpolated inflation curve.
-    pub fn interpolated(curve: InflationCurveItp<T>) -> Self {
-        Self::Interpolated(curve)
-    }
+    pub fn interpolated(curve: InflationCurveItp<T>) -> Self { Self::Interpolated(curve) }
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────

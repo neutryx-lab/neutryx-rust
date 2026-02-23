@@ -138,7 +138,6 @@ pub enum BootstrapInterpolation {
     TensionSpline,
 }
 
-
 /// Market instrument for yield curve calibration.
 #[derive(Debug, Clone)]
 pub enum MarketInstrument<T: Float> {
@@ -211,6 +210,48 @@ pub enum MarketInstrument<T: Float> {
         /// Stored as (time, df) pairs to avoid runtime curve dependency.
         risk_free_dfs: Vec<(T, T)>,
     },
+}
+
+/// Dispatches a field access across all `MarketInstrument` variants.
+///
+/// Each arm maps the seven variants to the appropriate field, handling the
+/// cases where the logical "rate" or "maturity" concept lives under a
+/// differently-named field (e.g. `expected_jump` for Event, `spread` for Cds,
+/// `end` for Fra maturity).
+macro_rules! dispatch_instrument_field {
+    ($self:expr, rate) => {
+        match $self {
+            Self::Ois { rate, .. }
+            | Self::Irs { rate, .. }
+            | Self::Fra { rate, .. }
+            | Self::Future { rate, .. }
+            | Self::Bond { rate, .. } => *rate,
+            Self::Event { expected_jump, .. } => *expected_jump,
+            Self::Cds { spread, .. } => *spread,
+        }
+    };
+    ($self:expr, maturity) => {
+        match $self {
+            Self::Ois { maturity, .. }
+            | Self::Irs { maturity, .. }
+            | Self::Future { maturity, .. }
+            | Self::Event { maturity, .. }
+            | Self::Bond { maturity, .. }
+            | Self::Cds { maturity, .. } => *maturity,
+            Self::Fra { end, .. } => *end,
+        }
+    };
+    ($self:expr, instrument_type) => {
+        match $self {
+            Self::Ois { .. } => "OIS",
+            Self::Irs { .. } => "IRS",
+            Self::Fra { .. } => "FRA",
+            Self::Future { .. } => "Future",
+            Self::Event { .. } => "Event",
+            Self::Bond { .. } => "Bond",
+            Self::Cds { .. } => "CDS",
+        }
+    };
 }
 
 impl<T: Float> MarketInstrument<T> {
@@ -299,43 +340,13 @@ impl<T: Float> MarketInstrument<T> {
     }
 
     /// Returns the market-quoted rate (or expected jump for Event).
-    pub fn rate(&self) -> T {
-        match self {
-            Self::Ois { rate, .. } => *rate,
-            Self::Irs { rate, .. } => *rate,
-            Self::Fra { rate, .. } => *rate,
-            Self::Future { rate, .. } => *rate,
-            Self::Event { expected_jump, .. } => *expected_jump,
-            Self::Bond { rate, .. } => *rate,
-            Self::Cds { spread, .. } => *spread,
-        }
-    }
+    pub fn rate(&self) -> T { dispatch_instrument_field!(self, rate) }
 
     /// Returns the instrument's maturity.
-    pub fn maturity(&self) -> T {
-        match self {
-            Self::Ois { maturity, .. } => *maturity,
-            Self::Irs { maturity, .. } => *maturity,
-            Self::Fra { end, .. } => *end,
-            Self::Future { maturity, .. } => *maturity,
-            Self::Event { maturity, .. } => *maturity,
-            Self::Bond { maturity, .. } => *maturity,
-            Self::Cds { maturity, .. } => *maturity,
-        }
-    }
+    pub fn maturity(&self) -> T { dispatch_instrument_field!(self, maturity) }
 
     /// Returns a descriptive name for the instrument type.
-    pub fn instrument_type(&self) -> &'static str {
-        match self {
-            Self::Ois { .. } => "OIS",
-            Self::Irs { .. } => "IRS",
-            Self::Fra { .. } => "FRA",
-            Self::Future { .. } => "Future",
-            Self::Event { .. } => "Event",
-            Self::Bond { .. } => "Bond",
-            Self::Cds { .. } => "CDS",
-        }
-    }
+    pub fn instrument_type(&self) -> &'static str { dispatch_instrument_field!(self, instrument_type) }
 
     /// Returns true if this is an Event instrument.
     pub fn is_event(&self) -> bool { matches!(self, Self::Event { .. }) }

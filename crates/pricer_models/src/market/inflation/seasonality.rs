@@ -4,12 +4,11 @@
 //! cumulative seasonal multipliers for arbitrary dates via linear
 //! interpolation on the cumulative factor curve.
 
+use infra_domain::time::Date;
 use num_traits::Float;
-
 use pricer_core::math::numeric::from_f64;
 
 use super::absolute_month;
-use infra_domain::time::Date;
 
 /// Monthly seasonal multiplicative factors for an inflation index.
 ///
@@ -56,9 +55,7 @@ impl<T: Float> InflationSeasonalFactor<T> {
     }
 
     /// Returns the raw monthly factors array.
-    pub fn monthly_factors(&self) -> &[T; 12] {
-        &self.monthly_factors
-    }
+    pub fn monthly_factors(&self) -> &[T; 12] { &self.monthly_factors }
 
     /// Computes the cumulative seasonal multiplier from `base_month`
     /// (absolute month) to `target_month` (absolute month).

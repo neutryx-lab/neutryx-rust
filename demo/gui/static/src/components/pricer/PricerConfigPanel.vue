@@ -44,15 +44,37 @@ const graphSaveFeedback = ref(false);
 const graphDetailLevel = ref<'operation' | 'scope'>('scope');
 
 async function saveGraph() {
-  const inst = store.selectedInstrument;
-  if (!inst) return;
   isSavingGraph.value = true;
   try {
-    const instrumentType = inst.instrumentType || inst.id || inst.type || '';
-    const instrumentName = inst.displayName || inst.name || instrumentType;
+    let instrumentType: string;
+    let instrumentName: string;
+    let params: Record<string, unknown>;
+
+    if (isInflation.value) {
+      instrumentType = 'InflationSwap';
+      instrumentName = `Inflation Swap (${jyStore.instrumentType})`;
+      const today = jyStore.startDate || new Date().toISOString().slice(0, 10);
+      const matDate = jyStore.maturityDate || today;
+      params = {
+        notional: jyStore.notional,
+        currency: 'USD',
+        startDate: today,
+        endDate: matDate,
+        fixedRate: jyStore.fixedRate,
+        inflationIndex: 'CPI',
+        inflationSwapType: jyStore.instrumentType === 'ZCIS' ? 'ZeroCoupon' : 'YearOnYear',
+      };
+    } else {
+      const inst = store.selectedInstrument;
+      if (!inst) return;
+      instrumentType = inst.instrumentType || inst.id || inst.type || '';
+      instrumentName = inst.displayName || inst.name || instrumentType;
+      params = { ...store.instrumentParams };
+    }
+
     const response = await fetchPricerGraph({
       instrumentType,
-      params: { ...store.instrumentParams },
+      params,
       detailLevel: graphDetailLevel.value,
     });
     marketEnv.publishPricerGraph(instrumentType, instrumentName, response, graphDetailLevel.value);
@@ -603,6 +625,17 @@ watch(
           @click="jyRunPricing"
         >
           Price
+        </v-btn>
+        <v-btn
+          variant="tonal"
+          size="small"
+          color="teal"
+          :disabled="isSavingGraph || graphSaveFeedback"
+          :loading="isSavingGraph"
+          :prepend-icon="graphSaveFeedback ? 'mdi-check' : 'mdi-graph-outline'"
+          @click="saveGraph"
+        >
+          {{ graphSaveFeedback ? 'Saved!' : 'Save Graph' }}
         </v-btn>
       </div>
     </div>

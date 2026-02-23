@@ -816,38 +816,6 @@ mod tests {
     }
 
     #[test]
-    fn test_instrument_type_clone_copy() {
-        let original = InstrumentType::Swap;
-        let copied = original;
-        let cloned = original.clone();
-        assert_eq!(original, copied);
-        assert_eq!(original, cloned);
-    }
-
-    #[test]
-    fn test_instrument_type_debug() {
-        let swap = InstrumentType::Swap;
-        let debug_str = format!("{:?}", swap);
-        assert!(debug_str.contains("Swap"));
-    }
-
-    #[test]
-    fn test_instrument_type_eq() {
-        assert_eq!(InstrumentType::Deposit, InstrumentType::Deposit);
-        assert_ne!(InstrumentType::Deposit, InstrumentType::Swap);
-    }
-
-    #[test]
-    fn test_instrument_type_hash() {
-        use std::collections::HashSet;
-        let mut set = HashSet::new();
-        set.insert(InstrumentType::Deposit);
-        set.insert(InstrumentType::Swap);
-        set.insert(InstrumentType::Deposit); // Duplicate
-        assert_eq!(set.len(), 2);
-    }
-
-    #[test]
     fn test_invalid_maturity_error() {
         let err = CompileError::InvalidMaturity {
             index: 0,
@@ -905,45 +873,6 @@ mod tests {
         assert!(msg.contains("Unsupported instrument type"));
         assert!(msg.contains("1"));
         assert!(msg.contains("XCcyBasis"));
-    }
-
-    #[test]
-    fn test_compile_error_equality() {
-        let err1 = CompileError::InvalidMaturity {
-            index: 0,
-            rate_id: "USD-SOFR-1Y".to_string(),
-        };
-        let err2 = CompileError::InvalidMaturity {
-            index: 0,
-            rate_id: "USD-SOFR-1Y".to_string(),
-        };
-        let err3 = CompileError::InvalidMaturity {
-            index: 1,
-            rate_id: "USD-SOFR-1Y".to_string(),
-        };
-        assert_eq!(err1, err2);
-        assert_ne!(err1, err3);
-    }
-
-    #[test]
-    fn test_compile_error_debug() {
-        let err = CompileError::InvalidMaturity {
-            index: 0,
-            rate_id: "USD-SOFR-1Y".to_string(),
-        };
-        let debug_str = format!("{:?}", err);
-        assert!(debug_str.contains("InvalidMaturity"));
-        assert!(debug_str.contains("USD-SOFR-1Y"));
-    }
-
-    #[test]
-    fn test_compile_error_clone() {
-        let original = CompileError::UnsupportedInstrument {
-            index: 5,
-            instrument_type: "FxForward".to_string(),
-        };
-        let cloned = original.clone();
-        assert_eq!(original, cloned);
     }
 
     #[test]

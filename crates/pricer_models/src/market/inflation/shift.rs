@@ -58,9 +58,7 @@ impl ShiftRange {
     /// Parallel shift — selects all grid points.
     #[inline]
     #[must_use]
-    pub fn all() -> Self {
-        Self::GE(0)
-    }
+    pub fn all() -> Self { Self::GE(0) }
 }
 
 // ─── ZeroRateShiftMode ──────────────────────────────────────────────

@@ -8,8 +8,8 @@
 //! Forward rate semantics: the rate at absolute month `m` represents the
 //! annualised inflation rate for the period `[m, m+1]`.
 
+use infra_domain::time::Date;
 use num_traits::Float;
-
 use pricer_core::math::{interpolation::CubicSpline, numeric::from_f64};
 
 use super::{
@@ -18,7 +18,6 @@ use super::{
     shift::{ShiftRange, ZeroRateShiftMode},
     MarketDataError,
 };
-use infra_domain::time::Date;
 
 // ─── Interpolation method ───────────────────────────────────────────
 
@@ -109,19 +108,18 @@ impl<T: Float> InflationCurveItp<T> {
             }
         }
 
-        let spline = if interpolation == InflationInterpolation::CubicSpline
-            && grid_months.len() >= 2
-        {
-            let xs: Vec<T> = grid_months.iter().map(|&m| from_f64(m as f64)).collect();
-            let ys = grid_rates.clone();
-            Some(CubicSpline::natural(&xs, &ys).map_err(|e| {
-                MarketDataError::InterpolationFailed {
-                    reason: format!("Cubic spline construction failed: {}", e),
-                }
-            })?)
-        } else {
-            None
-        };
+        let spline =
+            if interpolation == InflationInterpolation::CubicSpline && grid_months.len() >= 2 {
+                let xs: Vec<T> = grid_months.iter().map(|&m| from_f64(m as f64)).collect();
+                let ys = grid_rates.clone();
+                Some(CubicSpline::natural(&xs, &ys).map_err(|e| {
+                    MarketDataError::InterpolationFailed {
+                        reason: format!("Cubic spline construction failed: {}", e),
+                    }
+                })?)
+            } else {
+                None
+            };
 
         Ok(Self {
             grid_months,
@@ -136,24 +134,16 @@ impl<T: Float> InflationCurveItp<T> {
     }
 
     /// Returns the grid of absolute months.
-    pub fn grid_months(&self) -> &[i32] {
-        &self.grid_months
-    }
+    pub fn grid_months(&self) -> &[i32] { &self.grid_months }
 
     /// Returns the current grid of forward rates (possibly shifted).
-    pub fn grid_rates(&self) -> &[T] {
-        &self.grid_rates
-    }
+    pub fn grid_rates(&self) -> &[T] { &self.grid_rates }
 
     /// Returns a reference to the seasonal factor.
-    pub fn seasonal(&self) -> &InflationSeasonalFactor<T> {
-        &self.seasonal
-    }
+    pub fn seasonal(&self) -> &InflationSeasonalFactor<T> { &self.seasonal }
 
     /// Returns `true` if the curve is in a bumped state.
-    pub fn is_bumped(&self) -> bool {
-        self.org_rates.is_some()
-    }
+    pub fn is_bumped(&self) -> bool { self.org_rates.is_some() }
 
     // ── Interpolation ──────────────────────────────────────────────
 
@@ -254,8 +244,7 @@ impl<T: Float> InflationCurveItp<T> {
         }
 
         // Rebuild spline if needed
-        if self.interpolation == InflationInterpolation::CubicSpline
-            && self.grid_months.len() >= 2
+        if self.interpolation == InflationInterpolation::CubicSpline && self.grid_months.len() >= 2
         {
             let xs: Vec<T> = self
                 .grid_months
@@ -305,21 +294,16 @@ impl<T: Float> super::InflationCurve<T> for InflationCurveItp<T> {
         Ok(self.interpolate_rate(abs_month))
     }
 
-    fn base_index_value(&self) -> T {
-        self.base_index
-    }
+    fn base_index_value(&self) -> T { self.base_index }
 
-    fn reference_date(&self) -> Date {
-        self.reference_date
-    }
+    fn reference_date(&self) -> Date { self.reference_date }
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
-    use super::super::InflationCurve;
-    use super::*;
+    use super::{super::InflationCurve, *};
 
     fn sample_curve() -> InflationCurveItp<f64> {
         let ref_date = Date::from_ymd(2024, 1, 1).unwrap();
@@ -345,8 +329,8 @@ mod tests {
         let grid_months = vec![base_abs + 12, base_abs + 24, base_abs + 60, base_abs + 120];
         let grid_rates = vec![0.028, 0.026, 0.024, 0.022];
         let seasonal = InflationSeasonalFactor::new([
-            0.9982, 0.9996, 1.0028, 1.0028, 1.0025, 1.0010, 0.9990, 0.9992, 1.0000, 0.9995,
-            0.9972, 0.9982,
+            0.9982, 0.9996, 1.0028, 1.0028, 1.0025, 1.0010, 0.9990, 0.9992, 1.0000, 0.9995, 0.9972,
+            0.9982,
         ]);
         InflationCurveItp::new(
             grid_months,
@@ -424,10 +408,7 @@ mod tests {
     fn test_base_index_and_reference_date() {
         let curve = sample_curve();
         assert!((curve.base_index_value() - 300.0).abs() < 1e-15);
-        assert_eq!(
-            curve.reference_date(),
-            Date::from_ymd(2024, 1, 1).unwrap()
-        );
+        assert_eq!(curve.reference_date(), Date::from_ymd(2024, 1, 1).unwrap());
     }
 
     #[test]

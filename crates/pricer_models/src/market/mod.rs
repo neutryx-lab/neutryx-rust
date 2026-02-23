@@ -50,12 +50,12 @@ pub use curves::{
     ForwardRateDecomposition, Frequency, MarketInstrument, YieldCurve,
 };
 pub use fx::{BasisFxCurve, FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
+pub use inflation::{
+    absolute_month, InflationCurve, InflationCurveEnum, InflationCurveItp, InflationInterpolation,
+    InflationSeasonalFactor, ShiftRange,
+};
 pub use jumps::{
     build_forward_rate_shift_grid, convert_jump_pillars, convert_jump_pillars_to_tuples, JumpEntry,
-};
-pub use inflation::{
-    absolute_month, InflationCurve, InflationCurveEnum, InflationCurveItp,
-    InflationInterpolation, InflationSeasonalFactor, ShiftRange,
 };
 pub use vol::{VolSurface, VolSurfaceEnum, VolSurfaceError};
 

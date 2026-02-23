@@ -149,6 +149,25 @@ define_phantom_model! {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::process::{
+        stochastic::StochasticModel, test_macros::generate_stochastic_model_tests,
+    };
+
+    generate_stochastic_model_tests! {
+        model: CIRModel<f64>,
+        model_f32: CIRModel<f32>,
+        default_f64_params: CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap(),
+        default_f32_params: CIRParams::new(0.1_f32, 0.05, 0.05, 0.03).unwrap(),
+        model_name: "CIR",
+        brownian_dim: 1,
+        num_factors: 1,
+        zero_shock: [0.0],
+        positive_shock: [1.0],
+        negative_shock: [-1.0],
+        price_increased: |next: &SingleState<f64>, prev: &SingleState<f64>| next.0 > prev.0,
+        price_decreased: |next: &SingleState<f64>, prev: &SingleState<f64>| next.0 < prev.0,
+        state_finite_check: |s: &SingleState<f64>| s.0.is_finite(),
+    }
 
     #[test]
     fn test_cir_params_new_valid() {
@@ -228,63 +247,6 @@ mod tests {
     }
 
     #[test]
-    fn test_cir_model_new() {
-        let model: CIRModel<f64> = CIRModel::new();
-        assert_eq!(CIRModel::<f64>::model_name(), "CIR");
-        assert_eq!(CIRModel::<f64>::brownian_dim(), 1);
-        assert_eq!(CIRModel::<f64>::num_factors(), 1);
-        let _ = model; // Suppress unused warning
-    }
-
-    #[test]
-    fn test_cir_initial_state() {
-        let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
-        let state = CIRModel::initial_state(&params);
-        assert_eq!(state.0, 0.03);
-    }
-
-    #[test]
-    fn test_cir_evolve_step_no_shock() {
-        let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
-        let state = CIRModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let dw = [0.0];
-
-        let next_state = CIRModel::evolve_step(state, dt, &dw, &params);
-
-        // Drift: 0.1 * (0.05 - 0.03) * dt = 0.1 * 0.02 * dt = 0.002 * dt
-        // Rate should increase slightly towards long-term mean
-        assert!(next_state.0 > state.0);
-    }
-
-    #[test]
-    fn test_cir_evolve_step_positive_shock() {
-        let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
-        let state = CIRModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let dw = [1.0]; // Positive shock
-
-        let next_state = CIRModel::evolve_step(state, dt, &dw, &params);
-
-        // With positive shock, rate should increase
-        assert!(next_state.0 > state.0);
-    }
-
-    #[test]
-    fn test_cir_evolve_step_negative_shock() {
-        let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
-        let state = CIRModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let dw = [-1.0]; // Negative shock
-
-        let next_state = CIRModel::evolve_step(state, dt, &dw, &params);
-
-        // With negative shock, rate should decrease (but still positive due to Feller)
-        assert!(next_state.0 < state.0);
-        assert!(next_state.0 > 0.0);
-    }
-
-    #[test]
     fn test_cir_mean_reversion() {
         // Start above long-term mean, should trend down
         let params = CIRParams::new(0.5_f64, 0.03, 0.05, 0.08).unwrap();
@@ -312,42 +274,6 @@ mod tests {
 
         // Should remain positive (or at least floored at epsilon)
         assert!(next_state.0 > 0.0);
-    }
-
-    #[test]
-    fn test_cir_path_generation() {
-        let params = CIRParams::new(0.1_f64, 0.05, 0.03, 0.04).unwrap();
-        let mut state = CIRModel::initial_state(&params);
-        let dt = 1.0 / 252.0;
-        let n_steps = 252; // One year
-
-        // Generate path with zero shocks
-        for _ in 0..n_steps {
-            state = CIRModel::evolve_step(state, dt, &[0.0], &params);
-        }
-
-        // After one year, should be close to long-term mean
-        assert!(state.0.is_finite());
-        assert!(state.0 > 0.0);
-    }
-
-    #[test]
-    fn test_cir_is_differentiable() {
-        let model: CIRModel<f64> = CIRModel::new();
-        let _: &dyn Differentiable = &model;
-    }
-
-    #[test]
-    fn test_cir_f32_compatibility() {
-        let params = CIRParams::new(0.1_f32, 0.05, 0.05, 0.03).unwrap();
-        let state = CIRModel::initial_state(&params);
-        assert_eq!(state.0, 0.03_f32);
-
-        let dt = 1.0_f32 / 252.0;
-        let dw = [0.0_f32];
-        let next_state = CIRModel::evolve_step(state, dt, &dw, &params);
-        assert!(next_state.0.is_finite());
-        assert!(next_state.0 > 0.0_f32);
     }
 
     #[test]

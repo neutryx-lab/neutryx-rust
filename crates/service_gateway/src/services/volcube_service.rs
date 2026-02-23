@@ -15,14 +15,14 @@ use pricer_models::{
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        CalibrationMetadata, CalibrationParameters, CellDiagnostics, CellJacobian,
-        FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
-        ImpliedPdfRequest, ImpliedPdfResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
-        IrVolQuotesResponse, SabrSmileRequest, SmilePoint, SmileResponse, SwaptionInstrument,
-        VolSmileRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
-        VolcubeInstrumentsResponse, VolcubeModelsResponse, CapFloorCalibrateRequest,
+        CalibrationMetadata, CalibrationParameters, CapFloorCalibrateRequest,
         CapFloorCalibrateResponse, CapFloorCalibrationMethod, CapFloorInstrumentsResponse,
-        CapFloorQuote,
+        CapFloorQuote, CellDiagnostics, CellJacobian, FxVolCalibrateRequest, FxVolPair,
+        FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, ImpliedPdfRequest, ImpliedPdfResponse,
+        IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote, IrVolQuotesResponse, SabrSmileRequest,
+        SmilePoint, SmileResponse, SwaptionInstrument, VolSmileRequest, VolcubeCalibrateRequest,
+        VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
+        VolcubeModelsResponse,
     },
     services::helpers,
     state::AppState,
@@ -616,14 +616,11 @@ impl VolcubeService {
         currency: &str,
         _state: &Arc<AppState>,
     ) -> Result<CapFloorInstrumentsResponse, ServerError> {
-        let file_path = format!(
-            "demo/data/input/capfloor/{}.json",
-            currency.to_lowercase()
-        );
+        let file_path = format!("demo/data/input/capfloor/{}.json", currency.to_lowercase());
         let path = Path::new(&file_path);
 
-        let data: serde_json::Value =
-            helpers::load_json_value(path, "cap/floor vol data").map_err(|_| {
+        let data: serde_json::Value = helpers::load_json_value(path, "cap/floor vol data")
+            .map_err(|_| {
                 ServerError::NotFound(format!("Cap/floor data not found for: {currency}"))
             })?;
 
@@ -634,10 +631,7 @@ impl VolcubeService {
                 arr.iter()
                     .map(|q| CapFloorQuote {
                         maturity: json_str(q, "maturity"),
-                        market_vol: q
-                            .get("marketVol")
-                            .and_then(|v| v.as_f64())
-                            .unwrap_or(0.0),
+                        market_vol: q.get("marketVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
                         caplet_vol: None,
                         strike: q.get("strike").and_then(|v| v.as_f64()),
                     })
@@ -672,12 +666,9 @@ impl VolcubeService {
             request.index.to_lowercase()
         );
         let path = Path::new(&file_path);
-        let data: serde_json::Value =
-            helpers::load_json_value(path, "cap/floor vol data").map_err(|_| {
-                ServerError::NotFound(format!(
-                    "Cap/floor data not found for: {}",
-                    request.index
-                ))
+        let data: serde_json::Value = helpers::load_json_value(path, "cap/floor vol data")
+            .map_err(|_| {
+                ServerError::NotFound(format!("Cap/floor data not found for: {}", request.index))
             })?;
 
         let quotes = data
@@ -693,7 +684,8 @@ impl VolcubeService {
         }
 
         // Parse quotes into (maturity_label, maturity_years, cap_flat_vol_decimal).
-        // Vol values in the data file are percentage-scaled (e.g., 0.65 = 65bp = 0.0065).
+        // Vol values in the data file are percentage-scaled (e.g., 0.65 = 65bp =
+        // 0.0065).
         let mut parsed: Vec<(String, f64, f64)> = Vec::new();
         for q in &quotes {
             let maturity_str = q.get("maturity").and_then(|m| m.as_str()).unwrap_or("");
@@ -1620,7 +1612,8 @@ fn bootstrap_caplet_vols(quotes: &[(String, f64, f64)]) -> Vec<f64> {
     caplet_vols
 }
 
-/// Global caplet vol fit: bootstrap + smoothing + variance-preserving rescaling.
+/// Global caplet vol fit: bootstrap + smoothing + variance-preserving
+/// rescaling.
 ///
 /// 1. Start from bootstrap solution.
 /// 2. Smooth any negative-variance caplets by neighbour interpolation.

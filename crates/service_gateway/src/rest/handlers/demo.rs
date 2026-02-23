@@ -14,6 +14,7 @@ use crate::{
     rest::dto::{
         demo::{
             AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse,
+            CapFloorCalibrateRequest, CapFloorCalibrateResponse, CapFloorInstrumentsResponse,
             CommodityForwardCurveRequest, CommodityForwardCurveResponse, Convention,
             ConventionsResponse, CreditQuotesResponse, CurveIndicesResponse,
             CurveInstrumentsResponse, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
@@ -27,8 +28,7 @@ use crate::{
             RateInstrumentResponse, ResolveTenorRequest, ResolveTenorResponse, SabrSmileRequest,
             SmileResponse, TradeExpandRequest, VolSmileRequest, VolcubeCalibrateRequest,
             VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
-            VolcubeModelsResponse, CapFloorCalibrateRequest, CapFloorCalibrateResponse,
-            CapFloorInstrumentsResponse,
+            VolcubeModelsResponse,
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
         jy_inflation::{

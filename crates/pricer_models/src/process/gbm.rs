@@ -105,8 +105,9 @@ define_phantom_model! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::process::stochastic::StochasticModel;
-    use crate::process::test_macros::generate_stochastic_model_tests;
+    use crate::process::{
+        stochastic::StochasticModel, test_macros::generate_stochastic_model_tests,
+    };
 
     generate_stochastic_model_tests! {
         model: GBMModel<f64>,
@@ -151,7 +152,9 @@ mod tests {
 
     #[test]
     fn test_gbm_params_with_epsilon() {
-        let p = GBMParams::new(100.0_f64, 0.05, 0.2).unwrap().with_epsilon(1e-6);
+        let p = GBMParams::new(100.0_f64, 0.05, 0.2)
+            .unwrap()
+            .with_epsilon(1e-6);
         assert_eq!(p.smoothing_epsilon, 1e-6);
     }
 

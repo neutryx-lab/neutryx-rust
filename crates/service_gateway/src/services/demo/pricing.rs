@@ -1138,13 +1138,11 @@ fn build_domain_trade(
 
             // Determine reference bond maturity from tenor.
             let tenor_str = param_str("referenceBondTenor").unwrap_or("10Y");
-            let tenor: Tenor = tenor_str.parse().map_err(|e: String| {
-                ServerError::InvalidRequest(format!("Invalid tenor: {e}"))
-            })?;
-            let ref_bond_maturity = tenor.add_to_date(
-                settlement_date,
-                infra_domain::time::EndOfMonthRule::Adjust,
-            );
+            let tenor: Tenor = tenor_str
+                .parse()
+                .map_err(|e: String| ServerError::InvalidRequest(format!("Invalid tenor: {e}")))?;
+            let ref_bond_maturity =
+                tenor.add_to_date(settlement_date, infra_domain::time::EndOfMonthRule::Adjust);
 
             // Build and expand the reference Treasury bond.
             let bond = Bond {
@@ -1186,8 +1184,7 @@ fn build_domain_trade(
             let ref_leg = ref_trade.legs().next().ok_or_else(|| {
                 ServerError::Internal("TLock: expanded bond has no legs".to_string())
             })?;
-            let bond_cashflows: Vec<DomainCashflow> =
-                ref_leg.cashflows().cloned().collect();
+            let bond_cashflows: Vec<DomainCashflow> = ref_leg.cashflows().cloned().collect();
             let reference_leg = Leg::new(
                 bond_cashflows,
                 Direction::Receiver,
