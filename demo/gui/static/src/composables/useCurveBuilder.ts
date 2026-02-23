@@ -4,6 +4,7 @@
  */
 
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
+import { useMarketEnvStore } from '@/stores/marketEnv';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -240,6 +241,12 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
   // Map of curve name -> built curve_id (for discount curve references)
   const builtCurveIds = ref<Record<string, string>>({});
 
+  // Prerequisite curve overrides (user-selectable via dropdowns)
+  const discountCurveOverride = ref<string>('');
+  const domesticCurveOverride = ref<string>('');
+  const foreignCurveOverride = ref<string>('');
+  const referenceCurveOverride = ref<string>('');
+
   // Last-built settings -- used to detect "rebuild required"
   const lastBuiltSettings = ref<{
     calibrationMethod: string;
@@ -256,6 +263,19 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       rateIndex: c.rateIndex,
       curveType: c.curveType ?? 'rate',
     }));
+  });
+
+  // Available rate curves for prerequisite dropdowns (config + published/saved)
+  const availableRateCurves = computed(() => {
+    const marketEnv = useMarketEnvStore();
+    const items: Array<{ title: string; value: string }> = [];
+    for (const c of curveOptions.value.filter(o => o.curveType === 'rate')) {
+      items.push({ title: c.name, value: c.name });
+    }
+    for (const pc of marketEnv.curves) {
+      items.push({ title: `${pc.label} ✓`, value: `saved:${pc.id}` });
+    }
+    return items;
   });
 
   const enabledInstruments = computed(() =>
@@ -300,16 +320,6 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       { label: 'Interpolation', value: interpolationMethods.find(m => m.value === interpolation.value)?.label ?? interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
       { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
     ];
-
-    if (isCreditCurve.value) {
-      const recovery = selectedCurve.value?.recoveryRate ?? 0.40;
-      stats.push({ label: 'Recovery', value: `${(recovery * 100).toFixed(0)}%`, icon: 'fa-shield-alt', color: '#ef4444' });
-    }
-
-    if (isFxCurve.value && selectedCurve.value) {
-      stats.push({ label: 'Spot', value: (selectedCurve.value.spot ?? 0).toFixed(4), icon: 'fa-exchange-alt', color: '#06b6d4' });
-      stats.push({ label: 'Pair', value: selectedCurve.value.currencyPair ?? '-', icon: 'fa-coins', color: '#f97316' });
-    }
 
     if (isCommodityCurve.value && selectedCurve.value) {
       stats.push({ label: 'Commodity', value: selectedCurve.value.commodity ?? '-', icon: 'fa-oil-can', color: '#f97316' });
@@ -444,6 +454,18 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
           originalRate: rateInst.rate || 0,
           enabled: defaultEnabledIds.has(id),
         });
+      } else if (rateInst.type === 'cds') {
+        const tenor = rateInst.tenor || '';
+        const id = rateInst.id || buildInstrumentId(rateInst.type, tenor, currency);
+        displayInstruments.push({
+          id,
+          type: 'cds',
+          tenor,
+          tenorYears: rateInst.tenor_years || 0,
+          rate: rateInst.rate || 0,
+          originalRate: rateInst.rate || 0,
+          enabled: defaultEnabledIds.has(id),
+        });
       } else if (rateInst.type === 'xccy_basis') {
         const tenor = rateInst.tenor || '';
         const pair = rateData.value.currency_pair || '';
@@ -504,6 +526,12 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       calibrationMethod.value = normaliseCalibrationMethod(curve.calibrationMethod);
       interpolation.value = normaliseInterpolation(curve.interpolation);
       allowExtrapolation.value = curve.allowExtrapolation;
+
+      // Set prerequisite curve defaults from config
+      discountCurveOverride.value = curve.discountCurve || '';
+      domesticCurveOverride.value = curve.domesticCurve || '';
+      foreignCurveOverride.value = curve.foreignCurve || '';
+      referenceCurveOverride.value = curve.referenceCurve || '';
 
       // Commodity / inflation curves don't have rate data files — skip loading
       if (curve.curveType === 'commodity' || curve.curveType === 'inflation') {
@@ -575,18 +603,12 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
         }
       });
 
-      // For credit curves, ensure the discount curve is built first.
+      // For credit curves, resolve the discount curve from user selection.
       let discountCurveId: string | undefined;
-      if (selectedCurve.value.curveType === 'credit' && selectedCurve.value.discountCurve) {
-        const discountName = selectedCurve.value.discountCurve;
-        discountCurveId = builtCurveIds.value[discountName];
-
+      if (selectedCurve.value.curveType === 'credit' && discountCurveOverride.value) {
+        discountCurveId = await resolvePrereqCurveId(discountCurveOverride.value);
         if (!discountCurveId) {
-          // Auto-build the discount curve.
-          discountCurveId = await autoBuildDiscountCurve(discountName);
-          if (!discountCurveId) {
-            throw new Error(`Failed to auto-build discount curve "${discountName}" — please build it first.`);
-          }
+          throw new Error(`Failed to resolve discount curve "${discountCurveOverride.value}" — please build it first.`);
         }
       }
 
@@ -625,33 +647,24 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
         requestBody.spot = selectedCurve.value.spot;
         requestBody.fx_curve_method = selectedCurve.value.fxCurveMethod;
 
-        // For IRP method, auto-build domestic and foreign curves
+        // For IRP method, resolve domestic and foreign curves from user selection
         if (selectedCurve.value.fxCurveMethod === 'irp_generic') {
-          if (selectedCurve.value.domesticCurve) {
-            let domId: string | undefined = builtCurveIds.value[selectedCurve.value.domesticCurve];
-            if (!domId) {
-              domId = await autoBuildDiscountCurve(selectedCurve.value.domesticCurve);
-              if (!domId) throw new Error(`Failed to auto-build domestic curve "${selectedCurve.value.domesticCurve}"`);
-            }
+          if (domesticCurveOverride.value) {
+            const domId = await resolvePrereqCurveId(domesticCurveOverride.value);
+            if (!domId) throw new Error(`Failed to resolve domestic curve "${domesticCurveOverride.value}"`);
             requestBody.domestic_curve_id = domId;
           }
-          if (selectedCurve.value.foreignCurve) {
-            let forId: string | undefined = builtCurveIds.value[selectedCurve.value.foreignCurve];
-            if (!forId) {
-              forId = await autoBuildDiscountCurve(selectedCurve.value.foreignCurve);
-              if (!forId) throw new Error(`Failed to auto-build foreign curve "${selectedCurve.value.foreignCurve}"`);
-            }
+          if (foreignCurveOverride.value) {
+            const forId = await resolvePrereqCurveId(foreignCurveOverride.value);
+            if (!forId) throw new Error(`Failed to resolve foreign curve "${foreignCurveOverride.value}"`);
             requestBody.foreign_curve_id = forId;
           }
         }
 
-        // For IRP Basis method, auto-build reference curve
-        if (selectedCurve.value.fxCurveMethod === 'irp_basis' && selectedCurve.value.referenceCurve) {
-          let refId: string | undefined = builtCurveIds.value[selectedCurve.value.referenceCurve];
-          if (!refId) {
-            refId = await autoBuildDiscountCurve(selectedCurve.value.referenceCurve);
-            if (!refId) throw new Error(`Failed to auto-build reference curve "${selectedCurve.value.referenceCurve}"`);
-          }
+        // For IRP Basis method, resolve reference curve from user selection
+        if (selectedCurve.value.fxCurveMethod === 'irp_basis' && referenceCurveOverride.value) {
+          const refId = await resolvePrereqCurveId(referenceCurveOverride.value);
+          if (!refId) throw new Error(`Failed to resolve reference curve "${referenceCurveOverride.value}"`);
           requestBody.reference_curve_id = refId;
         }
       }
@@ -780,7 +793,25 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     }
   }
 
-  // ---------- Auto-build discount curve ----------
+  // ---------- Prerequisite curve resolution ----------
+
+  /**
+   * Resolve a prerequisite curve reference to a backend curve_id.
+   * Handles published (saved) curves, session-cached curves, and auto-build.
+   */
+  async function resolvePrereqCurveId(curveRef: string): Promise<string | undefined> {
+    // Published / saved curve — look up directly from marketEnv
+    if (curveRef.startsWith('saved:')) {
+      const pubId = curveRef.slice(6);
+      const pc = useMarketEnvStore().getCurve(pubId);
+      return pc?.buildResult?.curve_id;
+    }
+    // Session-cached curve
+    const cached = builtCurveIds.value[curveRef];
+    if (cached) return cached;
+    // Auto-build from config
+    return autoBuildDiscountCurve(curveRef);
+  }
 
   async function autoBuildDiscountCurve(curveName: string): Promise<string | undefined> {
     if (!curvesConfig.value) return undefined;
@@ -990,9 +1021,14 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
     interpolation,
     allowExtrapolation,
     lastBuiltSettings,
+    discountCurveOverride,
+    domesticCurveOverride,
+    foreignCurveOverride,
+    referenceCurveOverride,
 
     // Computed
     curveOptions,
+    availableRateCurves,
     enabledInstruments,
     hasChanges,
     isCreditCurve,

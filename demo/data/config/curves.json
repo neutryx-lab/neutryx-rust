@@ -260,6 +260,25 @@
       "allowExtrapolation": true
     },
     {
+      "name": "CDX-NA-HY",
+      "description": "CDX North America High Yield credit curve",
+      "rateIndex": "CDX-NA-HY",
+      "curveType": "credit",
+      "discountCurve": "USD-SOFR",
+      "recoveryRate": 0.40,
+      "instruments": [
+        "CDXHY-CDS-1Y",
+        "CDXHY-CDS-2Y",
+        "CDXHY-CDS-3Y",
+        "CDXHY-CDS-5Y",
+        "CDXHY-CDS-7Y",
+        "CDXHY-CDS-10Y"
+      ],
+      "calibrationMethod": "bootstrapping",
+      "interpolation": "loglinear",
+      "allowExtrapolation": true
+    },
+    {
       "name": "ITRAXX-EUROPE-IG",
       "description": "iTraxx Europe Investment Grade credit curve",
       "rateIndex": "ITRAXX-EUROPE-IG",
@@ -274,6 +293,25 @@
         "ITRAXX-CDS-5Y",
         "ITRAXX-CDS-7Y",
         "ITRAXX-CDS-10Y"
+      ],
+      "calibrationMethod": "bootstrapping",
+      "interpolation": "loglinear",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "ITRAXX-EUROPE-XOVER",
+      "description": "iTraxx Europe Crossover credit curve",
+      "rateIndex": "ITRAXX-EUROPE-XOVER",
+      "curveType": "credit",
+      "discountCurve": "EUR-ESTR",
+      "recoveryRate": 0.40,
+      "instruments": [
+        "ITRAXXO-CDS-1Y",
+        "ITRAXXO-CDS-2Y",
+        "ITRAXXO-CDS-3Y",
+        "ITRAXXO-CDS-5Y",
+        "ITRAXXO-CDS-7Y",
+        "ITRAXXO-CDS-10Y"
       ],
       "calibrationMethod": "bootstrapping",
       "interpolation": "loglinear",

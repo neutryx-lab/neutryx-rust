@@ -15,6 +15,7 @@ use pricer_models::process::{
     hull_white::{HullWhiteModel, HullWhiteParams},
     hw1f_analytical,
     stochastic::StochasticModel,
+    JarrowYildirimModel, JarrowYildirimParams, ZcisAnalyticalPricer,
 };
 use pricer_pricing::methods::tree::grid_cache::MfmGridCache;
 
@@ -55,11 +56,27 @@ pub struct ExoticTradeDef {
     pub grid_cache: MfmGridCache,
 }
 
+/// A zero-coupon inflation swap for analytical pricing under JY.
+#[derive(Debug, Clone)]
+pub struct InflationSwapDef {
+    /// Trade identifier.
+    pub trade_id: String,
+    /// Notional amount.
+    pub notional: f64,
+    /// Contractual fixed rate (annual).
+    pub fixed_rate: f64,
+    /// Swap maturity in years.
+    pub maturity: f64,
+    /// Base inflation index level I(0).
+    pub base_index: f64,
+}
+
 /// Discriminated union for the incremental trade.
 #[derive(Debug, Clone)]
 pub enum IncrementalTrade {
     Swap(VanillaSwapDef),
     Exotic(ExoticTradeDef),
+    InflationSwap(InflationSwapDef),
 }
 
 // ─── Portfolio ──────────────────────────────────────────────────────────────
@@ -71,11 +88,39 @@ pub struct IncrementalPortfolio {
     pub base_swaps: Vec<VanillaSwapDef>,
     /// Existing exotic trades.
     pub base_exotics: Vec<ExoticTradeDef>,
+    /// Existing inflation swaps.
+    pub base_inflation_swaps: Vec<InflationSwapDef>,
     /// The new trade being evaluated for incremental impact.
     pub incremental_trade: IncrementalTrade,
 }
 
 // ─── Configuration ──────────────────────────────────────────────────────────
+
+/// Optional JY 3-factor inflation configuration.
+///
+/// When present, the engine generates correlated (nominal, real, index) paths
+/// instead of HW1F-only paths. The nominal factor parameters come from the
+/// HW1F fields in [`IncrementalXvaConfig`]; this struct adds the real-rate
+/// and inflation-index factors.
+#[derive(Debug, Clone)]
+pub struct JyInflationConfig {
+    /// Real rate mean reversion speed.
+    pub real_mean_reversion: f64,
+    /// Real rate volatility.
+    pub real_volatility: f64,
+    /// Initial real short rate.
+    pub initial_real_rate: f64,
+    /// Inflation index volatility.
+    pub inflation_volatility: f64,
+    /// Initial inflation index level.
+    pub initial_index: f64,
+    /// Correlation: nominal–real.
+    pub rho_nominal_real: f64,
+    /// Correlation: nominal–inflation.
+    pub rho_nominal_inflation: f64,
+    /// Correlation: real–inflation.
+    pub rho_real_inflation: f64,
+}
 
 /// Configuration for the incremental XVA engine.
 #[derive(Debug, Clone)]
@@ -88,7 +133,7 @@ pub struct IncrementalXvaConfig {
     pub seed: Option<u64>,
     /// Use antithetic variates.
     pub antithetic: bool,
-    /// HW1F model parameters.
+    /// HW1F model parameters (= JY nominal rate parameters).
     pub hw_mean_reversion: f64,
     pub hw_volatility: f64,
     pub hw_initial_rate: f64,
@@ -101,6 +146,8 @@ pub struct IncrementalXvaConfig {
     /// Funding spreads.
     pub funding_spread_borrow: f64,
     pub funding_spread_lend: f64,
+    /// Optional JY 3-factor inflation extension.
+    pub jy_inflation: Option<JyInflationConfig>,
 }
 
 // ─── Results ────────────────────────────────────────────────────────────────
@@ -145,6 +192,17 @@ pub struct IncrementalXvaResult {
 
 // ─── Engine ─────────────────────────────────────────────────────────────────
 
+/// Multi-factor paths container. Nominal is always populated;
+/// real and index are only populated when JY inflation is active.
+struct MultiFactorPaths {
+    /// Nominal short-rate paths `[time][path]`.
+    nominal: Vec<Vec<f64>>,
+    /// Real short-rate paths `[time][path]` (empty if no JY config).
+    real: Vec<Vec<f64>>,
+    /// Inflation index paths `[time][path]` (empty if no JY config).
+    index: Vec<Vec<f64>>,
+}
+
 /// The incremental XVA engine.
 pub struct IncrementalXvaEngine;
 
@@ -158,6 +216,18 @@ impl IncrementalXvaEngine {
     ) -> Result<IncrementalXvaResult, XvaEngineError> {
         let start = Instant::now();
 
+        // ── Validate: inflation trades require JY config ──
+        let has_inflation = !portfolio.base_inflation_swaps.is_empty()
+            || matches!(
+                &portfolio.incremental_trade,
+                IncrementalTrade::InflationSwap(_)
+            );
+        if has_inflation && config.jy_inflation.is_none() {
+            return Err(XvaEngineError::ConfigError(
+                "JY inflation config required when portfolio contains inflation swaps".to_string(),
+            ));
+        }
+
         let n_times = config.time_grid.len();
         let n_paths_requested = config.n_paths;
 
@@ -168,8 +238,17 @@ impl IncrementalXvaEngine {
             n_paths_requested
         };
 
-        // ── 1. Generate HW1F short-rate paths ──
-        let rate_paths = Self::generate_hw1f_paths(config, n_paths_requested)?;
+        // ── 1. Generate paths ──
+        let paths = if let Some(jy_cfg) = &config.jy_inflation {
+            Self::generate_jy_paths(config, jy_cfg, n_paths_requested)?
+        } else {
+            let nominal = Self::generate_hw1f_paths(config, n_paths_requested)?;
+            MultiFactorPaths {
+                nominal,
+                real: vec![],
+                index: vec![],
+            }
+        };
 
         // ── 2. Build the model coupler ──
         let coupler = ModelCoupler::new(
@@ -179,9 +258,29 @@ impl IncrementalXvaEngine {
             config.hw_initial_rate,
         );
 
+        // ── Build JY params for inflation repricing (if needed) ──
+        let jy_params = config
+            .jy_inflation
+            .as_ref()
+            .map(|jy_cfg| {
+                JarrowYildirimParams::new(
+                    config.hw_mean_reversion,
+                    config.hw_volatility,
+                    config.hw_initial_rate,
+                    jy_cfg.real_mean_reversion,
+                    jy_cfg.real_volatility,
+                    jy_cfg.initial_real_rate,
+                    jy_cfg.inflation_volatility,
+                    jy_cfg.initial_index,
+                    jy_cfg.rho_nominal_real,
+                    jy_cfg.rho_nominal_inflation,
+                    jy_cfg.rho_real_inflation,
+                )
+                .map_err(|e| XvaEngineError::ConfigError(format!("Invalid JY params: {e}")))
+            })
+            .transpose()?;
+
         // ── 3. Compute MtM on each (time, path) ──
-        // base_mtm[t][p] = sum of all base trades
-        // incr_mtm[t][p] = incremental trade only
         let mut base_mtm = vec![vec![0.0_f64; n_paths]; n_times];
         let mut incr_mtm = vec![vec![0.0_f64; n_paths]; n_times];
 
@@ -193,7 +292,7 @@ impl IncrementalXvaEngine {
             let t = config.time_grid[t_idx];
 
             for p in 0..n_paths {
-                let r_t = rate_paths[t_idx][p];
+                let r_t = paths.nominal[t_idx][p];
 
                 // ── Base vanilla swaps (analytical) ──
                 let mut base_total = 0.0;
@@ -219,6 +318,26 @@ impl IncrementalXvaEngine {
                     base_total += exotic.notional * mtm;
                 }
 
+                // ── Base inflation swaps (analytical JY) ──
+                if let Some(ref jy_p) = jy_params {
+                    for infl in &portfolio.base_inflation_swaps {
+                        if t < infl.maturity {
+                            let mtm = ZcisAnalyticalPricer::price(
+                                jy_p,
+                                paths.nominal[t_idx][p],
+                                paths.real[t_idx][p],
+                                paths.index[t_idx][p],
+                                t,
+                                infl.maturity,
+                                infl.notional,
+                                infl.fixed_rate,
+                                infl.base_index,
+                            );
+                            base_total += mtm;
+                        }
+                    }
+                }
+
                 base_mtm[t_idx][p] = base_total;
 
                 // ── Incremental trade ──
@@ -238,6 +357,24 @@ impl IncrementalXvaEngine {
                         let slice_idx = exotic.grid_cache.find_closest_slice(t).unwrap_or(0);
                         let mtm = coupler.lookup_exotic_mtm(t, r_t, &exotic.grid_cache, slice_idx);
                         exotic.notional * mtm
+                    }
+                    IncrementalTrade::InflationSwap(infl) => {
+                        if t < infl.maturity {
+                            let jy_p = jy_params.as_ref().unwrap(); // validated above
+                            ZcisAnalyticalPricer::price(
+                                jy_p,
+                                paths.nominal[t_idx][p],
+                                paths.real[t_idx][p],
+                                paths.index[t_idx][p],
+                                t,
+                                infl.maturity,
+                                infl.notional,
+                                infl.fixed_rate,
+                                infl.base_index,
+                            )
+                        } else {
+                            0.0
+                        }
                     }
                 };
 
@@ -409,6 +546,115 @@ impl IncrementalXvaEngine {
         Ok(rate_paths)
     }
 
+    /// Generate correlated 3-factor JY paths (nominal, real, index).
+    ///
+    /// The nominal factor uses HW1F SDE (identical to standalone HW1F paths),
+    /// real uses a second HW1F SDE, and the index is lognormal with
+    /// drift = nominal − real.
+    fn generate_jy_paths(
+        config: &IncrementalXvaConfig,
+        jy_cfg: &JyInflationConfig,
+        n_paths_base: usize,
+    ) -> Result<MultiFactorPaths, XvaEngineError> {
+        let n_times = config.time_grid.len();
+        if n_times == 0 {
+            return Err(XvaEngineError::InvalidTimeGrid(
+                "Time grid must not be empty".to_string(),
+            ));
+        }
+
+        let n_paths = if config.antithetic {
+            n_paths_base * 2
+        } else {
+            n_paths_base
+        };
+
+        let jy_params = JarrowYildirimParams::new(
+            config.hw_mean_reversion,
+            config.hw_volatility,
+            config.hw_initial_rate,
+            jy_cfg.real_mean_reversion,
+            jy_cfg.real_volatility,
+            jy_cfg.initial_real_rate,
+            jy_cfg.inflation_volatility,
+            jy_cfg.initial_index,
+            jy_cfg.rho_nominal_real,
+            jy_cfg.rho_nominal_inflation,
+            jy_cfg.rho_real_inflation,
+        )
+        .map_err(|e| XvaEngineError::ConfigError(format!("Invalid JY params: {e}")))?;
+
+        let mut nominal = vec![vec![0.0_f64; n_paths]; n_times];
+        let mut real = vec![vec![0.0_f64; n_paths]; n_times];
+        let mut index = vec![vec![0.0_f64; n_paths]; n_times];
+
+        let seed = config.seed.unwrap_or(42);
+        let mut rng_state = seed;
+
+        // Forward paths
+        for p in 0..n_paths_base {
+            let mut state = JarrowYildirimModel::initial_state(&jy_params);
+            let mut prev_time = 0.0;
+            let mut params = jy_params.clone();
+
+            for t_idx in 0..n_times {
+                let t = config.time_grid[t_idx];
+                let dt = t - prev_time;
+
+                if dt > 0.0 {
+                    let z1 = next_normal(&mut rng_state);
+                    let z2 = next_normal(&mut rng_state);
+                    let z3 = next_normal(&mut rng_state);
+                    let dw = [z1, z2, z3];
+                    params.current_time = prev_time;
+                    state = JarrowYildirimModel::evolve_step(state, dt, &dw, &params);
+                }
+
+                nominal[t_idx][p] = state.first;
+                real[t_idx][p] = state.second;
+                index[t_idx][p] = state.third;
+                prev_time = t;
+            }
+        }
+
+        // Antithetic paths
+        if config.antithetic {
+            rng_state = seed; // Reset to same seed
+
+            for p in 0..n_paths_base {
+                let anti_p = n_paths_base + p;
+                let mut state = JarrowYildirimModel::initial_state(&jy_params);
+                let mut prev_time = 0.0;
+                let mut params = jy_params.clone();
+
+                for t_idx in 0..n_times {
+                    let t = config.time_grid[t_idx];
+                    let dt = t - prev_time;
+
+                    if dt > 0.0 {
+                        let z1 = next_normal(&mut rng_state);
+                        let z2 = next_normal(&mut rng_state);
+                        let z3 = next_normal(&mut rng_state);
+                        let dw = [-z1, -z2, -z3]; // Antithetic: negate all
+                        params.current_time = prev_time;
+                        state = JarrowYildirimModel::evolve_step(state, dt, &dw, &params);
+                    }
+
+                    nominal[t_idx][anti_p] = state.first;
+                    real[t_idx][anti_p] = state.second;
+                    index[t_idx][anti_p] = state.third;
+                    prev_time = t;
+                }
+            }
+        }
+
+        Ok(MultiFactorPaths {
+            nominal,
+            real,
+            index,
+        })
+    }
+
     // ── Exposure profile computation ────────────────────────────────────
 
     /// Compute Expected Positive Exposure: EPE(t) = E[max(V(t), 0)].
@@ -541,6 +787,30 @@ mod tests {
             compute_fva: true,
             funding_spread_borrow: 0.005,
             funding_spread_lend: 0.003,
+            jy_inflation: None,
+        }
+    }
+
+    fn make_jy_config() -> JyInflationConfig {
+        JyInflationConfig {
+            real_mean_reversion: 0.02,
+            real_volatility: 0.008,
+            initial_real_rate: 0.01,
+            inflation_volatility: 0.02,
+            initial_index: 100.0,
+            rho_nominal_real: 0.5,
+            rho_nominal_inflation: -0.2,
+            rho_real_inflation: -0.3,
+        }
+    }
+
+    fn make_inflation_swap(fixed_rate: f64, notional: f64) -> InflationSwapDef {
+        InflationSwapDef {
+            trade_id: "ZCIS_TEST".to_string(),
+            notional,
+            fixed_rate,
+            maturity: 5.0,
+            base_index: 100.0,
         }
     }
 
@@ -590,6 +860,7 @@ mod tests {
         let portfolio = IncrementalPortfolio {
             base_swaps: vec![make_payer_swap(0.03, 1_000_000.0)],
             base_exotics: vec![],
+            base_inflation_swaps: vec![],
             incremental_trade: IncrementalTrade::Swap(make_receiver_swap(0.03, 500_000.0)),
         };
 
@@ -619,6 +890,7 @@ mod tests {
                 notional: 1.0, // Grid already has notional baked in
                 grid_cache: make_exotic_cache(),
             }],
+            base_inflation_swaps: vec![],
             incremental_trade: IncrementalTrade::Exotic(ExoticTradeDef {
                 trade_id: "TARN_1".to_string(),
                 notional: 1.0,
@@ -642,6 +914,7 @@ mod tests {
         let portfolio = IncrementalPortfolio {
             base_swaps: vec![make_payer_swap(0.03, 1_000_000.0)],
             base_exotics: vec![],
+            base_inflation_swaps: vec![],
             incremental_trade: IncrementalTrade::Swap(make_payer_swap(0.035, 500_000.0)),
         };
 
@@ -666,6 +939,7 @@ mod tests {
         let portfolio = IncrementalPortfolio {
             base_swaps: vec![],
             base_exotics: vec![],
+            base_inflation_swaps: vec![],
             incremental_trade: IncrementalTrade::Swap(make_payer_swap(0.03, 1_000_000.0)),
         };
 
@@ -681,6 +955,81 @@ mod tests {
         // Full = incremental when base is empty
         let diff = (result.full_xva.total - result.incremental_xva.total).abs();
         assert!(diff < 1e-10);
+    }
+
+    #[test]
+    fn inflation_swap_only_portfolio() {
+        let mut config = make_config(1000);
+        config.jy_inflation = Some(make_jy_config());
+
+        let portfolio = IncrementalPortfolio {
+            base_swaps: vec![],
+            base_exotics: vec![],
+            base_inflation_swaps: vec![],
+            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(
+                0.02,
+                1_000_000.0,
+            )),
+        };
+
+        let credit = CreditParams::new(0.02, 0.6).unwrap();
+        let own = OwnCreditParams::new(0.01, 0.4).unwrap();
+
+        let result = IncrementalXvaEngine::run(&config, &portfolio, &credit, &own).unwrap();
+
+        assert_eq!(result.time_grid.len(), 8);
+        assert!(result.n_paths > 0);
+        assert!(result.full_xva.bcva.is_finite());
+        assert!(result.incremental_xva.total.is_finite());
+
+        // Base is empty so full = incremental
+        let diff = (result.full_xva.total - result.incremental_xva.total).abs();
+        assert!(diff < 1e-10);
+    }
+
+    #[test]
+    fn mixed_portfolio_with_inflation() {
+        let mut config = make_config(500);
+        config.jy_inflation = Some(make_jy_config());
+
+        let portfolio = IncrementalPortfolio {
+            base_swaps: vec![make_payer_swap(0.03, 1_000_000.0)],
+            base_exotics: vec![],
+            base_inflation_swaps: vec![make_inflation_swap(0.02, 500_000.0)],
+            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(
+                0.025, 500_000.0,
+            )),
+        };
+
+        let credit = CreditParams::new(0.02, 0.6).unwrap();
+        let own = OwnCreditParams::new(0.01, 0.4).unwrap();
+
+        let result = IncrementalXvaEngine::run(&config, &portfolio, &credit, &own).unwrap();
+
+        assert!(result.base_xva.bcva.is_finite());
+        assert!(result.full_xva.bcva.is_finite());
+        assert!(result.incremental_xva.total.is_finite());
+    }
+
+    #[test]
+    fn inflation_without_jy_config_errors() {
+        let config = make_config(100); // jy_inflation = None
+
+        let portfolio = IncrementalPortfolio {
+            base_swaps: vec![],
+            base_exotics: vec![],
+            base_inflation_swaps: vec![],
+            incremental_trade: IncrementalTrade::InflationSwap(make_inflation_swap(
+                0.02,
+                1_000_000.0,
+            )),
+        };
+
+        let credit = CreditParams::new(0.02, 0.6).unwrap();
+        let own = OwnCreditParams::new(0.01, 0.4).unwrap();
+
+        let result = IncrementalXvaEngine::run(&config, &portfolio, &credit, &own);
+        assert!(result.is_err());
     }
 
     #[test]

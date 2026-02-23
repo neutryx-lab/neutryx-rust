@@ -71,15 +71,6 @@ function getFieldError(fieldName: string): string | undefined {
   return store.validationErrors.find((e) => e.field === fieldName)?.message;
 }
 
-const assetTabIcons: Record<string, string> = {
-  Rates: 'mdi-chart-line',
-  FX: 'mdi-swap-horizontal',
-  Equity: 'mdi-trending-up',
-  Credit: 'mdi-shield-half-full',
-  Commodity: 'mdi-barrel',
-  Inflation: 'mdi-chart-bar',
-};
-
 const instrumentItems = computed(() =>
   store.filteredInstruments.map((inst) => ({
     label: inst.displayName || inst.name || inst.instrumentType || '',
@@ -241,24 +232,6 @@ watch(
       <div class="config-grid">
         <!-- ═══ TRADE ═══ -->
         <div class="section-header">Trade</div>
-
-        <!-- Asset Class Tabs -->
-        <div class="grid-span">
-          <div class="flex gap-1 mb-1 p-0.5 rounded-lg bg-[var(--surface)]">
-            <button
-              v-for="tab in store.assetClasses"
-              :key="tab"
-              class="flex-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all flex items-center justify-center gap-1"
-              :class="store.assetTab === tab
-                ? 'bg-[var(--primary)] text-white shadow-sm'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'"
-              @click="store.assetTab = tab"
-            >
-              <v-icon :icon="assetTabIcons[tab] || 'mdi-tag'" size="12" />
-              {{ tab }}
-            </button>
-          </div>
-        </div>
 
         <!-- Standard instrument fields -->
         <template v-if="!isInflation">
@@ -603,23 +576,23 @@ watch(
       </div>
 
       <!-- ═══ INFLATION ACTIONS ═══ -->
-      <div v-else class="d-flex flex-column mt-3" style="gap: 6px">
+      <div v-else class="d-flex mt-3" style="gap: 6px">
         <v-btn
           variant="tonal"
           size="small"
           :disabled="jyStore.loading"
           :loading="jyStore.loading"
-          prepend-icon="mdi-cogs"
+          prepend-icon="mdi-arrow-expand-all"
           @click="jyGenerateCashflows"
         >
-          Cashflows
+          Expand
         </v-btn>
         <v-btn
           color="primary"
           size="small"
           :disabled="jyStore.loading"
           :loading="jyStore.loading"
-          prepend-icon="mdi-calculator"
+          prepend-icon="mdi-play"
           @click="jyRunPricing"
         >
           Price
@@ -627,7 +600,7 @@ watch(
         <v-btn
           variant="tonal"
           size="small"
-          color="secondary"
+          color="teal"
           :disabled="jyStore.loading"
           :loading="jyStore.loading"
           prepend-icon="mdi-shield-half-full"

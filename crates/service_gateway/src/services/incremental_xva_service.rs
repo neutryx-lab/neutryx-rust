@@ -11,7 +11,7 @@ use pricer_risk::{
     xva_engine::{
         incremental::{
             ExoticTradeDef, IncrementalPortfolio, IncrementalTrade, IncrementalXvaConfig,
-            IncrementalXvaEngine, VanillaSwapDef,
+            IncrementalXvaEngine, InflationSwapDef, JyInflationConfig, VanillaSwapDef,
         },
         model_coupler::CouplingMethod,
     },
@@ -21,7 +21,8 @@ use crate::{
     error::ServerError,
     rest::dto::incremental_xva::{
         ExoticDefinitionDto, IncrementalTradeDto, IncrementalXvaDefaultConfig,
-        IncrementalXvaRequest, IncrementalXvaResponse, SwapDefinitionDto, XvaMetricsDto,
+        IncrementalXvaRequest, IncrementalXvaResponse, InflationSwapDefinitionDto,
+        SwapDefinitionDto, XvaMetricsDto,
     },
 };
 
@@ -137,8 +138,17 @@ impl IncrementalXvaService {
             coupling_method: "swap_rate".to_string(),
             hazard_rate: 0.02,
             lgd: 0.6,
+            jy_real_mean_reversion: Some(0.03),
+            jy_real_volatility: Some(0.005),
+            jy_initial_real_rate: Some(0.01),
+            jy_inflation_volatility: Some(0.02),
+            jy_initial_index: Some(100.0),
+            jy_rho_nominal_real: Some(0.3),
+            jy_rho_nominal_inflation: Some(-0.1),
+            jy_rho_real_inflation: Some(-0.2),
             base_swaps,
             base_exotics,
+            base_inflation_swaps: vec![],
             incremental_trade,
         })
     }
@@ -165,6 +175,18 @@ impl IncrementalXvaService {
             },
         };
 
+        // ── JY inflation config (optional) ──
+        let jy_inflation = request.jy_real_mean_reversion.map(|a_r| JyInflationConfig {
+            real_mean_reversion: a_r,
+            real_volatility: request.jy_real_volatility.unwrap_or(0.005),
+            initial_real_rate: request.jy_initial_real_rate.unwrap_or(0.01),
+            inflation_volatility: request.jy_inflation_volatility.unwrap_or(0.02),
+            initial_index: request.jy_initial_index.unwrap_or(100.0),
+            rho_nominal_real: request.jy_rho_nominal_real.unwrap_or(0.3),
+            rho_nominal_inflation: request.jy_rho_nominal_inflation.unwrap_or(-0.1),
+            rho_real_inflation: request.jy_rho_real_inflation.unwrap_or(-0.2),
+        });
+
         let config = IncrementalXvaConfig {
             n_paths,
             time_grid: time_grid.clone(),
@@ -178,6 +200,7 @@ impl IncrementalXvaService {
             compute_fva,
             funding_spread_borrow: request.funding_spread.unwrap_or(0.005),
             funding_spread_lend: request.funding_spread.unwrap_or(0.005) * 0.6,
+            jy_inflation,
         };
 
         // ── Build base vanilla swaps ──
@@ -194,17 +217,28 @@ impl IncrementalXvaService {
             .map(|dto| Self::build_exotic_def(dto))
             .collect::<Result<Vec<_>, _>>()?;
 
+        // ── Build base inflation swaps ──
+        let base_inflation_swaps: Vec<InflationSwapDef> = request
+            .base_inflation_swaps
+            .iter()
+            .map(|dto| Self::build_inflation_swap_def(dto))
+            .collect();
+
         // ── Build incremental trade ──
         let incremental_trade = match &request.incremental_trade {
             IncrementalTradeDto::Swap(dto) => IncrementalTrade::Swap(Self::build_swap_def(dto)),
             IncrementalTradeDto::Exotic(dto) => {
                 IncrementalTrade::Exotic(Self::build_exotic_def(dto)?)
             }
+            IncrementalTradeDto::InflationSwap(dto) => {
+                IncrementalTrade::InflationSwap(Self::build_inflation_swap_def(dto))
+            }
         };
 
         let portfolio = IncrementalPortfolio {
             base_swaps,
             base_exotics,
+            base_inflation_swaps,
             incremental_trade,
         };
 
@@ -271,6 +305,16 @@ impl IncrementalXvaService {
             fixed_rate: dto.fixed_rate,
             payment_times,
             is_payer: dto.is_payer,
+        }
+    }
+
+    fn build_inflation_swap_def(dto: &InflationSwapDefinitionDto) -> InflationSwapDef {
+        InflationSwapDef {
+            trade_id: dto.trade_id.clone(),
+            notional: dto.notional,
+            fixed_rate: dto.fixed_rate,
+            maturity: dto.maturity_years,
+            base_index: dto.base_index,
         }
     }
 

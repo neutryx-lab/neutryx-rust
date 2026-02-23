@@ -12,6 +12,8 @@ import { usePricerStore } from '@/stores/pricer';
 import { useInstruments } from '@/composables/useInstruments';
 import { usePricer } from '@/composables/usePricer';
 
+import AssetTabBar from '@/components/common/AssetTabBar.vue';
+import type { TabItem } from '@/components/common/AssetTabBar.vue';
 import PricerSummaryBar from '@/components/pricer/PricerSummaryBar.vue';
 import PricerConfigPanel from '@/components/pricer/PricerConfigPanel.vue';
 import PricerResultsPanel from '@/components/pricer/PricerResultsPanel.vue';
@@ -30,6 +32,23 @@ usePricer();
 const jyStore = useJyInflationStore();
 const isInflation = computed(() => store.assetTab === 'Inflation');
 
+const assetTabIcons: Record<string, string> = {
+  Rates: 'fa-chart-line',
+  FX: 'fa-exchange-alt',
+  Equity: 'fa-arrow-trend-up',
+  Credit: 'fa-shield-halved',
+  Commodity: 'fa-oil-can',
+  Inflation: 'fa-chart-bar',
+};
+
+const assetTabs = computed<TabItem[]>(() =>
+  store.assetClasses.map((cls) => ({
+    key: cls,
+    label: cls,
+    icon: assetTabIcons[cls],
+  })),
+);
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -42,6 +61,9 @@ onMounted(() => {
   <div class="pricer-view">
     <!-- Summary Bar -->
     <PricerSummaryBar />
+
+    <!-- Asset Class Tabs -->
+    <AssetTabBar v-model="store.assetTab" :tabs="assetTabs" class="mb-6" />
 
     <!-- API Not Available Fallback -->
     <v-alert v-if="!store.apiAvailable" type="info" variant="tonal" class="mb-6">
@@ -62,7 +84,7 @@ onMounted(() => {
             <CashflowTable />
           </template>
           <template v-else>
-            <JyInstrumentPanel class="jy-cashflow-panel" />
+            <JyInstrumentPanel />
           </template>
         </v-col>
       </v-row>
@@ -84,9 +106,3 @@ onMounted(() => {
     </template>
   </div>
 </template>
-
-<style scoped>
-.jy-cashflow-panel :deep(.input-field) {
-  font-size: 0.8rem;
-}
-</style>

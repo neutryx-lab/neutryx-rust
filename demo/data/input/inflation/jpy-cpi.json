@@ -1,0 +1,71 @@
+{
+  "curve_id": "jpy-cpi",
+  "currency": "JPY",
+  "country": "JP",
+  "reference_date": "TODAY",
+  "inflation_index": "CPI",
+  "lag_months": 3,
+  "description": "JPY CPI-linked real yield curve (JGBi)",
+  "instruments": [
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "jgbi",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": -0.005,
+      "coupon_rate": 0.001,
+      "frequency": "semi_annual",
+      "description": "2Y JGBi real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "jgbi",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": -0.002,
+      "coupon_rate": 0.001,
+      "frequency": "semi_annual",
+      "description": "5Y JGBi real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "jgbi",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.003,
+      "coupon_rate": 0.001,
+      "frequency": "semi_annual",
+      "description": "10Y JGBi real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "jgbi",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.008,
+      "coupon_rate": 0.002,
+      "frequency": "semi_annual",
+      "description": "20Y JGBi real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "jgbi",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.010,
+      "coupon_rate": 0.004,
+      "frequency": "semi_annual",
+      "description": "30Y JGBi real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "jgbi",
+      "tenor": "40Y",
+      "tenor_years": 40.0,
+      "rate": 0.012,
+      "coupon_rate": 0.004,
+      "frequency": "semi_annual",
+      "description": "40Y JGBi real yield"
+    }
+  ]
+}

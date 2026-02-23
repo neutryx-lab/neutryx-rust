@@ -145,6 +145,8 @@ const selectedIrVolId = ref<string | null>(null);
 const selectedFxVolId = ref<string | null>(null);
 const selectedEventId = ref<string | null>(null);
 const selectedHolidayId = ref<string | null>(null);
+const selectedInflationIdx = ref<number | null>(null);
+const inflationFilter = ref('');
 const currencyFilter = ref('');
 const sortColumn = ref('tenor');
 const sortDirection = ref<'asc' | 'desc'>('asc');
@@ -315,6 +317,63 @@ const filteredHolidays = computed(() => {
   });
 });
 
+// Inflation index filter options (e.g. "USD CPI-U", "GBP RPI")
+const inflationIndexOptions = computed(() => {
+  return jyStore.inflationIndices.map(idx => `${idx.currency} ${idx.inflationIndex}`);
+});
+
+// All inflation instruments flattened with index metadata
+interface InflationRow {
+  id: string;
+  curveId: string;
+  currency: string;
+  inflationIndex: string;
+  indexLabel: string;
+  instrumentType: string;
+  tenor: string;
+  rate: number;
+  referenceDate: string;
+  lagMonths: number;
+  description: string;
+}
+
+const allInflationRows = computed<InflationRow[]>(() => {
+  const rows: InflationRow[] = [];
+  for (const idx of jyStore.inflationIndices) {
+    const label = `${idx.currency} ${idx.inflationIndex}`;
+    for (const [i, instr] of idx.instruments.entries()) {
+      rows.push({
+        id: `${idx.curveId}-${i}`,
+        curveId: idx.curveId,
+        currency: idx.currency,
+        inflationIndex: idx.inflationIndex,
+        indexLabel: label,
+        instrumentType: instr.instrumentType,
+        tenor: instr.tenor,
+        rate: instr.rate,
+        referenceDate: idx.referenceDate,
+        lagMonths: idx.lagMonths,
+        description: idx.description,
+      });
+    }
+  }
+  return rows;
+});
+
+const filteredInflationRows = computed(() => {
+  let result = allInflationRows.value;
+  if (inflationFilter.value) {
+    result = result.filter(r => r.indexLabel === inflationFilter.value);
+  }
+  return result;
+});
+
+const selectedInflationRow = computed(() =>
+  selectedInflationIdx.value !== null
+    ? filteredInflationRows.value[selectedInflationIdx.value] ?? null
+    : null
+);
+
 const summaryStats = computed(() => {
   if (assetClass.value === 'Bond') {
     return [
@@ -366,10 +425,10 @@ const summaryStats = computed(() => {
   }
   if (assetClass.value === 'Inflation') {
     return [
-      { label: 'Nominal Rates', value: jyStore.nominalRates.length, icon: 'fa-chart-line', color: '#3b82f6' },
-      { label: 'Real Rates (TIPS)', value: jyStore.realRates.length, icon: 'fa-chart-area', color: '#10b981' },
-      { label: 'Index', value: jyStore.inflationIndex || '-', icon: 'fa-balance-scale', color: '#f59e0b' },
-      { label: 'Source', value: jyStore.marketDataLoaded ? 'File' : 'Loading...', icon: 'fa-database', color: '#8b5cf6' },
+      { label: 'Instruments', value: allInflationRows.value.length, icon: 'fa-chart-area', color: '#10b981' },
+      { label: 'Indices', value: jyStore.inflationIndices.length, icon: 'fa-balance-scale', color: '#f59e0b' },
+      { label: 'Displayed', value: filteredInflationRows.value.length, icon: 'fa-eye', color: '#8b5cf6' },
+      { label: 'Status', value: jyStore.marketDataLoaded ? 'Live' : 'Loading...', icon: 'fa-signal', color: '#10b981' },
     ];
   }
   return [
@@ -745,6 +804,7 @@ async function refresh() {
   else if (assetClass.value === 'Credit') await loadCreditData();
   else if (assetClass.value === 'Events') await loadEventsData();
   else if (assetClass.value === 'Holidays') await loadHolidaysData();
+  else if (assetClass.value === 'Inflation') await jyStore.refreshMarketData();
   else await loadRates();
 }
 
@@ -811,19 +871,6 @@ async function exportData(format: 'csv' | 'json') {
   }
 }
 
-// Inflation rate helpers
-function addNominalRate() {
-  jyStore.nominalRates.push({ instrumentType: 'OIS', tenor: '', rate: 0.04 });
-}
-function removeNominalRate(index: number) {
-  jyStore.nominalRates.splice(index, 1);
-}
-function addRealRate() {
-  jyStore.realRates.push({ instrumentType: 'TIPS', tenor: '', rate: 0.01 });
-}
-function removeRealRate(index: number) {
-  jyStore.realRates.splice(index, 1);
-}
 
 // Watch asset class changes
 watch(assetClass, (newClass) => {
@@ -834,6 +881,8 @@ watch(assetClass, (newClass) => {
   selectedFxVolId.value = null;
   selectedEventId.value = null;
   selectedHolidayId.value = null;
+  selectedInflationIdx.value = null;
+  inflationFilter.value = '';
   currencyFilter.value = '';
   if (newClass === 'Bond' && bondQuotes.value.length === 0) loadBondData();
   else if (newClass === 'Credit' && creditQuotes.value.length === 0) loadCreditData();
@@ -933,6 +982,15 @@ onMounted(() => {
         >
           <option value="">All Currencies</option>
           <option v-for="ccy in holidayCurrencies" :key="ccy" :value="ccy">{{ ccy }}</option>
+        </select>
+        <!-- Index filter for Inflation -->
+        <select
+          v-if="assetClass === 'Inflation'"
+          v-model="inflationFilter"
+          class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        >
+          <option value="">All Indices</option>
+          <option v-for="opt in inflationIndexOptions" :key="opt" :value="opt">{{ opt }}</option>
         </select>
         <button
           class="px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
@@ -1293,90 +1351,38 @@ onMounted(() => {
             </div>
           </template>
 
-          <!-- Inflation Table -->
+          <!-- Inflation Table (multi-index, clickable rows) -->
           <template v-else-if="assetClass === 'Inflation'">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <!-- Nominal Rates -->
-              <div>
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                    <i class="fas fa-table text-blue-500"></i>
-                    Nominal Rates (Deposit / OIS)
-                  </h4>
-                  <button class="text-xs text-[var(--primary)] hover:underline" @click="addNominalRate">+ Add</button>
-                </div>
-                <div class="overflow-auto max-h-96">
-                  <table class="w-full text-sm">
-                    <thead>
-                      <tr class="border-b border-[var(--glass-border)]">
-                        <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                        <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
-                        <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
-                        <th class="py-2 px-1"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(pt, i) in jyStore.nominalRates" :key="'nom-'+i" class="border-b border-[var(--glass-border)] border-opacity-50">
-                        <td class="py-1.5 px-2">
-                          <input v-model="pt.instrumentType" class="w-20 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-                        </td>
-                        <td class="py-1.5 px-2">
-                          <input v-model="pt.tenor" class="w-16 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-                        </td>
-                        <td class="py-1.5 px-2 text-right">
-                          <input v-model.number="pt.rate" type="number" step="0.001" class="w-20 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)] text-right" />
-                        </td>
-                        <td class="py-1.5 px-1">
-                          <button class="text-[var(--text-muted)] hover:text-red-500 text-xs" @click="removeNominalRate(i)">
-                            <i class="fas fa-times"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- Real Rates -->
-              <div>
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                    <i class="fas fa-table text-green-500"></i>
-                    Real Rates (TIPS Yields)
-                  </h4>
-                  <button class="text-xs text-[var(--primary)] hover:underline" @click="addRealRate">+ Add</button>
-                </div>
-                <div class="overflow-auto max-h-96">
-                  <table class="w-full text-sm">
-                    <thead>
-                      <tr class="border-b border-[var(--glass-border)]">
-                        <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                        <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
-                        <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
-                        <th class="py-2 px-1"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="(pt, i) in jyStore.realRates" :key="'real-'+i" class="border-b border-[var(--glass-border)] border-opacity-50">
-                        <td class="py-1.5 px-2">
-                          <input v-model="pt.instrumentType" class="w-20 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-                        </td>
-                        <td class="py-1.5 px-2">
-                          <input v-model="pt.tenor" class="w-16 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-                        </td>
-                        <td class="py-1.5 px-2 text-right">
-                          <input v-model.number="pt.rate" type="number" step="0.001" class="w-20 px-2 py-1 text-xs rounded border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)] text-right" />
-                        </td>
-                        <td class="py-1.5 px-1">
-                          <button class="text-[var(--text-muted)] hover:text-red-500 text-xs" @click="removeRealRate(i)">
-                            <i class="fas fa-times"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+            <div v-if="filteredInflationRows.length === 0" class="text-center py-12">
+              <i class="fas fa-chart-area text-4xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">No inflation data available</p>
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-[var(--glass-border)]">
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Index</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(row, i) in filteredInflationRows"
+                    :key="row.id"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedInflationIdx === i ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    @click="selectedInflationIdx = i"
+                  >
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ row.inflationIndex }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ row.currency }}</td>
+                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-xs">{{ row.instrumentType }}</span></td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)] font-mono text-xs">{{ row.tenor }}</td>
+                    <td class="py-3 px-3 text-right font-mono" :class="row.rate >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ (row.rate * 100).toFixed(3) }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </template>
         </div>
@@ -1904,59 +1910,60 @@ onMounted(() => {
 
           <!-- Inflation Details -->
           <template v-else-if="assetClass === 'Inflation'">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Initial Conditions</h3>
-            <div class="space-y-3">
-              <div>
-                <label class="text-xs text-[var(--text-muted)] mb-1 block">Valuation Date</label>
-                <input v-model="jyStore.valuationDate" type="date"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-              </div>
-              <div>
-                <label class="text-xs text-[var(--text-muted)] mb-1 block">Initial Nominal Rate</label>
-                <input v-model.number="jyStore.initialNominalRate" type="number" step="0.001"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-              </div>
-              <div>
-                <label class="text-xs text-[var(--text-muted)] mb-1 block">Initial Real Rate</label>
-                <input v-model.number="jyStore.initialRealRate" type="number" step="0.001"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-              </div>
-              <div>
-                <label class="text-xs text-[var(--text-muted)] mb-1 block">Inflation Index</label>
-                <input v-model.number="jyStore.initialIndex" type="number" step="1" min="1"
-                  class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
-              </div>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Instrument Details</h3>
+
+            <div v-if="!selectedInflationRow" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select an instrument to view details</p>
             </div>
 
-            <!-- Data Source -->
-            <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
-              <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Data Source</h4>
-              <div class="space-y-2 text-xs">
-                <div class="flex justify-between">
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Inflation Index</span>
-                  <span class="text-[var(--text-primary)]">{{ jyStore.inflationIndex }}</span>
+                  <span class="text-[var(--text-primary)] font-semibold">{{ selectedInflationRow.inflationIndex }}</span>
                 </div>
-                <div class="flex justify-between">
-                  <span class="text-[var(--text-muted)]">Reference Date</span>
-                  <span class="text-[var(--text-primary)]">{{ jyStore.referenceDate || '-' }}</span>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedInflationRow.currency }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Instrument Type</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedInflationRow.instrumentType }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Tenor</span>
+                  <span class="text-[var(--text-primary)] font-mono">{{ selectedInflationRow.tenor }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Rate</span>
+                  <span class="font-mono" :class="selectedInflationRow.rate >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ (selectedInflationRow.rate * 100).toFixed(3) }}%</span>
                 </div>
               </div>
-            </div>
 
-            <!-- Breakeven Summary -->
-            <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
-              <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Implied Breakeven</h4>
-              <div class="space-y-2 text-xs">
-                <div class="flex justify-between">
-                  <span class="text-[var(--text-muted)]">Nominal - Real</span>
-                  <span class="text-[var(--text-primary)] font-mono">{{ ((jyStore.initialNominalRate - jyStore.initialRealRate) * 100).toFixed(2) }}%</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-[var(--text-muted)]">Model</span>
-                  <span class="text-[var(--text-primary)]">Jarrow-Yildirim</span>
+              <!-- Curve Info -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Curve Info</h4>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Curve ID</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ selectedInflationRow.curveId }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Reference Date</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedInflationRow.referenceDate }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Lag (months)</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedInflationRow.lagMonths }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Description</span>
+                    <span class="text-[var(--text-primary)] text-right" style="max-width: 60%">{{ selectedInflationRow.description }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </template>
           </template>
         </div>
       </div>

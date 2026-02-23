@@ -74,9 +74,10 @@ pub struct JyCurvePoint {
 #[derive(Debug, Clone, Deserialize, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct JyCurveBuildRequest {
-    /// Nominal curve market rates (e.g., USD swap rates).
+    /// Reference name of the nominal curve from the Rates system (e.g.,
+    /// "USD-SOFR").
     #[validate(length(min = 1))]
-    pub nominal_rates: Vec<CurveRatePoint>,
+    pub nominal_curve_ref: String,
     /// Real curve market rates (e.g., TIPS yields).
     #[validate(length(min = 1))]
     pub real_rates: Vec<CurveRatePoint>,
@@ -396,20 +397,32 @@ pub struct ExposureProfile {
 
 // ─── Inflation Market Data ──────────────────────────────────────────────────
 
+/// A single inflation index with its instruments.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InflationIndexData {
+    /// Curve identifier (e.g. "usd-tips", "gbp-rpi").
+    pub curve_id: String,
+    /// Currency.
+    pub currency: String,
+    /// Inflation index name (e.g. "CPI-U", "RPI", "CPI").
+    pub inflation_index: String,
+    /// Reference date for the market data.
+    pub reference_date: String,
+    /// Index publication lag in months.
+    pub lag_months: u32,
+    /// Description.
+    pub description: String,
+    /// Instrument rates.
+    pub instruments: Vec<CurveRatePoint>,
+}
+
 /// Response for inflation market data loaded from input files.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InflationMarketDataResponse {
-    /// Nominal curve instruments (Deposit, OIS).
-    pub nominal_rates: Vec<CurveRatePoint>,
-    /// Real curve instruments (TIPS yields).
-    pub real_rates: Vec<CurveRatePoint>,
-    /// Reference date for the market data.
-    pub reference_date: String,
-    /// Currency.
-    pub currency: String,
-    /// Inflation index name (e.g., "CPI-U").
-    pub inflation_index: String,
+    /// All loaded inflation indices.
+    pub indices: Vec<InflationIndexData>,
     /// Last updated timestamp.
     pub last_updated: String,
 }

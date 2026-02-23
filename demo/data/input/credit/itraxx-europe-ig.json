@@ -8,6 +8,7 @@
   "rating": "IG",
   "instruments": [
     {
+      "id": "ITRAXX-CDS-6M",
       "type": "cds",
       "tenor": "6M",
       "tenor_years": 0.5,
@@ -15,6 +16,7 @@
       "description": "iTraxx Europe IG 6M CDS spread"
     },
     {
+      "id": "ITRAXX-CDS-1Y",
       "type": "cds",
       "tenor": "1Y",
       "tenor_years": 1.0,
@@ -22,6 +24,7 @@
       "description": "iTraxx Europe IG 1Y CDS spread"
     },
     {
+      "id": "ITRAXX-CDS-2Y",
       "type": "cds",
       "tenor": "2Y",
       "tenor_years": 2.0,
@@ -29,6 +32,7 @@
       "description": "iTraxx Europe IG 2Y CDS spread"
     },
     {
+      "id": "ITRAXX-CDS-3Y",
       "type": "cds",
       "tenor": "3Y",
       "tenor_years": 3.0,
@@ -36,6 +40,7 @@
       "description": "iTraxx Europe IG 3Y CDS spread"
     },
     {
+      "id": "ITRAXX-CDS-5Y",
       "type": "cds",
       "tenor": "5Y",
       "tenor_years": 5.0,
@@ -43,6 +48,7 @@
       "description": "iTraxx Europe IG 5Y CDS spread (benchmark)"
     },
     {
+      "id": "ITRAXX-CDS-7Y",
       "type": "cds",
       "tenor": "7Y",
       "tenor_years": 7.0,
@@ -50,6 +56,7 @@
       "description": "iTraxx Europe IG 7Y CDS spread"
     },
     {
+      "id": "ITRAXX-CDS-10Y",
       "type": "cds",
       "tenor": "10Y",
       "tenor_years": 10.0,

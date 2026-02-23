@@ -1,0 +1,71 @@
+{
+  "curve_id": "gbp-rpi",
+  "currency": "GBP",
+  "country": "GB",
+  "reference_date": "TODAY",
+  "inflation_index": "RPI",
+  "lag_months": 2,
+  "description": "GBP RPI-linked real yield curve (Index-Linked Gilts)",
+  "instruments": [
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "il_gilt",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": -0.015,
+      "coupon_rate": 0.00125,
+      "frequency": "semi_annual",
+      "description": "2Y IL Gilt real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "il_gilt",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": -0.008,
+      "coupon_rate": 0.00125,
+      "frequency": "semi_annual",
+      "description": "5Y IL Gilt real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "il_gilt",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.002,
+      "coupon_rate": 0.00625,
+      "frequency": "semi_annual",
+      "description": "10Y IL Gilt real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "il_gilt",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.005,
+      "coupon_rate": 0.0125,
+      "frequency": "semi_annual",
+      "description": "20Y IL Gilt real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "il_gilt",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.003,
+      "coupon_rate": 0.01125,
+      "frequency": "semi_annual",
+      "description": "30Y IL Gilt real yield"
+    },
+    {
+      "type": "inflation_linked_bond",
+      "sub_type": "il_gilt",
+      "tenor": "50Y",
+      "tenor_years": 50.0,
+      "rate": -0.005,
+      "coupon_rate": 0.00625,
+      "frequency": "semi_annual",
+      "description": "50Y IL Gilt real yield"
+    }
+  ]
+}
