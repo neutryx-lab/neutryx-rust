@@ -390,6 +390,8 @@ pub fn apply_tikhonov_regularisation<T>(
 }
 
 /// Returns recommended damping factor if condition number exceeds threshold.
+///
+/// Only used in tests currently; kept as a useful utility for future calibration code.
 #[allow(dead_code)]
 pub fn should_apply_regularisation<T: Float>(
     condition_number: T,

@@ -13,6 +13,7 @@ import { STOCHASTIC_MODELS } from '@/constants/pricer';
 
 import { useJyInflationStore } from '@/stores/jyInflation';
 import { useJYInflation } from '@/composables/useJYInflation';
+import JyModelParamsPanel from '@/components/jy/JyModelParamsPanel.vue';
 
 const store = usePricerStore();
 const marketEnv = useMarketEnvStore();
@@ -360,6 +361,12 @@ watch(
               <v-select v-model="jyStore.paymentFrequency" :items="jyFrequencyItems" density="compact" variant="outlined" hide-details />
             </div>
           </template>
+
+          <!-- ═══ JY MODEL PARAMETERS ═══ -->
+          <div class="section-header">JY Model</div>
+          <div class="grid-span">
+            <JyModelParamsPanel />
+          </div>
         </template>
 
         <!-- ═══ CALC SETTING (standard only) ═══ -->

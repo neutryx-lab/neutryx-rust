@@ -261,14 +261,6 @@ fn test_config_with_disabled_jump_config() {
     assert_eq!(config.num_jumps(), 1); // But pillars still counted
 }
 
-#[allow(dead_code)]
-fn create_jump_pillars() -> Vec<JumpPillar<f64>> {
-    vec![
-        JumpPillar::new(0.5, 25.0),  // 25bps at 6 months
-        JumpPillar::new(1.5, -15.0), // -15bps at 18 months
-    ]
-}
-
 #[test]
 fn test_merge_pillars_no_overlap() {
     let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
@@ -1213,7 +1205,7 @@ fn test_max_condition_number_config_integration() {
 
 #[test]
 fn test_tikhonov_regularisation_integration() {
-    use crate::builder::should_apply_regularisation;
+    use crate::builder::error::should_apply_regularisation;
 
     let high_cond: f64 = 1e14;
     let max_cond: f64 = 1e10;

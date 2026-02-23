@@ -36,6 +36,9 @@ pub mod model_enum;
 pub mod stochastic;
 pub mod validation;
 
+#[cfg(test)]
+pub(crate) mod test_macros;
+
 /// Generates a PhantomData-based stochastic model struct with `StochasticModel`
 /// trait implementation and a marker trait. Eliminates boilerplate for
 /// single-state models (GBM, CIR, Hull-White) that share the same structural

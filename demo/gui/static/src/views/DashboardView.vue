@@ -187,10 +187,10 @@ onUnmounted(() => {
         <div class="flex items-start justify-between">
           <div>
             <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
-            <p class="text-2xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
+            <p class="text-xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
           </div>
-          <div class="stat-icon w-10 h-10 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center">
-            <i :class="['fas', stat.icon, 'text-[var(--primary)]']"></i>
+          <div class="stat-icon w-9 h-9 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center">
+            <i :class="['fas', stat.icon, 'text-sm text-[var(--primary)]']"></i>
           </div>
         </div>
         <div class="mt-2 flex items-center gap-1 text-sm">

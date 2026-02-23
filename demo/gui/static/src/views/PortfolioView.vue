@@ -207,7 +207,7 @@ onMounted(() => loadData());
         <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
         <p
           :class="[
-            'text-2xl font-semibold',
+            'text-xl font-semibold',
             stat.positive ? 'text-[var(--success)]' : 'text-[var(--danger)]'
           ]"
         >
