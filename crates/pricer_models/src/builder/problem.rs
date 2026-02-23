@@ -1198,9 +1198,21 @@ mod tests {
 
         // Build curve
         let curve = problem.build_curve(&guess).unwrap();
-        assert_relative_eq!(curve.discount_factor(1.0).unwrap(), (-0.03f64).exp(), epsilon = 1e-8);
-        assert_relative_eq!(curve.discount_factor(2.0).unwrap(), (-0.06f64).exp(), epsilon = 1e-8);
-        assert_relative_eq!(curve.discount_factor(5.0).unwrap(), (-0.15f64).exp(), epsilon = 1e-8);
+        assert_relative_eq!(
+            curve.discount_factor(1.0).unwrap(),
+            (-0.03f64).exp(),
+            epsilon = 1e-8
+        );
+        assert_relative_eq!(
+            curve.discount_factor(2.0).unwrap(),
+            (-0.06f64).exp(),
+            epsilon = 1e-8
+        );
+        assert_relative_eq!(
+            curve.discount_factor(5.0).unwrap(),
+            (-0.15f64).exp(),
+            epsilon = 1e-8
+        );
 
         // Evaluate
         let x = problem.initial_guess_vector();

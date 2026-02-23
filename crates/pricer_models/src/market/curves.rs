@@ -346,7 +346,9 @@ impl<T: Float> MarketInstrument<T> {
     pub fn maturity(&self) -> T { dispatch_instrument_field!(self, maturity) }
 
     /// Returns a descriptive name for the instrument type.
-    pub fn instrument_type(&self) -> &'static str { dispatch_instrument_field!(self, instrument_type) }
+    pub fn instrument_type(&self) -> &'static str {
+        dispatch_instrument_field!(self, instrument_type)
+    }
 
     /// Returns true if this is an Event instrument.
     pub fn is_event(&self) -> bool { matches!(self, Self::Event { .. }) }

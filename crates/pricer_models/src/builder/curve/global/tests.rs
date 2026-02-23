@@ -755,8 +755,7 @@ fn test_many_instruments() {
             MarketInstrument::ois(t, 0.02 + 0.001 * t)
         })
         .collect();
-    let result =
-        assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-7);
+    let result = assert_calibration_converges(&instruments, GlobalBootstrapConfig::default(), 1e-7);
     assert_eq!(result.pillars.len(), 20);
 }
 

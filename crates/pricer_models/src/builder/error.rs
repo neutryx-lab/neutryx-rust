@@ -819,15 +819,43 @@ mod tests {
     #[test]
     fn test_is_recoverable() {
         // Recoverable
-        assert!(CalibrationError::ConvergenceFailure { iterations: 100, residual: 0.1 }.is_recoverable());
-        assert!(CalibrationError::NumericalInstability { message: "NaN".to_string() }.is_recoverable());
-        assert!(CalibrationError::JumpCalibrationFailed { message: "test".to_string(), residual: 0.01, iterations: 10 }.is_recoverable());
+        assert!(CalibrationError::ConvergenceFailure {
+            iterations: 100,
+            residual: 0.1
+        }
+        .is_recoverable());
+        assert!(CalibrationError::NumericalInstability {
+            message: "NaN".to_string()
+        }
+        .is_recoverable());
+        assert!(CalibrationError::JumpCalibrationFailed {
+            message: "test".to_string(),
+            residual: 0.01,
+            iterations: 10
+        }
+        .is_recoverable());
         // Not recoverable
-        assert!(!CalibrationError::InsufficientData { required: 5, provided: 3 }.is_recoverable());
+        assert!(!CalibrationError::InsufficientData {
+            required: 5,
+            provided: 3
+        }
+        .is_recoverable());
         assert!(!CalibrationError::NoInstruments.is_recoverable());
-        assert!(!CalibrationError::SingularJacobian { condition_number: 1e16 }.is_recoverable());
-        assert!(!CalibrationError::Divergence { iteration: 10, residual: 100.0 }.is_recoverable());
-        assert!(!CalibrationError::InvalidJumpParameter { date: "0.5Y".to_string(), value: 150.0, reason: "out of range".to_string() }.is_recoverable());
+        assert!(!CalibrationError::SingularJacobian {
+            condition_number: 1e16
+        }
+        .is_recoverable());
+        assert!(!CalibrationError::Divergence {
+            iteration: 10,
+            residual: 100.0
+        }
+        .is_recoverable());
+        assert!(!CalibrationError::InvalidJumpParameter {
+            date: "0.5Y".to_string(),
+            value: 150.0,
+            reason: "out of range".to_string()
+        }
+        .is_recoverable());
     }
 
     #[test]
@@ -862,15 +890,40 @@ mod tests {
     #[test]
     fn test_calibration_to_pricing_numerical() {
         use pricer_core::types::PricingError;
-        assert!(matches!(PricingError::from(CalibrationError::ConvergenceFailure { iterations: 100, residual: 0.01 }), PricingError::NumericalInstability(_)));
-        assert!(matches!(PricingError::from(CalibrationError::JumpCalibrationFailed { message: "test".to_string(), residual: 0.01, iterations: 25 }), PricingError::NumericalInstability(_)));
+        assert!(matches!(
+            PricingError::from(CalibrationError::ConvergenceFailure {
+                iterations: 100,
+                residual: 0.01
+            }),
+            PricingError::NumericalInstability(_)
+        ));
+        assert!(matches!(
+            PricingError::from(CalibrationError::JumpCalibrationFailed {
+                message: "test".to_string(),
+                residual: 0.01,
+                iterations: 25
+            }),
+            PricingError::NumericalInstability(_)
+        ));
     }
 
     #[test]
     fn test_calibration_to_pricing_invalid_input() {
         use pricer_core::types::PricingError;
-        assert!(matches!(PricingError::from(CalibrationError::InvalidMarketData { message: "neg".to_string() }), PricingError::InvalidInput(_)));
-        assert!(matches!(PricingError::from(CalibrationError::InvalidJumpParameter { date: "2024-06-01".to_string(), value: -120.0, reason: "too large".to_string() }), PricingError::InvalidInput(_)));
+        assert!(matches!(
+            PricingError::from(CalibrationError::InvalidMarketData {
+                message: "neg".to_string()
+            }),
+            PricingError::InvalidInput(_)
+        ));
+        assert!(matches!(
+            PricingError::from(CalibrationError::InvalidJumpParameter {
+                date: "2024-06-01".to_string(),
+                value: -120.0,
+                reason: "too large".to_string()
+            }),
+            PricingError::InvalidInput(_)
+        ));
     }
 
     #[test]
