@@ -832,6 +832,40 @@ export interface ImpliedPdfResponse {
 }
 
 // =============================================================================
+// Cap/Floor Types
+// =============================================================================
+
+export type CapFloorCalibrationMethod = 'bootstrap' | 'global';
+
+export interface CapFloorQuote {
+  maturity: string;
+  marketVol: number;
+  capletVol?: number;
+  strike?: number;
+}
+
+export interface CapFloorInstrumentsResponse {
+  instruments: CapFloorQuote[];
+  referenceDate?: string;
+}
+
+export interface CapFloorCalibrateRequest {
+  index: string;
+  referenceDate?: string;
+  method: CapFloorCalibrationMethod;
+  model?: string;
+  initialParams?: SabrInitialParams;
+  fixedParams?: SabrFixedParams;
+}
+
+export interface CapFloorCalibrateResponse {
+  method: string;
+  capletVols: Record<string, number>;
+  metadata: CalibrationMetadata;
+  parameters?: CalibrationParameters;
+}
+
+// =============================================================================
 // Exotic Product Types
 // =============================================================================
 

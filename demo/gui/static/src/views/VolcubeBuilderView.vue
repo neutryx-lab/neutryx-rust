@@ -7,6 +7,9 @@ import type {
   SwaptionInstrument,
   FxVolQuote,
   VolcubeCalibrateResponse,
+  CapFloorQuote,
+  CapFloorCalibrateResponse,
+  CapFloorCalibrationMethod,
 } from '@/types';
 import {
   fetchVolcubeIndices,
@@ -17,6 +20,8 @@ import {
   calibrateVolcube,
   calibrateFxVol,
   computeModelSmile,
+  fetchCapFloorInstruments,
+  calibrateCapFloor,
 } from '@/services/api';
 import { useMarketEnvStore } from '@/stores/marketEnv';
 import { useJyInflationStore } from '@/stores/jyInflation';
@@ -36,7 +41,7 @@ const SMILE_RANGE_BP = 200;
 const POPOVER_WIDTH = 256; // matches w-64
 const ERROR_AUTO_DISMISS_MS = 8000;
 
-type AssetTab = 'swaption' | 'fx' | 'inflation';
+type AssetTab = 'rates' | 'fx' | 'inflation';
 type SabrParam = 'alpha' | 'beta' | 'rho' | 'nu';
 
 // ── Model parameter definitions ──────────────────────────────────────────────
@@ -146,15 +151,15 @@ const volPublishFeedback = ref(false);
 
 function publishVolToEnvironment() {
   if (!calibrationResult.value) return;
-  const indexOrPair = activeTab.value === 'swaption' ? selectedSwaptionIndex.value : selectedFxPair.value;
-  const assetType = activeTab.value === 'swaption' ? 'swaption' as const : 'fx' as const;
+  const indexOrPair = activeTab.value === 'rates' ? selectedSwaptionIndex.value : selectedFxPair.value;
+  const assetType = activeTab.value === 'rates' ? 'swaption' as const : 'fx' as const;
   marketEnv.publishVolSurface(indexOrPair, assetType, calibrationResult.value, selectedModel.value);
   volPublishFeedback.value = true;
   setTimeout(() => { volPublishFeedback.value = false; }, 2000);
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
-const activeTab = ref<AssetTab>('swaption');
+const activeTab = ref<AssetTab>('rates');
 const swaptionIndices = ref<string[]>([]);
 const selectedSwaptionIndex = ref('');
 const swaptionInstruments = ref<SwaptionInstrument[]>([]);
@@ -166,8 +171,14 @@ const referenceDate = ref('');
 const fwdSwapRates = ref<Map<string, number>>(new Map());
 const isBuildingCurve = ref(false);
 const curveError = ref<string | null>(null); // D-4
-const matrixTab = ref<'vol' | 'fwd'>('vol');
+const matrixTab = ref<'vol' | 'capfloor' | 'fwd'>('vol');
 const paramTab = ref<SabrParam>('alpha');
+
+// Cap/Floor state
+const capFloorQuotes = ref<CapFloorQuote[]>([]);
+const capFloorCalibMethod = ref<CapFloorCalibrationMethod>('bootstrap');
+const capFloorCalibResult = ref<CapFloorCalibrateResponse | null>(null);
+const isCapFloorCalibrating = ref(false);
 
 const fxPairs = ref<string[]>([]);
 const selectedFxPair = ref('');
@@ -383,6 +394,13 @@ const fwdRateRange = computed(() => {
   const vals = [...fwdSwapRates.value.values()].filter(v => v > 0);
   if (vals.length === 0) return { min: 0, max: 1 };
   return { min: Math.min(...vals), max: Math.max(...vals) };
+});
+
+// Cap/Floor vol range for heatmap
+const capFloorVolRange = computed(() => {
+  const vols = capFloorQuotes.value.map(q => q.marketVol).filter(v => v > 0);
+  if (vols.length === 0) return { min: 0, max: 1 };
+  return { min: Math.min(...vols), max: Math.max(...vols) };
 });
 
 // ── Detail card: chart helpers ───────────────────────────────────────────────
@@ -770,7 +788,7 @@ async function renderFxDetailCharts() {
 
 // ── Summary stats ────────────────────────────────────────────────────────────
 const summaryStats = computed(() => {
-  if (activeTab.value === 'swaption') {
+  if (activeTab.value === 'rates') {
     const instruments = swaptionInstruments.value;
     return [
       { label: 'Valuation Date', value: referenceDate.value || '-', icon: 'fa-calendar', color: '#8b5cf6' },
@@ -890,10 +908,14 @@ async function loadSwaptionInstruments(index: string) {
     swaptionInstruments.value = data.instruments || [];
     referenceDate.value = data.referenceDate || '';
     calibrationResult.value = null;
+    capFloorCalibResult.value = null;
     popoverCell.value = null;
     selectedCell.value = null;
-    // C-1: await the curve build
-    await buildCurveForFwdRates();
+    // C-1: await the curve build + load cap/floor in parallel
+    await Promise.all([
+      buildCurveForFwdRates(),
+      loadCapFloorInstruments(index),
+    ]);
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Failed to load instruments';
     showError(msg);
@@ -937,10 +959,63 @@ async function loadFxQuotes(pair: string) {
   }
 }
 
+async function loadCapFloorInstruments(index: string) {
+  try {
+    const currency = index.split('-')[0];
+    const data = await fetchCapFloorInstruments(currency);
+    capFloorQuotes.value = data.instruments || [];
+    capFloorCalibResult.value = null;
+  } catch {
+    // Cap/Floor data may not be available — silently ignore
+    capFloorQuotes.value = [];
+  }
+}
+
+async function calibrateCapFloorVol() {
+  if (isCapFloorCalibrating.value || !selectedSwaptionIndex.value) return;
+  if (capFloorQuotes.value.length === 0) return;
+
+  isCapFloorCalibrating.value = true;
+  try {
+    capFloorCalibResult.value = await calibrateCapFloor({
+      index: selectedSwaptionIndex.value.split('-')[0],
+      referenceDate: referenceDate.value,
+      method: capFloorCalibMethod.value,
+      model: selectedModel.value,
+      initialParams: {
+        alpha: sabrInitial.value.alpha,
+        beta: sabrInitial.value.beta,
+        rho: sabrInitial.value.rho,
+        nu: sabrInitial.value.nu,
+      },
+      fixedParams: {
+        alpha: sabrFixed.value.alpha,
+        beta: sabrFixed.value.beta,
+        rho: sabrFixed.value.rho,
+        nu: sabrFixed.value.nu,
+      },
+    });
+
+    // Merge stripped caplet vols back into quotes for display
+    if (capFloorCalibResult.value?.capletVols) {
+      capFloorQuotes.value = capFloorQuotes.value.map(q => ({
+        ...q,
+        capletVol: capFloorCalibResult.value!.capletVols[q.maturity] ?? q.capletVol,
+      }));
+    }
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Cap/Floor calibration failed';
+    showError(msg);
+    console.error('Cap/Floor calibration failed:', error);
+  } finally {
+    isCapFloorCalibrating.value = false;
+  }
+}
+
 async function calibrate() {
   // C-5: prevent multiple simultaneous calibrations
   if (isCalibrating.value) return;
-  if (activeTab.value === 'swaption' && !selectedSwaptionIndex.value) return;
+  if (activeTab.value === 'rates' && !selectedSwaptionIndex.value) return;
   if (activeTab.value === 'fx' && !selectedFxPair.value) return;
 
   // C-4: validate FX inputs before sending
@@ -960,7 +1035,7 @@ async function calibrate() {
 
   isCalibrating.value = true;
   try {
-    if (activeTab.value === 'swaption') {
+    if (activeTab.value === 'rates') {
       calibrationResult.value = await calibrateVolcube({
         index: selectedSwaptionIndex.value.split('-')[0],
         referenceDate: referenceDate.value,
@@ -1062,13 +1137,14 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 // ── Watch for selection changes ──────────────────────────────────────────────
 watch(activeTab, (tab) => {
   calibrationResult.value = null;
+  capFloorCalibResult.value = null;
   selectedCell.value = null;
   popoverCell.value = null;
   selectedFxTenor.value = null;
   destroyFxCharts();
 
   // Reset SABR β default per asset class:
-  //   Swaption → β=0 (Normal / Bachelier)
+  //   Rates    → β=0 (Normal / Bachelier)
   //   FX       → β=1 (Lognormal / Black-Scholes)
   if (tab === 'fx') {
     sabrInitial.value.beta = 1;
@@ -1173,7 +1249,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
         v-model="activeTab"
         class="mb-6"
         :tabs="[
-          { key: 'swaption', label: 'Swaption', icon: 'fa-percentage' },
+          { key: 'rates', label: 'Rates', icon: 'fa-percentage' },
           { key: 'fx', label: 'FX', icon: 'fa-exchange-alt' },
           { key: 'inflation', label: 'Inflation', icon: 'fa-chart-bar' },
         ]"
@@ -1235,7 +1311,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
         <!-- Left Panel: Settings -->
         <div class="space-y-4">
           <!-- Swaption Settings -->
-          <template v-if="activeTab === 'swaption'">
+          <template v-if="activeTab === 'rates'">
             <div class="glass-card p-5">
               <div class="section-header" style="margin-top: 0">Index Selection</div>
               <div class="config-grid">
@@ -1407,7 +1483,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
           <!-- Actions -->
           <div class="glass-card p-5">
             <button
-              :disabled="(activeTab === 'swaption' && !selectedSwaptionIndex) || (activeTab === 'fx' && !selectedFxPair) || isCalibrating"
+              :disabled="(activeTab === 'rates' && !selectedSwaptionIndex) || (activeTab === 'fx' && !selectedFxPair) || isCalibrating"
               class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               @click="calibrate"
             >
@@ -1431,9 +1507,9 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
           <div class="glass-card p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-                {{ activeTab === 'swaption' ? 'Swaption Instruments' : 'FX Quotes' }}
+                {{ activeTab === 'rates' ? 'Rates Instruments' : 'FX Quotes' }}
               </h3>
-              <div v-if="activeTab === 'swaption' && swaptionInstruments.length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+              <div v-if="activeTab === 'rates' && swaptionInstruments.length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
                 <button
                   :class="[
                     'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
@@ -1442,7 +1518,19 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                       : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   ]"
                   @click="matrixTab = 'vol'"
-                >Vol</button>
+                >Swaption</button>
+                <button
+                  :class="[
+                    'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                    matrixTab === 'capfloor'
+                      ? 'bg-[var(--primary)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+                    capFloorQuotes.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                  ]"
+                  :disabled="capFloorQuotes.length === 0"
+                  :title="capFloorQuotes.length === 0 ? 'No cap/floor data available' : ''"
+                  @click="matrixTab = 'capfloor'"
+                >Cap/Floor</button>
                 <button
                   :class="[
                     'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
@@ -1462,7 +1550,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
             </div>
 
             <!-- Swaption Matrix -->
-            <template v-if="activeTab === 'swaption'">
+            <template v-if="activeTab === 'rates'">
               <!-- Empty State -->
               <div v-if="swaptionInstruments.length === 0" class="text-center py-12">
                 <i class="fas fa-cube text-4xl text-[var(--text-muted)] mb-4"></i>
@@ -1579,8 +1667,89 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
                 </div>
               </div>
 
+              <!-- Cap/Floor Strip -->
+              <div v-else-if="matrixTab === 'capfloor'" class="overflow-x-auto">
+                <div v-if="capFloorQuotes.length === 0" class="text-center py-12">
+                  <i class="fas fa-layer-group text-4xl text-[var(--text-muted)] mb-4"></i>
+                  <p class="text-[var(--text-muted)]">No cap/floor data available for this index</p>
+                </div>
+                <template v-else>
+                  <!-- Calibration method selector + button -->
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+                      <button
+                        :class="[
+                          'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                          capFloorCalibMethod === 'bootstrap'
+                            ? 'bg-[var(--primary)] text-white shadow-sm'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        ]"
+                        @click="capFloorCalibMethod = 'bootstrap'"
+                      >Bootstrap</button>
+                      <button
+                        :class="[
+                          'px-3 py-1 text-xs font-medium rounded-md transition-all duration-150',
+                          capFloorCalibMethod === 'global'
+                            ? 'bg-[var(--primary)] text-white shadow-sm'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        ]"
+                        @click="capFloorCalibMethod = 'global'"
+                      >Global</button>
+                    </div>
+                    <button
+                      :disabled="isCapFloorCalibrating"
+                      class="px-4 py-1.5 rounded-lg bg-[var(--primary)] text-white text-xs font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      @click="calibrateCapFloorVol"
+                    >
+                      <i :class="['fas', isCapFloorCalibrating ? 'fa-spinner fa-spin' : 'fa-cogs']"></i>
+                      {{ isCapFloorCalibrating ? 'Stripping...' : 'Strip Caplet Vols' }}
+                    </button>
+                    <span v-if="capFloorCalibResult" class="text-[10px] text-[var(--text-muted)] italic">
+                      {{ capFloorCalibResult.method }} — {{ capFloorCalibResult.metadata.processingTimeMs.toFixed(1) }} ms
+                    </span>
+                  </div>
+
+                  <!-- Cap/Floor table -->
+                  <table class="w-full border-collapse" aria-label="Cap/Floor volatility strip">
+                    <thead>
+                      <tr>
+                        <th class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-left border-b border-[var(--glass-border)]">Maturity</th>
+                        <th class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-right border-b border-[var(--glass-border)]">Cap Flat Vol</th>
+                        <th class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-right border-b border-[var(--glass-border)]">Caplet Vol</th>
+                        <th class="py-2 px-3 text-xs font-medium text-[var(--text-muted)] text-right border-b border-[var(--glass-border)]">Strike</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="q in capFloorQuotes"
+                        :key="q.maturity"
+                        class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+                      >
+                        <td class="py-2 px-3 text-xs font-medium text-[var(--text-primary)]">{{ q.maturity }}</td>
+                        <td
+                          class="py-2 px-3 text-xs text-right font-mono font-medium"
+                          :style="{
+                            backgroundColor: rangedHeatmapBg(q.marketVol, capFloorVolRange),
+                            color: rangedHeatmapText(q.marketVol, capFloorVolRange),
+                          }"
+                        >
+                          {{ formatVol(q.marketVol) }}
+                        </td>
+                        <td class="py-2 px-3 text-xs text-right font-mono font-medium">
+                          <span v-if="q.capletVol != null" class="text-emerald-400">{{ formatVol(q.capletVol) }}</span>
+                          <span v-else class="text-[var(--text-muted)]">--</span>
+                        </td>
+                        <td class="py-2 px-3 text-xs text-right font-mono text-[var(--text-secondary)]">
+                          {{ q.strike != null ? (q.strike * 100).toFixed(2) + '%' : 'ATM' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </template>
+              </div>
+
               <!-- Forward Swap Rate Matrix -->
-              <div v-else class="overflow-x-auto">
+              <div v-else-if="matrixTab === 'fwd'" class="overflow-x-auto">
                 <!-- D-4: Curve error with retry -->
                 <div v-if="curveError" class="text-center py-12">
                   <i class="fas fa-exclamation-triangle text-4xl text-red-400 mb-4"></i>
@@ -1696,7 +1865,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
               </h3>
               <div class="flex items-center gap-4">
                 <!-- Calibration param tabs -->
-                <div v-if="activeTab === 'swaption' && calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
+                <div v-if="activeTab === 'rates' && calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="flex gap-1 bg-[var(--surface)] rounded-lg p-0.5">
                   <button
                     v-for="p in (['alpha', 'beta', 'rho', 'nu'] as SabrParam[])"
                     :key="p"
@@ -1751,7 +1920,7 @@ Promise.all([loadSwaptionIndices(), loadSwaptionModels(), loadFxPairs()])
             </div>
 
             <!-- ═══ Swaption: Parameter Matrix + Cell Detail ═══ -->
-            <template v-if="activeTab === 'swaption'">
+            <template v-if="activeTab === 'rates'">
               <!-- Parameter Matrix -->
               <div v-if="calibrationResult.cellParameters && Object.keys(calibrationResult.cellParameters).length > 0" class="overflow-x-auto mb-4">
                 <table class="w-full border-collapse" aria-label="Calibration parameter matrix" role="grid">

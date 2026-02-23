@@ -41,6 +41,7 @@ const config = ref<any>({
   lgd: 0.6,
   baseSwaps: [] as any[],
   baseExotics: [] as any[],
+  baseInflationSwaps: [] as any[],
   incrementalTrade: { type: 'swap', tradeId: 'NEW_IRS', notional: 1000000, fixedRate: 0.03, tenorYears: 5, paymentFrequency: 'semi-annual', isPayer: true },
 })
 
@@ -104,6 +105,7 @@ async function loadDemo() {
     config.value.lgd = demoConfig.lgd
     config.value.baseSwaps = demoConfig.baseSwaps
     config.value.baseExotics = demoConfig.baseExotics
+    config.value.baseInflationSwaps = demoConfig.baseInflationSwaps ?? []
     config.value.incrementalTrade = demoConfig.incrementalTrade
   } catch (e: any) {
     console.error('Failed to load demo config:', e)
@@ -133,6 +135,7 @@ async function runSimulation() {
       fundingSpread: fundingSpreadBps.value / 10000,
       baseSwaps: config.value.baseSwaps,
       baseExotics: config.value.baseExotics,
+      baseInflationSwaps: config.value.baseInflationSwaps ?? [],
       incrementalTrade: config.value.incrementalTrade,
     }
 

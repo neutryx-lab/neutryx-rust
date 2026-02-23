@@ -57,6 +57,9 @@ import type {
   XvaBilateralRequest,
   XvaBilateralResponse,
   XvaCsvExportResponse,
+  CapFloorInstrumentsResponse,
+  CapFloorCalibrateRequest,
+  CapFloorCalibrateResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -271,6 +274,14 @@ export async function computeImpliedPdf(request: ImpliedPdfRequest): Promise<Imp
 
 export async function calibrateFxVol(request: FxVolCalibrateRequest): Promise<VolcubeCalibrateResponse> {
   return postJson<FxVolCalibrateRequest, VolcubeCalibrateResponse>(`${API_BASE}/fxvol/calibrate`, request);
+}
+
+export async function fetchCapFloorInstruments(currency: string): Promise<CapFloorInstrumentsResponse> {
+  return fetchJson<CapFloorInstrumentsResponse>(`${API_BASE}/volcube/capfloor/instruments/${encodeURIComponent(currency)}`);
+}
+
+export async function calibrateCapFloor(request: CapFloorCalibrateRequest): Promise<CapFloorCalibrateResponse> {
+  return postJson<CapFloorCalibrateRequest, CapFloorCalibrateResponse>(`${API_BASE}/volcube/capfloor/calibrate`, request);
 }
 
 // =============================================================================

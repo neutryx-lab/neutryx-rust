@@ -1037,35 +1037,35 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No rates match the current filters</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]" @click="toggleSort('id')">ID</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]" @click="toggleSort('currency')">Currency</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]" @click="toggleSort('tenor')">Tenor</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)]" @click="toggleSort('value')">Value</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Index</th>
-                    <th class="text-center py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Status</th>
+                  <tr>
+                    <th class="th-sort" @click="toggleSort('id')">ID</th>
+                    <th class="th-sort" @click="toggleSort('currency')">Currency</th>
+                    <th class="th-sort" @click="toggleSort('tenor')">Tenor</th>
+                    <th>Type</th>
+                    <th class="text-right th-sort" @click="toggleSort('value')">Value</th>
+                    <th>Index</th>
+                    <th class="text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="rate in filteredRates"
                     :key="rate.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedRateId === rate.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedRateId === rate.id }"
                     @click="selectRate(rate.id)"
                   >
-                    <td class="py-3 px-3 text-[var(--text-primary)] font-mono text-xs">{{ rate.id }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ rate.currency }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ rate.tenor }}</td>
-                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-xs">{{ rate.rateType }}</span></td>
-                    <td class="py-3 px-3 text-right font-mono" :class="rate.value >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ formatRate(rate.value, rate.rateType) }}</td>
-                    <td class="py-3 px-3">
+                    <td class="text-[var(--text-primary)] font-mono text-xs">{{ rate.id }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ rate.currency }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ rate.tenor }}</td>
+                    <td><span class="px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-xs">{{ rate.rateType }}</span></td>
+                    <td class="text-right font-mono" :class="rate.value >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ formatRate(rate.value, rate.rateType) }}</td>
+                    <td>
                       <span v-if="rate.rateIndex" class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">{{ rate.rateIndex }}</span>
                       <span v-else class="text-[var(--text-muted)]">-</span>
                     </td>
-                    <td class="py-3 px-3 text-center">
+                    <td class="text-center">
                       <span :class="['px-2 py-0.5 rounded text-xs', rate.isStale ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400']">
                         <i v-if="rate.isStale" class="fas fa-clock mr-1"></i>
                         {{ rate.isStale ? 'Stale' : 'Live' }}
@@ -1084,34 +1084,34 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No bond data available</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Issuer</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Ccy</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Maturity</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Coupon</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">YTM</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Price</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Duration</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Rating</th>
+                  <tr>
+                    <th>Issuer</th>
+                    <th>Ccy</th>
+                    <th>Maturity</th>
+                    <th class="text-right">Coupon</th>
+                    <th class="text-right">YTM</th>
+                    <th class="text-right">Price</th>
+                    <th class="text-right">Duration</th>
+                    <th>Rating</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="bond in filteredBonds"
                     :key="bond.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedBondId === bond.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedBondId === bond.id }"
                     @click="selectBond(bond.id)"
                   >
-                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ bond.issuer }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ bond.currency }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)] font-mono text-xs">{{ bond.maturity }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatPct(bond.couponRate) }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatPct(bond.ytm) }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ bond.price.toFixed(3) }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-secondary)]">{{ bond.duration.toFixed(2) }}</td>
-                    <td class="py-3 px-3">
+                    <td class="text-[var(--text-primary)]">{{ bond.issuer }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ bond.currency }}</td>
+                    <td class="text-[var(--text-secondary)] font-mono text-xs">{{ bond.maturity }}</td>
+                    <td class="text-right font-mono text-[var(--text-primary)]">{{ formatPct(bond.couponRate) }}</td>
+                    <td class="text-right font-mono text-[var(--text-primary)]">{{ formatPct(bond.ytm) }}</td>
+                    <td class="text-right font-mono text-[var(--text-primary)]">{{ bond.price.toFixed(3) }}</td>
+                    <td class="text-right font-mono text-[var(--text-secondary)]">{{ bond.duration.toFixed(2) }}</td>
+                    <td>
                       <span :class="[
                         'px-2 py-0.5 rounded text-xs',
                         bond.rating.startsWith('AAA') ? 'bg-green-500/10 text-green-400' :
@@ -1133,28 +1133,28 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No credit data available</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Name</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Ccy</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Spread</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Upfront</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Recovery</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Rating</th>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Ccy</th>
+                    <th>Tenor</th>
+                    <th class="text-right">Spread</th>
+                    <th class="text-right">Upfront</th>
+                    <th class="text-right">Recovery</th>
+                    <th>Rating</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="cds in filteredCreditQuotes"
                     :key="cds.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedCreditId === cds.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedCreditId === cds.id }"
                     @click="selectCredit(cds.id)"
                   >
-                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ cds.name }}</td>
-                    <td class="py-3 px-3">
+                    <td class="text-[var(--text-primary)]">{{ cds.name }}</td>
+                    <td>
                       <span :class="[
                         'px-2 py-0.5 rounded text-xs',
                         cds.indexType === 'Single Name' ? 'bg-purple-500/10 text-purple-400' :
@@ -1162,12 +1162,12 @@ onMounted(() => {
                         'bg-blue-500/10 text-blue-400'
                       ]">{{ cds.indexType }}</span>
                     </td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ cds.currency }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ cds.tenor }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatBps(cds.spread) }}</td>
-                    <td class="py-3 px-3 text-right font-mono" :class="cds.upfront !== 0 ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">{{ cds.upfront !== 0 ? formatPct(cds.upfront) : '-' }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-secondary)]">{{ formatPct(cds.recoveryRate) }}</td>
-                    <td class="py-3 px-3">
+                    <td class="text-[var(--text-secondary)]">{{ cds.currency }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ cds.tenor }}</td>
+                    <td class="text-right font-mono text-[var(--text-primary)]">{{ formatBps(cds.spread) }}</td>
+                    <td class="text-right font-mono" :class="cds.upfront !== 0 ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">{{ cds.upfront !== 0 ? formatPct(cds.upfront) : '-' }}</td>
+                    <td class="text-right font-mono text-[var(--text-secondary)]">{{ formatPct(cds.recoveryRate) }}</td>
+                    <td>
                       <span :class="[
                         'px-2 py-0.5 rounded text-xs',
                         cds.rating === 'IG' ? 'bg-green-500/10 text-green-400' :
@@ -1190,32 +1190,32 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No IR volatility data available</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Expiry</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Strike</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Vol</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Source</th>
+                  <tr>
+                    <th>Currency</th>
+                    <th>Expiry</th>
+                    <th>Tenor</th>
+                    <th>Strike</th>
+                    <th class="text-right">Vol</th>
+                    <th>Type</th>
+                    <th>Source</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="quote in filteredIrVolQuotes"
                     :key="quote.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedIrVolId === quote.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedIrVolId === quote.id }"
                     @click="selectIrVol(quote.id)"
                   >
-                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ quote.currency }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.expiry }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.tenor }}</td>
-                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">ATM</span></td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatVol(quote.atmVol) }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.volType }}</td>
-                    <td class="py-3 px-3 text-[var(--text-muted)]">{{ quote.source }}</td>
+                    <td class="text-[var(--text-primary)]">{{ quote.currency }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ quote.expiry }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ quote.tenor }}</td>
+                    <td><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">ATM</span></td>
+                    <td class="text-right font-mono text-[var(--text-primary)]">{{ formatVol(quote.atmVol) }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ quote.volType }}</td>
+                    <td class="text-[var(--text-muted)]">{{ quote.source }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1229,32 +1229,32 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No FX volatility data available</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Pair</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Expiry</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">ATM Vol</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">25D RR</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">25D BF</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">10D RR</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">10D BF</th>
+                  <tr>
+                    <th>Pair</th>
+                    <th>Expiry</th>
+                    <th class="text-right">ATM Vol</th>
+                    <th class="text-right">25D RR</th>
+                    <th class="text-right">25D BF</th>
+                    <th class="text-right">10D RR</th>
+                    <th class="text-right">10D BF</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="quote in filteredFxVolQuotes"
                     :key="quote.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedFxVolId === quote.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedFxVolId === quote.id }"
                     @click="selectFxVol(quote.id)"
                   >
-                    <td class="py-3 px-3 text-[var(--text-primary)] font-medium">{{ quote.pair }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.expiryLabel }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatVol(quote.atmVol) }}</td>
-                    <td class="py-3 px-3 text-right font-mono" :class="quote.rr25d >= 0 ? 'text-[var(--text-secondary)]' : 'text-[var(--danger)]'">{{ formatVolBps(quote.rr25d) }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-secondary)]">{{ formatVolBps(quote.bf25d) }}</td>
-                    <td class="py-3 px-3 text-right font-mono" :class="(quote.rr10d ?? 0) >= 0 ? 'text-[var(--text-secondary)]' : 'text-[var(--danger)]'">{{ formatVolBps(quote.rr10d) }}</td>
-                    <td class="py-3 px-3 text-right font-mono text-[var(--text-secondary)]">{{ formatVolBps(quote.bf10d) }}</td>
+                    <td class="text-[var(--text-primary)] font-medium">{{ quote.pair }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ quote.expiryLabel }}</td>
+                    <td class="text-right font-mono text-[var(--text-primary)]">{{ formatVol(quote.atmVol) }}</td>
+                    <td class="text-right font-mono" :class="quote.rr25d >= 0 ? 'text-[var(--text-secondary)]' : 'text-[var(--danger)]'">{{ formatVolBps(quote.rr25d) }}</td>
+                    <td class="text-right font-mono text-[var(--text-secondary)]">{{ formatVolBps(quote.bf25d) }}</td>
+                    <td class="text-right font-mono" :class="(quote.rr10d ?? 0) >= 0 ? 'text-[var(--text-secondary)]' : 'text-[var(--danger)]'">{{ formatVolBps(quote.rr10d) }}</td>
+                    <td class="text-right font-mono text-[var(--text-secondary)]">{{ formatVolBps(quote.bf10d) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1268,37 +1268,37 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No events available</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Date</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Title</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Jump</th>
-                    <th class="text-center py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Importance</th>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Title</th>
+                    <th>Currency</th>
+                    <th class="text-right">Jump</th>
+                    <th class="text-center">Importance</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="event in filteredEvents"
                     :key="event.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedEventId === event.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedEventId === event.id }"
                     @click="selectEvent(event.id)"
                   >
-                    <td class="py-3 px-3 text-[var(--text-primary)] font-mono">{{ event.date }}</td>
-                    <td class="py-3 px-3">
+                    <td class="text-[var(--text-primary)] font-mono">{{ event.date }}</td>
+                    <td>
                       <span :class="[
                         'px-2 py-0.5 rounded text-xs',
                         isTurnEvent(event.eventType) ? 'bg-orange-500/10 text-orange-400' : 'bg-[var(--primary)]/10 text-[var(--primary)]'
                       ]">{{ formatEventType(event.eventType) }}</span>
                     </td>
-                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ event.title }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ event.currency || '-' }}</td>
-                    <td class="py-3 px-3 text-right font-mono" :class="event.expectedSpikeBp !== undefined ? (isTurnEvent(event.eventType) ? 'text-orange-400' : 'text-blue-400') : 'text-[var(--text-muted)]'">
+                    <td class="text-[var(--text-primary)]">{{ event.title }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ event.currency || '-' }}</td>
+                    <td class="text-right font-mono" :class="event.expectedSpikeBp !== undefined ? (isTurnEvent(event.eventType) ? 'text-orange-400' : 'text-blue-400') : 'text-[var(--text-muted)]'">
                       {{ formatSpikeBp(event.expectedSpikeBp) }}
                     </td>
-                    <td class="py-3 px-3 text-center">
+                    <td class="text-center">
                       <span :class="['px-2 py-0.5 rounded text-xs', event.importance === 'High' || event.importance === 'critical' ? 'bg-red-500/10 text-red-400' : event.importance === 'Medium' || event.importance === 'medium' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400']">
                         {{ event.importance }}
                       </span>
@@ -1316,28 +1316,28 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No holidays available</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Date</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Name</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Country</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
+                  <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Country</th>
+                    <th>Currency</th>
+                    <th>Type</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="holiday in filteredHolidays"
                     :key="holiday.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedHolidayId === holiday.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedHolidayId === holiday.id }"
                     @click="selectHoliday(holiday.id)"
                   >
-                    <td class="py-3 px-3 text-[var(--text-primary)] font-mono">{{ holiday.date }}</td>
-                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ holiday.name }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ holiday.country }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ holiday.currency || '-' }}</td>
-                    <td class="py-3 px-3">
+                    <td class="text-[var(--text-primary)] font-mono">{{ holiday.date }}</td>
+                    <td class="text-[var(--text-primary)]">{{ holiday.name }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ holiday.country }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ holiday.currency || '-' }}</td>
+                    <td>
                       <span :class="[
                         'px-2 py-0.5 rounded text-xs',
                         holiday.type === 'bank' ? 'bg-blue-500/10 text-blue-400' :
@@ -1358,28 +1358,28 @@ onMounted(() => {
               <p class="text-[var(--text-muted)]">No inflation data available</p>
             </div>
             <div v-else class="overflow-x-auto">
-              <table class="w-full text-sm">
+              <table class="data-table">
                 <thead>
-                  <tr class="border-b border-[var(--glass-border)]">
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Index</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
-                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
+                  <tr>
+                    <th>Index</th>
+                    <th>Currency</th>
+                    <th>Type</th>
+                    <th>Tenor</th>
+                    <th class="text-right">Rate (%)</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr
                     v-for="(row, i) in filteredInflationRows"
                     :key="row.id"
-                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedInflationIdx === i ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    :class="{ 'row-selected': selectedInflationIdx === i }"
                     @click="selectedInflationIdx = i"
                   >
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ row.inflationIndex }}</td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ row.currency }}</td>
-                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-xs">{{ row.instrumentType }}</span></td>
-                    <td class="py-3 px-3 text-[var(--text-secondary)] font-mono text-xs">{{ row.tenor }}</td>
-                    <td class="py-3 px-3 text-right font-mono" :class="row.rate >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ (row.rate * 100).toFixed(3) }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ row.inflationIndex }}</td>
+                    <td class="text-[var(--text-secondary)]">{{ row.currency }}</td>
+                    <td><span class="px-2 py-0.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-xs">{{ row.instrumentType }}</span></td>
+                    <td class="text-[var(--text-secondary)] font-mono text-xs">{{ row.tenor }}</td>
+                    <td class="text-right font-mono" :class="row.rate >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]'">{{ (row.rate * 100).toFixed(3) }}</td>
                   </tr>
                 </tbody>
               </table>
