@@ -695,7 +695,9 @@ impl DemoService {
         let timestamp = chrono::Utc::now().to_rfc3339();
 
         let inflation_paths = cfg.paths.inflation.ok_or_else(|| {
-            ServerError::Internal("Inflation paths not configured in market_data_config.json".into())
+            ServerError::Internal(
+                "Inflation paths not configured in market_data_config.json".into(),
+            )
         })?;
 
         // Load nominal rates
