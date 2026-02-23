@@ -12,6 +12,8 @@ const VolcubeBuilderView = () => import('@/views/VolcubeBuilderView.vue');
 const PricerView = () => import('@/views/PricerView.vue');
 const GraphView = () => import('@/views/GraphView.vue');
 const GreeksAnalyserView = () => import('@/views/GreeksAnalyserView.vue');
+const XvaEngineView = () => import('@/views/XvaEngineView.vue');
+const IncrementalXvaView = () => import('@/views/IncrementalXvaView.vue');
 
 export type ViewId =
   | 'dashboard'
@@ -24,7 +26,9 @@ export type ViewId =
   | 'volcube-builder'
   | 'pricer'
   | 'graph'
-  | 'greeks-analyser';
+  | 'greeks-analyser'
+  | 'xva-engine'
+  | 'incremental-xva';
 
 export interface ViewMeta extends Record<string | symbol, unknown> {
   title: string;
@@ -94,6 +98,17 @@ const routes: RouteRecordRaw[] = [
     } as ViewMeta,
   },
   {
+    path: '/incremental-xva',
+    name: 'incremental-xva',
+    component: IncrementalXvaView,
+    meta: {
+      title: 'Incr. XVA',
+      breadcrumb: 'Incr. XVA',
+      icon: 'fa-balance-scale',
+      navGroup: 'analytics',
+    } as ViewMeta,
+  },
+  {
     path: '/market-data',
     name: 'market-data',
     component: MarketDataView,
@@ -149,6 +164,17 @@ const routes: RouteRecordRaw[] = [
     } as ViewMeta,
   },
   {
+    path: '/xva-engine',
+    name: 'xva-engine',
+    component: XvaEngineView,
+    meta: {
+      title: 'XVA',
+      breadcrumb: 'XVA',
+      icon: 'fa-shield-alt',
+      navGroup: 'tools',
+    } as ViewMeta,
+  },
+  {
     path: '/graph',
     name: 'graph',
     component: GraphView,
@@ -158,6 +184,14 @@ const routes: RouteRecordRaw[] = [
       icon: 'fa-project-diagram',
       navGroup: 'tools',
     } as ViewMeta,
+  },
+  {
+    path: '/mfm',
+    redirect: '/pricer',
+  },
+  {
+    path: '/jy-inflation',
+    redirect: '/pricer',
   },
   // Legacy redirect for trade-expansion
   {

@@ -42,6 +42,7 @@ mod result;
 pub mod greeks;
 pub mod portfolio;
 pub mod scenarios;
+pub mod xva_engine;
 
 pub use engine::{RiskEngine, RiskEngineConfig, ScenarioGreeksResult, ScenarioPortfolioResult};
 pub use error::{PartialGreeksResult, RiskError};

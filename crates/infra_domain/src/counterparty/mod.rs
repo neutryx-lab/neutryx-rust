@@ -11,6 +11,7 @@ mod ids;
 mod margin;
 mod netting_agreement;
 mod netting_set;
+mod vm_csa;
 mod xva_config;
 
 pub use aggregation::*;
@@ -24,6 +25,7 @@ pub use ids::*;
 pub use margin::*;
 pub use netting_agreement::*;
 pub use netting_set::*;
+pub use vm_csa::*;
 pub use xva_config::*;
 
 /// Prelude for commonly used types.
@@ -37,6 +39,6 @@ pub mod prelude {
         LegalEntityId, MarginTerms, MarginType, NettingAgreementType, NettingEligibility,
         NettingSet, NettingSetId, NettingType, PaymentNettingFrequency, RegulatoryCapitalMethod,
         RoundingDirection, RoundingRule, SegregationType, SimmVersion, VariationMarginAgreementId,
-        VmTerms, WwrModelType, XvaCalculationLevel,
+        VmCsa, VmTerms, WwrModelType, XvaCalculationLevel,
     };
 }

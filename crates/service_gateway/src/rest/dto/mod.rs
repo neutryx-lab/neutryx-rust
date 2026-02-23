@@ -7,6 +7,12 @@ mod pricing;
 pub mod demo;
 #[cfg(feature = "demo")]
 pub mod exotic;
+#[cfg(feature = "demo")]
+pub mod incremental_xva;
+#[cfg(feature = "demo")]
+pub mod jy_inflation;
+#[cfg(feature = "demo")]
+pub mod mfm;
 #[cfg(feature = "models")]
 pub mod models;
 #[cfg(feature = "risk")]
@@ -15,6 +21,8 @@ pub mod portfolio;
 pub mod risk;
 #[cfg(feature = "volatility")]
 pub mod volatility;
+#[cfg(feature = "demo")]
+pub mod xva;
 
 pub use curves::*;
 #[cfg(feature = "demo")]

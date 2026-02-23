@@ -201,8 +201,42 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
             get(handlers::demo::get_exotic_products),
         )
         .route("/pricer/price-exotic", post(handlers::demo::price_exotic))
+        // Commodity forward curve endpoint
+        .route(
+            "/commodity/forward-curve",
+            post(handlers::demo::commodity_forward_curve),
+        )
+        // JY (Jarrow-Yildirim) inflation model endpoints
+        .route("/jy/curves/build", post(handlers::demo::jy_build_curves))
+        .route("/jy/instrument", post(handlers::demo::jy_instrument_cashflows))
+        .route("/jy/simulate", post(handlers::demo::jy_simulate))
+        .route("/jy/price", post(handlers::demo::jy_price))
+        .route("/jy/xva", post(handlers::demo::jy_xva))
+        // MFM (Markov Functional Model) endpoints
+        .route("/mfm/products", get(handlers::mfm::get_mfm_products))
+        .route("/mfm/calibrate", post(handlers::mfm::calibrate_mfm))
+        .route(
+            "/mfm/gaussian-tree",
+            post(handlers::mfm::build_gaussian_tree),
+        )
+        .route("/mfm/cif-evaluate", post(handlers::mfm::evaluate_cif))
+        .route("/mfm/bermudan", post(handlers::mfm::price_bermudan))
+        .route("/mfm/tarn", post(handlers::mfm::price_tarn))
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))
+        .route("/xva/config", get(handlers::xva::get_xva_config))
+        .route("/xva/simulate", post(handlers::xva::run_xva_simulation))
+        .route("/xva/bilateral", post(handlers::xva::compute_xva_bilateral))
+        .route("/xva/export/csv", get(handlers::xva::export_xva_csv))
+        // Incremental XVA engine endpoints
+        .route(
+            "/incremental-xva/config",
+            get(handlers::incremental_xva::get_incremental_xva_config),
+        )
+        .route(
+            "/incremental-xva/run",
+            post(handlers::incremental_xva::run_incremental_xva),
+        )
         .with_state(state)
 }
 

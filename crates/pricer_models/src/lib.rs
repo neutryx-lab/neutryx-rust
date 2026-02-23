@@ -64,6 +64,7 @@ pub mod builder;
 pub mod compiler;
 pub mod convexity;
 pub mod market;
+pub mod markov_functional;
 pub mod payoff;
 pub mod process;
 /// Backwards-compatible alias — process sub-modules use `crate::stochastic::`.

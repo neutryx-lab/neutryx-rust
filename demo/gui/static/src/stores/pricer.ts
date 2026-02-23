@@ -108,7 +108,11 @@ export const usePricerStore = defineStore('pricer', () => {
     return groups;
   });
 
-  const assetClasses = computed<string[]>(() => Object.keys(groupedInstruments.value));
+  const assetClasses = computed<string[]>(() => {
+    const keys = Object.keys(groupedInstruments.value);
+    if (!keys.includes('Inflation')) keys.push('Inflation');
+    return keys;
+  });
 
   const filteredInstruments = computed<Instrument[]>(() =>
     groupedInstruments.value[assetTab.value] ?? [],

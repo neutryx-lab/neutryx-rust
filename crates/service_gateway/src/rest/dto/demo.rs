@@ -180,7 +180,6 @@ pub struct DemoPricingRequest {
     pub valuation_date: String,
     #[validate(length(min = 1))]
     pub reporting_currency: String,
-    #[validate(length(min = 1))]
     pub legs: Vec<PricingLeg>,
     #[serde(default)]
     pub method: DemoPricingMethod,
@@ -190,6 +189,15 @@ pub struct DemoPricingRequest {
     pub mc_config: Option<DemoModelConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tree_config: Option<DemoTreeConfig>,
+    /// Instrument type identifier (e.g. "CommodityVanillaOption") — when
+    /// present, the backend creates the actual domain trade (not a generic
+    /// Swap) so that the Pricer dispatches to the correct pricing path.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instrument_type: Option<String>,
+    /// Instrument-specific parameters (JSON object matching the
+    /// `TradeExpandRequest.params` schema).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instrument_params: Option<serde_json::Value>,
 }
 
 /// Pricing leg.
@@ -1334,6 +1342,60 @@ pub struct CreditQuote {
 pub struct CreditQuotesResponse {
     pub quotes: Vec<CreditQuote>,
     pub last_updated: String,
+}
+
+// ---------------------------------------------------------------------------
+// Commodity Forward Curve
+// ---------------------------------------------------------------------------
+
+/// Request for a commodity forward curve using the Gibson-Schwartz model.
+#[derive(Debug, Clone, Deserialize, validator::Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct CommodityForwardCurveRequest {
+    /// Commodity type (e.g. "CrudeOil", "Gold", "NaturalGas").
+    pub commodity_type: String,
+    /// Override spot price (uses default if absent).
+    pub spot_price: Option<f64>,
+    /// Override flat volatility (uses default if absent).
+    pub spot_vol: Option<f64>,
+    /// Override initial convenience yield (uses default if absent).
+    pub convenience_yield: Option<f64>,
+    /// Discount rate (defaults to 5%).
+    pub discount_rate: Option<f64>,
+}
+
+/// A single point on the commodity forward curve.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommodityForwardPoint {
+    /// Year fraction from valuation date.
+    pub tenor_years: f64,
+    /// Forward price at this tenor.
+    pub forward_price: f64,
+    /// Average expected convenience yield over [0, T].
+    pub avg_convenience_yield: f64,
+}
+
+/// Response for the commodity forward curve.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommodityForwardCurveResponse {
+    /// Commodity identifier.
+    pub commodity: String,
+    /// Spot price used.
+    pub spot_price: f64,
+    /// Flat volatility used.
+    pub spot_vol: f64,
+    /// Convenience yield parameters.
+    pub initial_cy: f64,
+    pub kappa: f64,
+    pub theta: f64,
+    pub cy_vol: f64,
+    pub rho: f64,
+    /// Forward curve points.
+    pub forward_curve: Vec<CommodityForwardPoint>,
+    /// Processing time in milliseconds.
+    pub computation_time_ms: f64,
 }
 
 #[cfg(test)]

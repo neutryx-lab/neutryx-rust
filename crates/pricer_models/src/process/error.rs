@@ -3,7 +3,10 @@
 use pricer_core::types::PricingError;
 use thiserror::Error;
 
-use super::{correlated::CorrelationError, heston::HestonError};
+use super::{
+    correlated::CorrelationError, gibson_schwartz::GibsonSchwartzError, heston::HestonError,
+    jarrow_yildirim::JarrowYildirimError,
+};
 
 /// Unified error type for stochastic model operations.
 #[derive(Error, Debug, Clone, PartialEq)]
@@ -15,6 +18,14 @@ pub enum ModelError {
     /// Correlation matrix error.
     #[error("Correlation: {0}")]
     Correlation(#[from] CorrelationError),
+
+    /// Jarrow-Yildirim model error.
+    #[error("JarrowYildirim: {0}")]
+    JarrowYildirim(#[from] JarrowYildirimError),
+
+    /// Gibson-Schwartz commodity model error.
+    #[error("GibsonSchwartz: {0}")]
+    GibsonSchwartz(#[from] GibsonSchwartzError),
 
     /// Generic model error.
     #[error("{model_name}: {message}")]
@@ -39,7 +50,9 @@ impl From<ModelError> for PricingError {
                 message,
             } => PricingError::ModelFailure(format!("{model_name}: {message}")),
             ModelError::Heston(e) => PricingError::ModelFailure(e.to_string()),
+            ModelError::JarrowYildirim(e) => PricingError::ModelFailure(e.to_string()),
             ModelError::Correlation(e) => PricingError::ModelFailure(e.to_string()),
+            ModelError::GibsonSchwartz(e) => PricingError::ModelFailure(e.to_string()),
         }
     }
 }

@@ -201,6 +201,106 @@ impl<T: Float> CorrelationMatrix<T> {
             dim: n,
         })
     }
+
+    /// Enforce positive semi-definiteness by shrinking towards identity.
+    ///
+    /// Given raw correlation data that may not be PD (e.g., from estimated
+    /// parameters), this method:
+    /// 1. Symmetrises the matrix and clamps entries to [-1, 1]
+    /// 2. Sets diagonal to 1
+    /// 3. If already PD, returns as-is
+    /// 4. Otherwise, binary-searches for the minimum shrinkage λ ∈ [0, 1] such
+    ///    that `C' = (1-λ)·C + λ·I` is positive definite
+    ///
+    /// # Arguments
+    /// - `data`: raw correlation matrix in row-major order (dim × dim)
+    /// - `dim`: matrix dimension
+    pub fn enforce_psd(data: &[T], dim: usize) -> Result<Self, CorrelationError> {
+        let expected = dim * dim;
+        if data.len() != expected {
+            return Err(CorrelationError::InvalidDimensions {
+                expected,
+                got: data.len(),
+            });
+        }
+
+        let one = T::one();
+        let neg_one = -one;
+        let two = T::from(2.0).unwrap_or(one + one);
+
+        // Step 1: Symmetrise, clamp, and set diagonal to 1
+        let mut corrected = data.to_vec();
+        for i in 0..dim {
+            corrected[i * dim + i] = one;
+            for j in (i + 1)..dim {
+                let avg = (data[i * dim + j] + data[j * dim + i]) / two;
+                let clamped = if avg < neg_one {
+                    neg_one
+                } else if avg > one {
+                    one
+                } else {
+                    avg
+                };
+                corrected[i * dim + j] = clamped;
+                corrected[j * dim + i] = clamped;
+            }
+        }
+
+        // Step 2: Check if already PD
+        let candidate = Self {
+            data: corrected.clone(),
+            dim,
+        };
+        if candidate.cholesky().is_ok() {
+            return Ok(candidate);
+        }
+
+        // Step 3: Binary search for minimum shrinkage towards identity
+        let identity = Self::identity(dim);
+        let tol = T::from(1e-8).unwrap_or(T::zero());
+        let mut lo = T::zero();
+        let mut hi = one;
+
+        for _ in 0..60 {
+            let mid = (lo + hi) / two;
+            let one_minus_mid = one - mid;
+
+            let shrunk: Vec<T> = corrected
+                .iter()
+                .zip(identity.data.iter())
+                .map(|(&c, &id)| one_minus_mid * c + mid * id)
+                .collect();
+
+            let test = Self { data: shrunk, dim };
+            if test.cholesky().is_ok() {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+
+            if (hi - lo) < tol {
+                break;
+            }
+        }
+
+        // Use hi (guaranteed PD) with small safety margin
+        let lambda = hi + T::from(1e-6).unwrap_or(T::zero());
+        let lambda = if lambda > one { one } else { lambda };
+        let one_minus_lambda = one - lambda;
+
+        let mut result: Vec<T> = corrected
+            .iter()
+            .zip(identity.data.iter())
+            .map(|(&c, &id)| one_minus_lambda * c + lambda * id)
+            .collect();
+
+        // Ensure diagonal is exactly 1
+        for i in 0..dim {
+            result[i * dim + i] = one;
+        }
+
+        Ok(Self { data: result, dim })
+    }
 }
 
 /// Lower triangular Cholesky factor of a correlation matrix.

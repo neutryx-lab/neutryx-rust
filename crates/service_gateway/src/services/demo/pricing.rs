@@ -28,7 +28,7 @@ use infra_domain::{
         OptionType, Payoff, SettlementType, Trade, TradeType,
     },
 };
-use pricer_models::market::{CurveEnum, CurveName};
+use pricer_models::market::{ConvenienceYieldParams, CurveEnum, CurveName, VolSurfaceEnum};
 use pricer_pricing::{
     pricer::GreeksMode, CalcSetting, MarketEnvironment, MarketEnvironmentBuilder,
     MonteCarloSetting, Pricer, PricingMethodHint, TreeSetting, TreeType,
@@ -37,14 +37,21 @@ use pricer_pricing::{
 use super::DemoService;
 use crate::{
     error::ServerError,
-    rest::dto::demo::{
-        Cashflow, CashflowPvResult, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
-        DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult, DemoPathDistribution,
-        DemoPricingMethod, DemoPricingRequest, DemoPricingResult, DemoTreeType, ExpandedTrade,
-        FactorGreeks, FactorGreeksEntry, LegResult, PricerGraphEdge, PricerGraphMetadata,
-        PricerGraphNode, PricerGraphRequest, PricerGraphResponse, PricingLeg, RiskFactor,
-        TradeExpandRequest, TradeLeg, TradeMetadata,
+    rest::dto::{
+        demo::{
+            Cashflow, CashflowPvResult, CommodityForwardCurveRequest,
+            CommodityForwardCurveResponse, CommodityForwardPoint, DemoAdvancedGreeksRequest,
+            DemoAdvancedGreeksResult, DemoGreeksInline, DemoGreeksRequest, DemoGreeksResult,
+            DemoPathDistribution, DemoPricingMethod, DemoPricingRequest, DemoPricingResult,
+            DemoTreeType, ExpandedTrade, FactorGreeks, FactorGreeksEntry, LegResult,
+            PricerGraphEdge, PricerGraphMetadata, PricerGraphNode, PricerGraphRequest,
+            PricerGraphResponse, PricingLeg, RiskFactor, TradeExpandRequest, TradeLeg,
+            TradeMetadata,
+        },
+        exotic::{AutocallableRequest, ExoticProductRequest, TarfRequest},
+        mfm::{BermudanPriceRequest, FlatCurveSpec, FlatVolParams, TarnPriceRequest},
     },
+    services::{ExoticService, MfmService},
     state::AppState,
 };
 
@@ -317,23 +324,80 @@ fn build_calc_setting(request: &DemoPricingRequest) -> Result<CalcSetting, Serve
 }
 
 /// Build unified `Pricer` inputs from a `DemoPricingRequest`.
+///
+/// When `instrument_type` is present, the backend creates the actual domain
+/// trade (CommodityOption, CommodityAsianOption, etc.) and populates the
+/// market environment with the required commodity market data.
 fn build_pricer_inputs(
     request: &DemoPricingRequest,
 ) -> Result<(Trade, MarketEnvironment, CalcSetting), ServerError> {
     let valuation_date = parse_date(&request.valuation_date)?;
     let reporting_currency = parse_currency(&request.reporting_currency)?;
 
-    let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
-    let trade = Trade::new("DEMO-TRADE", domain_legs, TradeType::Swap);
-    let market = build_market_env(
-        valuation_date,
-        reporting_currency,
-        &request.legs,
-        DEFAULT_DISCOUNT_RATE,
-    )?;
-    let calc = build_calc_setting(request)?;
+    // When an instrument_type is provided, build the real domain trade
+    // rather than a generic Swap so the Pricer dispatches correctly.
+    let is_commodity_instrument = request
+        .instrument_type
+        .as_deref()
+        .is_some_and(|t| t.starts_with("Commodity") || t == "SpreadOption");
 
-    Ok((trade, market, calc))
+    if is_commodity_instrument {
+        let instrument_type = request.instrument_type.as_deref().unwrap();
+        let params = request
+            .instrument_params
+            .as_ref()
+            .cloned()
+            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+        let (trade, _label) = build_domain_trade(instrument_type, &params)?;
+
+        // Extract commodity type from params for market data defaults.
+        let commodity_type_str = params
+            .get("commodityType")
+            .and_then(|v| v.as_str())
+            .unwrap_or("CrudeOil");
+        let (spot, vol, cy_params) = commodity_market_defaults(commodity_type_str);
+
+        // Allow user overrides from instrument params.
+        let spot = params
+            .get("spotPrice")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(spot);
+        let vol = params
+            .get("spotVol")
+            .and_then(|v| v.as_f64())
+            .unwrap_or(vol);
+
+        // Build commodity key matching the CommodityType::Display format
+        // used by the instrument expander (e.g. "Energy:CrudeOil").
+        let (commodity_key, _, _) = parse_commodity_type(Some(commodity_type_str));
+        let commodity_name = commodity_key.to_string();
+
+        let vol_surface = VolSurfaceEnum::flat(vol)
+            .map_err(|e| ServerError::Internal(format!("Failed to build flat vol surface: {e}")))?;
+        let vol_key = format!("CMDTY:{}", commodity_name);
+
+        let market = MarketEnvironmentBuilder::new(valuation_date)
+            .with_discount_curve(reporting_currency, CurveEnum::flat(DEFAULT_DISCOUNT_RATE))
+            .with_spot_price(&commodity_name, spot)
+            .with_vol_surface(vol_key, vol_surface)
+            .with_convenience_yield(&commodity_name, cy_params)
+            .build();
+
+        let calc = build_calc_setting(request)?;
+        Ok((trade, market, calc))
+    } else {
+        // Default path: generic Swap via cashflow discounting.
+        let domain_legs = build_domain_legs(&request.legs, valuation_date)?;
+        let trade = Trade::new("DEMO-TRADE", domain_legs, TradeType::Swap);
+        let market = build_market_env(
+            valuation_date,
+            reporting_currency,
+            &request.legs,
+            DEFAULT_DISCOUNT_RATE,
+        )?;
+        let calc = build_calc_setting(request)?;
+        Ok((trade, market, calc))
+    }
 }
 
 /// Price a trade with a specific discount rate (used for bump-and-revalue).
@@ -695,6 +759,105 @@ fn parse_commodity_type(s: Option<&str>) -> (CommodityType, QuantityUnit, String
             CommodityType::Energy(EnergyType::CrudeOil),
             QuantityUnit::Barrels,
             "Cushing, OK".to_string(),
+        ),
+    }
+}
+
+/// Returns `(spot_price, flat_vol, ConvenienceYieldParams)` for a commodity.
+///
+/// Provides sensible demo defaults so that the pricing engine has all
+/// required market data for the Gibson-Schwartz CY-adjusted forward and MC
+/// simulation.
+fn commodity_market_defaults(commodity_type: &str) -> (f64, f64, ConvenienceYieldParams) {
+    match commodity_type {
+        "CrudeOil" => (
+            75.0,
+            0.30,
+            ConvenienceYieldParams {
+                initial_cy: 0.05,
+                mean_reversion: 1.0,
+                cy_vol: 0.10,
+                cy_long_term_mean: 0.05,
+                rho_spot_cy: 0.3,
+            },
+        ),
+        "NaturalGas" => (
+            3.50,
+            0.40,
+            ConvenienceYieldParams {
+                initial_cy: 0.08,
+                mean_reversion: 2.0,
+                cy_vol: 0.20,
+                cy_long_term_mean: 0.06,
+                rho_spot_cy: 0.4,
+            },
+        ),
+        "Gold" => (
+            2000.0,
+            0.15,
+            ConvenienceYieldParams {
+                initial_cy: 0.01,
+                mean_reversion: 0.5,
+                cy_vol: 0.03,
+                cy_long_term_mean: 0.01,
+                rho_spot_cy: 0.1,
+            },
+        ),
+        "Silver" => (
+            25.0,
+            0.25,
+            ConvenienceYieldParams {
+                initial_cy: 0.02,
+                mean_reversion: 0.5,
+                cy_vol: 0.05,
+                cy_long_term_mean: 0.02,
+                rho_spot_cy: 0.15,
+            },
+        ),
+        "Copper" => (
+            8500.0,
+            0.25,
+            ConvenienceYieldParams {
+                initial_cy: 0.04,
+                mean_reversion: 1.0,
+                cy_vol: 0.08,
+                cy_long_term_mean: 0.04,
+                rho_spot_cy: 0.25,
+            },
+        ),
+        "Wheat" => (
+            6.50,
+            0.30,
+            ConvenienceYieldParams {
+                initial_cy: 0.06,
+                mean_reversion: 1.5,
+                cy_vol: 0.12,
+                cy_long_term_mean: 0.05,
+                rho_spot_cy: 0.3,
+            },
+        ),
+        "Corn" => (
+            4.50,
+            0.28,
+            ConvenienceYieldParams {
+                initial_cy: 0.05,
+                mean_reversion: 1.5,
+                cy_vol: 0.10,
+                cy_long_term_mean: 0.04,
+                rho_spot_cy: 0.3,
+            },
+        ),
+        // Fallback to Crude Oil
+        _ => (
+            75.0,
+            0.30,
+            ConvenienceYieldParams {
+                initial_cy: 0.05,
+                mean_reversion: 1.0,
+                cy_vol: 0.10,
+                cy_long_term_mean: 0.05,
+                rho_spot_cy: 0.3,
+            },
         ),
     }
 }
@@ -1853,12 +2016,291 @@ fn build_domain_trade(
                 })?;
             (t, "CommodityFutureOption")
         }
+        // ── Exotic / MFM instruments (placeholder trades for expand) ──
+        "Tarf" => {
+            let notional =
+                param_f64("notionalPerFixing", 100_000.0) * param_f64("numFixings", 12.0);
+            let currency = parse_currency(
+                param_str("currencyPair")
+                    .and_then(|s| s.get(..3))
+                    .unwrap_or("EUR"),
+            )?;
+            let maturity_years = param_f64("maturity", 1.0);
+            let end = Tenor::months((maturity_years * 12.0).round() as i32)
+                .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
+            let cf = DomainCashflow::new(
+                CashflowType::Coupon,
+                end,
+                valuation_date,
+                end,
+                maturity_years,
+                notional,
+                Payoff::fixed(0.0),
+                currency,
+            );
+            let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, currency);
+            (Trade::new("DEMO-TARF", vec![leg], TradeType::Swap), "TARF")
+        }
+        "Autocallable" => {
+            let notional = param_f64("notional", 1_000_000.0);
+            let currency = Currency::USD;
+            let maturity_years = param_f64("maturity", 3.0);
+            let end = Tenor::months((maturity_years * 12.0).round() as i32)
+                .add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
+            let cf = DomainCashflow::new(
+                CashflowType::Coupon,
+                end,
+                valuation_date,
+                end,
+                maturity_years,
+                notional,
+                Payoff::fixed(0.0),
+                currency,
+            );
+            let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, currency);
+            (
+                Trade::new("DEMO-AUTOCALLABLE", vec![leg], TradeType::Swap),
+                "Autocallable",
+            )
+        }
+        "BermudanSwaption" => {
+            let currency = Currency::USD;
+            let num_ex = param_f64("numExercises", 5.0) as i32;
+            let tenor = Tenor::months(num_ex * 12);
+            let end = tenor.add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
+            let yf = num_ex as f64;
+            let cf = DomainCashflow::new(
+                CashflowType::Coupon,
+                end,
+                valuation_date,
+                end,
+                yf,
+                1.0,
+                Payoff::fixed(0.0),
+                currency,
+            );
+            let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, currency);
+            (
+                Trade::new("DEMO-BERMUDAN", vec![leg], TradeType::Swap),
+                "BermudanSwaption",
+            )
+        }
+        "Tarn" => {
+            let currency = Currency::USD;
+            let num_ex = param_f64("numExercises", 10.0) as i32;
+            let tenor = Tenor::months(num_ex * 12);
+            let end = tenor.add_to_date(valuation_date, infra_domain::time::EndOfMonthRule::Adjust);
+            let yf = num_ex as f64;
+            let cf = DomainCashflow::new(
+                CashflowType::Coupon,
+                end,
+                valuation_date,
+                end,
+                yf,
+                1.0,
+                Payoff::fixed(0.0),
+                currency,
+            );
+            let leg = Leg::new(vec![cf], Direction::Receiver, LegType::Generic, currency);
+            (Trade::new("DEMO-TARN", vec![leg], TradeType::Swap), "TARN")
+        }
         other => {
             return Err(ServerError::InvalidRequest(format!(
                 "Instrument expansion not yet supported: {other}"
             )))
         }
     })
+}
+
+/// Route pricing for exotic / MFM instrument types to their dedicated
+/// engines, mapping results back to the standard `DemoPricingResult`.
+fn price_exotic_or_mfm(
+    inst_type: &str,
+    request: &DemoPricingRequest,
+) -> Result<DemoPricingResult, ServerError> {
+    let start = Instant::now();
+    let params = request
+        .instrument_params
+        .as_ref()
+        .cloned()
+        .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+    let p = |key: &str, default: f64| -> f64 {
+        params.get(key).and_then(|v| v.as_f64()).unwrap_or(default)
+    };
+    let p_str = |key: &str, default: &str| -> String {
+        params
+            .get(key)
+            .and_then(|v| v.as_str())
+            .unwrap_or(default)
+            .to_string()
+    };
+    let p_bool = |key: &str, default: bool| -> bool {
+        params
+            .get(key)
+            .and_then(|v| v.as_bool().or_else(|| v.as_str().map(|s| s == "true")))
+            .unwrap_or(default)
+    };
+
+    match inst_type {
+        "Tarf" => {
+            let req = TarfRequest {
+                currency_pair: p_str("currencyPair", "EURUSD"),
+                notional_per_fixing: p("notionalPerFixing", 100_000.0),
+                strike: p("strike", 1.10),
+                target_profit: p("targetProfit", 50_000.0),
+                leverage: p("leverage", 2.0),
+                maturity: p("maturity", 1.0),
+                num_fixings: p("numFixings", 12.0) as u32,
+                fixing_dates: None,
+                spot: p("spot", 1.08),
+                domestic_rate: p("domesticRate", 0.05),
+                foreign_rate: p("foreignRate", 0.03),
+                volatility: p("volatility", 0.10),
+                num_paths: None,
+            };
+            let exotic_req = ExoticProductRequest::Tarf(req);
+            let result =
+                ExoticService::price_exotic(&exotic_req).map_err(|e| ServerError::Pricing(e))?;
+            let elapsed = start.elapsed();
+            Ok(DemoPricingResult {
+                total_pv: result.price,
+                reporting_currency: result.currency,
+                legs: vec![],
+                path_distribution: None,
+                method: Some("ScriptKernel".to_string()),
+                greeks: None,
+                computation_time_ms: Some(elapsed.as_secs_f64() * 1000.0),
+            })
+        }
+        "Autocallable" => {
+            let req = AutocallableRequest {
+                underlying: p_str("underlying", "SPX"),
+                notional: p("notional", 1_000_000.0),
+                spot: p("spot", 100.0),
+                autocall_barrier: p("autocallBarrier", 105.0),
+                coupon_rate: p("couponRate", 0.08),
+                ki_barrier: p("kiBarrier", 70.0),
+                maturity: p("maturity", 3.0),
+                num_observations: p("numObservations", 4.0) as u32,
+                observation_dates: None,
+                rate: p("rate", 0.05),
+                volatility: p("volatility", 0.20),
+                num_paths: None,
+            };
+            let exotic_req = ExoticProductRequest::Autocallable(req);
+            let result =
+                ExoticService::price_exotic(&exotic_req).map_err(|e| ServerError::Pricing(e))?;
+            let elapsed = start.elapsed();
+            Ok(DemoPricingResult {
+                total_pv: result.price,
+                reporting_currency: result.currency,
+                legs: vec![],
+                path_distribution: None,
+                method: Some("ScriptKernel".to_string()),
+                greeks: None,
+                computation_time_ms: Some(elapsed.as_secs_f64() * 1000.0),
+            })
+        }
+        "BermudanSwaption" => {
+            let num_exercises = p("numExercises", 5.0) as usize;
+            let swap_tenor = p("swapTenor", 5.0);
+            // Tree builder requires times[0] == 0.
+            let exercise_times: Vec<f64> = std::iter::once(0.0)
+                .chain((1..=num_exercises).map(|i| i as f64))
+                .collect();
+            let n = exercise_times.len();
+            let swap_tenors = vec![swap_tenor; n];
+            let payment_frequencies = vec![0.5_f64; n];
+
+            let req = BermudanPriceRequest {
+                mean_reversion: p("meanReversion", 0.03),
+                volatility: p("volatility", 0.01),
+                num_grid_points: p("numGridPoints", 41.0) as usize,
+                num_std_devs: p("numStdDevs", 5.0),
+                vol_type: Default::default(),
+                exercise_times,
+                swap_tenors,
+                payment_frequencies,
+                funding_curve: FlatCurveSpec {
+                    rate: p("fundingRate", 0.03),
+                },
+                coupon_curve: FlatCurveSpec {
+                    rate: p("couponRate", 0.035),
+                },
+                vol_surface_type: Default::default(),
+                flat_vol: Some(FlatVolParams {
+                    normal_vol_bp: p("normalVolBp", 80.0),
+                }),
+                sabr_vol: None,
+                is_callable: p_bool("isCallable", true),
+                flat_coupon: Some(p("flatCoupon", 0.01)),
+            };
+            let result = MfmService::price_bermudan(&req).map_err(|e| ServerError::Pricing(e))?;
+            let elapsed = start.elapsed();
+            Ok(DemoPricingResult {
+                total_pv: result.pv,
+                reporting_currency: "USD".to_string(),
+                legs: vec![],
+                path_distribution: None,
+                method: Some("MFM Tree".to_string()),
+                greeks: None,
+                computation_time_ms: Some(elapsed.as_secs_f64() * 1000.0),
+            })
+        }
+        "Tarn" => {
+            let num_exercises = p("numExercises", 10.0) as usize;
+            let swap_tenor = p("swapTenor", 5.0);
+            // Tree builder requires times[0] == 0.
+            let exercise_times: Vec<f64> = std::iter::once(0.0)
+                .chain((1..=num_exercises).map(|i| i as f64))
+                .collect();
+            let n = exercise_times.len();
+            let swap_tenors = vec![swap_tenor; n];
+            let payment_frequencies = vec![0.5_f64; n];
+
+            let req = TarnPriceRequest {
+                mean_reversion: p("meanReversion", 0.03),
+                volatility: p("volatility", 0.01),
+                num_grid_points: p("numGridPoints", 41.0) as usize,
+                num_std_devs: p("numStdDevs", 5.0),
+                vol_type: Default::default(),
+                exercise_times,
+                swap_tenors,
+                payment_frequencies,
+                funding_curve: FlatCurveSpec {
+                    rate: p("fundingRate", 0.03),
+                },
+                coupon_curve: FlatCurveSpec {
+                    rate: p("couponRate", 0.035),
+                },
+                vol_surface_type: Default::default(),
+                flat_vol: Some(FlatVolParams {
+                    normal_vol_bp: p("normalVolBp", 80.0),
+                }),
+                sabr_vol: None,
+                tarn_amount: p("tarnAmount", 0.10),
+                num_coupon_grid_points: p("numCouponGridPoints", 10.0) as usize,
+                excess_coupon_flag: p_bool("excessCouponFlag", false),
+                has_bermudan_exercise: p_bool("hasBermudanExercise", false),
+                is_callable: p_bool("isCallable", true),
+                flat_coupon: Some(p("flatCoupon", 0.02)),
+            };
+            let result = MfmService::price_tarn(&req).map_err(|e| ServerError::Pricing(e))?;
+            let elapsed = start.elapsed();
+            Ok(DemoPricingResult {
+                total_pv: result.pv,
+                reporting_currency: "USD".to_string(),
+                legs: vec![],
+                path_distribution: None,
+                method: Some("MFM TARN Tree".to_string()),
+                greeks: None,
+                computation_time_ms: Some(elapsed.as_secs_f64() * 1000.0),
+            })
+        }
+        _ => Err(ServerError::InvalidRequest(format!(
+            "Unknown exotic/MFM instrument type: {inst_type}"
+        ))),
+    }
 }
 
 impl DemoService {
@@ -1880,6 +2322,16 @@ impl DemoService {
         request: &DemoPricingRequest,
         _state: &Arc<AppState>,
     ) -> Result<DemoPricingResult, ServerError> {
+        // Route exotic / MFM instrument types to their dedicated engines.
+        if let Some(inst_type) = request.instrument_type.as_deref() {
+            match inst_type {
+                "Tarf" | "Autocallable" | "BermudanSwaption" | "Tarn" => {
+                    return price_exotic_or_mfm(inst_type, request);
+                }
+                _ => {}
+            }
+        }
+
         let start = Instant::now();
         let (trade, market, calc) = build_pricer_inputs(request)?;
         let method = calc.method;
@@ -2389,6 +2841,66 @@ impl DemoService {
                 trade_id: Some(trade_id),
                 source_locations: None,
             },
+        })
+    }
+
+    /// Build a commodity forward curve using the Gibson-Schwartz model.
+    ///
+    /// Computes `F(T) = S × exp((r − δ̄(T)) × T)` at standard tenors using
+    /// the average expected convenience yield.
+    pub fn commodity_forward_curve(
+        request: &CommodityForwardCurveRequest,
+    ) -> Result<CommodityForwardCurveResponse, ServerError> {
+        let start = Instant::now();
+
+        let (default_spot, default_vol, default_cy) =
+            commodity_market_defaults(&request.commodity_type);
+
+        let spot = request.spot_price.unwrap_or(default_spot);
+        let vol = request.spot_vol.unwrap_or(default_vol);
+        let r = request.discount_rate.unwrap_or(DEFAULT_DISCOUNT_RATE);
+
+        let initial_cy = request.convenience_yield.unwrap_or(default_cy.initial_cy);
+        let kappa = default_cy.mean_reversion;
+        let theta = default_cy.cy_long_term_mean;
+        let cy_vol = default_cy.cy_vol;
+        let rho = default_cy.rho_spot_cy;
+
+        // Standard tenors for the forward curve (years).
+        let tenors = [
+            0.0833, 0.1667, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 7.0, 10.0,
+        ];
+
+        let forward_curve: Vec<CommodityForwardPoint> = tenors
+            .iter()
+            .map(|&t| {
+                let delta_bar = if kappa * t > 1e-12 {
+                    theta + (initial_cy - theta) * (1.0 - (-kappa * t).exp()) / (kappa * t)
+                } else {
+                    initial_cy
+                };
+                let forward_price = spot * ((r - delta_bar) * t).exp();
+                CommodityForwardPoint {
+                    tenor_years: t,
+                    forward_price,
+                    avg_convenience_yield: delta_bar,
+                }
+            })
+            .collect();
+
+        let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+
+        Ok(CommodityForwardCurveResponse {
+            commodity: request.commodity_type.clone(),
+            spot_price: spot,
+            spot_vol: vol,
+            initial_cy,
+            kappa,
+            theta,
+            cy_vol,
+            rho,
+            forward_curve,
+            computation_time_ms: elapsed,
         })
     }
 }

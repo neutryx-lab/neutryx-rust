@@ -13,7 +13,8 @@ use crate::{
     error::{ServerError, ValidatedJson},
     rest::dto::{
         demo::{
-            AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse, Convention,
+            AppConfigResponse, AvailableCurvesResponse, BondQuotesResponse,
+            CommodityForwardCurveRequest, CommodityForwardCurveResponse, Convention,
             ConventionsResponse, CreditQuotesResponse, CurveIndicesResponse,
             CurveInstrumentsResponse, DemoAdvancedGreeksRequest, DemoAdvancedGreeksResult,
             DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult,
@@ -29,6 +30,11 @@ use crate::{
             VolcubeModelsResponse,
         },
         exotic::{ExoticPricingResponse, ExoticProductDef, ExoticProductRequest},
+        jy_inflation::{
+            JyCurveBuildRequest, JyCurveBuildResponse, JyInstrumentRequest, JyInstrumentResponse,
+            JyPricingRequest, JyPricingResponse, JySimulationRequest, JySimulationResponse,
+            JyXvaRequest, JyXvaResponse,
+        },
     },
     services::{DemoService, ExoticService, VolcubeService},
     state::AppState,
@@ -220,3 +226,21 @@ pub async fn price_exotic(
     let response = ExoticService::price_exotic(&request).map_err(|e| ServerError::Pricing(e))?;
     Ok(Json(response))
 }
+
+// ─── Commodity Forward Curve Handler ─────────────────────────────────────────
+
+body_handler!(/// POST /api/commodity/forward-curve.
+    commodity_forward_curve, DemoService::commodity_forward_curve(CommodityForwardCurveRequest) -> CommodityForwardCurveResponse);
+
+// ─── Jarrow-Yildirim Inflation Model Handlers ──────────────────────────────
+
+body_handler!(/// POST /api/jy/curves/build.
+    jy_build_curves, DemoService::jy_build_curves(JyCurveBuildRequest) -> JyCurveBuildResponse);
+body_handler!(/// POST /api/jy/instrument.
+    jy_instrument_cashflows, DemoService::jy_instrument_cashflows(JyInstrumentRequest) -> JyInstrumentResponse);
+body_handler!(/// POST /api/jy/simulate.
+    jy_simulate, DemoService::jy_simulate(JySimulationRequest) -> JySimulationResponse);
+body_handler!(/// POST /api/jy/price.
+    jy_price, DemoService::jy_price(JyPricingRequest) -> JyPricingResponse);
+body_handler!(/// POST /api/jy/xva.
+    jy_xva, DemoService::jy_xva(JyXvaRequest) -> JyXvaResponse);

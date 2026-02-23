@@ -2591,6 +2591,7 @@ dependencies = [
  "llvm-sys",
  "nalgebra 0.33.2",
  "num-traits",
+ "petgraph 0.6.5",
  "pricer_core",
  "pricer_models",
  "pricer_pricing",
