@@ -17,6 +17,7 @@ import type {
   JyXvaResponse,
   CurveRatePoint,
 } from '@/types/api';
+import { fetchInflationMarketData } from '@/services/api';
 
 export const useJyInflationStore = defineStore('jyInflation', () => {
   // ---------------------------------------------------------------------------
@@ -43,31 +44,12 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   const initialIndex = ref(100.0);
   const valuationDate = ref(new Date().toISOString().split('T')[0]);
 
-  // Market data (default USD swap rates)
-  const nominalRates = ref<CurveRatePoint[]>([
-    { instrumentType: 'Deposit', tenor: '3M', rate: 0.032 },
-    { instrumentType: 'Swap', tenor: '1Y', rate: 0.035 },
-    { instrumentType: 'Swap', tenor: '2Y', rate: 0.037 },
-    { instrumentType: 'Swap', tenor: '3Y', rate: 0.038 },
-    { instrumentType: 'Swap', tenor: '5Y', rate: 0.04 },
-    { instrumentType: 'Swap', tenor: '7Y', rate: 0.041 },
-    { instrumentType: 'Swap', tenor: '10Y', rate: 0.042 },
-    { instrumentType: 'Swap', tenor: '15Y', rate: 0.043 },
-    { instrumentType: 'Swap', tenor: '20Y', rate: 0.044 },
-    { instrumentType: 'Swap', tenor: '30Y', rate: 0.045 },
-  ]);
-
-  // Real rates (TIPS yields)
-  const realRates = ref<CurveRatePoint[]>([
-    { instrumentType: 'TIPS', tenor: '1Y', rate: 0.008 },
-    { instrumentType: 'TIPS', tenor: '2Y', rate: 0.009 },
-    { instrumentType: 'TIPS', tenor: '3Y', rate: 0.01 },
-    { instrumentType: 'TIPS', tenor: '5Y', rate: 0.012 },
-    { instrumentType: 'TIPS', tenor: '7Y', rate: 0.014 },
-    { instrumentType: 'TIPS', tenor: '10Y', rate: 0.015 },
-    { instrumentType: 'TIPS', tenor: '20Y', rate: 0.017 },
-    { instrumentType: 'TIPS', tenor: '30Y', rate: 0.018 },
-  ]);
+  // Market data (loaded from input files via API)
+  const nominalRates = ref<CurveRatePoint[]>([]);
+  const realRates = ref<CurveRatePoint[]>([]);
+  const marketDataLoaded = ref(false);
+  const inflationIndex = ref('CPI-U');
+  const referenceDate = ref('');
 
   // Instrument
   const instrumentType = ref('ZCIS');
@@ -138,6 +120,27 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
   }
 
   // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+
+  async function loadMarketData() {
+    if (marketDataLoaded.value) return;
+    try {
+      const data = await fetchInflationMarketData();
+      nominalRates.value = data.nominalRates;
+      realRates.value = data.realRates;
+      inflationIndex.value = data.inflationIndex;
+      referenceDate.value = data.referenceDate;
+      if (data.referenceDate) {
+        valuationDate.value = data.referenceDate;
+      }
+      marketDataLoaded.value = true;
+    } catch (e) {
+      console.error('Failed to load inflation market data:', e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Return
   // ---------------------------------------------------------------------------
 
@@ -151,6 +154,9 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     valuationDate,
     nominalRates,
     realRates,
+    marketDataLoaded,
+    inflationIndex,
+    referenceDate,
     instrumentType,
     notional,
     fixedRate,
@@ -177,6 +183,8 @@ export const useJyInflationStore = defineStore('jyInflation', () => {
     // Computed
     maturityDate,
     summaryStats,
+    // Actions
+    loadMarketData,
     // Helpers
     formatCcy,
   };

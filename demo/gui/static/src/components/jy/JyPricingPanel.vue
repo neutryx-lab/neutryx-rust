@@ -69,7 +69,7 @@ function renderLegChart() {
           titleColor: cc.tooltipTitle,
           bodyColor: cc.tooltipBody,
           callbacks: {
-            label: (ctx) => formatCcy(ctx.parsed.x),
+            label: (ctx) => formatCcy(ctx.parsed.x ?? 0),
           },
         },
       },

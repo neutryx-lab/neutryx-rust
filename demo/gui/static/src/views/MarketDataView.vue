@@ -366,8 +366,8 @@ const summaryStats = computed(() => {
     return [
       { label: 'Nominal Rates', value: jyStore.nominalRates.length, icon: 'fa-chart-line', color: '#3b82f6' },
       { label: 'Real Rates (TIPS)', value: jyStore.realRates.length, icon: 'fa-chart-area', color: '#10b981' },
-      { label: 'Breakeven', value: jyStore.nominalRates.length > 0 ? 'Implied' : '-', icon: 'fa-balance-scale', color: '#f59e0b' },
-      { label: 'Status', value: 'Editable', icon: 'fa-edit', color: '#8b5cf6' },
+      { label: 'Index', value: jyStore.inflationIndex || '-', icon: 'fa-balance-scale', color: '#f59e0b' },
+      { label: 'Source', value: jyStore.marketDataLoaded ? 'File' : 'Loading...', icon: 'fa-database', color: '#8b5cf6' },
     ];
   }
   return [
@@ -811,7 +811,7 @@ async function exportData(format: 'csv' | 'json') {
 
 // Inflation rate helpers
 function addNominalRate() {
-  jyStore.nominalRates.push({ instrumentType: 'Swap', tenor: '', rate: 0.04 });
+  jyStore.nominalRates.push({ instrumentType: 'OIS', tenor: '', rate: 0.04 });
 }
 function removeNominalRate(index: number) {
   jyStore.nominalRates.splice(index, 1);
@@ -839,6 +839,7 @@ watch(assetClass, (newClass) => {
   else if (newClass === 'FXVol' && fxVolQuotes.value.length === 0) loadFxVolData();
   else if (newClass === 'Events' && events.value.length === 0) loadEventsData();
   else if (newClass === 'Holidays' && holidays.value.length === 0) loadHolidaysData();
+  else if (newClass === 'Inflation' && !jyStore.marketDataLoaded) jyStore.loadMarketData();
 });
 
 // Initialize
@@ -1312,7 +1313,7 @@ onMounted(() => {
                 <div class="flex items-center justify-between mb-3">
                   <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
                     <i class="fas fa-table text-blue-500"></i>
-                    Nominal Rates (USD Swaps)
+                    Nominal Rates (Deposit / OIS)
                   </h4>
                   <button class="text-xs text-[var(--primary)] hover:underline" @click="addNominalRate">+ Add</button>
                 </div>
@@ -1936,6 +1937,21 @@ onMounted(() => {
                 <label class="text-xs text-[var(--text-muted)] mb-1 block">Inflation Index</label>
                 <input v-model.number="jyStore.initialIndex" type="number" step="1" min="1"
                   class="w-full px-3 py-2 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--surface)] text-[var(--text-primary)]" />
+              </div>
+            </div>
+
+            <!-- Data Source -->
+            <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+              <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Data Source</h4>
+              <div class="space-y-2 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-[var(--text-muted)]">Inflation Index</span>
+                  <span class="text-[var(--text-primary)]">{{ jyStore.inflationIndex }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-[var(--text-muted)]">Reference Date</span>
+                  <span class="text-[var(--text-primary)]">{{ jyStore.referenceDate || '-' }}</span>
+                </div>
               </div>
             </div>
 

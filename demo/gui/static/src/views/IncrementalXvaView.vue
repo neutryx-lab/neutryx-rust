@@ -181,7 +181,7 @@ function renderExposureChart() {
           padding: 12,
           cornerRadius: 8,
           callbacks: {
-            label: (ctx: TooltipItem<'line'>) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+            label: (ctx: TooltipItem<'line'>) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
           },
         },
       },
@@ -226,7 +226,7 @@ function renderWaterfallChart() {
           padding: 12,
           cornerRadius: 8,
           callbacks: {
-            label: (ctx: TooltipItem<'bar'>) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+            label: (ctx: TooltipItem<'bar'>) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
           },
         },
       },

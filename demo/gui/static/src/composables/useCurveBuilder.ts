@@ -17,7 +17,7 @@ export interface CurveConfig {
   calibrationMethod: string;
   interpolation: string;
   allowExtrapolation: boolean;
-  curveType?: 'rate' | 'credit' | 'fx' | 'commodity';
+  curveType?: 'rate' | 'credit' | 'fx' | 'commodity' | 'inflation';
   commodity?: string;
   discountCurve?: string;
   recoveryRate?: number;
@@ -378,6 +378,10 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       const response = await fetch(`${basePath}/${fileName}.json`);
       if (!response.ok) throw new Error(`Failed to load rate data for ${rateIndex}`);
       rateData.value = await response.json();
+      // Demo: always treat data as realtime — override to today's date
+      if (rateData.value) {
+        rateData.value.reference_date = new Date().toISOString().slice(0, 10);
+      }
     } catch (error) {
       console.error('Failed to load rate data:', error);
       rateData.value = null;
@@ -501,8 +505,8 @@ export function useCurveBuilder(updateChartsCallback: () => void) {
       interpolation.value = normaliseInterpolation(curve.interpolation);
       allowExtrapolation.value = curve.allowExtrapolation;
 
-      // Commodity curves don't have rate data files — skip loading
-      if (curve.curveType === 'commodity') {
+      // Commodity / inflation curves don't have rate data files — skip loading
+      if (curve.curveType === 'commodity' || curve.curveType === 'inflation') {
         rateData.value = null;
         instruments.value = [];
       } else {

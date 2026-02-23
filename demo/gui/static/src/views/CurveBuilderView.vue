@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick, onUnmounted } from 'vue';
+import { Chart, registerables, type ChartConfiguration } from 'chart.js';
 import { useCurveBuilder, calibrationMethods } from '@/composables/useCurveBuilder';
 import { useCurveCharts } from '@/composables/useCurveCharts';
 import { useMarketEnvStore } from '@/stores/marketEnv';
+import { getChartColors } from '@/composables/useChartTheme';
 import CurveInstrumentTable from '@/components/curve/CurveInstrumentTable.vue';
 import CurveJacobianHeatmap from '@/components/curve/CurveJacobianHeatmap.vue';
 import { useJyInflationStore } from '@/stores/jyInflation';
 import { useJYInflation } from '@/composables/useJYInflation';
-import JyCurvePanel from '@/components/jy/JyCurvePanel.vue';
+
+Chart.register(...registerables);
 
 const jyStore = useJyInflationStore();
 const { buildCurves: jyBuildCurves } = useJYInflation();
@@ -41,6 +44,127 @@ const {
 // Template refs – bound via ref="..." in <template>; mark as read for TS
 void shortTermChartCanvas;
 void longTermChartCanvas;
+
+// Inflation chart refs
+const inflationCurveCanvas = ref<HTMLCanvasElement | null>(null);
+const inflationDfCanvas = ref<HTMLCanvasElement | null>(null);
+let inflationCurveChart: Chart | null = null;
+let inflationDfChart: Chart | null = null;
+
+onUnmounted(() => {
+  inflationCurveChart?.destroy();
+  inflationDfChart?.destroy();
+});
+
+function renderInflationCurveChart() {
+  if (!inflationCurveCanvas.value || !jyStore.curveResult) return;
+  inflationCurveChart?.destroy();
+
+  const cc = getChartColors();
+  const labels = jyStore.curveResult.nominalCurve.map(p => `${p.tenor}Y`);
+
+  const config: ChartConfiguration<'line'> = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Nominal',
+          data: jyStore.curveResult.nominalCurve.map(p => p.value * 100),
+          borderColor: '#3b82f6',
+          backgroundColor: '#3b82f61a',
+          tension: 0.4,
+          fill: false,
+        },
+        {
+          label: 'Real',
+          data: jyStore.curveResult.realCurve.map(p => p.value * 100),
+          borderColor: '#10b981',
+          backgroundColor: '#10b9811a',
+          tension: 0.4,
+          fill: false,
+        },
+        {
+          label: 'Breakeven',
+          data: jyStore.curveResult.breakevenCurve.map(p => p.value * 100),
+          borderColor: '#f59e0b',
+          backgroundColor: '#f59e0b1a',
+          tension: 0.4,
+          borderDash: [5, 5],
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: cc.tick, usePointStyle: true } },
+        tooltip: { backgroundColor: cc.tooltipBg, titleColor: cc.tooltipTitle, bodyColor: cc.tooltipBody },
+      },
+      scales: {
+        x: { grid: { color: cc.grid }, ticks: { color: cc.tick }, title: { display: true, text: 'Tenor', color: cc.tick } },
+        y: { grid: { color: cc.grid }, ticks: { color: cc.tick, callback: v => `${(v as number).toFixed(2)}%` }, title: { display: true, text: 'Rate (%)', color: cc.tick } },
+      },
+    },
+  };
+
+  inflationCurveChart = new Chart(inflationCurveCanvas.value, config);
+}
+
+function renderInflationDfChart() {
+  if (!inflationDfCanvas.value || !jyStore.curveResult) return;
+  inflationDfChart?.destroy();
+
+  const cc = getChartColors();
+  const labels = jyStore.curveResult.nominalDf.map(p => `${p.tenor}Y`);
+
+  const config: ChartConfiguration<'line'> = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Nominal DF',
+          data: jyStore.curveResult.nominalDf.map(p => p.value),
+          borderColor: '#3b82f6',
+          tension: 0.4,
+          fill: false,
+        },
+        {
+          label: 'Real DF',
+          data: jyStore.curveResult.realDf.map(p => p.value),
+          borderColor: '#10b981',
+          tension: 0.4,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: cc.tick, usePointStyle: true } },
+        tooltip: { backgroundColor: cc.tooltipBg, titleColor: cc.tooltipTitle, bodyColor: cc.tooltipBody },
+      },
+      scales: {
+        x: { grid: { color: cc.grid }, ticks: { color: cc.tick } },
+        y: { grid: { color: cc.grid }, ticks: { color: cc.tick, callback: v => (v as number).toFixed(4) } },
+      },
+    },
+  };
+
+  inflationDfChart = new Chart(inflationDfCanvas.value, config);
+}
+
+// Re-render inflation charts when result changes or tab switches
+watch([() => jyStore.curveResult, assetTab], async () => {
+  if (assetTab.value === 'inflation' && jyStore.curveResult) {
+    await nextTick();
+    renderInflationCurveChart();
+    renderInflationDfChart();
+  }
+});
 
 // Initialise builder composable, wiring chart updates via callback
 const {
@@ -87,11 +211,16 @@ const {
 
 // Sync asset tab when a curve is selected (e.g. via URL or initial load)
 watch(selectedCurve, (c) => {
-  if (c) assetTab.value = (c.curveType ?? 'rate') as 'rate' | 'credit' | 'fx';
+  if (c) assetTab.value = (c.curveType ?? 'rate') as 'rate' | 'credit' | 'fx' | 'inflation';
 });
 
 // Auto-select the first curve when switching tabs
 watch(assetTab, (tab) => {
+  if (tab === 'inflation') {
+    // Load inflation market data from API if not yet loaded
+    if (!jyStore.marketDataLoaded) jyStore.loadMarketData();
+    return;
+  }
   const first = curveOptions.value.find(c => c.curveType === tab);
   selectedCurveName.value = first?.name ?? '';
   // Reset chart type when switching asset tabs
@@ -111,7 +240,7 @@ watch(chartType, () => {
     <!-- Summary Stats -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <div
-        v-for="stat in summaryStats"
+        v-for="stat in (assetTab === 'inflation' ? jyStore.summaryStats : summaryStats)"
         :key="stat.label"
         class="glass-card p-4"
       >
@@ -130,79 +259,9 @@ watch(chartType, () => {
       </div>
     </div>
 
-    <!-- Inflation Curve Builder -->
-    <div v-if="assetTab === 'inflation'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left Panel: JY Curve Build Settings -->
-      <div class="space-y-4">
-        <div class="glass-card p-5">
-          <div class="section-header" style="margin-top: 0">Inflation Curve Build</div>
-          <div class="space-y-3">
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Nominal Rates</span>
-              <span class="text-[var(--text-primary)] font-semibold">{{ jyStore.nominalRates.length }} instruments</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Real Rates (TIPS)</span>
-              <span class="text-[var(--text-primary)] font-semibold">{{ jyStore.realRates.length }} instruments</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Valuation Date</span>
-              <span class="text-[var(--text-primary)]">{{ jyStore.valuationDate }}</span>
-            </div>
-            <p class="text-xs text-[var(--text-muted)] mt-2">
-              <i class="fas fa-info-circle mr-1"></i>
-              Edit rates in Market Data &gt; Inflation tab
-            </p>
-          </div>
-        </div>
-
-        <!-- Model Params Summary -->
-        <div class="glass-card p-5">
-          <div class="section-header" style="margin-top: 0">Model Parameters</div>
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-[var(--text-muted)]">a<sub>N</sub> / &sigma;<sub>N</sub></span>
-              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.aN }} / {{ jyStore.modelParams.sigmaN }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-[var(--text-muted)]">a<sub>R</sub> / &sigma;<sub>R</sub></span>
-              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.aR }} / {{ jyStore.modelParams.sigmaR }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-[var(--text-muted)]">&sigma;<sub>I</sub></span>
-              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.sigmaI }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-[var(--text-muted)]">&rho; (N-R / N-I / R-I)</span>
-              <span class="text-[var(--text-primary)] font-mono">{{ jyStore.correlation.rhoNr }} / {{ jyStore.correlation.rhoNi }} / {{ jyStore.correlation.rhoRi }}</span>
-            </div>
-            <p class="text-xs text-[var(--text-muted)] mt-2">
-              <i class="fas fa-info-circle mr-1"></i>
-              Edit in Vol Surface &gt; Inflation tab
-            </p>
-          </div>
-        </div>
-
-        <!-- Build Button -->
-        <button
-          class="w-full px-4 py-2.5 rounded-lg text-sm font-medium bg-[var(--primary)] text-white hover:opacity-90 transition-all disabled:bg-gray-500 disabled:cursor-not-allowed"
-          :disabled="jyStore.loading || jyStore.nominalRates.length === 0 || jyStore.realRates.length === 0"
-          @click="jyBuildCurves"
-        >
-          <i :class="['fas mr-2', jyStore.loading ? 'fa-spinner fa-spin' : 'fa-hammer']"></i>
-          {{ jyStore.loading ? 'Building...' : 'Build JY Curves' }}
-        </button>
-      </div>
-
-      <!-- Right Panel: Curve Results -->
-      <div class="lg:col-span-2">
-        <JyCurvePanel :result="jyStore.curveResult" />
-      </div>
-    </div>
-
-    <!-- Standard Curve Builder (Rate / Credit / FX) -->
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left Panel: Settings -->
+    <!-- Unified Curve Builder (all asset types) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left Panel -->
       <div class="space-y-4">
         <!-- Curve Selector -->
         <div class="glass-card p-5">
@@ -229,12 +288,13 @@ watch(chartType, () => {
             </button>
           </div>
 
-          <!-- Error Message -->
-          <div v-if="loadError" class="mb-3 p-2 rounded bg-red-500/20 border border-red-500/50">
+          <!-- Error Message (non-inflation) -->
+          <div v-if="loadError && assetTab !== 'inflation'" class="mb-3 p-2 rounded bg-red-500/20 border border-red-500/50">
             <p class="text-xs text-red-400">{{ loadError }}</p>
           </div>
 
-          <div class="config-grid">
+          <!-- Curve dropdown (non-inflation) -->
+          <div v-if="assetTab !== 'inflation'" class="config-grid">
             <div class="grid-label">Curve</div>
             <div class="grid-input">
               <v-select
@@ -248,10 +308,27 @@ watch(chartType, () => {
               />
             </div>
           </div>
+
+          <!-- Inflation curve info -->
+          <div v-else class="space-y-3">
+            <div class="flex justify-between text-sm">
+              <span class="text-[var(--text-muted)]">Nominal Rates</span>
+              <span class="text-[var(--text-primary)] font-semibold">{{ jyStore.nominalRates.length }} instruments</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-[var(--text-muted)]">Real Rates (TIPS)</span>
+              <span class="text-[var(--text-primary)] font-semibold">{{ jyStore.realRates.length }} instruments</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-[var(--text-muted)]">Valuation Date</span>
+              <span class="text-[var(--text-primary)]">{{ jyStore.valuationDate }}</span>
+            </div>
+          </div>
         </div>
 
-        <!-- Instruments Table -->
+        <!-- Instruments Table (non-inflation) -->
         <CurveInstrumentTable
+          v-if="assetTab !== 'inflation'"
           :instruments="instruments"
           :is-loading="isLoading"
           @toggle="toggleEnabled"
@@ -262,11 +339,92 @@ watch(chartType, () => {
           @update-coupon="updateCoupon"
         />
 
+        <!-- Market Rates (inflation) -->
+        <div v-if="assetTab === 'inflation'" class="glass-card p-5">
+          <div class="section-header" style="margin-top: 0">
+            Market Rates
+            <span class="text-xs font-normal text-[var(--text-muted)] ml-2">
+              {{ jyStore.nominalRates.length + jyStore.realRates.length }} instruments
+            </span>
+          </div>
+          <div class="max-h-64 overflow-y-auto">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 z-10">
+                <tr class="border-b border-[var(--glass-border)] curve-table-header">
+                  <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Type</th>
+                  <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
+                  <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Rate (%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-[var(--glass-border)]">
+                  <td colspan="3" class="py-1.5 px-2 text-xs font-semibold text-blue-400">Nominal</td>
+                </tr>
+                <tr
+                  v-for="(r, idx) in jyStore.nominalRates"
+                  :key="'n-' + idx"
+                  class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+                >
+                  <td class="py-1.5 px-2 text-xs text-[var(--text-secondary)]">{{ r.instrumentType }}</td>
+                  <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ r.tenor }}</td>
+                  <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ (r.rate * 100).toFixed(3) }}</td>
+                </tr>
+                <tr class="border-b border-[var(--glass-border)]">
+                  <td colspan="3" class="py-1.5 px-2 text-xs font-semibold text-green-400">Real (TIPS)</td>
+                </tr>
+                <tr
+                  v-for="(r, idx) in jyStore.realRates"
+                  :key="'r-' + idx"
+                  class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+                >
+                  <td class="py-1.5 px-2 text-xs text-[var(--text-secondary)]">{{ r.instrumentType }}</td>
+                  <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ r.tenor }}</td>
+                  <td class="py-1.5 px-2 text-xs text-right font-mono text-emerald-400">{{ (r.rate * 100).toFixed(3) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-[var(--text-muted)] mt-2">
+            <i class="fas fa-info-circle mr-1"></i>
+            Edit rates in Market Data &gt; Inflation tab
+          </p>
+        </div>
+
         <!-- Build Settings -->
         <div class="glass-card p-5">
           <div class="section-header" style="margin-top: 0">Build Settings</div>
           <div class="config-grid">
-            <template v-if="isFxCurve">
+            <!-- Inflation: JY Model Parameters -->
+            <template v-if="assetTab === 'inflation'">
+              <div class="grid-label">Model</div>
+              <div class="grid-input">
+                <span class="text-sm text-[var(--text-primary)]">Jarrow-Yildirim</span>
+              </div>
+              <div class="grid-label">a<sub>N</sub> / &sigma;<sub>N</sub></div>
+              <div class="grid-input">
+                <span class="text-sm text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.aN }} / {{ jyStore.modelParams.sigmaN }}</span>
+              </div>
+              <div class="grid-label">a<sub>R</sub> / &sigma;<sub>R</sub></div>
+              <div class="grid-input">
+                <span class="text-sm text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.aR }} / {{ jyStore.modelParams.sigmaR }}</span>
+              </div>
+              <div class="grid-label">&sigma;<sub>I</sub></div>
+              <div class="grid-input">
+                <span class="text-sm text-[var(--text-primary)] font-mono">{{ jyStore.modelParams.sigmaI }}</span>
+              </div>
+              <div class="grid-label">&rho; (N-R / N-I / R-I)</div>
+              <div class="grid-input">
+                <span class="text-sm text-[var(--text-primary)] font-mono">{{ jyStore.correlation.rhoNr }} / {{ jyStore.correlation.rhoNi }} / {{ jyStore.correlation.rhoRi }}</span>
+              </div>
+              <div class="grid-span">
+                <p class="text-xs text-[var(--text-muted)]">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Edit in Vol Surface &gt; Inflation tab
+                </p>
+              </div>
+            </template>
+            <!-- FX -->
+            <template v-else-if="isFxCurve">
               <div class="grid-label">Method</div>
               <div class="grid-input">
                 <span class="text-sm text-[var(--text-primary)]">{{ selectedCurve?.fxCurveMethod === 'irp_generic' ? 'Interest Rate Parity' : selectedCurve?.fxCurveMethod === 'irp_basis' ? 'XCCY Basis + IR Curve' : 'Flat Forward Points' }}</span>
@@ -290,6 +448,7 @@ watch(chartType, () => {
                 </div>
               </template>
             </template>
+            <!-- Rate / Credit -->
             <template v-else>
               <div class="grid-label">Calibration</div>
               <div class="grid-input">
@@ -333,7 +492,19 @@ watch(chartType, () => {
 
         <!-- Actions -->
         <div class="glass-card p-5">
+          <!-- Build button: inflation -->
           <button
+            v-if="assetTab === 'inflation'"
+            class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            :disabled="jyStore.loading || jyStore.nominalRates.length === 0 || jyStore.realRates.length === 0"
+            @click="jyBuildCurves"
+          >
+            <i :class="['fas', jyStore.loading ? 'fa-spinner fa-spin' : 'fa-hammer']"></i>
+            {{ jyStore.loading ? 'Building...' : 'Build Curve' }}
+          </button>
+          <!-- Build button: standard -->
+          <button
+            v-else
             :disabled="!selectedCurve || (!isFxCurve && enabledInstruments.length === 0) || isBuilding"
             class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             @click="buildCurve"
@@ -342,6 +513,7 @@ watch(chartType, () => {
             {{ isBuilding ? 'Building...' : 'Build Curve' }}
           </button>
           <button
+            v-if="assetTab !== 'inflation'"
             :disabled="!buildResult || publishFeedback"
             class="w-full mt-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             @click="publishToEnvironment"
@@ -349,7 +521,7 @@ watch(chartType, () => {
             <i :class="['fas', publishFeedback ? 'fa-check' : 'fa-cloud-upload-alt']"></i>
             {{ publishFeedback ? 'Published!' : 'Publish to Environment' }}
           </button>
-          <div class="grid grid-cols-2 gap-2 mt-2">
+          <div v-if="assetTab !== 'inflation'" class="grid grid-cols-2 gap-2 mt-2">
             <button
               :disabled="!hasChanges"
               class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
@@ -366,7 +538,7 @@ watch(chartType, () => {
             </button>
           </div>
 
-          <div v-if="hasChanges" class="mt-3 p-2 rounded bg-[#f59e0b1a] border border-[var(--warning)]">
+          <div v-if="hasChanges && assetTab !== 'inflation'" class="mt-3 p-2 rounded bg-[#f59e0b1a] border border-[var(--warning)]">
             <p class="text-xs text-[var(--warning)] flex items-center gap-1">
               <i class="fas fa-exclamation-triangle"></i>
               Rebuild required
@@ -375,14 +547,15 @@ watch(chartType, () => {
         </div>
       </div>
 
-      <!-- Right Panel: Curve Chart + Jacobian -->
+      <!-- Right Panel: Charts + Data -->
       <div class="lg:col-span-2 space-y-6">
         <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-              {{ isFxCurve ? 'FX Forward Curve' : isCreditCurve ? 'Credit Curve' : 'Yield Curve' }}
+              {{ assetTab === 'inflation' ? 'Inflation Curve' : isFxCurve ? 'FX Forward Curve' : isCreditCurve ? 'Credit Curve' : 'Yield Curve' }}
             </h3>
-            <div v-if="buildResult?.short_term_grid" class="flex gap-2">
+            <!-- Chart type toggles (standard only) -->
+            <div v-if="assetTab !== 'inflation' && buildResult?.short_term_grid" class="flex gap-2">
               <template v-if="isFxCurve">
                 <button
                   :class="[
@@ -429,8 +602,8 @@ watch(chartType, () => {
             </div>
           </div>
 
-          <!-- Build Error -->
-          <div v-if="buildError" class="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/50">
+          <!-- Build Error (standard) -->
+          <div v-if="buildError && assetTab !== 'inflation'" class="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/50">
             <p class="text-sm text-red-400 flex items-center gap-2">
               <i class="fas fa-exclamation-circle"></i>
               {{ buildError }}
@@ -438,13 +611,36 @@ watch(chartType, () => {
           </div>
 
           <!-- Empty State -->
-          <div v-if="!buildResult && !buildError" class="flex flex-col items-center justify-center h-[500px] text-[var(--text-muted)]">
-            <i class="fas fa-chart-line text-5xl mb-4 opacity-30"></i>
+          <div
+            v-if="assetTab === 'inflation' ? !jyStore.curveResult : (!buildResult && !buildError)"
+            class="flex flex-col items-center justify-center h-[500px] text-[var(--text-muted)]"
+          >
+            <i :class="['fas text-5xl mb-4 opacity-30', assetTab === 'inflation' ? 'fa-chart-bar' : 'fa-chart-line']"></i>
             <p class="text-sm">Build a curve to see the chart</p>
           </div>
 
-          <!-- Charts: Short-term (top) and Long-term (bottom) -->
-          <div v-else class="space-y-4">
+          <!-- Inflation Charts -->
+          <div v-else-if="assetTab === 'inflation' && jyStore.curveResult" class="space-y-4">
+            <div>
+              <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">
+                <i class="fas fa-chart-line text-xs mr-1"></i>Zero Rate Curves (Nominal / Real / Breakeven)
+              </h4>
+              <div class="h-48 bg-[var(--surface)] rounded-lg p-2">
+                <canvas ref="inflationCurveCanvas"></canvas>
+              </div>
+            </div>
+            <div>
+              <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">
+                <i class="fas fa-chart-area text-xs mr-1"></i>Discount Factors (Nominal / Real)
+              </h4>
+              <div class="h-48 bg-[var(--surface)] rounded-lg p-2">
+                <canvas ref="inflationDfCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Standard Charts: Short-term (top) and Long-term (bottom) -->
+          <div v-else-if="assetTab !== 'inflation'" class="space-y-4">
             <div>
               <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">
                 <i class="fas fa-clock text-xs mr-1"></i>Short Term (0-1Y)
@@ -464,8 +660,26 @@ watch(chartType, () => {
             </div>
           </div>
 
-          <!-- Build Info -->
-          <div v-if="buildResult" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+          <!-- Inflation Build Info -->
+          <div v-if="assetTab === 'inflation' && jyStore.curveResult" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+            <div class="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span class="text-[var(--text-muted)]">Model:</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">Jarrow-Yildirim</span>
+              </div>
+              <div>
+                <span class="text-[var(--text-muted)]">Nominal Points:</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ jyStore.curveResult.nominalCurve.length }}</span>
+              </div>
+              <div>
+                <span class="text-[var(--text-muted)]">Real Points:</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ jyStore.curveResult.realCurve.length }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Standard Build Info -->
+          <div v-if="assetTab !== 'inflation' && buildResult" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
             <div class="grid grid-cols-4 gap-4 text-sm">
               <div>
                 <span class="text-[var(--text-muted)]">{{ isCreditCurve ? 'Type:' : 'Instruments:' }}</span>
@@ -486,8 +700,42 @@ watch(chartType, () => {
             </div>
           </div>
 
-          <!-- Pillar Data Table -->
-          <div v-if="curveTableRows.length > 0" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+          <!-- Inflation Data Table -->
+          <div v-if="assetTab === 'inflation' && jyStore.curveResult" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+            <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+              <i class="fas fa-table text-xs mr-1"></i>
+              Curve Data ({{ jyStore.curveResult.nominalCurve.length }} points)
+            </h4>
+            <div class="max-h-64 overflow-y-auto">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 z-10">
+                  <tr class="border-b border-[var(--glass-border)] curve-table-header">
+                    <th class="text-left py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Tenor (Y)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Nominal (%)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Real (%)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">Breakeven (%)</th>
+                    <th class="text-right py-2 px-2 text-xs font-medium text-[var(--text-muted)]">DF (Nom)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(pt, idx) in jyStore.curveResult.nominalCurve"
+                    :key="idx"
+                    class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+                  >
+                    <td class="py-1.5 px-2 text-xs text-[var(--text-primary)] font-mono">{{ pt.tenor.toFixed(1) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-blue-400">{{ (pt.value * 100).toFixed(4) }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-green-400">{{ jyStore.curveResult!.realCurve[idx] ? (jyStore.curveResult!.realCurve[idx].value * 100).toFixed(4) : '-' }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-yellow-400">{{ jyStore.curveResult!.breakevenCurve[idx] ? (jyStore.curveResult!.breakevenCurve[idx].value * 100).toFixed(4) : '-' }}</td>
+                    <td class="py-1.5 px-2 text-xs text-right font-mono text-[var(--text-primary)]">{{ jyStore.curveResult!.nominalDf[idx]?.value.toFixed(8) ?? '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Standard Pillar Data Table -->
+          <div v-if="assetTab !== 'inflation' && curveTableRows.length > 0" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
             <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
               <i class="fas fa-table text-xs mr-1"></i>
               Curve Data ({{ curveTableRows.length }} points)
@@ -519,9 +767,9 @@ watch(chartType, () => {
           </div>
         </div>
 
-        <!-- Jacobian Card (below Yield Curve, same width) -->
+        <!-- Jacobian Card (below Yield Curve, same width; not for inflation or FX) -->
         <CurveJacobianHeatmap
-          v-if="buildResult?.jacobian && !isFxCurve"
+          v-if="assetTab !== 'inflation' && buildResult?.jacobian && !isFxCurve"
           :jacobian="buildResult.jacobian"
         />
       </div>

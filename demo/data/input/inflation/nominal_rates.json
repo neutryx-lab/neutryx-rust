@@ -1,0 +1,88 @@
+{
+  "curve_id": "usd-nominal",
+  "currency": "USD",
+  "reference_date": "2026-02-23",
+  "description": "USD nominal yield curve instruments for JY inflation model",
+  "instruments": [
+    {
+      "type": "deposit",
+      "tenor": "3M",
+      "tenor_years": 0.25,
+      "rate": 0.032,
+      "frequency": "annual",
+      "description": "3M USD deposit rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.035,
+      "frequency": "annual",
+      "description": "1Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.037,
+      "frequency": "annual",
+      "description": "2Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.038,
+      "frequency": "annual",
+      "description": "3Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.040,
+      "frequency": "annual",
+      "description": "5Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.041,
+      "frequency": "annual",
+      "description": "7Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.042,
+      "frequency": "annual",
+      "description": "10Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "15Y",
+      "tenor_years": 15.0,
+      "rate": 0.043,
+      "frequency": "annual",
+      "description": "15Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.044,
+      "frequency": "annual",
+      "description": "20Y USD OIS swap rate"
+    },
+    {
+      "type": "ois",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.045,
+      "frequency": "annual",
+      "description": "30Y USD OIS swap rate"
+    }
+  ]
+}

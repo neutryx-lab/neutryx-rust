@@ -1415,6 +1415,15 @@ export interface JyXvaResponse {
   exposureProfile: ExposureProfile;
 }
 
+export interface InflationMarketDataResponse {
+  nominalRates: CurveRatePoint[];
+  realRates: CurveRatePoint[];
+  referenceDate: string;
+  currency: string;
+  inflationIndex: string;
+  lastUpdated: string;
+}
+
 // =============================================================================
 // Incremental XVA Engine Types
 // =============================================================================

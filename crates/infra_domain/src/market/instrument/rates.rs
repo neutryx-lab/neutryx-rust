@@ -118,6 +118,68 @@ impl InflationSwap {
     }
 }
 
+/// Inflation-linked bond type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum InflationLinkedBondType {
+    /// US Treasury Inflation-Protected Securities.
+    Tips,
+    /// UK Index-linked Gilt.
+    IndexLinkedGilt,
+    /// Eurozone inflation-linked bond (OATi, BTPei, etc.).
+    EuLinker,
+}
+
+/// Inflation-linked bond (e.g., TIPS, Index-linked Gilts).
+///
+/// Used as a calibration instrument for real yield curves. The yield
+/// represents the real yield to maturity of the inflation-linked bond.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct InflationLinkedBond {
+    /// Issuer name (e.g., "US Treasury").
+    pub issuer: String,
+    /// Real yield to maturity (as decimal, e.g., 0.015 for 1.5%).
+    pub real_yield: f64,
+    /// Coupon rate (real coupon, as decimal).
+    pub coupon_rate: f64,
+    /// Coupon payment frequency.
+    pub coupon_frequency: Frequency,
+    /// Issue / settlement date.
+    pub start_date: Date,
+    /// Maturity date.
+    pub maturity: Date,
+    /// Notional (face value).
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Bond sub-type (TIPS, Index-linked Gilt, etc.).
+    pub bond_sub_type: InflationLinkedBondType,
+    /// Inflation index reference (e.g., "CPI-U", "RPI").
+    pub inflation_index: String,
+    /// Indexation lag in months (typically 3).
+    pub lag_months: u32,
+}
+
+impl InflationLinkedBond {
+    /// Validates the inflation-linked bond parameters.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        InstrumentError::check_not_empty(&self.issuer, "Issuer")?;
+        InstrumentError::check_positive(self.notional, "Notional")?;
+        InstrumentError::check_range(self.real_yield, -0.1, 0.5, "Real Yield")?;
+        InstrumentError::check_range(self.coupon_rate, -0.05, 0.5, "Coupon rate")?;
+        InstrumentError::check_date_order(
+            self.start_date,
+            self.maturity,
+            "Maturity must be after start date",
+        )?;
+        InstrumentError::check_not_empty(&self.inflation_index, "Inflation Index")?;
+        Ok(())
+    }
+
+    /// Returns true if this is a TIPS bond.
+    #[must_use]
+    pub fn is_tips(&self) -> bool { self.bond_sub_type == InflationLinkedBondType::Tips }
+}
+
 /// Overnight Index Swap (OIS).
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Ois {

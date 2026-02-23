@@ -9,7 +9,8 @@
       "GBP": "GBP Curves (SONIA-based)",
       "JPY": "JPY Curves (TONA-based)",
       "CHF": "CHF Curves (SARON-based)",
-      "Commodity": "Commodity Forward Curves (Gibson-Schwartz)"
+      "Commodity": "Commodity Forward Curves (Gibson-Schwartz)",
+      "Inflation": "Inflation Curves (Jarrow-Yildirim)"
     }
   },
   "curves": [
@@ -451,6 +452,16 @@
       "rateIndex": "Copper-Forward",
       "curveType": "commodity",
       "commodity": "Copper",
+      "instruments": [],
+      "calibrationMethod": "none",
+      "interpolation": "flat_forward",
+      "allowExtrapolation": true
+    },
+    {
+      "name": "USD-JY-Inflation",
+      "description": "USD Inflation curve (Jarrow-Yildirim model: nominal + real + breakeven)",
+      "rateIndex": "USD-JY-INFLATION",
+      "curveType": "inflation",
       "instruments": [],
       "calibrationMethod": "none",
       "interpolation": "flat_forward",

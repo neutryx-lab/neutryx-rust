@@ -393,3 +393,23 @@ pub struct ExposureProfile {
     /// Potential Future Exposure at 99th percentile.
     pub pfe_99: Vec<f64>,
 }
+
+// ─── Inflation Market Data ──────────────────────────────────────────────────
+
+/// Response for inflation market data loaded from input files.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InflationMarketDataResponse {
+    /// Nominal curve instruments (Deposit, OIS).
+    pub nominal_rates: Vec<CurveRatePoint>,
+    /// Real curve instruments (TIPS yields).
+    pub real_rates: Vec<CurveRatePoint>,
+    /// Reference date for the market data.
+    pub reference_date: String,
+    /// Currency.
+    pub currency: String,
+    /// Inflation index name (e.g., "CPI-U").
+    pub inflation_index: String,
+    /// Last updated timestamp.
+    pub last_updated: String,
+}

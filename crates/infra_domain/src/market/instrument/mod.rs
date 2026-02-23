@@ -47,7 +47,8 @@ pub use ir_vol::{
 };
 pub use rates::{
     BasisSwap, Bond, BondFuture, BondFutureOption, BondType, CmsSwap, Deposit, Fra, Frn, Futures,
-    InflationSwap, InterestRateSwap, IrFutureOption, Ois, SwapType,
+    InflationLinkedBond, InflationLinkedBondType, InflationSwap, InterestRateSwap, IrFutureOption,
+    Ois, SwapType,
 };
 pub use xccy::{
     BasisSpread, CrossCurrencyBasisSwap, NotionalExchange, SpreadLeg, XccyBasisConvention, XccyLeg,
@@ -80,6 +81,8 @@ pub enum InstrumentDefinition {
     CmsSwap(CmsSwap),
     /// Inflation-linked swap.
     InflationSwap(InflationSwap),
+    /// Inflation-linked bond (TIPS, Index-linked Gilt, etc.).
+    InflationLinkedBond(InflationLinkedBond),
     /// Fixed-coupon bond (government, corporate, agency).
     Bond(Bond),
     /// Bond futures contract.
@@ -162,6 +165,7 @@ impl InstrumentDefinition {
             | InstrumentDefinition::Frn(_)
             | InstrumentDefinition::CmsSwap(_)
             | InstrumentDefinition::InflationSwap(_)
+            | InstrumentDefinition::InflationLinkedBond(_)
             | InstrumentDefinition::Bond(_)
             | InstrumentDefinition::BondFuture(_)
             | InstrumentDefinition::BondFutureOption(_)
@@ -302,7 +306,7 @@ impl InstrumentDefinition {
         }
         dispatch_validate!(self;
             Deposit, Fra, Futures, InterestRateSwap, BasisSwap, Ois,
-            Swaption, CapFloor, Frn, CmsSwap, InflationSwap, Bond,
+            Swaption, CapFloor, Frn, CmsSwap, InflationSwap, InflationLinkedBond, Bond,
             BondFuture, BondFutureOption, IrFutureOption, SwaptionStraddle, CapFloorStraddle,
             FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap,
             EquityForward, EquityVanillaOption, EquityBarrierOption, AsianOption, LookbackOption, EquitySwap, BasketOption,
@@ -327,7 +331,8 @@ impl std::fmt::Display for InstrumentDefinition {
                 Deposit => "Deposit", Fra => "FRA", Futures => "Futures",
                 InterestRateSwap => "IRS", BasisSwap => "BasisSwap", Ois => "OIS",
                 Swaption => "Swaption", CapFloor => "CapFloor", Frn => "FRN",
-                CmsSwap => "CMSSwap", InflationSwap => "InflationSwap", Bond => "Bond",
+                CmsSwap => "CMSSwap", InflationSwap => "InflationSwap",
+                InflationLinkedBond => "InflationLinkedBond", Bond => "Bond",
                 BondFuture => "BondFuture", BondFutureOption => "BondFutureOption",
                 IrFutureOption => "IRFutureOption",
                 SwaptionStraddle => "SwaptionStraddle", CapFloorStraddle => "CapFloorStraddle",

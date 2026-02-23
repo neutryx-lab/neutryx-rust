@@ -12,7 +12,6 @@ import type {
   XvaDefaultConfigResponse,
   XvaSimulationResponse,
   NettingSetResult,
-  CounterpartyXvaResult,
 } from '@/types';
 
 Chart.register(...registerables);
@@ -186,7 +185,7 @@ function renderExposureChart() {
           cornerRadius: 8,
           callbacks: {
             label: (context: TooltipItem<'line'>) => {
-              const value = context.parsed.y;
+              const value = context.parsed.y ?? 0;
               return `${context.dataset.label ?? ''}: ${formatCurrency(value)}`;
             },
           },
@@ -244,7 +243,7 @@ function renderWaterfallChart() {
           cornerRadius: 8,
           callbacks: {
             label: (context: TooltipItem<'bar'>) => {
-              const value = context.parsed.y;
+              const value = context.parsed.y ?? 0;
               return `${context.dataset.label ?? ''}: ${formatCurrency(value)}`;
             },
           },
