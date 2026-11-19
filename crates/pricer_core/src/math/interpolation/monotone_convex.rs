@@ -124,11 +124,6 @@ impl<T: Float> MonotoneConvexInterpolator<T> {
             return f_inst;
         }
 
-        // Boundary: linear extrapolation from first two discrete forwards
-        let dt0 = times[1] - times[0];
-        let dt1 = times[2] - times[1];
-        f_inst[0] = discrete_fwds[0] - (discrete_fwds[1] - discrete_fwds[0]) * dt0 / (dt0 + dt1);
-
         // Interior knots: weighted average
         for i in 1..n {
             let dt_prev = times[i] - times[i - 1];
@@ -141,11 +136,14 @@ impl<T: Float> MonotoneConvexInterpolator<T> {
             }
         }
 
-        // Boundary: linear extrapolation from last two discrete forwards
-        let dt_n1 = times[n] - times[n - 1];
-        let dt_n2 = times[n - 1] - times[n - 2];
-        f_inst[n] = discrete_fwds[n - 1]
-            + (discrete_fwds[n - 1] - discrete_fwds[n - 2]) * dt_n1 / (dt_n1 + dt_n2);
+        // Boundary forwards derived from the adjacent interior knot forward:
+        // f_0 = 1.5 * fd_0 - 0.5 * f_1 and f_n = 1.5 * fd_{n-1} - 0.5 * f_{n-1}.
+        // The boundary forward lies on the opposite side of the discrete forward
+        // from the interior knot forward, at half the distance, so the end
+        // sections follow the local trend instead of an independent extrapolation.
+        let three_halves = from_f64::<T>(1.5);
+        f_inst[0] = three_halves * discrete_fwds[0] - half * f_inst[1];
+        f_inst[n] = three_halves * discrete_fwds[n - 1] - half * f_inst[n - 1];
 
         // Apply Hagan-West monotonicity constraints to all knots
         // Constraint: f_inst[i] must lie in [0, 2*f_d] for each adjacent
@@ -390,6 +388,23 @@ mod tests {
             );
             prev = curr;
         }
+    }
+
+    #[test]
+    fn test_knot_forwards_on_uneven_grid() {
+        // Uneven grid x = [0, 1, 2, 5] with discrete forwards [0.05, 0.06, 0.08].
+        // Interior forwards weight each neighbouring discrete forward by the
+        // other interval's length; the boundary forwards are
+        // 1.5 * fd - 0.5 * (adjacent interior forward).
+        let times = vec![0.0, 1.0, 2.0, 5.0];
+        let fwds = vec![0.05, 0.06, 0.08];
+        let mc = MonotoneConvexInterpolator::from_discrete_forwards(&times, &fwds).unwrap();
+
+        let f = mc.instant_forwards();
+        assert_relative_eq!(f[0], 1.5 * 0.05 - 0.5 * 0.055, epsilon = 1e-12);
+        assert_relative_eq!(f[1], 0.055, epsilon = 1e-12);
+        assert_relative_eq!(f[2], 0.065, epsilon = 1e-12);
+        assert_relative_eq!(f[3], 1.5 * 0.08 - 0.5 * 0.065, epsilon = 1e-12);
     }
 
     #[test]
